@@ -110,9 +110,6 @@ fn step_once_bounds_harness() {
     // INV-002: Cover all signal variants reachable (using concrete checks)
     match &result {
         Ok(signal) => {
-            // Hoist constructor out of the pattern to avoid E0164.
-            // Patterns forbid function calls; bindings and consts are allowed.
-            let zero_slot = SlotIdx::new(0);
             // All signal variants are covered by the dispatch logic
             kani::cover!(
                 matches!(signal, EngineSignal::Continue),
@@ -134,8 +131,8 @@ fn step_once_bounds_harness() {
                 matches!(
                     signal,
                     EngineSignal::AwaitingWait {
-                        deadline_slot: zero_slot
-                    }
+                        deadline_slot
+                    } if *deadline_slot == SlotIdx::new(0)
                 ),
                 "AwaitingWait reachable"
             );
@@ -206,17 +203,12 @@ fn step_once_state_mapping_harness() {
         kani::assert(state.is_ok(), "step_state read does not panic");
 
         // Map signal to expected state (per contract.md INV-002)
-        // Hoist constructor out of the pattern to avoid E0164.
-        // Use a wildcard binding for the inner slot so all `AwaitingAsk`
-        // variants are covered (E0004) and the pre-buggy semantic — any
-        // `AwaitingAsk` maps to `Asking` — is preserved.
-        let zero_slot = SlotIdx::new(0);
+        // Use wildcard bindings for slot-carrying variants so all signal
+        // values map to their contract state without binding unused values.
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
             EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => StepState::Running,
-            EngineSignal::AwaitingWait {
-                deadline_slot: zero_slot,
-            } => StepState::Waiting,
+            EngineSignal::AwaitingWait { deadline_slot: _ } => StepState::Waiting,
             EngineSignal::AwaitingAsk { timeout_slot: _ } => StepState::Asking,
         };
 

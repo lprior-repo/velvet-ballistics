@@ -78,9 +78,11 @@ impl BoundedActionCompletionQueue {
                 depth,
                 capacity: self.capacity.get(),
             };
-            if tx.try_send(warning).is_err() {
-                return Ok(());
-            }
+            // The warning channel is best-effort by contract: enqueue must not
+            // stall when the backpressure receiver falls behind. The send
+            // result is still observed explicitly so fallible status is not
+            // silently discarded.
+            let _warning_was_dropped = tx.try_send(warning).is_err();
         }
         Ok(())
     }

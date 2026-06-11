@@ -10,6 +10,11 @@ struct Finding {
     detail: String,
 }
 
+struct DeletionAllowance {
+    deleted_path: String,
+    replacement_path: String,
+}
+
 fn command_output(args: &[&str], cwd: &Path) -> Result<String, String> {
     let output = Command::new("git")
         .args(args)
@@ -134,13 +139,64 @@ fn base_file_has_tests(root: &Path, base: &str, path: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn scan_deleted_files(root: &Path, base: &str) -> Result<Vec<Finding>, String> {
+fn deletion_allowances(root: &Path) -> Vec<DeletionAllowance> {
+    let path = root.join(".config/test-integrity-deletion-allow.txt");
+    let text = match fs::read_to_string(path) {
+        Ok(value) => value,
+        Err(_) => return Vec::new(),
+    };
+    let mut allowances = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let parts = trimmed.split('|').collect::<Vec<_>>();
+        if parts.len() < 4 {
+            continue;
+        }
+        let deleted_path = parts.first().map_or("", |value| *value);
+        let replacement_path = parts.get(1).map_or("", |value| *value);
+        if deleted_path.is_empty() || replacement_path.is_empty() {
+            continue;
+        }
+        allowances.push(DeletionAllowance {
+            deleted_path: deleted_path.to_owned(),
+            replacement_path: replacement_path.to_owned(),
+        });
+    }
+    allowances
+}
+
+fn replacement_has_coverage(root: &Path, replacement_path: &str) -> bool {
+    fs::read_to_string(root.join(replacement_path))
+        .map(|text| has_test_decl(&text) && has_exact_assertion(&text))
+        .unwrap_or(false)
+}
+
+fn deletion_has_allowed_replacement(
+    root: &Path,
+    path: &str,
+    allowances: &[DeletionAllowance],
+) -> bool {
+    allowances
+        .iter()
+        .filter(|allowance| allowance.deleted_path == path)
+        .any(|allowance| replacement_has_coverage(root, &allowance.replacement_path))
+}
+
+fn scan_deleted_files(
+    root: &Path,
+    base: &str,
+    allowances: &[DeletionAllowance],
+) -> Result<Vec<Finding>, String> {
     changed_files(root, base).map(|entries| {
         entries
             .into_iter()
             .filter(|(status, path)| {
                 status.starts_with('D') && (is_test_path(path) || base_file_has_tests(root, base, path))
             })
+            .filter(|(_, path)| !deletion_has_allowed_replacement(root, path, allowances))
             .map(|(_status, path)| Finding {
                 kind: "DeletedTestFile",
                 path,
@@ -156,6 +212,8 @@ fn diff_text(root: &Path, base: &str) -> Result<String, String> {
 
 fn scan_diff(diff: &str) -> Vec<Finding> {
     let mut current = String::from("<unknown>");
+    let mut removed_test_decl: Vec<(String, String)> = Vec::new();
+    let mut added_test_decl: Vec<String> = Vec::new();
     let mut removed_exact: Vec<(String, usize)> = Vec::new();
     let mut added_exact: Vec<(String, usize)> = Vec::new();
     let mut added_weak: Vec<(String, usize)> = Vec::new();
@@ -178,17 +236,16 @@ fn scan_diff(diff: &str) -> Vec<Finding> {
         if line.starts_with('-') && !line.starts_with("---") {
             let payload = &line[1..];
             if has_test_decl(payload) {
-                findings.push(Finding {
-                    kind: "DeletedTestDeclaration",
-                    path: current.clone(),
-                    detail: payload.trim().to_owned(),
-                });
+                removed_test_decl.push((current.clone(), payload.trim().to_owned()));
             }
             if has_exact_assertion(payload) {
                 removed_exact.push((current.clone(), 1));
             }
         } else if line.starts_with('+') && !line.starts_with("+++") {
             let payload = &line[1..];
+            if has_test_decl(payload) {
+                added_test_decl.push(current.clone());
+            }
             if is_behavior_test_path(&current) && has_ignore_or_skip(payload) {
                 findings.push(Finding {
                     kind: "IgnoredOrSkippedTest",
@@ -209,6 +266,28 @@ fn scan_diff(diff: &str) -> Vec<Finding> {
             if has_weak_assertion(payload) {
                 added_weak.push((current.clone(), 1));
             }
+        }
+    });
+
+    let test_decl_paths = removed_test_decl
+        .iter()
+        .map(|(path, _detail)| path.clone())
+        .collect::<std::collections::BTreeSet<_>>();
+    test_decl_paths.into_iter().for_each(|path| {
+        let removed_count = removed_test_decl
+            .iter()
+            .filter(|(candidate, _detail)| candidate == &path)
+            .count();
+        let added_count = added_test_decl
+            .iter()
+            .filter(|candidate| *candidate == &path)
+            .count();
+        if added_count < removed_count {
+            findings.push(Finding {
+                kind: "DeletedTestDeclaration",
+                path,
+                detail: format!("removed_test_decls={removed_count} added_test_decls={added_count}"),
+            });
         }
     });
 
@@ -235,7 +314,8 @@ fn scan_diff(diff: &str) -> Vec<Finding> {
 }
 
 fn check(root: &Path, base: &str) -> Result<i32, String> {
-    let mut findings = scan_deleted_files(root, base)?;
+    let allowances = deletion_allowances(root);
+    let mut findings = scan_deleted_files(root, base, &allowances)?;
     findings.extend(scan_diff(&diff_text(root, base)?));
     if findings.is_empty() {
         println!("test integrity: PASS base={base}");

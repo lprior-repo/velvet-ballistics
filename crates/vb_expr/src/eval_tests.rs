@@ -11,13 +11,13 @@ mod tests {
     };
     use crate::lexer::{BinaryOp, UnaryOp};
     use crate::parser::ExprHelper;
-    use crate::{ExprError, ExprResult};
+    use crate::{AccessorContextAbsence, ExprError, ExprResult};
     use proptest;
     use proptest::prelude::*;
     use vb_core::limits::MAX_EXPRESSION_STACK;
     use vb_core::value::FiniteF64;
     use vb_core::value::Taint;
-    use vb_core::value_store::{ObjectField, ValueStore};
+    use vb_core::value_store::ValueStore;
     use vb_core::{
         AccessorIdx, AccessorProgram, ConstIdx, ConstValue, ExprOp, ExprProgram, PathSegment,
         SlotIdx, SlotValue,
@@ -31,6 +31,13 @@ mod tests {
         ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::StackOverflow {
             max: MAX_EXPRESSION_STACK,
         })
+    }
+
+    fn make_accessor(root: SlotIdx, path: Vec<PathSegment>) -> AccessorProgram {
+        AccessorProgram {
+            root,
+            path: path.into_boxed_slice(),
+        }
     }
 
     fn eval_with_const(program: &ExprProgram, constants: Vec<ConstValue>) -> ExprResult<SlotValue> {
@@ -182,6 +189,243 @@ mod tests {
         let slots = vec![Some(SlotValue::I64(99))];
         let result = eval_expr_program(&program, &slots, &[])?;
         assert_eq!(result, SlotValue::I64(99));
+        Ok(())
+    }
+
+    #[test]
+    fn legacy_eval_load_accessor_returns_missing_context_not_unknown_operator() -> ExprResult<()> {
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let slots = vec![Some(SlotValue::I64(99))];
+        let mut store = ValueStore::new();
+        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store);
+        assert!(matches!(
+            result,
+            Err(ExprError::MissingAccessorContext {
+                absence: AccessorContextAbsence::LegacyApiNoAccessorTable
+            })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_loads_empty_path_root() -> ExprResult<()> {
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let accessors = vec![make_accessor(SlotIdx::new(0), Vec::new())];
+        let slots = vec![Some(SlotValue::I64(42))];
+        let mut store = ValueStore::new();
+        let result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &slots,
+            &[],
+            &accessors,
+            &mut store,
+        )?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_traverses_object_field_and_list_index() -> ExprResult<()> {
+        use vb_core::value_store::ObjectField;
+
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let mut store = ValueStore::new();
+        let field = vb_core::ids::SymbolId::new(7);
+        let list = store
+            .insert_list(vec![SlotValue::I64(11), SlotValue::I64(42)].into_boxed_slice())
+            .map_err(ExprError::from)?;
+        let object = store
+            .insert_object(
+                vec![ObjectField {
+                    key: field,
+                    value: SlotValue::List(list),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(ExprError::from)?;
+        let accessors = vec![make_accessor(
+            SlotIdx::new(0),
+            vec![PathSegment::Field(field), PathSegment::Index(1)],
+        )];
+        let slots = vec![Some(SlotValue::Object(object))];
+        let result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &slots,
+            &[],
+            &accessors,
+            &mut store,
+        )?;
+        assert_eq!(result, SlotValue::I64(42));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_rejects_accessor_out_of_bounds() -> ExprResult<()> {
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(1))])?;
+        let accessors = vec![make_accessor(SlotIdx::new(0), Vec::new())];
+        let slots = vec![Some(SlotValue::I64(42))];
+        let mut store = ValueStore::new();
+        let result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &slots,
+            &[],
+            &accessors,
+            &mut store,
+        );
+        assert!(matches!(
+            result,
+            Err(ExprError::AccessorOutOfBounds { accessor }) if accessor == AccessorIdx::new(1)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_distinguishes_root_slot_errors() -> ExprResult<()> {
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let accessors = vec![make_accessor(SlotIdx::new(1), Vec::new())];
+        let mut store = ValueStore::new();
+        let out_of_bounds = eval_expr_program_with_accessors_and_store(
+            &program,
+            &[Some(SlotValue::I64(42))],
+            &[],
+            &accessors,
+            &mut store,
+        );
+        assert!(matches!(
+            out_of_bounds,
+            Err(ExprError::AccessorRootOutOfBounds { root }) if root == SlotIdx::new(1)
+        ));
+
+        let accessors = vec![make_accessor(SlotIdx::new(0), Vec::new())];
+        let uninitialized = eval_expr_program_with_accessors_and_store(
+            &program,
+            &[None],
+            &[],
+            &accessors,
+            &mut store,
+        );
+        assert!(matches!(
+            uninitialized,
+            Err(ExprError::AccessorRootUninitialized { root }) if root == SlotIdx::new(0)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_preserves_path_error_family() -> ExprResult<()> {
+        use vb_core::value_store::ObjectField;
+
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let mut store = ValueStore::new();
+        let wrong_shape = vec![make_accessor(
+            SlotIdx::new(0),
+            vec![PathSegment::Field(vb_core::ids::SymbolId::new(1))],
+        )];
+        let wrong_shape_result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &[Some(SlotValue::I64(42))],
+            &[],
+            &wrong_shape,
+            &mut store,
+        );
+        assert!(matches!(
+            wrong_shape_result,
+            Err(ExprError::UnsupportedAccessorTraversal {
+                segment: "field",
+                found: "number"
+            })
+        ));
+
+        let present_field = vb_core::ids::SymbolId::new(2);
+        let missing_field = vb_core::ids::SymbolId::new(3);
+        let object = store
+            .insert_object(
+                vec![ObjectField {
+                    key: present_field,
+                    value: SlotValue::I64(1),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(ExprError::from)?;
+        let missing_field_accessor = vec![make_accessor(
+            SlotIdx::new(0),
+            vec![PathSegment::Field(missing_field)],
+        )];
+        let missing_field_result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &[Some(SlotValue::Object(object))],
+            &[],
+            &missing_field_accessor,
+            &mut store,
+        );
+        assert!(matches!(
+            missing_field_result,
+            Err(ExprError::ObjectFieldNotFound { field }) if field == missing_field
+        ));
+
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(ExprError::from)?;
+        let list_oob_accessor = vec![make_accessor(SlotIdx::new(0), vec![PathSegment::Index(9)])];
+        let list_oob_result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &[Some(SlotValue::List(list))],
+            &[],
+            &list_oob_accessor,
+            &mut store,
+        );
+        assert!(matches!(
+            list_oob_result,
+            Err(ExprError::ListIndexOutOfBounds { index }) if index == 9
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_rejects_invalid_object_handle() -> ExprResult<()> {
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let field = vb_core::ids::SymbolId::new(5);
+        let forged_object = vb_core::ids::ObjectId::new(99);
+        let accessors = vec![make_accessor(
+            SlotIdx::new(0),
+            vec![PathSegment::Field(field)],
+        )];
+        let slots = vec![Some(SlotValue::Object(forged_object))];
+        let mut store = ValueStore::new();
+        let result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &slots,
+            &[],
+            &accessors,
+            &mut store,
+        );
+        assert!(matches!(
+            result,
+            Err(ExprError::ObjectHandleOutOfBounds { object }) if object == forged_object
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_with_accessors_rejects_invalid_list_handle() -> ExprResult<()> {
+        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
+        let forged_list = vb_core::ids::ListId::new(88);
+        let accessors = vec![make_accessor(SlotIdx::new(0), vec![PathSegment::Index(0)])];
+        let slots = vec![Some(SlotValue::List(forged_list))];
+        let mut store = ValueStore::new();
+        let result = eval_expr_program_with_accessors_and_store(
+            &program,
+            &slots,
+            &[],
+            &accessors,
+            &mut store,
+        );
+        assert!(matches!(
+            result,
+            Err(ExprError::ListHandleOutOfBounds { list }) if list == forged_list
+        ));
         Ok(())
     }
 
@@ -688,38 +932,6 @@ mod tests {
             expected.contains("text"),
             "expected should mention text, got: {expected}"
         );
-        Ok(())
-    }
-
-    #[test]
-    fn eval_helper_public_contains_rejects_i64_haystack_before_store_context() -> ExprResult<()> {
-        let result = eval_helper(
-            ExprHelper::Contains,
-            &[SlotValue::I64(1), SlotValue::I64(2)],
-        );
-        let Err(ExprError::TypeMismatch { expected, found }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch for public contains(1, 2)".into(),
-            });
-        };
-        assert_eq!(expected, "list, text, or object");
-        assert_eq!(found, "number");
-        Ok(())
-    }
-
-    #[test]
-    fn eval_helper_public_contains_rejects_bool_haystack_before_store_context() -> ExprResult<()> {
-        let result = eval_helper(
-            ExprHelper::Contains,
-            &[SlotValue::Bool(true), SlotValue::Bool(false)],
-        );
-        let Err(ExprError::TypeMismatch { expected, found }) = result else {
-            return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch for public contains(true, false)".into(),
-            });
-        };
-        assert_eq!(expected, "list, text, or object");
-        assert_eq!(found, "boolean");
         Ok(())
     }
 
@@ -1382,78 +1594,6 @@ mod tests {
         let slots = vec![Some(SlotValue::List(list))];
         let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
         assert_eq!(result, SlotValue::I64(3));
-        Ok(())
-    }
-
-    #[test]
-    fn eval_expr_program_with_store_contains_preserves_operand_order() -> ExprResult<()> {
-        let mut store = ValueStore::new();
-        let haystack = store
-            .insert_symbol(Box::<str>::from("hello world"))
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let needle = store
-            .insert_symbol(Box::<str>::from("world"))
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let program = ExprProgram {
-            ops: vec![
-                ExprOp::LoadSlot(SlotIdx::new(0)),
-                ExprOp::LoadSlot(SlotIdx::new(1)),
-                ExprOp::Contains,
-            ]
-            .into_boxed_slice(),
-            max_stack: 2,
-        };
-        let slots = vec![
-            Some(SlotValue::Symbol(haystack)),
-            Some(SlotValue::Symbol(needle)),
-        ];
-        let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
-        assert_eq!(result, SlotValue::Bool(true));
-        Ok(())
-    }
-
-    #[test]
-    fn eval_expr_program_load_accessor_resolves_input_users_zero_name() -> ExprResult<()> {
-        let mut store = ValueStore::new();
-        let users_key = store
-            .insert_symbol("users")
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let name_key = store
-            .insert_symbol("name")
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let alice = store
-            .insert_symbol("Alice")
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let user = store
-            .insert_object(vec![ObjectField::clean(name_key, SlotValue::Symbol(alice))])
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let users = store
-            .insert_list(vec![SlotValue::Object(user)])
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let input = store
-            .insert_object(vec![ObjectField::clean(users_key, SlotValue::List(users))])
-            .map_err(|_| ExprError::UnexpectedEof)?;
-        let program = make_program(vec![ExprOp::LoadAccessor(AccessorIdx::new(0))])?;
-        let accessors = [AccessorProgram {
-            root: SlotIdx::new(0),
-            path: vec![
-                PathSegment::Field(users_key),
-                PathSegment::Index(0),
-                PathSegment::Field(name_key),
-            ]
-            .into_boxed_slice(),
-        }];
-        let slots = [Some(SlotValue::Object(input))];
-
-        let result = eval_expr_program_with_accessors_and_store(
-            &program,
-            &slots,
-            &[],
-            &accessors,
-            &mut store,
-        )?;
-
-        assert_eq!(result, SlotValue::Symbol(alice));
         Ok(())
     }
 

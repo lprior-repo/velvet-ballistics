@@ -10,6 +10,8 @@
 
 use super::super::*;
 use crate::cli_envelope::Kind as EnvelopeKind;
+use crate::cli_postcard::types::UnknownCliPostcardKind;
+use proptest::prelude::*;
 use std::str::FromStr;
 
 #[test]
@@ -133,8 +135,14 @@ fn cli_postcard_kind_from_str_resolves_known_kinds_and_returns_typed_err_for_unk
         );
     }
     // Unknown kinds return a typed parse error — there is no silent fallback.
-    assert!(CliPostcardKind::from_str("totally_unknown").is_err());
-    assert!(CliPostcardKind::from_str("").is_err());
+    assert_eq!(
+        CliPostcardKind::from_str("totally_unknown"),
+        Err(UnknownCliPostcardKind("totally_unknown".to_string()))
+    );
+    assert_eq!(
+        CliPostcardKind::from_str(""),
+        Err(UnknownCliPostcardKind(String::new()))
+    );
 }
 
 #[test]
@@ -194,61 +202,56 @@ fn cli_postcard_kind_from_cli_envelope_kind_is_total() {
     }
 }
 
-#[test]
-#[allow(unnameable_test_items)]
-fn cli_postcard_kind_round_trips_for_all_variants() {
-    use proptest::prelude::*;
-    use std::str::FromStr;
+// Property tests: the closed `CliPostcardKind` enum must round-trip
+// through its string discriminant for every variant in the taxonomy,
+// and every variant in the taxonomy must round-trip through
+// `EnvelopeKind` -> `From<EnvelopeKind>` for the subset of variants
+// that have an `EnvelopeKind` counterpart. Keep these at module scope:
+// `proptest!` expands to `#[test]` items, and nested test items are denied
+// by the repository's `-D warnings` check lane.
+proptest! {
+    #[test]
+    fn prop_kind_round_trips_through_as_str_and_from_str(
+        kind in proptest::sample::select(CliPostcardKind::ALL.to_vec())
+    ) {
+        let s = kind.as_str();
+        let parsed = CliPostcardKind::from_str(s)
+            .expect("every variant as_str must parse back to itself");
+        prop_assert_eq!(parsed, kind);
+    }
 
-    // Property test: the closed `CliPostcardKind` enum must round-trip
-    // through its string discriminant for every variant in the taxonomy,
-    // and every variant in the taxonomy must round-trip through
-    // `EnvelopeKind` -> `From<EnvelopeKind>` for the subset of variants
-    // that have an `EnvelopeKind` counterpart.
-    proptest! {
-        #[test]
-        fn prop_kind_round_trips_through_as_str_and_from_str(
-            kind in proptest::sample::select(CliPostcardKind::ALL.to_vec())
-        ) {
-            let s = kind.as_str();
-            let parsed = CliPostcardKind::from_str(s)
-                .expect("every variant as_str must parse back to itself");
-            prop_assert_eq!(parsed, kind);
-        }
-
-        #[test]
-        fn prop_envelope_kind_subset_round_trips(
-            kind in proptest::sample::select(CliPostcardKind::ALL.to_vec())
-        ) {
-            // For every variant, if there is an `EnvelopeKind` counterpart,
-            // then `EnvelopeKind::from_str(<kind>.as_str())` must resolve
-            // and `From<EnvelopeKind>` must produce the original variant.
-            let s = kind.as_str();
-            if let Some(env_kind) = EnvelopeKind::from_str(s) {
-                let back: CliPostcardKind = CliPostcardKind::from(env_kind);
-                prop_assert_eq!(back, kind);
-            } else {
-                // No EnvelopeKind counterpart — that's expected for the
-                // snake_case variants. They are still parsed by
-                // `CliPostcardKind::from_str` but not by `EnvelopeKind`.
-                prop_assert!(
-                    matches!(
-                        kind,
-                        CliPostcardKind::ValidateReport
-                            | CliPostcardKind::VerifyReport
-                            | CliPostcardKind::ExplainReport
-                            | CliPostcardKind::DiffReport
-                            | CliPostcardKind::EventsReport
-                            | CliPostcardKind::TraceReport
-                            | CliPostcardKind::RunReport
-                            | CliPostcardKind::InspectReport
-                            | CliPostcardKind::Simulate
-                            | CliPostcardKind::WorkflowDiffReport
-                            | CliPostcardKind::ReplayReport,
-                    ),
-                    "PascalCase variant {kind:?} must have EnvelopeKind counterpart",
-                );
-            }
+    #[test]
+    fn prop_envelope_kind_subset_round_trips(
+        kind in proptest::sample::select(CliPostcardKind::ALL.to_vec())
+    ) {
+        // For every variant, if there is an `EnvelopeKind` counterpart,
+        // then `EnvelopeKind::from_str(<kind>.as_str())` must resolve
+        // and `From<EnvelopeKind>` must produce the original variant.
+        let s = kind.as_str();
+        if let Some(env_kind) = EnvelopeKind::from_str(s) {
+            let back: CliPostcardKind = CliPostcardKind::from(env_kind);
+            prop_assert_eq!(back, kind);
+        } else {
+            // No EnvelopeKind counterpart — that's expected for the
+            // snake_case variants. They are still parsed by
+            // `CliPostcardKind::from_str` but not by `EnvelopeKind`.
+            prop_assert!(
+                matches!(
+                    kind,
+                    CliPostcardKind::ValidateReport
+                        | CliPostcardKind::VerifyReport
+                        | CliPostcardKind::ExplainReport
+                        | CliPostcardKind::DiffReport
+                        | CliPostcardKind::EventsReport
+                        | CliPostcardKind::TraceReport
+                        | CliPostcardKind::RunReport
+                        | CliPostcardKind::InspectReport
+                        | CliPostcardKind::Simulate
+                        | CliPostcardKind::WorkflowDiffReport
+                        | CliPostcardKind::ReplayReport,
+                ),
+                "PascalCase variant {kind:?} must have EnvelopeKind counterpart",
+            );
         }
     }
 }

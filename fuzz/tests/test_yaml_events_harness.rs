@@ -179,4 +179,5 @@ fn classify_binary_scalar_variant() {
 }
 
 // Remaining tests live in submodule
+#[path = "test_yaml_events_harness/group_b.rs"]
 mod group_b;

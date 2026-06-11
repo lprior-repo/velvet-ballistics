@@ -905,17 +905,18 @@ mod absent_run_scenarios {
         );
     }
 
-    /// absent_run replay — no recovery data → exit 5 (RecoveryFailed) per current contract
+    /// absent_run replay — no recovery data → exit 2 (ValidationFailed)
     #[test]
-    fn absent_run_replay_no_recovery_data_exit_5() {
+    fn absent_run_replay_no_recovery_data_exit_2() {
         let tmp_dir = bdd_tempdir().unwrap();
         let db = tmp_dir.path().join("absent-run-db");
+        let journal = vb_storage::FjallJournal::open(&db, None).expect("journal should open");
+        drop(journal);
         let output = run_cli_failing(&["replay", "999993", "--db", db.to_str().unwrap()]).unwrap();
-        // replay exits 5 when no recovery data found for the run
-        assert!(
-            output.status.code() == Some(5) || output.status.code() == Some(2),
-            "expected exit 5 (RecoveryFailed) or 2 (absent run), got: {:?}",
-            output.status.code()
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "expected exit 2 (ValidationFailed) for no recovery data"
         );
     }
 

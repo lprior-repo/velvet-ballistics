@@ -83,50 +83,7 @@ fi
 
 echo ""
 
-# Check vb_validate/src/schema_fields.rs
-echo "Checking vb_validate/src/schema_fields.rs..."
-SCHEMA_FIELDS_FILE="$REPO_ROOT/crates/vb_validate/src/schema_fields.rs"
-
-if [ ! -f "$SCHEMA_FIELDS_FILE" ]; then
-    echo -e "${RED}ERROR: $SCHEMA_FIELDS_FILE not found${NC}"
-    exit 1
-fi
-
-# Check STEP_PRIMITIVES constant for "parallel"
-if grep -n 'STEP_PRIMITIVES' "$SCHEMA_FIELDS_FILE" > /dev/null 2>&1; then
-    if grep -A 20 'const STEP_PRIMITIVES' "$SCHEMA_FIELDS_FILE" | grep -q '"parallel"'; then
-        echo -e "${RED}FAIL: STEP_PRIMITIVES in schema_fields.rs contains 'parallel'${NC}"
-        grep -n '"parallel"' "$SCHEMA_FIELDS_FILE" || true
-        ERRORS=$((ERRORS + 1))
-    else
-        echo -e "${GREEN}PASS: STEP_PRIMITIVES in schema_fields.rs does not contain 'parallel'${NC}"
-    fi
-
-    if grep -A 20 'const STEP_PRIMITIVES' "$SCHEMA_FIELDS_FILE" | grep -q '"aggregate"'; then
-        echo -e "${RED}FAIL: STEP_PRIMITIVES in schema_fields.rs contains 'aggregate'${NC}"
-        grep -n '"aggregate"' "$SCHEMA_FIELDS_FILE" || true
-        ERRORS=$((ERRORS + 1))
-    else
-        echo -e "${GREEN}PASS: STEP_PRIMITIVES in schema_fields.rs does not contain 'aggregate'${NC}"
-    fi
-fi
-
-# Check ALLOWED_STEP_FIELDS constant for "parallel"
-if grep -n 'ALLOWED_STEP_FIELDS' "$SCHEMA_FIELDS_FILE" > /dev/null 2>&1; then
-    if grep -A 30 'const ALLOWED_STEP_FIELDS' "$SCHEMA_FIELDS_FILE" | grep -q '"parallel"'; then
-        echo -e "${RED}FAIL: ALLOWED_STEP_FIELDS in schema_fields.rs contains 'parallel'${NC}"
-        ERRORS=$((ERRORS + 1))
-    else
-        echo -e "${GREEN}PASS: ALLOWED_STEP_FIELDS in schema_fields.rs does not contain 'parallel'${NC}"
-    fi
-
-    if grep -A 30 'const ALLOWED_STEP_FIELDS' "$SCHEMA_FIELDS_FILE" | grep -q '"aggregate"'; then
-        echo -e "${RED}FAIL: ALLOWED_STEP_FIELDS in schema_fields.rs contains 'aggregate'${NC}"
-        ERRORS=$((ERRORS + 1))
-    else
-        echo -e "${GREEN}PASS: ALLOWED_STEP_FIELDS in schema_fields.rs does not contain 'aggregate'${NC}"
-    fi
-fi
+echo "schema_fields.rs retired; consolidated vocabulary lives in vb_validate/src/schema.rs"
 
 echo ""
 echo "=============================================="

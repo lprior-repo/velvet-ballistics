@@ -89,19 +89,29 @@ impl From<vb_storage::error::JournalError> for CliExitCode {
 
 impl From<vb_storage::recovery::RecoveryError> for CliExitCode {
     fn from(err: vb_storage::recovery::RecoveryError) -> Self {
-        match err {
-            vb_storage::recovery::RecoveryError::ReplayDivergence { .. } => {
-                CliExitCode::ReplayDivergence
-            }
-            vb_storage::recovery::RecoveryError::Journal(_) => CliExitCode::StorageError,
-            _ => CliExitCode::VerificationFailed,
+        recovery_error_exit_code(&err)
+    }
+}
+
+pub(crate) fn recovery_error_exit_code(err: &vb_storage::recovery::RecoveryError) -> CliExitCode {
+    match err {
+        vb_storage::recovery::RecoveryError::ReplayDivergence { .. } => {
+            CliExitCode::ReplayDivergence
         }
+        vb_storage::recovery::RecoveryError::Journal(_) => CliExitCode::StorageError,
+        _ => CliExitCode::VerificationFailed,
+    }
+}
+
+impl From<&vb_storage::recovery::RecoveryError> for CliExitCode {
+    fn from(err: &vb_storage::recovery::RecoveryError) -> Self {
+        recovery_error_exit_code(err)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::CliExitCode;
+    use super::{CliExitCode, recovery_error_exit_code};
     use std::process::ExitCode;
 
     #[test]
@@ -178,6 +188,20 @@ mod tests {
         };
 
         assert_eq!(CliExitCode::from(err), CliExitCode::ReplayDivergence);
+    }
+
+    #[test]
+    fn borrowed_recovery_error_maps_without_message_inference() {
+        let err = vb_storage::recovery::RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: String::from("journal storage validation compile runtime text"),
+        };
+
+        assert_eq!(
+            recovery_error_exit_code(&err),
+            CliExitCode::ReplayDivergence
+        );
+        assert_eq!(CliExitCode::from(&err), CliExitCode::ReplayDivergence);
     }
 
     #[test]

@@ -36,6 +36,52 @@ fn typed_diagnostic_payload_round_trips() {
 }
 
 #[test]
+fn typed_diagnostic_payload_preserves_supplied_code_not_message_substrings() {
+    let report = DiagnosticReport::from_code(
+        "storage error; compile failed; validation failed; replay divergence".to_string(),
+        CliExitCode::RuntimeFailed,
+    );
+    let payload = CliPostcardPayload::Diagnostic(report);
+    let bytes = postcard::to_allocvec(&payload).expect("typed diagnostic must postcard-encode");
+    let decoded = decode_cli_payload(&bytes).expect("typed diagnostic must round-trip");
+
+    match decoded {
+        CliPostcardPayload::Diagnostic(report) => {
+            assert_eq!(report.code, CliExitCode::RuntimeFailed);
+            assert_eq!(
+                report.message,
+                "storage error; compile failed; validation failed; replay divergence"
+            );
+        }
+        other => panic!("expected Diagnostic variant, got {other:?}"),
+    }
+}
+
+#[test]
+fn output_utils_diagnostic_value_classifies_to_typed_payload() {
+    let envelope = serde_json::json!({
+        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+        "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
+        "code": "RuntimeFailed",
+        "exit_code": u8::from(CliExitCode::RuntimeFailed),
+        "message": "storage error; compile failed; validation failed; replay divergence",
+    });
+    let payload = classify_envelope(&envelope).expect("diagnostic envelope must classify");
+
+    match payload {
+        CliPostcardPayload::Diagnostic(report) => {
+            assert_eq!(report.code, CliExitCode::RuntimeFailed);
+            assert_eq!(report.kind, CliPostcardKind::DiagnosticReport);
+            assert_eq!(
+                report.message,
+                "storage error; compile failed; validation failed; replay divergence"
+            );
+        }
+        other => panic!("expected Diagnostic variant, got {other:?}"),
+    }
+}
+
+#[test]
 fn typed_validate_payload_round_trips() {
     let report = ValidateReport {
         schema_version: EnvelopeSchemaVersion::current(),

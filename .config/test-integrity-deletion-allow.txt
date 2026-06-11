@@ -1,0 +1,15 @@
+# deleted_path|replacement_path|bead|reason
+crates/vb_expr/src/builtin_eval.rs|crates/vb_expr/src/builtin_eval_tests.rs|vb-xo50x|builtin evaluator was retired into the active eval module; exact tests remain in builtin_eval_tests and eval tests.
+crates/vb_expr/src/property_tests/proptest_builtin_eval_overflow.rs|crates/vb_expr/src/property_tests/arithmetic_overflow.rs|vb-xo50x|overflow properties moved from retired builtin evaluator to active arithmetic property tests.
+crates/vb_validate/src/fact_table/tests.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate validator test module retired; public consolidation coverage exercises replacement API.
+crates/vb_validate/src/forward_ref.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate validator module retired; prior-step reference coverage retained through shared reference API.
+crates/vb_validate/src/ref_unit_tests.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate validator unit tests retired; public consolidation coverage exercises shared replacement API.
+crates/vb_validate/src/references_tests.rs|crates/vb_validate/src/references/tests.rs|vb-vjaxh|reference validator tests moved under references/tests.rs.
+crates/vb_validate/src/schema_doc.rs|crates/vb_validate/src/schema/tests.rs|vb-vjaxh|schema document tests moved under schema/tests.rs.
+crates/vb_validate/src/schema_fields.rs|crates/vb_validate/src/schema/tests.rs|vb-vjaxh|schema field validator consolidated into schema.rs with replacement schema/tests.rs coverage.
+crates/vb_validate/src/schema_id/tests.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate schema-id tests retired with public consolidation coverage.
+crates/vb_validate/src/schema_tests.rs|crates/vb_validate/src/schema/tests.rs|vb-vjaxh|schema tests moved under schema/tests.rs.
+crates/vb_validate/src/secret_leak/tests.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate secret leak tests retired with public taint coverage.
+crates/vb_validate/src/taint_prop.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate taint propagation module retired with public taint coverage.
+crates/vb_validate/src/type_check.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate type check module retired with public type/taint coverage.
+crates/vb_validate/src/type_sigs/tests.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate type signature tests retired with public type/taint coverage.

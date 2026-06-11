@@ -8,6 +8,30 @@ use super::parse::{
 use super::types::*;
 use crate::{YamlError, YamlResult};
 
+const STEP_ALLOWED_FIELDS: &[&str] = &[
+    "id",
+    "name",
+    "if",
+    "set",
+    "save",
+    "do",
+    "run",
+    "choose",
+    "foreach",
+    "for_each",
+    "together",
+    "collect",
+    "reduce",
+    "repeat",
+    "wait",
+    "ask",
+    "finish",
+    "with",
+    "try_again",
+    "on_error",
+    "then",
+];
+
 pub(super) fn parse_steps(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<StepAst>> {
     let Some(node) = lookup(node, "steps") else {
         return Err(YamlError::MissingField { field: "steps" });
@@ -41,6 +65,21 @@ fn parse_step(yaml: &saphyr::Yaml<'_>) -> YamlResult<StepAst> {
     })
 }
 
+fn legacy_primitive_replacement(field: &str) -> Option<&'static str> {
+    match field {
+        "parallel" => Some("together"),
+        "aggregate" => Some("reduce"),
+        _ => None,
+    }
+}
+
+fn legacy_primitive_deprecated(name: &str, replacement: &'static str) -> YamlError {
+    YamlError::LegacyPrimitiveDeprecated {
+        name: name.to_string(),
+        replacement: replacement.to_string(),
+    }
+}
+
 fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     let mut selected: Option<(&str, &saphyr::Yaml<'_>)> = None;
     for (key, value) in mapping(node, "step")? {
@@ -50,11 +89,9 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
                 expected: "string",
             });
         };
+        // Intercept legacy names BEFORE is_primitive() gate to emit correct error.
         if let Some(replacement) = legacy_primitive_replacement(key) {
-            return Err(YamlError::LegacyPrimitiveDeprecated {
-                name: key.to_string(),
-                replacement: replacement.to_string(),
-            });
+            return Err(legacy_primitive_deprecated(key, replacement));
         }
         if is_primitive(key) {
             if selected.is_some() {
@@ -88,14 +125,6 @@ fn parse_step_primitive(node: &saphyr::Yaml<'_>) -> YamlResult<StepPrimitive> {
     }
 }
 
-fn legacy_primitive_replacement(field: &str) -> Option<&'static str> {
-    match field {
-        "parallel" => Some("together"),
-        "aggregate" => Some("reduce"),
-        _ => None,
-    }
-}
-
 /// Returns `true` if the given field name is a recognised step primitive.
 ///
 /// `pub(crate)` so the `kani_is_primitive_legacy` harness under
@@ -122,34 +151,26 @@ pub(crate) fn is_primitive(field: &str) -> bool {
 }
 
 fn reject_unknown_step_fields(node: &saphyr::Yaml<'_>) -> YamlResult<()> {
-    reject_unknown_fields(
-        node,
-        &[
-            "id",
-            "name",
-            "if",
-            "set",
-            "save",
-            "do",
-            "run",
-            "parallel",
-            "aggregate",
-            "choose",
-            "foreach",
-            "for_each",
-            "together",
-            "collect",
-            "reduce",
-            "repeat",
-            "wait",
-            "ask",
-            "finish",
-            "with",
-            "try_again",
-            "on_error",
-            "then",
-        ],
-    )
+    for (key, _) in mapping(node, "mapping")? {
+        let Some(key) = key.as_str() else {
+            continue;
+        };
+        if let Some(replacement) = legacy_primitive_replacement(key) {
+            return Err(legacy_primitive_deprecated(key, replacement));
+        }
+    }
+    for (key, _) in mapping(node, "mapping")? {
+        let Some(key) = key.as_str() else {
+            return Err(YamlError::FieldShape {
+                field: "mapping key",
+                expected: "string",
+            });
+        };
+        if !STEP_ALLOWED_FIELDS.contains(&key) {
+            return Err(YamlError::UnknownField { field: key.into() });
+        }
+    }
+    Ok(())
 }
 
 fn parse_set(sub: &saphyr::Yaml<'_>, primitive: &'static str) -> YamlResult<StepPrimitive> {

@@ -1,14 +1,13 @@
 //! Strategy generators for YAML event proptest.
 #![forbid(unsafe_code)]
 use proptest::prelude::*;
-use vb_core::diagnostic::HasSymbolicCode;
 
 // ---------------------------------------------------------------------------
 // Strategy: generate arbitrary UTF-8 strings of bounded length
 // ---------------------------------------------------------------------------
 
 /// UTF-8 string strategy bounded to 1 KiB for tractable test runs.
-fn utf8_string_strategy() -> impl Strategy<Value = String> {
+pub(crate) fn utf8_string_strategy() -> impl Strategy<Value = String> {
     proptest::collection::vec(proptest::char::any(), 0..1024)
         .prop_map(|chars| chars.into_iter().collect::<String>())
 }
@@ -25,7 +24,7 @@ fn _small_utf8_string_strategy() -> impl Strategy<Value = String> {
 
 /// Generates structurally valid YAML strings (mappings, sequences, scalars)
 /// that should produce at least one event when parsed.
-fn valid_yaml_strategy() -> impl Strategy<Value = String> {
+pub(crate) fn valid_yaml_strategy() -> impl Strategy<Value = String> {
     // Build strategies without cloning regex generators.
     let key_strat = proptest::string::string_regex(r"[a-zA-Z0-9_ ]{1,20}").unwrap();
     let val_strat = proptest::string::string_regex(r"[a-zA-Z0-9_ ]{1,20}").unwrap();
@@ -62,7 +61,7 @@ fn valid_yaml_strategy() -> impl Strategy<Value = String> {
 // ---------------------------------------------------------------------------
 
 /// Generates an arbitrary `vb_yaml::YamlError` variant with field data.
-fn yaml_error_strategy() -> impl Strategy<Value = vb_yaml::YamlError> {
+pub(crate) fn yaml_error_strategy() -> impl Strategy<Value = vb_yaml::YamlError> {
     let variant: BoxedStrategy<u8> = (0u8..21u8).boxed();
 
     variant.prop_flat_map(|v| match v {
@@ -165,16 +164,15 @@ fn yaml_error_strategy() -> impl Strategy<Value = vb_yaml::YamlError> {
                 .boxed()
         }
         20 => {
-            let p_strat = proptest::string::string_regex(r"[a-zA-Z_]{1,10}").unwrap();
-            p_strat
-                .prop_flat_map(move |primitive| {
-                    let c2 = proptest::string::string_regex(r"[a-zA-Z_]{1,10}").unwrap();
-                    c2.prop_map(move |canonical| {
-                        let p_leaked: &'static str = Box::leak(primitive.clone().into_boxed_str());
-                        let c_leaked: &'static str = Box::leak(canonical.into_boxed_str());
-                        vb_yaml::YamlError::LegacyPrimitive {
-                            primitive: p_leaked,
-                            canonical: c_leaked,
+            let name_strategy = proptest::string::string_regex(r"[a-zA-Z_]{1,10}").unwrap();
+            name_strategy
+                .prop_flat_map(move |name| {
+                    let replacement_strategy =
+                        proptest::string::string_regex(r"[a-zA-Z_]{1,10}").unwrap();
+                    replacement_strategy.prop_map(move |replacement| {
+                        vb_yaml::YamlError::LegacyPrimitiveDeprecated {
+                            name: name.clone(),
+                            replacement,
                         }
                     })
                 })

@@ -277,7 +277,7 @@ fn taint_repeat_body(
                 taint_repeat_body(inner, facts, errors);
             }
             StepKindAst::Save { fields } => {
-                let _computed_fact = save_fact(fields, facts);
+                let _body_fact = save_fact(fields, facts);
             }
             StepKindAst::Choose { condition, .. } => {
                 if let Err(e) = validate_condition(condition, facts) {
@@ -285,7 +285,7 @@ fn taint_repeat_body(
                 }
             }
             StepKindAst::Reduce { initial, .. } => {
-                let _ = value_fact(initial, Some(facts));
+                let _initial_fact = value_fact(initial, Some(facts));
             }
             StepKindAst::Finish { result } => {
                 if let Err(e) = validate_public_result(result, facts) {

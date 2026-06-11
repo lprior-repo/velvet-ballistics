@@ -15,8 +15,8 @@
 //!
 //! Bound: 21 YamlError variants.
 
-use vb_yaml::YamlError;
 use vb_core::diagnostic::SymbolicCode;
+use vb_yaml::YamlError;
 
 const YAML_ERROR_VARIANT_COUNT: u8 = 21;
 
@@ -92,9 +92,9 @@ fn arbitrary_yaml_error(variant: u8) -> YamlError {
         19 => YamlError::UnsupportedTrigger {
             trigger: &*kani::any::<String>().leak(),
         },
-        20 => YamlError::LegacyPrimitive {
-            primitive: &*kani::any::<String>().leak(),
-            canonical: &*kani::any::<String>().leak(),
+        20 => YamlError::LegacyPrimitiveDeprecated {
+            name: kani::any::<String>(),
+            replacement: kani::any::<String>(),
         },
         _ => YamlError::EmptySource,
     }

@@ -72,11 +72,68 @@ pub enum YamlError {
     #[error("forbidden YAML feature: {detail}")]
     ForbiddenFeature { detail: &'static str },
 
-    #[error("legacy primitive deprecated: {name}; migration hint: replace with {replacement}")]
+    #[error("legacy primitive deprecated: {name}; migration hint: use {replacement} instead")]
     LegacyPrimitiveDeprecated { name: String, replacement: String },
 }
 
+/// Exhaustive classifier tag for [`YamlError`] variants.
+///
+/// This lives inside `vb_yaml` so the compiler rejects any future
+/// `YamlError` variant that is not assigned an explicit classifier tag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum YamlErrorKind {
+    UnsupportedTrigger,
+    UnsupportedFeature,
+    DuplicateKey,
+    AnchorAliasMerge,
+    CustomTag,
+    BinaryScalar,
+    MultipleDocuments,
+    AmbiguousScalar,
+    SourceTooLarge,
+    NestingTooDeep,
+    NodeLimitExceeded,
+    ScalarTooLong,
+    SequenceTooLong,
+    MappingTooLarge,
+    UnknownField,
+    EmptySource,
+    MissingField,
+    FieldShape,
+    ParseError,
+    ForbiddenFeature,
+    LegacyPrimitiveDeprecated,
+}
+
 impl YamlError {
+    /// Returns the exhaustive in-crate classifier tag for this variant.
+    #[must_use]
+    pub fn kind(&self) -> YamlErrorKind {
+        match self {
+            Self::UnsupportedTrigger { .. } => YamlErrorKind::UnsupportedTrigger,
+            Self::UnsupportedFeature { .. } => YamlErrorKind::UnsupportedFeature,
+            Self::DuplicateKey { .. } => YamlErrorKind::DuplicateKey,
+            Self::AnchorAliasMerge => YamlErrorKind::AnchorAliasMerge,
+            Self::CustomTag { .. } => YamlErrorKind::CustomTag,
+            Self::BinaryScalar => YamlErrorKind::BinaryScalar,
+            Self::MultipleDocuments { .. } => YamlErrorKind::MultipleDocuments,
+            Self::AmbiguousScalar { .. } => YamlErrorKind::AmbiguousScalar,
+            Self::SourceTooLarge { .. } => YamlErrorKind::SourceTooLarge,
+            Self::NestingTooDeep { .. } => YamlErrorKind::NestingTooDeep,
+            Self::NodeLimitExceeded { .. } => YamlErrorKind::NodeLimitExceeded,
+            Self::ScalarTooLong { .. } => YamlErrorKind::ScalarTooLong,
+            Self::SequenceTooLong { .. } => YamlErrorKind::SequenceTooLong,
+            Self::MappingTooLarge { .. } => YamlErrorKind::MappingTooLarge,
+            Self::UnknownField { .. } => YamlErrorKind::UnknownField,
+            Self::EmptySource => YamlErrorKind::EmptySource,
+            Self::MissingField { .. } => YamlErrorKind::MissingField,
+            Self::FieldShape { .. } => YamlErrorKind::FieldShape,
+            Self::ParseError { .. } => YamlErrorKind::ParseError,
+            Self::ForbiddenFeature { .. } => YamlErrorKind::ForbiddenFeature,
+            Self::LegacyPrimitiveDeprecated { .. } => YamlErrorKind::LegacyPrimitiveDeprecated,
+        }
+    }
+
     /// Returns the stable symbolic diagnostic code for this YAML error.
     ///
     /// Mapping matches error-taxonomy §2.3:

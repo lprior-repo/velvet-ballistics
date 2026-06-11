@@ -34,7 +34,8 @@ fn build_ref_tables(ast: &WorkflowAst) -> RefTables {
     let vars = entry_names_owned(&ast.vars);
     let secrets = secret_names_owned(&ast.secrets);
     let step_ids = step_names_owned(&ast.steps);
-    RefTables::from_slices(&inputs, &vars, &secrets, &step_ids)
+    let step_outputs = output_step_names_owned(&ast.steps);
+    RefTables::from_slices_with_outputs(&inputs, &vars, &secrets, &step_ids, &[], &step_outputs)
 }
 
 fn entry_names_owned<T>(entries: &[AstMapEntry<T>]) -> Vec<String> {
@@ -59,6 +60,31 @@ fn step_names_owned(steps: &[StepAst]) -> Vec<String> {
         names.push(step.id.as_ref().to_owned());
     }
     names
+}
+
+fn output_step_names_owned(steps: &[StepAst]) -> Vec<String> {
+    let mut names = Vec::with_capacity(steps.len());
+    for step in steps {
+        if step_kind_produces_output(&step.kind) {
+            names.push(step.id.as_ref().to_owned());
+        }
+    }
+    names
+}
+
+fn step_kind_produces_output(kind: &crate::ast::StepKindAst) -> bool {
+    use crate::ast::StepKindAst;
+    matches!(
+        kind,
+        StepKindAst::Run { .. }
+            | StepKindAst::Save { .. }
+            | StepKindAst::ForEach { .. }
+            | StepKindAst::Together { .. }
+            | StepKindAst::Collect { .. }
+            | StepKindAst::Reduce { .. }
+            | StepKindAst::Repeat { .. }
+            | StepKindAst::Ask { .. }
+    )
 }
 
 fn collect_references_from_value_entries(

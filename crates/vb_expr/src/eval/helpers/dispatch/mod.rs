@@ -6,9 +6,9 @@
 //! - `api`: public API helper evaluation
 //! - `args`: argument count validation
 
-pub mod api;
-pub mod args;
-pub mod bytecode;
+mod api;
+mod args;
+mod bytecode;
 
 pub use api::{eval_helper, eval_helper_with_store};
-pub use bytecode::eval_helper_op_with_store;
+pub(crate) use bytecode::eval_helper_op_with_store;

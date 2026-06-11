@@ -117,10 +117,10 @@ fn classify_forbidden_feature_variant() {
 }
 
 #[test]
-fn classify_legacy_primitive_variant() {
-    let err = YamlError::LegacyPrimitive {
-        primitive: "parallel",
-        canonical: "together",
+fn classify_legacy_primitive_deprecated_variant() {
+    let err = YamlError::LegacyPrimitiveDeprecated {
+        name: String::from("parallel"),
+        replacement: String::from("together"),
     };
     assert_classifies!(err);
 }
@@ -178,9 +178,9 @@ fn exhaustive_match_all_variants_in_loop() {
         YamlError::ForbiddenFeature {
             detail: "anchor_detected",
         },
-        YamlError::LegacyPrimitive {
-            primitive: "aggregate",
-            canonical: "reduce",
+        YamlError::LegacyPrimitiveDeprecated {
+            name: String::from("aggregate"),
+            replacement: String::from("reduce"),
         },
     ];
     // When: every variant is classified

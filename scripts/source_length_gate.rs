@@ -3,6 +3,7 @@ use crate::source_length_scan::{hot_violations, is_excluded};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::process::{Command, ExitCode};
 
 const SOURCE_LEDGER: &str = ".config/source-length-exceptions.txt";
@@ -72,6 +73,7 @@ fn tracked_rust_files() -> Result<Vec<String>, String> {
     Ok(stdout
         .lines()
         .filter(|file| !is_excluded(file))
+        .filter(|file| Path::new(file).exists())
         .map(str::to_string)
         .collect())
 }

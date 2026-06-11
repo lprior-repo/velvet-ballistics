@@ -1,3 +1,13 @@
 # Path-scoped exceptions for scripts/check-hot-cold-forbidden-apis.sh.
 # Format:
 # crates/<crate>/src/<file>.rs|CLASS|owner=<name>|reviewed_by=<name>|test=<evidence>|reason=<why>
+#
+# Class IDs include FORMAT-PRINT-001, FORMAT-DBG-001, FORMAT-JSON-001,
+# FORMAT-YAML-001, MAP-STRING-001, CHANNEL-UNBOUNDED-001,
+# CHANNEL-BOUNDED-001, and QUEUE-MUTEX-VECDEQUE-001.
+# CHANNEL-BOUNDED-001 covers direct std::sync::mpsc::sync_channel and
+# mpsc::sync_channel call syntax in hot crates. crossbeam_channel::bounded is
+# intentionally outside vb-nw2sj's contract unless a later bead widens scope.
+# QUEUE-MUTEX-VECDEQUE-001 covers direct Mutex<VecDeque<...>> type syntax.
+# Legitimate bounded queue exceptions must stay exact path/class entries and
+# cite the capacity/backpressure proof in non-empty test= or reason= metadata.

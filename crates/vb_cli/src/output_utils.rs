@@ -2,7 +2,6 @@
 //! Output formatting utilities for parse errors, diagnostics, and exit codes.
 
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
-use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
 use crate::io::write_error_stderr;
 use crate::output::{write_stderr_best_effort, write_stderr_line_io, write_structured_stderr};
@@ -84,12 +83,29 @@ pub(crate) fn write_diagnostic_report_stderr_io(
     code: CliExitCode,
     output: OutputFormat,
 ) -> io::Result<()> {
-    let diagnostic = serde_json::json!({
-        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
-        "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
-        "code": cli_exit_code_name(code),
-        "exit_code": cli_exit_code_number(code),
-        "message": message,
-    });
+    let diagnostic = diagnostic_value(message, code);
     write_structured_stderr(&diagnostic, output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::diagnostic_value;
+    use crate::exit_code::CliExitCode;
+
+    #[test]
+    fn diagnostic_value_preserves_supplied_code_not_message_substrings() {
+        let diagnostic = diagnostic_value(
+            "storage error; compile failed; validation failed; replay divergence; ipc error",
+            CliExitCode::RuntimeFailed,
+        );
+
+        assert_eq!(
+            diagnostic.get("code").and_then(serde_json::Value::as_str),
+            Some("RuntimeFailed")
+        );
+        assert_eq!(
+            diagnostic.get("exit_code"),
+            Some(&serde_json::json!(u8::from(CliExitCode::RuntimeFailed)))
+        );
+    }
 }

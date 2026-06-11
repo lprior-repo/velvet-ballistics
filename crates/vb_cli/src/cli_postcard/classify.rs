@@ -14,9 +14,9 @@
 use std::str::FromStr;
 
 use super::{
-    AiContextPacketReport, CliPostcardKind, CliPostcardPayload, DiffReport, EventsReport,
-    ExplainReport, GenericPayload, ReplayReport, SystemStatusReport, TraceReport, ValidateReport,
-    VerifyReport, WorkflowDiffReport,
+    AiContextPacketReport, CliPostcardKind, CliPostcardPayload, DiagnosticReport, DiffReport,
+    EventsReport, ExplainReport, GenericPayload, ReplayReport, SystemStatusReport, TraceReport,
+    ValidateReport, VerifyReport, WorkflowDiffReport,
 };
 
 /// Failure modes when converting a serde_json envelope to a typed payload.
@@ -78,6 +78,9 @@ fn classify_by_kind(
     envelope: &serde_json::Value,
 ) -> Result<CliPostcardPayload, ClassifyError> {
     match kind {
+        CliPostcardKind::DiagnosticReport => {
+            typed_or_generic::<DiagnosticReport, _>(kind, envelope, CliPostcardPayload::Diagnostic)
+        }
         CliPostcardKind::ValidateReport => {
             typed_or_generic::<ValidateReport, _>(kind, envelope, CliPostcardPayload::Validate)
         }

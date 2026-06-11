@@ -2,7 +2,6 @@
 //! Output formatting and JSON/structured output functions.
 
 use crate::args::OutputFormat;
-use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
 use crate::io_helpers;
 use crate::output_utils;
@@ -224,7 +223,7 @@ pub(crate) fn write_contract_error_json(value: &serde_json::Value, format: Outpu
 /// the exit code is a stable contract for CLI consumers and cannot be derived
 /// from a free-form message string.
 pub(crate) fn json_error(value: &serde_json::Value, code: CliExitCode, format: OutputFormat) {
-    let message = legacy_json_error_message(value);
+    let message = diagnostic_message_from_json_value(value);
     if format == OutputFormat::Text {
         crate::errln!("{message}");
     } else {
@@ -232,8 +231,11 @@ pub(crate) fn json_error(value: &serde_json::Value, code: CliExitCode, format: O
     }
 }
 
-/// Legacy JSON error message extraction.
-pub(crate) fn legacy_json_error_message(value: &serde_json::Value) -> String {
+/// Extract the presentation message from a JSON error payload.
+///
+/// This helper is intentionally presentation-only: it never classifies the
+/// payload or derives a [`CliExitCode`] from free-form message text.
+fn diagnostic_message_from_json_value(value: &serde_json::Value) -> String {
     if let Some(message) = value.get("message").and_then(serde_json::Value::as_str) {
         return message.to_string();
     }
@@ -260,14 +262,10 @@ pub(crate) fn write_diagnostic_message_stderr(
 }
 
 fn write_yaml_diagnostic_stderr(message: &str, code: CliExitCode) -> io::Result<()> {
-    let diagnostic = serde_json::json!({
-        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
-        "kind": crate::cli_envelope::kind::DIAGNOSTIC_REPORT,
-        "code": output_utils::cli_exit_code_name(code),
-        "exit_code": output_utils::cli_exit_code_number(code),
-        "message": message,
-    });
-    write_structured_stderr(&diagnostic, OutputFormat::Yaml)
+    write_structured_stderr(
+        &output_utils::diagnostic_value(message, code),
+        OutputFormat::Yaml,
+    )
 }
 
 fn write_typed_postcard_diagnostic_stderr(message: &str, code: CliExitCode) -> io::Result<()> {

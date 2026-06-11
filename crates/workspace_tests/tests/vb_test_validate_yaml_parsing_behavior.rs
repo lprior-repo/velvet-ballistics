@@ -752,9 +752,8 @@ fn validate_trigger_accepts_schedule_trigger_with_cron() {
 }
 
 #[test]
-#[ignore]
-fn validate_trigger_accepts_event_trigger_with_name() {
-    // Given a workflow doc with event trigger containing name
+fn validate_trigger_rejects_event_trigger_with_name() {
+    // Given a workflow doc with stale event trigger containing name
     let doc = make_workflow(vec![(
         "when",
         FieldValue::Mapping(vec![(
@@ -767,8 +766,13 @@ fn validate_trigger_accepts_event_trigger_with_name() {
     )]);
     // When validate_trigger is called
     let result = validate_trigger(&doc);
-    // Then it returns Ok
-    assert_eq!(result, Ok(()));
+    // Then schema v1 rejects event.name; event triggers require type
+    assert_eq!(
+        result,
+        Err(ValidationError::UnsupportedTrigger {
+            trigger: "event".to_owned(),
+        })
+    );
 }
 
 #[test]

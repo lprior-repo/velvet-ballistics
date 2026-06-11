@@ -38,8 +38,6 @@ pub mod type_taint;
 
 // Individual gate modules (test-only until migration from gates.rs completes).
 #[cfg(test)]
-mod fact_table;
-#[cfg(test)]
 mod gate_07_stack;
 #[cfg(test)]
 mod gate_08_accessor;
@@ -53,14 +51,6 @@ mod gate_11_loop;
 mod gate_12_14_15;
 #[cfg(test)]
 mod gate_13_cycles;
-#[cfg(test)]
-mod secret_leak;
-#[cfg(test)]
-mod taint_prop;
-#[cfg(test)]
-mod type_check;
-#[cfg(test)]
-mod type_sigs;
 
 // Split-out diagnostic modules (diag_codes and diag_render are public API).
 mod diag_codes;
@@ -70,15 +60,8 @@ mod diag_render;
 #[cfg(test)]
 mod diag_tests;
 
-// Split-out schema modules (test-only until migration completes).
-#[cfg(test)]
-mod schema_doc;
-#[cfg(test)]
-mod schema_fields;
-#[cfg(test)]
-mod schema_id;
-#[cfg(test)]
-mod schema_tests;
+// DRIFT-5 duplicate schema/type/reference validators were removed.
+// Public validation APIs remain in `references`, `schema`, and `type_taint`.
 
 // RED PHASE proptest invariants for symbol bounds and pipeline validation.
 #[cfg(test)]
@@ -204,7 +187,7 @@ pub enum ValidationError {
     /// would silently fall through with no binding for the user code, and the
     /// run would proceed with stale or default values. The `step` is the
     /// index of the producing step (i.e. the `X` in `$steps.X.output`) and
-    /// `missing_output` is the [`SymbolId`](vb_core::ids::SymbolId) of the
+    /// `missing_output` is the [`SymbolId`] of the
     /// field that was referenced but never bound by the step.
     #[error(
         "RESULT_REFERENCE_MISSING: step {step} does not produce an output; cannot reference field symbol {missing_output:?}"

@@ -255,6 +255,186 @@ fn assert_cli_failure_contains(output: &std::process::Output, command: &str, dia
     );
 }
 
+fn parse_yaml_stderr(output: &std::process::Output, command: &str) -> serde_json::Value {
+    let stderr = output_stderr(output);
+    match serde_saphyr::from_str(&stderr) {
+        Ok(packet) => packet,
+        Err(error) => {
+            panic!("{command} did not emit parseable YAML stderr: {error}; stderr={stderr}");
+        }
+    }
+}
+
+fn assert_yaml_diagnostic_stderr(
+    output: &std::process::Output,
+    command: &str,
+    expected_code: exit_code::CliExitCode,
+    expected_code_name: &str,
+    message_fragment: &str,
+) {
+    assert_eq!(
+        output.status.code(),
+        Some(i32::from(u8::from(expected_code))),
+        "{command} exit code"
+    );
+    assert_eq!(output_stdout(output), "", "{command} stdout");
+    let diagnostic = parse_yaml_stderr(output, command);
+    assert_eq!(
+        diagnostic.get("kind").and_then(serde_json::Value::as_str),
+        Some("DiagnosticReport"),
+        "{command} diagnostic kind"
+    );
+    assert_eq!(
+        diagnostic.get("code").and_then(serde_json::Value::as_str),
+        Some(expected_code_name),
+        "{command} diagnostic code"
+    );
+    assert_eq!(
+        diagnostic.get("exit_code"),
+        Some(&serde_json::json!(u8::from(expected_code))),
+        "{command} diagnostic exit_code"
+    );
+    assert_diagnostic_message_contains(&diagnostic, command, message_fragment);
+}
+
+fn assert_diagnostic_message_contains(
+    diagnostic: &serde_json::Value,
+    command: &str,
+    message_fragment: &str,
+) {
+    let message = diagnostic
+        .get("message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("");
+    assert!(
+        message.contains(message_fragment),
+        "{command} diagnostic message missing {message_fragment:?}: {message:?}"
+    );
+}
+
+fn assert_postcard_diagnostic_stderr(
+    output: &std::process::Output,
+    command: &str,
+    expected_code: exit_code::CliExitCode,
+    message_fragment: &str,
+) {
+    assert_eq!(
+        output.status.code(),
+        Some(i32::from(u8::from(expected_code))),
+        "{command} exit code"
+    );
+    assert_eq!(output_stdout(output), "", "{command} stdout");
+    let (header, envelope) = cli_postcard::decode_postcard_payload(&output.stderr)
+        .unwrap_or_else(|error| panic!("{command} postcard stderr must decode: {error}"));
+    assert_eq!(header.magic, cli_postcard::CLI_MAGIC, "{command} magic");
+    assert_eq!(
+        header.schema_version,
+        cli_postcard::CLI_SCHEMA_VERSION,
+        "{command} postcard schema"
+    );
+    assert_eq!(
+        header.kind,
+        cli_postcard::CLI_POSTCARD_KIND,
+        "{command} kind"
+    );
+    match envelope {
+        cli_postcard::CliPostcardPayload::Diagnostic(report) => {
+            assert_eq!(report.code, expected_code, "{command} diagnostic code");
+            assert_eq!(
+                report.kind,
+                cli_postcard::CliPostcardKind::DiagnosticReport,
+                "{command} diagnostic kind"
+            );
+            assert!(
+                report.message.contains(message_fragment),
+                "{command} diagnostic message missing {message_fragment:?}: {:?}",
+                report.message
+            );
+        }
+        other => panic!("{command} expected Diagnostic postcard payload, got {other:?}"),
+    }
+}
+
+#[test]
+fn cli_parse_error_yaml_stderr_code_matches_process_exit() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("nonexistent-command"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]);
+    if let Some(output) = output {
+        assert_yaml_diagnostic_stderr(
+            &output,
+            "nonexistent-command --emit yaml",
+            exit_code::CliExitCode::ValidationFailed,
+            "ValidationFailed",
+            "unknown",
+        );
+    }
+}
+
+#[test]
+fn cli_parse_error_postcard_stderr_decodes_as_diagnostic() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("nonexistent-command"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ]);
+    if let Some(output) = output {
+        assert_postcard_diagnostic_stderr(
+            &output,
+            "nonexistent-command --emit postcard",
+            exit_code::CliExitCode::ValidationFailed,
+            "unknown",
+        );
+    }
+}
+
+#[test]
+fn cli_replay_no_recovery_yaml_diagnostic_matches_process_exit() {
+    let temp = cli_tempdir().expect("temp dir must be available");
+    let db = empty_journal_db(temp.path(), "replay-yaml-empty").expect("journal must open");
+    let output = run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("424242"),
+        std::ffi::OsStr::new("--db"),
+        db.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]);
+    if let Some(output) = output {
+        assert_yaml_diagnostic_stderr(
+            &output,
+            "replay absent --emit yaml",
+            exit_code::CliExitCode::ValidationFailed,
+            "ValidationFailed",
+            "no events found",
+        );
+    }
+}
+
+#[test]
+fn cli_replay_no_recovery_postcard_diagnostic_matches_process_exit() {
+    let temp = cli_tempdir().expect("temp dir must be available");
+    let db = empty_journal_db(temp.path(), "replay-postcard-empty").expect("journal must open");
+    let output = run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("424243"),
+        std::ffi::OsStr::new("--db"),
+        db.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ]);
+    if let Some(output) = output {
+        assert_postcard_diagnostic_stderr(
+            &output,
+            "replay absent --emit postcard",
+            exit_code::CliExitCode::ValidationFailed,
+            "no events found",
+        );
+    }
+}
+
 #[test]
 fn cli_status_default_succeeds() {
     let output = run_cli(&[std::ffi::OsStr::new("status")]);
@@ -3165,10 +3345,36 @@ fn semantic_change<'a>(diff: &'a serde_json::Value, field: &str) -> &'a serde_js
         .unwrap_or_else(|| panic!("semantic diff missing change field {field}: {diff}"))
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum PayloadWireKind {
+    ValidateReport,
+    VerifyReport,
+    ExplainReport,
+    EventsReport,
+    TraceReport,
+    ReplayReport,
+    DiffReport,
+}
+
+impl PayloadWireKind {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::ValidateReport => "validate_report",
+            Self::VerifyReport => "verify_report",
+            Self::ExplainReport => "explain_report",
+            Self::EventsReport => "events_report",
+            Self::TraceReport => "trace_report",
+            Self::ReplayReport => "replay_report",
+            Self::DiffReport => "diff_report",
+        }
+    }
+}
+
 fn assert_postcard_stdout(
     output: &std::process::Output,
     command: &str,
-    expected_payload_kind: Option<&str>,
+    expected_payload_kind: Option<cli_postcard::CliPostcardKind>,
+    expected_payload_wire_kind: PayloadWireKind,
     required_fields: &[&str],
 ) {
     assert_cli_success(output, command);
@@ -3195,14 +3401,17 @@ fn assert_postcard_stdout(
     // No `serde_json::Value::get(...)` access on the decoded payload.
     let actual_kind = envelope.kind();
     if let Some(expected_kind) = expected_payload_kind {
-        let expected_typed = expected_kind
-            .parse::<cli_postcard::CliPostcardKind>()
-            .expect("envelope kind must parse to typed CliPostcardKind");
         assert_eq!(
-            actual_kind, expected_typed,
-            "{command} typed CliPostcardKind discriminant mismatch (expected {expected_kind:?}/{expected_typed:?}, got {actual_kind:?})",
+            actual_kind, expected_kind,
+            "{command} typed CliPostcardKind discriminant mismatch (expected {expected_kind:?}, got {actual_kind:?})",
         );
     }
+    let expected_wire_kind = expected_payload_wire_kind.as_str();
+    let actual_wire_kind = typed_payload_wire_kind(&envelope);
+    assert_eq!(
+        actual_wire_kind, expected_wire_kind,
+        "{command} payload kind wire spelling mismatch (expected {expected_wire_kind:?}, got {actual_wire_kind:?}, variant {actual_kind:?})",
+    );
 
     let schema_version = typed_payload_schema_version(&envelope);
     assert_eq!(
@@ -3212,6 +3421,32 @@ fn assert_postcard_stdout(
     );
 
     assert_typed_required_fields(command, &envelope, required_fields);
+}
+
+fn typed_payload_wire_kind(envelope: &cli_postcard::CliPostcardPayload) -> String {
+    use cli_postcard::CliPostcardPayload;
+    match envelope {
+        CliPostcardPayload::Diagnostic(report) => report.kind.as_str().to_string(),
+        CliPostcardPayload::Validate(report) => report.kind.clone(),
+        CliPostcardPayload::Verify(report) => report.kind.clone(),
+        CliPostcardPayload::Explain(report) => report.kind.clone(),
+        CliPostcardPayload::Events(report) => report.kind.clone(),
+        CliPostcardPayload::Trace(report) => report.kind.clone(),
+        CliPostcardPayload::Replay(report) => report.kind.clone(),
+        CliPostcardPayload::Diff(report) => report.kind.clone(),
+        CliPostcardPayload::Generic(payload) => generic_payload_wire_kind(payload),
+    }
+}
+
+fn generic_payload_wire_kind(payload: &cli_postcard::GenericPayload) -> String {
+    match cli_postcard::GenericEnvelopeRepr::decode_body_as_json(&payload.body) {
+        Ok(json) => json
+            .get("kind")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        Err(_) => String::new(),
+    }
 }
 
 fn typed_payload_schema_version(envelope: &cli_postcard::CliPostcardPayload) -> String {
@@ -3806,7 +4041,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &validate_output,
         "validate --emit postcard",
-        Some("validate_report"),
+        Some(cli_postcard::CliPostcardKind::ValidateReport),
+        PayloadWireKind::ValidateReport,
         &["schema_version", "success", "status", "exit_code"],
     );
 
@@ -3822,7 +4058,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &verify_output,
         "verify --emit postcard",
-        Some("verify_report"),
+        Some(cli_postcard::CliPostcardKind::VerifyReport),
+        PayloadWireKind::VerifyReport,
         &["schema_version", "success", "artifact", "replay"],
     );
 
@@ -3836,7 +4073,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &explain_output,
         "explain --emit postcard",
-        Some("explain_report"),
+        Some(cli_postcard::CliPostcardKind::ExplainReport),
+        PayloadWireKind::ExplainReport,
         &["schema_version", "success", "status", "artifact"],
     );
 
@@ -3865,7 +4103,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &events_output,
         "events --emit postcard",
-        Some("events_report"),
+        Some(cli_postcard::CliPostcardKind::EventsReport),
+        PayloadWireKind::EventsReport,
         &["schema_version", "run_id", "events", "total"],
     );
 
@@ -3881,7 +4120,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &trace_output,
         "trace --emit postcard",
-        Some("trace_report"),
+        Some(cli_postcard::CliPostcardKind::TraceReport),
+        PayloadWireKind::TraceReport,
         &["schema_version", "run_id", "trace", "total"],
     );
 
@@ -3897,7 +4137,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &replay_output,
         "replay --emit postcard",
-        Some("replay_report"),
+        Some(cli_postcard::CliPostcardKind::ReplayReport),
+        PayloadWireKind::ReplayReport,
         &[
             "schema_version",
             "run_id",
@@ -3920,7 +4161,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     assert_postcard_stdout(
         &diff_output,
         "diff --emit postcard",
-        Some("diff_report"),
+        Some(cli_postcard::CliPostcardKind::DiffReport),
+        PayloadWireKind::DiffReport,
         &[
             "schema_version",
             "run_a",

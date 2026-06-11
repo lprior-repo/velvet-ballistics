@@ -1,13 +1,12 @@
 #![forbid(unsafe_code)]
 //! Binary and unary operation implementations.
 
-use vb_core::value::FiniteF64;
 use vb_core::SlotValue;
+use vb_core::value::FiniteF64;
 
-use crate::lexer::{BinaryOp, UnaryOp};
 use crate::ExprResult;
+use crate::lexer::{BinaryOp, UnaryOp};
 
-use super::stack::pop_pair;
 use super::type_enforcers::{expect_bool, expect_i64};
 
 /// Evaluates one binary operation over two already-popped values.
@@ -87,14 +86,16 @@ fn eval_mul_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
 fn eval_div_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     match (left, right) {
         (SlotValue::F64(l), SlotValue::F64(r)) => {
+            if r.get() == 0.0 {
+                return Err(crate::ExprError::NonFiniteFloat);
+            }
             let result = l.get() / r.get();
-            let finite =
-                FiniteF64::new(result).map_err(|_| crate::ExprError::NonFiniteFloat)?;
+            let finite = FiniteF64::new(result).map_err(|_| crate::ExprError::NonFiniteFloat)?;
             Ok(SlotValue::F64(finite))
         }
-        (SlotValue::I64(l), SlotValue::I64(r)) => eval_div_values_(l, r),
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_div_values(l, r),
         (other_left, other_right) => {
-            eval_div_values_(expect_i64(other_left)?, expect_i64(other_right)?)
+            eval_i64_div_values(expect_i64(other_left)?, expect_i64(other_right)?)
         }
     }
 }
@@ -148,11 +149,13 @@ fn eval_i64_values_(
     Ok(SlotValue::I64(value))
 }
 
-fn eval_div_values_(left: i64, right: i64) -> ExprResult<SlotValue> {
+pub(crate) fn eval_i64_div_values(left: i64, right: i64) -> ExprResult<SlotValue> {
     if right == 0 {
         return Err(crate::ExprError::DivisionByZero);
     }
-    let value = left.checked_div(right).ok_or(crate::ExprError::IntegerOverflow)?;
+    let value = left
+        .checked_div(right)
+        .ok_or(crate::ExprError::IntegerOverflow)?;
     Ok(SlotValue::I64(value))
 }
 

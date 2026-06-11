@@ -28,6 +28,17 @@ const FUZZ_MAX_EXPR_OPS: usize = 64;
 /// Maximum slot count for fuzz workflows.
 const FUZZ_SLOT_COUNT: u16 = 16;
 
+#[cfg(feature = "fuzz")]
+pub mod test_exports {
+    pub const MAX_FUZZ_PAYLOAD: u32 = super::MAX_FUZZ_PAYLOAD;
+
+    pub use super::fuzz_yaml_events;
+
+    pub fn assert_typed_yaml_error(error: vb_yaml::YamlError) {
+        super::assert_typed_yaml_error(error);
+    }
+}
+
 /// Exercises capability-name schema validation through the public verifier path.
 pub fn fuzz_capability_name_schema(data: &[u8]) {
     let Ok(name) = std::str::from_utf8(data) else {
@@ -190,32 +201,31 @@ fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
     }
 }
 
-/// Asserts that a YAML error is a known typed variant (exhaustive over all 19 variants).
+/// Asserts that a YAML error is a known typed variant (exhaustive over all 21 variants).
 pub(crate) fn assert_typed_yaml_error(error: vb_yaml::YamlError) {
-    use vb_yaml::YamlError;
-    match error {
-        YamlError::UnsupportedTrigger { .. }
-        | YamlError::UnsupportedFeature { .. }
-        | YamlError::DuplicateKey { .. }
-        | YamlError::AnchorAliasMerge
-        | YamlError::CustomTag { .. }
-        | YamlError::BinaryScalar
-        | YamlError::MultipleDocuments { .. }
-        | YamlError::AmbiguousScalar { .. }
-        | YamlError::SourceTooLarge { .. }
-        | YamlError::NestingTooDeep { .. }
-        | YamlError::NodeLimitExceeded { .. }
-        | YamlError::ScalarTooLong { .. }
-        | YamlError::SequenceTooLong { .. }
-        | YamlError::MappingTooLarge { .. }
-        | YamlError::UnknownField { .. }
-        | YamlError::EmptySource
-        | YamlError::MissingField { .. }
-        | YamlError::FieldShape { .. }
-        | YamlError::ParseError { .. }
-        | YamlError::ForbiddenFeature { .. }
-        | YamlError::LegacyPrimitive { .. } => {}
-        _ => {} // Coverage-only for future variants
+    use vb_yaml::YamlErrorKind;
+    match error.kind() {
+        YamlErrorKind::UnsupportedTrigger
+        | YamlErrorKind::UnsupportedFeature
+        | YamlErrorKind::DuplicateKey
+        | YamlErrorKind::AnchorAliasMerge
+        | YamlErrorKind::CustomTag
+        | YamlErrorKind::BinaryScalar
+        | YamlErrorKind::MultipleDocuments
+        | YamlErrorKind::AmbiguousScalar
+        | YamlErrorKind::SourceTooLarge
+        | YamlErrorKind::NestingTooDeep
+        | YamlErrorKind::NodeLimitExceeded
+        | YamlErrorKind::ScalarTooLong
+        | YamlErrorKind::SequenceTooLong
+        | YamlErrorKind::MappingTooLarge
+        | YamlErrorKind::UnknownField
+        | YamlErrorKind::EmptySource
+        | YamlErrorKind::MissingField
+        | YamlErrorKind::FieldShape
+        | YamlErrorKind::ParseError
+        | YamlErrorKind::ForbiddenFeature
+        | YamlErrorKind::LegacyPrimitiveDeprecated => {}
     }
 }
 

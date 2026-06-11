@@ -109,6 +109,56 @@ steps:
 }
 
 #[test]
+fn parse_ast_rejects_direct_output_reference_when_no_steps_produce_output() -> Result<(), String> {
+    let error = parse_error(
+        br#"version: velvet-ballistics/v1
+name: no_output_ref
+when:
+  manual: {}
+steps:
+  - id: gate
+    choose:
+      condition: true
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: $gate.output
+"#,
+    )?;
+
+    ensure(
+        matches!(error, CompileError::IllegalReference { reference } if reference.as_ref() == "$gate.output"),
+        "direct output reference to a no-output step must fail when the known output set is empty",
+    )
+}
+
+#[test]
+fn parse_ast_rejects_steps_output_reference_when_no_steps_produce_output() -> Result<(), String> {
+    let error = parse_error(
+        br#"version: velvet-ballistics/v1
+name: no_output_steps_ref
+when:
+  manual: {}
+steps:
+  - id: gate
+    choose:
+      condition: true
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: $steps.gate.output
+"#,
+    )?;
+
+    ensure(
+        matches!(error, CompileError::IllegalReference { reference } if reference.as_ref() == "$steps.gate.output"),
+        "canonical output reference to a no-output step must fail when the known output set is empty",
+    )
+}
+
+#[test]
 fn parse_ast_rejects_field_slot_accessor_without_symbol_table() -> Result<(), String> {
     let error = parse_error(
         br#"version: velvet-ballistics/v1

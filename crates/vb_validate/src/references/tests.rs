@@ -24,21 +24,18 @@ fn make_tables_with_loop_vars(
     step_ids: &[&str],
     loop_variable_names: &[&str],
 ) -> RefTables {
-    make_tables_with_loop_vars_and_step_outputs(
-        inputs,
-        vars,
-        secrets,
-        step_ids,
-        loop_variable_names,
-        &[],
-    )
+    let inputs = owned_strings(inputs);
+    let vars = owned_strings(vars);
+    let secrets = owned_strings(secrets);
+    let step_ids = owned_strings(step_ids);
+    let loop_variable_names = owned_strings(loop_variable_names);
+    RefTables::from_slices_with_loop_vars(&inputs, &vars, &secrets, &step_ids, &loop_variable_names)
 }
 
 /// Builds reference tables with both loop variable names AND step output
 /// declarations populated. The `step_outputs` slice controls which step
-/// IDs are considered output-producing; an empty slice leaves the
-/// per-table short-circuit (`step_has_output` returns `true` for every
-/// step) intact for tests that do not care about the output check.
+/// IDs are considered output-producing; an empty slice means output tracking
+/// is known and no step produces output.
 fn make_tables_with_loop_vars_and_step_outputs(
     inputs: &[&str],
     vars: &[&str],
@@ -47,48 +44,24 @@ fn make_tables_with_loop_vars_and_step_outputs(
     loop_variable_names: &[&str],
     step_outputs: &[&str],
 ) -> RefTables {
-    RefTables {
-        inputs: string_set(
-            &inputs
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-        ),
-        vars: string_set(&vars.iter().map(|s| s.to_string()).collect::<Vec<String>>()),
-        secrets: string_set(
-            &secrets
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-        ),
-        step_ids: step_ids
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>(),
-        step_ids_set: string_set(
-            &step_ids
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-        ),
-        loop_variable_names: string_set(
-            &loop_variable_names
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-        ),
-        step_outputs: string_set(
-            &step_outputs
-                .iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>(),
-        ),
-    }
+    let inputs = owned_strings(inputs);
+    let vars = owned_strings(vars);
+    let secrets = owned_strings(secrets);
+    let step_ids = owned_strings(step_ids);
+    let loop_variable_names = owned_strings(loop_variable_names);
+    let step_outputs = owned_strings(step_outputs);
+    RefTables::from_slices_with_outputs(
+        &inputs,
+        &vars,
+        &secrets,
+        &step_ids,
+        &loop_variable_names,
+        &step_outputs,
+    )
 }
 
-// Private helper used by tests
-fn string_set(names: &[String]) -> std::collections::HashSet<String> {
-    names.iter().cloned().collect()
+fn owned_strings(names: &[&str]) -> Vec<String> {
+    names.iter().map(|name| name.to_string()).collect()
 }
 
 #[test]
@@ -675,28 +648,23 @@ fn step_reference_allowed_without_context_via_workflow_validation() {
 }
 
 // ---------------------------------------------------------------------------
-// Tests for direct step-ID root routing (vb-ref001)
+// Tests for direct step-ID roots (Master §8)
 // ---------------------------------------------------------------------------
 //
-// A reference like `$build_result.output` uses a declared step ID as the root
-// instead of the required `$steps.<step_id>.<field>` prefix. The validator
-// must surface `DirectStepReference` so the user can be told to add the
-// `steps.` prefix, not the generic `UnknownReference`.
+// A reference like `$build_result.output` uses a declared step ID as the root.
+// The master contract lists `$step_id.x` as an allowed reference root, so the
+// validator accepts it and applies the same prior-step and output checks as the
+// `$steps.<step_id>.<field>` spelling.
 
 #[test]
-fn direct_step_id_root_emits_direct_step_reference() {
+fn direct_step_id_root_is_accepted() {
     // Given step_ids ["build_result"] and a reference using the step ID
     // directly as the root
     let tables = make_tables(&[], &[], &[], &["build_result"]);
     // When validating the bare step reference
     let result = validate_single_reference("$build_result.output", &tables);
-    // Then it returns DirectStepReference (NOT UnknownReference)
-    assert_eq!(
-        result,
-        Err(ValidationError::DirectStepReference {
-            step: "build_result".to_owned(),
-        })
-    );
+    // Then it is valid per Master §8.
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
@@ -713,7 +681,7 @@ fn direct_step_id_root_is_not_classified_as_unknown() {
 }
 
 #[test]
-fn direct_step_id_root_via_full_validation_emits_direct_step_reference() {
+fn direct_step_id_root_via_full_validation_is_accepted() {
     // Given a workflow with a step ID and a reference using it as root
     let workflow = WorkflowRefs {
         inputs: vec![],
@@ -725,13 +693,8 @@ fn direct_step_id_root_via_full_validation_emits_direct_step_reference() {
     };
     // When validate_references is called
     let result = validate_references(&workflow);
-    // Then it returns DirectStepReference with the step ID
-    assert_eq!(
-        result,
-        Err(ValidationError::DirectStepReference {
-            step: "build_result".to_owned(),
-        })
-    );
+    // Then it is valid per Master §8.
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
@@ -752,29 +715,17 @@ fn direct_step_id_root_does_not_shadow_unknown_reference() {
 }
 
 #[test]
-fn direct_step_id_root_message_mentions_steps_prefix() {
-    // Given step_ids ["build_result"]
-    let tables = make_tables(&[], &[], &[], &["build_result"]);
-    // When validating the bare step reference
-    let result = validate_single_reference("$build_result.output", &tables);
-    // Then it is DirectStepReference and its Display message includes
-    // both "$steps" and the step ID
-    let msg = match result {
-        Err(ValidationError::DirectStepReference { step }) => {
-            format!(
-                "DIRECT_STEP_REFERENCE: step references must use the `$steps.X` prefix (found `${step}`)"
-            )
-        }
-        other => panic!("expected DirectStepReference, got {other:?}"),
-    };
-    assert!(
-        msg.contains("$steps"),
-        "diagnostic message should mention the `$steps` prefix; got: {msg}"
-    );
-    assert!(
-        msg.contains("build_result"),
-        "diagnostic message should include the step ID; got: {msg}"
-    );
+fn direct_step_id_root_obeys_prior_step_rule() {
+    // Given step_ids ["first", "current"] and current step index 1.
+    let tables = make_tables(&[], &[], &[], &["first", "current"]);
+    // When validating a future/same-step direct-root reference.
+    let result =
+        validate_single_reference_with_context("$current.output", &tables, Some(1), false, false);
+    // Then it is rejected by the same prior-step rule as `$steps.current.output`.
+    assert!(matches!(
+        result,
+        Err(ValidationError::FutureReference { .. })
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -1150,66 +1101,44 @@ fn error_root_does_not_shadow_step_id_root() {
 }
 
 // ---------------------------------------------------------------------------
-// vb-ref002: route $loop_name root to scope guard
+// vb-ref002: accept $loop_name root in loop scope
 // ---------------------------------------------------------------------------
 //
 // Loop variable names (for_each, together, collect) become in-scope bindings
-// inside the body. The validator tracks them in `RefTables::loop_variable_names`
-// and, when a reference root matches a known loop variable, emits
-// `DirectLoopReference` instead of `UnknownReference`. The diagnostic message
-// tells the user to use the `$loop.<var>` prefix.
+// inside the body. Master §8 lists `$loop_name.x` as an allowed root, so the
+// validator accepts references whose root matches a known loop variable.
 
 #[test]
-fn direct_loop_variable_root_emits_direct_loop_reference() {
+fn direct_loop_variable_root_is_accepted() {
     // Given: `item` is the loop variable of an enclosing for_each.
     let tables = make_tables_with_loop_vars(&[], &[], &[], &[], &["item"]);
     // When: a body reference uses `$item.x` (no `$loop.` prefix).
     let result = validate_single_reference("$item.x", &tables);
-    // Then: it emits DirectLoopReference with the loop variable name,
-    // not UnknownReference.
-    assert_eq!(
-        result,
-        Err(ValidationError::DirectLoopReference {
-            variable: "item".to_owned(),
-        })
-    );
+    // Then: it is valid per Master §8.
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
-fn direct_together_branch_loop_variable_root_emits_direct_loop_reference() {
+fn direct_together_branch_loop_variable_root_is_accepted() {
     // Given: `branch` is the loop variable of an enclosing together.
     let tables = make_tables_with_loop_vars(&[], &[], &[], &[], &["branch"]);
     // When: a branch body reference uses `$branch.y` (no `$loop.` prefix).
     let result = validate_single_reference("$branch.y", &tables);
-    // Then: DirectLoopReference is emitted (regression check: a
-    // distinct loop variable name produces the same diagnostic).
-    assert_eq!(
-        result,
-        Err(ValidationError::DirectLoopReference {
-            variable: "branch".to_owned(),
-        })
-    );
+    // Then: a distinct loop variable name is also valid.
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
-fn direct_loop_reference_message_mentions_loop_prefix() {
+fn direct_loop_reference_is_not_classified_as_unknown() {
     // Given: `item` is a loop variable in scope.
     let tables = make_tables_with_loop_vars(&[], &[], &[], &[], &["item"]);
-    // When: validating `$item.x` and rendering the diagnostic.
-    let err =
-        validate_single_reference("$item.x", &tables).expect_err("should be DirectLoopReference");
-    let diag = crate::diag_render::diagnostic_from_error(&err);
-    // Then: the diagnostic message names the `$loop` prefix and the
-    // variable, so the user knows how to fix the reference.
-    let msg = diag.message.to_string();
-    assert!(
-        msg.contains("$loop"),
-        "diagnostic message should mention the `$loop` prefix; got: {msg}"
-    );
-    assert!(
-        msg.contains("item"),
-        "diagnostic message should include the variable name; got: {msg}"
-    );
+    // When: validating `$item.x`.
+    let result = validate_single_reference("$item.x", &tables);
+    // Then: it is not UnknownReference.
+    assert!(!matches!(
+        result,
+        Err(ValidationError::UnknownReference { .. })
+    ));
 }
 
 #[test]
@@ -1250,7 +1179,7 @@ fn direct_loop_reference_does_not_shadow_declared_input() {
 }
 
 #[test]
-fn workflow_with_direct_loop_reference_in_body_is_rejected() {
+fn workflow_with_direct_loop_reference_in_body_is_accepted() {
     // Given: a for_each body that uses `$item.x` directly.
     let workflow = WorkflowRefs {
         inputs: vec![],
@@ -1263,13 +1192,8 @@ fn workflow_with_direct_loop_reference_in_body_is_rejected() {
     };
     // When: validate_references is called.
     let result = validate_references(&workflow);
-    // Then: it returns DirectLoopReference for the body reference.
-    assert_eq!(
-        result,
-        Err(ValidationError::DirectLoopReference {
-            variable: "item".to_owned(),
-        })
-    );
+    // Then: it is valid per Master §8.
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
@@ -1303,14 +1227,8 @@ fn loop_variable_routing_with_context_matches_workflow_level() {
     // When: validating `$item.x` with current_step_index = Some(0)
     // (i.e., as if it were inside a for_each body at step 0).
     let result = validate_single_reference_with_context("$item.x", &tables, Some(0), false, false);
-    // Then: it emits DirectLoopReference. The context does not
-    // affect loop-variable routing.
-    assert_eq!(
-        result,
-        Err(ValidationError::DirectLoopReference {
-            variable: "item".to_owned(),
-        })
-    );
+    // Then: it is valid. The context does not affect loop-variable routing.
+    assert_eq!(result, Ok(()));
 }
 
 #[test]
@@ -1442,11 +1360,10 @@ fn validate_step_references_step_index_round_trips_through_diagnostic() {
 // decision with a typed `ResultReferenceMissing` diagnostic that
 // names the producing step and the missing field symbol.
 //
-// Note: this diagnostic is only emitted when the workflow has
-// populated `WorkflowRefs::step_outputs` (or the equivalent
-// `RefTables::step_outputs` set). An empty step-output set is the
-// "permissive" default that treats every step as output-producing
-// (see `RefTables::step_has_output`).
+// Note: this diagnostic is only emitted when the workflow has supplied output
+// tracking. `RefTables::from_slices_with_outputs(..., &[])` means tracking is
+// known and no step produces output; `RefTables::from_slices` remains the
+// permissive compatibility path for callers that have not wired tracking.
 
 #[test]
 fn result_reference_missing_emitted_when_step_has_no_output() {
@@ -1523,11 +1440,10 @@ fn result_reference_missing_not_emitted_when_step_has_output() {
 }
 
 #[test]
-fn result_reference_missing_not_emitted_when_step_outputs_set_is_empty() {
-    // Given: tables with a declared step "build" and an empty
-    // step-output set. The empty set is the "permissive" default
-    // that treats every step as output-producing, so no
-    // ResultReferenceMissing is emitted.
+fn result_reference_missing_not_emitted_when_output_tracking_is_not_supplied() {
+    // Given: tables with a declared step "build" and no output-tracking
+    // signal. This is the compatibility path that treats every step as
+    // output-producing.
     let tables = make_tables(&[], &[], &[], &["build"]);
     // When: validate_rooted_reference is called for $steps.build.output.
     let result = super::validate_rooted_reference(
@@ -1541,6 +1457,56 @@ fn result_reference_missing_not_emitted_when_step_outputs_set_is_empty() {
     );
     // Then: the validator returns Ok (no missing output).
     assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn result_reference_missing_emitted_when_known_output_set_is_empty() {
+    // Given: output tracking is supplied and the known output-producing set is
+    // empty, meaning no step can satisfy `.output`.
+    let tables = make_tables_with_loop_vars_and_step_outputs(&[], &[], &[], &["build"], &[], &[]);
+
+    let result = super::validate_rooted_reference(
+        "$steps.build.output",
+        "steps",
+        "build.output",
+        &tables,
+        Some(1),
+        false,
+        false,
+    );
+
+    assert_eq!(
+        result,
+        Err(ValidationError::ResultReferenceMissing {
+            step: StepIdx::new(0),
+            missing_output: super::OUTPUT_FIELD_SYMBOL,
+        })
+    );
+}
+
+#[test]
+fn direct_result_reference_missing_emitted_when_known_output_set_is_empty() {
+    // Given: direct `$step_id.output` uses the same output tracking as
+    // `$steps.step_id.output`.
+    let tables = make_tables_with_loop_vars_and_step_outputs(&[], &[], &[], &["build"], &[], &[]);
+
+    let result = super::validate_rooted_reference(
+        "$build.output",
+        "build",
+        "output",
+        &tables,
+        Some(1),
+        false,
+        false,
+    );
+
+    assert_eq!(
+        result,
+        Err(ValidationError::ResultReferenceMissing {
+            step: StepIdx::new(0),
+            missing_output: super::OUTPUT_FIELD_SYMBOL,
+        })
+    );
 }
 
 #[test]

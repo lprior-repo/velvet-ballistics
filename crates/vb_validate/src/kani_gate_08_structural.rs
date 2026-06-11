@@ -14,9 +14,9 @@
 //! dependent vb_validate crate under cfg(kani) first.
 
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
-use vb_core::ids::{SlotIdx, StepIdx, SymbolId};
+use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprProgram, PathSegment, WorkflowParts,
 };
 
 /// Harness 1: Arbitrary WorkflowParts with bounded valid accessors always passes Gate 8.
@@ -70,6 +70,111 @@ fn arbitrary_parts_with_valid_accessors() -> WorkflowParts {
     };
 
     parts
+}
+
+fn bounded_parts_with_index_sentinel() -> WorkflowParts {
+    bounded_parts_with_accessors(
+        Box::new([AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Index(u32::MAX)]),
+        }]),
+        1,
+        0,
+    )
+}
+
+fn bounded_empty_nodes_with_valid_accessors() -> WorkflowParts {
+    let mut parts = bounded_parts_with_accessors(valid_accessor_set(), 16, 64);
+    parts.nodes = Box::new([]);
+    parts
+}
+
+fn valid_accessor_set() -> Box<[AccessorProgram]> {
+    let symbol: u32 = kani::any();
+    let index: u32 = kani::any();
+    kani::assume(symbol < 64);
+    kani::assume(index != u32::MAX);
+    match kani::any::<u8>() {
+        0 => Box::new([AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Field(SymbolId::new(symbol))]),
+        }]),
+        1 => Box::new([AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Index(index)]),
+        }]),
+        _ => Box::new([AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([
+                PathSegment::Field(SymbolId::new(symbol)),
+                PathSegment::Index(index),
+            ]),
+        }]),
+    }
+}
+
+fn bounded_parts_with_accessors(
+    accessors: Box<[AccessorProgram]>,
+    slot_count: u16,
+    symbols_count: u32,
+) -> WorkflowParts {
+    WorkflowParts {
+        name: Box::from("kani_gate_08"),
+        digest: WorkflowDigest::from_bytes(kani::any()),
+        nodes: bounded_structural_nodes(),
+        expressions: bounded_structural_expressions(),
+        accessors,
+        constants: bounded_structural_constants(),
+        slot_count,
+        symbols_count,
+        entry: kani::any(),
+        resource_contract: kani::any(),
+        step_names: bounded_structural_step_names(),
+    }
+}
+
+fn bounded_structural_nodes() -> Box<[CompiledNode]> {
+    if kani::any::<bool>() {
+        Box::new([CompiledNode {
+            id: kani::any::<StepIdx>(),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: kani::any::<SlotIdx>(),
+            },
+        }])
+    } else {
+        Box::new([])
+    }
+}
+
+fn bounded_structural_expressions() -> Box<[ExprProgram]> {
+    if kani::any::<bool>() {
+        Box::new([ExprProgram {
+            ops: Box::new([]),
+            max_stack: kani::any(),
+        }])
+    } else {
+        Box::new([])
+    }
+}
+
+fn bounded_structural_constants() -> Box<[vb_core::value::ConstValue]> {
+    if kani::any::<bool>() {
+        Box::new([vb_core::value::ConstValue::Null])
+    } else {
+        Box::new([])
+    }
+}
+
+fn bounded_structural_step_names() -> Box<[Box<str>]> {
+    if kani::any::<bool>() {
+        Box::new([Box::from("kani_step")])
+    } else {
+        Box::new([])
+    }
 }
 
 /// Harness 2: Arbitrary WorkflowParts with root out of range is rejected.
@@ -130,26 +235,16 @@ fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
     std::mem::forget(parts);
 }
 
-/// Harness 4: Arbitrary WorkflowParts with u32::MAX index sentinel is rejected.
+/// Harness 4: WorkflowParts with a guaranteed u32::MAX index sentinel is rejected.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_arbitrary_parts_index_sentinel_rejected() {
-    let mut parts: WorkflowParts = kani::any();
-
-    // Corrupt the first accessor path to contain a u32::MAX sentinel.
-    if !parts.accessors.is_empty() {
-        for segment in parts.accessors[0].path.iter_mut() {
-            if matches!(segment, PathSegment::Index(_)) {
-                *segment = PathSegment::Index(u32::MAX);
-                break;
-            }
-        }
-    }
+    let parts = bounded_parts_with_index_sentinel();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
         matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
-        "arbitrary parts with u32::MAX index sentinel is rejected",
+        "parts with u32::MAX index sentinel is rejected",
     );
     std::mem::forget(parts);
 }
@@ -229,21 +324,7 @@ fn kani_gate_08_step_names_independent_of_slots() {
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_empty_nodes_valid_accessors_pass() {
-    let parts: WorkflowParts = kani::any();
-
-    // Gate 8 only validates accessors, not nodes. Test with empty nodes.
-    kani::assume(parts.nodes.is_empty());
-
-    // Ensure accessors are structurally valid for Gate 8: root in range, symbols in range.
-    let has_valid_accessor = parts.accessors.iter().any(|acc| {
-        acc.root.get() < parts.slot_count
-            && acc.path.iter().all(|s| match s {
-                PathSegment::Field(fid) => fid.get() < parts.symbols_count,
-                PathSegment::Index(idx) => *idx != u32::MAX,
-                _ => false,
-            })
-    });
-    kani::assume(has_valid_accessor);
+    let parts = bounded_empty_nodes_with_valid_accessors();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(

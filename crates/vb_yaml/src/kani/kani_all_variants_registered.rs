@@ -68,10 +68,9 @@ fn bounded_static_str<const N: usize>() -> &'static str {
     Box::leak(s.into_boxed_str())
 }
 
-/// Generate a `String` of length `N` from a symbolic ASCII byte array.
 #[inline]
 fn bounded_string<const N: usize>() -> String {
-    bounded_box_str::<N>().into()
+    String::from(bounded_box_str::<N>())
 }
 
 /// Generate an arbitrary YamlError variant with arbitrary field values

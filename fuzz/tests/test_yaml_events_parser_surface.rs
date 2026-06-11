@@ -189,4 +189,5 @@ fn integration_unsupported_feature_triggers_yaml_error() {
 }
 
 // Remaining tests live in submodule
+#[path = "test_yaml_events_parser_surface/group_b.rs"]
 mod group_b;

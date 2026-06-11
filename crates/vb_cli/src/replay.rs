@@ -4,7 +4,7 @@
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
 use crate::cli_envelope;
 use crate::events::event_to_json;
-use crate::exit_code::CliExitCode;
+use crate::exit_code::{CliExitCode, recovery_error_exit_code};
 use crate::file_io::{
     ensure_existing_journal_directory, parse_run_id, read_file, read_journal_events,
     report_storage_open_error,
@@ -28,95 +28,149 @@ pub(crate) fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputForma
         return code;
     }
 
-    let journal = match vb_storage::FjallJournal::open(db, None) {
-        Ok(j) => j,
-        Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
-            return write_locked_read_surface("replay", run_id, output);
-        }
-        Err(error) => {
-            report_storage_open_error(&error, db, output);
-            return CliExitCode::StorageError.into();
-        }
+    let journal = match open_replay_journal(db, run_id, output) {
+        Ok(journal) => journal,
+        Err(code) => return code,
     };
 
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
     match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker, &[], &[]) {
-        Ok(events) => {
-            let terminal_name = vb_storage::recovery::extract_terminal(&events)
-                .map(|e| crate::commands_diff::event_name(e).to_string());
+        Ok(events) => write_replay_success(run_id, &events, output),
+        Err(error) => write_replay_error(run_id, &error, output),
+    }
+}
 
-            match output {
-                OutputFormat::Yaml | OutputFormat::Postcard => {
-                    let event_list: Vec<serde_json::Value> =
-                        events.iter().map(event_to_json).collect();
-                    crate::emit_json_or_return!(
-                        &serde_json::json!({
-                            "schema_version": crate::cli_envelope::SCHEMA_VERSION,
-                            "kind": "replay_report",
-                            "run_id": run_id,
-                            "recovered": events.len(),
-                            "events": event_list,
-                            "terminal": terminal_name
-                        }),
-                        output,
-                    );
-                }
-                OutputFormat::Text => {
-                    crate::outln!("recovered {} event(s) for run {run_id}", events.len());
-                    for event in &events {
-                        print_event(event);
-                    }
-                    match vb_storage::recovery::extract_terminal(&events) {
-                        Some(terminal) => {
-                            crate::outln!(
-                                "terminal: {}",
-                                crate::commands_diff::event_name(terminal)
-                            );
-                        }
-                        None => {
-                            crate::outln!("terminal: none");
-                        }
-                    }
-                    write_vb_kyyf_trace("replay", run_id, events.len());
-                }
-            }
+fn open_replay_journal(
+    db: &std::path::Path,
+    run_id: &str,
+    output: OutputFormat,
+) -> Result<vb_storage::FjallJournal, ExitCode> {
+    match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => Ok(journal),
+        Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
+            Err(write_locked_read_surface("replay", run_id, output))
         }
-        Err(vb_storage::recovery::RecoveryError::NoRecoveryData { .. }) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "run_id": run_id,
-                        "status": "not_found",
-                        "events": [],
-                        "error": format!("run {run_id}: no events found")
-                    }),
-                    CliExitCode::ValidationFailed,
-                    output,
-                );
-            } else {
-                crate::errln!("run {run_id}: no events found");
-            }
-            return CliExitCode::ValidationFailed.into();
-        }
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error replaying run {run_id}: {e}")
-                    }),
-                    CliExitCode::StorageError,
-                    output,
-                );
-            } else {
-                crate::errln!("error replaying run {run_id}: {e}");
-            }
-            return CliExitCode::StorageError.into();
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            Err(CliExitCode::StorageError.into())
         }
     }
+}
 
-    ExitCode::SUCCESS
+fn write_replay_success(
+    run_id: &str,
+    events: &[vb_storage::JournalEvent],
+    output: OutputFormat,
+) -> ExitCode {
+    match output {
+        OutputFormat::Yaml | OutputFormat::Postcard => {
+            write_replay_structured_success(run_id, events, output)
+        }
+        OutputFormat::Text => {
+            write_replay_text_success(run_id, events);
+            ExitCode::SUCCESS
+        }
+    }
+}
+
+fn write_replay_structured_success(
+    run_id: &str,
+    events: &[vb_storage::JournalEvent],
+    output: OutputFormat,
+) -> ExitCode {
+    let event_list: Vec<serde_json::Value> = events.iter().map(event_to_json).collect();
+    json_out_exit(
+        &serde_json::json!({
+            "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+            "kind": "replay_report",
+            "run_id": run_id,
+            "recovered": events.len(),
+            "events": event_list,
+            "terminal": replay_terminal_name(events)
+        }),
+        output,
+    )
+}
+
+fn replay_terminal_name(events: &[vb_storage::JournalEvent]) -> Option<String> {
+    vb_storage::recovery::extract_terminal(events)
+        .map(|event| crate::commands_diff::event_name(event).to_string())
+}
+
+fn write_replay_text_success(run_id: &str, events: &[vb_storage::JournalEvent]) {
+    crate::outln!("recovered {} event(s) for run {run_id}", events.len());
+    for event in events {
+        print_event(event);
+    }
+    match vb_storage::recovery::extract_terminal(events) {
+        Some(terminal) => crate::outln!("terminal: {}", crate::commands_diff::event_name(terminal)),
+        None => crate::outln!("terminal: none"),
+    }
+    write_vb_kyyf_trace("replay", run_id, events.len());
+}
+
+struct ReplayFailureOutcome {
+    code: CliExitCode,
+    message: String,
+    structured: serde_json::Value,
+}
+
+fn write_replay_error(
+    run_id: &str,
+    error: &vb_storage::recovery::RecoveryError,
+    output: OutputFormat,
+) -> ExitCode {
+    let outcome = replay_failure_outcome(run_id, error);
+    render_replay_failure(&outcome, output);
+    outcome.code.into()
+}
+
+fn replay_failure_outcome(
+    run_id: &str,
+    error: &vb_storage::recovery::RecoveryError,
+) -> ReplayFailureOutcome {
+    match error {
+        vb_storage::recovery::RecoveryError::NoRecoveryData { .. } => {
+            replay_no_recovery_outcome(run_id)
+        }
+        other => replay_recovery_error_outcome(run_id, other),
+    }
+}
+
+fn replay_no_recovery_outcome(run_id: &str) -> ReplayFailureOutcome {
+    let message = format!("run {run_id}: no events found");
+    ReplayFailureOutcome {
+        code: CliExitCode::ValidationFailed,
+        structured: serde_json::json!({
+            "success": false,
+            "run_id": run_id,
+            "status": "not_found",
+            "events": [],
+            "error": message.clone()
+        }),
+        message,
+    }
+}
+
+fn replay_recovery_error_outcome(
+    run_id: &str,
+    error: &vb_storage::recovery::RecoveryError,
+) -> ReplayFailureOutcome {
+    let code = recovery_error_exit_code(error);
+    let message = format!("error replaying run {run_id}: {error}");
+    ReplayFailureOutcome {
+        code,
+        structured: serde_json::json!({"success": false, "error": message.clone()}),
+        message,
+    }
+}
+
+fn render_replay_failure(outcome: &ReplayFailureOutcome, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        json_error(&outcome.structured, outcome.code, output);
+    } else {
+        crate::errln!("{}", outcome.message);
+    }
 }
 
 pub(crate) fn write_locked_read_surface(
@@ -152,4 +206,30 @@ fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize) {
     crate::outln!(
         "BDD-KYYF-002 command={command} run_id={run_id} evidence=.evidence/vb-kyyf/storage-replay-resume.md digest=normalized-replay events={events_len}"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{replay_failure_outcome, replay_no_recovery_outcome};
+    use crate::exit_code::CliExitCode;
+
+    #[test]
+    fn replay_no_recovery_outcome_is_validation_failure() {
+        let outcome = replay_no_recovery_outcome("42");
+
+        assert_eq!(outcome.code, CliExitCode::ValidationFailed);
+        assert_eq!(outcome.message, "run 42: no events found");
+    }
+
+    #[test]
+    fn replay_divergence_outcome_preserves_typed_code() {
+        let error = vb_storage::recovery::RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: String::from("storage validation compile text"),
+        };
+        let outcome = replay_failure_outcome("7", &error);
+
+        assert_eq!(outcome.code, CliExitCode::ReplayDivergence);
+        assert!(outcome.message.contains("error replaying run 7"));
+    }
 }

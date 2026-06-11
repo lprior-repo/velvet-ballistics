@@ -2,6 +2,7 @@
 //! Library-level integration tests.
 
 use super::*;
+use vb_core::diagnostic::HasSymbolicCode;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false
@@ -460,8 +461,34 @@ fn parse_workflow_source_rejects_canonical_and_alias_duplicate_primitives() {
     );
 }
 
+fn assert_legacy_primitive_deprecated(yaml: &str, expected_name: &str, expected_replacement: &str) {
+    let err = match parse_workflow_source(yaml) {
+        Err(err) => err,
+        Ok(_) => {
+            fail_assert!("expected legacy primitive rejection for {expected_name}");
+            return;
+        }
+    };
+    assert_eq!(
+        err,
+        YamlError::LegacyPrimitiveDeprecated {
+            name: expected_name.to_string(),
+            replacement: expected_replacement.to_string(),
+        }
+    );
+    let rendered = err.to_string();
+    assert!(rendered.contains(expected_name));
+    assert!(rendered.contains(expected_replacement));
+    assert!(rendered.contains(&format!(
+        "migration hint: use {expected_replacement} instead"
+    )));
+    assert_eq!(err.code().as_str(), "FORBIDDEN_YAML_FEATURE");
+    assert_eq!(err.symbolic_code().as_str(), "FORBIDDEN_YAML_FEATURE");
+    assert_eq!(err.symbolic_code_name(), "FORBIDDEN_YAML_FEATURE");
+}
+
 #[test]
-fn parse_workflow_source_rejects_parallel_legacy_primitive_with_migration_hint() {
+fn parse_workflow_source_rejects_legacy_parallel_with_migration_hint() {
     let yaml = indoc::indoc! {r#"
         version: velvet-ballistics/v1
         name: legacy-parallel
@@ -469,29 +496,16 @@ fn parse_workflow_source_rejects_parallel_legacy_primitive_with_migration_hint()
           manual: {}
         steps:
           - id: s1
-            parallel: { branches: [] }
+            parallel:
+              branches:
+                - label: branch
+                  steps: []
     "#};
-    let result = parse_workflow_source(yaml);
-    let Err(error) = result else {
-        fail_assert!("expected deprecated legacy primitive error for parallel");
-        return;
-    };
-    let message = error.to_string();
-    assert_eq!(
-        error,
-        YamlError::LegacyPrimitiveDeprecated {
-            name: String::from("parallel"),
-            replacement: String::from("together"),
-        }
-    );
-    assert_eq!(
-        message,
-        "legacy primitive deprecated: parallel; migration hint: replace with together"
-    );
+    assert_legacy_primitive_deprecated(yaml, "parallel", "together");
 }
 
 #[test]
-fn parse_workflow_source_rejects_aggregate_legacy_primitive_with_migration_hint() {
+fn parse_workflow_source_rejects_legacy_aggregate_with_reduce_hint() {
     let yaml = indoc::indoc! {r#"
         version: velvet-ballistics/v1
         name: legacy-aggregate
@@ -499,25 +513,197 @@ fn parse_workflow_source_rejects_aggregate_legacy_primitive_with_migration_hint(
           manual: {}
         steps:
           - id: s1
-            aggregate: { input: items }
+            aggregate: scalar-shape-does-not-matter
     "#};
-    let result = parse_workflow_source(yaml);
-    let Err(error) = result else {
-        fail_assert!("expected deprecated legacy primitive error for aggregate");
-        return;
-    };
-    let message = error.to_string();
+    assert_legacy_primitive_deprecated(yaml, "aggregate", "reduce");
+}
+
+#[test]
+fn parse_workflow_source_preserves_unknown_non_legacy_step_field_error() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballistics/v1
+        name: unknown-step-field
+        when:
+          manual: {}
+        steps:
+          - id: s1
+            deprecated_but_not_legacy: {}
+    "#};
     assert_eq!(
-        error,
-        YamlError::LegacyPrimitiveDeprecated {
-            name: String::from("aggregate"),
-            replacement: String::from("reduce"),
-        }
+        parse_workflow_source(yaml),
+        Err(YamlError::UnknownField {
+            field: Box::from("deprecated_but_not_legacy"),
+        })
     );
-    assert_eq!(
-        message,
-        "legacy primitive deprecated: aggregate; migration hint: replace with reduce"
-    );
+}
+
+#[test]
+fn parse_workflow_source_legacy_preempts_top_level_competing_step_errors() {
+    let cases = [
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: legacy-preempts-duplicate-and-unknown
+                when:
+                  manual: {}
+                steps:
+                  - id: s1
+                    do: { action: action.name, input: "x" }
+                    run: { action: action.name, input: "y" }
+                    hostile_unknown: {}
+                    parallel: [1, "two", { nested: value }]
+            "#},
+            "parallel",
+            "together",
+        ),
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: legacy-preempts-canonical-alias
+                when:
+                  manual: {}
+                steps:
+                  - id: s1
+                    for_each: { variable: item, input: items, steps: [] }
+                    foreach: { variable: item, input: items, steps: [] }
+                    aggregate:
+                      arbitrary:
+                        shape: ignored
+            "#},
+            "aggregate",
+            "reduce",
+        ),
+    ];
+    for (yaml, expected_name, expected_replacement) in cases {
+        assert_legacy_primitive_deprecated(yaml, expected_name, expected_replacement);
+    }
+}
+
+#[test]
+fn parse_workflow_source_rejects_legacy_inside_nested_body_steps() {
+    let cases = [
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: nested-choose-legacy
+                when:
+                  manual: {}
+                steps:
+                  - id: outer
+                    choose:
+                      branches:
+                        - when: ready
+                          steps:
+                            - id: nested
+                              set: { output: x, value: "1" }
+                              hostile_unknown: true
+                              parallel: "scalar-shape"
+            "#},
+            "parallel",
+            "together",
+        ),
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: nested-foreach-legacy
+                when:
+                  manual: {}
+                steps:
+                  - id: outer
+                    for_each:
+                      variable: item
+                      input: items
+                      steps:
+                        - id: nested
+                          do: { action: action.name, input: "x" }
+                          run: { action: action.name, input: "y" }
+                          aggregate: [1, 2, 3]
+            "#},
+            "aggregate",
+            "reduce",
+        ),
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: nested-together-legacy
+                when:
+                  manual: {}
+                steps:
+                  - id: outer
+                    together:
+                      branches:
+                        - label: branch
+                          steps:
+                            - id: nested
+                              for_each: { variable: item, input: items, steps: [] }
+                              parallel:
+                                branches: []
+            "#},
+            "parallel",
+            "together",
+        ),
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: nested-collect-legacy
+                when:
+                  manual: {}
+                steps:
+                  - id: outer
+                    collect:
+                      variable: page
+                      source: pages
+                      steps:
+                        - id: nested
+                          aggregate:
+                            source: ignored
+                            items: []
+                          unknown_after_legacy: {}
+            "#},
+            "aggregate",
+            "reduce",
+        ),
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: nested-reduce-legacy
+                when:
+                  manual: {}
+                steps:
+                  - id: outer
+                    reduce:
+                      variable: item
+                      input: items
+                      initial: seed
+                      steps:
+                        - id: nested
+                          parallel: { arbitrary: map }
+            "#},
+            "parallel",
+            "together",
+        ),
+        (
+            indoc::indoc! {r#"
+                version: velvet-ballistics/v1
+                name: nested-repeat-legacy
+                when:
+                  manual: {}
+                steps:
+                  - id: outer
+                    repeat:
+                      max_attempts: 3
+                      steps:
+                        - id: nested
+                          finish: { result: done }
+                          aggregate: "scalar-shape"
+            "#},
+            "aggregate",
+            "reduce",
+        ),
+    ];
+    for (yaml, expected_name, expected_replacement) in cases {
+        assert_legacy_primitive_deprecated(yaml, expected_name, expected_replacement);
+    }
 }
 
 #[test]

@@ -4,16 +4,14 @@
 //! Kani harnesses for is_primitive() legacy name rejection (vb-xi2f.16).
 //!
 //! These harnesses verify that:
-//! 1. `is_primitive("parallel")` returns `false` (currently buggy - returns true)
-//! 2. `is_primitive("aggregate")` returns `false` (currently buggy - returns true)
+//! 1. `is_primitive("parallel")` returns `false`
+//! 2. `is_primitive("aggregate")` returns `false`
 //! 3. `is_primitive("together")` returns `true` (canonical name)
 //! 4. `is_primitive("reduce")` returns `true` (canonical name)
 //!
-//! ## Production Bugs (Current State)
-//!
-//! `crates/vb_yaml/src/ast/parse_steps.rs:85-103`:
-//! - `is_primitive` includes "parallel" and "aggregate" in matches! macro
-//! - This causes the function to return `true` for legacy names
+//! The parser-level legacy mapping is `parallel -> together` and
+//! `aggregate -> reduce`; these harnesses cover the primitive vocabulary
+//! boundary only.
 //!
 //! ## GOD RULES COMPLIANCE
 //!
@@ -30,24 +28,16 @@
 ///
 /// ## Scope
 /// Verifies that the legacy name "parallel" is rejected at the vocabulary
-/// boundary. After fix, is_primitive("parallel") should return false.
-///
-/// ## Current Bug
-/// The matches! macro at parse_steps.rs:85-103 includes "parallel",
-/// causing this to return true incorrectly.
+/// boundary.
 ///
 /// ## Expected Result
-/// - BEFORE FIX: Kani reports FAILURE (is_primitive returns true)
-/// - AFTER FIX: Kani reports SUCCESS (is_primitive returns false)
+/// Kani reports SUCCESS when is_primitive returns false.
 #[kani::proof]
 #[kani::unwind(4)]
 fn is_primitive_parallel_harness() {
-    // Test the legacy "parallel" key - should return false after fix
+    // Test the legacy "parallel" key; it is not a primitive.
     let result = crate::ast::parse_steps::is_primitive("parallel");
-    kani::assert(
-        !result,
-        "is_primitive(\"parallel\") must return false after fix",
-    );
+    kani::assert(!result, "is_primitive(\"parallel\") must return false");
 }
 
 /// KANI-XI2F-16-002: Bounded verification using kani::any() for vacuity check.
@@ -86,24 +76,16 @@ fn is_primitive_any_string_harness() {
 ///
 /// ## Scope
 /// Verifies that the legacy name "aggregate" is rejected at the vocabulary
-/// boundary. After fix, is_primitive("aggregate") should return false.
-///
-/// ## Current Bug
-/// The matches! macro at parse_steps.rs:85-103 includes "aggregate",
-/// causing this to return true incorrectly.
+/// boundary.
 ///
 /// ## Expected Result
-/// - BEFORE FIX: Kani reports FAILURE (is_primitive returns true)
-/// - AFTER FIX: Kani reports SUCCESS (is_primitive returns false)
+/// Kani reports SUCCESS when is_primitive returns false.
 #[kani::proof]
 #[kani::unwind(4)]
 fn is_primitive_aggregate_harness() {
-    // Test the legacy "aggregate" key - should return false after fix
+    // Test the legacy "aggregate" key; it is not a primitive.
     let result = crate::ast::parse_steps::is_primitive("aggregate");
-    kani::assert(
-        !result,
-        "is_primitive(\"aggregate\") must return false after fix",
-    );
+    kani::assert(!result, "is_primitive(\"aggregate\") must return false");
 }
 
 // =========================================================================
@@ -117,8 +99,7 @@ fn is_primitive_aggregate_harness() {
 /// boundary.
 ///
 /// ## Expected Result
-/// - BEFORE FIX: may fail if "together" is not in matches! macro
-/// - AFTER FIX: Kani reports SUCCESS
+/// Kani reports SUCCESS when the canonical name is accepted.
 #[kani::proof]
 #[kani::unwind(4)]
 fn is_primitive_together_harness() {
@@ -137,8 +118,7 @@ fn is_primitive_together_harness() {
 /// boundary.
 ///
 /// ## Expected Result
-/// - BEFORE FIX: may fail if "reduce" is not in matches! macro
-/// - AFTER FIX: Kani reports SUCCESS
+/// Kani reports SUCCESS when the canonical name is accepted.
 #[kani::proof]
 #[kani::unwind(4)]
 fn is_primitive_reduce_harness() {
@@ -153,11 +133,11 @@ fn is_primitive_reduce_harness() {
 // ## Kani Evidence Commands
 //
 // ```bash
-// # Legacy rejection (should FAIL before fix, PASS after fix)
+// # Legacy rejection
 // TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_parallel_harness --no-unwind
 // TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_aggregate_harness --no-unwind
 //
-// # Canonical acceptance (should PASS after fix)
+// # Canonical acceptance
 // TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_together_harness --no-unwind
 // TMPDIR=target/tmp cargo kani -p vb_yaml --harness is_primitive_reduce_harness --no-unwind
 //
@@ -166,9 +146,6 @@ fn is_primitive_reduce_harness() {
 // ```
 //
 // ## Prerequisites
-// - Production code changes must be made first:
-//   - Remove "parallel" and "aggregate" from is_primitive() matches! macro
-//   - Add "together" and "reduce" to is_primitive() matches! macro
 // - vb_yaml crate must be compiled with `cargo build -p vb_yaml`
 // (Converted from `///` (outer doc) to `//` (regular comment) so the
 // trailing block is bounded and the file ends without a dangling

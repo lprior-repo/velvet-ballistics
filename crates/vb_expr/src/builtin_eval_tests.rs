@@ -1,72 +1,58 @@
 #![forbid(unsafe_code)]
-//! Blackhat tests for builtin_eval.
-//! These tests document security-relevant behavior in the builtin operator evaluation.
+//! Blackhat tests for active expression operator evaluation.
+//! These tests document security-relevant behavior in the public evaluator.
 
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod blackhat_tests {
-    use crate::builtin_eval::{eval_binary_op, eval_div_values, eval_unary_op};
-    use crate::lexer::{BinaryOp, UnaryOp};
     use crate::ExprError;
+    use crate::eval::{eval_binary_op, eval_unary_op};
+    use crate::lexer::{BinaryOp, UnaryOp};
     use vb_core::SlotValue;
+    use vb_core::value::FiniteF64;
 
-    /// BH-BE-001: builtin_eval::eval_div_values maps i64::MIN / -1 to IntegerOverflow.
+    /// BH-BE-001: active eval maps i64::MIN / -1 to IntegerOverflow.
     ///
-    /// Regression coverage for the former BH-BE-001 bug: `checked_div` returns
-    /// `None` for both division by zero and the overflow case `i64::MIN / -1`.
-    /// The evaluator must check zero first and map the remaining `None` case to
-    /// `IntegerOverflow` so callers that distinguish errors keep correct control
-    /// flow.
-    ///
-    /// Compare with `eval::eval_div_values` which correctly handles this by
-    /// checking for zero explicitly before calling `checked_div`.
+    /// Regression guard for signed division overflow. `checked_div` returns
+    /// `None` for both zero divisors and `i64::MIN / -1`, so the divisor must be
+    /// classified before mapping the remaining `None` to `IntegerOverflow`.
     #[test]
-    fn blackhat_be_001_div_values_reports_min_div_neg_one_overflow() {
-        let result = eval_div_values(SlotValue::I64(i64::MIN), SlotValue::I64(-1));
+    fn blackhat_be_001_div_values_reports_min_div_neg_one_as_overflow() {
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
         assert!(matches!(result, Err(ExprError::IntegerOverflow)));
     }
 
-    /// BH-BE-002: Public eval_binary_op correctly handles i64::MIN / -1.
+    /// BH-BE-002: Public eval_binary_op keeps f64 division support.
     ///
-    /// The public API in `eval.rs` correctly returns IntegerOverflow.
-    /// This test verifies the correct behavior for comparison with BH-BE-001.
+    /// Guard against reintroducing a public narrow duplicate i64-only evaluator.
     #[test]
-    fn blackhat_be_002_public_api_correctly_handles_min_div_neg_one() {
-        let result =
-            eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-        assert_eq!(result, Err(ExprError::IntegerOverflow));
+    fn blackhat_be_002_public_api_preserves_f64_division() -> crate::ExprResult<()> {
+        let left = FiniteF64::new(4.0)?;
+        let right = FiniteF64::new(2.0)?;
+        let expected = FiniteF64::new(2.0)?;
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::F64(left), SlotValue::F64(right));
+        assert_eq!(result, Ok(SlotValue::F64(expected)));
+        Ok(())
     }
 
     /// BH-BE-003: eval_binary_op addition overflow detection.
     #[test]
     fn blackhat_be_003_add_overflow() {
-        let r = eval_binary_op(
-            BinaryOp::Add,
-            SlotValue::I64(i64::MAX),
-            SlotValue::I64(1),
-        );
+        let r = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
     }
 
     /// BH-BE-004: eval_binary_op subtraction overflow detection.
     #[test]
     fn blackhat_be_004_sub_overflow() {
-        let r = eval_binary_op(
-            BinaryOp::Sub,
-            SlotValue::I64(i64::MIN),
-            SlotValue::I64(1),
-        );
+        let r = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
     }
 
     /// BH-BE-005: eval_binary_op multiplication overflow detection.
     #[test]
     fn blackhat_be_005_mul_overflow() {
-        let r = eval_binary_op(
-            BinaryOp::Mul,
-            SlotValue::I64(i64::MAX),
-            SlotValue::I64(2),
-        );
+        let r = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(2));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
     }
 
@@ -80,8 +66,7 @@ mod blackhat_tests {
     /// BH-BE-007: Division by zero returns correct error.
     #[test]
     fn blackhat_be_007_div_by_zero() {
-        let r =
-            eval_binary_op(BinaryOp::Div, SlotValue::I64(1), SlotValue::I64(0));
+        let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(1), SlotValue::I64(0));
         assert!(matches!(r, Err(ExprError::DivisionByZero)));
     }
 
@@ -105,13 +90,38 @@ mod blackhat_tests {
         ));
     }
 
+    /// BH-XO50X-003: division type gate precedes zero and overflow classification.
+    #[test]
+    fn blackhat_be_019_division_type_gate_precedes_division_taxonomy() {
+        assert!(matches!(
+            eval_binary_op(BinaryOp::Div, SlotValue::Bool(true), SlotValue::I64(0)),
+            Err(ExprError::TypeMismatch { .. })
+        ));
+        assert!(matches!(
+            eval_binary_op(BinaryOp::Div, SlotValue::I64(1), SlotValue::Bool(false)),
+            Err(ExprError::TypeMismatch { .. })
+        ));
+        assert!(matches!(
+            eval_binary_op(BinaryOp::Div, SlotValue::Bool(true), SlotValue::I64(-1)),
+            Err(ExprError::TypeMismatch { .. })
+        ));
+        assert!(matches!(
+            eval_binary_op(
+                BinaryOp::Div,
+                SlotValue::I64(i64::MIN),
+                SlotValue::Bool(false)
+            ),
+            Err(ExprError::TypeMismatch { .. })
+        ));
+    }
+
     /// BH-BE-009: End-to-end bytecode program with i64::MIN / -1.
     ///
     /// The eval.rs main evaluator correctly returns IntegerOverflow for
     /// this program because eval_div_values checks for zero explicitly.
     #[test]
     fn blackhat_be_009_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
-        use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotValue};
+        use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram};
 
         let program = ExprProgram {
             ops: vec![
@@ -135,7 +145,7 @@ mod blackhat_tests {
     /// BH-BE-010: Stack underflow from empty stack returns error, not panic.
     #[test]
     fn blackhat_be_010_stack_underflow_no_panic() -> crate::ExprResult<()> {
-        use vb_core::{ExprOp, ExprProgram, SlotValue};
+        use vb_core::{ExprOp, ExprProgram};
 
         let program = ExprProgram {
             ops: vec![ExprOp::Add].into_boxed_slice(),
@@ -153,7 +163,7 @@ mod blackhat_tests {
     /// BH-BE-011: Out-of-bounds slot and constant access returns error, not panic.
     #[test]
     fn blackhat_be_011_oob_access_no_panic() -> crate::ExprResult<()> {
-        use vb_core::{ConstIdx, ExprOp, ExprProgram, SlotIdx, SlotValue};
+        use vb_core::{ConstIdx, ExprOp, ExprProgram, SlotIdx};
 
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(255))].into_boxed_slice(),
@@ -162,8 +172,7 @@ mod blackhat_tests {
         let r = crate::eval::eval_expr_program(&program, &[], &[]);
         assert!(r.is_err(), "BH-BE-011a: OOB slot should error");
         let program = ExprProgram {
-            ops: vec![ExprOp::LoadConst(ConstIdx::new(255))]
-                .into_boxed_slice(),
+            ops: vec![ExprOp::LoadConst(ConstIdx::new(255))].into_boxed_slice(),
             max_stack: 1,
         };
         let r = crate::eval::eval_expr_program(&program, &[], &[]);
@@ -241,34 +250,18 @@ mod blackhat_tests {
     /// BH-BE-017: Addition overflow at both boundaries.
     #[test]
     fn blackhat_be_017_add_both_boundaries() {
-        let r = eval_binary_op(
-            BinaryOp::Add,
-            SlotValue::I64(i64::MAX),
-            SlotValue::I64(1),
-        );
+        let r = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
-        let r = eval_binary_op(
-            BinaryOp::Add,
-            SlotValue::I64(i64::MIN),
-            SlotValue::I64(-1),
-        );
+        let r = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
     }
 
     /// BH-BE-018: Subtraction overflow at both boundaries.
     #[test]
     fn blackhat_be_018_sub_both_boundaries() {
-        let r = eval_binary_op(
-            BinaryOp::Sub,
-            SlotValue::I64(i64::MIN),
-            SlotValue::I64(1),
-        );
+        let r = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
-        let r = eval_binary_op(
-            BinaryOp::Sub,
-            SlotValue::I64(i64::MAX),
-            SlotValue::I64(-1),
-        );
+        let r = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MAX), SlotValue::I64(-1));
         assert!(matches!(r, Err(ExprError::IntegerOverflow)));
     }
 }

@@ -1,26 +1,30 @@
 #![forbid(unsafe_code)]
-//! Public expression evaluator module.
+//! Canonical expression bytecode evaluator module.
 //!
-//! Production evaluation is implemented in `evaluate.rs` only. The historical
-//! Kani dispatcher in `core.rs` stays outside production builds behind
-//! `cfg(kani)`.
+//! `evaluate.rs` is the single production evaluator implementation. Kani-only
+//! support stays behind explicit `cfg(kani)` declarations so normal builds do
+//! not compile a second evaluator path.
 
-mod environment;
+mod accessors;
 mod evaluate;
+mod helpers;
+mod ops;
+mod stack;
+mod type_enforcers;
 
 pub use crate::lexer::{BinaryOp, UnaryOp};
 pub use crate::parser::ExprHelper;
 pub use crate::{ExprError, ExprResult};
-pub use environment::eval_helper;
 pub use evaluate::{
-    eval_binary_op, eval_expr_program, eval_expr_program_with_accessors_and_store,
-    eval_expr_program_with_store, eval_helper_with_store, eval_unary_op,
+    eval_expr_program, eval_expr_program_with_accessors_and_store, eval_expr_program_with_context,
+    eval_expr_program_with_store,
 };
-pub use vb_core::limits::MAX_EXPRESSION_STACK;
-
+pub use helpers::{eval_helper, eval_helper_with_store};
 #[cfg(kani)]
-pub mod core;
+pub(crate) use ops::eval_i64_div_values;
+pub use ops::{eval_binary_op, eval_unary_op};
+pub use vb_core::limits::MAX_EXPRESSION_STACK;
 
 #[cfg(test)]
 #[path = "../eval_tests.rs"]
-mod legacy_tests;
+mod tests;

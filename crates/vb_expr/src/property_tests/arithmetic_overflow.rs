@@ -90,6 +90,28 @@ proptest! {
 }
 
 // ---------------------------------------------------------------------------
+// AO-6b: active eval division partitions zero, overflow, and representable pairs
+// ---------------------------------------------------------------------------
+
+proptest! {
+    #[test]
+    fn ao_eval_division_partition_matches_error_taxonomy(left in any::<i64>(), right in any::<i64>()) {
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(left), SlotValue::I64(right));
+
+        if right == 0 {
+            prop_assert!(matches!(result, Err(crate::ExprError::DivisionByZero)));
+        } else if left == i64::MIN && right == -1 {
+            prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow)));
+        } else {
+            match left.checked_div(right) {
+                Some(expected) => prop_assert_eq!(result, Ok(SlotValue::I64(expected))),
+                None => prop_assert!(matches!(result, Err(crate::ExprError::IntegerOverflow))),
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // AO-7: f64 zero negation
 // ---------------------------------------------------------------------------
 

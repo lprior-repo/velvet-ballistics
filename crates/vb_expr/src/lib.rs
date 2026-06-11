@@ -23,15 +23,8 @@ pub mod lexer;
 pub mod parser;
 pub mod typecheck;
 
-mod accessor_eval;
-
-#[cfg(any(test, kani))]
-#[allow(dead_code)]
-pub(crate) mod builtin_eval;
-#[cfg(any(test, kani))]
-#[allow(dead_code)]
-pub(crate) mod stack_ops;
-
+#[cfg(test)]
+mod builtin_eval_tests;
 #[cfg(test)]
 mod harness_tests;
 #[cfg(test)]
@@ -51,10 +44,29 @@ pub use bytecode::{
 };
 pub use eval::{
     eval_binary_op, eval_expr_program, eval_expr_program_with_accessors_and_store,
-    eval_expr_program_with_store, eval_helper, eval_helper_with_store, eval_unary_op,
+    eval_expr_program_with_context, eval_expr_program_with_store, eval_helper,
+    eval_helper_with_store, eval_unary_op,
 };
 
 use thiserror::Error;
+
+/// Explicit accessor availability for expression evaluation.
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub enum AccessorContext<'a> {
+    /// Accessor table is available for `ExprOp::LoadAccessor`.
+    Present(&'a [vb_core::AccessorProgram]),
+    /// Accessor table is intentionally unavailable at this API boundary.
+    Absent(AccessorContextAbsence),
+}
+
+/// Reason an expression evaluation context has no accessor table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum AccessorContextAbsence {
+    /// Source-compatible legacy evaluator APIs do not accept an accessor table.
+    LegacyApiNoAccessorTable,
+}
 
 /// Expression error type.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -144,6 +156,49 @@ pub enum ExprError {
 
     #[error("unsupported literal: {literal}")]
     UnsupportedLiteral { literal: String },
+
+    /// Returned when `LoadAccessor` is evaluated without an accessor table.
+    #[error("missing accessor context: {absence:?}")]
+    MissingAccessorContext { absence: AccessorContextAbsence },
+
+    /// Returned when a `LoadAccessor` opcode points outside the accessor table.
+    #[error("accessor index out of bounds: {accessor:?}")]
+    AccessorOutOfBounds { accessor: vb_core::AccessorIdx },
+
+    /// Returned when an accessor root slot is outside the provided slot slice.
+    #[error("accessor root slot out of bounds: {root:?}")]
+    AccessorRootOutOfBounds { root: vb_core::SlotIdx },
+
+    /// Returned when an accessor root slot exists but has no runtime value.
+    #[error("accessor root slot uninitialized: {root:?}")]
+    AccessorRootUninitialized { root: vb_core::SlotIdx },
+
+    /// Returned when an accessor path exceeds the protocol depth bound.
+    #[error("accessor path too deep: {depth}, max {max}")]
+    AccessorPathTooDeep { depth: usize, max: usize },
+
+    /// Returned when an accessor path segment is applied to an incompatible value.
+    #[error("unsupported accessor traversal: {segment} on {found}")]
+    UnsupportedAccessorTraversal {
+        segment: &'static str,
+        found: &'static str,
+    },
+
+    /// Returned when an object accessor field is not present.
+    #[error("object field not found: {field:?}")]
+    ObjectFieldNotFound { field: vb_core::ids::SymbolId },
+
+    /// Returned when a list accessor index is outside the list value.
+    #[error("list index out of bounds: {index}")]
+    ListIndexOutOfBounds { index: u32 },
+
+    /// Returned when an accessor object handle does not resolve in the value store.
+    #[error("object handle out of bounds: {object:?}")]
+    ObjectHandleOutOfBounds { object: vb_core::ids::ObjectId },
+
+    /// Returned when an accessor list handle does not resolve in the value store.
+    #[error("list handle out of bounds: {list:?}")]
+    ListHandleOutOfBounds { list: vb_core::ids::ListId },
 }
 
 impl From<vb_core::CoreError> for ExprError {
@@ -157,6 +212,21 @@ impl From<vb_core::CoreError> for ExprError {
                 expected: expected.to_string(),
                 found: found.to_string(),
             },
+            vb_core::CoreError::UnsupportedAccessorTraversal { segment, found } => {
+                ExprError::UnsupportedAccessorTraversal { segment, found }
+            }
+            vb_core::CoreError::ObjectFieldNotFound { field } => {
+                ExprError::ObjectFieldNotFound { field }
+            }
+            vb_core::CoreError::ListIndexOutOfBounds { index } => {
+                ExprError::ListIndexOutOfBounds { index }
+            }
+            vb_core::CoreError::ListOutOfBounds { list } => {
+                ExprError::ListHandleOutOfBounds { list }
+            }
+            vb_core::CoreError::ObjectOutOfBounds { object } => {
+                ExprError::ObjectHandleOutOfBounds { object }
+            }
             _ => ExprError::UnexpectedEof,
         }
     }
