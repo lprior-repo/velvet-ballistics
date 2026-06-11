@@ -1509,18 +1509,13 @@ fn adversarial_memory_ingress_full_then_drain_then_submit() {
 fn adversarial_memory_ingress_disconnected_after_sender_drop() {
     let capacity =
         QueueCapacity::new(std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN));
-    let queue = MemoryIngress::bounded(capacity);
-    let receiver_only = queue.receiver.clone();
-    let sender = queue.sender.clone();
-    drop(queue);
+    let receiver_only = MemoryIngress::bounded(capacity);
+    let sender = receiver_only.producer();
     drop(sender);
 
     let result = receiver_only.try_recv();
 
-    assert!(matches!(
-        result,
-        Err(crossbeam_channel::TryRecvError::Disconnected)
-    ));
+    assert!(matches!(result, Err(IpcError::Disconnected)));
 }
 
 #[test]

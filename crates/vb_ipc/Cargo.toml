@@ -9,6 +9,7 @@ arrayvec.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
+crossbeam-queue.workspace = true
 mio = { workspace = true, features = ["net", "os-poll"] }
 postcard.workspace = true
 serde.workspace = true
