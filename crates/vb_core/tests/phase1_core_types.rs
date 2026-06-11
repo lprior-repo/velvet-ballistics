@@ -11,7 +11,7 @@ use vb_core::ids::{
 };
 use vb_core::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_DEPTH, MAX_EXPRESSIONS, MAX_RUN_NAME_LENGTH,
-    MAX_SLOTS_PER_STEP, MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
+    MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
 };
 use vb_core::span::{Located, SourceMap, Span, Spanned};
 use vb_core::value::{FiniteF64, SlotValue, Taint};

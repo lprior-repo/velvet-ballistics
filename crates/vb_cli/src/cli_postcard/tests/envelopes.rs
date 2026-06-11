@@ -195,6 +195,7 @@ fn cli_postcard_kind_from_cli_envelope_kind_is_total() {
 }
 
 #[test]
+#[allow(unnameable_test_items)]
 fn cli_postcard_kind_round_trips_for_all_variants() {
     use proptest::prelude::*;
     use std::str::FromStr;

@@ -193,12 +193,6 @@ impl MemoryIngress {
         self.core.is_empty()
     }
 
-    /// Internal accessor for tests and shared consumers that need the core.
-    #[cfg(test)]
-    pub(crate) fn core(&self) -> Arc<IngressCore> {
-        Arc::clone(&self.core)
-    }
-
     /// Disconnect flag for tests; flips the atomic so producers see
     /// `Disconnected` on the next push.
     #[cfg(test)]

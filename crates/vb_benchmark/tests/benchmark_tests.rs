@@ -1,4 +1,6 @@
-use crate::*;
+use std::time::Duration;
+
+use vb_benchmark::*;
 
 // These tests verify the STUB implementations fail as expected.
 // When the real implementation is provided, these tests should pass.

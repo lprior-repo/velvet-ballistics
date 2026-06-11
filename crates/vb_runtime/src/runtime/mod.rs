@@ -327,6 +327,7 @@ impl Runtime {
     }
 
     /// Hydrates a run frame from a recovery seed.
+    #[cfg(feature = "test-util")]
     fn hydrate_frame(
         seed: vb_storage::recovery::RecoveryFrameSeed,
     ) -> RuntimeResult<vb_core::frame::RunFrame> {
@@ -336,6 +337,7 @@ impl Runtime {
     }
 
     /// Scans a run's journal for the last WaitScheduled or AskScheduled event.
+    #[cfg(feature = "test-util")]
     fn find_timer_event(
         events: &[vb_storage::JournalEvent],
         pc: vb_core::StepIdx,
@@ -347,6 +349,7 @@ impl Runtime {
             .map(|ev| (ev, pc))
     }
 
+    #[cfg(feature = "test-util")]
     fn event_matches_step(ev: &vb_storage::JournalEvent, pc: vb_core::StepIdx) -> bool {
         match ev {
             vb_storage::JournalEvent::WaitScheduledEvent { step: s, .. }
@@ -356,6 +359,7 @@ impl Runtime {
     }
 
     /// Extracts pending timer info from journal events for a suspended run.
+    #[cfg(feature = "test-util")]
     fn recover_timer_from_journal(
         journal: &crate::journal::SharedRuntimeJournal,
         run: vb_core::ids::RunId,
@@ -371,6 +375,7 @@ impl Runtime {
         )))
     }
 
+    #[cfg(feature = "test-util")]
     fn build_timer_from_event(
         event: Option<(&vb_storage::JournalEvent, vb_core::StepIdx)>,
     ) -> Option<crate::shard::PendingTimer> {
@@ -390,6 +395,7 @@ impl Runtime {
         })
     }
 
+    #[cfg(feature = "test-util")]
     fn make_timer(
         step: vb_core::StepIdx,
         kind: crate::shard::timer::PendingTimerKind,
@@ -445,6 +451,7 @@ impl Runtime {
             .insert(run, Self::build_run_state(frame, wf, slot_count));
     }
 
+    #[cfg(feature = "test-util")]
     fn build_run_state(
         frame: vb_core::frame::RunFrame,
         workflow: vb_core::workflow::CompiledWorkflow,
@@ -462,6 +469,7 @@ impl Runtime {
         }
     }
 
+    #[cfg(feature = "test-util")]
     fn insert_timer(
         &mut self,
         run: vb_core::ids::RunId,

@@ -37,6 +37,7 @@ impl Shard {
             shutting_down: false,
             current_tick: TimerTick::new(0),
             journal,
+            #[cfg(feature = "test-util")]
             pending_workflows: IndexMap::new(),
         }
     }

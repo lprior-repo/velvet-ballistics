@@ -22,6 +22,7 @@ const EXPECTED_MEMBERS: &[&str] = &[
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
     "crates/vb_benchmark",
+    "xtask",
 ];
 
 const EXPECTED_EXCLUDES: &[&str] = &["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"];
@@ -79,6 +80,7 @@ const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
             "bench",
             "default",
             "kani-diagnostic-codes",
+            "kani-resource-contract-boundaries",
             "kani-vb-5iebh-check-scope",
             "kani-vb-ajc40",
             "test-util",

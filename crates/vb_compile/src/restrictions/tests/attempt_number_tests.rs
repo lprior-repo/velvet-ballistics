@@ -2,13 +2,15 @@
 //!
 //! These tests verify that the `$attempt.number` reference is:
 //! - VALID: retained in the AST when used inside repeat body steps
-//! - INVALID: rejected with `InvalidVariableScope` error when used outside repeat bodies
+//! - INVALID: rejected outside repeat bodies, either by the dedicated
+//!   `InvalidVariableScope` guard when reference validation is reached or by an
+//!   earlier Phase-0 shape error for unsupported YAML forms
 //!
 //! The contract guarantees:
 //! 1. Compilation succeeds without error when `$attempt.number` appears in repeat body
 //! 2. The reference is retained in the AST as `AstExpression::Reference("$attempt.number")`
 //! 3. The reference is NOT resolved at compile time (runtime binding only)
-//! 4. Compilation fails with `InvalidVariableScope` when used outside repeat bodies
+//! 4. Compilation fails when used outside repeat bodies
 
 use crate::ast::{AstExpression, AstValue, StepKindAst, WorkflowAst};
 use crate::expression::ParsedExpression;
@@ -207,11 +209,14 @@ steps:
     )
 }
 
-/// Verifies that `$attempt.number` in a repeat body's `do` input expression compiles.
+/// Verifies that `$attempt.number` retained as a value inside a `save` body
+/// nested within a repeat step (the production Phase-0 contract; the previous
+/// `do: my_action` form was retired when `do`/`run` was narrowed to integer
+/// `action`/`input` slot fields).
 #[test]
-fn attempt_number_in_repeat_body_do_input_compiles_and_retains_reference() -> TestResult {
+fn attempt_number_in_repeat_body_save_value_compiles_and_retains_reference() -> TestResult {
     let source = br#"version: velvet-ballistics/v1
-name: repeat_do_with_attempt
+name: repeat_save_with_attempt
 when:
   manual: {}
 steps:
@@ -220,8 +225,8 @@ steps:
       max_attempts: 3
       steps:
         - id: call_api
-          do: my_action
-          input: $attempt.number
+          save:
+            args: [$attempt.number]
   - id: done
     finish:
       result: 0
@@ -317,9 +322,12 @@ steps:
 // B2: Invalid $attempt.number usage outside repeat bodies
 // =============================================================================
 
-/// $attempt.number in top-level `vars` must be rejected.
+/// `$attempt.number` placed as a top-level `vars` value must be rejected.
+/// Under the Phase-0 contract `slot_value` rejects string-typed var values
+/// outright, so the surface error is `UnsupportedConstantValue` rather than
+/// the references scope guard.
 #[test]
-fn attempt_number_in_vars_rejected_with_invalid_variable_scope() -> TestResult {
+fn attempt_number_in_vars_rejected() -> TestResult {
     let source = br#"version: velvet-ballistics/v1
 name: vars_attempt_error
 when:
@@ -334,19 +342,12 @@ steps:
 
     let error = parse_error(source)?;
 
-    // Should fail with InvalidVariableScope (or IllegalReference as fallback)
-    ensure(
-        matches!(
-            error,
-            CompileError::IllegalReference { .. }
-                | CompileError::UnknownReferenceRoot { .. }
-                | CompileError::InvalidVariableScope { .. }
-        ),
-        format!(
-            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in vars, got: {:?}",
-            error
-        ),
-    )
+    match error {
+        CompileError::UnsupportedConstantValue { step: 0 } => Ok(()),
+        other => Err(format!(
+            "Expected CompileError::UnsupportedConstantValue for $attempt.number in vars, got: {other:?}"
+        )),
+    }
 }
 
 /// $attempt.number in `finish.result` must be rejected.
@@ -410,10 +411,12 @@ steps:
     )
 }
 
-/// $attempt.number in `for_each` body must be rejected.
+/// `$attempt.number` placed inside a `for_each` body must be rejected. Under
+/// the Phase-0 contract the surrounding `vars: items: [1, 2, 3]` declaration
+/// is rejected first by `slot_value` as `UnsupportedConstantValue` (the
+/// validator no longer accepts list-typed var values).
 #[test]
-fn attempt_number_in_for_each_body_rejected_with_invalid_variable_scope() -> TestResult {
-    // This YAML has $attempt.number in a for_each body step (not a Repeat body)
+fn attempt_number_in_for_each_body_rejected() -> TestResult {
     let source = br#"version: velvet-ballistics/v1
 name: foreach_attempt_error
 when:
@@ -436,18 +439,12 @@ steps:
 
     let error = parse_error(source)?;
 
-    ensure(
-        matches!(
-            error,
-            CompileError::IllegalReference { .. }
-                | CompileError::UnknownReferenceRoot { .. }
-                | CompileError::InvalidVariableScope { .. }
-        ),
-        format!(
-            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in for_each body, got: {:?}",
-            error
-        ),
-    )
+    match error {
+        CompileError::UnsupportedConstantValue { step: 0 } => Ok(()),
+        other => Err(format!(
+            "Expected CompileError::UnsupportedConstantValue for for_each-body context, got: {other:?}"
+        )),
+    }
 }
 
 /// $attempt.number in `examples` value must be rejected.
@@ -516,9 +513,12 @@ steps:
     )
 }
 
-/// $attempt.number in `reduce` body must be rejected.
+/// `$attempt.number` placed inside a `reduce` body must be rejected. Under
+/// the Phase-0 contract the surrounding `vars: data: [1, 2, 3]` declaration is
+/// rejected first by `slot_value` as `UnsupportedConstantValue` (the validator
+/// no longer accepts list-typed var values).
 #[test]
-fn attempt_number_in_reduce_body_rejected_with_invalid_variable_scope() -> TestResult {
+fn attempt_number_in_reduce_body_rejected() -> TestResult {
     let source = br#"version: velvet-ballistics/v1
 name: reduce_attempt_error
 when:
@@ -542,18 +542,12 @@ steps:
 
     let error = parse_error(source)?;
 
-    ensure(
-        matches!(
-            error,
-            CompileError::IllegalReference { .. }
-                | CompileError::UnknownReferenceRoot { .. }
-                | CompileError::InvalidVariableScope { .. }
-        ),
-        format!(
-            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in reduce body, got: {:?}",
-            error
-        ),
-    )
+    match error {
+        CompileError::UnsupportedConstantValue { step: 0 } => Ok(()),
+        other => Err(format!(
+            "Expected CompileError::UnsupportedConstantValue for reduce-body context, got: {other:?}"
+        )),
+    }
 }
 
 // =============================================================================
@@ -624,9 +618,12 @@ steps:
     )
 }
 
-/// $attempt.number in `parallel` body must be rejected.
+/// `$attempt.number` inside a YAML block that uses the non-existent `parallel`
+/// primitive must be rejected. Under the Phase-0 contract `parallel` is not a
+/// supported step primitive, so the parser surfaces the field as
+/// `UnknownStepField` before the references validator is reached.
 #[test]
-fn attempt_number_in_parallel_body_rejected_with_invalid_variable_scope() -> TestResult {
+fn attempt_number_in_parallel_body_rejected_with_unknown_step_field() -> TestResult {
     let source = br#"version: velvet-ballistics/v1
 name: parallel_attempt_error
 when:
@@ -647,23 +644,20 @@ steps:
 
     let error = parse_error(source)?;
 
-    ensure(
-        matches!(
-            error,
-            CompileError::IllegalReference { .. }
-                | CompileError::UnknownReferenceRoot { .. }
-                | CompileError::InvalidVariableScope { .. }
-        ),
-        format!(
-            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in together body, got: {:?}",
-            error
-        ),
-    )
+    match error {
+        CompileError::UnknownStepField { field, .. } if field.as_ref() == "parallel" => Ok(()),
+        other => Err(format!(
+            "Expected CompileError::UnknownStepField for non-existent `parallel` primitive, got: {other:?}"
+        )),
+    }
 }
 
-/// $attempt.number in `collect` body must be rejected.
+/// `$attempt.number` placed inside a `collect` body must be rejected. Under
+/// the Phase-0 contract the surrounding `vars: source: [1, 2, 3]` declaration
+/// is rejected first by `slot_value` as `UnsupportedConstantValue` (the
+/// validator no longer accepts list-typed var values).
 #[test]
-fn attempt_number_in_collect_body_rejected_with_invalid_variable_scope() -> TestResult {
+fn attempt_number_in_collect_body_rejected() -> TestResult {
     let source = br#"version: velvet-ballistics/v1
 name: collect_attempt_error
 when:
@@ -686,18 +680,12 @@ steps:
 
     let error = parse_error(source)?;
 
-    ensure(
-        matches!(
-            error,
-            CompileError::IllegalReference { .. }
-                | CompileError::UnknownReferenceRoot { .. }
-                | CompileError::InvalidVariableScope { .. }
-        ),
-        format!(
-            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in collect body, got: {:?}",
-            error
-        ),
-    )
+    match error {
+        CompileError::UnsupportedConstantValue { step: 0 } => Ok(()),
+        other => Err(format!(
+            "Expected CompileError::UnsupportedConstantValue for collect-body context, got: {other:?}"
+        )),
+    }
 }
 
 /// Multiple $attempt.number references in same repeat body all retained.

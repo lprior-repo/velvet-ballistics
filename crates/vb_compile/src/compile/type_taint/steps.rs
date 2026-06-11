@@ -151,7 +151,7 @@ fn taint_repeat_body(
                 taint_repeat_body(inner, facts, errors);
             }
             StepKindAst::Save { fields } => {
-                let _ = save_fact(fields, facts);
+                let _computed_fact = save_fact(fields, facts);
             }
             StepKindAst::Choose { condition, .. } => {
                 if let Err(e) = validate_condition(condition, facts) {

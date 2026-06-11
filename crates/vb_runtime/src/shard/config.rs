@@ -4,6 +4,7 @@
 use indexmap::{IndexMap, IndexSet};
 
 use vb_core::ids::RunId;
+#[cfg(feature = "test-util")]
 use vb_core::workflow::CompiledWorkflow;
 use vb_storage::EventSeq;
 
@@ -133,6 +134,7 @@ pub struct Shard {
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
     /// Recovered workflows keyed by run, populated during `Runtime::recover`.
+    #[cfg(feature = "test-util")]
     pub(crate) pending_workflows: IndexMap<RunId, CompiledWorkflow>,
 }
 

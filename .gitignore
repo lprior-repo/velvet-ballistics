@@ -9,6 +9,7 @@ fuzz/target/
 # Local workspace snapshots and duplicated export bundles
 /refactor/
 /vb-*/
+/ws-batch-*/
 /velvet_ballistics_figma_ready_tightened_screens/
 /velvet_ballistics_makepad_ui_master_plan_with_images/
 

@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const MEMBERS: [(&str, &str); 18] = [
+const MEMBERS: [(&str, &str); 19] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_core", "vb_core"),
     ("crates/vb_yaml", "vb_yaml"),
@@ -31,6 +31,7 @@ const MEMBERS: [(&str, &str); 18] = [
         "velvet-ballistics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
+    ("xtask", "xtask"),
 ];
 
 fn repo_root() -> Result<PathBuf, std::env::VarError> {
@@ -81,7 +82,7 @@ fn write_manifest(root: &Path, member: &str, package_name: &str) -> Result<(), s
     }
     if member == "crates/vb_core" {
         manifest.push_str(
-            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nvolatile = []\ntest-util = []\n",
+            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nkani-resource-contract-boundaries = []\nvolatile = []\ntest-util = []\n",
         );
     }
     if member == "crates/vb_validate" {
@@ -139,7 +140,7 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
+        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"kani-resource-contract-boundaries\", \"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
 }

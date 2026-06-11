@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 14] = [
+const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 15] = [
     ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
     ("crates/vb_yaml", "vb_yaml"),
     ("crates/vb_validate", "vb_validate"),
@@ -27,6 +27,7 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 14] = [
         "velvet-ballistics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
+    ("xtask", "xtask"),
 ];
 
 fn repo_root() -> Result<PathBuf, std::env::VarError> {
@@ -80,6 +81,7 @@ members = [
     "crates/workspace_tests/idempotency_suite",
     "crates/workspace_tests",
     "crates/vb_benchmark",
+    "xtask",
 {extra}]
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"]
 "#
@@ -116,6 +118,7 @@ edition = "2024"
 default = []
 bench = []
 kani-diagnostic-codes = []
+kani-resource-contract-boundaries = []
 kani-vb-5iebh-check-scope = []
 kani-vb-ajc40 = []
 volatile = []

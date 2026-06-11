@@ -78,7 +78,9 @@ impl BoundedActionCompletionQueue {
                 depth,
                 capacity: self.capacity.get(),
             };
-            drop(tx.try_send(warning));
+            if tx.try_send(warning).is_err() {
+                return Ok(());
+            }
         }
         Ok(())
     }

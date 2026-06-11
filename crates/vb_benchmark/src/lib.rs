@@ -320,7 +320,3 @@ pub fn check_evidence_gate(
 
     Ok(())
 }
-
-#[cfg(test)]
-#[path = "../benchmark/tests.rs"]
-mod tests;

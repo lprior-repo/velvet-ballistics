@@ -142,7 +142,7 @@ fn fuzz_action_contract(
         max_output_bytes: 1024,
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
-        side_effect: SideEffect::Writes,
+        side_effect: SideEffect::ExternalWrite,
         retry_safety: RetrySafety::KeyRequired,
         required_capabilities,
     })
