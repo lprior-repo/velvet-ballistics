@@ -2,7 +2,7 @@
 //! Expression operator evaluation.
 
 use crate::errors::EngineError;
-use crate::value::SlotValue;
+use crate::value::{FiniteF64, SlotValue};
 use crate::value_store::ValueStore;
 use crate::workflow::ExprOp;
 
@@ -10,7 +10,9 @@ use super::ops_text_list::{
     eval_append, eval_append_if, eval_contains, eval_count, eval_empty, eval_ends_with, eval_has,
     eval_length, eval_starts_with, eval_sum, eval_unique,
 };
-use super::stack::{ExprStack, expect_bool, expect_object, pop_i64_pair, pop_pair, push_value};
+use super::stack::{
+    ExprStack, expect_bool, expect_i64, expect_object, pop_i64_pair, pop_pair, push_value,
+};
 
 fn eval_eq(stack: &mut ExprStack, positive: bool) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
@@ -39,6 +41,44 @@ fn eval_i64_pair(
         reason: "integer arithmetic overflow",
     })?;
     push_value(stack, SlotValue::I64(value))
+}
+
+fn eval_i64_values(
+    stack: &mut ExprStack,
+    left: i64,
+    right: i64,
+    op: fn(i64, i64) -> Option<i64>,
+) -> Result<(), EngineError> {
+    let value = op(left, right).ok_or(EngineError::InvalidCompiledWorkflow {
+        reason: "integer arithmetic overflow",
+    })?;
+    push_value(stack, SlotValue::I64(value))
+}
+
+fn eval_f64_sub_values(
+    stack: &mut ExprStack,
+    left: FiniteF64,
+    right: FiniteF64,
+) -> Result<(), EngineError> {
+    let value = core::ops::Sub::sub(left.get(), right.get());
+    let finite = FiniteF64::new(value)?;
+    push_value(stack, SlotValue::F64(finite))
+}
+
+fn eval_sub(stack: &mut ExprStack) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    match (left, right) {
+        (SlotValue::F64(left), SlotValue::F64(right)) => eval_f64_sub_values(stack, left, right),
+        (SlotValue::I64(left), SlotValue::I64(right)) => {
+            eval_i64_values(stack, left, right, i64::checked_sub)
+        }
+        (other_left, other_right) => eval_i64_values(
+            stack,
+            expect_i64(other_left)?,
+            expect_i64(other_right)?,
+            i64::checked_sub,
+        ),
+    }
 }
 
 /// Evaluates integer division.
@@ -154,7 +194,7 @@ pub(crate) fn eval_expr_operator(
         ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
         ExprOp::Not => eval_not(stack),
         ExprOp::Add => eval_i64_pair(stack, i64::checked_add),
-        ExprOp::Sub => eval_i64_pair(stack, i64::checked_sub),
+        ExprOp::Sub => eval_sub(stack),
         ExprOp::Mul => eval_i64_pair(stack, i64::checked_mul),
         ExprOp::Div => eval_div(stack),
         ExprOp::Gt => eval_i64_cmp(stack, i64::gt),

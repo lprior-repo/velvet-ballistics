@@ -3,7 +3,7 @@
 use crate::errors::EngineError;
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_EXPRESSION_STACK;
-use crate::value::{ConstValue, SlotValue, Taint};
+use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
@@ -86,6 +86,10 @@ fn eval_expr_ops_with_store(
     let run = run_frame_with_slots(slots)?;
     let (value, _) = eval_expr_with_store(&plan, &run, store, ExprIdx::new(0))?;
     Ok(value)
+}
+
+fn finite_f64(value: f64) -> Result<FiniteF64, EngineError> {
+    FiniteF64::new(value)
 }
 
 #[test]
@@ -544,6 +548,45 @@ fn sub_produces_exact_difference() -> Result<(), EngineError> {
         &mut store,
     )?;
     assert_eq!(result, SlotValue::I64(63));
+    Ok(())
+}
+
+#[test]
+fn sub_f64_operands_produces_finite_difference() -> Result<(), EngineError> {
+    let mut store = ValueStore::new();
+    let left = finite_f64(20.5)?;
+    let right = finite_f64(7.25)?;
+    let expected = finite_f64(13.25)?;
+    let ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Sub,
+    ];
+    let result = eval_expr_ops_with_constants(
+        &ops,
+        vec![ConstValue::F64(left), ConstValue::F64(right)],
+        &mut store,
+    )?;
+    assert_eq!(result, SlotValue::F64(expected));
+    Ok(())
+}
+
+#[test]
+fn sub_f64_non_finite_result_returns_non_finite_error() -> Result<(), EngineError> {
+    let mut store = ValueStore::new();
+    let left = finite_f64(f64::MAX)?;
+    let right = finite_f64(-f64::MAX)?;
+    let ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Sub,
+    ];
+    let result = eval_expr_ops_with_constants(
+        &ops,
+        vec![ConstValue::F64(left), ConstValue::F64(right)],
+        &mut store,
+    );
+    assert_eq!(result, Err(EngineError::NonFiniteNumber));
     Ok(())
 }
 
