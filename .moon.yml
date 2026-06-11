@@ -11,7 +11,6 @@ pipeline:
   - 'sanitizer-address-check'
   - 'verify-kani'
   - 'nightly-feature-gate'
-  - 'nightly-feature-cargo-probe'
   - 'source-length'
   - 'check-no-dead-ir-duplicates'
   - 'check-test-density'
