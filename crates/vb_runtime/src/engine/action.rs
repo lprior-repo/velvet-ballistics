@@ -78,9 +78,9 @@ pub fn execute_do_without_contract(
     step: StepIdx,
     action: ActionId,
     input: SlotIdx,
-    seq: SeqNo,
+    _seq: SeqNo,
     granted: &CapabilitySet,
-    retry_policy: RetryPolicy,
+    _retry_policy: RetryPolicy,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     // BH-FIX: Even without a contract, we must read input taint and enforce
     // taint checking. Without a contract we assume the most conservative
@@ -96,8 +96,6 @@ pub fn execute_do_without_contract(
     }
 
     let required = vb_core::capability::Capability::new("__contract_required__".into(), action);
-    let _ = retry_policy;
-    let _ = seq;
     Err(RuntimeEngineError::Core(EngineError::CapabilityDenied {
         action,
         required,

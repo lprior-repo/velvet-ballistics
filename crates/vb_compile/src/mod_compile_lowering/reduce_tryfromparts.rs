@@ -1,8 +1,8 @@
-// Verification artifact: reduce_multi_step_try_from_parts.rs
+// Verification artifact: reduce_tryfromparts.rs
 // PO: PO-TRYFROMPARTS-PROP-001
 // Bead: vb-xi2f.24 | State: 5 (proof-writer)
 // Verifier: proptest
-// Command: cargo test -p vb_compile -- proptest_reduce_multi_step_try_from_parts
+// Command: cargo test -p vb_compile reduce_tryfromparts
 //
 // Requirement: C2 — Width-Node Count Synchronization (end-to-end)
 // Domain Claim: Diverse multi-step body workflows compile through

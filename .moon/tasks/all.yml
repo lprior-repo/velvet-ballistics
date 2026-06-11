@@ -505,22 +505,6 @@ tasks:
     options:
       runInCI: true
 
-  nightly-feature-cargo-probe:
-    script: |
-      set -euo pipefail
-      # check already runs the exact all-targets/all-features cargo probe.
-      true
-    deps:
-      - 'check'
-    toolchains:
-      - rust
-    inputs:
-      - '@globs(sources)'
-      - '@globs(tests)'
-      - '@globs(configs)'
-    options:
-      runInCI: true
-
   source-length:
     command: 'bash scripts/check-source-length.sh'
     deps:

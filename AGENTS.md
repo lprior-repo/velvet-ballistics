@@ -65,7 +65,7 @@ bd dolt push         # Push beads data to remote
 - No YAML, JSON, or HTTP in the runtime core.
 - Generated Rust mode is mandatory for maxperf execution.
 - Every speed claim requires real baseline/result benchmark evidence; compileable Criterion scaffold placeholders are not performance evidence.
-- Do not add unstable Rust features outside normal `try_blocks`/`portable_simd` use and perf-only `allocator_api`/`generic_const_exprs`. Perf-only features may appear only in `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or marker-approved files if `scripts/check-nightly-features.sh` implements `velvet-allow-perf-nightly-feature`. Use `moon run :nightly-feature-gate` for first-party feature-scope checking. Use `moon run :nightly-feature-cargo-probe` where transitive dependencies do not require extra nightly internals.
+- Do not add unstable Rust features outside normal `try_blocks`/`portable_simd` use and perf-only `allocator_api`/`generic_const_exprs`. Perf-only features may appear only in `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or marker-approved files if `scripts/check-nightly-features.sh` implements `velvet-allow-perf-nightly-feature`. Use `moon run :nightly-feature-gate` for first-party feature-scope checking. A real transitive-dependency nightly probe must be filed as a new task that wraps the actual probe command.
 
 ## Formal Verification Mandates (GOD RULES)
 
