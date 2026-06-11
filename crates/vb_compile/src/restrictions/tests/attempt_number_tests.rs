@@ -47,11 +47,6 @@ fn ensure(condition: bool, message: impl Into<String>) -> TestResult {
     }
 }
 
-/// Finds all `$attempt.number` references in the AST and returns whether any were found.
-fn has_attempt_reference(ast: &WorkflowAst) -> bool {
-    find_attempt_reference_count(ast) > 0
-}
-
 /// Counts all `$attempt.number` references in the AST.
 fn find_attempt_reference_count(ast: &WorkflowAst) -> usize {
     let mut count = 0;
@@ -99,12 +94,10 @@ fn collect_from_step_kind(kind: &StepKindAst, count: &mut usize) {
         StepKindAst::Reduce { initial, .. } => {
             collect_from_value(initial, count);
         }
-        StepKindAst::Repeat { .. } => {
-            // NOTE: Cold AST StepKindAst::Repeat does not preserve body steps.
-            // For MAJOR-5 to work properly, the implementation must either:
-            // 1. Extend StepKindAst::Repeat to include body expressions, OR
-            // 2. Validate $attempt.number at a different stage (e.g., canonical lowering)
-            // These tests document the EXPECTED behavior once implemented.
+        StepKindAst::Repeat { body, .. } => {
+            for body_step in body {
+                collect_from_step_kind(&body_step.kind, count);
+            }
         }
         StepKindAst::Wait { .. } => {}
         StepKindAst::Ask { .. } => {}
@@ -347,9 +340,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in vars, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in vars, got: {:?}",
             error
         ),
     )
@@ -375,9 +369,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in finish.result, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in finish.result, got: {:?}",
             error
         ),
     )
@@ -406,9 +401,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in save, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in save, got: {:?}",
             error
         ),
     )
@@ -445,9 +441,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in for_each body, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in for_each body, got: {:?}",
             error
         ),
     )
@@ -476,9 +473,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in examples, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in examples, got: {:?}",
             error
         ),
     )
@@ -509,9 +507,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in choose outside repeat, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in choose outside repeat, got: {:?}",
             error
         ),
     )
@@ -548,9 +547,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in reduce body, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in reduce body, got: {:?}",
             error
         ),
     )
@@ -583,9 +583,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for bare $attempt, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for bare $attempt, got: {:?}",
             error
         ),
     )
@@ -614,9 +615,10 @@ steps:
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
                 | CompileError::UnsupportedAccessorReference { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference/UnknownReferenceRoot/UnsupportedAccessorReference for $attempt.number.field, got: {:?}",
+            "Expected IllegalReference/UnknownReferenceRoot/UnsupportedAccessorReference/InvalidVariableScope for $attempt.number.field, got: {:?}",
             error
         ),
     )
@@ -650,9 +652,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in together body, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in together body, got: {:?}",
             error
         ),
     )
@@ -688,9 +691,10 @@ steps:
             error,
             CompileError::IllegalReference { .. }
                 | CompileError::UnknownReferenceRoot { .. }
+                | CompileError::InvalidVariableScope { .. }
         ),
         format!(
-            "Expected IllegalReference or UnknownReferenceRoot for $attempt.number in collect body, got: {:?}",
+            "Expected IllegalReference, UnknownReferenceRoot, or InvalidVariableScope for $attempt.number in collect body, got: {:?}",
             error
         ),
     )
@@ -724,7 +728,10 @@ steps:
     let count = find_attempt_reference_count(&ast);
     ensure(
         count == 3,
-        format!("Expected 3 $attempt.number references in AST, found {}", count),
+        format!(
+            "Expected 3 $attempt.number references in AST, found {}",
+            count
+        ),
     )
 }
 

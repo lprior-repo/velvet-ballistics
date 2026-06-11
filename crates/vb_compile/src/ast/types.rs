@@ -170,7 +170,15 @@ pub enum StepKindAst {
         initial: AstValue,
     },
     /// Low-level bounded `repeat` primitive.
-    Repeat { max_attempts: u16 },
+    Repeat {
+        /// Maximum number of attempts before exiting the loop.
+        max_attempts: u16,
+        /// Body steps executed each attempt. Empty when the source has no
+        /// `steps:` field. Master spec §45 line 2473 requires the body to be
+        /// carried so that `$attempt.*` references and side-effecting
+        /// computations can be observed by the cold AST.
+        body: Vec<StepAst>,
+    },
     /// Wait boundary primitive.
     Wait {
         /// Deadline or event slot.

@@ -547,3 +547,122 @@ steps:
         )),
     }
 }
+
+// ── vb-0xyvo: StepKindAst::Repeat body preservation tests ────────────────
+
+/// Verify that `parse_repeat` retains the user-authored `steps:` body
+/// inside the cold `StepKindAst::Repeat` variant. The pre-fix parser
+/// silently dropped the `steps:` field; master spec §45 line 2473
+/// requires the body to be carried so that `$attempt.*` references
+/// and side-effecting computations can be observed by the cold AST.
+#[test]
+fn parse_repeat_preserves_body_steps() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: repeat_with_body
+when:
+  manual: {}
+steps:
+  - id: retry_step
+    repeat:
+      max_attempts: 3
+      steps:
+        - id: log_attempt
+          save:
+            current_attempt: 1
+        - id: check
+          save:
+            value: 0
+  - id: done
+    finish:
+      result: 0
+"#;
+    let ast = parse(source)?;
+
+    let repeat_step = ast
+        .steps
+        .first()
+        .ok_or_else(|| "expected first step".to_owned())?;
+    let body = match &repeat_step.kind {
+        StepKindAst::Repeat { body, .. } => body,
+        other => return Err(format!("expected Repeat kind, got {other:?}")),
+    };
+    if body.len() != 2 {
+        return Err(format!("expected 2 body steps, got {}", body.len()));
+    }
+    if body[0].id.as_ref() != "log_attempt" {
+        return Err(format!("body[0].id was {:?}", body[0].id));
+    }
+    if body[1].id.as_ref() != "check" {
+        return Err(format!("body[1].id was {:?}", body[1].id));
+    }
+    Ok(())
+}
+
+/// Verify that an empty `steps:` body is permitted (and parses to an
+/// empty `Vec<StepAst>`), mirroring the `vb_yaml::ast::StepPrimitive::Repeat`
+/// upstream contract.
+#[test]
+fn parse_repeat_accepts_empty_body() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: repeat_empty_body
+when:
+  manual: {}
+steps:
+  - id: empty_retry
+    repeat:
+      max_attempts: 3
+      steps: []
+  - id: done
+    finish:
+      result: 0
+"#;
+    let ast = parse(source)?;
+    let repeat_step = ast
+        .steps
+        .first()
+        .ok_or_else(|| "expected first step".to_owned())?;
+    let body = match &repeat_step.kind {
+        StepKindAst::Repeat { body, .. } => body,
+        other => return Err(format!("expected Repeat kind, got {other:?}")),
+    };
+    if !body.is_empty() {
+        return Err(format!("expected empty body, got {} steps", body.len()));
+    }
+    Ok(())
+}
+
+/// Verify that omitting `steps:` defaults the body to an empty
+/// `Vec<StepAst>` (backward-compatible with the pre-fix silent-drop
+/// behavior). The body is required by the master contract but may be
+/// empty per `vb_yaml`.
+#[test]
+fn parse_repeat_without_steps_field_defaults_to_empty_body() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: repeat_no_steps
+when:
+  manual: {}
+steps:
+  - id: legacy_retry
+    repeat:
+      max_attempts: 3
+  - id: done
+    finish:
+      result: 0
+"#;
+    let ast = parse(source)?;
+    let repeat_step = ast
+        .steps
+        .first()
+        .ok_or_else(|| "expected first step".to_owned())?;
+    let body = match &repeat_step.kind {
+        StepKindAst::Repeat { body, .. } => body,
+        other => return Err(format!("expected Repeat kind, got {other:?}")),
+    };
+    if !body.is_empty() {
+        return Err(format!(
+            "expected default-empty body when steps: omitted, got {} steps",
+            body.len()
+        ));
+    }
+    Ok(())
+}

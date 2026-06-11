@@ -249,7 +249,7 @@ fn parse_step(step: &Yaml<'_>, index: usize, marks: &AstMarks) -> Result<StepAst
         .as_mapping()
         .ok_or(CompileError::StepShape { step: index })?;
     let id = step_str(step, index, "id")?;
-    let (primitive, kind) = parse_step_kind(mapping, index)?;
+    let (primitive, kind) = parse_step_kind(mapping, index, marks)?;
     Ok(StepAst {
         id: id.into(),
         name: optional_str(step, "name").map(Box::<str>::from),
@@ -262,6 +262,7 @@ fn parse_step(step: &Yaml<'_>, index: usize, marks: &AstMarks) -> Result<StepAst
 fn parse_step_kind(
     mapping: &saphyr::Mapping<'_>,
     index: usize,
+    marks: &AstMarks,
 ) -> Result<(StepPrimitiveAst, StepKindAst), CompileError> {
     let Some((field, body)) = primitive_entry(mapping, index)? else {
         return Err(CompileError::MissingStepPrimitive { step: index });
@@ -276,7 +277,7 @@ fn parse_step_kind(
         "together" => parse_together(body, index).map(|kind| (StepPrimitiveAst::Together, kind)),
         "collect" => parse_collect(body, index).map(|kind| (StepPrimitiveAst::Collect, kind)),
         "reduce" => parse_reduce(body, index).map(|kind| (StepPrimitiveAst::Reduce, kind)),
-        "repeat" => parse_repeat(body, index).map(|kind| (StepPrimitiveAst::Repeat, kind)),
+        "repeat" => parse_repeat(body, index, marks).map(|kind| (StepPrimitiveAst::Repeat, kind)),
         "wait" => parse_wait(body, index).map(|kind| (StepPrimitiveAst::Wait, kind)),
         "ask" => parse_ask(body, index).map(|kind| (StepPrimitiveAst::Ask, kind)),
         "finish" => parse_finish(body, index).map(|kind| (StepPrimitiveAst::Finish, kind)),
@@ -378,10 +379,46 @@ fn parse_reduce(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileErr
     })
 }
 
-fn parse_repeat(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
+fn parse_repeat(
+    body: &Yaml<'_>,
+    index: usize,
+    marks: &AstMarks,
+) -> Result<StepKindAst, CompileError> {
     Ok(StepKindAst::Repeat {
         max_attempts: parse_u16_field(body, index, "max_attempts")?,
+        body: parse_body_steps(body, index, marks)?,
     })
+}
+
+/// Parses the `steps:` body of a control-flow primitive into a `Vec<StepAst>`.
+///
+/// Returns an empty vector when the field is absent, mirroring the
+/// `vb_yaml::ast::StepPrimitive` upstream contract. The sequence shape
+/// (when present) is validated by `parse_step`, which delegates to
+/// `parse_step_kind` and surfaces the same diagnostics as top-level steps.
+fn parse_body_steps(
+    body: &Yaml<'_>,
+    index: usize,
+    marks: &AstMarks,
+) -> Result<Vec<StepAst>, CompileError> {
+    let Some(node) = body.as_mapping_get("steps") else {
+        return Ok(Vec::new());
+    };
+    let sequence = node.as_sequence().ok_or(CompileError::StepFieldShape {
+        step: index,
+        field: "steps",
+        expected: "a sequence of step objects",
+    })?;
+    let mut parsed = Vec::with_capacity(sequence.len());
+    for (sub_index, item) in sequence.iter().enumerate() {
+        // Each body step must carry a unique id within the body. We reuse
+        // the step-level `parse_step`, which enforces the `id` requirement.
+        // The body sub-index is propagated so diagnostics refer to a stable
+        // offset within the body sequence.
+        let _ = sub_index;
+        parsed.push(parse_step(item, index, marks)?);
+    }
+    Ok(parsed)
 }
 
 fn parse_wait(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {

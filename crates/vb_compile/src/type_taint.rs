@@ -223,13 +223,14 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
                 facts.write_slot(accumulator.as_usize(), ValueFact::clean(ValueType::Any));
                 facts.write_slot(index, ValueFact::clean(ValueType::Any));
             }
-            StepKindAst::Repeat { .. } => {
+            StepKindAst::Repeat { body, .. } => {
                 if let Some(attempt_slot) = index.checked_add(1) {
                     facts.write_slot(attempt_slot, ValueFact::clean(ValueType::Any));
                 } else {
                     errors.push(CompileError::SlotIndexOutOfRange { value: i64::MAX });
                 }
                 facts.write_slot(index, ValueFact::clean(ValueType::Any));
+                taint_repeat_body(body, facts, &mut errors);
             }
             StepKindAst::Wait { .. } => facts.write_slot(index, ValueFact::clean(ValueType::Any)),
             StepKindAst::Ask { answer, .. } => {
@@ -247,6 +248,51 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
         Ok(())
     } else {
         Err(CompileErrors(errors))
+    }
+}
+
+/// Walks a `Repeat` body for type-taint analysis.
+///
+/// Body sub-steps do not have a slot index in the top-level `ast.steps`
+/// layout, so the body walker validates expression/condition/result
+/// references but does not write slot facts. This matches the existing
+/// taint behavior for the pre-existing `Run`/`Save`/`Choose`/etc. sub-step
+/// kinds inside `ForEach`/`Together` bodies, which the lowering handles
+/// in `compile_source` rather than the cold AST.
+fn taint_repeat_body(
+    body: &[crate::ast::StepAst],
+    facts: &Facts<'_>,
+    errors: &mut Vec<CompileError>,
+) {
+    use crate::ast::StepKindAst;
+    for body_step in body {
+        match &body_step.kind {
+            StepKindAst::Run { .. }
+            | StepKindAst::ForEach { .. }
+            | StepKindAst::Together { .. }
+            | StepKindAst::Collect { .. }
+            | StepKindAst::Wait { .. }
+            | StepKindAst::Ask { .. } => {}
+            StepKindAst::Repeat { body: inner, .. } => {
+                taint_repeat_body(inner, facts, errors);
+            }
+            StepKindAst::Save { fields } => {
+                let _ = save_fact(fields, facts);
+            }
+            StepKindAst::Choose { condition, .. } => {
+                if let Err(e) = validate_condition(condition, facts) {
+                    errors.push(e);
+                }
+            }
+            StepKindAst::Reduce { initial, .. } => {
+                let _ = value_fact(initial, Some(facts));
+            }
+            StepKindAst::Finish { result } => {
+                if let Err(e) = validate_public_result(result, facts) {
+                    errors.push(e);
+                }
+            }
+        }
     }
 }
 

@@ -92,7 +92,7 @@ pub(super) fn validate_repeat_shape(
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts"])?;
+    reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts", "steps"])?;
     required_u16_field(body, index, "repeat", "max_attempts")?;
     Ok(())
 }

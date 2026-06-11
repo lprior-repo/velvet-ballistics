@@ -116,9 +116,11 @@ fn collect_references_from_step_kind(
         | StepKindAst::ForEach { .. }
         | StepKindAst::Together { .. }
         | StepKindAst::Collect { .. }
-        | StepKindAst::Repeat { .. }
         | StepKindAst::Wait { .. }
         | StepKindAst::Ask { .. } => {}
+        StepKindAst::Repeat { body, .. } => {
+            collect_references_from_repeat_body(body, tables, errors);
+        }
         StepKindAst::Save { fields } => {
             collect_references_from_value_entries(fields, tables, errors, Some(step_index))
         }
@@ -134,6 +136,128 @@ fn collect_references_from_step_kind(
     }
 }
 
+/// Walks a `Repeat` body with the scope flag that allows `$attempt.*`.
+///
+/// Body steps live below the parent `Repeat` step. Body sub-steps are not
+/// part of the top-level `ast.steps` vector, so we have no `step_index` to
+/// pass; references in body steps are validated with `in_repeat_body = true`.
+/// The shared `vb_validate` table only needs the declared name sets, which
+/// are already populated by `build_ref_tables`.
+fn collect_references_from_repeat_body(
+    body: &[crate::ast::StepAst],
+    tables: &RefTables,
+    errors: &mut Vec<CompileError>,
+) {
+    use crate::ast::StepKindAst;
+    for body_step in body {
+        match &body_step.kind {
+            StepKindAst::Run { .. }
+            | StepKindAst::Together { .. }
+            | StepKindAst::Collect { .. }
+            | StepKindAst::Wait { .. }
+            | StepKindAst::Ask { .. } => {}
+            StepKindAst::ForEach { .. } => {}
+            // Nested Repeat bodies remain inside the repeat scope.
+            StepKindAst::Repeat { body: inner, .. } => {
+                collect_references_from_repeat_body(inner, tables, errors);
+            }
+            StepKindAst::Save { fields } => {
+                collect_references_from_repeat_body_value_entries(fields, tables, errors);
+            }
+            StepKindAst::Choose { condition, .. } => {
+                collect_references_from_repeat_body_expression(condition, tables, errors);
+            }
+            StepKindAst::Reduce { initial, .. } => {
+                collect_references_from_repeat_body_value(initial, tables, errors);
+            }
+            StepKindAst::Finish { result } => {
+                collect_references_from_repeat_body_expression(result, tables, errors);
+            }
+        }
+    }
+}
+
+fn collect_references_from_repeat_body_expression(
+    expression: &AstExpression,
+    tables: &RefTables,
+    errors: &mut Vec<CompileError>,
+) {
+    match expression {
+        AstExpression::Slot(_) => {}
+        AstExpression::Reference(reference) => {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, None, true) {
+                errors.push(e);
+            }
+        }
+        AstExpression::Parsed(expression) => {
+            collect_references_from_repeat_body_parsed_expression(expression, tables, errors);
+        }
+        AstExpression::Literal(value) => {
+            collect_references_from_repeat_body_value(value, tables, errors);
+        }
+    }
+}
+
+fn collect_references_from_repeat_body_parsed_expression(
+    expression: &ParsedExpression,
+    tables: &RefTables,
+    errors: &mut Vec<CompileError>,
+) {
+    match expression {
+        ParsedExpression::Reference(reference) => {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, None, true) {
+                errors.push(e);
+            }
+        }
+        ParsedExpression::Unary { expr, .. } => {
+            collect_references_from_repeat_body_parsed_expression(expr, tables, errors);
+        }
+        ParsedExpression::Binary { left, right, .. } => {
+            collect_references_from_repeat_body_parsed_expression(left, tables, errors);
+            collect_references_from_repeat_body_parsed_expression(right, tables, errors);
+        }
+        ParsedExpression::HelperCall { args, .. } => {
+            for arg in args {
+                collect_references_from_repeat_body_parsed_expression(arg, tables, errors);
+            }
+        }
+        ParsedExpression::Literal(_) => {}
+    }
+}
+
+fn collect_references_from_repeat_body_value(
+    value: &AstValue,
+    tables: &RefTables,
+    errors: &mut Vec<CompileError>,
+) {
+    match value {
+        AstValue::Reference(reference) => {
+            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, None, true) {
+                errors.push(e);
+            }
+        }
+        AstValue::Sequence(values) => {
+            for value in values {
+                collect_references_from_repeat_body_value(value, tables, errors);
+            }
+        }
+        AstValue::Mapping(entries) => {
+            collect_references_from_repeat_body_value_entries(entries, tables, errors);
+        }
+        AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => {}
+    }
+}
+
+fn collect_references_from_repeat_body_value_entries(
+    entries: &[AstMapEntry<AstValue>],
+    tables: &RefTables,
+    errors: &mut Vec<CompileError>,
+) {
+    for entry in entries {
+        collect_references_from_repeat_body_value(&entry.value, tables, errors);
+    }
+}
+
 fn collect_references_from_expression(
     expression: &AstExpression,
     tables: &RefTables,
@@ -143,7 +267,9 @@ fn collect_references_from_expression(
     match expression {
         AstExpression::Slot(_) => {}
         AstExpression::Reference(reference) => {
-            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, step_index) {
+            if let Err(e) =
+                validate_compile_reference(reference.as_ref(), tables, step_index, false)
+            {
                 errors.push(e);
             }
         }
@@ -164,7 +290,9 @@ fn collect_references_from_parsed_expression(
 ) {
     match expression {
         ParsedExpression::Reference(reference) => {
-            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, step_index) {
+            if let Err(e) =
+                validate_compile_reference(reference.as_ref(), tables, step_index, false)
+            {
                 errors.push(e);
             }
         }
@@ -192,7 +320,9 @@ fn collect_references_from_value(
 ) {
     match value {
         AstValue::Reference(reference) => {
-            if let Err(e) = validate_compile_reference(reference.as_ref(), tables, step_index) {
+            if let Err(e) =
+                validate_compile_reference(reference.as_ref(), tables, step_index, false)
+            {
                 errors.push(e);
             }
         }
@@ -210,20 +340,32 @@ fn collect_references_from_value(
 ///
 /// Handles compile-specific references (`$slot.*`) locally and delegates
 /// everything else to `vb_validate::references::validate_single_reference_with_context`.
+///
+/// `in_repeat_body` lifts the `$attempt.*` scope guard for references that
+/// appear inside a `Repeat` body. The flag is propagated from
+/// `collect_references_from_repeat_body` and is `false` for top-level
+/// references (where `$attempt.*` is rejected with `InvalidVariableScope`).
 fn validate_compile_reference(
     reference: &str,
     tables: &RefTables,
     step_index: Option<usize>,
+    in_repeat_body: bool,
 ) -> Result<(), CompileError> {
     let Some(body) = reference.strip_prefix('$') else {
         return Ok(());
     };
     let Some((root, tail)) = body.split_once('.') else {
-        // Bare reference -- delegate to shared validation
+        // Bare reference -- delegate to shared validation. Inside a repeat
+        // body the bare `$attempt` is still illegal (it is only meaningful
+        // with the `.number` accessor), so the scope guard does not lift for
+        // bare references.
         return validate_single_reference_with_context(reference, tables, step_index, false, false)
             .map_err(|e| map_validation_error(reference, &e));
     };
     if root == "attempt" {
+        if in_repeat_body {
+            return Ok(());
+        }
         return Err(reject_attempt_scope(reference));
     }
     // Compile-specific: slot references are not in the standalone validator

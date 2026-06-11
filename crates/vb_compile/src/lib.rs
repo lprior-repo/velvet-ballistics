@@ -21,12 +21,17 @@ mod mod_compile_errors;
 pub mod mod_compile_lowering;
 mod mod_compile_validation;
 mod references;
-// `restrictions` is aspirational: its test file uses a `Repeat { steps: ... }` shape
-// that the cold AST does not support. Master spec §45 (RepeatAttempt IR) requires
-// that body expressions are not preserved in the cold AST, so these tests
-// document expected behavior once canonical lowering adds body retention.
-// Wire the module in once the body-preservation work lands (bead vb-ykv39+ follow-up).
-// mod restrictions;
+// Compile-time variable-scope restriction tests for `$attempt.number`.
+// Master spec §15 line 305 reserves the `attempt` keyword and §45 line 2473
+// defines the `RepeatAttempt` IR node. The 19 tests under
+// `restrictions::tests::attempt_number_tests` (4 B1 happy-path scope tests
+// + 13 B2 error-path tests + 2 B0 metadata tests) verify that
+// `$attempt.number` references are accepted inside repeat bodies and
+// rejected with `InvalidVariableScope` outside them. The walker body and
+// the error variant are added by vb-0xyvo and vb-ykv39 respectively;
+// this declaration only wires the test surface so the harness runs.
+#[cfg(test)]
+mod restrictions;
 mod schema;
 pub mod strict_yaml;
 mod type_taint;
@@ -73,12 +78,17 @@ pub mod kani_finish_digest;
 
 // Master plan §38 ("Bytecode/AST parity" row, lines 1167-1170) requires
 // the bytecode_ast_parity proptest to be wired in. The proptest currently
-// surfaces a real parity violation: the production bytecode evaluator
-// (vb_core::engine::expr_eval::eval_expr) rejects a nested unary negation
-// `(-(-x))` with `EvalErrorKind::TypeMismatch`, while the recursive AST
-// oracle returns the correct negated value. The test is wired in and
-// marked `#[ignore = "blocked by vb-cwb90: see parity violation; remove
-// ignore after fix lands"]`. Follow-up bead: vb-cwb90.
+// surfaces a real parity violation: the production bytecode evaluator's
+// `Sub` opcode (`vb_core::engine::expr_eval::ops::eval_i64_pair`) is
+// I64-only, so `Neg(F64(x))` (which lowers to `0 - x` with both as F64)
+// rejects F64 operands with `EvalErrorKind::TypeMismatch`, while the
+// recursive AST oracle returns the correct negated F64 value. The
+// `lower_numeric_negation` helper now emits `F64(0.0)` when the inner
+// expression is statically F64, so the lowering itself is correct; the
+// remaining gap is in the production evaluator's `Sub` arm, which needs
+// to be extended to support F64 operands. The test is wired in and
+// marked `#[ignore = "blocked by vb-cwb90: ...; remove ignore after fix
+// lands"]`. Follow-up bead: vb-cwb90.
 #[cfg(test)]
 mod property_tests;
 

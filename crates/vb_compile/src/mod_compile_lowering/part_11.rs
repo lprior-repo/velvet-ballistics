@@ -22,7 +22,7 @@ pub(super) fn compile_repeat(
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts"])?;
+    reject_unknown_primitive_fields(body, index, "repeat", &["max_attempts", "steps"])?;
     let max_attempts = required_u16_field(body, index, "repeat", "max_attempts")?;
     let body_step = checked_step_offset(id, 1, "repeat", "body")?;
     let done = checked_step_offset(id, 2, "repeat", "done")?;

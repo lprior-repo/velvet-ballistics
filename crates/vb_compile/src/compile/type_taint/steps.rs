@@ -75,7 +75,7 @@ pub(crate) fn validate_steps(
                     ValueFact::clean(crate::compile::type_taint::types::ValueType::Any),
                 );
             }
-            StepKindAst::Repeat { .. } => {
+            StepKindAst::Repeat { body, .. } => {
                 if let Some(attempt_slot) = index.checked_add(1) {
                     facts.write_slot(
                         attempt_slot,
@@ -88,6 +88,7 @@ pub(crate) fn validate_steps(
                     index,
                     ValueFact::clean(crate::compile::type_taint::types::ValueType::Any),
                 );
+                taint_repeat_body(body, facts, &mut errors);
             }
             StepKindAst::Wait { .. } => facts.write_slot(
                 index,
@@ -122,6 +123,50 @@ pub(crate) fn save_fact(fields: &[AstMapEntry<AstValue>], facts: &Facts<'_>) -> 
     match single_value_field(fields) {
         Some(value) => crate::compile::type_taint::expressions::value_fact(value, Some(facts)),
         None => optional_object_fact(fields, Some(facts)),
+    }
+}
+
+/// Walks a `Repeat` body for parallel type-taint analysis.
+///
+/// Mirror of `crate::type_taint::taint_repeat_body` used by the
+/// `mod_compile_*` second-pass pipeline. Body sub-steps do not have a
+/// slot index in the top-level `ast.steps` layout, so this walker
+/// validates expression/condition/result references but does not write
+/// slot facts.
+fn taint_repeat_body(
+    body: &[crate::ast::StepAst],
+    facts: &Facts<'_>,
+    errors: &mut Vec<CompileError>,
+) {
+    use crate::ast::StepKindAst;
+    for body_step in body {
+        match &body_step.kind {
+            StepKindAst::Run { .. }
+            | StepKindAst::ForEach { .. }
+            | StepKindAst::Together { .. }
+            | StepKindAst::Collect { .. }
+            | StepKindAst::Wait { .. }
+            | StepKindAst::Ask { .. } => {}
+            StepKindAst::Repeat { body: inner, .. } => {
+                taint_repeat_body(inner, facts, errors);
+            }
+            StepKindAst::Save { fields } => {
+                let _ = save_fact(fields, facts);
+            }
+            StepKindAst::Choose { condition, .. } => {
+                if let Err(e) = validate_condition(condition, facts) {
+                    errors.push(e);
+                }
+            }
+            StepKindAst::Reduce { initial, .. } => {
+                let _ = crate::compile::type_taint::expressions::value_fact(initial, Some(facts));
+            }
+            StepKindAst::Finish { result } => {
+                if let Err(e) = validate_public_result(result, facts) {
+                    errors.push(e);
+                }
+            }
+        }
     }
 }
 
