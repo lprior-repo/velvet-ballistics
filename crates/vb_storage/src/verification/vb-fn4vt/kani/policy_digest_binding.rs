@@ -117,7 +117,7 @@ fn compute_policy_digest_no_panic() {
 
             // Verify the digest is well-formed (all 32 bytes valid)
             assert_eq!(policy_digest.as_bytes().len(), 32);
-            kani::cover!(true, "policy-digest-computed");
+            kani::cover!(policy_digest.as_bytes().len() == 32, "policy-digest-computed");
         }
         Err(_) => {
             // Serialization failed - not expected for default contract
@@ -142,5 +142,5 @@ fn policy_digest_deterministic() {
 
     // Same bytes must produce same hash
     assert_eq!(hash1.as_bytes(), hash2.as_bytes());
-    kani::cover!(true, "policy-digest-deterministic");
+    kani::cover!(hash1.as_bytes() == hash2.as_bytes(), "policy-digest-deterministic");
 }

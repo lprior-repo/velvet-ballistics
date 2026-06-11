@@ -22,7 +22,8 @@
 #     function; we count these markers, not the functions themselves,
 #     because proptest macro expansions may yield multiple cases.
 #   - Both `crates/<crate>/src/**` (inline `#[cfg(test)] mod tests`)
-#     and `crates/<crate>/tests/**` are scanned for test markers.
+#     `crates/<crate>/tests/**`, and crate-local compiled test modules
+#     under `crates/<crate>/benchmark/**` are scanned for test markers.
 #
 # Threshold:
 #   - Default: 5.0x. Override with `TEST_DENSITY_MIN` env var.
@@ -92,7 +93,7 @@ count_pub_fns() {
 count_test_markers() {
   local crate="$1"
   local total=0
-  local roots=("$ROOT/crates/$crate/src" "$ROOT/crates/$crate/tests")
+  local roots=("$ROOT/crates/$crate/src" "$ROOT/crates/$crate/tests" "$ROOT/crates/$crate/benchmark")
   for root in "${roots[@]}"; do
     [[ -d "$root" ]] || continue
     local n

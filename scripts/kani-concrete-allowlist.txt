@@ -1,0 +1,35 @@
+crates/vb_core/src/verification/kani/kani_parallel_in_flight.rs|Concrete edge-case rejection harnesses; symbolic coverage lives in adjacent parallel-in-flight Kani/proptest lanes.
+crates/vb_expr/src/kani/vb_jpq7_35_arithmetic.rs|Concrete arithmetic overflow boundaries; symbolic arithmetic partitions live in vb_xo50x builtin-eval harnesses.
+crates/vb_expr/src/kani/vb_jpq7_35_bytecode_bound.rs|Concrete bytecode capacity boundary regression; symbolic bytecode bounds are covered by expression stack/input harnesses.
+crates/vb_expr/src/kani/vb_jpq7_35_stack.rs|Concrete stack boundary transitions; symbolic stack depth coverage lives in kani_stack and expression VM harnesses.
+crates/vb_expr/src/kani/vb_jpq7_35_token_bound.rs|Concrete lexer empty/boundary regression; parser fuzz/proptest lanes cover symbolic input ranges.
+crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs|Concrete cancel/kill lattice witnesses over exact terminal states; symbolic lifecycle harnesses cover arbitrary IDs/states.
+crates/vb_runtime/src/verification/kani/kani_engine_signals.rs|Concrete signal-loop budget witness; symbolic step/run harnesses cover arbitrary frame and workflow inputs.
+crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs|Concrete join ordering witness; symbolic ordering coverage lives in adjacent for-each Kani harnesses.
+crates/vb_runtime/src/verification/kani/kani_together_ordering.rs|Concrete together branch/join witness; symbolic together coverage lives in adjacent ordering harnesses.
+crates/vb_runtime/src/verification/kani/vb_fzgdn_timer_harnesses.rs|Concrete timer PS boundary witnesses; symbolic timer arithmetic and recovery properties are covered by sibling harnesses.
+crates/vb_storage/src/verification/vb-fn4vt/kani/policy_digest_binding.rs|Concrete digest determinism witness; symbolic policy/source digest mutation harnesses cover adversarial changes.
+verification/kani/harness_all_kinds_roundtrip.rs|Top-level concrete storage-codec regression harness; crate-local storage Kani harnesses cover symbolic record families.
+verification/kani/harness_bad_header_crc.rs|Top-level concrete corrupt-header regression harness; crate-local codec harnesses cover symbolic header fields.
+verification/kani/harness_bad_payload_digest.rs|Top-level concrete corrupt-payload regression harness; crate-local digest harnesses cover symbolic payload bytes.
+verification/kani/harness_digest_validation.rs|Top-level concrete digest validation regression harness; crate-local digest-binding harnesses cover symbolic digests.
+verification/kani/harness_payload_deserialize.rs|Top-level concrete invalid-UTF8/trailing payload regression harness; crate-local postcard harnesses cover symbolic bytes.
+verification/kani/harness_schema_version.rs|Top-level concrete schema-version regression harness; crate-local storage version harnesses cover symbolic schema fields.
+verification/kani/harness_unknown_kind.rs|Top-level concrete unknown-kind regression harness; crate-local record-kind harnesses cover symbolic kind bytes.
+verification/kani/harness_unknown_schema_version.rs|Top-level concrete unknown-schema regression harness; crate-local version harnesses cover symbolic schema values.
+verification/kani/vb-fzgdn/PS-001-harness.rs|Standalone concrete timer generation PS witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-fzgdn/PS-002-harness.rs|Standalone concrete pending-timer authority witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-fzgdn/PS-003-harness.rs|Standalone concrete pending-timer rejection witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-fzgdn/PS-004-harness.rs|Standalone concrete checked-add boundary witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-fzgdn/PS-005-harness.rs|Standalone concrete cancel-nonexistent witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-fzgdn/PS-006-harness.rs|Standalone concrete timer-required classifier witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-fzgdn/PS-008-harness.rs|Standalone concrete timer-map state witness mirrored by runtime-local symbolic timer harnesses.
+verification/kani/vb-vzcuf-PS-001.rs|Standalone concrete storage PS boundary witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-002.rs|Standalone concrete encoded-size witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-003.rs|Standalone concrete storage-error witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-004.rs|Standalone concrete queue/batch witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-005.rs|Standalone concrete event encoding witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-006.rs|Standalone concrete storage limit witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-007.rs|Standalone concrete storage bridge witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-008.rs|Standalone concrete queue-full/admission witness mirrored by crate-local symbolic storage harnesses.
+verification/kani/vb-vzcuf-PS-009.rs|Standalone concrete journal-key encoding witness mirrored by crate-local symbolic storage harnesses.

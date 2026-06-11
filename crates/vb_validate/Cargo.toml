@@ -16,5 +16,9 @@ proptest = { workspace = true }
 default = []
 verus = []
 
+[[bench]]
+name = "capability_schema"
+harness = false
+
 [lints]
 workspace = true

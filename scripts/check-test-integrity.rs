@@ -15,23 +15,35 @@ struct DeletionAllowance {
     replacement_path: String,
 }
 
-fn command_output(args: &[&str], cwd: &Path) -> Result<String, String> {
-    let output = Command::new("git")
+fn program_output(program: &str, args: &[&str], cwd: &Path) -> Result<String, String> {
+    let output = Command::new(program)
         .args(args)
         .current_dir(cwd)
         .output()
-        .map_err(|error| format!("git {} failed to start: {error}", args.join(" ")))?;
+        .map_err(|error| format!("{program} {} failed to start: {error}", args.join(" ")))?;
     if output.status.success() {
-        String::from_utf8(output.stdout)
-            .map_err(|error| format!("git {} returned non-UTF8 stdout: {error}", args.join(" ")))
+        String::from_utf8(output.stdout).map_err(|error| {
+            format!(
+                "{program} {} returned non-UTF8 stdout: {error}",
+                args.join(" ")
+            )
+        })
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("git {} failed: {stderr}", args.join(" ")))
+        Err(format!("{program} {} failed: {stderr}", args.join(" ")))
     }
 }
 
-fn command_output_allow_fail(args: &[&str], cwd: &Path) -> Option<String> {
-    Command::new("git")
+fn command_output(args: &[&str], cwd: &Path) -> Result<String, String> {
+    program_output("git", args, cwd)
+}
+
+fn jj_command_output(args: &[&str], cwd: &Path) -> Result<String, String> {
+    program_output("jj", args, cwd)
+}
+
+fn program_output_allow_fail(program: &str, args: &[&str], cwd: &Path) -> Option<String> {
+    Command::new(program)
         .args(args)
         .current_dir(cwd)
         .output()
@@ -40,16 +52,44 @@ fn command_output_allow_fail(args: &[&str], cwd: &Path) -> Option<String> {
         .and_then(|output| String::from_utf8(output.stdout).ok())
 }
 
+fn command_output_allow_fail(args: &[&str], cwd: &Path) -> Option<String> {
+    program_output_allow_fail("git", args, cwd)
+}
+
+fn jj_command_output_allow_fail(args: &[&str], cwd: &Path) -> Option<String> {
+    program_output_allow_fail("jj", args, cwd)
+}
+
+fn non_empty_trimmed_path(text: String) -> Option<PathBuf> {
+    let trimmed = text.trim();
+    (!trimmed.is_empty()).then(|| PathBuf::from(trimmed))
+}
+
 fn root_dir() -> Result<PathBuf, String> {
-    command_output(&["rev-parse", "--show-toplevel"], Path::new("."))
-        .map(|text| PathBuf::from(text.trim()))
+    match command_output(&["rev-parse", "--show-toplevel"], Path::new(".")) {
+        Ok(text) => non_empty_trimmed_path(text)
+            .ok_or_else(|| "git rev-parse --show-toplevel returned an empty path".to_owned()),
+        Err(git_error) => jj_command_output_allow_fail(&["root"], Path::new("."))
+            .and_then(non_empty_trimmed_path)
+            .ok_or(git_error),
+    }
+}
+
+fn is_jj_repo(root: &Path) -> bool {
+    jj_command_output_allow_fail(&["root"], root).is_some()
 }
 
 fn is_test_path(path: &str) -> bool {
     path.ends_with(".rs")
-        && ["/tests/", "/benches/", "/examples/", "/fuzz/", "workspace_tests"]
-            .iter()
-            .any(|part| format!("/{path}").contains(part))
+        && [
+            "/tests/",
+            "/benches/",
+            "/examples/",
+            "/fuzz/",
+            "workspace_tests",
+        ]
+        .iter()
+        .any(|part| format!("/{path}").contains(part))
 }
 
 fn is_behavior_test_path(path: &str) -> bool {
@@ -74,13 +114,22 @@ fn has_exact_assertion(text: &str) -> bool {
 
 fn has_weak_assertion(text: &str) -> bool {
     text.contains("assert!(")
-        && [".is_ok(", ".is_err(", ".is_some(", ".is_none(", ".is_empty("]
-            .iter()
-            .any(|needle| text.contains(needle))
+        && [
+            ".is_ok(",
+            ".is_err(",
+            ".is_some(",
+            ".is_none(",
+            ".is_empty(",
+        ]
+        .iter()
+        .any(|needle| text.contains(needle))
 }
 
 fn has_test_decl(text: &str) -> bool {
-    text.contains("#[test") || text.contains("#[tokio::test") || text.contains("fn test_") || text.contains("_test(")
+    text.contains("#[test")
+        || text.contains("#[tokio::test")
+        || text.contains("fn test_")
+        || text.contains("_test(")
 }
 
 fn has_ignore_or_skip(text: &str) -> bool {
@@ -95,9 +144,15 @@ fn has_ignore_or_skip(text: &str) -> bool {
 
 fn has_compile_only(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
-    ["no_run", "compile_only", "compile-only", "smoke only", "compile smoke"]
-        .iter()
-        .any(|needle| lower.contains(needle))
+    [
+        "no_run",
+        "compile_only",
+        "compile-only",
+        "smoke only",
+        "compile smoke",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
 }
 
 fn default_base(root: &Path) -> String {
@@ -106,9 +161,11 @@ fn default_base(root: &Path) -> String {
             return value;
         }
     }
-    let dirty = command_output(&["status", "--porcelain"], root)
-        .map(|text| !text.trim().is_empty())
-        .unwrap_or(true);
+    let dirty = match command_output(&["status", "--porcelain"], root) {
+        Ok(text) => !text.trim().is_empty(),
+        Err(_) if is_jj_repo(root) => return "@-".to_owned(),
+        Err(_) => true,
+    };
     if dirty {
         return "HEAD".to_owned();
     }
@@ -118,23 +175,63 @@ fn default_base(root: &Path) -> String {
         .unwrap_or_else(|| "HEAD".to_owned())
 }
 
-fn changed_files(root: &Path, base: &str) -> Result<Vec<(String, String)>, String> {
-    command_output(&["diff", "--name-status", "--find-renames", base, "--"], root).map(|text| {
-        text.lines()
-            .filter_map(|line| {
-                let parts = line.split('\t').collect::<Vec<_>>();
-                (parts.len() >= 2).then(|| {
-                    let status = parts.first().map_or("", |value| *value).to_owned();
-                    let path = parts.last().map_or("", |value| *value).to_owned();
-                    (status, path)
-                })
+fn parse_git_name_status(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .filter_map(|line| {
+            let parts = line.split('\t').collect::<Vec<_>>();
+            (parts.len() >= 2).then(|| {
+                let status = parts.first().map_or("", |value| *value).to_owned();
+                let path = parts.last().map_or("", |value| *value).to_owned();
+                (status, path)
             })
-            .collect()
-    })
+        })
+        .collect()
+}
+
+fn renamed_jj_path(rest: &str) -> &str {
+    rest.rsplit_once(" => ")
+        .or_else(|| rest.rsplit_once(" -> "))
+        .map_or(rest, |(_old, new)| new)
+}
+
+fn parse_jj_summary(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .filter_map(|line| {
+            let mut chars = line.chars();
+            let status = chars.next()?;
+            let rest = chars.as_str().trim_start();
+            if rest.is_empty() || !matches!(status, 'A' | 'D' | 'M' | 'R') {
+                return None;
+            }
+            let path = if status == 'R' {
+                renamed_jj_path(rest)
+            } else {
+                rest
+            };
+            Some((status.to_string(), path.to_owned()))
+        })
+        .collect()
+}
+
+fn jj_diff_summary(root: &Path, base: &str) -> Result<Vec<(String, String)>, String> {
+    jj_command_output(&["diff", "--summary", "--from", base, "--to", "@"], root)
+        .map(|text| parse_jj_summary(&text))
+}
+
+fn changed_files(root: &Path, base: &str) -> Result<Vec<(String, String)>, String> {
+    match command_output(
+        &["diff", "--name-status", "--find-renames", base, "--"],
+        root,
+    ) {
+        Ok(text) => Ok(parse_git_name_status(&text)),
+        Err(git_error) => jj_diff_summary(root, base)
+            .map_err(|jj_error| format!("{git_error}; fallback {jj_error}")),
+    }
 }
 
 fn base_file_has_tests(root: &Path, base: &str, path: &str) -> bool {
     command_output_allow_fail(&["show", &format!("{base}:{path}")], root)
+        .or_else(|| jj_command_output_allow_fail(&["file", "show", "--revision", base, path], root))
         .map(|text| has_test_decl(&text) || has_exact_assertion(&text))
         .unwrap_or(false)
 }
@@ -194,7 +291,8 @@ fn scan_deleted_files(
         entries
             .into_iter()
             .filter(|(status, path)| {
-                status.starts_with('D') && (is_test_path(path) || base_file_has_tests(root, base, path))
+                status.starts_with('D')
+                    && (is_test_path(path) || base_file_has_tests(root, base, path))
             })
             .filter(|(_, path)| !deletion_has_allowed_replacement(root, path, allowances))
             .map(|(_status, path)| Finding {
@@ -207,7 +305,23 @@ fn scan_deleted_files(
 }
 
 fn diff_text(root: &Path, base: &str) -> Result<String, String> {
-    command_output(&["diff", "--find-renames", "--unified=0", base, "--"], root)
+    match command_output(&["diff", "--find-renames", "--unified=0", base, "--"], root) {
+        Ok(text) => Ok(text),
+        Err(git_error) => jj_command_output(
+            &[
+                "diff",
+                "--git",
+                "--context",
+                "0",
+                "--from",
+                base,
+                "--to",
+                "@",
+            ],
+            root,
+        )
+        .map_err(|jj_error| format!("{git_error}; fallback {jj_error}")),
+    }
 }
 
 fn scan_diff(diff: &str) -> Vec<Finding> {
@@ -286,7 +400,9 @@ fn scan_diff(diff: &str) -> Vec<Finding> {
             findings.push(Finding {
                 kind: "DeletedTestDeclaration",
                 path,
-                detail: format!("removed_test_decls={removed_count} added_test_decls={added_count}"),
+                detail: format!(
+                    "removed_test_decls={removed_count} added_test_decls={added_count}"
+                ),
             });
         }
     });
@@ -338,10 +454,7 @@ fn write(path: &Path, text: &str) -> io::Result<()> {
 }
 
 fn run_self_test_case(label: &str, mutate: &str, expected: i32) -> bool {
-    let root = std::env::temp_dir().join(format!(
-        "test-integrity-{}-{label}",
-        std::process::id()
-    ));
+    let root = std::env::temp_dir().join(format!("test-integrity-{}-{label}", std::process::id()));
     let cleanup_result = fs::remove_dir_all(&root);
     match cleanup_result {
         Ok(()) => {}
@@ -417,7 +530,11 @@ fn self_test() -> i32 {
     let ok = cases
         .iter()
         .all(|(label, mutate, expected)| run_self_test_case(label, mutate, *expected));
-    if ok { 0 } else { 1 }
+    if ok {
+        0
+    } else {
+        1
+    }
 }
 
 fn argument_value(args: &[String], flag: &str) -> Option<String> {

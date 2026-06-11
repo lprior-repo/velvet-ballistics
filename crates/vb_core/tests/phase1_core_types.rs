@@ -11,7 +11,7 @@ use vb_core::ids::{
 };
 use vb_core::limits::{
     MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_DEPTH, MAX_EXPRESSIONS, MAX_RUN_NAME_LENGTH,
-    MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
+    MAX_SLOTS_PER_STEP, MAX_SLOTS_PER_WORKFLOW, MAX_STEPS_PER_WORKFLOW,
 };
 use vb_core::span::{Located, SourceMap, Span, Spanned};
 use vb_core::value::{FiniteF64, SlotValue, Taint};
@@ -92,6 +92,7 @@ fn ids_expose_zero_min_max_checked_add_and_checked_index() {
 #[test]
 fn limits_match_phase1_contract() {
     assert_eq!(MAX_STEPS_PER_WORKFLOW, 1_000);
+    assert_eq!(MAX_SLOTS_PER_STEP, 256);
     assert_eq!(MAX_SLOTS_PER_WORKFLOW, 65_535);
     assert_eq!(MAX_CONSTANTS, 8_192);
     assert_eq!(MAX_EXPRESSIONS, 4_096);

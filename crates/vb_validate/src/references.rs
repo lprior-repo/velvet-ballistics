@@ -448,7 +448,7 @@ fn step_field_is_output(field_tail: Option<&str>) -> bool {
     }
 }
 
-/// Sentinel [`SymbolId`](vb_core::ids::SymbolId) for the canonical
+/// Sentinel [`SymbolId`] for the canonical
 /// "output" field of a step result.
 ///
 /// The validator does not have access to the workflow's symbol table,

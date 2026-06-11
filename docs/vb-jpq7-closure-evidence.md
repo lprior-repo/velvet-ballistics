@@ -4,7 +4,7 @@
 `vb-jpq7.*` child has a JSONL row in
 `.beads/vb-jpq7/closure-evidence-manifest.jsonl` with raw command evidence.
 
-Required row fields: `bead_id`, `command`, `cwd`, `commit_sha`, `tool_version`,
+Required row fields: `bead_id`, `command`, absolute `cwd`, `commit_sha`, `tool_version`,
 UTC-`Z` `timestamp`, `raw_log_path`, `stdout_summary`, `stderr_summary`,
 `exit_code`, `status`, and `evidence_kind`.
 Rejected evidence shapes include summary-only, cached-only, skipped-only,
@@ -16,7 +16,9 @@ children from `VB_JPQ7_BD_WORKDIR`, falling back to
 `--self-test`; it is not exposed as a CI acceptance path. Raw logs must exist,
 be non-empty, and contain
 manifest-bound provenance lines for `command`, `cwd`, `timestamp`, and
-`exit_code`; missing-log bypasses are not available in gate mode.
+`exit_code`; historical `cwd` directories need not still exist when the raw log
+binds the original working directory. Missing-log bypasses are not available in
+gate mode.
 
 Non-zero rows are not passing closure evidence. They must declare
 `resolution_kind` as `split_followup` or `approved_waiver`, include a non-empty

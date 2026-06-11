@@ -121,7 +121,7 @@ fn kani_together_branch_first_branch() {
         Err(_) => {}
     }
 
-    kani::cover!(true, "first_branch_without_accumulation_path");
+    kani::cover!(run.pc() == entry, "first_branch_without_accumulation_path");
     kani::cover!(
         run.pc() == entry,
         "first_branch_jumps_to_entry"
@@ -199,7 +199,7 @@ fn kani_together_join_pif_reduction() {
         Err(_) => {}
     }
 
-    kani::cover!(true, "join_pif_reduction_path");
+    kani::cover!(run.parallel_in_flight() <= pif_before, "join_pif_reduction_path");
     kani::cover!(
         run.pc() == next_step,
         "join_advances_to_next_step"

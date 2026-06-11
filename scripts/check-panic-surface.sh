@@ -10,8 +10,20 @@ fi
 COMMAND_SUMMARY="bash scripts/check-panic-surface.sh"
 PATTERN='(^|[^A-Za-z0-9_])(assert!|assert_eq!|assert_ne!|unreachable!)'
 
+commit_sha() {
+  if git rev-parse HEAD 2>/dev/null; then
+    return 0
+  fi
+  if command -v jj >/dev/null 2>&1; then
+    if jj log -r @ --no-graph -T 'commit_id.short(12) ++ "\n"' 2>/dev/null; then
+      return 0
+    fi
+  fi
+  printf '%s\n' "unknown"
+}
+
 echo "CWD: $ROOT"
-echo "CommitSHA: $(git rev-parse HEAD)"
+echo "CommitSHA: $(commit_sha)"
 echo "Toolchain: $(rustc --version)"
 echo "Command: $COMMAND_SUMMARY"
 echo "ScanDomain: crates/*/src"

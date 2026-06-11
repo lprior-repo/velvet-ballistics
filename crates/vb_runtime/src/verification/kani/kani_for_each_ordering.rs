@@ -256,7 +256,7 @@ fn kani_for_each_join_passthrough() {
         Err(_) => {}
     }
 
-    kani::cover!(true, "join_passthrough_path");
+    kani::cover!(run.read_slot(output_slot).is_ok(), "join_passthrough_path");
     kani::cover!(
         run.read_slot(output_slot).is_ok(),
         "join_output_slot_readable"

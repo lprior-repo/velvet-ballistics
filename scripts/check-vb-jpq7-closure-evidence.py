@@ -202,8 +202,8 @@ def validate_row_shape(root: Path, row: ManifestRow) -> list[str]:
     if not isinstance(data.get("exit_code"), int):
         failures.append(f"manifest row {row.row_number}: exit_code must be integer")
     cwd = string_field(data, "cwd")
-    if cwd is not None and data.get("exit_code") == 0 and not Path(cwd).is_dir():
-        failures.append(f"manifest row {row.row_number}: cwd is not a directory {cwd}")
+    if cwd is not None and not Path(cwd).is_absolute():
+        failures.append(f"manifest row {row.row_number}: cwd must be absolute {cwd}")
     raw_log = string_field(data, "raw_log_path")
     if raw_log is not None:
         raw_path = resolve_path(root, raw_log)
@@ -423,7 +423,7 @@ def expect_shape_failure_cases(fixture: SelfTestFixture) -> list[str]:
         ("bad exit", mutate_row(fixture.good_row, exit_code="0"), "exit_code must be integer"),
         ("bad time", mutate_row(fixture.good_row, timestamp="yesterday"), "timestamp is not"),
         ("non utc", mutate_row(fixture.good_row, timestamp="2026-05-23T01:00:00+01:00"), "timestamp is not"),
-        ("bad cwd", mutate_row(fixture.good_row, cwd=str(fixture.root / "missing-dir")), "cwd is not"),
+        ("bad cwd", mutate_row(fixture.good_row, cwd="relative/path"), "cwd must be absolute"),
         ("missing status", row_without(fixture.good_row, "status"), "missing required field status"),
         ("missing evidence kind", row_without(fixture.good_row, "evidence_kind"), "missing required field evidence_kind"),
         ("missing raw", mutate_row(fixture.good_row, raw_log_path=str(fixture.root / "missing.log")), "raw_log_path missing"),

@@ -12,6 +12,7 @@ use super::super::*;
 use crate::cli_envelope::Kind as EnvelopeKind;
 use crate::cli_postcard::types::UnknownCliPostcardKind;
 use proptest::prelude::*;
+use std::collections::BTreeSet;
 use std::str::FromStr;
 
 #[test]
@@ -200,6 +201,23 @@ fn cli_postcard_kind_from_cli_envelope_kind_is_total() {
             "From<EnvelopeKind> must map {input:?} to {expected:?}, got {actual:?}"
         );
     }
+}
+
+#[test]
+fn cli_postcard_kind_all_has_unique_wire_strings() {
+    let mut seen = BTreeSet::new();
+    for kind in CliPostcardKind::ALL {
+        assert!(
+            seen.insert(kind.as_str()),
+            "duplicate postcard kind {}",
+            kind.as_str()
+        );
+    }
+    assert_eq!(seen.len(), CliPostcardKind::ALL.len());
+    assert_eq!(
+        seen.get("workflow_diff_report").copied(),
+        Some("workflow_diff_report")
+    );
 }
 
 // Property tests: the closed `CliPostcardKind` enum must round-trip

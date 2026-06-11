@@ -71,6 +71,7 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
         "velvet-ballistics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
+    ("xtask", "xtask"),
 ];
 
 const EXPECTED_FEATURES: &[(&str, &[&str])] = &[

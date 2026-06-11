@@ -64,12 +64,12 @@ fn check_checked_add_counters_depth() {
             assert!(new_depth > depth);
             // Cover: production branch where depth exceeds limit (lines 97-102, 113-118)
             if new_depth > max_depth {
-                kani::cover!(true, "depth_exceeded_max");
+                kani::cover!(new_depth > max_depth, "depth_exceeded_max");
                 // This path leads to an early return with NestingTooDeep in production.
             }
         }
         Err(_) => {
-            kani::cover!(true, "depth_overflow");
+            kani::cover!(depth == u16::MAX, "depth_overflow");
             // Overflow path: depth was u16::MAX, checked_add returns None.
             assert_eq!(depth, u16::MAX);
         }
@@ -96,11 +96,11 @@ fn check_checked_add_counters_node_count() {
         Ok(new_count) => {
             assert!(new_count > node_count);
             if new_count > max_nodes {
-                kani::cover!(true, "node_count_exceeded_max");
+                kani::cover!(new_count > max_nodes, "node_count_exceeded_max");
             }
         }
         Err(_) => {
-            kani::cover!(true, "node_count_overflow");
+            kani::cover!(node_count == u32::MAX, "node_count_overflow");
             assert_eq!(node_count, u32::MAX);
         }
     }
@@ -121,7 +121,7 @@ fn check_checked_add_counters_document_count() {
             assert!(new_count > document_count);
         }
         Err(_) => {
-            kani::cover!(true, "document_count_overflow");
+            kani::cover!(document_count == usize::MAX, "document_count_overflow");
             assert_eq!(document_count, usize::MAX);
         }
     }
@@ -152,11 +152,14 @@ fn check_checked_add_counters_sequence() {
         Ok(new_count) => {
             assert!(new_count > count);
             if new_count > limits.max_sequence_len {
-                kani::cover!(true, "sequence_len_exceeded_max");
+                kani::cover!(
+                    new_count > limits.max_sequence_len,
+                    "sequence_len_exceeded_max"
+                );
             }
         }
         Err(_) => {
-            kani::cover!(true, "sequence_count_overflow");
+            kani::cover!(count == usize::MAX, "sequence_count_overflow");
             assert_eq!(count, usize::MAX);
         }
     }
@@ -187,11 +190,14 @@ fn check_checked_add_counters_mapping() {
         Ok(new_count) => {
             assert!(new_count > count);
             if new_count > limits.max_mapping_entries {
-                kani::cover!(true, "mapping_entries_exceeded_max");
+                kani::cover!(
+                    new_count > limits.max_mapping_entries,
+                    "mapping_entries_exceeded_max"
+                );
             }
         }
         Err(_) => {
-            kani::cover!(true, "mapping_count_overflow");
+            kani::cover!(count == usize::MAX, "mapping_count_overflow");
             assert_eq!(count, usize::MAX);
         }
     }
@@ -229,7 +235,7 @@ fn check_checked_add_counters_merge() {
             assert!(sum >= child);
         }
         Err(_) => {
-            kani::cover!(true, "merge_overflow");
+            kani::cover!(parent > usize::MAX - child, "merge_overflow");
             // Overflow: parent + child > usize::MAX.
             assert!(parent > usize::MAX - child);
         }

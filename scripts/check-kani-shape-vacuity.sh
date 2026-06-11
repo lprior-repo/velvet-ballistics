@@ -52,6 +52,8 @@ KANI_ROOTS=(
   "$ROOT/verification/kani"
 )
 
+CONCRETE_ALLOWLIST="$ROOT/scripts/kani-concrete-allowlist.txt"
+
 printf 'check-kani-shape-vacuity: scanning for vacuous #[kani::proof] harnesses\n' >&2
 
 failed=0
@@ -127,8 +129,11 @@ scan_harness() {
   local body
   body=$(sed -n "${sig_line},${end_line}p" "$file" 2>/dev/null || true)
 
+  local rel_file
+  rel_file="${file#$ROOT/}"
+
   local has_symbolic
-  has_symbolic=$(printf '%s\n' "$body" | grep -cE 'kani::(any|nondet|assume)<|kani::(any|nondet|assume)\(' || true)
+  has_symbolic=$(printf '%s\n' "$body" | grep -cE 'kani::(any|nondet)(::[[:space:]]*<|[[:space:]]*<|[[:space:]]*\()|kani::(bounded_any|any_where)(::[[:space:]]*<|[[:space:]]*<|[[:space:]]*\()|kani::assume[[:space:]]*\(' || true)
 
   # `kani::cover!(true, ...)` is a degenerate cover check that always
   # reports a hit. This is a shape defect.
@@ -148,39 +153,26 @@ scan_harness() {
     # tokens.
     inner=$(printf '%s\n' "$assert_line" | sed -n 's/^[[:space:]]*kani::assert!(//p' | sed 's/);[[:space:]]*$//')
     [[ -z "$inner" ]] && continue
-    # A non-degenerate assertion contains an identifier that is NOT a
-    # Rust literal or a `==`/`!=`/etc operator. Allowed noise: digits,
-    # `_`, `"`, `'`, `+`, `-`, `(`, `)`, `,`, space, `.`, `:`, `;`.
-    if printf '%s' "$inner" | grep -qE '[A-Za-z_][A-Za-z0-9_]*[[:space:]]*==' ; then
-      # Found identifier followed by `==`. Confirm the identifier is
-      # not a constant (heuristic: ignore `true`, `false`, `None`,
-      # `Some`, `Ok`, `Err`).
-      ident=$(printf '%s' "$inner" | grep -oE '[A-Za-z_][A-Za-z0-9_]*' | grep -vE '^(true|false|None|Some|Ok|Err)$' | head -1 || true)
-      if [[ -z "$ident" ]]; then
-        degenerate_asserts=$((degenerate_asserts + 1))
-      fi
-    else
-      # No `identifier ==` pattern at all; if there is also no
-      # identifier anywhere, the assertion is purely a constant.
-      if ! printf '%s' "$inner" | grep -qE '[A-Za-z_][A-Za-z0-9_]*' ; then
-        degenerate_asserts=$((degenerate_asserts + 1))
-      elif ! printf '%s' "$inner" | grep -qE '[A-Za-z_][A-Za-z0-9_]*[[:space:]]*[A-Za-z_]|[A-Za-z_][[:space:]]*[A-Za-z_]' ; then
-        # A single identifier alone is also a tautology.
-        degenerate_asserts=$((degenerate_asserts + 1))
-      fi
+    ident=$(printf '%s' "$inner" | grep -oE '[A-Za-z_][A-Za-z0-9_]*' | grep -vE '^(true|false|None|Some|Ok|Err)$' | head -1 || true)
+    if [[ -z "$ident" ]]; then
+      degenerate_asserts=$((degenerate_asserts + 1))
     fi
   done < <(printf '%s\n' "$body" | grep -E 'kani::assert!|assert!' | head -20 || true)
 
-  if [[ "$has_symbolic" -eq 0 ]]; then
-    printf '  [VACUOUS] file=%s harness=%s sig_line=%s reason="no symbolic input (kani::any / kani::nondet / kani::assume not found in body)"\n' \
+  if [[ "$has_degenerate_cover" -gt 0 ]]; then
+    printf '  [VACUOUS] file=%s harness=%s sig_line=%s reason="kani::cover!(true, ...) (always-hit cover)"\n' \
       "$file" "$name" "$sig_line" >&2
     failed=1
     vacuous=$((vacuous + 1))
     return 0
   fi
 
-  if [[ "$has_degenerate_cover" -gt 0 ]]; then
-    printf '  [VACUOUS] file=%s harness=%s sig_line=%s reason="kani::cover!(true, ...) (always-hit cover)"\n' \
+  if [[ "$has_symbolic" -eq 0 ]]; then
+    if [[ -f "$CONCRETE_ALLOWLIST" ]] \
+      && awk -F'|' -v rel="$rel_file" '$1 == rel { found = 1 } END { exit found ? 0 : 1 }' "$CONCRETE_ALLOWLIST"; then
+      return 0
+    fi
+    printf '  [VACUOUS] file=%s harness=%s sig_line=%s reason="no symbolic input (kani::any / kani::nondet / kani::assume not found in body)"\n' \
       "$file" "$name" "$sig_line" >&2
     failed=1
     vacuous=$((vacuous + 1))

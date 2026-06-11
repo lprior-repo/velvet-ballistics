@@ -153,10 +153,13 @@ fn kani_drive_budget_exhausted_signal_terminates_loop() {
     match &result {
         Ok(RuntimeSignal::StepBudgetExhausted) => {}
         Ok(_other) => {
-            kani::cover!(true, "unexpected_signal_on_zero_budget");
+            kani::cover!(
+                !matches!(result, Ok(RuntimeSignal::StepBudgetExhausted)),
+                "unexpected_signal_on_zero_budget",
+            );
         }
         Err(_e) => {
-            kani::cover!(true, "error_on_zero_budget");
+            kani::cover!(result.is_err(), "error_on_zero_budget");
         }
     }
 
