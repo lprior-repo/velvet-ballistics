@@ -13,3 +13,7 @@ crates/vb_validate/src/secret_leak/tests.rs|crates/vb_validate/tests/vjaxh_conso
 crates/vb_validate/src/taint_prop.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate taint propagation module retired with public taint coverage.
 crates/vb_validate/src/type_check.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate type check module retired with public type/taint coverage.
 crates/vb_validate/src/type_sigs/tests.rs|crates/vb_validate/tests/vjaxh_consolidation.rs|vb-vjaxh|duplicate type signature tests retired with public type/taint coverage.
+crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_taint_contracts.rs|vb-6yze4|oversized proof-kernel density test split by taint domain; exact taint assertions preserved.
+crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_step_state_contracts.rs|vb-6yze4|oversized proof-kernel density test split by step-state domain; exact transition assertions preserved.
+crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_budget_contracts.rs|vb-6yze4|oversized proof-kernel density test split by budget domain; exact budget assertions preserved.
+crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_envelope_header_contracts.rs|vb-6yze4|oversized proof-kernel density test split by envelope-header domain; exact header assertions preserved.

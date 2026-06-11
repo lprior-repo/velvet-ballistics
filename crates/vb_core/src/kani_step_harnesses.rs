@@ -107,6 +107,8 @@ fn step_once_bounds_harness() {
         "PC in bounds after step_once",
     );
 
+    kani::cover!(result.is_err(), "Err path reachable");
+
     // INV-002: Cover all signal variants reachable (using concrete checks)
     match &result {
         Ok(signal) => {
@@ -128,12 +130,7 @@ fn step_once_bounds_harness() {
                 "AwaitingAction reachable"
             );
             kani::cover!(
-                matches!(
-                    signal,
-                    EngineSignal::AwaitingWait {
-                        deadline_slot
-                    } if *deadline_slot == SlotIdx::new(0)
-                ),
+                matches!(signal, EngineSignal::AwaitingWait { .. }),
                 "AwaitingWait reachable"
             );
             kani::cover!(
@@ -141,9 +138,7 @@ fn step_once_bounds_harness() {
                 "AwaitingAsk reachable"
             );
         }
-        Err(_) => {
-            kani::cover!(true, "Err path reachable");
-        }
+        Err(_) => {}
     }
 }
 

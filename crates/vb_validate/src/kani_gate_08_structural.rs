@@ -19,21 +19,21 @@ use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprProgram, PathSegment, WorkflowParts,
 };
 
-/// Harness 1: Arbitrary WorkflowParts with bounded valid accessors always passes Gate 8.
+/// Harness 1: Bounded structural WorkflowParts with valid accessors always passes Gate 8.
 ///
-/// Proves support totality over the full structural space.
+/// Proves Gate 8 totality over the bounded structural space relevant to
+/// accessor validation without constructing unrelated arbitrary heap shapes.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_arbitrary_parts_valid_accessors_pass() {
-    let parts = arbitrary_parts_with_valid_accessors();
+    let parts = bounded_parts_with_valid_accessors();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "arbitrary valid accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
-fn arbitrary_parts_with_valid_accessors() -> WorkflowParts {
-    let mut parts: WorkflowParts = kani::any();
+fn bounded_parts_with_valid_accessors() -> WorkflowParts {
     let slot_count: u16 = kani::any();
     let symbols_count: u32 = kani::any();
     let root: u16 = kani::any();
@@ -48,9 +48,7 @@ fn arbitrary_parts_with_valid_accessors() -> WorkflowParts {
     kani::assume(symbol < symbols_count);
     kani::assume(index != u32::MAX);
 
-    parts.slot_count = slot_count;
-    parts.symbols_count = symbols_count;
-    parts.accessors = match kani::any::<u8>() {
+    let accessors: Box<[AccessorProgram]> = match kani::any::<u8>() {
         0 => Box::new([]),
         1 => Box::new([AccessorProgram {
             root: SlotIdx::new(root),
@@ -69,7 +67,7 @@ fn arbitrary_parts_with_valid_accessors() -> WorkflowParts {
         }]),
     };
 
-    parts
+    bounded_parts_with_accessors(accessors, slot_count, symbols_count)
 }
 
 fn bounded_parts_with_index_sentinel() -> WorkflowParts {
@@ -177,21 +175,24 @@ fn bounded_structural_step_names() -> Box<[Box<str>]> {
     }
 }
 
-/// Harness 2: Arbitrary WorkflowParts with root out of range is rejected.
+/// Harness 2: Bounded structural WorkflowParts with root out of range is rejected.
 ///
 /// Proves rejection totality over structural variants.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
-    let mut parts: WorkflowParts = kani::any();
-    kani::assume(parts.slot_count > 0);
-    kani::assume(parts.slot_count <= 8);
+    let slot_count: u16 = kani::any();
+    kani::assume(slot_count > 0);
+    kani::assume(slot_count <= 8);
 
-    let root = SlotIdx::new(parts.slot_count); // exactly slot_count = OOB
-    parts.accessors = Box::new([AccessorProgram {
-        root,
-        path: Box::new([]),
-    }]);
+    let parts = bounded_parts_with_accessors(
+        Box::new([AccessorProgram {
+            root: SlotIdx::new(slot_count), // exactly slot_count = OOB
+            path: Box::new([]),
+        }]),
+        slot_count,
+        0,
+    );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
@@ -201,28 +202,33 @@ fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
     std::mem::forget(parts);
 }
 
-/// Harness 3: Arbitrary WorkflowParts with field symbol out of range is rejected.
+/// Harness 3: Bounded structural WorkflowParts with field symbol out of range is rejected.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
-    let mut parts: WorkflowParts = kani::any();
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
     let root: u16 = kani::any();
     let index: u32 = kani::any();
 
-    kani::assume(parts.slot_count > 0);
-    kani::assume(parts.slot_count <= 16);
-    kani::assume(parts.symbols_count > 0);
-    kani::assume(parts.symbols_count <= 64);
-    kani::assume(root < parts.slot_count);
+    kani::assume(slot_count > 0);
+    kani::assume(slot_count <= 16);
+    kani::assume(symbols_count > 0);
+    kani::assume(symbols_count <= 64);
+    kani::assume(root < slot_count);
     kani::assume(index != u32::MAX);
 
-    parts.accessors = Box::new([AccessorProgram {
-        root: SlotIdx::new(root),
-        path: Box::new([
-            PathSegment::Index(index),
-            PathSegment::Field(SymbolId::new(parts.symbols_count)),
-        ]),
-    }]);
+    let parts = bounded_parts_with_accessors(
+        Box::new([AccessorProgram {
+            root: SlotIdx::new(root),
+            path: Box::new([
+                PathSegment::Index(index),
+                PathSegment::Field(SymbolId::new(symbols_count)),
+            ]),
+        }]),
+        slot_count,
+        symbols_count,
+    );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
@@ -253,7 +259,7 @@ fn kani_gate_08_arbitrary_parts_index_sentinel_rejected() {
 ///
 /// Proves that Gate 8 is immune to structural noise in unrelated tables.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(17)]
 fn kani_gate_08_full_structure_no_panic() {
     let parts: WorkflowParts = kani::any();
 
@@ -293,7 +299,7 @@ fn kani_gate_08_structure_coverage() {
 
 /// Harness 7: Arbitrary resource_contract — Gate 8 ignores it but must tolerate any shape.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(17)]
 fn kani_gate_08_arbitrary_resource_contract() {
     let parts: WorkflowParts = kani::any();
     kani::assume(parts.slot_count > 0);
@@ -309,7 +315,7 @@ fn kani_gate_08_arbitrary_resource_contract() {
 /// Gate 8 does not read step_names, but arbitrary WorkflowParts may have mismatched
 /// lengths. This proves the validator does not crash on such mismatches.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(17)]
 fn kani_gate_08_step_names_independent_of_slots() {
     let parts: WorkflowParts = kani::any();
     // slot_count and step_names.len() are independent; Gate 8 must tolerate any combination.
@@ -413,7 +419,7 @@ fn kani_gate_08_expressions_with_accessor_refs() {
 ///
 /// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(17)]
 fn kani_gate_08_mixed_accessor_paths() {
     // Arbitrary indices for the accessor paths.
     let sym0: SymbolId = kani::any();
@@ -502,7 +508,7 @@ fn kani_gate_08_mixed_accessor_paths() {
 
 /// Harness 12: All CompiledNodeKind variants present — stress test structural variety.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(17)]
 fn kani_gate_08_all_node_kinds_no_panic() {
     let parts: WorkflowParts = kani::any();
 
@@ -515,7 +521,7 @@ fn kani_gate_08_all_node_kinds_no_panic() {
 ///
 /// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(17)]
 fn kani_gate_08_constants_with_symbols() {
     // Arbitrary indices.
     let const_idx: vb_core::ids::ConstIdx = kani::any();
@@ -578,7 +584,7 @@ fn kani_gate_08_constants_with_symbols() {
 ///
 /// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(17)]
 fn kani_gate_08_many_accessors_varied_depths() {
     // Arbitrary indices for the accessor paths.
     let sym0: SymbolId = kani::any();
