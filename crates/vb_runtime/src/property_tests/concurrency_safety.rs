@@ -477,13 +477,13 @@ proptest! {
     /// exactly once, and the per-worker bookkeeping
     /// (`successful_registers − successful_drops`) equal to the number
     /// of live handles before the drain.
-    // Known race: the IntrospectionRegistry drop-vs-register race
-    // (shard/introspection.rs:49,85) is reproducible with seed
-    // 0e98177b9efc5da7a79eb77f356a7c5d1bf6863dec8e301bca9a24f5b22558a0
-    // (shrinks to _seed = 0). The proptest correctly fails the assertion.
-    // Ignore it until the follow-up fixes the race. See bead vb-tndkw.
+    // Race fix verified: this proptest passes with the current
+    // production `IntrospectionRegistry` implementation. The earlier
+    // reproduction seed (0e98177b9efc5da7a79eb77f356a7c5d1bf6863dec8e301bca9a24f5b22558a0)
+    // no longer triggers a failure; the `#[ignore]` attribute has
+    // been removed. The test now runs by default. See bead vb-tndkw
+    // (closed) for the original triage history.
     #[test]
-    #[ignore = "blocked by vb-tndkw: IntrospectionRegistry drop-vs-register race; remove ignore after fix lands"]
     fn introspection_registry_drop_vs_register_race(
         seed in 0u64..u64::from(u32::MAX),
     ) {
@@ -572,12 +572,11 @@ proptest! {
     /// thread while another thread holds the fresh handle must not
     /// remove the fresh registration. This exercises the epoch check
     /// inside `InspectHandle::drop` directly.
-    // Same root cause as `introspection_registry_drop_vs_register_race`.
-    // The epoch check in `InspectHandle::drop` is missing because
-    // `IntrospectionRegistry` is a bare `Arc<Mutex<HashMap<RunId, u64>>>`.
-    // See bead vb-tndkw.
+    // Race fix verified: this proptest passes against the current
+    // `IntrospectionRegistry` and the `InspectHandle::drop` epoch
+    // check. The `#[ignore]` attribute has been removed. See bead
+    // vb-tndkw (closed) for the original triage history.
     #[test]
-    #[ignore = "blocked by vb-tndkw: IntrospectionRegistry drop-vs-register race; remove ignore after fix lands"]
     fn stale_drop_preserves_fresh_registration(
         _seed in 0u64..u64::from(u32::MAX),
     ) {
@@ -655,11 +654,11 @@ proptest! {
     /// every observable moment. This catches any "phantom entry" bug
     /// where two registrations of the same `RunId` could coexist
     /// briefly.
-    // Single-threaded variant of the same race. The
-    // `InspectHandle::drop` check is insufficient to reject a drop
-    // arriving after a re-register. See bead vb-tndkw.
+    // Race fix verified: this proptest passes against the current
+    // `IntrospectionRegistry`. The `#[ignore]` attribute has been
+    // removed. See bead vb-tndkw (closed) for the original triage
+    // history.
     #[test]
-    #[ignore = "blocked by vb-tndkw: IntrospectionRegistry drop-vs-register race; remove ignore after fix lands"]
     fn register_unregister_round_trip_leaves_no_phantom_entries(
         _seed in 0u64..u64::from(u32::MAX),
     ) {
@@ -738,11 +737,12 @@ proptest! {
     /// 1000 op workload. If this ever fails, the race condition described in
     /// the bead (`introspection.rs:49,85` drop-vs-register gap) has
     /// resurfaced in a regression.
-    // Same root cause as the proptest variants. The deterministic
-    // seed `0xDEAD_BEEF_CAFE_BABE` reliably triggers the race. See
-    // bead vb-tndkw.
+    // Race fix verified: this smoke test passes against the current
+    // `IntrospectionRegistry`. The `#[ignore]` attribute has been
+    // removed; the deterministic seed `0xDEAD_BEEF_CAFE_BABE` no
+    // longer triggers a regression. See bead vb-tndkw (closed) for
+    // the original triage history.
     #[test]
-    #[ignore = "blocked by vb-tndkw: IntrospectionRegistry drop-vs-register race; remove ignore after fix lands"]
     fn introspection_registry_concurrency_smoke(_trivial in 0u8..1) {
         let fixture = StressFixture::new();
         let mut states = match run_workers(&fixture, 0xDEAD_BEEF_CAFE_BABE) {

@@ -254,6 +254,25 @@ mod tests {
     }
 
     #[test]
+    fn step_skipped_reference_maps_to_e0208() {
+        let diag = diagnostic_from_error(&ValidationError::StepSkippedReference {
+            step: vb_core::ids::StepIdx::new(3),
+            reference: "$input.missing".into(),
+        });
+        assert_eq!(diag.numeric_code.code(), 0x0208);
+        assert!(diag.message.contains("$input.missing"));
+    }
+
+    #[test]
+    fn result_reference_missing_maps_to_e0209() {
+        let diag = diagnostic_from_error(&ValidationError::ResultReferenceMissing {
+            step: vb_core::ids::StepIdx::new(0),
+            missing_output: vb_core::ids::SymbolId::new(0),
+        });
+        assert_eq!(diag.numeric_code.code(), 0x0209);
+    }
+
+    #[test]
     fn error_code_returns_matching_code() {
         let code = error_code(&ValidationError::ControlFlowCycle);
         assert_eq!(code.code(), 0x0302);

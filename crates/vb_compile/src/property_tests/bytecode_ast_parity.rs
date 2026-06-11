@@ -534,13 +534,18 @@ proptest! {
     /// bytecode with the production `vb_core::engine::expr_eval::eval_expr`.
     /// The two outcomes must agree either on the produced `SlotValue` or on
     /// the typed error class.
-    // Known parity violation: the production bytecode evaluator rejects
-    // a nested unary negation `(-(-x))` with `EvalErrorKind::TypeMismatch`
-    // while the recursive AST oracle returns the correct negated value.
-    // The proptest correctly fails the assertion; ignore it until the
-    // follow-up fixes the parity bug. See bead vb-cwb90.
+    // Known parity violation: the production bytecode evaluator's `Sub`
+    // opcode (`vb_core::engine::expr_eval::ops::eval_i64_pair`) is
+    // I64-only and rejects F64 operands with `EngineError::TypeMismatch`,
+    // so `Neg(F64(x))` lowers to `[LoadConst(F64(0.0)), LoadConst(F64(x)),
+    // Sub]` and then fails at evaluation time. The recursive AST oracle
+    // returns the correct negated F64 value. The proptest correctly fails
+    // the assertion; ignore it until the follow-up extends `Sub` to
+    // F64 operands. The `lower_numeric_negation` lowering fix is done
+    // (closed as vb-cwb90); the remaining gap is the runtime evaluator.
+    // See follow-up bead vb-3g1qq.
     #[test]
-    #[ignore = "blocked by vb-cwb90: bytecode/AST parity violation on (-(-x)); remove ignore after fix lands"]
+    #[ignore = "blocked by vb-3g1qq: production evaluator Sub is I64-only; Neg(F64(x)) lowers correctly but Sub fails on F64 operands; remove ignore after Sub gains F64 support"]
     fn bytecode_ast_parity((_kind, ast) in arb_typed_ast()) {
         // Lower AST to bytecode. The lowering function can fail for ASTs
         // that contain invalid combinations of operator + operand (none

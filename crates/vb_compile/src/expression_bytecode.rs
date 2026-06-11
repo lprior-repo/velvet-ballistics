@@ -4,8 +4,8 @@
 use crate::CompileError;
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use vb_core::{
-    AccessorIdx, AccessorProgram, ConstIdx, ConstValue, ExprOp, ExprProgram, PathSegment, SlotIdx,
-    WorkflowError,
+    AccessorIdx, AccessorProgram, ConstIdx, ConstValue, ExprOp, ExprProgram, FiniteF64,
+    PathSegment, SlotIdx, WorkflowError,
 };
 
 /// Lowers a parsed expression tree into bounded postfix expression bytecode.
@@ -422,11 +422,72 @@ fn lower_numeric_negation(
     ops: &mut Vec<ExprOp>,
     resolver: &mut impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
-    let zero = push_expression_constant(ConstValue::I64(0), constants)?;
-    ops.push(ExprOp::LoadConst(zero));
+    // The negation lowering pushes `0 - <expr>` so it can reuse the
+    // existing `Sub` opcode. The constant must match the static type
+    // of the operand: a `Sub` between an `I64(0)` and an `F64(v)` is a
+    // type mismatch at runtime, so we synthesize `F64(0.0)` when the
+    // operand is statically F64. References and helper calls have
+    // unknown static types; we default to `I64(0)` to preserve the
+    // legacy behaviour for those cases, matching the production
+    // evaluator's prior assumption.
+    let zero = if expr_static_type_is_f64(expr) {
+        // `0.0` is a finite f64 by IEEE-754 definition; `FiniteF64::new`
+        // is the only path that enforces the invariant. The match
+        // arm is defensive against a future implementation that ever
+        // rejects `0.0` (no such implementation exists today).
+        match FiniteF64::new(0.0) {
+            Ok(value) => ConstValue::F64(value),
+            Err(_) => {
+                return Err(CompileError::ExpressionLoweringUnsupported {
+                    feature: "negative zero finite constant".into(),
+                });
+            }
+        }
+    } else {
+        ConstValue::I64(0)
+    };
+    let zero_index = push_expression_constant(zero, constants)?;
+    ops.push(ExprOp::LoadConst(zero_index));
     lower_expr(expr, constants, ops, resolver)?;
     ops.push(ExprOp::Sub);
     Ok(())
+}
+
+/// Returns `true` when the static type of the parsed expression is
+/// unambiguously `F64`.
+///
+/// The lowering pass uses this to decide whether the synthetic `0`
+/// constant in `lower_numeric_negation` must be an `F64(0.0)` (so the
+/// trailing `Sub` opcode operates on two F64 values) or an `I64(0)`
+/// (the default). Conservative answer: only return `true` when every
+/// recursive type analysis concludes F64, and propagate `false` for
+/// any mixed-type or unknown-type branch.
+fn expr_static_type_is_f64(expr: &ParsedExpression) -> bool {
+    match expr {
+        ParsedExpression::Literal(ExpressionLiteral::F64(_)) => true,
+        ParsedExpression::Literal(_) => false,
+        ParsedExpression::Unary {
+            op: UnaryOp::Neg,
+            expr,
+        } => expr_static_type_is_f64(expr),
+        ParsedExpression::Unary { .. } => false,
+        ParsedExpression::Binary { op, left, right } => {
+            // The cold AST mirrors `apply_binary`: equality / inequality
+            // comparisons always return Bool, so a binary expression
+            // rooted in Eq/NotEq is never an F64 value regardless of
+            // operand types. Arithmetic ops (Add/Sub/Mul/Div) are F64
+            // only when BOTH operands are F64.
+            match op {
+                BinaryOp::Eq | BinaryOp::NotEq => false,
+                _ => expr_static_type_is_f64(left) && expr_static_type_is_f64(right),
+            }
+        }
+        // References and helper calls have runtime-determined types.
+        // The conservative answer is "not F64" so we default to the
+        // I64(0) path, matching the historical behaviour. A future
+        // type-inference pass can refine this.
+        ParsedExpression::Reference(_) | ParsedExpression::HelperCall { .. } => false,
+    }
 }
 
 fn lower_binary(

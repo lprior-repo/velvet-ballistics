@@ -87,8 +87,9 @@ pub mod kani_finish_digest;
 // expression is statically F64, so the lowering itself is correct; the
 // remaining gap is in the production evaluator's `Sub` arm, which needs
 // to be extended to support F64 operands. The test is wired in and
-// marked `#[ignore = "blocked by vb-cwb90: ...; remove ignore after fix
-// lands"]`. Follow-up bead: vb-cwb90.
+// marked `#[ignore = "blocked by vb-3g1qq: ...; remove ignore after fix
+// lands"]`. Follow-up bead: vb-3g1qq. The original lowering-bug
+// triage is closed as vb-cwb90.
 #[cfg(test)]
 mod property_tests;
 

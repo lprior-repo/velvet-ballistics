@@ -83,6 +83,104 @@ fn lowers_unary_not_and_numeric_negation() -> Result<(), String> {
 }
 
 #[test]
+fn lowers_numeric_negation_of_f64_literal_emits_f64_zero_constant() -> Result<(), String> {
+    // Regression: lower_numeric_negation used to emit ConstValue::I64(0)
+    // unconditionally, so `Neg(0.0)` lowered to a Sub over mixed
+    // I64/F64 operands and failed parity against the AST oracle. The
+    // fix inspects the inner expression's static type and emits
+    // ConstValue::F64(0.0) for F64 operands, leaving I64(0) for the
+    // default case.
+    let (ops, constants, _max_stack) = lower("-1.5")?;
+
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Sub,
+    ];
+    let expected_constants = vec![
+        ConstValue::F64(finite_f64(0.0)?),
+        ConstValue::F64(finite_f64(1.5)?),
+    ];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if constants != expected_constants {
+        return Err(format!(
+            "constants mismatch: expected {expected_constants:?}, got {constants:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn lowers_numeric_negation_of_nested_f64_emits_f64_zero_constants() -> Result<(), String> {
+    // `--2.5` is `Neg(Neg(Literal(F64(2.5))))`. The inner Neg lowers
+    // to F64(0.0) - F64(2.5), and the outer Neg must also lower to
+    // F64(0.0) - <inner>, so the constants table should contain three
+    // F64 values: outer 0.0, inner 0.0, and 2.5.
+    let (ops, constants, _max_stack) = lower("--2.5")?;
+
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::LoadConst(ConstIdx::new(2)),
+        ExprOp::Sub,
+        ExprOp::Sub,
+    ];
+    let expected_constants = vec![
+        ConstValue::F64(finite_f64(0.0)?),
+        ConstValue::F64(finite_f64(0.0)?),
+        ConstValue::F64(finite_f64(2.5)?),
+    ];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if constants != expected_constants {
+        return Err(format!(
+            "constants mismatch: expected {expected_constants:?}, got {constants:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn lowers_numeric_negation_of_i64_literal_still_emits_i64_zero_constant() -> Result<(), String> {
+    // The I64 path must be preserved: `Neg(1)` continues to lower to
+    // I64(0) - I64(1) so existing test surfaces keep their constant
+    // tables intact.
+    let (ops, constants, _max_stack) = lower("-1")?;
+
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Sub,
+    ];
+    let expected_constants = vec![ConstValue::I64(0), ConstValue::I64(1)];
+    if ops != expected_ops {
+        return Err(format!(
+            "ops mismatch: expected {expected_ops:?}, got {ops:?}"
+        ));
+    }
+    if constants != expected_constants {
+        return Err(format!(
+            "constants mismatch: expected {expected_constants:?}, got {constants:?}"
+        ));
+    }
+    Ok(())
+}
+
+/// Wraps `FiniteF64::new` so a finiteness rejection surfaces as a
+/// test failure with a readable message instead of a `Result::Err`
+/// type error in the test body.
+fn finite_f64(value: f64) -> Result<vb_core::FiniteF64, String> {
+    vb_core::FiniteF64::new(value).map_err(|_| format!("expected {value} to be finite"))
+}
+
+#[test]
 fn validates_helper_arity_before_stack_validation() -> Result<(), String> {
     let expr = parse_expression("contains(1)").map_err(|error| error.to_string())?;
     let mut constants = Vec::new();
