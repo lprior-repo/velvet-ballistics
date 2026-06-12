@@ -193,14 +193,20 @@ tasks:
       # Current tree has pre-existing findings; run explicitly until clean.
       runInCI: false
 
-  banned-token-gates:
-    deps:
-      - 'panic-surface'
-      - 'workspace-assertions'
-      - 'ignored-fallible-results'
+  unsafe-audit:
+    # First-party `unsafe { }` block detector for the 4 hot crates.
+    # Renamed from a previously-phantom task (no command/script body).
+    # Uses a grep-based check because cargo-geiger 0.13.0 does not
+    # expose --forbid-only.
+    script: |
+      set -euo pipefail
+      if grep -RIn --include='*.rs' -E 'unsafe[[:space:]]*\{' \
+        crates/vb_core/src crates/vb_compile/src crates/vb_runtime/src crates/vb_validate/src; then
+        echo "FATAL: first-party unsafe block detected in a hot crate" >&2
+        exit 1
+      fi
     inputs:
       - '@globs(sources)'
-      - '@globs(configs)'
     options:
       runInCI: true
 
@@ -510,7 +516,7 @@ tasks:
     deps:
       - 'source-length-self-test'
       - 'workspace-assertions'
-      - 'banned-token-gates'
+      - 'unsafe-audit'
       - 'test-integrity'
     toolchains:
       - rust

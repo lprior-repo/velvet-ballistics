@@ -443,8 +443,9 @@ will surface the regression immediately.
 A new script (added under `scripts/` per the AGENTS.md convention) that
 fails the build if any of the 7 deleted files re-appear. Wire into
 `.moon/tasks/all.yml` (probably alongside the `dead-code-detection`
-or `banned-token-gates` family of checks; check
-`.moon/tasks/all.yml:196-205` per Round 4 phantom-task finding PP-2).
+      or `unsafe-audit` family of checks; check
+      `.moon/tasks/all.yml:196-205` per Round 4 phantom-task finding PP-2,
+      resolved by bead vb-z1i03).
 
 ```bash
 #!/usr/bin/env bash
