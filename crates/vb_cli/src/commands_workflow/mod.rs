@@ -8,7 +8,7 @@ use vb_core::{CompiledNodeKind, CompiledWorkflow};
 // 300-line source cap. The sub-module is included as a sibling so the
 // `pub(crate)` items remain reachable through `crate::commands_workflow::*`.
 mod dot;
-pub(crate) use self::dot::{generate_dot, node_kind_label, DotGraph};
+pub(crate) use self::dot::{DotGraph, generate_dot, node_kind_label};
 
 // ---------------------------------------------------------------------------
 // Simulation dry-run
@@ -80,17 +80,17 @@ fn describe_node_for_simulate(
             format!("Build list ({} items)", items.len())
         }
         CompiledNodeKind::Do { action, .. } => {
-            *action_count = action_count.saturating_add(1);
+            *action_count = saturating_add(*action_count, 1);
             format!("Do action {} -- would execute action", action.get())
         }
         CompiledNodeKind::Choose { branches, .. } => {
             let count = branches.len();
-            *branch_count = branch_count.saturating_add(count);
+            *branch_count = saturating_add(*branch_count, count);
             format!("Choose ({count} branches)")
         }
         CompiledNodeKind::ChooseSlot { branches, .. } => {
             let count = branches.len();
-            *branch_count = branch_count.saturating_add(count);
+            *branch_count = saturating_add(*branch_count, count);
             format!("ChooseSlot ({count} branches)")
         }
         CompiledNodeKind::ForEachStart { limit, .. } => {
@@ -122,12 +122,22 @@ fn describe_node_for_simulate(
         CompiledNodeKind::RepeatFinish { .. } => "Repeat finish".to_string(),
         CompiledNodeKind::WaitUntil { .. } => "WaitUntil -- would suspend".to_string(),
         CompiledNodeKind::WaitEvent { .. } => "WaitEvent -- would suspend".to_string(),
-        CompiledNodeKind::Ask { .. } => "Ask -- would suspend".to_string(),
-        CompiledNodeKind::AskResume { .. } => "Ask resume".to_string(),
-        CompiledNodeKind::RetryCheck { .. } => "Retry check".to_string(),
-        CompiledNodeKind::ErrorHandler { .. } => "Error handler".to_string(),
+        CompiledNodeKind::Ask { .. } => "Ask -- would suspend for input".to_string(),
+        CompiledNodeKind::AskResume { .. } => "AskResume".to_string(),
+        CompiledNodeKind::RetryCheck { .. } => "RetryCheck".to_string(),
+        CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler".to_string(),
         CompiledNodeKind::Jump { .. } => "Jump".to_string(),
-        CompiledNodeKind::Finish { .. } => "Finish".to_string(),
-        _ => "Other".to_string(),
+        CompiledNodeKind::Finish { .. } => "Finish -- would complete run".to_string(),
+        _ => "Unknown".to_string(),
     }
 }
+
+/// Saturating add that returns the new value, used instead of checked_add +
+/// unwrap/or pattern.
+fn saturating_add(a: usize, b: usize) -> usize {
+    a.saturating_add(b)
+}
+
+#[cfg(test)]
+#[path = "tests.rs"]
+mod tests;

@@ -228,8 +228,6 @@ pub(crate) fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-
-
 fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
     match raw.parse::<u64>() {
         Ok(id) => Ok(vb_core::RunId::new(id)),
