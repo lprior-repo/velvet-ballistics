@@ -383,6 +383,16 @@ Beyond the master contract, three other documents reference the dead paths and m
 | `.beads/vb-o5zb.5/black-hat-review.md:44,181,246` | Citations to `kani_resource_contract_validation_18_fields.rs:120-134` | Replace with citations to `crates/vb_core/src/workflow/types.rs:167-206` and `crates/vb_core/src/workflow/validation.rs:93-181` (canonical `validate_resource_contract` and the 18-field count). |
 | `.beads/vb-o5zb.5/closure-reconciliation-packet.md:73,82,130` | Citations to the dead Kani harness | Same replacement as above. |
 
+**FINDING-R2 (added 2026-06-12 by vb-g6wst):** the references to the deleted
+`kani_resource_contract_validation_18_fields.rs` harness in
+`.beads/vb-o5zb.5/black-hat-review.md:44,111,183,240` and
+`.beads/vb-o5zb.5/closure-reconciliation-packet.md:73,82,130` are
+**HISTORICAL audit-trail evidence, not defects to actively fix**. The
+audit packet predates DEDUP-10 (`vb-eq7lv`) and is intentionally
+preserved per the dedup plan's principle of evidence preservation
+(see AGENTS.md "Do not commit `.beads/dolt` ... runtime database state"
+— these audit packets are the explicit exception).
+
 **Note on `.beads/` updates**: `.beads/` files are gitignored evidence packets
 (see AGENTS.md "Do not commit `.beads/dolt`, `.beads/backup`, `.beads/embeddeddolt`,
 locks, or runtime database state"). However, the audit packets
