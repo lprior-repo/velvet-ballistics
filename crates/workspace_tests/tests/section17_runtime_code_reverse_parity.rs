@@ -231,13 +231,10 @@ fn section17_reverse_parity_mapped_codes_have_sources() {
         }
     }
 
-    assert!(
-        missing.is_empty(),
-        "{} Section 17 mapped codes have no runtime_code() source: {:?}\n\
-        Found codes: {:?}",
-        missing.len(),
+    assert_eq!(
         missing,
-        all_codes
+        Vec::<&str>::new(),
+        "Section 17 mapped codes must have runtime_code() sources. Found codes: {all_codes:?}"
     );
 }
 
@@ -254,7 +251,6 @@ fn section17_reverse_parity_unmapped_codes_have_no_sources() {
         all_codes.insert(code);
     }
 
-    // Unmapped Section 17 codes must NOT appear in runtime_code() output.
     let mut unexpectedly_mapped: Vec<&str> = Vec::new();
     for name in SECTION_17_UNMAPPED {
         if all_codes.contains(*name) {
@@ -262,10 +258,9 @@ fn section17_reverse_parity_unmapped_codes_have_no_sources() {
         }
     }
 
-    assert!(
-        unexpectedly_mapped.is_empty(),
-        "{} Section 17 unmapped codes unexpectedly have a runtime_code() source: {:?}",
-        unexpectedly_mapped.len(),
-        unexpectedly_mapped
+    assert_eq!(
+        unexpectedly_mapped,
+        Vec::<&str>::new(),
+        "Section 17 unmapped codes must not have runtime_code() sources before vb-wstlsl01 lands"
     );
 }

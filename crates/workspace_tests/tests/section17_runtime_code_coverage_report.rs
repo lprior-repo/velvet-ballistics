@@ -10,6 +10,33 @@ use std::collections::BTreeSet;
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
 
+const UNMAPPED_CODES_WITH_RATIONALE: &[(&str, &str)] = &[
+    (
+        "REFERENCE_MISSING",
+        "runtime reference failures not yet implemented",
+    ),
+    (
+        "STEP_SKIPPED_REFERENCE",
+        "skip-reference validation is not runtime surfaced",
+    ),
+    (
+        "RETRY_EXHAUSTED",
+        "engine retry exhaustion is not in this report surface",
+    ),
+    (
+        "RESULT_REFERENCE_MISSING",
+        "runtime result-reference resolution not implemented",
+    ),
+    (
+        "PAYLOAD_TOO_LARGE",
+        "action payload code is outside this runtime report surface",
+    ),
+    (
+        "REPLAY_DIVERGED",
+        "replay divergence is not yet surfaced as typed runtime error",
+    ),
+];
+
 // ---------------------------------------------------------------------------
 // Helper: collect runtime_code strings from all error types
 // ---------------------------------------------------------------------------
@@ -194,33 +221,6 @@ const MAPPED_CODES: &[&str] = &[
     "INPUT_MAPPING_FAILED",
 ];
 
-const UNMAPPED_CODES_WITH_RATIONALE: &[(&str, &str)] = &[
-    (
-        "REFERENCE_MISSING",
-        "Future: unresolved runtime reference failures not yet implemented",
-    ),
-    (
-        "STEP_SKIPPED_REFERENCE",
-        "Future: skip-reference validation lives in compile phase",
-    ),
-    (
-        "RETRY_EXHAUSTED",
-        "Future: runtime retry exhaustion not yet surfaced as typed error",
-    ),
-    (
-        "RESULT_REFERENCE_MISSING",
-        "Future: result-reference resolution in runtime not yet implemented",
-    ),
-    (
-        "PAYLOAD_TOO_LARGE",
-        "Note: PAYLOAD_TOO_LARGE is a Section 16 validation code; Section 17 runtime variant not yet implemented",
-    ),
-    (
-        "REPLAY_DIVERGED",
-        "Future: deterministic replay divergence not yet surfaced as typed error",
-    ),
-];
-
 const PARTIALLY_MAPPED_CODES: &[(&str, &str)] = &[(
     "SECRET_UNAVAILABLE",
     "Partially mapped: JournalError::SecretUnavailable exists at storage layer but has no runtime_code() source",
@@ -231,29 +231,42 @@ const PARTIALLY_MAPPED_CODES: &[(&str, &str)] = &[(
 // ---------------------------------------------------------------------------
 
 #[test]
-fn section17_coverage_report_mapped_codes_match_runtime() {
+fn section17_coverage_report_required_codes_match_runtime() {
     let runtime_codes = collect_all_runtime_codes();
 
-    assert_eq!(MAPPED_CODES.len(), 26, "golden mapped count must be 26");
+    assert_eq!(
+        MAPPED_CODES.len(),
+        26,
+        "golden mapped count must be 26 (the 26 codes documented as mapped)"
+    );
 
+    // The test fails loudly if any of the 26 mapped Section 17 codes is
+    // missing from production. This is the "fail loudly" behavior the
+    // master §17 contract requires — no self-laundering.
+    let mut missing: Vec<&str> = Vec::new();
     for code in MAPPED_CODES {
-        assert!(
-            runtime_codes.contains(*code),
-            "MAPPED code '{code}' not found in runtime_code() output. Available codes: {runtime_codes:?}"
-        );
+        if !runtime_codes.contains(*code) {
+            missing.push(*code);
+        }
     }
+
+    assert_eq!(
+        missing,
+        Vec::<&str>::new(),
+        "Section 17 mapped codes must have runtime_code() sources. Available codes: {runtime_codes:?}"
+    );
 }
 
 #[test]
 fn section17_coverage_report_unmapped_codes_stay_unmapped() {
     let runtime_codes = collect_all_runtime_codes();
-
+    let mut unexpectedly_mapped: Vec<&str> = Vec::new();
     for (code, _rationale) in UNMAPPED_CODES_WITH_RATIONALE {
-        assert!(
-            !runtime_codes.contains(*code),
-            "UNMAPPED code '{code}' unexpectedly found in runtime_code() output"
-        );
+        if runtime_codes.contains(*code) {
+            unexpectedly_mapped.push(*code);
+        }
     }
+    assert_eq!(unexpectedly_mapped, Vec::<&str>::new());
 }
 
 #[test]
@@ -261,7 +274,11 @@ fn section17_coverage_report_counts_are_correct() {
     let mapped_count = MAPPED_CODES.len();
     let unmapped_count = UNMAPPED_CODES_WITH_RATIONALE.len();
     let partial_count = PARTIALLY_MAPPED_CODES.len();
-    let total = mapped_count + unmapped_count + partial_count;
+    let runtime_codes = collect_all_runtime_codes();
+    let present_count = MAPPED_CODES
+        .iter()
+        .filter(|code| runtime_codes.contains(**code))
+        .count();
 
     assert_eq!(mapped_count, 26, "expected 26 mapped Section 17 codes");
     assert_eq!(unmapped_count, 6, "expected 6 unmapped Section 17 codes");
@@ -269,19 +286,6 @@ fn section17_coverage_report_counts_are_correct() {
         partial_count, 1,
         "expected 1 partially mapped Section 17 code"
     );
-    assert_eq!(
-        total, 33,
-        "expected 33 unique Section 17 codes (26 mapped + 6 unmapped + 1 partially mapped)"
-    );
-
-    // Verify the mapped count against actual production runtime_codes
-    let runtime_codes = collect_all_runtime_codes();
-    let present_count = MAPPED_CODES
-        .iter()
-        .filter(|c| runtime_codes.contains(**c))
-        .count();
-    assert_eq!(
-        present_count, mapped_count,
-        "all {mapped_count} mapped codes must be present in runtime, found {present_count}"
-    );
+    assert_eq!(mapped_count + unmapped_count + partial_count, 33);
+    assert_eq!(present_count, mapped_count);
 }

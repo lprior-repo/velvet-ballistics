@@ -25,6 +25,10 @@ pub mod types;
 mod tests;
 
 #[cfg(test)]
+#[path = "tests/error_recovery_tests.rs"]
+mod error_recovery_tests;
+
+#[cfg(test)]
 mod vb_h6ix_tests;
 
 #[cfg(test)]

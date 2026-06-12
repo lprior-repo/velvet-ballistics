@@ -3046,6 +3046,136 @@ fn capability_check_benches(c: &mut Criterion) {
     group.finish();
 }
 
+/// Bench group: warm_throughput.
+///
+/// Measures warm-cache throughput for the compile path. After the first
+/// (cold) iteration primes the parser/AST caches, subsequent iterations
+/// exercise the cache-resident hot path. This is the realistic production
+/// case where many workflows share the same compile context.
+fn warm_throughput_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("warm_throughput");
+    let large = many_step_workflow(1000);
+
+    // Warm-cache: prime the cache once, then measure steady-state.
+    let _ = vb_compile::compile_workflow(large.as_bytes());
+
+    group.throughput(Throughput::Bytes(bytes_len(large.as_bytes())));
+    group.bench_function(
+        metadata(
+            "warm_compile_ir_1000_steps",
+            large.as_bytes(),
+            "fixture=generated_1000_steps;surface=compiler_warm",
+        ),
+        |b| {
+            checked_iter(b, "warm_compile_ir_1000_steps", || {
+                vb_compile::compile_workflow(black_box(large.as_bytes()))
+            })
+        },
+    );
+
+    let medium = many_step_workflow(100);
+    let _ = vb_compile::compile_workflow(medium.as_bytes());
+    group.throughput(Throughput::Bytes(bytes_len(medium.as_bytes())));
+    group.bench_function(
+        metadata(
+            "warm_compile_ir_100_steps",
+            medium.as_bytes(),
+            "fixture=generated_100_steps;surface=compiler_warm",
+        ),
+        |b| {
+            checked_iter(b, "warm_compile_ir_100_steps", || {
+                vb_compile::compile_workflow(black_box(medium.as_bytes()))
+            })
+        },
+    );
+
+    let small_bytes = SMALL_WORKFLOW;
+    let _ = vb_compile::compile_workflow(small_bytes);
+    group.throughput(Throughput::Bytes(bytes_len(small_bytes)));
+    group.bench_function(
+        metadata(
+            "warm_compile_ir_minimal",
+            small_bytes,
+            "fixture=small_workflow;surface=compiler_warm",
+        ),
+        |b| {
+            checked_iter(b, "warm_compile_ir_minimal", || {
+                vb_compile::compile_workflow(black_box(small_bytes))
+            })
+        },
+    );
+
+    group.finish();
+}
+
+/// Bench group: digest_computation.
+///
+/// Measures BLAKE3-256 + CRC32C computation throughput, which dominates
+/// compiled-artifact, journal-event, and blob-record hot paths.
+fn digest_computation_benches(c: &mut Criterion) {
+    let mut group = c.benchmark_group("digest_computation");
+
+    // BLAKE3-256 over various payload sizes.
+    for size in [64usize, 1024, 4096, 65_536] {
+        let payload: Vec<u8> = (0..size).map(|n| (n & 0xff) as u8).collect();
+        group.throughput(Throughput::Bytes(size as u64));
+        group.bench_function(
+            metadata(
+                &format!("blake3_256_{size}"),
+                &payload,
+                "fixture=pseudo_random;surface=digest",
+            ),
+            |b| {
+                checked_iter(b, &format!("blake3_256_{size}"), || {
+                    let digest = blake3::hash(black_box(&payload));
+                    black_box(*digest.as_bytes())
+                })
+            },
+        );
+    }
+
+    // CRC32C over the same payload sizes (crc32c is required for envelope headers).
+    for size in [64usize, 1024, 4096, 65_536] {
+        let payload: Vec<u8> = (0..size).map(|n| (n & 0xff) as u8).collect();
+        group.throughput(Throughput::Bytes(size as u64));
+        group.bench_function(
+            metadata(
+                &format!("crc32c_{size}"),
+                &payload,
+                "fixture=pseudo_random;surface=digest",
+            ),
+            |b| {
+                checked_iter(b, &format!("crc32c_{size}"), || {
+                    let crc = crc32c::crc32c(black_box(&payload));
+                    black_box(crc)
+                })
+            },
+        );
+    }
+
+    // Combined BLAKE3+CRC32C (the envelope header+payload shape).
+    for size in [64usize, 1024, 4096, 65_536] {
+        let payload: Vec<u8> = (0..size).map(|n| (n & 0xff) as u8).collect();
+        group.throughput(Throughput::Bytes(size as u64));
+        group.bench_function(
+            metadata(
+                &format!("blake3_plus_crc32c_{size}"),
+                &payload,
+                "fixture=pseudo_random;surface=envelope_digest",
+            ),
+            |b| {
+                checked_iter(b, &format!("blake3_plus_crc32c_{size}"), || {
+                    let digest_bytes = *blake3::hash(black_box(&payload)).as_bytes();
+                    let crc = crc32c::crc32c(black_box(&payload));
+                    black_box((digest_bytes, crc))
+                })
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     parse_yaml_benches,
@@ -3063,6 +3193,8 @@ criterion_group!(
     budget_compute_benches,
     evidence_chain_benches,
     admission_gate_benches,
-    capability_check_benches
+    capability_check_benches,
+    warm_throughput_benches,
+    digest_computation_benches
 );
 criterion_main!(benches);
