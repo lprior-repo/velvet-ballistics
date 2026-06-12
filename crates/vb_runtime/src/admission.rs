@@ -17,6 +17,7 @@ mod validation;
 pub use admission_core::{
     admit_artifact_run, admit_artifact_run_with_certificate_floor, admit_run,
     admit_run_with_budget, admit_run_with_budget_policy, check_capability,
+    per_workflow_step_ceiling, preflight_step_budget,
 };
 pub use errors::{AdmissionError, ArtifactEnvelopeError, map_artifact_envelope_error};
 pub use stores::{
@@ -38,6 +39,10 @@ pub use vb_core::policy::RuntimePolicy;
 #[cfg(test)]
 #[path = "admission/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "admission/step_budget_tests.rs"]
+mod step_budget_tests;
 
 #[cfg(test)]
 #[path = "admission/artifact_envelope_tests.rs"]

@@ -179,6 +179,21 @@ pub enum AdmissionError {
         /// Minimum accepted sequence required by the caller.
         required_at_least: EventSeq,
     },
+    /// Workflow step count exceeds the master contract per-workflow ceiling
+    /// (`vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`).
+    ///
+    /// Returned by `preflight_step_budget` when the compiled workflow declares
+    /// a `ResourceContract::max_steps` above the limit. This is the typed,
+    /// step-count-specific failure that the production admission preflight
+    /// surfaces in place of a generic `BudgetPolicyExceeded` so the runtime
+    /// can fail closed before any persistence.
+    #[error("admission rejected: workflow step count {actual} exceeds per-workflow ceiling {limit}")]
+    BudgetExceeded {
+        /// Step count declared by the workflow's `ResourceContract::max_steps`.
+        actual: u32,
+        /// Per-workflow ceiling from `vb_core::limits::MAX_STEPS_PER_WORKFLOW`.
+        limit: u32,
+    },
 }
 
 /// Maps an `ArtifactEnvelopeError` to an `AdmissionError`.

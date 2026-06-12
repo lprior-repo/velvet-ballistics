@@ -5,7 +5,10 @@
 //!
 //! Behaviors covered: B-001, B-004, B-005, B-006, B-007, B-008, B-009
 //!
-//! Per GAP-001 retraction: Budget errors map to AdmissionArtifactInvalid (by design).
+//! Per GAP-001 retraction: legacy "budget policy" errors map to
+//! AdmissionArtifactInvalid (by design). The new step-count-specific
+//! BudgetExceeded error maps to the typed RuntimeError::AdmissionBudgetExceeded
+//! with `actual`/`limit` preserved.
 //! All other errors map to typed RuntimeError variants with fields preserved.
 //!
 //! Invariants:
@@ -14,7 +17,8 @@
 //!   I3: ArtifactNotFound → RuntimeError::AdmissionArtifactNotFound (digest preserved)
 //!   I4: CapabilityDenied → RuntimeError::AdmissionCapabilityDenied (action/capability/grants preserved)
 //!   I5: ArtifactDigestMismatch → RuntimeError::AdmissionArtifactDigestMismatch (both digests preserved)
-//!   I6: Budget errors map to RuntimeError::AdmissionArtifactInvalid with correct digest (by design)
+//!   I6: Legacy budget policy errors map to RuntimeError::AdmissionArtifactInvalid with correct digest (by design)
+//!   I7: AdmissionError::BudgetExceeded → RuntimeError::AdmissionBudgetExceeded (actual/limit preserved)
 
 use proptest::prelude::*;
 use vb_core::capability::{Capability, CapabilitySet};
@@ -82,6 +86,9 @@ fn map_admission_to_runtime(
         }
         AdmissionError::ArtifactCertificateStale { digest: d, .. } => {
             RuntimeError::AdmissionArtifactStale { digest: d }
+        }
+        AdmissionError::BudgetExceeded { actual, limit } => {
+            RuntimeError::AdmissionBudgetExceeded { actual, limit }
         }
     }
 }

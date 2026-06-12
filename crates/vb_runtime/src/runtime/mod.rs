@@ -61,9 +61,47 @@ impl Runtime {
         }
     }
 
+    /// Creates a runtime with an explicit artifact store.
+    ///
+    /// Test-only constructor used by `admission::step_budget_tests` to wire a
+    /// `AlwaysPresentArtifactStore` into strict-mode admission so the
+    /// step-budget gate can be evaluated in isolation.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn new_with_artifact_store(
+        shard_count: NonZeroUsize,
+        config: ShardConfig,
+        artifact_store: crate::admission::SharedAcceptedArtifactStore,
+    ) -> Self {
+        let journal = crate::journal::NoopRuntimeJournal::shared();
+        let count = shard_count.get();
+        let mut shards = Vec::with_capacity(count);
+        let mut index = 0usize;
+        while index < count {
+            shards.push(Shard::new_with_journal_and_artifact_store(
+                config,
+                journal.clone(),
+                crate::admission::SharedAcceptedArtifactStore::clone(&artifact_store),
+            ));
+            index = index.saturating_add(1);
+        }
+        Self {
+            shards,
+            shard_count: count,
+            journal,
+        }
+    }
+
     /// Submits a run using a compiled workflow.
+    ///
+    /// Admission is atomic with the enqueue: the per-shard `admission_lock`
+    /// is held for the duration of the preflight and the enqueue so two
+    /// concurrent submits cannot squeeze in between the budget reservation
+    /// and the queue commit. Fails closed if the workflow's step count
+    /// exceeds `vb_core::limits::MAX_STEPS_PER_WORKFLOW`.
     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        let _admission_guard = shard.lock_admission()?;
         Self::preflight_direct_admission(shard, run, &workflow, CapabilitySet::empty())?;
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -77,21 +115,33 @@ impl Runtime {
     }
 
     /// Submits a run with pre-mapped runtime input slots.
+    ///
+    /// Admission is atomic with the enqueue via the per-shard
+    /// `admission_lock`. The preflight now enforces BOTH the artifact gate
+    /// and the per-workflow step-count policy.
     pub fn submit_compiled_with_inputs(
         &self,
         run: RunId,
         workflow: CompiledWorkflow,
         inputs: Box<[(SlotIdx, SlotValue)]>,
     ) -> RuntimeResult<()> {
-        self.shard_for(run)?
-            .enqueue(ShardCommand::SubmitWithInputs {
-                run,
-                workflow,
-                inputs,
-                caps: CapabilitySet::empty(),
-            })
+        let shard = self.shard_for(run)?;
+        let _admission_guard = shard.lock_admission()?;
+        Self::preflight_direct_admission(shard, run, &workflow, CapabilitySet::empty())?;
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs,
+            caps: CapabilitySet::empty(),
+        })
     }
 
+    /// Submits a run with inputs, capability grants, and validated action
+    /// contracts.
+    ///
+    /// Admission is atomic with the enqueue via the per-shard
+    /// `admission_lock`. The preflight now enforces BOTH the artifact gate
+    /// and the per-workflow step-count policy. Fails closed on either gate.
     pub fn submit_direct_with_inputs_grants_and_contracts(
         &self,
         run: RunId,
@@ -100,14 +150,16 @@ impl Runtime {
         caps: CapabilitySet,
         action_contracts: Box<[vb_core::action::ActionContract]>,
     ) -> RuntimeResult<()> {
-        self.shard_for(run)?
-            .enqueue(ShardCommand::SubmitWithInputsAndContracts {
-                run,
-                workflow,
-                inputs,
-                caps,
-                action_contracts,
-            })
+        let shard = self.shard_for(run)?;
+        let _admission_guard = shard.lock_admission()?;
+        Self::preflight_direct_admission(shard, run, &workflow, caps.clone())?;
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs,
+            caps,
+            action_contracts,
+        })
     }
 
     /// Cancels a run.

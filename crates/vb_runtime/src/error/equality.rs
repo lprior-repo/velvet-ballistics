@@ -194,6 +194,7 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
 fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     runtime_error_admission_digest_eq(left, right)
         || runtime_error_admission_capability_eq(left, right)
+        || runtime_error_admission_budget_eq(left, right)
 }
 
 fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
@@ -250,6 +251,16 @@ fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeErr
                 granted: f,
             },
         ) => a == d && b == e && c == f,
+        _ => false,
+    }
+}
+
+fn runtime_error_admission_budget_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::AdmissionBudgetExceeded { actual: a, limit: b },
+            RuntimeError::AdmissionBudgetExceeded { actual: c, limit: d },
+        ) => a == c && b == d,
         _ => false,
     }
 }

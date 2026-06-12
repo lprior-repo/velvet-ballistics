@@ -286,6 +286,15 @@ pub enum RuntimeError {
         /// Underlying source error from the body execution.
         source: Box<vb_core::errors::CoreError>,
     },
+    /// Admission gate rejected because the workflow step count exceeds the
+    /// master contract per-workflow ceiling
+    /// (`vb_core::limits::MAX_STEPS_PER_WORKFLOW`).
+    AdmissionBudgetExceeded {
+        /// Step count declared by the workflow.
+        actual: u32,
+        /// Per-workflow ceiling from the master contract.
+        limit: u32,
+    },
 }
 
 impl From<std::io::Error> for RuntimeError {

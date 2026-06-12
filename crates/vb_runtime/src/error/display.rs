@@ -46,6 +46,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionCapabilityDenied { .. } => {
             Some("admission rejected: capability denied")
         }
+        RuntimeError::AdmissionBudgetExceeded { .. } => {
+            Some("admission rejected: workflow step count exceeds per-workflow ceiling")
+        }
         RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
             Some("admission durability failed: header persistence failed")
         }

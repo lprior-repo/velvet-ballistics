@@ -281,6 +281,9 @@ impl Shard {
             Err(AdmissionError::ArtifactCertificateStale { digest, .. }) => {
                 Err(RuntimeError::AdmissionArtifactStale { digest })
             }
+            Err(AdmissionError::BudgetExceeded { actual, limit }) => {
+                Err(RuntimeError::AdmissionBudgetExceeded { actual, limit })
+            }
         }
     }
 

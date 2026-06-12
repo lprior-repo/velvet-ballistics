@@ -53,6 +53,7 @@ impl RuntimeError {
     pub const REDUCE_ITEM_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4034);
     pub const TOGETHER_BRANCH_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4035);
     pub const FOR_EACH_ITEM_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4036);
+    pub const ADMISSION_BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -110,6 +111,7 @@ impl RuntimeError {
             Self::ReduceItemFailed { .. } => Self::REDUCE_ITEM_FAILED_CODE,
             Self::TogetherBranchFailed { .. } => Self::TOGETHER_BRANCH_FAILED_CODE,
             Self::ForEachItemFailed { .. } => Self::FOR_EACH_ITEM_FAILED_CODE,
+            Self::AdmissionBudgetExceeded { .. } => Self::ADMISSION_BUDGET_EXCEEDED_CODE,
         }
     }
 
@@ -172,7 +174,8 @@ impl RuntimeError {
             | Self::SecretResultNotAllowed
             | Self::IpcPayloadSizeExceeded { .. }
             | Self::ShardNotFound { .. }
-            | Self::MigrateSelf => None,
+            | Self::MigrateSelf
+            | Self::AdmissionBudgetExceeded { .. } => None,
         }
     }
 

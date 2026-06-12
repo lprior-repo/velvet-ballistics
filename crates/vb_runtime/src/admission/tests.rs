@@ -1042,6 +1042,7 @@ fn admission_error_match_covers_all_variants() {
             AdmissionError::ArtifactInvalidProofFlag { .. } => "artifact_invalid_proof_flag",
             AdmissionError::ArtifactDigestMismatch { .. } => "artifact_digest_mismatch",
             AdmissionError::ArtifactCertificateStale { .. } => "artifact_certificate_stale",
+            AdmissionError::BudgetExceeded { .. } => "budget_exceeded",
         }
     }
     let _ = _exhaustive_match;

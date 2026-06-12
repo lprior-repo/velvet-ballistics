@@ -286,3 +286,60 @@ fn map_budget_error(error: AggregateBudgetError) -> AdmissionError {
         },
     }
 }
+
+/// Returns the per-workflow step ceiling from `vb_core::limits`.
+///
+/// This is the master contract value: `velvet-ballistics-MASTER.md` §13
+/// "Steps | 1000" enforced at the admission gate.
+#[must_use]
+pub const fn per_workflow_step_ceiling() -> u32 {
+    // The master contract ceiling lives in `vb_core::limits::MAX_STEPS_PER_WORKFLOW`
+    // and is bounded by `usize::from(u16::MAX)` per the limits test suite, so
+    // the `u32` cast is a widening conversion that cannot lose data.
+    #[allow(clippy::cast_possible_truncation, clippy::as_conversions)]
+    let ceiling = vb_core::limits::MAX_STEPS_PER_WORKFLOW as u32;
+    ceiling
+}
+
+/// Preflight gate that enforces the master contract per-workflow step ceiling
+/// (`vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`).
+///
+/// This is the production-extension of `admit_run_with_budget_policy` that
+/// surfaces the step-count-specific failure as the typed
+/// `AdmissionError::BudgetExceeded { actual, limit }` variant instead of the
+/// generic `BudgetPolicyExceeded` map. The runtime calls this together with
+/// `admit_artifact_run` so both gates are evaluated before any persistence.
+///
+/// # Behavior
+///
+/// - Returns `Ok(())` when `workflow.resource_contract().max_steps <= ceiling`.
+/// - Returns `Err(AdmissionError::BudgetExceeded { actual, limit })` when the
+///   workflow declares a step count above the ceiling.
+/// - Returns `Ok(())` for `RuntimePolicy::Relaxed` (admission is a no-op for
+///   the relaxed policy lane, matching the rest of the admission preflight).
+///
+/// # Master contract reference
+///
+/// - `velvet-ballistics-MASTER.md` §13 line 479: Steps | 1000.
+/// - `velvet-ballistics-MASTER.md` §20: admission enforces the budget before
+///   persistence.
+pub fn preflight_step_budget(
+    workflow: &vb_core::workflow::CompiledWorkflow,
+    policy: vb_core::policy::RuntimePolicy,
+) -> Result<(), AdmissionError> {
+    if !matches!(
+        policy,
+        vb_core::policy::RuntimePolicy::Strict | vb_core::policy::RuntimePolicy::Journaled
+    ) {
+        return Ok(());
+    }
+    let limit = per_workflow_step_ceiling();
+    let max_steps = u32::from(workflow.resource_contract().max_steps);
+    if max_steps > limit {
+        return Err(AdmissionError::BudgetExceeded {
+            actual: max_steps,
+            limit,
+        });
+    }
+    Ok(())
+}

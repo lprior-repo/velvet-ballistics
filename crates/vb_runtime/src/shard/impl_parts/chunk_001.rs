@@ -37,6 +37,7 @@ impl Shard {
             shutting_down: false,
             current_tick: TimerTick::new(0),
             journal,
+            admission_lock: std::sync::Mutex::new(()),
             #[cfg(feature = "test-util")]
             pending_workflows: IndexMap::new(),
         }
@@ -97,6 +98,33 @@ impl Shard {
     #[must_use]
     pub fn remaining_capacity(&self) -> usize {
         self.command_queue.remaining_capacity()
+    }
+
+    /// Acquires the admission gate lock for the duration of a preflight+enqueue pair.
+    ///
+    /// The guard must be held continuously from before `preflight_*` evaluation
+    /// to after `ShardCommand::enqueue` so that two concurrent submits targeting
+    /// the same shard cannot squeeze in between the preflight and the enqueue,
+    /// keeping the budget reservation atomic with the queue commit.
+    ///
+    /// Poisoned-lock errors are mapped to `RuntimeError::JournalPoisoned` since
+    /// the lock lives on the shard's per-state structure and poison can only
+    /// happen if a previous holder panicked mid-admission. Production code
+    /// never panics, so this is a defense-in-depth typed error path.
+    pub(crate) fn lock_admission(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, ()>, crate::RuntimeError> {
+        match self.admission_lock.lock() {
+            Ok(guard) => Ok(guard),
+            Err(poisoned) => {
+                // Recover the guard; the lock is still held. We mark this as
+                // a journal-poisoned runtime error to avoid introducing a new
+                // error variant for a defense-in-depth case the runtime
+                // contract never produces.
+                drop(poisoned.into_inner());
+                Err(crate::RuntimeError::JournalPoisoned)
+            }
+        }
     }
 
     /// Returns true if the command queue is full.

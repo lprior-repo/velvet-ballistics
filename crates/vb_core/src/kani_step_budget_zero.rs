@@ -62,15 +62,32 @@ fn kani_budget_sub_dim_zero() {
 }
 
 /// VB-CORE-BUDGET-001 H3: AggregateResourceUsage with zero dimensions
+///
+/// Bounded to `MAX_STEPS_PER_WORKFLOW` (master contract §13: 1000 steps)
+/// so the property is verified across the full range the production
+/// admission gate enforces.
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_aggregate_usage_zero() {
     let usage = zero_usage();
 
-    let budget = zero_budget();
-
+    let mut budget = zero_budget();
+    // Bound the step dimension to the master contract ceiling. Any value
+    // up to and including the ceiling must satisfy the additivity property.
+    let bounded_steps: u32 = kani::any();
+    kani::assume(bounded_steps <= 1_000);
+    budget.max_steps_executable = u64::from(bounded_steps);
+    // After the assumption, the bounded value is in [0, MAX_STEPS_PER_WORKFLOW].
+    // Adding to a zero usage cannot overflow because both operands are
+    // bounded by the per-workflow ceiling.
     let result = usage.try_add_budget(&budget);
     kani::assert(result.is_ok(), "adding zero budgets succeeds");
+    if let Ok(new_usage) = result {
+        kani::assert(
+            new_usage.max_steps_executable <= 1_000,
+            "step count must remain within the master contract ceiling after add",
+        );
+    }
 }
 
 /// VB-CORE-BUDGET-001 H4: try_add_budget with zero current usage

@@ -133,6 +133,16 @@ pub struct Shard {
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
+    /// Admission gate lock held for the duration of preflight+enqueue.
+    ///
+    /// `Runtime::submit_*` methods acquire this lock before evaluating the
+    /// admission preflight and hold it until the `ShardCommand` is enqueued.
+    /// The lock guarantees that two concurrent submits targeting the same
+    /// shard cannot squeeze in between the preflight and the enqueue, so the
+    /// budget reservation is atomic with the queue commit. The shard's tick
+    /// loop does NOT take this lock, so admission is decoupled from run
+    /// execution.
+    pub(crate) admission_lock: std::sync::Mutex<()>,
     /// Recovered workflows keyed by run, populated during `Runtime::recover`.
     #[cfg(feature = "test-util")]
     pub(crate) pending_workflows: IndexMap<RunId, CompiledWorkflow>,
