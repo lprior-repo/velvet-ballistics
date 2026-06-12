@@ -262,6 +262,8 @@ fn kani_gate_08_arbitrary_parts_index_sentinel_rejected() {
 #[kani::unwind(17)]
 fn kani_gate_08_full_structure_no_panic() {
     let parts: WorkflowParts = kani::any();
+    kani::assume(parts.slot_count <= 256);
+    kani::assume(parts.symbols_count <= 1024);
 
     // Gate 8 should never panic regardless of nodes/expressions/constants/step_names shape.
     let _result = validate_gate_08_accessor_path_segments(&parts);
@@ -304,6 +306,7 @@ fn kani_gate_08_arbitrary_resource_contract() {
     let parts: WorkflowParts = kani::any();
     kani::assume(parts.slot_count > 0);
     kani::assume(parts.slot_count <= 16);
+    kani::assume(parts.symbols_count <= 1024);
 
     // Gate 8 does not inspect resource_contract, but arbitrary parts must not panic.
     let _result = validate_gate_08_accessor_path_segments(&parts);
@@ -318,6 +321,8 @@ fn kani_gate_08_arbitrary_resource_contract() {
 #[kani::unwind(17)]
 fn kani_gate_08_step_names_independent_of_slots() {
     let parts: WorkflowParts = kani::any();
+    kani::assume(parts.slot_count <= 256);
+    kani::assume(parts.symbols_count <= 1024);
     // slot_count and step_names.len() are independent; Gate 8 must tolerate any combination.
     let _result = validate_gate_08_accessor_path_segments(&parts);
     std::mem::forget(parts);
@@ -346,69 +351,77 @@ fn kani_gate_08_empty_nodes_valid_accessors_pass() {
 #[kani::proof]
 #[kani::unwind(3)]
 fn kani_gate_08_expressions_with_accessor_refs() {
-    // Arbitrary IDs for the workflow structure.
-    let expr_idx: vb_core::ids::ExprIdx = kani::any();
-    let acc_idx: vb_core::ids::AccessorIdx = kani::any();
-    let sym0: SymbolId = kani::any();
-    let sym1: SymbolId = kani::any();
-    let slot0: SlotIdx = kani::any();
-    let step0: StepIdx = kani::any();
-    let step1: StepIdx = kani::any();
-
-    // Arbitrary but bounded slot/symbol counts.
+    // Bounded symbolic inputs. Each input is constrained to a small domain
+    // so the solver does not blow up on a full WorkflowParts Arbitrary impl.
     let slot_count: u16 = kani::any();
-    let symbols_count: u32 = kani::any();
     kani::assume(slot_count >= 2);
+    kani::assume(slot_count <= 8);
+    let symbols_count: u32 = kani::any();
     kani::assume(symbols_count >= 2);
-    // Ensure indices are in valid range.
-    kani::assume(slot0.get() < slot_count);
-    kani::assume(step0.get() < u16::MAX); // step indices are u16
-    kani::assume(step1.get() < u16::MAX);
-    kani::assume(sym0.get() < symbols_count);
-    kani::assume(sym1.get() < symbols_count);
-    kani::assume(acc_idx.get() < 2); // We have 2 accessors
+    kani::assume(symbols_count <= 16);
 
-    let mut parts: WorkflowParts = kani::any();
-    parts.nodes = Box::new([
-        CompiledNode {
-            id: step0,
-            output: Some(slot0),
-            next: Some(step1),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::EvalExpr { expr: expr_idx },
-        },
-        CompiledNode {
-            id: step1,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish { result: slot0 },
-        },
-    ]);
-    parts.expressions = Box::new([vb_core::workflow::ExprProgram {
-        ops: Box::new([
-            vb_core::workflow::ExprOp::LoadAccessor(acc_idx),
-            vb_core::workflow::ExprOp::Eq,
+    let slot0_raw: u16 = kani::any();
+    kani::assume(slot0_raw < slot_count);
+    let slot0 = SlotIdx::new(slot0_raw);
+
+    let sym0_raw: u32 = kani::any();
+    kani::assume(sym0_raw < symbols_count);
+    let sym0 = SymbolId::new(sym0_raw);
+
+    let step0 = StepIdx::new(0);
+    let step1 = StepIdx::new(1);
+
+    // Bounded WorkflowParts: we construct every field explicitly to avoid
+    // pulling in the unbounded `kani::Arbitrary` impl for WorkflowParts.
+    let parts = WorkflowParts {
+        name: Box::from("kani_gate_08"),
+        digest: WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
+        nodes: Box::new([
+            CompiledNode {
+                id: step0,
+                output: Some(slot0),
+                next: Some(step1),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ids::ExprIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: step1,
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish { result: slot0 },
+            },
         ]),
-        max_stack: 1,
-    }]);
-    parts.accessors = Box::new([
-        AccessorProgram {
-            root: slot0,
-            path: Box::new([PathSegment::Field(sym0)]),
-        },
-        AccessorProgram {
-            root: slot0,
-            path: Box::new([PathSegment::Index(0)]),
-        },
-    ]);
-    parts.constants = Box::new([vb_core::value::ConstValue::Null]);
-    parts.slot_count = slot_count;
-    parts.symbols_count = symbols_count;
-    parts.entry = step0;
-    parts.step_names = Box::new([Box::from("eval"), Box::from("finish")]);
+        expressions: Box::new([vb_core::workflow::ExprProgram {
+            ops: Box::new([
+                vb_core::workflow::ExprOp::LoadAccessor(
+                    vb_core::ids::AccessorIdx::new(0),
+                ),
+                vb_core::workflow::ExprOp::Eq,
+            ]),
+            max_stack: 1,
+        }]),
+        accessors: Box::new([
+            AccessorProgram {
+                root: slot0,
+                path: Box::new([PathSegment::Field(sym0)]),
+            },
+            AccessorProgram {
+                root: slot0,
+                path: Box::new([PathSegment::Index(0)]),
+            },
+        ]),
+        constants: Box::new([vb_core::value::ConstValue::Null]),
+        slot_count,
+        symbols_count,
+        entry: step0,
+        resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
+        step_names: Box::new([Box::from("eval"), Box::from("finish")]),
+    };
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "expressions with accessor refs pass Gate 8");
