@@ -11,7 +11,6 @@
 //! `single_node_workflow`, etc.) that were originally defined inline
 //! in the 7339-line `tests.rs` file.
 #![forbid(unsafe_code)]
-mod prelude;
 mod chunk_001;
 mod chunk_002;
 mod chunk_003;
@@ -41,3 +40,4 @@ mod chunk_026;
 mod chunk_027;
 mod chunk_028;
 mod chunk_029;
+mod prelude;

@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 proptest::proptest! {
     #[test]
     fn property_boundedness_policy(

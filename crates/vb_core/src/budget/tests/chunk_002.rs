@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn budget_rejects_excessive_fanout() {
     let budget = test_budget(1, 10, 3, 0);

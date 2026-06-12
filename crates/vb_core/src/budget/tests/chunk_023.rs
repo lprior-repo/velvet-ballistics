@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn try_add_budget_exercises_multiple_dimensions() -> Result<(), String> {
     let usage = AggregateResourceUsage {

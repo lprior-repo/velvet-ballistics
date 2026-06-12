@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn validate_aggregate_budget_reports_extended_payload_dimensions() -> Result<(), String> {
     let policy = BoundednessPolicy {

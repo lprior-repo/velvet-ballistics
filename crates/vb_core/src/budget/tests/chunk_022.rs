@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn validate_step_ceilings_rejects_transitions_over_hard_limit() -> Result<(), String> {
     let budget = AggregateResourceBudget {

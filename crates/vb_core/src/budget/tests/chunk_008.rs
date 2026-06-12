@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn repeat_start_body_accounting() -> Result<(), String> {
     let nodes = vec![

@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn try_add_budget_overflow_gather_pages_dimension() -> Result<(), String> {
     let usage = AggregateResourceUsage {

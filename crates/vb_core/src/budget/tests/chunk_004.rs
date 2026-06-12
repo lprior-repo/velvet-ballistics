@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn budget_large_loop_counted_realistically() {
     let nodes = vec![

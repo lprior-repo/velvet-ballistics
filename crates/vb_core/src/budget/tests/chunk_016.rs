@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn whole_workflow_budget_max_parallel_in_flight_from_together() -> Result<(), String> {
     let nodes = vec![

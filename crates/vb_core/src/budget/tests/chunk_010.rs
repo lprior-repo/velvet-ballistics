@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn policy_rejects_run_time_exceeded() -> Result<(), String> {
     let mut budget = test_budget(1, 0, 0, 0);

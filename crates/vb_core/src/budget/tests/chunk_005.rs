@@ -14,7 +14,6 @@ use crate::workflow::{
     CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
 };
 
-
 #[test]
 fn blackhat_step_count_overflow_uses_misleading_error_variant() {
     let workflow_err = WorkflowError::StepOutOfBounds {

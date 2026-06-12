@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn try_subtract_budget_underflow_journal_batch_bytes_dimension() -> Result<(), String> {
     let usage = AggregateResourceUsage {

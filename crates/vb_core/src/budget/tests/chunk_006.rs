@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 const fn test_budget(
     max_total_steps: u64,
     max_total_slots: u64,

@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn repeat_start_max_attempts_tracks_maximum_not_sum() -> Result<(), String> {
     let nodes = vec![

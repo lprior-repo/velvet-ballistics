@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn aggregate_resource_usage_try_add_budget_overflow() -> Result<(), String> {
     let usage = AggregateResourceUsage {

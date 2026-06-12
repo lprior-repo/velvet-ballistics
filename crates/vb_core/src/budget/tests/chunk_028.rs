@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn whole_workflow_budget_policy_at_exact_limit() -> Result<(), String> {
     let policy = BoundednessPolicy {

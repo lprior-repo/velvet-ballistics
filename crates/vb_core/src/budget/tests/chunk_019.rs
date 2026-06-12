@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn fits_within_capacity_exceeded_queue_depth() -> Result<(), String> {
     let usage = AggregateResourceUsage {

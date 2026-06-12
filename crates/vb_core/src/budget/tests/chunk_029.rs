@@ -14,7 +14,6 @@ use crate::workflow::{
     CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, SlotBranch, WorkflowError,
 };
 
-
 #[test]
 fn sub_dim_returns_underflow_when_current_is_zero() {
     // B-BUDGET-003: sub_dim returns Underflow when current == 0 && requested > 0

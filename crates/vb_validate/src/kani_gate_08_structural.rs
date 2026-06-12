@@ -398,9 +398,7 @@ fn kani_gate_08_expressions_with_accessor_refs() {
         ]),
         expressions: Box::new([vb_core::workflow::ExprProgram {
             ops: Box::new([
-                vb_core::workflow::ExprOp::LoadAccessor(
-                    vb_core::ids::AccessorIdx::new(0),
-                ),
+                vb_core::workflow::ExprOp::LoadAccessor(vb_core::ids::AccessorIdx::new(0)),
                 vb_core::workflow::ExprOp::Eq,
             ]),
             max_stack: 1,

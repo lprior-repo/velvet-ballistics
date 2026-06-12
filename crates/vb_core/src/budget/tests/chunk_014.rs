@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn step_budget_new_one_consumes_to_zero() -> Result<(), String> {
     let mut b = StepBudget::new(1);

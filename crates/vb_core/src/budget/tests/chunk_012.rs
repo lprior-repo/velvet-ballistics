@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn foreach_multi_step_body() -> Result<(), String> {
     let nodes = vec![

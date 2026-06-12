@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn budget_choose_fanout_counted() {
     let nodes = vec![

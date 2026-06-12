@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn budget_error_parallel_display() -> Result<(), String> {
     let err = BudgetError::ParallelExceeded {

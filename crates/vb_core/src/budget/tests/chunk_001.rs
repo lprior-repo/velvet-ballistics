@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn budget_simple_linear_workflow() {
     let nodes = vec![

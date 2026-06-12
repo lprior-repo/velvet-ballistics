@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn together_start_tracks_max_parallel_in_flight() -> Result<(), String> {
     let nodes = vec![

@@ -16,7 +16,6 @@ use crate::workflow::{
 
 use super::prelude::*;
 
-
 #[test]
 fn validate_aggregate_budget_rejects_exceeded_result_bytes() -> Result<(), String> {
     let budget = AggregateResourceBudget {
