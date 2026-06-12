@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 //! Multi-shard runtime facade routing public commands to owning shards.
+// canonical-path: crates/vb_runtime/src/runtime/mod.rs (submodules in
+// crates/vb_runtime/src/runtime/{runtime_admission,runtime_ask,runtime_control,runtime_metrics}.rs)
+// Declared as `pub mod runtime;` in crates/vb_runtime/src/lib.rs.
 
 use std::num::NonZeroUsize;
 

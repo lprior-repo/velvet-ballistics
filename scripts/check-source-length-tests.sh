@@ -299,6 +299,147 @@ test_braces_in_strings_and_comments_do_not_hide_next_hot_function() {
   assert_contains "$output" 'crates/vb_runtime/src/brace_noise.rs:5 hot function has 4 logical lines' 'brace noise hot function failure'
 }
 
+# =============================================================================
+# DEDUP-11 (vb-t060f): split-or-retire-before-release quarterly self-test
+# =============================================================================
+
+# Loads the split_or_retire_quarterly_self_test function from the gate
+# script without executing the main gate or the trailing function call.
+# The function contains nested `}` in a `} >&2` block, so a line-anchored
+# `^}$` match is not sufficient; use awk to track brace depth instead.
+load_quarterly_self_test() {
+  local gate="$repo_root/scripts/check-source-length.sh"
+  awk '
+    /^[A-Za-z_][A-Za-z0-9_]*\(\) \{$/ && !in_fn { in_fn=1; depth=1; print; next }
+    in_fn {
+      n_open = gsub(/\{/, "{")
+      n_close = gsub(/\}/, "}")
+      depth += n_open - n_close
+      print
+      if (depth <= 0) { in_fn=0 }
+    }
+  ' "$gate"
+}
+
+# Builds a temporary repo with empty ledgers and writes the given
+# split-or-retire rows (one row per line) into the appropriate ledger.
+make_repo_with_split_or_retire_rows() {
+  local source_rows="$1"
+  local hot_rows="$2"
+  local repo
+  repo="$(make_repo)"
+  if [ -n "$source_rows" ]; then
+    while IFS= read -r row; do
+      [ -z "$row" ] && continue
+      printf 'crates/vb_core/src/%s|lewis|vb-test|split-or-retire-before-release|fixture row\n' "$row" >> "$repo/.config/source-length-exceptions.txt"
+    done <<< "$source_rows"
+  fi
+  if [ -n "$hot_rows" ]; then
+    while IFS= read -r row; do
+      [ -z "$row" ] && continue
+      printf 'crates/vb_core/src/%s|1|lewis|vb-test|split-or-retire-before-release|fixture hot row\n' "$row" >> "$repo/.config/hot-function-length-exceptions.txt"
+    done <<< "$hot_rows"
+  fi
+  track_repo "$repo"
+  printf '%s' "$repo"
+}
+
+run_quarterly_self_test_in_repo() {
+  local repo="$1"
+  local state_file="$2"
+  local self_test_body
+  self_test_body="$(load_quarterly_self_test)"
+  (
+    cd "$repo"
+    ROOT="$repo"
+    SOURCE_LENGTH_QUARTERLY_STATE="$state_file"
+    eval "$self_test_body"
+    split_or_retire_quarterly_self_test
+  )
+}
+
+test_quarterly_self_test_passes_with_empty_state_and_records_baseline() {
+  local repo
+  local state_file
+  repo="$(make_repo_with_split_or_retire_rows "a.rs" "b.rs:1")"
+  state_file="$repo/.config/quarterly-state.jsonl"
+  run_quarterly_self_test_in_repo "$repo" "$state_file" >/dev/null
+  # Both ledgers together = 1 source + 1 hot = 2 rows
+  assert_contains "$(cat "$state_file")" '"quarter":"' 'baseline entry quarter field'
+  assert_contains "$(cat "$state_file")" '"count":2' 'baseline entry count field'
+}
+
+test_quarterly_self_test_passes_when_prior_quarter_count_higher() {
+  local repo
+  local state_file
+  repo="$(make_repo_with_split_or_retire_rows "a.rs" "")"
+  state_file="$repo/.config/quarterly-state.jsonl"
+  printf '{"quarter":"2025-Q4","count":5,"date":"2025-12-31"}\n' > "$state_file"
+  run_quarterly_self_test_in_repo "$repo" "$state_file" >/dev/null
+  # Current count 1 is below prior 5 → pass. A new entry is appended
+  # for the current quarter as a forward-looking baseline, so the
+  # state file should now contain 2 lines (prior + current).
+  if [ "$(wc -l < "$state_file")" -ne 2 ]; then
+    printf 'Expected 2 lines (prior + current); got %s\n' "$(wc -l < "$state_file")" >&2
+    return 1
+  fi
+  assert_contains "$(cat "$state_file")" '"count":1' 'current quarter count is recorded'
+}
+
+test_quarterly_self_test_passes_when_prior_quarter_count_equal() {
+  local repo
+  local state_file
+  repo="$(make_repo_with_split_or_retire_rows "a.rs" "b.rs:1")"
+  state_file="$repo/.config/quarterly-state.jsonl"
+  printf '{"quarter":"2025-Q4","count":2,"date":"2025-12-31"}\n' > "$state_file"
+  run_quarterly_self_test_in_repo "$repo" "$state_file" >/dev/null
+}
+
+test_quarterly_self_test_fails_when_prior_quarter_count_lower() {
+  local repo
+  local state_file
+  local output
+  repo="$(make_repo_with_split_or_retire_rows "a.rs" "b.rs:1")"
+  state_file="$repo/.config/quarterly-state.jsonl"
+  printf '{"quarter":"2025-Q4","count":1,"date":"2025-12-31"}\n' > "$state_file"
+  if output="$(run_quarterly_self_test_in_repo "$repo" "$state_file" 2>&1)"; then
+    printf 'Expected quarterly self-test to fail when prior count is lower\nOutput:\n%s\n' "$output" >&2
+    return 1
+  fi
+  assert_contains "$output" 'DEDUP-11 split-or-retire-before-release quarterly self-test FAILED' 'failure banner'
+  assert_contains "$output" 'quarter 2025-Q4 recorded 1 rows' 'triage references prior quarter'
+}
+
+test_quarterly_self_test_fails_against_multiple_prior_quarters_when_any_lower() {
+  local repo
+  local state_file
+  local output
+  repo="$(make_repo_with_split_or_retire_rows "a.rs" "")"
+  state_file="$repo/.config/quarterly-state.jsonl"
+  printf '{"quarter":"2025-Q3","count":10,"date":"2025-09-30"}\n' > "$state_file"
+  printf '{"quarter":"2025-Q4","count":0,"date":"2025-12-31"}\n' >> "$state_file"
+  if output="$(run_quarterly_self_test_in_repo "$repo" "$state_file" 2>&1)"; then
+    printf 'Expected quarterly self-test to fail when ANY prior quarter is lower\nOutput:\n%s\n' "$output" >&2
+    return 1
+  fi
+  assert_contains "$output" '2025-Q4' 'triage lists the offending prior quarter'
+}
+
+test_quarterly_self_test_is_idempotent_within_same_quarter() {
+  local repo
+  local state_file
+  repo="$(make_repo_with_split_or_retire_rows "a.rs" "b.rs:1")"
+  state_file="$repo/.config/quarterly-state.jsonl"
+  run_quarterly_self_test_in_repo "$repo" "$state_file" >/dev/null
+  local lines_after_first_run
+  lines_after_first_run="$(wc -l < "$state_file")"
+  run_quarterly_self_test_in_repo "$repo" "$state_file" >/dev/null
+  if [ "$(wc -l < "$state_file")" -ne "$lines_after_first_run" ]; then
+    printf 'Expected re-run within same quarter to be idempotent (no new entries)\n' >&2
+    return 1
+  fi
+}
+
 test_gate_passes_on_compliant_files
 test_gate_fails_on_over_limit_test_like_source
 test_gate_fails_on_over_limit_arbitrary_first_party_source
@@ -317,5 +458,11 @@ test_malformed_hot_ledger_fails
 test_invalid_hot_ledger_path_fails
 test_hot_ledger_non_hot_scope_fails
 test_braces_in_strings_and_comments_do_not_hide_next_hot_function
+test_quarterly_self_test_passes_with_empty_state_and_records_baseline
+test_quarterly_self_test_passes_when_prior_quarter_count_higher
+test_quarterly_self_test_passes_when_prior_quarter_count_equal
+test_quarterly_self_test_fails_when_prior_quarter_count_lower
+test_quarterly_self_test_fails_against_multiple_prior_quarters_when_any_lower
+test_quarterly_self_test_is_idempotent_within_same_quarter
 
 printf 'check-source-length self-tests passed\n'
