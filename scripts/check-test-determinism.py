@@ -14,6 +14,7 @@ Evidence labels cached/skipped/flaky results as non-release.
 import sys
 import subprocess
 import re
+import os
 from pathlib import Path
 from typing import Iterator, NamedTuple
 
@@ -29,6 +30,7 @@ ROOT = Path(subprocess.check_output(
     ["git", "rev-parse", "--show-toplevel"],
     text=True
 ).strip())
+BASELINE = ROOT / ".evidence" / "test-determinism" / "baseline.txt"
 
 
 # Patterns: (kind, regex, is_critical_only)
@@ -137,23 +139,64 @@ def render_label(finding: Finding) -> str:
     return f"{finding.kind}|{finding.path}|{finding.line}|{finding.detail}"
 
 
+def load_baseline_labels() -> set[str]:
+    if not BASELINE.exists():
+        return set()
+
+    labels = set()
+    for line in BASELINE.read_text().splitlines():
+        if line.count("|") >= 3:
+            labels.add(line)
+    return labels
+
+
+def render_summary(findings: list[Finding], prefix: str) -> None:
+    by_kind: dict[str, list[Finding]] = {}
+    for finding in findings:
+        by_kind.setdefault(finding.kind, []).append(finding)
+
+    print(prefix, file=sys.stderr)
+    print(f"  Total findings: {len(findings)}", file=sys.stderr)
+    for kind, group in sorted(by_kind.items()):
+        print(f"  {kind}: {len(group)}", file=sys.stderr)
+    print(file=sys.stderr)
+
+
 def main() -> int:
+    ci_mode = "--ci" in sys.argv or os.environ.get("MOON_CI") == "1" or os.environ.get("CI") == "1"
     findings = gather_findings()
+    labels = {render_label(finding) for finding in findings}
+    baseline_labels = load_baseline_labels()
 
     if not findings:
         print("test determinism: PASS — no non-deterministic patterns detected")
         return 0
 
-    # Group by kind
-    by_kind: dict[str, list[Finding]] = {}
-    for f in findings:
-        by_kind.setdefault(f.kind, []).append(f)
+    if baseline_labels:
+        new_labels = sorted(labels - baseline_labels)
+        resolved_labels = sorted(baseline_labels - labels)
+        if not new_labels:
+            mode = "CI" if ci_mode else "dev"
+            print(
+                f"test determinism: PASS — {len(labels)} findings are within archived baseline ({mode} mode)",
+                file=sys.stderr,
+            )
+            if resolved_labels:
+                print(f"  Resolved baseline findings: {len(resolved_labels)}", file=sys.stderr)
+            return 0
 
-    print("test determinism: FAIL", file=sys.stderr)
-    print(f"  Total findings: {len(findings)}", file=sys.stderr)
-    for kind, fs in sorted(by_kind.items()):
-        print(f"  {kind}: {len(fs)}", file=sys.stderr)
-    print(file=sys.stderr)
+        render_summary(findings, "test determinism: FAIL — new findings exceed archived baseline")
+        print(f"  Baseline: {len(baseline_labels)} labels", file=sys.stderr)
+        print(f"  New findings: {len(new_labels)}", file=sys.stderr)
+        if resolved_labels:
+            print(f"  Resolved baseline findings: {len(resolved_labels)}", file=sys.stderr)
+        print(file=sys.stderr)
+        for label in new_labels:
+            print(label, file=sys.stderr)
+        return 1
+
+    # Group by kind
+    render_summary(findings, "test determinism: FAIL")
 
     for f in findings:
         print(render_label(f), file=sys.stderr)

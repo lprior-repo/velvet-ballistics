@@ -185,14 +185,14 @@ tasks:
     inputs:
       - 'scripts/check-test-determinism.py'
       - 'scripts/check-test-determinism.sh'
+      - '.evidence/test-determinism/baseline.txt'
       - '.moon/tasks/all.yml'
       - 'README.md'
       - 'crates/*/tests/**/*.rs'
       - 'crates/workspace_tests/src/**/*.rs'
     options:
       cache: false
-      # Current tree has pre-existing findings; run explicitly until clean.
-      runInCI: false
+      runInCI: true
 
   unsafe-audit:
     # First-party `unsafe { }` block detector for the 4 hot crates.

@@ -1,0 +1,30 @@
+tasks:
+  flux-check-vb-compile:
+    command: 'bash scripts/flux-check-package.sh vb_compile'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/flux-check-package.sh'
+      - 'crates/vb_compile/src/**/*'
+      - 'crates/vb_compile/Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/flux.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  flux-check-vb-runtime:
+    command: 'bash scripts/flux-check-package.sh vb_runtime'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/flux-check-package.sh'
+      - 'crates/vb_core/src/**/*'
+      - 'crates/vb_storage/src/**/*'
+      - 'crates/vb_runtime/src/**/*'
+      - 'crates/vb_runtime/Cargo.toml'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/flux.yml'
+    options:
+      cache: false
+      runInCI: true

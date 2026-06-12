@@ -76,7 +76,7 @@ fn kani_aggregate_usage_zero() {
     // up to and including the ceiling must satisfy the additivity property.
     let bounded_steps: u32 = kani::any();
     kani::assume(bounded_steps <= 1_000);
-    budget.max_steps_executable = u64::from(bounded_steps);
+    budget.max_steps_executable = bounded_steps;
     // After the assumption, the bounded value is in [0, MAX_STEPS_PER_WORKFLOW].
     // Adding to a zero usage cannot overflow because both operands are
     // bounded by the per-workflow ceiling.

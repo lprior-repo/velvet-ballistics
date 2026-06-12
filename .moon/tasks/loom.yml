@@ -1,0 +1,35 @@
+tasks:
+  loom-list-smoke:
+    command: 'bash scripts/loom-list.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/loom-list.sh'
+      - 'xtask/src/loom.rs'
+      - 'xtask/Cargo.toml'
+      - '.cargo/config.toml'
+      - '.moon/tasks/loom.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-run:
+    script: |
+      set -euo pipefail
+      for model in journal_writer_queue action_completion_cancel timer_fired_cancel shutdown_drain bounded_queue; do
+        cargo xtask loom --model "$model"
+      done
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_core/src/**/*'
+      - 'crates/vb_storage/src/**/*'
+      - 'crates/vb_runtime/src/**/*'
+      - 'xtask/src/loom.rs'
+      - 'xtask/Cargo.toml'
+      - '.cargo/config.toml'
+      - 'crates/vb_runtime/src/models/loom/**/*.rs'
+      - '.moon/tasks/loom.yml'
+    options:
+      cache: false
+      runInCI: true

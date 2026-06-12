@@ -17,3 +17,4 @@ crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests
 crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_step_state_contracts.rs|vb-6yze4|oversized proof-kernel density test split by step-state domain; exact transition assertions preserved.
 crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_budget_contracts.rs|vb-6yze4|oversized proof-kernel density test split by budget domain; exact budget assertions preserved.
 crates/vb_proof_kernels/tests/density_contracts.rs|crates/vb_proof_kernels/tests/density_envelope_header_contracts.rs|vb-6yze4|oversized proof-kernel density test split by envelope-header domain; exact header assertions preserved.
+crates/vb_storage/src/tests.rs|crates/vb_storage/src/tests/chunk_001.rs|vb-stortst01|oversized vb_storage test module split into chunked tests/ modules; exact assertions preserved across chunk_001..chunk_041.

@@ -4,7 +4,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
 fn benchmark_aggregate_resource_budget_contract_surface(c: &mut Criterion) {
-    let source = include_str!("../src/budget.rs");
+    let source = include_str!("../src/budget/mod.rs");
     c.bench_function("aggregate_resource_budget_contract_surface", |b| {
         b.iter(|| {
             let present = black_box(source).contains("AggregateResourceBudget");

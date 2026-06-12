@@ -1,4 +1,21 @@
-const BUDGET_RS: &str = include_str!("../src/budget.rs");
+const BUDGET_RS: &str = concat!(
+    include_str!("../src/budget/mod.rs"),
+    include_str!("../src/budget/aggregate_budget.rs"),
+    include_str!("../src/budget/aggregate_usage.rs"),
+    include_str!("../src/budget/aggregate_usage_checks.rs"),
+    include_str!("../src/budget/budget_error.rs"),
+    include_str!("../src/budget/policy.rs"),
+    include_str!("../src/budget/small_linear.rs"),
+    include_str!("../src/budget/traversal.rs"),
+    include_str!("../src/budget/traversal_fanout.rs"),
+    include_str!("../src/budget/traversal_loop.rs"),
+    include_str!("../src/budget/traversal_path.rs"),
+    include_str!("../src/budget/traversal_step_count.rs"),
+    include_str!("../src/budget/traversal_successors.rs"),
+    include_str!("../src/budget/traversal_tracking.rs"),
+    include_str!("../src/budget/types.rs"),
+    include_str!("../src/budget/validation.rs"),
+);
 const ADMISSION_RS: &str = concat!(
     include_str!("../../vb_runtime/src/admission.rs"),
     include_str!("../../vb_runtime/src/admission/errors.rs")
