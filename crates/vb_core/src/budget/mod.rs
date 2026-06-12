@@ -34,7 +34,9 @@ pub(crate) use validation::{add_dim, sub_dim};
 mod tests_and_verification;
 
 #[cfg(test)]
+#[path = "tests.rs"]
 mod tests;
 
 #[cfg(test)]
+#[path = "vb_qi37_2_4_state8_tests.rs"]
 mod vb_qi37_2_4_state8_tests;
