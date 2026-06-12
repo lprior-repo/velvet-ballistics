@@ -141,3 +141,37 @@ Master violated:
 Impact: Admission can allocate after acceptance instead of failing/reserving explicitly.
 
 Suggested bead: `P1 preallocate or reserve shard frame pools at admission`
+
+## Closure Status (reconciled by vb-ovgnb / vb-o5zb.6, 2026-06-12)
+
+The umbrella bead `vb-o5zb` (P0: reconcile core taint step-state and resource
+contracts with master) and all 5 of its direct children are CLOSED. The
+following STATUS: REJECTED proof obligations remain deferred — they are
+captured here per the differential-verification doctrine to prevent
+evidence laundering, NOT scrubbed.
+
+### Closed direct children of vb-o5zb
+
+| Bead ID | Title | Status |
+|---------|-------|--------|
+| vb-o5zb.1 | restore normative Clean/DerivedFromSecret/Secret taint lattice | CLOSED |
+| vb-o5zb.2 | make terminal step states absorbing | CLOSED |
+| vb-o5zb.3 | reconcile ResourceContract shape and defaults with master | CLOSED |
+| vb-o5zb.4 | route collect timeout semantics through replayable shard timer authority | CLOSED |
+| vb-o5zb.5 | audit vb-o5zb child closure evidence | CLOSED |
+
+### STATUS: REJECTED sub-beads (proof rejected, bead closed; obligations deferred)
+
+| Bead ID | Title | Status | Deferred obligation |
+|---------|-------|--------|---------------------|
+| vb-53k3r | remove Succeeded to Running exception from StepState VALID_TRANSITIONS (vb-o5zb.2 follow-up) | CLOSED | `crates/vb_core/src/frame.rs:54` still contains `(StepState::Succeeded, StepState::Running)` in `VALID_TRANSITIONS`; `vb_proof_kernels/src/step_state.rs:48,105-115` retains the Succeeded special case. CL-TERM-01 unsatisfied. Repair requires removing those entries and updating 4 stale Kani harnesses (`frame.rs:1101`, `frame/tests_and_verification.rs:1627`, `vb_proof_kernels/src/step_state.rs:558-561`, `vb_runtime/src/primitives/reentry_proofs.rs:775-776`) plus `integration_step_behavior.rs:1324-1333` and the `mark_pending` doc comment at `frame.rs:393-394`. |
+| vb-izu26 | add test for `CollectPaginationState::from_journal` preservation path (vb-o5zb.4 follow-up) | CLOSED | preservation-path test for `CollectPaginationState` not yet added; collect-timeout replay correctness depends on it. |
+| vb-yurs3 | repair stale 5-variant `SpecTaint` in Verus `run_frame_invariant.rs` (vb-o5zb.1 follow-up) | CLOSED | Verus model still uses 5-variant `SpecTaint`; needs repair to match the 4-variant master lattice. |
+
+### Stale citations verified absent from the database
+
+`vb-y8tnv` and `vb-f4x2u` are referenced in the original `vb-ywhqi`
+bead description as STATUS: REJECTED sub-beads of `vb-o5zb`, but
+`bd show vb-y8tnv` and `bd show vb-f4x2u` both return "no issue found".
+They are stale text and do not represent hidden obligations.
+
