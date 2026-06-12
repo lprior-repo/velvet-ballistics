@@ -290,7 +290,7 @@ pub enum RuntimeError {
     /// master contract per-workflow ceiling
     /// (`vb_core::limits::MAX_STEPS_PER_WORKFLOW`).
     AdmissionBudgetExceeded {
-        /// Step count declared by the workflow.
+        /// Observed step count from the declaration or computed IR budget.
         actual: u32,
         /// Per-workflow ceiling from the master contract.
         limit: u32,

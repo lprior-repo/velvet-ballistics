@@ -182,8 +182,9 @@ pub enum AdmissionError {
     /// Workflow step count exceeds the master contract per-workflow ceiling
     /// (`vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`).
     ///
-    /// Returned by `preflight_step_budget` when the compiled workflow declares
-    /// a `ResourceContract::max_steps` above the limit. This is the typed,
+    /// Returned by `preflight_step_budget` when either the compiled workflow
+    /// declares a `ResourceContract::max_steps` above the limit or the actual
+    /// computed IR budget exceeds the limit. This is the typed,
     /// step-count-specific failure that the production admission preflight
     /// surfaces in place of a generic `BudgetPolicyExceeded` so the runtime
     /// can fail closed before any persistence.
@@ -191,7 +192,7 @@ pub enum AdmissionError {
         "admission rejected: workflow step count {actual} exceeds per-workflow ceiling {limit}"
     )]
     BudgetExceeded {
-        /// Step count declared by the workflow's `ResourceContract::max_steps`.
+        /// Observed step count from the declaration or computed IR budget.
         actual: u32,
         /// Per-workflow ceiling from `vb_core::limits::MAX_STEPS_PER_WORKFLOW`.
         limit: u32,

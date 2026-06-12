@@ -100,8 +100,8 @@ impl Runtime {
     /// Admission is atomic with the enqueue: the per-shard `admission_lock`
     /// is held for the duration of the preflight and the enqueue so two
     /// concurrent submits cannot squeeze in between the budget reservation
-    /// and the queue commit. Fails closed if the workflow's step count
-    /// exceeds `vb_core::limits::MAX_STEPS_PER_WORKFLOW`.
+    /// and the queue commit. Fails closed if the workflow's declared or
+    /// computed IR step budget exceeds `vb_core::limits::MAX_STEPS_PER_WORKFLOW`.
     pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
         let _admission_guard = shard.lock_admission()?;
@@ -121,7 +121,7 @@ impl Runtime {
     ///
     /// Admission is atomic with the enqueue via the per-shard
     /// `admission_lock`. The preflight now enforces BOTH the artifact gate
-    /// and the per-workflow step-count policy.
+    /// and the per-workflow declared/computed IR step-count policy.
     pub fn submit_compiled_with_inputs(
         &self,
         run: RunId,
@@ -144,7 +144,8 @@ impl Runtime {
     ///
     /// Admission is atomic with the enqueue via the per-shard
     /// `admission_lock`. The preflight now enforces BOTH the artifact gate
-    /// and the per-workflow step-count policy. Fails closed on either gate.
+    /// and the per-workflow declared/computed IR step-count policy. Fails
+    /// closed on either gate.
     pub fn submit_direct_with_inputs_grants_and_contracts(
         &self,
         run: RunId,

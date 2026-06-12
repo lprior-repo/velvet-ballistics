@@ -3,71 +3,33 @@
 //! This module covers the production admission path required by bead
 //! `vb-b2pzr`:
 //!
-//! 1. `preflight_step_budget` rejects workflows whose
-//!    `ResourceContract::max_steps` exceeds `vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`.
+//! 1. `preflight_step_budget` rejects workflows whose declared
+//!    `ResourceContract::max_steps` or computed IR step budget exceeds
+//!    `vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`.
 //! 2. `preflight_step_budget` accepts workflows at the boundary.
 //! 3. The step budget gate is reached through the production runtime
 //!    `Runtime::submit_direct` / `submit_compiled_with_inputs` /
 //!    `submit_direct_with_inputs_grants_and_contracts` paths so a
-//!    50,000-step workflow is rejected at admission before any persistence.
+//!    workflow declaring 50,000 steps is rejected at admission before any
+//!    persistence.
+//!
+//! Helpers live in `helpers.rs` so this file stays under the 300-line
+//! source cap.
 
 #![cfg(test)]
 
-use std::num::NonZeroUsize;
-
-use vb_core::ids::{RunId, StepIdx, WorkflowDigest};
+use vb_core::ids::RunId;
 use vb_core::policy::RuntimePolicy;
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+
+use crate::RuntimeError;
+use crate::admission::preflight_step_budget;
+
+use self::helpers::{
+    first_step_count_over_master_limit, linear_workflow_with_declared_steps, master_step_limit_u16,
+    runtime_with_policy, total_command_queue_depth, workflow_with_max_steps,
 };
 
-use crate::admission::preflight_step_budget;
-use crate::shard::ShardConfig;
-use crate::{Runtime, RuntimeError};
-
-/// Builds a `CompiledWorkflow` with `max_steps` declared in the resource
-/// contract. The compiled node graph is a single `Nop` node; the value of
-/// `max_steps` is what `preflight_step_budget` inspects.
-fn workflow_with_max_steps(max_steps: u16) -> CompiledWorkflow {
-    let parts = WorkflowParts {
-        name: format!("max_steps_{max_steps}").into(),
-        digest: WorkflowDigest::from_bytes([0xA0; 32]),
-        nodes: Box::from([CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        }]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([]),
-        slot_count: 0,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract {
-            max_steps,
-            ..ResourceContract::DEFAULT
-        },
-        step_names: Box::from([Box::from("s0")]),
-    };
-    CompiledWorkflow::from_parts_unchecked(parts)
-}
-
-/// Builds a runtime configured for strict admission with an always-present
-/// artifact store so the step-budget gate is the only constraint that fires.
-fn runtime_with_policy(policy: RuntimePolicy) -> Runtime {
-    let config = ShardConfig {
-        policy,
-        ..ShardConfig::default()
-    };
-    Runtime::new_with_artifact_store(
-        NonZeroUsize::new(1).expect("nonzero"),
-        config,
-        crate::admission::AlwaysPresentArtifactStore::shared(),
-    )
-}
+mod helpers;
 
 #[test]
 fn preflight_step_budget_rejects_oversized_workflow() {
@@ -117,6 +79,20 @@ fn preflight_step_budget_rejects_fifty_thousand_step_workflow() {
 }
 
 #[test]
+fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit() {
+    let workflow = linear_workflow_with_declared_steps(
+        first_step_count_over_master_limit(),
+        master_step_limit_u16(),
+    );
+    let result = preflight_step_budget(&workflow, RuntimePolicy::Strict);
+    assert!(matches!(
+        result,
+        Err(crate::admission::AdmissionError::BudgetExceeded { actual: 1_001, limit })
+            if limit == crate::admission::per_workflow_step_ceiling()
+    ));
+}
+
+#[test]
 fn submit_50k_step_workflow_rejected() {
     let runtime = runtime_with_policy(RuntimePolicy::Strict);
     let run = RunId::new(1);
@@ -126,6 +102,25 @@ fn submit_50k_step_workflow_rejected() {
         result,
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
+}
+
+#[test]
+fn submit_declared_limit_but_actual_ir_over_limit_rejected_before_enqueue() {
+    let runtime = runtime_with_policy(RuntimePolicy::Strict);
+    let run = RunId::new(20);
+    let workflow = linear_workflow_with_declared_steps(
+        first_step_count_over_master_limit(),
+        master_step_limit_u16(),
+    );
+    let result = runtime.submit_direct(run, workflow);
+    assert!(matches!(
+        result,
+        Err(RuntimeError::AdmissionBudgetExceeded { actual: 1_001, limit })
+            if limit == crate::admission::per_workflow_step_ceiling()
+    ));
+    assert_eq!(runtime.collect_metrics().runs_active, 0);
+    assert_eq!(total_command_queue_depth(&runtime), 0);
+    assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
 }
 
 #[test]

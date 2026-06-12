@@ -250,9 +250,10 @@ pub const fn per_workflow_step_ceiling() -> u32 {
 ///
 /// # Behavior
 ///
-/// - Returns `Ok(())` when `workflow.resource_contract().max_steps <= ceiling`.
+/// - Returns `Ok(())` when both declared and computed IR step budgets are at
+///   or below the ceiling.
 /// - Returns `Err(AdmissionError::BudgetExceeded { actual, limit })` when the
-///   workflow declares a step count above the ceiling.
+///   workflow declares or computes a step count above the ceiling.
 /// - Returns `Ok(())` for `RuntimePolicy::Relaxed` (admission is a no-op for
 ///   the relaxed policy lane, matching the rest of the admission preflight).
 ///
@@ -272,10 +273,13 @@ pub fn preflight_step_budget(
         return Ok(());
     }
     let limit = per_workflow_step_ceiling();
-    let max_steps = u32::from(workflow.resource_contract().max_steps);
-    if max_steps > limit {
+    let declared = u32::from(workflow.resource_contract().max_steps);
+    let requested = AggregateResourceBudget::from_workflow(workflow)
+        .map_err(super::budget_error_map::map_budget_error)?;
+    let observed = declared.max(requested.max_steps_executable);
+    if observed > limit {
         return Err(AdmissionError::BudgetExceeded {
-            actual: max_steps,
+            actual: observed,
             limit,
         });
     }

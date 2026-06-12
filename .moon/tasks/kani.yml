@@ -49,6 +49,7 @@ tasks:
       run_validate_harness kani_gate_08_arbitrary_parts_valid_accessors_pass
       run_validate_harness kani_gate_08_arbitrary_parts_root_oob_rejected
       run_validate_harness kani_gate_08_arbitrary_parts_symbol_oob_rejected
+      run_validate_harness kani_gate_08_expressions_with_accessor_refs
     toolchains:
       - rust
     deps:

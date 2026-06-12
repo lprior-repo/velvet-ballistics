@@ -151,15 +151,17 @@ def stable_label_from_rendered(label: str) -> str:
     return f"{parts[0]}|{parts[1]}|{parts[3]}"
 
 
-def load_baseline_labels() -> set[str]:
+def load_baseline_labels() -> tuple[set[str], int]:
     if not BASELINE.exists():
-        return set()
+        return set(), 0
 
     labels = set()
+    raw_label_rows = 0
     for line in BASELINE.read_text().splitlines():
         if line.count("|") >= 3:
+            raw_label_rows += 1
             labels.add(line)
-    return labels
+    return labels, raw_label_rows
 
 
 def render_summary(findings: list[Finding], prefix: str) -> None:
@@ -179,7 +181,7 @@ def main() -> int:
     findings = gather_findings()
     labels = {render_label(finding) for finding in findings}
     stable_counts = Counter(stable_label_from_rendered(label) for label in labels)
-    baseline_labels = load_baseline_labels()
+    baseline_labels, baseline_raw_label_rows = load_baseline_labels()
     baseline_stable_counts = Counter(
         stable_label_from_rendered(label) for label in baseline_labels
     )
@@ -204,18 +206,33 @@ def main() -> int:
         if not new_labels:
             mode = "CI" if ci_mode else "dev"
             print(
-                f"test determinism: PASS — {len(labels)} findings are within archived baseline ({mode} mode)",
+                "test determinism: PASS — "
+                f"{len(labels)} distinct labels / {len(findings)} raw findings "
+                f"are within archived baseline ({mode} mode)",
                 file=sys.stderr,
             )
             if resolved_labels:
-                print(f"  Resolved baseline findings: {len(resolved_labels)}", file=sys.stderr)
+                print(
+                    f"  Resolved baseline distinct labels: {len(resolved_labels)}",
+                    file=sys.stderr,
+                )
             return 0
 
-        render_summary(findings, "test determinism: FAIL — new findings exceed archived baseline")
-        print(f"  Baseline: {len(baseline_labels)} labels", file=sys.stderr)
-        print(f"  New findings: {len(new_labels)}", file=sys.stderr)
+        render_summary(
+            findings,
+            "test determinism: FAIL — new distinct labels exceed archived baseline",
+        )
+        print(
+            f"  Baseline: {len(baseline_labels)} distinct labels / "
+            f"{baseline_raw_label_rows} raw findings",
+            file=sys.stderr,
+        )
+        print(f"  New distinct labels: {len(new_labels)}", file=sys.stderr)
         if resolved_labels:
-            print(f"  Resolved baseline findings: {len(resolved_labels)}", file=sys.stderr)
+            print(
+                f"  Resolved baseline distinct labels: {len(resolved_labels)}",
+                file=sys.stderr,
+            )
         print(file=sys.stderr)
         for label in new_labels:
             print(label, file=sys.stderr)

@@ -42,7 +42,7 @@ pub use vb_core::policy::RuntimePolicy;
 mod tests;
 
 #[cfg(test)]
-#[path = "admission/step_budget_tests.rs"]
+#[path = "admission/step_budget_tests/mod.rs"]
 mod step_budget_tests;
 
 #[cfg(test)]

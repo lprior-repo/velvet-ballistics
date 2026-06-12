@@ -2,7 +2,9 @@
 //! Direct submission admission preflight for the runtime façade.
 
 use vb_core::WorkflowDigest;
-use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity, BoundednessPolicy};
+use vb_core::budget::{
+    AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity, BoundednessPolicy,
+};
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::RunId;
 use vb_core::policy::RuntimePolicy;
@@ -22,10 +24,12 @@ impl Runtime {
     ///
     /// 1. `admit_artifact_run` — artifact existence, gate count, proof flags,
     ///    digest binding, capability coverage.
-    /// 2. `preflight_step_budget` — `workflow.resource_contract().max_steps`
-    ///    against `vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`. Returns
-    ///    the typed `AdmissionError::BudgetExceeded { actual, limit }` so
-    ///    the production preflight can fail closed with a step-count-specific
+    /// 2. Step-budget gate — the larger of declared
+    ///    `workflow.resource_contract().max_steps` and the computed
+    ///    `AggregateResourceBudget::from_workflow(workflow)` step budget
+    ///    against `vb_core::limits::MAX_STEPS_PER_WORKFLOW = 1_000`.
+    ///    Returns the typed `AdmissionBudgetExceeded` runtime error so the
+    ///    production preflight can fail closed with a step-count-specific
     ///    failure code.
     /// 3. `admit_run_with_budget_policy` — full policy + capacity admission
     ///    (per the bead `vb-b2pzr` step 4: "replace single-call admission
@@ -43,8 +47,10 @@ impl Runtime {
         }
         let digest = workflow.digest();
         Self::preflight_artifact_gate(shard, run, digest, &caps)?;
-        Self::preflight_step_gate(workflow, shard.policy, digest)?;
-        Self::preflight_budget_gate(shard, run, digest, workflow, &caps)?;
+        let budget_request = build_admission_budget_request(workflow)
+            .map_err(|error| map_aggregate_budget_error(error, digest))?;
+        Self::preflight_step_gate(workflow, &budget_request, shard.policy)?;
+        Self::preflight_budget_gate(shard, run, digest, &budget_request, &caps)?;
         Ok(())
     }
 
@@ -67,21 +73,32 @@ impl Runtime {
 
     fn preflight_step_gate(
         workflow: &CompiledWorkflow,
+        budget_request: &AdmissionBudgetRequest,
         policy: RuntimePolicy,
-        digest: WorkflowDigest,
     ) -> RuntimeResult<()> {
-        crate::admission::preflight_step_budget(workflow, policy)
-            .map_err(|error| map_admission_error(error, digest))
+        if !requires_admission(policy) {
+            return Ok(());
+        }
+        let limit = crate::admission::per_workflow_step_ceiling();
+        let declared = u32::from(workflow.resource_contract().max_steps);
+        let actual = budget_request.requested.max_steps_executable;
+        let observed = declared.max(actual);
+        if observed > limit {
+            return Err(RuntimeError::AdmissionBudgetExceeded {
+                actual: observed,
+                limit,
+            });
+        }
+        Ok(())
     }
 
     fn preflight_budget_gate(
         shard: &Shard,
         run: RunId,
         digest: WorkflowDigest,
-        workflow: &CompiledWorkflow,
+        budget_request: &AdmissionBudgetRequest,
         caps: &CapabilitySet,
     ) -> RuntimeResult<()> {
-        let budget_request = build_admission_budget_request(workflow);
         let store_adapter = AlwaysPresentArtifactStoreAdapter;
         crate::admission::admit_run_with_budget_policy(
             &store_adapter,
@@ -89,7 +106,7 @@ impl Runtime {
             digest,
             run,
             caps.clone(),
-            budget_request,
+            *budget_request,
         )
         .map(|_admission| ())
         .map_err(|error| map_admission_error(error, digest))
@@ -113,61 +130,18 @@ impl crate::admission::ArtifactStore for AlwaysPresentArtifactStoreAdapter {
 
 /// Build the [`AdmissionBudgetRequest`](vb_runtime::AdmissionBudgetRequest)
 /// used by the production preflight. Derives the requested budget from the
-/// workflow's `ResourceContract` and uses the master contract ceiling for
-/// the available capacity so a workflow that declares more steps than
-/// `MAX_STEPS_PER_WORKFLOW` is rejected with `BudgetExceeded` before any
-/// persistence.
-fn build_admission_budget_request(workflow: &CompiledWorkflow) -> AdmissionBudgetRequest {
-    let contract = workflow.resource_contract();
-    AdmissionBudgetRequest {
-        requested: requested_budget_from_contract(contract),
+/// actual compiled workflow IR, not just from declared `ResourceContract`
+/// values. The master contract ceiling remains the available step capacity so
+/// a workflow whose compiled IR shape exceeds `MAX_STEPS_PER_WORKFLOW` is
+/// rejected before any persistence or run-state mutation.
+fn build_admission_budget_request(
+    workflow: &CompiledWorkflow,
+) -> Result<AdmissionBudgetRequest, AggregateBudgetError> {
+    Ok(AdmissionBudgetRequest {
+        requested: AggregateResourceBudget::from_workflow(workflow)?,
         available: available_capacity_for_master_ceiling(),
         policy: BoundednessPolicy::DEFAULT,
-    }
-}
-
-fn requested_budget_from_contract(
-    contract: vb_core::workflow::ResourceContract,
-) -> AggregateResourceBudget {
-    let mut budget = AggregateResourceBudget::default();
-    populate_requested_execution(&mut budget, contract);
-    populate_requested_data(&mut budget, contract);
-    populate_requested_io(&mut budget, contract);
-    budget
-}
-
-fn populate_requested_execution(
-    budget: &mut AggregateResourceBudget,
-    contract: vb_core::workflow::ResourceContract,
-) {
-    budget.max_steps_executable = u32::from(contract.max_steps);
-    budget.max_action_tickets = u32::from(contract.max_retry_attempts);
-    budget.max_parallel_in_flight = contract.max_fanout;
-    budget.max_retries_per_action = contract.max_retry_attempts;
-    budget.max_together_branches = contract.max_fanout;
-    budget.max_repeat_attempts = contract.max_retry_attempts;
-}
-
-fn populate_requested_data(
-    budget: &mut AggregateResourceBudget,
-    contract: vb_core::workflow::ResourceContract,
-) {
-    budget.max_gather_items = contract.max_collect_items;
-    budget.max_result_bytes = contract.max_output_bytes;
-    budget.max_total_slots_written = u32::from(contract.max_slots);
-}
-
-fn populate_requested_io(
-    budget: &mut AggregateResourceBudget,
-    contract: vb_core::workflow::ResourceContract,
-) {
-    budget.max_queue_depth = contract.max_queue_depth;
-    budget.max_journal_batch_bytes = contract.max_journal_batch_bytes;
-    budget.max_ipc_payload_bytes = contract.max_ipc_payload_bytes;
-    budget.max_blob_bytes = contract.max_blob_bytes;
-    budget.max_input_bytes = contract.max_input_bytes;
-    budget.max_step_budget_per_tick = contract.max_step_budget_per_tick;
-    budget.max_transitions_per_tick = contract.max_transitions_per_tick;
+    })
 }
 
 fn available_capacity_for_master_ceiling() -> AggregateResourceCapacity {
@@ -232,5 +206,89 @@ fn map_admission_error(
         _ => RuntimeError::AdmissionArtifactInvalid {
             digest: workflow_digest,
         },
+    }
+}
+
+fn map_aggregate_budget_error(
+    error: AggregateBudgetError,
+    workflow_digest: WorkflowDigest,
+) -> RuntimeError {
+    let admission_error = aggregate_budget_admission_error(error);
+    map_admission_error(admission_error, workflow_digest)
+}
+
+fn aggregate_budget_admission_error(
+    error: AggregateBudgetError,
+) -> crate::admission::AdmissionError {
+    match error {
+        AggregateBudgetError::PolicyExceeded {
+            resource,
+            actual,
+            limit,
+        } => crate::admission::AdmissionError::BudgetPolicyExceeded {
+            resource,
+            actual,
+            limit,
+        },
+        AggregateBudgetError::CapacityExceeded {
+            resource,
+            requested,
+            available,
+        } => crate::admission::AdmissionError::ResourceCapacityExceeded {
+            resource,
+            requested,
+            available,
+        },
+        other => aggregate_budget_resource_error(other),
+    }
+}
+
+fn aggregate_budget_resource_error(
+    error: AggregateBudgetError,
+) -> crate::admission::AdmissionError {
+    match error {
+        AggregateBudgetError::Overflow { resource } => {
+            crate::admission::AdmissionError::ResourceBudgetOverflow { resource }
+        }
+        AggregateBudgetError::Underflow { resource } => {
+            crate::admission::AdmissionError::ResourceBudgetUnderflow { resource }
+        }
+        AggregateBudgetError::InvalidCapacity { resource } => {
+            crate::admission::AdmissionError::ResourceBudgetInvalidCapacity { resource }
+        }
+        other => aggregate_budget_ceiling_error(other),
+    }
+}
+
+fn aggregate_budget_ceiling_error(error: AggregateBudgetError) -> crate::admission::AdmissionError {
+    match error {
+        AggregateBudgetError::StepCeilingExceeded { requested, limit } => {
+            crate::admission::AdmissionError::ResourceStepCeilingExceeded { requested, limit }
+        }
+        AggregateBudgetError::PerTickCeilingExceeded { requested, limit } => {
+            crate::admission::AdmissionError::ResourcePerTickCeilingExceeded { requested, limit }
+        }
+        other => aggregate_budget_terminal_error(other),
+    }
+}
+
+fn aggregate_budget_terminal_error(
+    error: AggregateBudgetError,
+) -> crate::admission::AdmissionError {
+    match error {
+        AggregateBudgetError::ReservationNotFound { .. } => aggregate_budget_fallback_error(),
+        #[cfg(not(kani))]
+        AggregateBudgetError::WorkflowBudget(_) => aggregate_budget_fallback_error(),
+        #[cfg(kani)]
+        AggregateBudgetError::WorkflowBudget => aggregate_budget_fallback_error(),
+        _ => aggregate_budget_fallback_error(),
+    }
+}
+
+fn aggregate_budget_fallback_error() -> crate::admission::AdmissionError {
+    crate::admission::AdmissionError::BudgetPolicyExceeded {
+        resource: "aggregate_budget",
+        actual: u64::MAX,
+        limit: 0,
     }
 }

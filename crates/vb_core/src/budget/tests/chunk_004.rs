@@ -1,3 +1,4 @@
+#![allow(unused_imports, dead_code)]
 //! Test chunk 004 of 29 from the original
 //! `tests.rs` (budget unit tests).
 //! Lines 786–1053 of the original. Semantic content is
