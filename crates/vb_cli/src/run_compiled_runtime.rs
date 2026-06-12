@@ -271,50 +271,10 @@ pub(crate) fn report_runtime_error(args: std::fmt::Arguments<'_>, output: Output
     }
 }
 
-pub(crate) fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
-    match event {
-        vb_runtime::trace::TraceEvent::StepStarted { step, .. } => {
-            crate::outln!("  trace: StepStarted step={}", step.get());
-        }
-        vb_runtime::trace::TraceEvent::StepEnded { step, .. } => {
-            crate::outln!("  trace: StepEnded step={}", step.get());
-        }
-        vb_runtime::trace::TraceEvent::SlotWritten { slot, .. } => {
-            crate::outln!("  trace: SlotWritten slot={}", slot.get());
-        }
-        vb_runtime::trace::TraceEvent::ActionScheduled { step, .. } => {
-            crate::outln!("  trace: ActionScheduled step={}", step.get());
-        }
-        vb_runtime::trace::TraceEvent::ActionCompleted { step, .. } => {
-            crate::outln!("  trace: ActionCompleted step={}", step.get());
-        }
-        vb_runtime::trace::TraceEvent::ActionFailed { step, .. } => {
-            crate::outln!("  trace: ActionFailed step={}", step.get());
-        }
-        vb_runtime::trace::TraceEvent::AskAnswered { step, slot, .. } => {
-            crate::outln!(
-                "  trace: AskAnswered step={} slot={}",
-                step.get(),
-                slot.get()
-            );
-        }
-        vb_runtime::trace::TraceEvent::RunSubmitted { .. } => {
-            crate::outln!("  trace: RunSubmitted");
-        }
-        vb_runtime::trace::TraceEvent::RunFinished { .. } => {
-            crate::outln!("  trace: RunFinished");
-        }
-        vb_runtime::trace::TraceEvent::RunFailed { .. } => {
-            crate::outln!("  trace: RunFailed");
-        }
-        vb_runtime::trace::TraceEvent::RunCancelled { .. } => {
-            crate::outln!("  trace: RunCancelled");
-        }
-        _ => {
-            crate::outln!("  trace: Unknown");
-        }
-    }
-}
+// `print_trace_event` was extracted to `run_compiled_runtime_trace.rs`
+// to keep this file under the 300-line cap. The re-export below
+// preserves the existing call sites.
+pub(crate) use crate::run_compiled_runtime_trace::print_trace_event;
 
 fn report_compiled_ir_store_error(msg: std::fmt::Arguments<'_>, output: OutputFormat) {
     if output != OutputFormat::Text {

@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
-//! DOT graph generation for workflow visualization.
+//! DOT graph generation for compiled workflows.
+//!
+//! Extracted from `commands_workflow/mod.rs` to keep that file under the
+//! 300-line source cap. All items are public to the parent module so
+//! existing call sites continue to work.
 
 use vb_core::ids::StepIdx;
 use vb_core::{CompiledNodeKind, CompiledWorkflow};
-
-use super::helpers::{node_kind_label, saturating_add};
 
 pub(crate) struct DotGraph {
     pub node_count: usize,
@@ -48,7 +50,7 @@ pub(crate) fn generate_dot(workflow: &CompiledWorkflow) -> DotGraph {
 
         if let Some(next) = node.next {
             dot_lines.push(format!("    node_{i} -> node_{};", next.get()));
-            edge_count = saturating_add(edge_count, 1);
+            edge_count = edge_count.saturating_add(1);
         }
 
         let extra_edges = collect_kind_edges(u16::try_from(i).unwrap_or(u16::MAX), &node.kind);
@@ -60,7 +62,7 @@ pub(crate) fn generate_dot(workflow: &CompiledWorkflow) -> DotGraph {
                 format!("    node_{from} -> node_{to} [label=\"{escaped}\"];")
             };
             dot_lines.push(edge_decl);
-            edge_count = saturating_add(edge_count, 1);
+            edge_count = edge_count.saturating_add(1);
         }
     }
 
@@ -73,90 +75,54 @@ pub(crate) fn generate_dot(workflow: &CompiledWorkflow) -> DotGraph {
     }
 }
 
-fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, String)> {
-    let mut edges: Vec<(u16, u16, String)> = Vec::new();
+pub(crate) fn node_kind_label(kind: &CompiledNodeKind) -> &'static str {
     match kind {
-        CompiledNodeKind::Choose {
-            branches,
-            otherwise,
-        } => {
-            for branch in branches.iter() {
-                edges.push((node_idx, branch.target.get(), String::new()));
-            }
-            if let Some(fallback) = otherwise {
-                edges.push((node_idx, fallback.get(), "otherwise".to_string()));
-            }
-        }
-        CompiledNodeKind::ChooseSlot {
-            branches,
-            otherwise,
-        } => {
-            for branch in branches.iter() {
-                edges.push((node_idx, branch.target.get(), String::new()));
-            }
-            if let Some(fallback) = otherwise {
-                edges.push((node_idx, fallback.get(), "otherwise".to_string()));
-            }
-        }
-        CompiledNodeKind::ForEachStart { body, done, .. }
-        | CompiledNodeKind::ForEachNext { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
+        CompiledNodeKind::Nop => "nop",
+        CompiledNodeKind::SetConst { .. } => "set_const",
+        CompiledNodeKind::Copy { .. } => "copy",
+        CompiledNodeKind::EvalExpr { .. } => "eval_expr",
+        CompiledNodeKind::BuildObject { .. } => "build_object",
+        CompiledNodeKind::BuildList { .. } => "build_list",
+        CompiledNodeKind::Do { .. } => "do",
+        CompiledNodeKind::Finish { .. } => "finish",
+        CompiledNodeKind::WaitUntil { .. } => "wait_until",
+        CompiledNodeKind::ChooseSlot { .. } => "choose_slot",
+        CompiledNodeKind::RepeatStart { .. } => "repeat_start",
+        CompiledNodeKind::RepeatFinish { .. } => "repeat_finish",
+        CompiledNodeKind::ForEachStart { .. } => "for_each_start",
+        CompiledNodeKind::ForEachJoin { .. } => "for_each_join",
+        CompiledNodeKind::CollectStart { .. } => "collect_start",
+        CompiledNodeKind::CollectFinish { .. } => "collect_finish",
+        CompiledNodeKind::ReduceStart { .. } => "reduce_start",
+        CompiledNodeKind::ReduceFinish { .. } => "reduce_finish",
+        CompiledNodeKind::TogetherStart { .. } => "together_start",
+        CompiledNodeKind::TogetherJoin { .. } => "together_join",
+        _ => "other",
+    }
+}
+
+pub(crate) fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, String)> {
+    let mut edges = Vec::new();
+    match kind {
+        CompiledNodeKind::ForEachStart { body, done, .. } => {
+            edges.push((node_idx, body.get(), String::new()));
             edges.push((node_idx, done.get(), "done".to_string()));
         }
+        CompiledNodeKind::ForEachJoin { .. } => {}
         CompiledNodeKind::TogetherStart { branches, join } => {
-            for branch_step in branches.iter() {
-                edges.push((node_idx, branch_step.get(), "branch".to_string()));
+            for branch in branches.iter() {
+                edges.push((node_idx, branch.get(), "branch".to_string()));
             }
             edges.push((node_idx, join.get(), "join".to_string()));
         }
-        CompiledNodeKind::TogetherBranch { entry, join, .. } => {
-            edges.push((node_idx, entry.get(), "entry".to_string()));
-            edges.push((node_idx, join.get(), "join".to_string()));
+        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+            for branch in branches.iter() {
+                edges.push((node_idx, branch.target.get(), "branch".to_string()));
+            }
+            if let Some(otherwise) = otherwise {
+                edges.push((node_idx, otherwise.get(), "otherwise".to_string()));
+            }
         }
-        CompiledNodeKind::TogetherJoin { .. } => {}
-        CompiledNodeKind::CollectStart { body, done, .. }
-        | CompiledNodeKind::CollectPage { body, done, .. }
-        | CompiledNodeKind::CollectNext { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        CompiledNodeKind::CollectFinish { .. } => {}
-        CompiledNodeKind::ReduceStart { body, done, .. }
-        | CompiledNodeKind::ReduceNext { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        CompiledNodeKind::ReduceFinish { .. } => {}
-        CompiledNodeKind::RepeatStart { body, done, .. }
-        | CompiledNodeKind::RepeatAttempt { body, done, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        CompiledNodeKind::RepeatCheck { done, .. } => {
-            edges.push((node_idx, done.get(), "done".to_string()));
-        }
-        CompiledNodeKind::RepeatFinish { .. } => {}
-        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
-            edges.push((node_idx, body.get(), "body".to_string()));
-            edges.push((node_idx, handler.get(), "handler".to_string()));
-        }
-        CompiledNodeKind::Jump { target } => {
-            edges.push((node_idx, target.get(), String::new()));
-        }
-        CompiledNodeKind::ForEachJoin { .. }
-        | CompiledNodeKind::Nop
-        | CompiledNodeKind::SetConst { .. }
-        | CompiledNodeKind::Copy { .. }
-        | CompiledNodeKind::EvalExpr { .. }
-        | CompiledNodeKind::BuildObject { .. }
-        | CompiledNodeKind::BuildList { .. }
-        | CompiledNodeKind::Do { .. }
-        | CompiledNodeKind::WaitUntil { .. }
-        | CompiledNodeKind::WaitEvent { .. }
-        | CompiledNodeKind::Ask { .. }
-        | CompiledNodeKind::AskResume { .. }
-        | CompiledNodeKind::RetryCheck { .. }
-        | CompiledNodeKind::Finish { .. } => {}
         _ => {}
     }
     edges

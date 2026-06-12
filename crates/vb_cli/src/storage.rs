@@ -184,84 +184,10 @@ pub(crate) fn cmd_events(run_id: &str, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub(crate) fn print_event(event: &JournalEvent) {
-    match event {
-        JournalEvent::RunAccepted { seq, .. } => {
-            crate::outln!("  seq={}: RunAccepted", seq.get());
-        }
-        JournalEvent::RunAdmission { seq, policy, .. } => {
-            crate::outln!("  seq={}: RunAdmission policy={policy:?}", seq.get());
-        }
-        JournalEvent::StepStarted { seq, step, .. } => {
-            crate::outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
-        }
-        JournalEvent::StepSucceeded {
-            seq, step, output, ..
-        } => {
-            crate::outln!(
-                "  seq={}: StepSucceeded step={} output={}",
-                seq.get(),
-                step.get(),
-                output.get()
-            );
-        }
-        JournalEvent::ActionScheduled {
-            seq, step, action, ..
-        } => {
-            crate::outln!(
-                "  seq={}: ActionScheduled step={} action={}",
-                seq.get(),
-                step.get(),
-                action.get()
-            );
-        }
-        JournalEvent::ActionCompletedEvent {
-            seq, step, action, ..
-        } => {
-            crate::outln!(
-                "  seq={}: ActionCompleted step={} action={}",
-                seq.get(),
-                step.get(),
-                action.get()
-            );
-        }
-        JournalEvent::ActionFailedEvent {
-            seq, step, action, ..
-        } => {
-            crate::outln!(
-                "  seq={}: ActionFailed step={} action={}",
-                seq.get(),
-                step.get(),
-                action.get()
-            );
-        }
-        JournalEvent::SlotWrittenEvent { seq, slot, .. } => {
-            crate::outln!("  seq={}: SlotWritten slot={}", seq.get(), slot.get());
-        }
-        JournalEvent::WaitScheduledEvent { seq, step, .. } => {
-            crate::outln!("  seq={}: WaitScheduled step={}", seq.get(), step.get());
-        }
-        JournalEvent::AskScheduledEvent { seq, step, .. } => {
-            crate::outln!("  seq={}: AskScheduled step={}", seq.get(), step.get());
-        }
-        JournalEvent::AskAnsweredEvent { seq, step, .. } => {
-            crate::outln!("  seq={}: AskAnswered step={}", seq.get(), step.get());
-        }
-        JournalEvent::RetryScheduledEvent { seq, step, .. } => {
-            crate::outln!("  seq={}: RetryScheduled step={}", seq.get(), step.get());
-        }
-        JournalEvent::RunCancelled { seq, .. } => {
-            crate::outln!("  seq={}: RunCancelled", seq.get());
-        }
-        JournalEvent::RunFinished { seq, result, .. } => {
-            crate::outln!("  seq={}: RunFinished result={}", seq.get(), result.get());
-        }
-        JournalEvent::RunFailedEvent { seq, .. } => {
-            crate::outln!("  seq={}: RunFailed", seq.get());
-        }
-        _ => {}
-    }
-}
+// `print_event` and `event_name` were extracted to `storage_event_format.rs`
+// to keep this file under the 300-line cap. The re-exports below
+// preserve the existing call sites in `cmd_events` and `cmd_replay`.
+pub(crate) use crate::storage_event_format::{event_name, print_event};
 
 pub(crate) fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
     let rid = match parse_run_id(run_id) {
@@ -302,25 +228,7 @@ pub(crate) fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-pub(crate) fn event_name(event: &JournalEvent) -> &'static str {
-    match event {
-        JournalEvent::RunAccepted { .. } => "RunAccepted",
-        JournalEvent::StepStarted { .. } => "StepStarted",
-        JournalEvent::StepSucceeded { .. } => "StepSucceeded",
-        JournalEvent::ActionScheduled { .. } => "ActionScheduled",
-        JournalEvent::ActionCompletedEvent { .. } => "ActionCompleted",
-        JournalEvent::ActionFailedEvent { .. } => "ActionFailed",
-        JournalEvent::SlotWrittenEvent { .. } => "SlotWritten",
-        JournalEvent::WaitScheduledEvent { .. } => "WaitScheduled",
-        JournalEvent::AskScheduledEvent { .. } => "AskScheduled",
-        JournalEvent::AskAnsweredEvent { .. } => "AskAnswered",
-        JournalEvent::RetryScheduledEvent { .. } => "RetryScheduled",
-        JournalEvent::RunCancelled { .. } => "RunCancelled",
-        JournalEvent::RunFinished { .. } => "RunFinished",
-        JournalEvent::RunFailedEvent { .. } => "RunFailed",
-        _ => "UnknownEvent",
-    }
-}
+
 
 fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
     match raw.parse::<u64>() {
