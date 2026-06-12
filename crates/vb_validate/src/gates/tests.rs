@@ -1169,7 +1169,7 @@ fn blackhat_gate_12_rejects_orphan_contract() {
         timeout_ms: 5000,
         idempotency: vb_core::action::Idempotency::DeterministicPure,
         side_effect: vb_core::action::SideEffect::Pure,
-        retry_safety: vb_core::action::RetrySafety::Safe,
+        retry_safety: vb_core::action::RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }];
     let result = validate_gate_12_action_contract_completeness(&parts, &contracts);
@@ -1179,5 +1179,22 @@ fn blackhat_gate_12_rejects_orphan_contract() {
             Err(ValidationError::ActionContractOrphan { action_id: 99 })
         ),
         "blackhat: orphan contract with no Do node must be rejected"
+    );
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety gate test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn blackhat_gate_12_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
     );
 }

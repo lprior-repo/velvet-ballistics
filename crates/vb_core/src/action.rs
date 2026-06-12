@@ -138,16 +138,62 @@ impl SideEffect {
 }
 
 /// Classifies whether an action can be safely retried.
+///
+/// Master plan §65: 4-variant taxonomy. Discriminant order is preserved
+/// (0, 1, 2) for binary compatibility with persisted contracts; the new
+/// `Unknown` variant is assigned discriminant 3.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum RetrySafety {
     /// Always safe to retry (pure/idempotent).
-    Safe = 0,
+    Idempotent = 0,
     /// Safe to retry IF an idempotency key is present.
-    KeyRequired = 1,
+    RequiresIdempotencyKey = 1,
     /// Never safe to retry (destructive side-effect with no key).
-    Unsafe = 2,
+    NotRetrySafe = 2,
+    /// Retry safety cannot be statically decided; treat as not retry safe.
+    Unknown = 3,
+}
+
+impl RetrySafety {
+    /// Returns true if this retry safety class is itself idempotent
+    /// (no key required, no static gating).
+    pub const fn is_idempotent(self) -> bool {
+        matches!(self, Self::Idempotent)
+    }
+
+    /// Returns true if this retry safety class admits retry at all
+    /// (with appropriate gating).
+    pub const fn is_retry_safe(self) -> bool {
+        matches!(self, Self::Idempotent | Self::RequiresIdempotencyKey)
+    }
+}
+
+/// Free-function form: returns true if the given retry safety class is itself
+/// idempotent (no key required, no static gating).
+pub const fn is_idempotent(safety: RetrySafety) -> bool {
+    safety.is_idempotent()
+}
+
+/// Free-function form: returns true if the given retry safety class admits
+/// retry at all (with appropriate gating).
+pub const fn is_retry_safe(safety: RetrySafety) -> bool {
+    safety.is_retry_safe()
+}
+
+/// Runtime check: returns true if the given retry safety class admits
+/// retry under the given key-present condition.
+///
+/// - `Idempotent`: always `true` (no key required).
+/// - `RequiresIdempotencyKey`: `true` iff `key_present`.
+/// - `NotRetrySafe | Unknown`: always `false`.
+pub const fn is_retry_safe_with_key(safety: RetrySafety, key_present: bool) -> bool {
+    match safety {
+        RetrySafety::Idempotent => true,
+        RetrySafety::RequiresIdempotencyKey => key_present,
+        RetrySafety::NotRetrySafe | RetrySafety::Unknown => false,
+    }
 }
 
 /// Policy for whether an action failure can be retried.
@@ -508,9 +554,10 @@ pub fn validate_idempotency_key_ingredients(
 ///
 /// Verification rules:
 /// - `SideEffect::Pure` always passes regardless of retry_safety.
-/// - `RetrySafety::Safe` always passes.
-/// - `RetrySafety::KeyRequired` passes if key ingredients are valid.
-/// - `RetrySafety::Unsafe` always fails with `MissingKey`.
+/// - `RetrySafety::Idempotent` always passes.
+/// - `RetrySafety::RequiresIdempotencyKey` passes if key ingredients are valid.
+/// - `RetrySafety::NotRetrySafe` always fails with `MissingKey`.
+/// - `RetrySafety::Unknown` is statically undecidable; treated as `NotRetrySafe`.
 pub fn verify_idempotency(
     action: &ActionContract,
     key_slots: &[SlotIdx],
@@ -520,14 +567,16 @@ pub fn verify_idempotency(
         return Ok(());
     }
     match action.retry_safety {
-        RetrySafety::Safe => Ok(()),
-        RetrySafety::KeyRequired => {
+        RetrySafety::Idempotent => Ok(()),
+        RetrySafety::RequiresIdempotencyKey => {
             if key_slots.is_empty() {
                 return Err(IdempotencyViolation::MissingKey(action.side_effect));
             }
             validate_idempotency_key_ingredients(key_slots, frame)
         }
-        RetrySafety::Unsafe => Err(IdempotencyViolation::MissingKey(action.side_effect)),
+        RetrySafety::NotRetrySafe | RetrySafety::Unknown => {
+            Err(IdempotencyViolation::MissingKey(action.side_effect))
+        }
     }
 }
 

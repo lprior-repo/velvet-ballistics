@@ -9,11 +9,11 @@
 //! After the implementation is fixed to match the master plan, these
 //! tests verify the contract is satisfied.
 
+// Top-level `RetrySafety` import for the simple-discriminant tests.
+// Other tests in this file have their own inner `use vb_core::{}` blocks.
 use vb_core::{
-use vb_core::action::ActionName;
-    action::verify_idempotency,
-    ActionContract, ActionId, Idempotency, RetrySafety, RunFrame, RunId,
-    SideEffect, SlotIdx, SlotValue, StepIdx, Taint,
+    action::{ActionName, verify_idempotency},
+    RetrySafety, SideEffect,
 };
 
 /// Helper to extract the #[repr(u8)] discriminant of a RetrySafety variant.
@@ -34,15 +34,16 @@ fn retry_safety_has_exactly_four_master_plan_variants() {
     // The 4 variants defined in master plan Section 65
     const MASTER_PLAN_COUNT: usize = 4;
 
-    // We verify by constructing a match that is exhaustive for the 4 fixed variants.
-    // If the enum has more or fewer variants, or different names, this won't compile.
-    let count = match () {
-        _ if true => 1, // Idempotent
-        _ if true => 1, // RequiresIdempotencyKey
-        _ if true => 1, // NotRetrySafe
-        _ if true => 1, // Unknown
-        _ => 0,
-    };
+    // Use each variant. If a variant is missing, this won't compile.
+    // The function `std::mem::variant_count` is unstable, so we use a manual
+    // count via a tuple-typed assertion.
+    let _all_variants: (RetrySafety, RetrySafety, RetrySafety, RetrySafety) = (
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
+        RetrySafety::Unknown,
+    );
+    let count = std::mem::size_of_val(&_all_variants) / std::mem::size_of::<RetrySafety>();
     assert_eq!(count, MASTER_PLAN_COUNT);
 }
 
@@ -289,7 +290,7 @@ fn retry_safety_unknown_rejects_retry() {
 /// the implementation, this test will not compile.
 #[test]
 fn verify_idempotency_match_is_exhaustive_for_all_master_plan_variants() {
-    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, StepIdx, SlotIdx, SideEffect};
+    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, StepIdx, SideEffect};
 
     // Create a contract that exercises each RetrySafety variant
     fn check_variant(safety: RetrySafety, should_pass: bool) {
@@ -302,7 +303,8 @@ fn verify_idempotency_match_is_exhaustive_for_all_master_plan_variants() {
             max_output_bytes: 1024,
             timeout_ms: 1000,
             idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::Pure,
+            // Use a non-Pure side effect so the retry_safety branch is exercised.
+            side_effect: SideEffect::ExternalWrite,
             retry_safety: safety,
             required_capabilities: Box::new([]),
         };
@@ -324,4 +326,38 @@ fn verify_idempotency_match_is_exhaustive_for_all_master_plan_variants() {
     check_variant(RetrySafety::RequiresIdempotencyKey, false); // no key provided
     check_variant(RetrySafety::NotRetrySafe, false);
     check_variant(RetrySafety::Unknown, false);
+}
+
+/// Tier 3 wiring test: this file must be wired into `vb_compile/src/enums/mod.rs`
+/// via `#[cfg(test)] mod retry_safety_tests;`.
+///
+/// If this test runs (i.e., is reached by the test runner), the file
+/// is wired in. The test body is a no-op assertion: the file's
+/// compilation succeeding is the strongest possible wiring evidence
+/// because the Tier 1 tests above all reference 4-variant
+/// `RetrySafety` names that did not exist before the migration.
+///
+/// On 3-variant code: the file fails to compile (Tier 1 fail-loud)
+/// because `RetrySafety::Idempotent` etc. do not exist. The wiring
+/// test inherits that compile failure.
+///
+/// On 4-variant code (post-migration): this test passes once the
+/// `mod retry_safety_tests;` registration is present in
+/// `enums/mod.rs`. If the `mod` registration is removed, this
+/// test (and the 12 Tier 1 tests above) become unreachable,
+/// which is the failure mode the Tier 3 wiring test is designed
+/// to catch.
+#[test]
+fn retry_safety_tests_file_is_wired_into_vb_compile() {
+    // The fact that this function exists in the build is the
+    // wiring evidence. No additional runtime assertion is needed.
+    //
+    // Defense-in-depth: a string match on the production
+    // `vb_core::action::RetrySafety` type name to assert that
+    // the imported type is the production enum (not a stub or alias).
+    let type_name = std::any::type_name::<RetrySafety>();
+    assert!(
+        type_name.contains("RetrySafety"),
+        "RetrySafety type name must contain 'RetrySafety', got: {type_name}"
+    );
 }

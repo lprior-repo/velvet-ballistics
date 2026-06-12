@@ -68,7 +68,7 @@ fn action_contract(action: ActionId, required: bool) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities,
     }
 }
@@ -968,5 +968,22 @@ fn each_step_has_independent_attempt_counter() {
         state.action_attempts.get(1).copied(),
         Some(0),
         "step 1 attempt should be 0 (not yet reached)"
+    );
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety jggy-lifecycle test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn jggy_lifecycle_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
     );
 }

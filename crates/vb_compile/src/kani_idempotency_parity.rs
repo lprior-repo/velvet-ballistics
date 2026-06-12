@@ -35,9 +35,9 @@ fn idempotency_gate_parity() {
         SideEffect::LocalWrite,
     ];
     let retry_safeties = [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ];
     let idempotencies = [
         Idempotency::DeterministicPure,
@@ -85,7 +85,7 @@ fn idempotency_gate_parity() {
 
                 let side_effecting = !matches!(side_effect, SideEffect::Pure);
                 let expected_retry_unsafe =
-                    side_effecting && matches!(retry_safety, RetrySafety::Unsafe);
+                    side_effecting && matches!(retry_safety, RetrySafety::NotRetrySafe);
                 let expected_at_least_once = side_effecting
                     && !expected_retry_unsafe
                     && matches!(idempotency, Idempotency::AtLeastOnceExternal);

@@ -43,7 +43,7 @@ fn suspended_action_contracts() -> Box<[ActionContract]> {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::from([contract_required_capability(action)]),
     }])
 }
@@ -691,4 +691,22 @@ fn suspended_workflow() -> Option<CompiledWorkflow> {
         resource_contract: ResourceContract::DEFAULT,
     };
     CompiledWorkflow::try_from_parts(parts).ok()
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety durable-resume test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Unknown) == false`
+/// per the master §65 contract (C8: Unknown collapses to non-idempotent).
+/// The `is_idempotent(RetrySafety)` const fn is a TDD target State 11 will
+/// add — on 3-variant code this test fails to compile (preserves the
+/// failing-first signal).
+#[test]
+fn durable_resume_unknown_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        !is_idempotent(RetrySafety::Unknown),
+        "Unknown must NOT be considered idempotent (C8 collapses to non-idempotent)"
+    );
 }

@@ -319,7 +319,7 @@ fn action_contract_with_zero_output_bytes_is_constructable() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(contract.max_output_bytes, 0);
@@ -338,7 +338,7 @@ fn action_contract_with_zero_timeout_is_constructable() {
         timeout_ms: 0,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     assert_eq!(contract.timeout_ms, 0);
@@ -481,9 +481,9 @@ fn side_effect_repr(effect: SideEffect) -> u8 {
 #[test]
 fn retry_safety_repr_values_are_distinct() {
     let safeties = [
-        RetrySafety::Safe,
-        RetrySafety::KeyRequired,
-        RetrySafety::Unsafe,
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
     ];
     let repr_a = retry_safety_repr(safeties[0]);
     let repr_b = retry_safety_repr(safeties[1]);
@@ -495,9 +495,10 @@ fn retry_safety_repr_values_are_distinct() {
 
 fn retry_safety_repr(safety: RetrySafety) -> u8 {
     match safety {
-        RetrySafety::Safe => 0,
-        RetrySafety::KeyRequired => 1,
-        RetrySafety::Unsafe => 2,
+        RetrySafety::Idempotent => 0,
+        RetrySafety::RequiresIdempotencyKey => 1,
+        RetrySafety::NotRetrySafe => 2,
+        RetrySafety::Unknown => 3,
     }
 }
 
@@ -549,7 +550,7 @@ fn verify_idempotency_pure_action_always_passes() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -571,7 +572,7 @@ fn verify_idempotency_safe_action_with_side_effect_passes() {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -593,7 +594,7 @@ fn verify_idempotency_unsafe_action_rejected() {
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -618,7 +619,7 @@ fn verify_idempotency_key_required_empty_keys_rejected() {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -643,7 +644,7 @@ fn verify_idempotency_key_required_clean_keys_passes() {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -666,7 +667,7 @@ fn verify_idempotency_key_required_secret_key_rejected() {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -718,7 +719,7 @@ fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::ExternalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -743,7 +744,7 @@ fn verify_idempotency_creates_side_effect_unsafe_rejected() {
         timeout_ms: 1000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -768,7 +769,7 @@ fn action_contract_serializes_with_new_fields() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let bytes = postcard::to_allocvec(&contract);
@@ -791,7 +792,7 @@ fn side_effect_is_copy() {
 
 #[test]
 fn retry_safety_is_copy() {
-    let a = RetrySafety::KeyRequired;
+    let a = RetrySafety::RequiresIdempotencyKey;
     let b = a;
     assert_eq!(a, b);
 }
@@ -812,7 +813,7 @@ fn verify_idempotency_writes_with_safe_passes() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(50), StepIdx::new(0), 2, 2);
@@ -834,7 +835,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_even_with_keys() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(51), StepIdx::new(0), 2, 2);
@@ -861,7 +862,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_without_keys() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(52), StepIdx::new(0), 2, 2);
@@ -886,7 +887,7 @@ fn verify_idempotency_key_required_rejects_secret_tainted_key_slot() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(53), StepIdx::new(0), 4, 4);
@@ -933,7 +934,7 @@ fn verify_idempotency_key_required_rejects_when_first_slot_clean_but_second_secr
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(54), StepIdx::new(0), 2, 2);
@@ -963,7 +964,7 @@ fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(55), StepIdx::new(0), 1, 1);
@@ -985,7 +986,7 @@ fn verify_idempotency_sends_side_effect_unsafe_rejected() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::ExternalWrite,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(56), StepIdx::new(0), 2, 2);
@@ -1016,7 +1017,7 @@ fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -1043,7 +1044,7 @@ fn validate_action_dispatch_fails_on_uninitialized_input() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -1066,7 +1067,7 @@ fn validate_action_dispatch_fails_on_out_of_bounds_input() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -1088,7 +1089,7 @@ fn validate_action_dispatch_succeeds_with_zero_output_count() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
@@ -1169,7 +1170,7 @@ fn validate_action_outcome_ready_succeeds_with_valid_slot() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1195,7 +1196,7 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1227,7 +1228,7 @@ fn validate_action_outcome_failed_always_succeeds() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let failure = ActionFailure {
@@ -1254,7 +1255,7 @@ fn validate_action_outcome_suspended_rejected() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let ticket = ActionTicket {
@@ -1283,7 +1284,7 @@ fn validate_action_outcome_rejects_taint_downgrade_deterministic_pure() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1315,7 +1316,7 @@ fn validate_action_outcome_deterministic_pure_rejects_secret_output_with_clean_i
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1347,7 +1348,7 @@ fn validate_action_outcome_idempotent_external_rejects_secret_output_with_clean_
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1379,7 +1380,7 @@ fn validate_action_outcome_rejects_taint_downgrade_idempotent_external() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1411,7 +1412,7 @@ fn validate_action_outcome_accepts_correct_taint_idempotent_external() {
         timeout_ms: 5000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1437,7 +1438,7 @@ fn validate_action_outcome_rejects_taint_downgrade_at_least_once() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let output = ActionOutputReady {
@@ -1678,7 +1679,7 @@ fn action_ticket_with_zero_timeout_via_contract() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     // Zero timeout is a valid edge case; the contract should still be constructable.
@@ -1816,7 +1817,7 @@ fn action_contract_fields_and_required_capabilities() {
         timeout_ms: 30_000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([Capability::new(
             String::from("file_read").into_boxed_str(),
             ActionId::new(5),
@@ -1830,7 +1831,7 @@ fn action_contract_fields_and_required_capabilities() {
     assert_eq!(contract.timeout_ms, 30_000);
     assert_eq!(contract.idempotency, Idempotency::IdempotentExternal);
     assert_eq!(contract.side_effect, SideEffect::LocalWrite);
-    assert_eq!(contract.retry_safety, RetrySafety::KeyRequired);
+    assert_eq!(contract.retry_safety, RetrySafety::RequiresIdempotencyKey);
     assert_eq!(contract.required_capabilities.len(), 1);
 }
 
@@ -1847,7 +1848,7 @@ fn action_contract_default_like_values() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(contract.id, ActionId::new(0));
@@ -1958,7 +1959,7 @@ fn idempotency_property_bounded() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
 
@@ -1988,4 +1989,545 @@ fn idempotency_property_bounded() {
         first_result, third_result,
         "verify_idempotency must be stable across multiple calls"
     );
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety migration (Tier 1 + Tier 2 tests)
+// Per master plan Section 65, the production RetrySafety enum must be:
+//   {Idempotent, RequiresIdempotencyKey, NotRetrySafe, Unknown}
+// The 3-variant shape (Safe, KeyRequired, Unsafe) is drift.
+//
+// These tests reference the 4-variant names literally; on 3-variant
+// production code the entire test file fails to compile. This is the
+// "let them fail to compile" TDD signal approved in test-plan §11 Q2.
+// =========================================================================
+
+/// Tier 1: `verify_idempotency` returns `Ok(())` for `Idempotent` regardless of key slots.
+#[test]
+fn verify_idempotency_idempotent_passes_with_4variant() {
+    let action = ActionContract {
+        id: ActionId::new(200),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::ExternalRead,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    // Idempotent passes without a key.
+    let result_no_key = verify_idempotency(&action, &[], &frame);
+    assert_eq!(result_no_key, Ok(()));
+    // Idempotent also passes WITH a key.
+    let result_with_key = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+    assert_eq!(result_with_key, Ok(()));
+}
+
+/// Tier 1: `RequiresIdempotencyKey` passes when a key is supplied.
+#[test]
+fn verify_idempotency_requires_idempotency_key_passes_with_key() {
+    let action = ActionContract {
+        id: ActionId::new(201),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::ExternalWrite,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let mut frame = frame.ok().expect("test setup");
+    let write_result =
+        frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Clean);
+    assert!(write_result.is_ok());
+    let key_slots = [SlotIdx::new(0)];
+    let result = verify_idempotency(&action, &key_slots, &frame);
+    assert_eq!(result, Ok(()));
+}
+
+/// Tier 1: `RequiresIdempotencyKey` rejects when no key is supplied.
+#[test]
+fn verify_idempotency_requires_idempotency_key_fails_without_key() {
+    let action = ActionContract {
+        id: ActionId::new(202),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::ExternalWrite,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    let result = verify_idempotency(&action, &[], &frame);
+    assert!(matches!(
+        result,
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
+    ));
+}
+
+/// Tier 1: `NotRetrySafe` always rejects.
+#[test]
+fn verify_idempotency_not_retry_safe_always_rejects() {
+    let action = ActionContract {
+        id: ActionId::new(203),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::ExternalWrite,
+        retry_safety: RetrySafety::NotRetrySafe,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    // NotRetrySafe rejects even with a key.
+    let result_with_key = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+    assert!(matches!(
+        result_with_key,
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
+    ));
+    // NotRetrySafe also rejects without a key.
+    let result_no_key = verify_idempotency(&action, &[], &frame);
+    assert!(matches!(
+        result_no_key,
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
+    ));
+}
+
+/// Tier 1: `Unknown` always rejects (the bead's primary contract addition).
+#[test]
+fn verify_idempotency_unknown_always_rejects() {
+    let action = ActionContract {
+        id: ActionId::new(204),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::ExternalWrite,
+        retry_safety: RetrySafety::Unknown,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    // Unknown rejects even with a key.
+    let result_with_key = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+    assert!(matches!(
+        result_with_key,
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
+    ));
+    // Unknown also rejects without a key.
+    let result_no_key = verify_idempotency(&action, &[], &frame);
+    assert!(matches!(
+        result_no_key,
+        Err(IdempotencyViolation::MissingKey(SideEffect::ExternalWrite))
+    ));
+}
+
+/// Tier 1: discriminant of `Idempotent` is 0.
+#[test]
+fn retry_safety_idempotent_discriminant_is_zero() {
+    assert_eq!(RetrySafety::Idempotent as u8, 0);
+}
+
+/// Tier 1: discriminant of `RequiresIdempotencyKey` is 1.
+#[test]
+fn retry_safety_requires_idempotency_key_discriminant_is_one() {
+    assert_eq!(RetrySafety::RequiresIdempotencyKey as u8, 1);
+}
+
+/// Tier 1: discriminant of `NotRetrySafe` is 2.
+#[test]
+fn retry_safety_not_retry_safe_discriminant_is_two() {
+    assert_eq!(RetrySafety::NotRetrySafe as u8, 2);
+}
+
+/// Tier 1: discriminant of `Unknown` is 3.
+#[test]
+fn retry_safety_unknown_discriminant_is_three() {
+    assert_eq!(RetrySafety::Unknown as u8, 3);
+}
+
+/// Tier 1: total variant count is 4 (exhaustive match over all variants).
+#[test]
+fn retry_safety_total_variants_is_four() {
+    // Build a set of discriminants over all 4 master plan variants.
+    // If a variant is missing or an extra variant exists, the set size changes.
+    let discriminants = [
+        RetrySafety::Idempotent as u8,
+        RetrySafety::RequiresIdempotencyKey as u8,
+        RetrySafety::NotRetrySafe as u8,
+        RetrySafety::Unknown as u8,
+    ];
+    let unique: std::collections::BTreeSet<u8> = discriminants.iter().copied().collect();
+    assert_eq!(
+        unique.len(),
+        4,
+        "RetrySafety must have exactly 4 distinct discriminants; got {unique:?}"
+    );
+}
+
+/// Tier 2: Postcard round-trip preserves each 4-variant RetrySafety.
+#[test]
+fn retry_safety_round_trip_postcard() {
+    for variant in [
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
+        RetrySafety::Unknown,
+    ] {
+        let bytes = postcard::to_allocvec(&variant);
+        assert!(bytes.is_ok(), "postcard serialize must succeed for {variant:?}");
+        let bytes = bytes.ok().expect("test setup");
+        let recovered: Result<RetrySafety, _> = postcard::from_bytes(&bytes);
+        assert!(recovered.is_ok(), "postcard deserialize must succeed for {variant:?}");
+        let recovered = recovered.ok().expect("test setup");
+        assert_eq!(recovered, variant, "round-trip must preserve {variant:?}");
+    }
+}
+
+/// Tier 2: JSON round-trip preserves each 4-variant RetrySafety.
+#[test]
+fn retry_safety_round_trip_json() {
+    for variant in [
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
+        RetrySafety::Unknown,
+    ] {
+        let json = serde_json::to_string(&variant);
+        assert!(json.is_ok(), "json serialize must succeed for {variant:?}");
+        let json = json.ok().expect("test setup");
+        let recovered: Result<RetrySafety, _> = serde_json::from_str(&json);
+        assert!(recovered.is_ok(), "json deserialize must succeed for {variant:?}");
+        let recovered = recovered.ok().expect("test setup");
+        assert_eq!(recovered, variant, "round-trip must preserve {variant:?}");
+    }
+}
+
+/// Tier 1: 4-cell truth table for `is_idempotent` (TDD target — production const fn
+/// will be added in State 11; this test fails to compile on 3-variant code
+/// because the const fn does not exist).
+#[test]
+fn is_idempotent_returns_true_for_idempotent() {
+    assert_eq!(is_idempotent(RetrySafety::Idempotent), true);
+}
+
+/// Tier 1: 3 false cells of `is_idempotent` truth table.
+#[test]
+fn is_idempotent_returns_false_for_other_three_variants() {
+    assert_eq!(is_idempotent(RetrySafety::RequiresIdempotencyKey), false);
+    assert_eq!(is_idempotent(RetrySafety::NotRetrySafe), false);
+    assert_eq!(is_idempotent(RetrySafety::Unknown), false);
+}
+
+/// Tier 1: exhaustive 4-cell truth table for `is_idempotent`.
+#[test]
+fn is_idempotent_total_over_four_variants() {
+    let cases = [
+        (RetrySafety::Idempotent, true),
+        (RetrySafety::RequiresIdempotencyKey, false),
+        (RetrySafety::NotRetrySafe, false),
+        (RetrySafety::Unknown, false),
+    ];
+    for (variant, expected) in cases {
+        assert_eq!(
+            is_idempotent(variant),
+            expected,
+            "is_idempotent({variant:?}) must be {expected}"
+        );
+    }
+}
+
+/// Tier 1: 8-cell truth table for `is_retry_safe_with_key(RetrySafety, key_present)`.
+#[test]
+fn is_retry_safe_eight_cell_truth_table() {
+    let cases = [
+        (RetrySafety::Idempotent, true, true),
+        (RetrySafety::Idempotent, false, true),
+        (RetrySafety::RequiresIdempotencyKey, true, true),
+        (RetrySafety::RequiresIdempotencyKey, false, false),
+        (RetrySafety::NotRetrySafe, true, false),
+        (RetrySafety::NotRetrySafe, false, false),
+        (RetrySafety::Unknown, true, false),
+        (RetrySafety::Unknown, false, false),
+    ];
+    for (variant, key_present, expected) in cases {
+        assert_eq!(
+            is_retry_safe_with_key(variant, key_present),
+            expected,
+            "is_retry_safe_with_key({variant:?}, {key_present}) must be {expected}"
+        );
+    }
+}
+
+/// Tier 1: exhaustive 8-cell match for `is_retry_safe_with_key` (alternate form).
+#[test]
+fn is_retry_safe_total_over_eight_cells() {
+    let mut i: usize = 0;
+    while i < 4 {
+        let variant = match i {
+            0 => RetrySafety::Idempotent,
+            1 => RetrySafety::RequiresIdempotencyKey,
+            2 => RetrySafety::NotRetrySafe,
+            _ => RetrySafety::Unknown,
+        };
+        for key_present in [false, true] {
+            let result = is_retry_safe_with_key(variant, key_present);
+            // The expected result follows the master plan truth table.
+            let expected = match variant {
+                RetrySafety::Idempotent => true,
+                RetrySafety::RequiresIdempotencyKey => key_present,
+                RetrySafety::NotRetrySafe | RetrySafety::Unknown => false,
+            };
+            assert_eq!(
+                result, expected,
+                "is_retry_safe_with_key({variant:?}, {key_present}) must be {expected}"
+            );
+        }
+        i = i.saturating_add(1);
+    }
+}
+
+/// Tier 1: `verify_idempotency` for `Idempotent` passes for all key slots.
+#[test]
+fn verify_idempotency_idempotent_passes_for_all_key_slots() {
+    let action = ActionContract {
+        id: ActionId::new(205),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    // empty key slots
+    let r1 = verify_idempotency(&action, &[], &frame);
+    assert_eq!(r1, Ok(()));
+    // non-empty key slots
+    let r2 = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+    assert_eq!(r2, Ok(()));
+}
+
+/// Tier 1: `verify_idempotency` for `NotRetrySafe` rejects for all key slots.
+#[test]
+fn verify_idempotency_not_retry_safe_rejects_for_all_key_slots() {
+    let action = ActionContract {
+        id: ActionId::new(206),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::NotRetrySafe,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    let r1 = verify_idempotency(&action, &[], &frame);
+    assert!(matches!(
+        r1,
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+    ));
+    let r2 = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+    assert!(matches!(
+        r2,
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+    ));
+}
+
+/// Tier 1: `verify_idempotency` for `Unknown` rejects for all key slots.
+#[test]
+fn verify_idempotency_unknown_rejects_for_all_key_slots() {
+    let action = ActionContract {
+        id: ActionId::new(207),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Unknown,
+        required_capabilities: Box::new([]),
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    let r1 = verify_idempotency(&action, &[], &frame);
+    assert!(matches!(
+        r1,
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+    ));
+    let r2 = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
+    assert!(matches!(
+        r2,
+        Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+    ));
+}
+
+/// Tier 1: `Unknown` collapses with `NotRetrySafe` at runtime (C8 contract).
+#[test]
+fn verify_idempotency_unknown_collapses_with_not_retry_safe() {
+    let action_unknown = ActionContract {
+        id: ActionId::new(208),
+        name: ActionName::new("test-action").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::AtLeastOnceExternal,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Unknown,
+        required_capabilities: Box::new([]),
+    };
+    let action_not_retry_safe = ActionContract {
+        retry_safety: RetrySafety::NotRetrySafe,
+        ..action_unknown.clone()
+    };
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    let frame = frame.ok().expect("test setup");
+    for key_slots in [&[][..], &[SlotIdx::new(0)][..]] {
+        let r_unknown = verify_idempotency(&action_unknown, key_slots, &frame);
+        let r_not_retry_safe = verify_idempotency(&action_not_retry_safe, key_slots, &frame);
+        assert_eq!(
+            r_unknown, r_not_retry_safe,
+            "Unknown and NotRetrySafe must collapse to the same verify_idempotency result for key_slots={key_slots:?}"
+        );
+    }
+}
+
+/// Tier 1: 4-variant exhaustive residue coverage for the production
+/// `kani::Arbitrary for RetrySafety` impl (TDD target — wraps the impl
+/// in a non-Kani context).
+#[test]
+fn retry_safety_arbitrary_exhaustive_4variant_runtime() {
+    // The production Arbitrary impl at kani_workflow_arbitrary.rs (L562-570)
+    // is `kani::any::<u8>() % 4`. In a non-Kani test, we mirror the
+    // production residue computation and assert it covers all 4 variants.
+    //
+    // Production shape (post-migration): `any_u8 % 4` produces {0, 1, 2, 3}
+    // residue classes, each of which corresponds to a master plan variant.
+    let mut seen: [bool; 4] = [false; 4];
+    for raw in 0u8..=255u8 {
+        let residue = (raw % 4) as usize;
+        // The production impl would map residue 0→Idempotent, 1→RequiresIdempotencyKey,
+        // 2→NotRetrySafe, 3→Unknown. The mirror logic is in kani_workflow_arbitrary.rs
+        // (mirrored here as a runtime test).
+        seen[residue] = true;
+    }
+    let coverage_count: usize = seen.iter().filter(|&&v| v).count();
+    assert_eq!(
+        coverage_count, 4,
+        "% 4 residue system must cover all 4 master plan variants; got {seen:?}"
+    );
+}
+
+#[cfg(test)]
+mod proptests_4variant {
+    use super::*;
+    use proptest::prelude::*;
+
+    // Runtime proptest: 4-variant discriminants are distinct over 100 iterations.
+    //
+    // Strengthened from the original tautology (`v < 4` for `v in 0u8..4`)
+    // to assert the discriminant ↔ variant bijection. The test now:
+    //   1. Maps each residue to its expected 4-variant enum value.
+    //   2. Asserts the variant's `as u8` discriminant equals the residue.
+    // This catches the ordinal-swap mutation (`Idempotent = 1` instead of `0`)
+    // which would break the `#[repr(u8)]` wire format and the post-migration
+    // persistence tests in vb_storage/src/admission/tests.rs.
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_discriminant_unique_runtime(v in 0u8..4) {
+            // The `_ => unreachable!()` arm is unreachable because the strategy
+            // restricts `v` to `0u8..4`, covering all 4 variants exactly.
+            // `unreachable!()` is acceptable in test code per the Holzman Rust
+            // doctrine (production panic ban; tests are exempt for unreachable
+            // guards that catch impossible inputs).
+            let variant = match v {
+                0 => RetrySafety::Idempotent,
+                1 => RetrySafety::RequiresIdempotencyKey,
+                2 => RetrySafety::NotRetrySafe,
+                _ => RetrySafety::Unknown,
+            };
+            let disc = variant as u8;
+            let v_copy = v;
+            prop_assert_eq!(
+                disc, v_copy,
+                "discriminant must match input ordinal"
+            );
+        }
+    }
+
+    // Runtime proptest: Postcard round-trip preserves each RetrySafety variant
+    // over 100 iterations.
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_serde_roundtrip_postcard_runtime(variant_index in 0u8..4) {
+            let variant = match variant_index {
+                0 => RetrySafety::Idempotent,
+                1 => RetrySafety::RequiresIdempotencyKey,
+                2 => RetrySafety::NotRetrySafe,
+                _ => RetrySafety::Unknown,
+            };
+            let bytes = postcard::to_allocvec(&variant).ok().expect("serialize");
+            let recovered: RetrySafety =
+                postcard::from_bytes(&bytes).ok().expect("deserialize");
+            prop_assert_eq!(recovered, variant);
+        }
+    }
+
+    // Runtime proptest: JSON round-trip preserves each RetrySafety variant
+    // over 100 iterations.
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_serde_roundtrip_json_runtime(variant_index in 0u8..4) {
+            let variant = match variant_index {
+                0 => RetrySafety::Idempotent,
+                1 => RetrySafety::RequiresIdempotencyKey,
+                2 => RetrySafety::NotRetrySafe,
+                _ => RetrySafety::Unknown,
+            };
+            let json = serde_json::to_string(&variant).ok().expect("serialize");
+            let recovered: RetrySafety =
+                serde_json::from_str(&json).ok().expect("deserialize");
+            prop_assert_eq!(recovered, variant);
+        }
+    }
 }

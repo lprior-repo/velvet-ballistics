@@ -154,7 +154,7 @@ fn fuzz_action_contract(
         timeout_ms: 1000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::ExternalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities,
     })
 }

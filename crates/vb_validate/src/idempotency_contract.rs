@@ -146,12 +146,20 @@ pub fn is_statically_idempotent_contract(
         contract.idempotency,
     ) {
         (SideEffect::Pure, _, _) => Ok(()),
-        (side_effect, RetrySafety::Unsafe, idempotency) => {
+        (side_effect, RetrySafety::NotRetrySafe, idempotency) => {
             Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
                 action: contract.id,
                 side_effect,
                 idempotency,
-                retry_safety: RetrySafety::Unsafe,
+                retry_safety: RetrySafety::NotRetrySafe,
+            })
+        }
+        (side_effect, RetrySafety::Unknown, idempotency) => {
+            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+                action: contract.id,
+                side_effect,
+                idempotency,
+                retry_safety: RetrySafety::Unknown,
             })
         }
         (side_effect, retry_safety, Idempotency::AtLeastOnceExternal) => Err(
@@ -170,7 +178,7 @@ pub fn is_statically_idempotent_contract(
                 retry_safety,
             },
         ),
-        (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => {
+        (_, RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey, Idempotency::IdempotentExternal) => {
             Ok(())
         }
         // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
@@ -290,4 +298,97 @@ fn has_do_action(parts: &WorkflowParts, action_id: ActionId) -> bool {
         .iter()
         .filter_map(|node| do_action(&node.kind))
         .any(|do_action_id| do_action_id == action_id)
+}
+
+#[cfg(test)]
+#[allow(clippy::doc_markdown)]
+mod tests {
+    use super::*;
+    use crate::idempotency_contract::IdempotencyContractViolation;
+
+    fn contract(
+        id: u16,
+        side_effect: SideEffect,
+        idempotency: Idempotency,
+        retry_safety: RetrySafety,
+    ) -> ActionContract {
+        ActionContract {
+            id: ActionId::new(id),
+            name: vb_core::action::ActionName::new(format!("action-{id}")).unwrap(),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 1000,
+            idempotency,
+            side_effect,
+            retry_safety,
+            required_capabilities: Box::from([]),
+        }
+    }
+
+    /// Tier 1: `is_statically_idempotent_contract` returns
+    /// `Err(SideEffectingRetryUnsafe)` for `Unknown` retry_safety with
+    /// a non-Pure side-effect (the bead's primary contract addition).
+    #[test]
+    fn is_statically_idempotent_contract_returns_err_for_unknown_retry_safety() {
+        let c = contract(
+            1,
+            SideEffect::LocalWrite,
+            Idempotency::IdempotentExternal,
+            RetrySafety::Unknown,
+        );
+        let result = is_statically_idempotent_contract(&c);
+        assert!(matches!(
+            result,
+            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+                retry_safety: RetrySafety::Unknown,
+                ..
+            })
+        ));
+    }
+
+    /// Tier 1: `is_static_returns_unit_for_pure_contract_for_all_retry_and_idempotency_values`
+    /// exercises the 4 RetrySafety × 3 Idempotency = 12 cells with SideEffect::Pure
+    /// (all 12 must pass because Pure always passes per the static decision table).
+    #[test]
+    fn is_static_returns_unit_for_pure_contract_for_all_retry_and_idempotency_values() {
+        let mut count = 0usize;
+        for retry_safety in [
+            RetrySafety::Idempotent,
+            RetrySafety::RequiresIdempotencyKey,
+            RetrySafety::NotRetrySafe,
+            RetrySafety::Unknown,
+        ] {
+            for idempotency in [
+                Idempotency::DeterministicPure,
+                Idempotency::IdempotentExternal,
+                Idempotency::AtLeastOnceExternal,
+            ] {
+                let c = contract(100 + count as u16, SideEffect::Pure, idempotency, retry_safety);
+                let result = is_statically_idempotent_contract(&c);
+                assert_eq!(
+                    result,
+                    Ok(()),
+                    "Pure must pass for {retry_safety:?}+{idempotency:?}"
+                );
+                count += 1;
+            }
+        }
+        assert_eq!(count, 12, "4 RetrySafety × 3 Idempotency = 12 cells");
+    }
+
+    /// Tier 1: `side_effecting_retry_unknown` — side-effecting action with
+    /// `Unknown` retry_safety must be rejected as `SideEffectingRetryUnsafe`.
+    #[test]
+    fn side_effecting_retry_unknown() {
+        let c = contract(
+            2,
+            SideEffect::ExternalWrite,
+            Idempotency::IdempotentExternal,
+            RetrySafety::Unknown,
+        );
+        let result = is_statically_idempotent_contract(&c);
+        assert!(result.is_err());
+    }
 }

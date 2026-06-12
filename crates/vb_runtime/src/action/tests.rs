@@ -13,7 +13,7 @@ fn contract_fixture(id: u16) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }
@@ -152,7 +152,7 @@ fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
@@ -223,7 +223,7 @@ fn action_registry_dispatch_rejects_mismatched_contract() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let result = registry.dispatch(&input, &wrong_contract);
@@ -349,7 +349,7 @@ fn action_contract_fields_are_preserved() {
         timeout_ms: 10000,
         idempotency: Idempotency::IdempotentExternal,
         side_effect: SideEffect::LocalWrite,
-        retry_safety: RetrySafety::KeyRequired,
+        retry_safety: RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
     // When registering and resolving
@@ -461,7 +461,7 @@ fn action_registry_register_max_action_id_does_not_overflow() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let result = registry.register(contract);
@@ -484,7 +484,7 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
@@ -520,7 +520,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     assert_eq!(registry.register(contract), Ok(()));
@@ -756,4 +756,76 @@ fn idempotency_tracker_default_matches_new() {
     let new = IdempotencyTracker::with_default_capacity();
     assert_eq!(default.len(), new.len());
     assert_eq!(default.is_empty(), new.is_empty());
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety action dispatch tests (Tier 1).
+// =========================================================================
+
+/// Tier 1/2: `verify_idempotency` accepts `Idempotent` retry_safety for
+/// a non-pure side-effect even with empty key_slots (C6 contract: Idempotent
+/// is unconditionally safe to retry).
+#[test]
+fn action_dispatch_idempotent_retry_safety_recognized() {
+    use vb_core::action::{IdempotencyViolation, RetrySafety, verify_idempotency};
+    use vb_core::frame::RunFrame;
+    use vb_core::ids::{ActionId, RunId, StepIdx};
+    let action = ActionContract {
+        id: ActionId::new(8001),
+        name: ActionName::new("test-4v-idempotent").unwrap(),
+        input_slot_count: 0,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        timeout_ms: 0,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let frame = match RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    assert_eq!(
+        verify_idempotency(&action, &[], &frame),
+        Ok(()),
+        "Idempotent + LocalWrite with empty key slots must be Ok(())"
+    );
+    // Negative control: also assert that MissingKey variant is NOT produced.
+    if let Err(IdempotencyViolation::MissingKey(_)) = verify_idempotency(&action, &[], &frame) {
+        panic!("Idempotent must not produce MissingKey violation");
+    }
+}
+
+/// Tier 1/2: `verify_idempotency` rejects `Unknown` retry_safety for a
+/// non-pure side-effect with empty key_slots, producing `MissingKey(se)`
+/// (C8 contract: Unknown collapses to Unsafe / missing-key semantics).
+#[test]
+fn action_dispatch_unknown_retry_safety_recognized() {
+    use vb_core::action::{IdempotencyViolation, RetrySafety, verify_idempotency};
+    use vb_core::frame::RunFrame;
+    use vb_core::ids::{ActionId, RunId, StepIdx};
+    let action = ActionContract {
+        id: ActionId::new(8002),
+        name: ActionName::new("test-4v-unknown").unwrap(),
+        input_slot_count: 0,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        timeout_ms: 0,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Unknown,
+        required_capabilities: Box::new([]),
+    };
+    let frame = match RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    let result = verify_idempotency(&action, &[], &frame);
+    assert!(
+        matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+        "Unknown + LocalWrite with empty key slots must be MissingKey, got {result:?}"
+    );
 }

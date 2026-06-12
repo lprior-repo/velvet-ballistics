@@ -163,7 +163,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         CliActionSpec {
             id: 1,
             idempotency: vb_core::action::Idempotency::DeterministicPure,
-            retry_safety: vb_core::action::RetrySafety::Safe,
+            retry_safety: vb_core::action::RetrySafety::Idempotent,
             side_effect: vb_core::action::SideEffect::Pure,
             input_slot_count: 1,
             output_slot_count: 1,
@@ -172,7 +172,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         CliActionSpec {
             id: 2,
             idempotency: vb_core::action::Idempotency::IdempotentExternal,
-            retry_safety: vb_core::action::RetrySafety::KeyRequired,
+            retry_safety: vb_core::action::RetrySafety::RequiresIdempotencyKey,
             side_effect: vb_core::action::SideEffect::LocalWrite,
             input_slot_count: 2,
             output_slot_count: 1,
@@ -181,7 +181,7 @@ pub(crate) fn cli_action_specs() -> &'static [CliActionSpec] {
         CliActionSpec {
             id: 3,
             idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
-            retry_safety: vb_core::action::RetrySafety::Unsafe,
+            retry_safety: vb_core::action::RetrySafety::NotRetrySafe,
             side_effect: vb_core::action::SideEffect::ExternalWrite,
             input_slot_count: 1,
             output_slot_count: 0,
@@ -227,9 +227,11 @@ pub(crate) fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'
 
 pub(crate) fn action_retry_safety_name(value: vb_core::action::RetrySafety) -> &'static str {
     match value {
-        vb_core::action::RetrySafety::Safe => "safe",
-        vb_core::action::RetrySafety::KeyRequired => "key_required",
-        vb_core::action::RetrySafety::Unsafe => "unsafe",
+        vb_core::action::RetrySafety::Idempotent => "idempotent",
+        vb_core::action::RetrySafety::RequiresIdempotencyKey => "requires_idempotency_key",
+        vb_core::action::RetrySafety::NotRetrySafe => "not_retry_safe",
+        vb_core::action::RetrySafety::Unknown => "unknown",
+        // RetrySafety is `#[non_exhaustive]`; future variants default to "unknown".
         _ => "unknown",
     }
 }
@@ -269,10 +271,10 @@ pub(crate) fn action_idempotency_rule(
         (vb_core::action::Idempotency::DeterministicPure, _) => {
             "pure deterministic actions may replay without an external key"
         }
-        (_, vb_core::action::RetrySafety::KeyRequired) => {
+        (_, vb_core::action::RetrySafety::RequiresIdempotencyKey) => {
             "external retries require a stable idempotency key"
         }
-        (_, vb_core::action::RetrySafety::Unsafe) => {
+        (_, vb_core::action::RetrySafety::NotRetrySafe) => {
             "unsafe actions must not be retried automatically"
         }
         _ => "retry behavior follows the action contract",
@@ -417,4 +419,80 @@ fn write_action_inspect_error(
         );
     }
     crate::exit_code::CliExitCode::ValidationFailed.into()
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety CLI string mapping tests (Tier 2).
+// These tests assert the canonical 4-string mapping:
+//   Idempotent                 → "idempotent"
+//   RequiresIdempotencyKey    → "requires_idempotency_key"
+//   NotRetrySafe               → "not_retry_safe"
+//   Unknown                    → "unknown"
+//
+// On 3-variant code (Safe/KeyRequired/Unsafe), the strings are
+// "safe"/"key_required"/"unsafe" — all 3 of the asserted literals
+// differ. Tier 2 runtime fail (not compile fail) for the Idempotent,
+// requires_idempotency_key, not_retry_safe assertions; Tier 1 compile
+// fail for the Unknown assertion (the variant does not exist).
+// =========================================================================
+
+#[cfg(test)]
+#[allow(clippy::doc_markdown)]
+mod tests {
+    use super::action_retry_safety_name;
+    use vb_core::action::RetrySafety;
+
+    /// Tier 2: `action_retry_safety_name(RetrySafety::Idempotent) == "idempotent"`.
+    /// On 3-variant code: returns "safe"; on 4-variant code: returns "idempotent".
+    #[test]
+    fn action_retry_safety_name_idempotent_returns_idempotent_literal() {
+        let s = action_retry_safety_name(RetrySafety::Idempotent);
+        assert_eq!(s, "idempotent");
+    }
+
+    /// Tier 2: `action_retry_safety_name(RetrySafety::RequiresIdempotencyKey) == "requires_idempotency_key"`.
+    /// On 3-variant code: returns "key_required"; on 4-variant code: returns "requires_idempotency_key".
+    #[test]
+    fn action_retry_safety_name_requires_key_returns_requires_idempotency_key_literal() {
+        let s = action_retry_safety_name(RetrySafety::RequiresIdempotencyKey);
+        assert_eq!(s, "requires_idempotency_key");
+    }
+
+    /// Tier 2: `action_retry_safety_name(RetrySafety::NotRetrySafe) == "not_retry_safe"`.
+    /// On 3-variant code: returns "unsafe"; on 4-variant code: returns "not_retry_safe".
+    #[test]
+    fn action_retry_safety_name_not_retry_safe_returns_not_retry_safe_literal() {
+        let s = action_retry_safety_name(RetrySafety::NotRetrySafe);
+        assert_eq!(s, "not_retry_safe");
+    }
+
+    /// Tier 1: `action_retry_safety_name(RetrySafety::Unknown) == "unknown"`.
+    /// On 3-variant code: `RetrySafety::Unknown` does not exist; compile fail.
+    #[test]
+    fn action_retry_safety_name_unknown_returns_unknown_literal() {
+        let s = action_retry_safety_name(RetrySafety::Unknown);
+        assert_eq!(s, "unknown");
+    }
+
+    /// Tier 1: the 4 strings are pairwise distinct (set size = 4).
+    #[test]
+    fn action_retry_safety_name_4_strings_pairwise_distinct() {
+        let s_idempotent = action_retry_safety_name(RetrySafety::Idempotent);
+        let s_requires_key = action_retry_safety_name(RetrySafety::RequiresIdempotencyKey);
+        let s_not_retry_safe = action_retry_safety_name(RetrySafety::NotRetrySafe);
+        let s_unknown = action_retry_safety_name(RetrySafety::Unknown);
+        let set: std::collections::BTreeSet<&str> = [
+            s_idempotent,
+            s_requires_key,
+            s_not_retry_safe,
+            s_unknown,
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(
+            set.len(),
+            4,
+            "4 strings must be pairwise distinct; got set {set:?}"
+        );
+    }
 }

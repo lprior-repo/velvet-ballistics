@@ -610,7 +610,7 @@ fn attested_action_id(contract: &ActionContract) -> Result<vb_core::ActionId, Jo
 fn requires_idempotency_key(contract: &ActionContract) -> bool {
     matches!(
         (contract.retry_safety, contract.idempotency),
-        (RetrySafety::KeyRequired, _) | (_, Idempotency::AtLeastOnceExternal)
+        (RetrySafety::RequiresIdempotencyKey, _) | (_, Idempotency::AtLeastOnceExternal)
     )
 }
 
@@ -621,9 +621,9 @@ fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
         contract.idempotency,
     ) {
         (SideEffect::Pure, _, _) => true,
-        (_, RetrySafety::Unsafe, _) => false,
+        (_, RetrySafety::NotRetrySafe, _) => false,
         (_, _, Idempotency::AtLeastOnceExternal | Idempotency::DeterministicPure) => false,
-        (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => true,
+        (_, RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey, Idempotency::IdempotentExternal) => true,
         // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
         // Unknown combinations are conservatively rejected.
         _ => false,

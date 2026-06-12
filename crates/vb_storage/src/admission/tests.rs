@@ -419,7 +419,7 @@ fn submit_artifact_returns_required_capabilities_when_contract_requires_capabili
         timeout_ms: 1000,
         idempotency: vb_core::action::Idempotency::IdempotentExternal,
         side_effect: vb_core::action::SideEffect::LocalWrite,
-        retry_safety: vb_core::action::RetrySafety::KeyRequired,
+        retry_safety: vb_core::action::RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([required.clone()]),
     };
 
@@ -481,7 +481,7 @@ fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), S
         timeout_ms: 1000,
         idempotency: vb_core::action::Idempotency::IdempotentExternal,
         side_effect: vb_core::action::SideEffect::LocalWrite,
-        retry_safety: vb_core::action::RetrySafety::KeyRequired,
+        retry_safety: vb_core::action::RetrySafety::RequiresIdempotencyKey,
         required_capabilities: Box::new([]),
     };
 
@@ -516,7 +516,7 @@ fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
         timeout_ms: 1000,
         idempotency: vb_core::action::Idempotency::DeterministicPure,
         side_effect: vb_core::action::SideEffect::LocalWrite,
-        retry_safety: vb_core::action::RetrySafety::Safe,
+        retry_safety: vb_core::action::RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
 
@@ -785,4 +785,45 @@ fn gap_submit_artifact_journaled_produces_unconditional_true_flags() -> Result<(
     );
 
     Ok(())
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety persistence tests (Tier 1 + Tier 2).
+// Per master plan Section 65, the 4-variant RetrySafety has stable
+// discriminants 0/1/2/3 (positional compat with the 3-variant ordinals
+// 0/1/2; ordinal 3 is additive).
+// =========================================================================
+
+/// Tier 1: 4-variant RetrySafety discriminants are stable ordinals 0..3.
+#[test]
+fn persistence_ordinals() {
+    assert_eq!(vb_core::action::RetrySafety::Idempotent as u8, 0);
+    assert_eq!(vb_core::action::RetrySafety::RequiresIdempotencyKey as u8, 1);
+    assert_eq!(vb_core::action::RetrySafety::NotRetrySafe as u8, 2);
+    assert_eq!(vb_core::action::RetrySafety::Unknown as u8, 3);
+}
+
+/// Tier 2: ordinals 0..2 are stable across the 3→4 migration
+/// (Idempotent=0, RequiresIdempotencyKey=1, NotRetrySafe=2 all match
+/// the 3-variant shape). Ordinal 3 is the additive new variant.
+#[test]
+fn backward_compat_3variant_ordinals() {
+    // Pre-migration ordinal 0 (Safe in 3-variant) is the same as
+    // post-migration ordinal 0 (Idempotent in 4-variant). The on-disk
+    // encoding does not change for ordinals 0..2.
+    let pre_migration_safe_ordinal = 0u8;
+    let post_idempotent_ordinal = vb_core::action::RetrySafety::Idempotent as u8;
+    assert_eq!(pre_migration_safe_ordinal, post_idempotent_ordinal);
+
+    let pre_migration_key_required_ordinal = 1u8;
+    let post_requires_idempotency_key_ordinal =
+        vb_core::action::RetrySafety::RequiresIdempotencyKey as u8;
+    assert_eq!(
+        pre_migration_key_required_ordinal,
+        post_requires_idempotency_key_ordinal
+    );
+
+    let pre_migration_unsafe_ordinal = 2u8;
+    let post_not_retry_safe_ordinal = vb_core::action::RetrySafety::NotRetrySafe as u8;
+    assert_eq!(pre_migration_unsafe_ordinal, post_not_retry_safe_ordinal);
 }

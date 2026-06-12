@@ -608,7 +608,7 @@ fn cat10_do_awaiting_action() -> Result<(), String> {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::from([]),
         },
         ActionContract {
@@ -621,7 +621,7 @@ fn cat10_do_awaiting_action() -> Result<(), String> {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::from([Capability::new(
                 "__contract_required__".into(),
                 ActionId::new(1),
@@ -1190,4 +1190,30 @@ fn cat9_set_const_bool_evidence() -> Result<(), String> {
         return Err("expected SlotWritten(0, Bool(true))".into());
     }
     Ok(())
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety drive tests (Tier 1).
+// =========================================================================
+
+/// Tier 1/2: `is_failure_retriable(&failure, Idempotent) == true` for a
+/// retryable failure because Idempotent is unconditionally retriable
+/// per the master §65 contract.
+#[test]
+fn drive_idempotent_retry_safety_recognized() {
+    use crate::primitives::retry::is_failure_retriable;
+    use vb_core::action::{ActionFailure, ActionFailureCode, RetryPolicy as VbRetryPolicy};
+    use vb_core::action::RetrySafety;
+    use vb_core::value::Taint;
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert!(
+        is_failure_retriable(&failure, RetrySafety::Idempotent),
+        "Idempotent + Retryable must be retriable"
+    );
 }

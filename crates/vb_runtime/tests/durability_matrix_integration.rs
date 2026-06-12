@@ -35,7 +35,7 @@ fn suspended_action_contracts() -> Box<[ActionContract]> {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::from([contract_required_capability(action)]),
     }])
 }
@@ -527,5 +527,22 @@ fn gate_fails_when_row_claims_ack_before_persist() {
         result.is_ok(),
         "No row should claim ack-before-persist; if this fails: {:?}",
         result
+    );
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety durability-matrix integration test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn durability_matrix_integration_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
     );
 }

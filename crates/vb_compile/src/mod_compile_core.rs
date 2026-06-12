@@ -138,11 +138,11 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
 ///
 /// Rules:
 /// - `SideEffect::Pure` always passes (pure computation).
-/// - `side_effect != None` AND `RetrySafety::Unsafe` is rejected.
+/// - `side_effect != None` AND `RetrySafety::NotRetrySafe` is rejected.
 /// - `side_effect != None` AND `Idempotency::AtLeastOnceExternal` is rejected.
 /// - `side_effect != None` AND `Idempotency::DeterministicPure` is rejected.
-/// - `side_effect != None` AND `RetrySafety::Safe` with `Idempotency::IdempotentExternal` passes.
-/// - `side_effect != None` AND `RetrySafety::KeyRequired` with `Idempotency::IdempotentExternal` passes.
+/// - `side_effect != None` AND `RetrySafety::Idempotent` with `Idempotency::IdempotentExternal` passes.
+/// - `side_effect != None` AND `RetrySafety::RequiresIdempotencyKey` with `Idempotency::IdempotentExternal` passes.
 pub fn is_compile_idempotency_gate_accepted(contract: &ActionContract) -> bool {
     matches!(
         (
@@ -153,7 +153,7 @@ pub fn is_compile_idempotency_gate_accepted(contract: &ActionContract) -> bool {
         (SideEffect::Pure, _, _)
             | (
                 _,
-                RetrySafety::Safe | RetrySafety::KeyRequired,
+                RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey,
                 Idempotency::IdempotentExternal,
             )
     )
@@ -173,11 +173,15 @@ pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), Compi
             };
             continue;
         }
-        if contract.retry_safety == RetrySafety::Unsafe {
+        if contract.retry_safety == RetrySafety::NotRetrySafe
+            || contract.retry_safety == RetrySafety::Unknown
+        {
             errors.push(CompileError::IdempotencyViolation {
                 action: contract.id,
                 side_effect: contract.side_effect,
-                reason: Box::from("side-effecting action declares RetrySafety::Unsafe"),
+                reason: Box::from(
+                    "side-effecting action declares RetrySafety::NotRetrySafe or ::Unknown",
+                ),
             });
             i = match i.checked_add(1) {
                 Some(next) => next,

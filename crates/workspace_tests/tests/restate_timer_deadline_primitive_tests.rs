@@ -1046,7 +1046,7 @@ mod retry_state_invariants {
         let policy = RetryPolicy::new(1, 0, 1, DelayStrategy::None).expect("valid");
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         match decision {
             RetryDecision::Retry { state: next, .. } => {
                 assert_eq!(next.remaining(), 0);
@@ -1084,7 +1084,7 @@ mod retry_state_invariants {
         let policy = RetryPolicy::new(5, 100, 1, DelayStrategy::Fixed).expect("valid");
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         match decision {
             RetryDecision::Retry {
                 state: mid_state, ..
@@ -1145,7 +1145,7 @@ mod retry_state_invariants {
         let policy = RetryPolicy::new(max_attempts, 0, 1, DelayStrategy::None).expect("valid");
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         match decision {
             RetryDecision::Retry { state: next, .. } => {
                 // current_attempt=2, remaining=4 -> 2+4=6 <= 5+1=6
@@ -1180,7 +1180,7 @@ mod retry_state_invariants {
         let policy = RetryPolicy::new(1, 0, 1, DelayStrategy::None).expect("valid");
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         match decision {
             RetryDecision::Retry {
                 state: exhausted, ..
@@ -1212,8 +1212,8 @@ mod evaluate_retry_invariants {
         let policy = policy_3_fixed();
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let d1 = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
-        let d2 = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let d1 = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
+        let d2 = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         assert_eq!(d1, d2);
     }
 
@@ -1222,7 +1222,7 @@ mod evaluate_retry_invariants {
         let policy = policy_3_fixed();
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         match decision {
             RetryDecision::Retry { state, delay_ms } => {
                 assert_eq!(state.current_attempt(), 2);
@@ -1242,7 +1242,7 @@ mod evaluate_retry_invariants {
         let policy_1 = RetryPolicy::new(1, 0, 1, DelayStrategy::None).expect("valid");
         let state = RetryState::from_policy(&policy_1);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy_1, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy_1, &failure, RetrySafety::Idempotent);
         // First retry: remaining goes 1->0
         let exhausted_state = match decision {
             RetryDecision::Retry { state, .. } => state,
@@ -1253,7 +1253,7 @@ mod evaluate_retry_invariants {
         };
         assert_eq!(exhausted_state.remaining(), 0);
         // Second try with the same policy but using the exhausted state
-        let decision2 = evaluate_retry(&exhausted_state, &policy_1, &failure, RetrySafety::Safe);
+        let decision2 = evaluate_retry(&exhausted_state, &policy_1, &failure, RetrySafety::Idempotent);
         assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
     }
 
@@ -1262,7 +1262,7 @@ mod evaluate_retry_invariants {
         let policy = policy_3_fixed();
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Unsafe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::NotRetrySafe);
         assert_eq!(decision, RetryDecision::NotRetriable);
     }
 
@@ -1271,7 +1271,7 @@ mod evaluate_retry_invariants {
         let policy = policy_3_fixed();
         let state = RetryState::from_policy(&policy);
         let failure = non_retryable_failure(ActionFailureCode::PermissionDenied);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         assert_eq!(decision, RetryDecision::NotRetriable);
     }
 
@@ -1282,7 +1282,7 @@ mod evaluate_retry_invariants {
 
         // Attempt 1: remaining=3 -> retry, remaining becomes 2
         let state1 = RetryState::from_policy(&policy);
-        let d1 = evaluate_retry(&state1, &policy, &failure, RetrySafety::Safe);
+        let d1 = evaluate_retry(&state1, &policy, &failure, RetrySafety::Idempotent);
         let (next_state, _) = match d1 {
             RetryDecision::Retry { state, delay_ms } => (state, delay_ms),
             other => {
@@ -1294,7 +1294,7 @@ mod evaluate_retry_invariants {
         assert_eq!(next_state.remaining(), 2);
 
         // Attempt 2: remaining=2 -> retry, remaining becomes 1
-        let d2 = evaluate_retry(&next_state, &policy, &failure, RetrySafety::Safe);
+        let d2 = evaluate_retry(&next_state, &policy, &failure, RetrySafety::Idempotent);
         let (next_state2, _) = match d2 {
             RetryDecision::Retry { state, delay_ms } => (state, delay_ms),
             other => {
@@ -1306,7 +1306,7 @@ mod evaluate_retry_invariants {
         assert_eq!(next_state2.remaining(), 1);
 
         // Attempt 3: remaining=1 -> retry, remaining becomes 0
-        let d3 = evaluate_retry(&next_state2, &policy, &failure, RetrySafety::Safe);
+        let d3 = evaluate_retry(&next_state2, &policy, &failure, RetrySafety::Idempotent);
         let next_state3 = match d3 {
             RetryDecision::Retry { state, .. } => state,
             other => {
@@ -1317,7 +1317,7 @@ mod evaluate_retry_invariants {
         assert_eq!(next_state3.remaining(), 0);
 
         // Attempt 4: remaining=0 -> exhausted
-        let d4 = evaluate_retry(&next_state3, &policy, &failure, RetrySafety::Safe);
+        let d4 = evaluate_retry(&next_state3, &policy, &failure, RetrySafety::Idempotent);
         assert_eq!(d4, RetryDecision::Exhausted { max_attempts: 3 });
     }
 
@@ -1326,7 +1326,7 @@ mod evaluate_retry_invariants {
         let policy = RetryPolicy::no_retry();
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let d1 = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let d1 = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         // remaining=1 -> goes to 0 but still a Retry decision
         let next = match d1 {
             RetryDecision::Retry { state, .. } => state,
@@ -1337,7 +1337,7 @@ mod evaluate_retry_invariants {
         };
         assert_eq!(next.remaining(), 0);
         // Next failure exhausts
-        let d2 = evaluate_retry(&next, &policy, &failure, RetrySafety::Safe);
+        let d2 = evaluate_retry(&next, &policy, &failure, RetrySafety::Idempotent);
         assert_eq!(d2, RetryDecision::Exhausted { max_attempts: 1 });
     }
 
@@ -1347,7 +1347,7 @@ mod evaluate_retry_invariants {
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::ExternalUnavailable);
 
-        let d1 = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let d1 = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         let s1 = match d1 {
             RetryDecision::Retry { state, delay_ms } => {
                 assert_eq!(delay_ms, 100);
@@ -1359,7 +1359,7 @@ mod evaluate_retry_invariants {
             }
         };
 
-        let d2 = evaluate_retry(&s1, &policy, &failure, RetrySafety::Safe);
+        let d2 = evaluate_retry(&s1, &policy, &failure, RetrySafety::Idempotent);
         match d2 {
             RetryDecision::Retry { delay_ms, .. } => {
                 assert_eq!(delay_ms, 200);
@@ -1377,8 +1377,8 @@ mod evaluate_retry_invariants {
         let p2 = RetryPolicy::new(3, 20, 1, DelayStrategy::Fixed).expect("valid");
         let state = RetryState::from_policy(&p1);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let d1 = evaluate_retry(&state, &p1, &failure, RetrySafety::Safe);
-        let d2 = evaluate_retry(&state, &p2, &failure, RetrySafety::Safe);
+        let d1 = evaluate_retry(&state, &p1, &failure, RetrySafety::Idempotent);
+        let d2 = evaluate_retry(&state, &p2, &failure, RetrySafety::Idempotent);
         // Same state, different policies produce different delays
         assert_ne!(d1, d2);
     }
@@ -1394,37 +1394,37 @@ mod is_failure_retriable_purity {
     #[test]
     fn safe_retryable_is_retriable() {
         let f = retryable_failure(ActionFailureCode::Timeout);
-        assert!(is_failure_retriable(&f, RetrySafety::Safe));
+        assert!(is_failure_retriable(&f, RetrySafety::Idempotent));
     }
 
     #[test]
     fn safe_non_retryable_is_not_retriable() {
         let f = non_retryable_failure(ActionFailureCode::Rejected);
-        assert!(!is_failure_retriable(&f, RetrySafety::Safe));
+        assert!(!is_failure_retriable(&f, RetrySafety::Idempotent));
     }
 
     #[test]
     fn unsafe_always_returns_false_regardless_of_flag() {
         let f = retryable_failure(ActionFailureCode::Timeout);
-        assert!(!is_failure_retriable(&f, RetrySafety::Unsafe));
+        assert!(!is_failure_retriable(&f, RetrySafety::NotRetrySafe));
     }
 
     #[test]
     fn unsafe_non_retryable_also_returns_false() {
         let f = non_retryable_failure(ActionFailureCode::PermissionDenied);
-        assert!(!is_failure_retriable(&f, RetrySafety::Unsafe));
+        assert!(!is_failure_retriable(&f, RetrySafety::NotRetrySafe));
     }
 
     #[test]
     fn key_required_retryable_is_retriable() {
         let f = retryable_failure(ActionFailureCode::RateLimited);
-        assert!(is_failure_retriable(&f, RetrySafety::KeyRequired));
+        assert!(is_failure_retriable(&f, RetrySafety::RequiresIdempotencyKey));
     }
 
     #[test]
     fn key_required_non_retryable_is_not_retriable() {
         let f = non_retryable_failure(ActionFailureCode::InvalidInput);
-        assert!(!is_failure_retriable(&f, RetrySafety::KeyRequired));
+        assert!(!is_failure_retriable(&f, RetrySafety::RequiresIdempotencyKey));
     }
 
     #[test]
@@ -1439,7 +1439,7 @@ mod is_failure_retriable_purity {
         for &code in &codes {
             let f = retryable_failure(code);
             let reason = format!("code {code:?} should be retriable with safe");
-            assert!(is_failure_retriable(&f, RetrySafety::Safe), "{reason}");
+            assert!(is_failure_retriable(&f, RetrySafety::Idempotent), "{reason}");
         }
     }
 
@@ -1454,15 +1454,15 @@ mod is_failure_retriable_purity {
         for &code in &codes {
             let f = non_retryable_failure(code);
             let reason = format!("code {code:?} should NOT be retriable with safe");
-            assert!(!is_failure_retriable(&f, RetrySafety::Safe), "{reason}");
+            assert!(!is_failure_retriable(&f, RetrySafety::Idempotent), "{reason}");
         }
     }
 
     #[test]
     fn is_failure_retriable_is_deterministic() {
         let f = retryable_failure(ActionFailureCode::Timeout);
-        let a = is_failure_retriable(&f, RetrySafety::Safe);
-        let b = is_failure_retriable(&f, RetrySafety::Safe);
+        let a = is_failure_retriable(&f, RetrySafety::Idempotent);
+        let b = is_failure_retriable(&f, RetrySafety::Idempotent);
         assert_eq!(a, b);
     }
 }
@@ -1853,7 +1853,7 @@ mod value_semantics {
         let policy = RetryPolicy::new(3, 50, 1, DelayStrategy::Fixed).expect("valid");
         let state = RetryState::from_policy(&policy);
         let failure = retryable_failure(ActionFailureCode::Timeout);
-        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Safe);
+        let decision = evaluate_retry(&state, &policy, &failure, RetrySafety::Idempotent);
         match decision {
             RetryDecision::Retry {
                 state: _s,
@@ -1971,4 +1971,21 @@ mod value_semantics {
     fn pending_timer_kind_wait_not_equal_ask() {
         assert_ne!(PendingTimerKind::Wait, PendingTimerKind::Ask);
     }
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety restate-timer-deadline test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn restate_timer_deadline_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
+    );
 }

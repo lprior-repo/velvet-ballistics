@@ -93,7 +93,7 @@ fn retry_unsafe_violation(action_id: ActionId) -> IdempotencyContractViolation {
         action: action_id,
         side_effect: SideEffect::LocalWrite,
         idempotency: Idempotency::IdempotentExternal,
-        retry_safety: RetrySafety::Unsafe,
+        retry_safety: RetrySafety::NotRetrySafe,
     }
 }
 
@@ -102,7 +102,7 @@ fn at_least_once_violation(action_id: ActionId) -> IdempotencyContractViolation 
         action: action_id,
         side_effect: SideEffect::LocalWrite,
         idempotency: Idempotency::AtLeastOnceExternal,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
     }
 }
 
@@ -111,7 +111,7 @@ fn deterministic_pure_violation(action_id: ActionId) -> IdempotencyContractViola
         action: action_id,
         side_effect: SideEffect::LocalWrite,
         idempotency: Idempotency::DeterministicPure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
     }
 }
 
@@ -121,7 +121,7 @@ fn validate_action_returns_unit_for_pure_deterministic_safe_contract() {
         action(1),
         SideEffect::Pure,
         Idempotency::DeterministicPure,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -135,7 +135,7 @@ fn validate_action_returns_unit_for_pure_at_least_once_unsafe_contract() {
         action(2),
         SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -149,7 +149,7 @@ fn validate_action_returns_unit_for_side_effecting_idempotent_external_safe_cont
         action(3),
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -163,7 +163,7 @@ fn validate_action_returns_unit_for_side_effecting_idempotent_external_key_requi
         action(4),
         SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -178,7 +178,7 @@ fn validate_action_returns_retry_unsafe_violation_with_all_fields_when_retry_is_
         action_id,
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -194,7 +194,7 @@ fn validate_action_returns_at_least_once_violation_with_all_fields_when_idempote
         action_id,
         SideEffect::LocalWrite,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -210,7 +210,7 @@ fn validate_action_returns_deterministic_pure_violation_with_all_fields_when_sid
         action_id,
         SideEffect::LocalWrite,
         Idempotency::DeterministicPure,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = validate_action_idempotency_contract(&candidate);
@@ -234,19 +234,19 @@ fn collect_returns_unit_for_all_legal_contracts() {
             action(8),
             SideEffect::Pure,
             Idempotency::AtLeastOnceExternal,
-            RetrySafety::Unsafe,
+            RetrySafety::NotRetrySafe,
         ),
         contract(
             action(9),
             SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         ),
         contract(
             action(10),
             SideEffect::ExternalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::KeyRequired,
+            RetrySafety::RequiresIdempotencyKey,
         ),
     ];
 
@@ -262,7 +262,7 @@ fn collect_returns_one_boxed_retry_unsafe_violation_for_single_illegal_contract(
         action_id,
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     )];
 
     let result = collect_idempotency_contract_violations(&contracts);
@@ -282,7 +282,7 @@ fn collect_returns_one_boxed_at_least_once_violation_for_single_illegal_contract
         action_id,
         SideEffect::LocalWrite,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     )];
 
     let result = collect_idempotency_contract_violations(&contracts);
@@ -302,7 +302,7 @@ fn collect_returns_one_boxed_deterministic_pure_violation_for_single_illegal_con
         action_id,
         SideEffect::LocalWrite,
         Idempotency::DeterministicPure,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     )];
 
     let result = collect_idempotency_contract_violations(&contracts);
@@ -326,25 +326,25 @@ fn collect_returns_all_boxed_violations_in_input_order_for_multiple_illegal_cont
             first,
             SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::Unsafe,
+            RetrySafety::NotRetrySafe,
         ),
         contract(
             legal,
             SideEffect::ExternalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::KeyRequired,
+            RetrySafety::RequiresIdempotencyKey,
         ),
         contract(
             second,
             SideEffect::LocalWrite,
             Idempotency::AtLeastOnceExternal,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         ),
         contract(
             third,
             SideEffect::LocalWrite,
             Idempotency::DeterministicPure,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         ),
     ];
 
@@ -367,19 +367,19 @@ fn collect_returns_same_boxed_violations_when_called_twice_with_same_input() {
             action(18),
             SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::Unsafe,
+            RetrySafety::NotRetrySafe,
         ),
         contract(
             action(19),
             SideEffect::LocalWrite,
             Idempotency::AtLeastOnceExternal,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         ),
         contract(
             action(20),
             SideEffect::LocalWrite,
             Idempotency::DeterministicPure,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         ),
     ];
 
@@ -395,55 +395,55 @@ fn is_static_returns_unit_for_pure_contract_for_all_retry_and_idempotency_values
         action(21),
         SideEffect::Pure,
         Idempotency::DeterministicPure,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
     let deterministic_key = contract(
         action(22),
         SideEffect::Pure,
         Idempotency::DeterministicPure,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
     let deterministic_unsafe = contract(
         action(23),
         SideEffect::Pure,
         Idempotency::DeterministicPure,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     );
     let external_safe = contract(
         action(24),
         SideEffect::Pure,
         Idempotency::IdempotentExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
     let external_key = contract(
         action(25),
         SideEffect::Pure,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
     let external_unsafe = contract(
         action(26),
         SideEffect::Pure,
         Idempotency::IdempotentExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     );
     let at_least_once_safe = contract(
         action(27),
         SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
     let at_least_once_key = contract(
         action(28),
         SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
     let at_least_once_unsafe = contract(
         action(29),
         SideEffect::Pure,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     );
 
     let result = [
@@ -480,7 +480,7 @@ fn is_static_returns_unit_for_side_effecting_idempotent_external_safe_contract()
         action(30),
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = is_statically_idempotent_contract(&candidate);
@@ -494,7 +494,7 @@ fn is_static_returns_unit_for_side_effecting_idempotent_external_key_required_co
         action(31),
         SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
 
     let result = is_statically_idempotent_contract(&candidate);
@@ -509,7 +509,7 @@ fn is_static_returns_retry_unsafe_violation_with_all_fields_when_retry_is_unsafe
         action_id,
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     );
 
     let result = is_statically_idempotent_contract(&candidate);
@@ -524,7 +524,7 @@ fn is_static_returns_at_least_once_violation_with_all_fields_when_idempotency_is
         action_id,
         SideEffect::LocalWrite,
         Idempotency::AtLeastOnceExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = is_statically_idempotent_contract(&candidate);
@@ -540,7 +540,7 @@ fn is_static_returns_deterministic_pure_violation_with_all_fields_when_side_effe
         action_id,
         SideEffect::LocalWrite,
         Idempotency::DeterministicPure,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
 
     let result = is_statically_idempotent_contract(&candidate);
@@ -554,7 +554,7 @@ fn runtime_returns_missing_key_when_key_required_action_has_empty_key_slots()
         action(35),
         SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
     let frame = RunFrame::new(RunId::ZERO, StepIdx::ZERO, 1, 1)?;
 
@@ -602,7 +602,7 @@ fn runtime_returns_unit_when_key_required_action_has_non_empty_clean_key_slots()
         action(36),
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
     let mut frame = RunFrame::new(RunId::ZERO, StepIdx::ZERO, 1, 1)?;
     frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(true))?;
@@ -619,7 +619,7 @@ fn static_verifier_ignores_zero_numeric_ticket_key_when_contract_is_key_required
         action(37),
         SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     );
     let ticket = ActionTicket {
         run: RunId::ZERO,
@@ -644,19 +644,19 @@ fn direct_decision_table_has_no_uncovered_enum_combination() {
             action(38),
             SideEffect::Pure,
             Idempotency::DeterministicPure,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         )),
         is_statically_idempotent_contract(&contract(
             action(39),
             SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         )),
         is_statically_idempotent_contract(&contract(
             action(40),
             SideEffect::ExternalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::KeyRequired,
+            RetrySafety::RequiresIdempotencyKey,
         )),
     ];
     let rejected = [
@@ -664,19 +664,19 @@ fn direct_decision_table_has_no_uncovered_enum_combination() {
             action(41),
             SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::Unsafe,
+            RetrySafety::NotRetrySafe,
         )),
         is_statically_idempotent_contract(&contract(
             action(42),
             SideEffect::LocalWrite,
             Idempotency::AtLeastOnceExternal,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         )),
         is_statically_idempotent_contract(&contract(
             action(43),
             SideEffect::LocalWrite,
             Idempotency::DeterministicPure,
-            RetrySafety::Safe,
+            RetrySafety::Idempotent,
         )),
     ];
 
@@ -697,7 +697,7 @@ fn verifier_unit_functions_do_not_mutate_contract_values() {
         action(44),
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     );
     let original = candidate.clone();
 
@@ -725,7 +725,7 @@ fn validate_workflow_returns_unit_for_side_effecting_idempotent_external_when_re
         action_id,
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     )];
 
     let result = validate_workflow_idempotency_contracts(&parts, &contracts);
@@ -741,7 +741,7 @@ fn validate_workflow_returns_unit_for_side_effecting_idempotent_external_when_ke
         action_id,
         SideEffect::ExternalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::KeyRequired,
+        RetrySafety::RequiresIdempotencyKey,
     )];
 
     let result = validate_workflow_idempotency_contracts(&parts, &contracts);
@@ -757,7 +757,7 @@ fn validate_workflow_returns_retry_unsafe_error_when_side_effecting_contract_is_
         action_id,
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Unsafe,
+        RetrySafety::NotRetrySafe,
     )];
 
     let result = validate_workflow_idempotency_contracts(&parts, &contracts);
@@ -795,7 +795,7 @@ fn validate_workflow_returns_action_contract_orphan_when_registry_contract_has_n
         action_id,
         SideEffect::LocalWrite,
         Idempotency::IdempotentExternal,
-        RetrySafety::Safe,
+        RetrySafety::Idempotent,
     )];
 
     let result = validate_workflow_idempotency_contracts(&parts, &contracts);
@@ -813,7 +813,7 @@ proptest! {
             ActionId::new(action_raw),
             SideEffect::Pure,
             Idempotency::AtLeastOnceExternal,
-            RetrySafety::Unsafe,
+            RetrySafety::NotRetrySafe,
         );
 
         let result = is_statically_idempotent_contract(&candidate);
@@ -828,7 +828,7 @@ proptest! {
             action_id,
             SideEffect::LocalWrite,
             Idempotency::IdempotentExternal,
-            RetrySafety::Unsafe,
+            RetrySafety::NotRetrySafe,
         );
 
         let result = is_statically_idempotent_contract(&candidate);
@@ -848,9 +848,9 @@ proptest! {
             Just(SideEffect::LocalWrite),
         ],
         retry_safety in prop_oneof![
-            Just(RetrySafety::Safe),
-            Just(RetrySafety::KeyRequired),
-            Just(RetrySafety::Unsafe),
+            Just(RetrySafety::Idempotent),
+            Just(RetrySafety::RequiresIdempotencyKey),
+            Just(RetrySafety::NotRetrySafe),
         ],
         idempotency in prop_oneof![
             Just(Idempotency::DeterministicPure),
@@ -883,7 +883,7 @@ proptest! {
         key_count in 0..8u8,
         taint_pattern in 0..=255u8,
     ) {
-        let candidate = contract(ActionId::new(0), side_effect, idempotency, RetrySafety::KeyRequired);
+        let candidate = contract(ActionId::new(0), side_effect, idempotency, RetrySafety::RequiresIdempotencyKey);
         let key_slots: Vec<SlotIdx> = (0..key_count as u16).map(SlotIdx::new).collect();
 
         let mut frame = RunFrame::new(RunId::ZERO, StepIdx::ZERO, 8, 8)
@@ -902,4 +902,79 @@ proptest! {
             "Runtime gate must be deterministic"
         );
     }
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety static validation tests (Tier 1).
+// These tests use the 4-variant names literally; on 3-variant code
+// the test file fails to compile.
+// =========================================================================
+
+/// Tier 1: side-effecting action with `Unknown` retry_safety must be
+/// rejected as `SideEffectingRetryUnsafe` (the bead's primary
+/// contract addition).
+#[test]
+fn idempotency_contract_red_unknown_retry_safety_propagates_sideeffecting_retry_unsafe() {
+    let c = contract(
+        action(9999),
+        SideEffect::ExternalWrite,
+        Idempotency::IdempotentExternal,
+        RetrySafety::Unknown,
+    );
+    let result = is_statically_idempotent_contract(&c);
+    assert!(
+        matches!(
+            result,
+            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+                retry_safety: RetrySafety::Unknown,
+                ..
+            })
+        ),
+        "Unknown retry_safety on a side-effecting action must propagate as SideEffectingRetryUnsafe, got {result:?}"
+    );
+}
+
+/// Tier 1: validate_action_idempotency_contract returns the same
+/// `SideEffectingRetryUnsafe` error for `Unknown` retry_safety.
+#[test]
+fn idempotency_contract_red_validate_action_propagates_unknown() {
+    let c = contract(
+        action(9998),
+        SideEffect::LocalWrite,
+        Idempotency::IdempotentExternal,
+        RetrySafety::Unknown,
+    );
+    let result = validate_action_idempotency_contract(&c);
+    assert!(result.is_err());
+}
+
+/// Tier 1: 4-variant exhaustive static-validation table for
+/// `SideEffect::Pure × all RetrySafety × all Idempotency`
+/// (4 × 3 = 12 cells; all must pass per the static decision table
+/// because Pure always passes).
+#[test]
+fn idempotency_contract_red_pure_passes_all_4variant_combos() {
+    let mut count = 0usize;
+    for retry_safety in [
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
+        RetrySafety::Unknown,
+    ] {
+        for idempotency in [
+            Idempotency::DeterministicPure,
+            Idempotency::IdempotentExternal,
+            Idempotency::AtLeastOnceExternal,
+        ] {
+            let c = contract(action(count as u16), SideEffect::Pure, idempotency, retry_safety);
+            let result = is_statically_idempotent_contract(&c);
+            assert_eq!(
+                result,
+                Ok(()),
+                "Pure must pass for {retry_safety:?}+{idempotency:?}"
+            );
+            count += 1;
+        }
+    }
+    assert_eq!(count, 12, "4 RetrySafety × 3 Idempotency = 12 cells");
 }

@@ -720,7 +720,7 @@ fn cli_action_list_table_output_has_exact_fields() {
     assert_cli_success(&output, "action list");
     assert_eq!(
         output_stdout(&output),
-        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms\n1\tdeterministic_pure\tsafe\tpure\t1\t1\t1000\n2\tidempotent_external\tkey_required\tlocal_write\t2\t1\t5000\n3\tat_least_once_external\tunsafe\texternal_write\t1\t0\t10000\n"
+        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms\n1\tdeterministic_pure\tidempotent\tpure\t1\t1\t1000\n2\tidempotent_external\trequires_idempotency_key\tlocal_write\t2\t1\t5000\n3\tat_least_once_external\tnot_retry_safe\texternal_write\t1\t0\t10000\n"
     );
     assert_eq!(output_stderr(&output), "");
 }
@@ -1014,7 +1014,7 @@ fn cli_action_inspect_text_output_has_contract_details() {
     let stdout = output_stdout(&output);
     assert!(stdout.contains("action 2"));
     assert!(stdout.contains("idempotency: idempotent_external"));
-    assert!(stdout.contains("retry_safety: key_required"));
+    assert!(stdout.contains("retry_safety: requires_idempotency_key"));
     assert!(stdout.contains("failure_codes: rejected,timeout,rate_limited"));
     assert!(stdout.contains("example_input_schema:"));
 }
@@ -1054,8 +1054,8 @@ fn cli_action_inspect_json_output_has_full_contract() {
         "YAML output should contain idempotency: idempotent_external; got: {stdout}"
     );
     assert!(
-        stdout.contains("retry_safety: key_required"),
-        "YAML output should contain retry_safety: key_required; got: {stdout}"
+        stdout.contains("retry_safety: requires_idempotency_key"),
+        "YAML output should contain retry_safety: requires_idempotency_key; got: {stdout}"
     );
     assert!(
         stdout.contains("idempotency_rule: external retries require a stable idempotency key"),

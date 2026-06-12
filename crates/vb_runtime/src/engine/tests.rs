@@ -471,7 +471,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
@@ -485,7 +485,7 @@ fn execute_do_returns_awaiting_action_for_known_action() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
         contract,
@@ -533,7 +533,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let registry_contracts: Vec<vb_core::action::ActionContract> = vec![
@@ -547,7 +547,7 @@ fn execute_do_propagates_taint_from_secret_input_without_violation() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
         contract,
@@ -593,7 +593,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let result = execute_do(
@@ -669,7 +669,7 @@ fn dummy_contract() -> vb_core::action::ActionContract {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }
@@ -1419,7 +1419,7 @@ fn bh_execute_do_propagates_taint_through_ticket_for_at_least_once() {
         timeout_ms: 5000,
         idempotency: Idempotency::AtLeastOnceExternal,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
     let registry = vec![contract];
@@ -1596,7 +1596,7 @@ mod blackhat_engine {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         }
     }
@@ -2003,7 +2003,7 @@ mod blackhat_engine {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         }];
         let result = execute_node_full(
@@ -2320,7 +2320,7 @@ mod blackhat_engine {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         };
         let registry = vec![contract.clone()];
@@ -2576,4 +2576,94 @@ mod blackhat_engine {
             "PC must advance after step execution"
         );
     }
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety engine tests (Tier 1 → Tier 2 after
+// State 11 migration: the const fn `is_failure_retriable` already accepts
+// `RetrySafety`; on 3-variant code the test references 4-variant names
+// so it still fails to compile (preserves failing-first signal)).
+// =========================================================================
+
+/// Tier 1/2: `is_failure_retriable(&failure, Idempotent) == true` for a
+/// retryable failure because Idempotent is unconditionally retriable
+/// per the master §65 contract.
+#[test]
+fn engine_recognizes_4variant_idempotent_retry_safety() {
+    use crate::primitives::retry::is_failure_retriable;
+    use vb_core::action::RetrySafety;
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert!(
+        is_failure_retriable(&failure, RetrySafety::Idempotent),
+        "Idempotent + Retryable must be retriable"
+    );
+}
+
+/// Tier 1/2: `is_failure_retriable(&failure, RequiresIdempotencyKey) == true`
+/// for a retryable failure (the key check is performed separately during
+/// dispatch via `verify_idempotency`).
+#[test]
+fn engine_recognizes_4variant_requires_idempotency_key_retry_safety() {
+    use crate::primitives::retry::is_failure_retriable;
+    use vb_core::action::RetrySafety;
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert!(
+        is_failure_retriable(&failure, RetrySafety::RequiresIdempotencyKey),
+        "RequiresIdempotencyKey + Retryable must be retriable"
+    );
+}
+
+/// Tier 1/2: `is_failure_retriable(&failure, NotRetrySafe) == false`
+/// because NotRetrySafe is never retriable regardless of failure policy.
+#[test]
+fn engine_recognizes_4variant_not_retry_safe_retry_safety() {
+    use crate::primitives::retry::is_failure_retriable;
+    use vb_core::action::RetrySafety;
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert!(
+        !is_failure_retriable(&failure, RetrySafety::NotRetrySafe),
+        "NotRetrySafe must never be retriable"
+    );
+}
+
+/// Tier 1/2: `is_failure_retriable(&failure, Unknown) == false` and
+/// `Unknown` collapses with `NotRetrySafe` (C8 contract).
+#[test]
+fn engine_recognizes_4variant_unknown_retry_safety() {
+    use crate::primitives::retry::is_failure_retriable;
+    use vb_core::action::RetrySafety;
+    let failure = ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::Retryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert!(
+        !is_failure_retriable(&failure, RetrySafety::Unknown),
+        "Unknown must collapse to non-retriable (same as NotRetrySafe)"
+    );
+    assert_eq!(
+        is_failure_retriable(&failure, RetrySafety::Unknown),
+        is_failure_retriable(&failure, RetrySafety::NotRetrySafe),
+        "Unknown and NotRetrySafe must collapse at the retriable gate (C8)"
+    );
 }

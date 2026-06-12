@@ -743,11 +743,15 @@ pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), Compi
             };
             continue;
         }
-        if contract.retry_safety == RetrySafety::Unsafe {
+        if contract.retry_safety == RetrySafety::NotRetrySafe
+            || contract.retry_safety == RetrySafety::Unknown
+        {
             errors.push(CompileError::IdempotencyViolation {
                 action: contract.id,
                 side_effect: contract.side_effect,
-                reason: Box::from("side-effecting action declares RetrySafety::Unsafe"),
+                reason: Box::from(
+                    "side-effecting action declares RetrySafety::NotRetrySafe or ::Unknown",
+                ),
             });
             i = match i.checked_add(1) {
                 Some(next) => next,

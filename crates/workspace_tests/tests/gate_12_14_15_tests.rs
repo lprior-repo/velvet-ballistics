@@ -75,7 +75,7 @@ fn make_contract(action_id: u16) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }
 }
@@ -177,7 +177,7 @@ fn gate_12_contract_capability_validation() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([Capability::new(
             Box::from(""), // Empty name - invalid
             ActionId::new(1),
@@ -393,4 +393,21 @@ fn gate_15_ask_is_non_deterministic() {
         validate_gate_15_determinism_proof(&parts),
         Err(ValidationError::NonDeterministicPath { .. })
     ));
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety gate_12_14_15 test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn gate_12_14_15_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
+    );
 }

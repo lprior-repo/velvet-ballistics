@@ -19,3 +19,6 @@
 
 #[cfg(test)]
 mod side_effect_tests;
+
+#[cfg(test)]
+mod tests;

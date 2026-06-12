@@ -18,14 +18,14 @@ pub use state::{RetryDecision, RetryState};
 
 /// Checks whether a failure is retriable given the action's retry safety.
 ///
-/// - `RetrySafety::Safe`: always retriable if the failure's `retry_policy` is `Retryable`.
-/// - `RetrySafety::KeyRequired`: retriable if `retry_policy` is `Retryable` (key check is done
+/// - `RetrySafety::Idempotent`: always retriable if the failure's `retry_policy` is `Retryable`.
+/// - `RetrySafety::RequiresIdempotencyKey`: retriable if `retry_policy` is `Retryable` (key check is done
 ///   separately during dispatch via `verify_idempotency`).
-/// - `RetrySafety::Unsafe`: never retriable regardless of the failure's policy.
+/// - `RetrySafety::NotRetrySafe`: never retriable regardless of the failure's policy.
 pub fn is_failure_retriable(failure: &ActionFailure, retry_safety: RetrySafety) -> bool {
     match retry_safety {
-        RetrySafety::Unsafe => false,
-        RetrySafety::Safe | RetrySafety::KeyRequired => {
+        RetrySafety::NotRetrySafe => false,
+        RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey => {
             failure.retry_policy == vb_core::action::RetryPolicy::Retryable
         }
         // Handle any future RetrySafety variants as not retriable (safest default).

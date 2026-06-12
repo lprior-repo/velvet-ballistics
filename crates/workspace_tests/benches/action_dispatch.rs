@@ -76,9 +76,49 @@ fn action_contract(action: ActionId) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::from([]),
     }
+}
+
+/// vb-u09ai: Creates an ActionRegistry with one contract per 4-variant
+/// RetrySafety taxonomy. Used by `bench_action_dispatch_4variant_retry_safety`
+/// to measure dispatch overhead across the 4-variant shape.
+fn registry_with_4variant_retry_safety() -> ActionRegistry {
+    let mut registry = ActionRegistry::new();
+    let variants = [
+        RetrySafety::Idempotent,
+        RetrySafety::RequiresIdempotencyKey,
+        RetrySafety::NotRetrySafe,
+        RetrySafety::Unknown,
+    ];
+    let mut i = 0usize;
+    while i < variants.len() {
+        let raw_id = match u16::try_from(i) {
+            Ok(value) => value,
+            Err(error) => panic!("bench action id must fit in u16: {error}"),
+        };
+        let name = match ActionName::new(format!("test-action-4variant-{i}")) {
+            Ok(value) => value,
+            Err(error) => panic!("bench action name must be valid: {error}"),
+        };
+        let contract = ActionContract {
+            id: ActionId::new(raw_id),
+            name,
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::Pure,
+            retry_safety: variants[i],
+            required_capabilities: Box::from([]),
+        };
+        let _ = registry.register(contract);
+        i = i.saturating_add(1);
+    }
+    registry
 }
 
 fn bench_action_dispatch(c: &mut Criterion) {
@@ -238,5 +278,46 @@ fn bench_action_dispatch(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_action_dispatch);
+/// vb-u09ai: 4-variant RetrySafety dispatch bench.
+///
+/// Measures round-trip dispatch across the 4-variant `RetrySafety`
+/// taxonomy (`Idempotent`, `RequiresIdempotencyKey`, `NotRetrySafe`,
+/// `Unknown`). This bench is the **performance evidence** for the
+/// 4-variant migration per `AGENTS.md` ("every speed claim requires
+/// real baseline/result benchmark evidence").
+fn bench_action_dispatch_4variant_retry_safety(c: &mut Criterion) {
+    let registry = registry_with_4variant_retry_safety();
+
+    let mut group = c.benchmark_group("action_dispatch_4variant");
+    let fixture_bytes = 4usize;
+    group.throughput(Throughput::Elements(4));
+    group.bench_function(
+        metadata(
+            "action_dispatch_4variant_retry_safety",
+            fixture_bytes,
+            "fixture=4_variants;surface=action_dispatch;taxonomy=master_section_65",
+        ),
+        |b| {
+            b.iter(|| {
+                let mut i = 0u16;
+                while i < 4 {
+                    let action = ActionId::new(i);
+                    let result = registry.resolve_compile_time(black_box(action));
+                    let contract = result.expect("4-variant action must resolve");
+                    let safety = contract.retry_safety;
+                    // Touch the variant to ensure it survives optimization.
+                    let _ = black_box(safety);
+                    i = i.saturating_add(1);
+                }
+            });
+        },
+    );
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_action_dispatch,
+    bench_action_dispatch_4variant_retry_safety
+);
 criterion_main!(benches);

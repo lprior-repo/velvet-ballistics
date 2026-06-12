@@ -252,7 +252,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
             timeout_ms: 0,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
         ActionContract {
@@ -265,7 +265,7 @@ fn execute_do_with_known_contract_returns_awaiting_action() {
             timeout_ms: 5000,
             idempotency: Idempotency::DeterministicPure,
             side_effect: SideEffect::Pure,
-            retry_safety: RetrySafety::Safe,
+            retry_safety: RetrySafety::Idempotent,
             required_capabilities: Box::new([]),
         },
     ];
@@ -326,7 +326,7 @@ fn execute_do_with_unknown_contract_returns_error() {
         timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }];
     let result = execute_node_full(
@@ -391,7 +391,7 @@ fn execute_do_taint_violation_for_deterministic_pure_with_secret_input() {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     }];
     let result = execute_node_full(
@@ -944,7 +944,78 @@ fn execute_collect_start_errors_on_uninitialized_source() {
     );
     assert!(
         result.is_err(),
-        "expected error for uninitialized source, got {result:?}"
+        "expected error for uninitialized attempt slot, got {result:?}"
+    );
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety execute tests (Tier 1).
+// =========================================================================
+
+/// Tier 1/2: `verify_idempotency` accepts `Idempotent` for a non-pure
+/// side-effect with empty key slots (C6 contract).
+#[test]
+fn execute_action_with_idempotent_retry_safety_recognized() {
+    use vb_core::action::{IdempotencyViolation, RetrySafety, verify_idempotency};
+    use vb_core::frame::RunFrame;
+    use vb_core::ids::{ActionId, RunId, StepIdx};
+    let action = ActionContract {
+        id: ActionId::new(8101),
+        name: ActionName::new("execute-4v-idempotent").unwrap(),
+        input_slot_count: 0,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        timeout_ms: 0,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let frame = match RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    let result = verify_idempotency(&action, &[], &frame);
+    assert_eq!(
+        result,
+        Ok(()),
+        "Idempotent + LocalWrite with empty key slots must be Ok(())"
+    );
+    // Negative control: assert no MissingKey violation.
+    if let Err(IdempotencyViolation::MissingKey(_)) = result {
+        panic!("Idempotent must not produce MissingKey violation");
+    }
+}
+
+/// Tier 1/2: `verify_idempotency` rejects `Unknown` for a non-pure
+/// side-effect with empty key slots (C8 contract).
+#[test]
+fn execute_action_with_unknown_retry_safety_recognized() {
+    use vb_core::action::{IdempotencyViolation, RetrySafety, verify_idempotency};
+    use vb_core::frame::RunFrame;
+    use vb_core::ids::{ActionId, RunId, StepIdx};
+    let action = ActionContract {
+        id: ActionId::new(8102),
+        name: ActionName::new("execute-4v-unknown").unwrap(),
+        input_slot_count: 0,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        timeout_ms: 0,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::LocalWrite,
+        retry_safety: RetrySafety::Unknown,
+        required_capabilities: Box::new([]),
+    };
+    let frame = match RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 1) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    let result = verify_idempotency(&action, &[], &frame);
+    assert!(
+        matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+        "Unknown + LocalWrite with empty key slots must be MissingKey, got {result:?}"
     );
 }
 

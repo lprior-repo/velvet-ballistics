@@ -46,7 +46,7 @@ fn test_action_contract(
         timeout_ms: 5000,
         idempotency: vb_core::action::Idempotency::DeterministicPure,
         side_effect: vb_core::action::SideEffect::Pure,
-        retry_safety: vb_core::action::RetrySafety::Safe,
+        retry_safety: vb_core::action::RetrySafety::Idempotent,
         required_capabilities,
     }
 }
@@ -67,4 +67,21 @@ fn test_contracts_through(
         id = id.saturating_add(1);
     }
     contracts.into_boxed_slice()
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety chunk_001 test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn chunk_001_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
+    );
 }

@@ -346,7 +346,7 @@ fn action_contract(action: ActionId, required: bool) -> ActionContract {
         timeout_ms: 5000,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::Pure,
-        retry_safety: RetrySafety::Safe,
+        retry_safety: RetrySafety::Idempotent,
         required_capabilities,
     }
 }
@@ -743,4 +743,21 @@ fn record_retry_attempt_integration_gap() {
     // Integration tests cannot construct RunState to test record_retry_attempt boundary.
     // Unit tests in helpers.rs (#[cfg(test)]) cover this, but not from integration path.
     // POST-006 boundary (max_attempts) is tested in unit tests only.
+}
+
+// =========================================================================
+// vb-u09ai: 4-variant RetrySafety durable-retry test (Tier 1).
+// =========================================================================
+
+/// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
+/// per the master §65 contract (C6). The `is_idempotent(RetrySafety)` const
+/// fn is a TDD target State 11 will add — on 3-variant code this test
+/// fails to compile (preserves the failing-first signal).
+#[test]
+fn durable_retry_idempotent_retry_safety_recognized() {
+    use vb_core::action::{is_idempotent, RetrySafety};
+    assert!(
+        is_idempotent(RetrySafety::Idempotent),
+        "Idempotent must be considered idempotent (C6)"
+    );
 }
