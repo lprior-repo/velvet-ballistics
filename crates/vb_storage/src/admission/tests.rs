@@ -798,7 +798,10 @@ fn gap_submit_artifact_journaled_produces_unconditional_true_flags() -> Result<(
 #[test]
 fn persistence_ordinals() {
     assert_eq!(vb_core::action::RetrySafety::Idempotent as u8, 0);
-    assert_eq!(vb_core::action::RetrySafety::RequiresIdempotencyKey as u8, 1);
+    assert_eq!(
+        vb_core::action::RetrySafety::RequiresIdempotencyKey as u8,
+        1
+    );
     assert_eq!(vb_core::action::RetrySafety::NotRetrySafe as u8, 2);
     assert_eq!(vb_core::action::RetrySafety::Unknown as u8, 3);
 }

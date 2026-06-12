@@ -10,7 +10,7 @@ use super::types::WholeWorkflowBudget;
 use super::validation::validate_step_ceilings;
 
 /// Aggregate whole-run budget required for runtime admission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
     pub max_action_tickets: u32,
@@ -38,7 +38,7 @@ pub struct AggregateResourceBudget {
 }
 
 /// Shard-local aggregate admission capacity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct AggregateResourceCapacity {
     pub max_steps_executable: u64,
     pub max_action_tickets: u64,

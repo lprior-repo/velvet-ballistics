@@ -540,7 +540,7 @@ fn gate_fails_when_row_claims_ack_before_persist() {
 /// fails to compile (preserves the failing-first signal).
 #[test]
 fn durability_matrix_integration_idempotent_retry_safety_recognized() {
-    use vb_core::action::{is_idempotent, RetrySafety};
+    use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"

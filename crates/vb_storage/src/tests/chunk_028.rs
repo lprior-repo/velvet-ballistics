@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 // =========================================================================
 // Section: Batch Write-Through Integration Tests (60 new tests)
 // =========================================================================
@@ -41,7 +40,6 @@ fn batch_append_run_accepted_event_round_trips() {
     assert_eq!(events[0], event, "event must round-trip exactly");
 }
 
-
 #[test]
 fn batch_append_step_started_event_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -64,7 +62,6 @@ fn batch_append_step_started_event_round_trips() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn batch_append_step_succeeded_event_round_trips() {
@@ -89,7 +86,6 @@ fn batch_append_step_succeeded_event_round_trips() {
     assert_eq!(events[0], event);
 }
 
-
 #[test]
 fn batch_append_step_failed_event_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -111,7 +107,6 @@ fn batch_append_step_failed_event_round_trips() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn batch_append_action_scheduled_event_round_trips() {
@@ -137,7 +132,6 @@ fn batch_append_action_scheduled_event_round_trips() {
     assert_eq!(events[0], event);
 }
 
-
 #[test]
 fn batch_append_action_completed_event_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -161,7 +155,6 @@ fn batch_append_action_completed_event_round_trips() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn batch_append_action_failed_event_round_trips() {
@@ -187,7 +180,6 @@ fn batch_append_action_failed_event_round_trips() {
     assert_eq!(events[0], event);
 }
 
-
 #[test]
 fn batch_append_run_finished_event_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -210,7 +202,6 @@ fn batch_append_run_finished_event_round_trips() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn batch_append_run_failed_event_round_trips() {

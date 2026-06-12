@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn put_run_header_stores_and_retrieves() {
     // Given an open journal and a run header record
@@ -38,7 +37,6 @@ fn put_run_header_stores_and_retrieves() {
     assert_eq!(retrieved, Some(record));
 }
 
-
 #[test]
 fn put_compiled_ir_stores_and_retrieves() {
     // Given an open journal and a compiled IR record
@@ -58,7 +56,6 @@ fn put_compiled_ir_stores_and_retrieves() {
         .expect("compiled_ir lookup should succeed");
     assert_eq!(retrieved, Some(record));
 }
-
 
 #[test]
 fn put_compiled_ir_rejects_forged_digest() {
@@ -84,7 +81,6 @@ fn put_compiled_ir_rejects_forged_digest() {
         "forged compiled IR must not be persisted"
     );
 }
-
 
 #[test]
 fn put_compiled_ir_rejects_accepted_artifact_envelope_trailing_bytes() {
@@ -113,7 +109,6 @@ fn put_compiled_ir_rejects_accepted_artifact_envelope_trailing_bytes() {
         "trailing-byte AcceptedArtifact must not be persisted"
     );
 }
-
 
 #[test]
 fn compiled_ir_read_revalidates_persisted_record() {
@@ -146,7 +141,6 @@ fn compiled_ir_read_revalidates_persisted_record() {
         Err(JournalError::PostcardDecodeFailed)
     ));
 }
-
 
 #[test]
 fn compiled_ir_rejects_workflow_parts_inner_trailing_bytes() {
@@ -186,7 +180,6 @@ fn compiled_ir_rejects_workflow_parts_inner_trailing_bytes() {
     assert_eq!(actual_len, declared_end.saturating_add(1));
 }
 
-
 #[test]
 fn put_blob_stores_and_retrieves() {
     // Given an open journal and a blob record
@@ -208,7 +201,6 @@ fn put_blob_stores_and_retrieves() {
     let retrieved = journal.blob(digest).expect("blob lookup should succeed");
     assert_eq!(retrieved, Some(record));
 }
-
 
 #[test]
 fn put_snapshot_stores_and_retrieves() {

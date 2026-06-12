@@ -2196,10 +2196,16 @@ fn retry_safety_round_trip_postcard() {
         RetrySafety::Unknown,
     ] {
         let bytes = postcard::to_allocvec(&variant);
-        assert!(bytes.is_ok(), "postcard serialize must succeed for {variant:?}");
+        assert!(
+            bytes.is_ok(),
+            "postcard serialize must succeed for {variant:?}"
+        );
         let bytes = bytes.ok().expect("test setup");
         let recovered: Result<RetrySafety, _> = postcard::from_bytes(&bytes);
-        assert!(recovered.is_ok(), "postcard deserialize must succeed for {variant:?}");
+        assert!(
+            recovered.is_ok(),
+            "postcard deserialize must succeed for {variant:?}"
+        );
         let recovered = recovered.ok().expect("test setup");
         assert_eq!(recovered, variant, "round-trip must preserve {variant:?}");
     }
@@ -2218,7 +2224,10 @@ fn retry_safety_round_trip_json() {
         assert!(json.is_ok(), "json serialize must succeed for {variant:?}");
         let json = json.ok().expect("test setup");
         let recovered: Result<RetrySafety, _> = serde_json::from_str(&json);
-        assert!(recovered.is_ok(), "json deserialize must succeed for {variant:?}");
+        assert!(
+            recovered.is_ok(),
+            "json deserialize must succeed for {variant:?}"
+        );
         let recovered = recovered.ok().expect("test setup");
         assert_eq!(recovered, variant, "round-trip must preserve {variant:?}");
     }

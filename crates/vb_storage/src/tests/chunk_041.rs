@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 // ========================================================================
 // vb-1cwhx: RecoveryStamp (wire ID 7) BDD parity
 // ========================================================================
@@ -68,7 +67,6 @@ fn recovery_stamp_record_round_trips_through_decoder() {
     assert_eq!(decoded, stamp);
 }
 
-
 /// Given a typed `recovery_stamp_key(run, seq)` encoding
 /// When the resulting bytes are classified by `try_key_prefix` and decoded
 ///      by `decode_storage_key`
@@ -100,7 +98,6 @@ fn recovery_stamp_key_prefix_round_trips() {
         "decoded StorageKey must equal the encoded (run, seq)"
     );
 }
-
 
 /// Given any other record kind (e.g. WorkflowSource=1, Snapshot=30, Blob=40)
 /// When the encoder is invoked with `MAGIC_RECOVERY_STAMP`

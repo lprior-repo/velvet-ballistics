@@ -1253,7 +1253,12 @@ mod evaluate_retry_invariants {
         };
         assert_eq!(exhausted_state.remaining(), 0);
         // Second try with the same policy but using the exhausted state
-        let decision2 = evaluate_retry(&exhausted_state, &policy_1, &failure, RetrySafety::Idempotent);
+        let decision2 = evaluate_retry(
+            &exhausted_state,
+            &policy_1,
+            &failure,
+            RetrySafety::Idempotent,
+        );
         assert_eq!(decision2, RetryDecision::Exhausted { max_attempts: 1 });
     }
 
@@ -1418,13 +1423,19 @@ mod is_failure_retriable_purity {
     #[test]
     fn key_required_retryable_is_retriable() {
         let f = retryable_failure(ActionFailureCode::RateLimited);
-        assert!(is_failure_retriable(&f, RetrySafety::RequiresIdempotencyKey));
+        assert!(is_failure_retriable(
+            &f,
+            RetrySafety::RequiresIdempotencyKey
+        ));
     }
 
     #[test]
     fn key_required_non_retryable_is_not_retriable() {
         let f = non_retryable_failure(ActionFailureCode::InvalidInput);
-        assert!(!is_failure_retriable(&f, RetrySafety::RequiresIdempotencyKey));
+        assert!(!is_failure_retriable(
+            &f,
+            RetrySafety::RequiresIdempotencyKey
+        ));
     }
 
     #[test]
@@ -1439,7 +1450,10 @@ mod is_failure_retriable_purity {
         for &code in &codes {
             let f = retryable_failure(code);
             let reason = format!("code {code:?} should be retriable with safe");
-            assert!(is_failure_retriable(&f, RetrySafety::Idempotent), "{reason}");
+            assert!(
+                is_failure_retriable(&f, RetrySafety::Idempotent),
+                "{reason}"
+            );
         }
     }
 
@@ -1454,7 +1468,10 @@ mod is_failure_retriable_purity {
         for &code in &codes {
             let f = non_retryable_failure(code);
             let reason = format!("code {code:?} should NOT be retriable with safe");
-            assert!(!is_failure_retriable(&f, RetrySafety::Idempotent), "{reason}");
+            assert!(
+                !is_failure_retriable(&f, RetrySafety::Idempotent),
+                "{reason}"
+            );
         }
     }
 
@@ -1983,7 +2000,7 @@ mod value_semantics {
 /// fails to compile (preserves the failing-first signal).
 #[test]
 fn restate_timer_deadline_idempotent_retry_safety_recognized() {
-    use vb_core::action::{is_idempotent, RetrySafety};
+    use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"

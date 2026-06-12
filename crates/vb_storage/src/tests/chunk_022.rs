@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn encode_decode_roundtrip_for_ask_scheduled_record() {
     // Given an AskScheduledEvent
@@ -38,7 +37,6 @@ fn encode_decode_roundtrip_for_ask_scheduled_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn encode_decode_roundtrip_for_ask_answered_record() {
     // Given an AskAnsweredEvent
@@ -56,7 +54,6 @@ fn encode_decode_roundtrip_for_ask_answered_record() {
         .expect("decoding should succeed");
     assert_eq!(decoded, event);
 }
-
 
 #[test]
 fn encode_decode_roundtrip_for_retry_scheduled_record() {
@@ -82,7 +79,6 @@ fn encode_decode_roundtrip_for_retry_scheduled_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn encode_decode_roundtrip_for_run_cancelled_record() {
     // Given a RunCancelled event
@@ -107,7 +103,6 @@ fn encode_decode_roundtrip_for_run_cancelled_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn adversarial_decode_wrong_magic_for_family_returns_bad_magic() {
     let event = JournalEvent::RunAccepted {
@@ -129,7 +124,6 @@ fn adversarial_decode_wrong_magic_for_family_returns_bad_magic() {
     };
     assert_eq!(found, MAGIC_JOURNAL_EVENT);
 }
-
 
 #[test]
 fn adversarial_decode_vbir_magic_on_journal_returns_bad_magic() {
@@ -153,7 +147,6 @@ fn adversarial_decode_vbir_magic_on_journal_returns_bad_magic() {
     assert_eq!(found, MAGIC_COMPILED_ARTIFACT);
 }
 
-
 #[test]
 fn adversarial_decode_unsupported_schema_version_returns_exact_version() {
     let event = JournalEvent::RunAccepted {
@@ -161,15 +154,13 @@ fn adversarial_decode_unsupported_schema_version_returns_exact_version() {
         seq: EventSeq::new(0),
         workflow: test_digest(2),
     };
-    let encoded =
-        encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
+    let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &5u16.to_le_bytes());
     let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
     let Err(JournalError::UnsupportedSchemaVersion { version }) = result else {
         panic!("expected UnsupportedSchemaVersion, got {:?}", result)
     };
     assert_eq!(version, 5);
 }
-
 
 #[test]
 fn adversarial_decode_unknown_record_kind_returns_exact_kind() {
@@ -178,15 +169,13 @@ fn adversarial_decode_unknown_record_kind_returns_exact_kind() {
         seq: EventSeq::new(0),
         workflow: test_digest(3),
     };
-    let encoded =
-        encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
+    let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &99u16.to_le_bytes());
     let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
     let Err(JournalError::UnknownRecordKind { kind }) = result else {
         panic!("expected UnknownRecordKind, got {:?}", result)
     };
     assert_eq!(kind, 99);
 }
-
 
 #[test]
 fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
@@ -195,8 +184,7 @@ fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
         seq: EventSeq::new(0),
         workflow: test_digest(4),
     };
-    let encoded =
-        encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
+    let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 6, &30u16.to_le_bytes());
     let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
     let Err(JournalError::RecordKindFamilyMismatch { magic, kind }) = result else {
         panic!("expected mismatch, got {:?}", result)
@@ -204,7 +192,6 @@ fn adversarial_decode_kind_family_mismatch_snapshot_kind_in_journal() {
     assert_eq!(magic, MAGIC_JOURNAL_EVENT);
     assert_eq!(kind, 30);
 }
-
 
 #[test]
 fn adversarial_decode_kind_family_mismatch_blob_in_snapshot() {

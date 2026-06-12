@@ -295,7 +295,10 @@ fn is_failure_retriable_key_required_and_retryable() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(is_failure_retriable(&failure, RetrySafety::RequiresIdempotencyKey));
+    assert!(is_failure_retriable(
+        &failure,
+        RetrySafety::RequiresIdempotencyKey
+    ));
 }
 
 #[test]
@@ -307,7 +310,10 @@ fn is_failure_retriable_key_required_but_not_retryable() {
         detail: None,
         encoded_len: 0,
     };
-    assert!(!is_failure_retriable(&failure, RetrySafety::RequiresIdempotencyKey));
+    assert!(!is_failure_retriable(
+        &failure,
+        RetrySafety::RequiresIdempotencyKey
+    ));
 }
 
 // ── compute_delay ─────────────────────────────────────────────────

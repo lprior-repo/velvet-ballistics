@@ -178,9 +178,11 @@ pub fn is_statically_idempotent_contract(
                 retry_safety,
             },
         ),
-        (_, RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey, Idempotency::IdempotentExternal) => {
-            Ok(())
-        }
+        (
+            _,
+            RetrySafety::Idempotent | RetrySafety::RequiresIdempotencyKey,
+            Idempotency::IdempotentExternal,
+        ) => Ok(()),
         // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
         // Any unrecognized combination is treated as an invalid contract.
         (side_effect, retry_safety, idempotency) => {
@@ -365,7 +367,12 @@ mod tests {
                 Idempotency::IdempotentExternal,
                 Idempotency::AtLeastOnceExternal,
             ] {
-                let c = contract(100 + count as u16, SideEffect::Pure, idempotency, retry_safety);
+                let c = contract(
+                    100 + count as u16,
+                    SideEffect::Pure,
+                    idempotency,
+                    retry_safety,
+                );
                 let result = is_statically_idempotent_contract(&c);
                 assert_eq!(
                     result,

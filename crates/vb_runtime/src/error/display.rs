@@ -69,114 +69,199 @@ fn write_runtime_error_dynamic(
     error: &RuntimeError,
     f: &mut std::fmt::Formatter<'_>,
 ) -> std::fmt::Result {
+    if write_capacity_or_storage_error(error, f)? {
+        return Ok(());
+    }
+    if write_action_state_error(error, f)? {
+        return Ok(());
+    }
+    if write_action_output_error(error, f)? {
+        return Ok(());
+    }
+    if write_flow_error(error, f)? {
+        return Ok(());
+    }
+    Ok(())
+}
+
+fn wrote(result: std::fmt::Result) -> Result<bool, std::fmt::Error> {
+    result.map(|()| true)
+}
+
+fn write_capacity_or_storage_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
     match error {
         RuntimeError::ActiveRunCapacityExceeded { capacity } => {
-            write!(f, "active run capacity exceeded: {capacity}")
+            wrote(write!(f, "active run capacity exceeded: {capacity}"))
         }
         RuntimeError::JournalFull { capacity } => {
-            write!(f, "runtime journal capacity exhausted: {capacity}")
+            wrote(write!(f, "runtime journal capacity exhausted: {capacity}"))
         }
         RuntimeError::UnsupportedOperation { operation } => {
-            write!(f, "unsupported runtime operation: {operation}")
+            wrote(write!(f, "unsupported runtime operation: {operation}"))
         }
-        RuntimeError::Core { source } => write!(f, "runtime core error: {source}"),
+        RuntimeError::Core { source } => wrote(write!(f, "runtime core error: {source}")),
         RuntimeError::StorageJournalAppend { source } => {
-            write!(f, "storage journal append failed: {source}")
+            wrote(write!(f, "storage journal append failed: {source}"))
         }
         RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
-            write!(f, "admission header persistence failed: {source}")
+            wrote(write!(f, "admission header persistence failed: {source}"))
         }
-        RuntimeError::AdmissionArtifactStale { digest } => {
-            write!(
-                f,
-                "admission rejected: artifact certificate is stale: {digest:?}"
-            )
-        }
-        RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
-            write!(f, "command queue capacity {capacity} exceeds maximum {max}")
-        }
-        RuntimeError::StaleAttempt { incoming, current } => {
-            write!(
-                f,
-                "stale action attempt: incoming {incoming}, current {current}"
-            )
-        }
-        RuntimeError::AttemptBeyondMax { attempt, max } => {
-            write!(f, "action attempt {attempt} exceeds max attempts {max}")
-        }
+        RuntimeError::AdmissionArtifactStale { digest } => wrote(write!(
+            f,
+            "admission rejected: artifact certificate is stale: {digest:?}"
+        )),
+        _ => Ok(false),
+    }
+}
+
+fn write_action_state_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    match error {
+        RuntimeError::CommandQueueCapacityExceeded { capacity, max } => wrote(write!(
+            f,
+            "command queue capacity {capacity} exceeds maximum {max}"
+        )),
+        RuntimeError::StaleAttempt { incoming, current } => wrote(write!(
+            f,
+            "stale action attempt: incoming {incoming}, current {current}"
+        )),
+        RuntimeError::AttemptBeyondMax { attempt, max } => wrote(write!(
+            f,
+            "action attempt {attempt} exceeds max attempts {max}"
+        )),
         RuntimeError::IpcPayloadSizeExceeded { size, max } => {
-            write!(f, "IPC payload size {size} exceeds maximum {max}")
+            wrote(write!(f, "IPC payload size {size} exceeds maximum {max}"))
         }
+        RuntimeError::EngineDriveFailed { run, source } => {
+            wrote(write!(f, "engine drive failed for run {run:?}: {source}"))
+        }
+        RuntimeError::ShardNotFound { shard } => wrote(write!(f, "shard {shard} not found")),
+        _ => Ok(false),
+    }
+}
+
+fn write_action_output_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    match error {
         RuntimeError::ActionOutputLengthMismatch { declared, actual } => write!(
             f,
             "action output declared encoded length {declared} does not match actual {actual}"
-        ),
+        )
+        .map(|()| true),
         RuntimeError::ActionOutputTooLarge { size, max } => {
-            write!(f, "action output size {size} exceeds maximum {max}")
+            wrote(write!(f, "action output size {size} exceeds maximum {max}"))
         }
-        RuntimeError::ActionOutputBlobTooLarge { size, max } => {
-            write!(f, "action output blob size {size} exceeds maximum {max}")
-        }
+        RuntimeError::ActionOutputBlobTooLarge { size, max } => wrote(write!(
+            f,
+            "action output blob size {size} exceeds maximum {max}"
+        )),
         RuntimeError::ActionTaintDowngrade { required, supplied } => write!(
             f,
             "action output taint {supplied:?} is below required {required:?}"
-        ),
-        RuntimeError::EngineDriveFailed { run, source } => {
-            write!(f, "engine drive failed for run {run:?}: {source}")
-        }
-        RuntimeError::ShardNotFound { shard } => {
-            write!(f, "shard {shard} not found")
-        }
-        RuntimeError::AskTimeout { step, ask_id } => {
-            write!(f, "ask timer expired at step {step:?} for ask {ask_id:?}")
-        }
+        )
+        .map(|()| true),
+        _ => Ok(false),
+    }
+}
+
+fn write_flow_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    if write_timer_flow_error(error, f)? {
+        return Ok(true);
+    }
+    if write_collection_flow_error(error, f)? {
+        return Ok(true);
+    }
+    if write_branch_flow_error(error, f)? {
+        return Ok(true);
+    }
+    write_input_mapping_error(error, f)
+}
+
+fn write_timer_flow_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    match error {
+        RuntimeError::AskTimeout { step, ask_id } => wrote(write!(
+            f,
+            "ask timer expired at step {step:?} for ask {ask_id:?}"
+        )),
         RuntimeError::WaitTimeout { step } => {
-            write!(f, "wait timer expired at step {step:?}")
+            wrote(write!(f, "wait timer expired at step {step:?}"))
         }
+        _ => Ok(false),
+    }
+}
+
+fn write_collection_flow_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    match error {
         RuntimeError::CollectPageFailed {
             step,
             expected_page,
             found_page,
-        } => {
-            write!(
-                f,
-                "collect page order violation at step {step:?}: expected {expected_page:?}, found {found_page:?}"
-            )
-        }
+        } => wrote(write!(
+            f,
+            "collect page order violation at step {step:?}: expected {expected_page:?}, found {found_page:?}"
+        )),
         RuntimeError::ReduceItemFailed {
             step,
             item_index,
             source,
-        } => {
-            write!(
-                f,
-                "reduce body failed at step {step:?} on item {item_index}: {source}"
-            )
-        }
+        } => wrote(write!(
+            f,
+            "reduce body failed at step {step:?} on item {item_index}: {source}"
+        )),
+        _ => Ok(false),
+    }
+}
+
+fn write_branch_flow_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    match error {
         RuntimeError::TogetherBranchFailed {
             step,
             branch_index,
             source,
-        } => {
-            write!(
-                f,
-                "together branch {branch_index} failed at step {step:?}: {source}"
-            )
-        }
+        } => wrote(write!(
+            f,
+            "together branch {branch_index} failed at step {step:?}: {source}"
+        )),
         RuntimeError::ForEachItemFailed {
             step,
             item_index,
             source,
-        } => {
-            write!(
-                f,
-                "for-each body failed at step {step:?} on item {item_index}: {source}"
-            )
-        }
+        } => wrote(write!(
+            f,
+            "for-each body failed at step {step:?} on item {item_index}: {source}"
+        )),
+        _ => Ok(false),
+    }
+}
+
+fn write_input_mapping_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    match error {
         RuntimeError::InputMappingFailed { kind, source } => {
-            write!(f, "{}: {source}", kind.legacy_diagnostic_phrase())
+            wrote(write!(f, "{}: {source}", kind.legacy_diagnostic_phrase()))
         }
-        _ => Ok(()),
+        _ => Ok(false),
     }
 }
 

@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn encode_decode_roundtrip_for_slot_written_record() {
     // Given a SlotWrittenEvent
@@ -32,7 +31,6 @@ fn encode_decode_roundtrip_for_slot_written_record() {
         .expect("decoding should succeed");
     assert_eq!(decoded, event);
 }
-
 
 #[test]
 fn encode_decode_roundtrip_for_action_scheduled_record() {
@@ -59,7 +57,6 @@ fn encode_decode_roundtrip_for_action_scheduled_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn encode_decode_roundtrip_for_action_completed_record() {
     // Given an ActionCompletedEvent
@@ -85,7 +82,6 @@ fn encode_decode_roundtrip_for_action_completed_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn encode_decode_roundtrip_for_run_finished_record() {
     // Given a RunFinished event
@@ -104,7 +100,6 @@ fn encode_decode_roundtrip_for_run_finished_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn encode_decode_roundtrip_for_run_failed_record() {
     // Given a RunFailedEvent
@@ -121,7 +116,6 @@ fn encode_decode_roundtrip_for_run_failed_record() {
         .expect("decoding should succeed");
     assert_eq!(decoded, event);
 }
-
 
 #[test]
 fn encode_record_rejects_record_exceeding_max_payload() {
@@ -145,7 +139,6 @@ fn encode_record_rejects_record_exceeding_max_payload() {
     assert_eq!(max, 10);
     assert!(len > 10);
 }
-
 
 #[test]
 fn encode_decode_roundtrip_for_action_failed_record() {
@@ -172,7 +165,6 @@ fn encode_decode_roundtrip_for_action_failed_record() {
     assert_eq!(decoded, event);
 }
 
-
 // --- Section 6: JournalError Variant Tests ---
 
 #[test]
@@ -188,7 +180,6 @@ fn journal_error_encode_from_postcard_error() {
     assert!(!msg.is_empty());
 }
 
-
 #[test]
 fn journal_error_key_capacity_display() {
     // Given a JournalError::KeyCapacity
@@ -199,7 +190,6 @@ fn journal_error_key_capacity_display() {
     assert!(!msg.is_empty());
 }
 
-
 #[test]
 fn journal_error_write_lock_poisoned_display() {
     // Given a JournalError::WriteLockPoisoned
@@ -209,7 +199,6 @@ fn journal_error_write_lock_poisoned_display() {
     let msg = format!("{}", err);
     assert!(msg.contains("poisoned"));
 }
-
 
 #[test]
 fn journal_error_wrong_run_display() {
@@ -224,7 +213,6 @@ fn journal_error_wrong_run_display() {
     assert!(msg.contains("1"));
     assert!(msg.contains("2"));
 }
-
 
 #[test]
 fn journal_error_sequence_overflow_display() {

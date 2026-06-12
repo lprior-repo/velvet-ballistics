@@ -66,11 +66,7 @@ fn push_path_successors(
 /// Iteratively counts nodes along a branch using an explicit stack (no recursion).
 /// Bounded by `max_depth` to prevent DoS on adversarial graphs.
 /// Returns 0 if start is None or node not found.
-fn iterative_branch_depth(
-    nodes: &[CompiledNode],
-    start: StepIdx,
-    max_depth: u64,
-) -> u64 {
+fn iterative_branch_depth(nodes: &[CompiledNode], start: StepIdx, max_depth: u64) -> u64 {
     let mut visited: Vec<bool> = vec![false; nodes.len()];
     let mut stack: Vec<StepIdx> = Vec::new();
     stack.push(start);
@@ -133,11 +129,7 @@ fn iterative_branch_depth(
 }
 
 /// Iteratively counts nodes along a slot branch.
-fn iterative_slot_branch_depth(
-    nodes: &[CompiledNode],
-    start: StepIdx,
-    max_depth: u64,
-) -> u64 {
+fn iterative_slot_branch_depth(nodes: &[CompiledNode], start: StepIdx, max_depth: u64) -> u64 {
     iterative_branch_depth(nodes, start, max_depth)
 }
 

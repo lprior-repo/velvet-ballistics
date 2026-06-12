@@ -23,7 +23,6 @@ fn journal_key_is_fixed_width() {
     assert_eq!(key.len(), 17);
 }
 
-
 #[test]
 fn run_event_key_uses_required_prefix_and_big_endian_layout() {
     // Given run id 0x0102030405060708 and event sequence 9
@@ -33,12 +32,11 @@ fn run_event_key_uses_required_prefix_and_big_endian_layout() {
 
     let key = key.expect("run event key construction should succeed");
     let expected: [u8; 17] = [
-        0x11, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x09,
+        0x11, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x09,
     ];
     assert_eq!(key.as_slice(), expected.as_slice());
 }
-
 
 #[test]
 fn key_encoders_use_required_lengths() {
@@ -56,8 +54,8 @@ fn key_encoders_use_required_lengths() {
     let rh = run_header_key(RunId::new(1)).expect("run_header_key should succeed");
     assert_eq!(rh.len(), 9);
 
-    let rs = run_snapshot_key(RunId::new(1), EventSeq::new(2))
-        .expect("run_snapshot_key should succeed");
+    let rs =
+        run_snapshot_key(RunId::new(1), EventSeq::new(2)).expect("run_snapshot_key should succeed");
     assert_eq!(rs.len(), 17);
 
     let bl = blob_key(digest).expect("blob_key should succeed");
@@ -76,7 +74,6 @@ fn key_encoders_use_required_lengths() {
     assert_eq!(ia.len(), 13);
 }
 
-
 #[test]
 fn encode_key_dispatches_to_existing_key_encoders() {
     let digest = [9_u8; 32];
@@ -91,12 +88,10 @@ fn encode_key_dispatches_to_existing_key_encoders() {
         .to_vec();
     assert_eq!(run_event, expected_run_event);
 
-    let blob =
-        encode_key(StorageKey::Blob { digest }).expect("encode_key should encode blob key");
+    let blob = encode_key(StorageKey::Blob { digest }).expect("encode_key should encode blob key");
     let expected_blob = blob_key(digest).expect("blob_key should succeed").to_vec();
     assert_eq!(blob, expected_blob);
 }
-
 
 #[test]
 fn record_header_wrappers_encode_decode_and_verify_digest() {
@@ -123,7 +118,6 @@ fn record_header_wrappers_encode_decode_and_verify_digest() {
         .expect("payload digest should match decoded header");
 }
 
-
 #[test]
 fn verify_digest_match_rejects_mismatched_payload() {
     let digest = *blake3::hash(b"original").as_bytes();
@@ -132,7 +126,6 @@ fn verify_digest_match_rejects_mismatched_payload() {
 
     assert!(matches!(result, Err(JournalError::PayloadDigestMismatch)));
 }
-
 
 #[test]
 fn free_put_wrappers_delegate_to_journal_methods() {
@@ -184,7 +177,6 @@ fn free_put_wrappers_delegate_to_journal_methods() {
     let stored_blob = read_blob(&journal, blob_digest).expect("blob lookup should succeed");
     assert_eq!(stored_blob, Some(blob));
 }
-
 
 #[test]
 fn envelope_round_trips_and_reports_metadata() {

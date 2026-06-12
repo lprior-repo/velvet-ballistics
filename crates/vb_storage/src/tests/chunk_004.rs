@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn write_batch_snapshot_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -39,7 +38,6 @@ fn write_batch_snapshot_round_trips() {
     assert_eq!(loaded.unwrap().run, run);
 }
 
-
 #[test]
 fn keyspace_profiles_return_distinct_configs() {
     let _hot = keyspace_options_for(KeyspaceProfile::Hot);
@@ -63,7 +61,6 @@ fn keyspace_profiles_return_distinct_configs() {
     let journal = FjallJournal::open(temp_dir.path(), None);
     assert!(journal.is_ok(), "journal should open with tuned keyspaces");
 }
-
 
 #[test]
 fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
@@ -151,7 +148,6 @@ fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
     assert_eq!(found_blob, Some(blob));
 }
 
-
 #[test]
 fn non_journal_families_reject_wrong_record_kind() {
     let source = WorkflowSourceRecord {
@@ -183,7 +179,6 @@ fn non_journal_families_reject_wrong_record_kind() {
     ));
 }
 
-
 #[test]
 fn duplicate_event_append_is_rejected() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -200,7 +195,6 @@ fn duplicate_event_append_is_rejected() {
     first.expect("action must succeed");
     assert!(matches!(second, Err(JournalError::DuplicateEvent { .. })));
 }
-
 
 #[test]
 fn journal_writer_queue_counts_pending_durability_profiles() {

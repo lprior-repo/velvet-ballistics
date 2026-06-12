@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn append_strict_writes_run_failed_event() {
     // Given an open journal
@@ -35,7 +34,6 @@ fn append_strict_writes_run_failed_event() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].run_id(), run);
 }
-
 
 #[test]
 fn append_strict_assigns_monotonically_increasing_sequences() {
@@ -80,7 +78,6 @@ fn append_strict_assigns_monotonically_increasing_sequences() {
     assert_eq!(events[2].seq(), EventSeq::new(2));
 }
 
-
 #[test]
 fn append_strict_rejects_duplicate_sequence() {
     // Given an open journal with an event at seq 0 for run 50
@@ -108,7 +105,6 @@ fn append_strict_rejects_duplicate_sequence() {
     assert_eq!(dup_run, run);
     assert_eq!(dup_seq, EventSeq::new(0));
 }
-
 
 #[test]
 fn events_for_run_returns_events_in_sequence_order() {
@@ -174,7 +170,6 @@ fn events_for_run_returns_events_in_sequence_order() {
     assert_eq!(events[3], e3);
     assert_eq!(events[4], e4);
 }
-
 
 #[test]
 fn events_for_run_returns_empty_for_run_with_no_events() {

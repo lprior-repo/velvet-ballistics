@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn workflow_index_stores_and_queries_by_workflow_id() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -29,7 +28,6 @@ fn workflow_index_stores_and_queries_by_workflow_id() {
         .expect("get must succeed");
     assert!(value.is_some(), "workflow index entry must exist after put");
 }
-
 
 #[test]
 fn action_index_stores_and_queries_by_action_id() {
@@ -48,7 +46,6 @@ fn action_index_stores_and_queries_by_action_id() {
         .expect("get must succeed");
     assert!(value.is_some(), "action index entry must exist after put");
 }
-
 
 #[test]
 fn status_index_multiple_runs_same_state() {
@@ -93,7 +90,6 @@ fn status_index_multiple_runs_same_state() {
     );
 }
 
-
 #[test]
 fn workflow_index_multiple_runs_same_workflow() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -137,7 +133,6 @@ fn workflow_index_multiple_runs_same_workflow() {
     );
 }
 
-
 // --- Record builder (tests 36-40) ---
 
 #[test]
@@ -146,7 +141,6 @@ fn builder_initial_len_is_zero() {
     assert_eq!(builder.len(), 0, "new builder must have len 0");
     assert!(builder.is_empty(), "new builder must be empty");
 }
-
 
 #[test]
 fn builder_append_increments_len() {
@@ -160,7 +154,6 @@ fn builder_append_increments_len() {
     assert_eq!(builder.len(), 1, "builder must have len 1 after one push");
     assert!(!builder.is_empty());
 }
-
 
 #[test]
 fn builder_append_multiple_events_len_matches() {
@@ -189,7 +182,6 @@ fn builder_append_multiple_events_len_matches() {
         "builder must have len 3 after three pushes"
     );
 }
-
 
 #[test]
 fn builder_as_slice_returns_appended_events() {

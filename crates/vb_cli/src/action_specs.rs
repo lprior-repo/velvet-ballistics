@@ -481,14 +481,10 @@ mod tests {
         let s_requires_key = action_retry_safety_name(RetrySafety::RequiresIdempotencyKey);
         let s_not_retry_safe = action_retry_safety_name(RetrySafety::NotRetrySafe);
         let s_unknown = action_retry_safety_name(RetrySafety::Unknown);
-        let set: std::collections::BTreeSet<&str> = [
-            s_idempotent,
-            s_requires_key,
-            s_not_retry_safe,
-            s_unknown,
-        ]
-        .into_iter()
-        .collect();
+        let set: std::collections::BTreeSet<&str> =
+            [s_idempotent, s_requires_key, s_not_retry_safe, s_unknown]
+                .into_iter()
+                .collect();
         assert_eq!(
             set.len(),
             4,

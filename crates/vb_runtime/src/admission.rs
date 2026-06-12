@@ -7,6 +7,7 @@
 
 #[path = "admission/admission.rs"]
 mod admission_core;
+mod budget_error_map;
 mod errors;
 mod guards;
 mod stores;
@@ -43,6 +44,10 @@ mod tests;
 #[cfg(test)]
 #[path = "admission/step_budget_tests.rs"]
 mod step_budget_tests;
+
+#[cfg(test)]
+#[path = "admission/step_budget_policy_tests.rs"]
+mod step_budget_policy_tests;
 
 #[cfg(test)]
 #[path = "admission/artifact_envelope_tests.rs"]

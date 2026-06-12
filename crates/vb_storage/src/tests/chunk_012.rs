@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn envelope_round_trips_workflow_source_record() {
     // Given a WorkflowSourceRecord
@@ -39,7 +38,6 @@ fn envelope_round_trips_workflow_source_record() {
     assert_eq!(decoded, record);
 }
 
-
 #[test]
 fn envelope_round_trips_compiled_ir_record() {
     // Given a CompiledIrRecord
@@ -55,17 +53,13 @@ fn envelope_round_trips_compiled_ir_record() {
     )
     .expect("encoding should succeed");
 
-    let (envelope, decoded) = decode_record::<CompiledIrRecord>(
-        &encoded,
-        MAGIC_COMPILED_ARTIFACT,
-        MAX_COMPILED_IR_BYTES,
-    )
-    .expect("decoding should succeed");
+    let (envelope, decoded) =
+        decode_record::<CompiledIrRecord>(&encoded, MAGIC_COMPILED_ARTIFACT, MAX_COMPILED_IR_BYTES)
+            .expect("decoding should succeed");
     assert_eq!(envelope.magic, MAGIC_COMPILED_ARTIFACT);
     assert_eq!(envelope.record_kind, RecordKind::CompiledIr.id());
     assert_eq!(decoded, record);
 }
-
 
 #[test]
 fn envelope_round_trips_blob_record() {
@@ -86,7 +80,6 @@ fn envelope_round_trips_blob_record() {
     assert_eq!(decoded, record);
 }
 
-
 #[test]
 fn declared_keyspaces_returns_ten_entries() {
     // Given FjallJournal::declared_keyspaces()
@@ -106,7 +99,6 @@ fn declared_keyspaces_returns_ten_entries() {
     assert_eq!(keyspaces[9], "recovery_stamp");
 }
 
-
 #[test]
 fn run_header_returns_none_for_missing_run() {
     // Given an open journal with no stored headers
@@ -120,7 +112,6 @@ fn run_header_returns_none_for_missing_run() {
         .expect("lookup should succeed");
     assert_eq!(result, None);
 }
-
 
 #[test]
 fn compiled_ir_returns_none_for_missing_digest() {
@@ -136,7 +127,6 @@ fn compiled_ir_returns_none_for_missing_digest() {
     assert_eq!(result, None);
 }
 
-
 #[test]
 fn snapshot_returns_none_for_missing_entry() {
     // Given an open journal with no snapshots
@@ -151,7 +141,6 @@ fn snapshot_returns_none_for_missing_entry() {
     assert_eq!(result, None);
 }
 
-
 #[test]
 fn blob_returns_none_for_missing_digest() {
     // Given an open journal with no blobs
@@ -164,7 +153,6 @@ fn blob_returns_none_for_missing_digest() {
     assert_eq!(result, None);
 }
 
-
 #[test]
 fn journal_open_creates_fresh_instance_with_no_data() {
     // Given a temporary directory
@@ -176,7 +164,6 @@ fn journal_open_creates_fresh_instance_with_no_data() {
         .expect("events_for_run should succeed on empty journal");
     assert!(events.is_empty());
 }
-
 
 #[test]
 fn append_strict_writes_submitted_event_with_correct_run_id() {
@@ -200,7 +187,6 @@ fn append_strict_writes_submitted_event_with_correct_run_id() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].run_id(), run);
 }
-
 
 #[test]
 fn append_strict_writes_accepted_event_after_submitted() {

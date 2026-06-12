@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn decode_rejects_header_length_mismatch() {
     // Given a valid record whose declared header length is 99 (not 60)
@@ -52,7 +51,6 @@ fn decode_rejects_header_length_mismatch() {
     ));
 }
 
-
 #[test]
 fn decode_rejects_truncated_payload() {
     // Given an encoded record with bytes truncated after the header
@@ -77,7 +75,6 @@ fn decode_rejects_truncated_payload() {
     let result = decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, 128);
     assert!(matches!(result, Err(JournalError::UnexpectedEof)));
 }
-
 
 // --- Section 1: Error Variant Exact-Assertion Tests ---
 
@@ -107,7 +104,6 @@ fn decode_record_returns_bad_magic_when_magic_differs() {
     assert_eq!(found, MAGIC_JOURNAL_EVENT);
 }
 
-
 #[test]
 fn decode_record_returns_unexpected_eof_when_bytes_too_short() {
     // Given a zero-length byte slice
@@ -118,7 +114,6 @@ fn decode_record_returns_unexpected_eof_when_bytes_too_short() {
     let result = decode_record::<JournalEvent>(&empty, MAGIC_JOURNAL_EVENT, 128);
     assert!(matches!(result, Err(JournalError::UnexpectedEof)));
 }
-
 
 #[test]
 fn encode_record_returns_payload_too_large_when_payload_exceeds_max() {
@@ -143,7 +138,6 @@ fn encode_record_returns_payload_too_large_when_payload_exceeds_max() {
     assert!(len > 10);
 }
 
-
 #[test]
 fn encode_record_returns_record_kind_family_mismatch_for_wrong_kind() {
     // Given a blob kind paired with workflow source magic
@@ -160,7 +154,6 @@ fn encode_record_returns_record_kind_family_mismatch_for_wrong_kind() {
     assert_eq!(magic, MAGIC_WORKFLOW_SOURCE);
     assert_eq!(kind, RecordKind::Blob.id());
 }
-
 
 #[test]
 fn decode_record_returns_header_checksum_mismatch_on_corrupt_crc() {
@@ -189,7 +182,6 @@ fn decode_record_returns_header_checksum_mismatch_on_corrupt_crc() {
     let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
     assert!(matches!(result, Err(JournalError::HeaderChecksumMismatch)));
 }
-
 
 #[test]
 fn decode_record_returns_payload_digest_mismatch_on_corrupt_payload() {

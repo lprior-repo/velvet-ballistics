@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn builder_build_produces_correct_record_count() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -46,7 +45,6 @@ fn builder_build_produces_correct_record_count() {
     assert_eq!(events.len(), 3, "three events must be stored");
 }
 
-
 // --- Batch state tracking (tests 41-44) ---
 
 #[test]
@@ -57,7 +55,6 @@ fn batch_initial_len_is_zero() {
     assert_eq!(batch.len(), 0, "new batch must have len 0");
     assert!(batch.is_empty(), "new batch must be empty");
 }
-
 
 #[test]
 fn batch_len_increments_per_put() {
@@ -87,7 +84,6 @@ fn batch_len_increments_per_put() {
     assert_eq!(batch.len(), 3, "batch must have len 3 after third put");
 }
 
-
 #[test]
 fn batch_len_resets_after_commit() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -108,7 +104,6 @@ fn batch_len_resets_after_commit() {
     );
 }
 
-
 #[test]
 fn batch_put_snapshot_increments_len() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -127,7 +122,6 @@ fn batch_put_snapshot_increments_len() {
         .expect("put_snapshot must succeed");
     assert_eq!(batch.len(), 1, "batch len must be 1 after put_snapshot");
 }
-
 
 // --- Envelope validation (tests 45-47) ---
 
@@ -160,7 +154,6 @@ fn decode_valid_envelope_produces_exact_record() {
     );
 }
 
-
 #[test]
 fn envelope_magic_matches_expected_constant() {
     assert_eq!(MAGIC_WORKFLOW_SOURCE, 0x5642_5352, "VBSR in ASCII hex");
@@ -171,7 +164,6 @@ fn envelope_magic_matches_expected_constant() {
     assert_eq!(MAGIC_IPC_FRAME, 0x5642_4C54, "VBLT in ASCII hex");
     assert_eq!(MAGIC_INDEX_RECORD, 0x5642_4958, "VBIX in ASCII hex");
 }
-
 
 #[test]
 fn envelope_header_len_is_fixed_at_60() {
@@ -187,7 +179,6 @@ fn envelope_header_len_is_fixed_at_60() {
     .expect("encode_record_header must succeed");
     assert_eq!(header.len(), 60, "encoded header must be exactly 60 bytes");
 }
-
 
 // --- Cross-keyspace atomicity (tests 48-60) ---
 

@@ -15,6 +15,7 @@ import sys
 import subprocess
 import re
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Iterator, NamedTuple
 
@@ -139,6 +140,17 @@ def render_label(finding: Finding) -> str:
     return f"{finding.kind}|{finding.path}|{finding.line}|{finding.detail}"
 
 
+def render_stable_label(finding: Finding) -> str:
+    return f"{finding.kind}|{finding.path}|{finding.detail}"
+
+
+def stable_label_from_rendered(label: str) -> str:
+    parts = label.split("|", 3)
+    if len(parts) < 4:
+        return label
+    return f"{parts[0]}|{parts[1]}|{parts[3]}"
+
+
 def load_baseline_labels() -> set[str]:
     if not BASELINE.exists():
         return set()
@@ -166,15 +178,29 @@ def main() -> int:
     ci_mode = "--ci" in sys.argv or os.environ.get("MOON_CI") == "1" or os.environ.get("CI") == "1"
     findings = gather_findings()
     labels = {render_label(finding) for finding in findings}
+    stable_counts = Counter(stable_label_from_rendered(label) for label in labels)
     baseline_labels = load_baseline_labels()
+    baseline_stable_counts = Counter(
+        stable_label_from_rendered(label) for label in baseline_labels
+    )
 
     if not findings:
         print("test determinism: PASS — no non-deterministic patterns detected")
         return 0
 
     if baseline_labels:
-        new_labels = sorted(labels - baseline_labels)
-        resolved_labels = sorted(baseline_labels - labels)
+        new_labels = sorted(
+            label
+            for label in labels
+            if stable_counts[stable_label_from_rendered(label)]
+            > baseline_stable_counts.get(stable_label_from_rendered(label), 0)
+        )
+        resolved_labels = sorted(
+            label
+            for label in baseline_labels
+            if baseline_stable_counts[stable_label_from_rendered(label)]
+            > stable_counts.get(stable_label_from_rendered(label), 0)
+        )
         if not new_labels:
             mode = "CI" if ci_mode else "dev"
             print(

@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn batch_writes_for_multiple_runs_commit_atomically() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -69,7 +68,6 @@ fn batch_writes_for_multiple_runs_commit_atomically() {
     );
 }
 
-
 // --- Writer Queue edge cases (tests 17-22) ---
 
 #[test]
@@ -115,7 +113,6 @@ fn queue_journaled_enqueue_and_drain_preserves_order() {
     assert_eq!(events[2], event_2, "third event must be seq 2");
 }
 
-
 #[test]
 fn queue_strict_enqueue_and_drain_preserves_order() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -147,7 +144,6 @@ fn queue_strict_enqueue_and_drain_preserves_order() {
     assert_eq!(events[0], event_0);
     assert_eq!(events[1], event_1);
 }
-
 
 #[test]
 fn queue_mixed_journaled_and_strict_drain_returns_both() {
@@ -183,7 +179,6 @@ fn queue_mixed_journaled_and_strict_drain_returns_both() {
     assert_eq!(events[1], strict_event);
 }
 
-
 #[test]
 fn queue_flush_persists_before_drain() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -208,7 +203,6 @@ fn queue_flush_persists_before_drain() {
     assert_eq!(events_before.len(), 1, "event must be on disk before drain");
     assert_eq!(events_before[0], event);
 }
-
 
 #[test]
 fn queue_empty_drain_returns_zero_events() {

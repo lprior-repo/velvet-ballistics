@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn batch_commit_with_header_and_events_cross_keyspace() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -44,7 +43,6 @@ fn batch_commit_with_header_and_events_cross_keyspace() {
         .expect("events_for_run must succeed");
     assert_eq!(events.len(), 1, "event must be present");
 }
-
 
 #[test]
 fn batch_strict_commit_all_persisted_durably() {
@@ -88,7 +86,6 @@ fn batch_strict_commit_all_persisted_durably() {
     assert_eq!(bl.unwrap().bytes, b"strict_blob".to_vec());
 }
 
-
 #[test]
 fn batch_empty_strict_commit_succeeds() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -100,7 +97,6 @@ fn batch_empty_strict_commit_succeeds() {
         .commit()
         .expect("empty strict batch commit must succeed");
 }
-
 
 #[test]
 fn batch_commit_after_multiple_puts_persists_all() {
@@ -159,7 +155,6 @@ fn batch_commit_after_multiple_puts_persists_all() {
     );
 }
 
-
 #[test]
 fn journal_events_for_run_after_batch_commit_matches_input() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -197,7 +192,6 @@ fn journal_events_for_run_after_batch_commit_matches_input() {
     );
 }
 
-
 #[test]
 fn journal_workflow_source_after_batch_commit_matches_input() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -221,7 +215,6 @@ fn journal_workflow_source_after_batch_commit_matches_input() {
     );
     assert_eq!(found_record.digest, digest, "digest must match");
 }
-
 
 #[test]
 fn journal_compiled_ir_after_batch_commit_matches_input() {

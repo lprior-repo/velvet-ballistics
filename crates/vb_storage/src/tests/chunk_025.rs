@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn journal_writer_queue_drain_all_flushes_until_empty() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -47,7 +46,6 @@ fn journal_writer_queue_drain_all_flushes_until_empty() {
     ));
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
 }
-
 
 #[test]
 fn journal_writer_queue_retains_events_when_append_fails() {
@@ -90,7 +88,6 @@ fn journal_writer_queue_retains_events_when_append_fails() {
     ));
 }
 
-
 #[test]
 fn journal_writer_queue_flush_persists_journaled_events_before_drain() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -126,7 +123,6 @@ fn journal_writer_queue_flush_persists_journaled_events_before_drain() {
     assert!(matches!(reopened.events_for_run(run), Ok(events) if events.len() == 2));
 }
 
-
 #[test]
 fn journal_writer_queue_shutdown_rejects_new_writes_after_durable_drain() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -161,7 +157,6 @@ fn journal_writer_queue_shutdown_rejects_new_writes_after_durable_drain() {
     ));
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 2));
 }
-
 
 #[test]
 fn journal_writer_queue_crash_window_retry_drains_already_written_same_event() {

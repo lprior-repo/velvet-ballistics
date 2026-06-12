@@ -1,6 +1,8 @@
 includes:
   - tasks: '.moon/tasks/all.yml'
+  - tasks: '.moon/tasks/flux.yml'
   - tasks: '.moon/tasks/kani.yml'
+  - tasks: '.moon/tasks/loom.yml'
   - tasks: '.moon/tasks/verus.yml'
   - tasks: '.moon/tasks/tlc.yml'
 
@@ -10,6 +12,11 @@ pipeline:
   - 'check'
   - 'sanitizer-address-check'
   - 'verify-kani'
+  - 'verify-kani-vb-validate'
+  - 'flux-check-vb-compile'
+  - 'flux-check-vb-runtime'
+  - 'loom-list-smoke'
+  - 'loom-run'
   - 'nightly-feature-gate'
   - 'source-length'
   - 'check-no-dead-ir-duplicates'

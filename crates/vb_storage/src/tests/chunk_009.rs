@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn public_wrappers_delegate_to_journal_storage_paths() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -55,7 +54,6 @@ fn public_wrappers_delegate_to_journal_storage_paths() {
     assert_eq!(loaded_snapshot, Some(snapshot));
 }
 
-
 #[test]
 fn replay_journal_wrapper_uses_recovery_replay() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -84,7 +82,6 @@ fn replay_journal_wrapper_uses_recovery_replay() {
     assert_eq!(replayed, vec![event, admission]);
 }
 
-
 #[test]
 fn append_strict_persists_submitted_event() {
     // Given an open journal
@@ -108,7 +105,6 @@ fn append_strict_persists_submitted_event() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn append_strict_rejects_out_of_order_sequence() {
@@ -146,7 +142,6 @@ fn append_strict_rejects_out_of_order_sequence() {
     assert_eq!(actual, EventSeq::new(2));
 }
 
-
 #[test]
 fn persist_strict_flushes_and_reopens_cleanly() {
     // Given an open journal with a persisted event
@@ -176,7 +171,6 @@ fn persist_strict_flushes_and_reopens_cleanly() {
     assert_eq!(events[0], event);
 }
 
-
 #[test]
 fn put_workflow_source_stores_and_retrieves() {
     // Given an open journal and a workflow source record
@@ -197,7 +191,6 @@ fn put_workflow_source_stores_and_retrieves() {
         .expect("workflow_source lookup should succeed");
     assert_eq!(retrieved, Some(record));
 }
-
 
 #[test]
 fn put_workflow_source_returns_none_for_missing_digest() {

@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn queue_pending_count_matches_enqueued() {
     let queue = JournalWriterQueue::new(16, 4, StorageLimits::DEFAULT).expect("setup: queue");
@@ -37,7 +36,6 @@ fn queue_pending_count_matches_enqueued() {
     assert_eq!(counts.strict, 1, "one strict event must be counted");
 }
 
-
 // --- FjallJournal open/close/reopen (tests 23-30) ---
 
 #[test]
@@ -55,7 +53,6 @@ fn journal_open_creates_fresh_database() {
     let blob = journal.blob([0; 32]).expect("blob must succeed");
     assert_eq!(blob, None, "fresh database must have no blobs");
 }
-
 
 #[test]
 fn journal_close_and_reopen_preserves_strict_data() {
@@ -84,7 +81,6 @@ fn journal_close_and_reopen_preserves_strict_data() {
     assert_eq!(found, Some(header), "strict data must survive reopen");
 }
 
-
 #[test]
 fn journal_multiple_opens_same_path_fails_or_succeeds() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -95,7 +91,6 @@ fn journal_multiple_opens_same_path_fails_or_succeeds() {
         drop(j2);
     }
 }
-
 
 #[test]
 fn journal_put_then_get_workflow_source_consistent() {
@@ -117,7 +112,6 @@ fn journal_put_then_get_workflow_source_consistent() {
     );
 }
 
-
 #[test]
 fn journal_put_then_get_compiled_ir_consistent() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -136,7 +130,6 @@ fn journal_put_then_get_compiled_ir_consistent() {
         "put-then-get must be consistent in same session"
     );
 }
-
 
 #[test]
 fn journal_put_then_get_run_header_consistent() {
@@ -160,7 +153,6 @@ fn journal_put_then_get_run_header_consistent() {
         "put-then-get must be consistent in same session"
     );
 }
-
 
 #[test]
 fn journal_put_then_get_snapshot_consistent() {
@@ -186,7 +178,6 @@ fn journal_put_then_get_snapshot_consistent() {
     );
 }
 
-
 #[test]
 fn journal_put_then_get_blob_consistent() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -205,7 +196,6 @@ fn journal_put_then_get_blob_consistent() {
         "put-then-get must be consistent in same session"
     );
 }
-
 
 // --- Index queries (tests 31-35) ---
 

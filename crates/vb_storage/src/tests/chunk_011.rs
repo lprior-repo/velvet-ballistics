@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn put_action_index_stores_and_retrieves() {
     // Given an open journal
@@ -25,7 +24,6 @@ fn put_action_index_stores_and_retrieves() {
     result.expect("action must succeed");
 }
 
-
 #[test]
 fn put_status_index_stores_and_retrieves() {
     // Given an open journal
@@ -34,11 +32,9 @@ fn put_status_index_stores_and_retrieves() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-    let result =
-        journal.put_status_index(IndexStatusState::Submitted, 1700000000, RunId::new(99));
+    let result = journal.put_status_index(IndexStatusState::Submitted, 1700000000, RunId::new(99));
     result.expect("action must succeed");
 }
-
 
 #[test]
 fn put_workflow_index_stores_and_retrieves() {
@@ -51,7 +47,6 @@ fn put_workflow_index_stores_and_retrieves() {
     let result = journal.put_workflow_index(WorkflowId::new(7), RunId::new(8));
     result.expect("action must succeed");
 }
-
 
 #[test]
 fn events_for_run_returns_only_events_for_target_run() {
@@ -105,7 +100,6 @@ fn events_for_run_returns_only_events_for_target_run() {
     assert_eq!(events_b[0], event_b0);
 }
 
-
 #[test]
 fn event_seq_new_returns_correct_value() {
     // Given EventSeq::new(42)
@@ -114,7 +108,6 @@ fn event_seq_new_returns_correct_value() {
     let seq = EventSeq::new(42);
     assert_eq!(seq.get(), 42);
 }
-
 
 #[test]
 fn record_kind_id_returns_correct_wire_ids() {
@@ -143,7 +136,6 @@ fn record_kind_id_returns_correct_wire_ids() {
     assert_eq!(RecordKind::IndexUpdate.id(), 50);
 }
 
-
 #[test]
 fn journal_event_run_id_returns_correct_run() {
     // Given a RunAccepted event for run 42
@@ -156,7 +148,6 @@ fn journal_event_run_id_returns_correct_run() {
     };
     assert_eq!(event.run_id(), RunId::new(42));
 }
-
 
 #[test]
 fn journal_event_seq_returns_correct_seq() {
@@ -172,7 +163,6 @@ fn journal_event_seq_returns_correct_seq() {
     assert_eq!(event.seq(), EventSeq::new(7));
 }
 
-
 #[test]
 fn journal_event_record_kind_returns_correct_kind() {
     // Given a RunFinished event
@@ -186,7 +176,6 @@ fn journal_event_record_kind_returns_correct_kind() {
     };
     assert_eq!(event.record_kind(), RecordKind::RunFinished);
 }
-
 
 #[test]
 fn decode_record_returns_postcard_decode_failed_for_garbage_payload() {

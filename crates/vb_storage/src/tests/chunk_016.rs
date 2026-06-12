@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn journal_event_run_id_returns_correct_run_for_all_variants() {
     // Given every JournalEvent variant with run_id 99

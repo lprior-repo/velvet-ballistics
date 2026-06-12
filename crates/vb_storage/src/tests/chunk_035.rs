@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn batch_put_compiled_ir_rejects_forged_digest_and_aborts() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -62,7 +61,6 @@ fn batch_put_compiled_ir_rejects_forged_digest_and_aborts() {
     );
 }
 
-
 #[test]
 fn journal_run_header_after_batch_commit_matches_all_fields() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -100,7 +98,6 @@ fn journal_run_header_after_batch_commit_matches_all_fields() {
     );
 }
 
-
 #[test]
 fn journal_snapshot_after_batch_commit_matches_input() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -123,7 +120,6 @@ fn journal_snapshot_after_batch_commit_matches_input() {
     assert_eq!(found_record.seq, seq);
     assert_eq!(found_record.slots, b"snapshot_data".to_vec());
 }
-
 
 #[test]
 fn journal_blob_after_batch_commit_matches_input() {
@@ -148,7 +144,6 @@ fn journal_blob_after_batch_commit_matches_input() {
     assert_eq!(found_record.digest, digest);
 }
 
-
 #[test]
 fn journal_status_index_after_batch_commit_returns_correct_run() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -172,7 +167,6 @@ fn journal_status_index_after_batch_commit_returns_correct_run() {
     );
 }
 
-
 #[test]
 fn journal_action_index_after_batch_commit_returns_correct_entry() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -195,7 +189,6 @@ fn journal_action_index_after_batch_commit_returns_correct_entry() {
         "action index must exist after batch commit"
     );
 }
-
 
 #[test]
 fn adversarial_reopen_after_unflushed_journaled_events_may_lose_them() {

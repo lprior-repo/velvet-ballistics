@@ -63,12 +63,12 @@ impl Runtime {
 
     /// Creates a runtime with an explicit artifact store.
     ///
-    /// Test-only constructor used by `admission::step_budget_tests` to wire a
+    /// Test-support constructor used by admission tests to wire a
     /// `AlwaysPresentArtifactStore` into strict-mode admission so the
     /// step-budget gate can be evaluated in isolation.
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-util"))]
     #[must_use]
-    pub(crate) fn new_with_artifact_store(
+    pub fn new_with_artifact_store(
         shard_count: NonZeroUsize,
         config: ShardConfig,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,

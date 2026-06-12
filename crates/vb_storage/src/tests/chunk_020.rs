@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn journal_error_postcard_decode_failed_display() {
     // Given a JournalError::PostcardDecodeFailed
@@ -22,7 +21,6 @@ fn journal_error_postcard_decode_failed_display() {
     let msg = format!("{}", err);
     assert!(msg.contains("postcard"));
 }
-
 
 #[test]
 fn journal_error_unexpected_eof_display() {
@@ -34,7 +32,6 @@ fn journal_error_unexpected_eof_display() {
     assert!(msg.contains("end"));
 }
 
-
 #[test]
 fn journal_error_payload_digest_mismatch_display() {
     // Given a JournalError::PayloadDigestMismatch
@@ -44,7 +41,6 @@ fn journal_error_payload_digest_mismatch_display() {
     let msg = format!("{}", err);
     assert!(msg.contains("digest"));
 }
-
 
 #[test]
 fn record_envelope_fields_match_encoded_values() {
@@ -65,7 +61,6 @@ fn record_envelope_fields_match_encoded_values() {
     assert_eq!(envelope.record_kind, RecordKind::RunAccepted.id());
     assert_eq!(envelope.sequence, 3);
 }
-
 
 // --- Section 7: RunHeaderRecord Integration Tests ---
 
@@ -101,7 +96,6 @@ fn run_header_overwrite_replaces_existing_header() {
         .expect("lookup should succeed");
     assert_eq!(retrieved, Some(updated));
 }
-
 
 #[test]
 fn multiple_runs_have_independent_events() {
@@ -167,7 +161,6 @@ fn multiple_runs_have_independent_events() {
     assert_eq!(events2.len(), 3);
 }
 
-
 #[test]
 fn event_seq_ordering_is_correct() {
     // Given two EventSeq values
@@ -177,7 +170,6 @@ fn event_seq_ordering_is_correct() {
     assert!(EventSeq::new(100) < EventSeq::new(200));
     assert_eq!(EventSeq::new(5), EventSeq::new(5));
 }
-
 
 #[test]
 fn record_kind_all_variants_have_distinct_ids() {
@@ -216,7 +208,6 @@ fn record_kind_all_variants_have_distinct_ids() {
         "all RecordKind ids must be distinct"
     );
 }
-
 
 #[test]
 fn constants_have_expected_values() {

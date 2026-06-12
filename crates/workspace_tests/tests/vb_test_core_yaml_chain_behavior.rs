@@ -923,7 +923,7 @@ fn validation_error_all_contract_variants_are_exhaustive() {
 /// fails to compile (preserves the failing-first signal).
 #[test]
 fn yaml_chain_idempotent_retry_safety_recognized() {
-    use vb_core::action::{is_idempotent, RetrySafety};
+    use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"

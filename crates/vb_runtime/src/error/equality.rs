@@ -198,6 +198,12 @@ fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -
 }
 
 fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    runtime_error_admission_artifact_eq(left, right)
+        || runtime_error_admission_artifact_mismatch_eq(left, right)
+        || runtime_error_admission_record_mismatch_eq(left, right)
+}
+
+fn runtime_error_admission_artifact_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
         (
             RuntimeError::AdmissionArtifactNotFound { digest: a },
@@ -208,6 +214,16 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
             RuntimeError::AdmissionArtifactInvalid { digest: b },
         ) => a == b,
         (
+            RuntimeError::AdmissionArtifactStale { digest: a },
+            RuntimeError::AdmissionArtifactStale { digest: b },
+        ) => a == b,
+        _ => false,
+    }
+}
+
+fn runtime_error_admission_artifact_mismatch_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
             RuntimeError::AdmissionArtifactDigestMismatch {
                 requested: a,
                 found: c,
@@ -217,10 +233,12 @@ fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) 
                 found: d,
             },
         ) => a == b && c == d,
-        (
-            RuntimeError::AdmissionArtifactStale { digest: a },
-            RuntimeError::AdmissionArtifactStale { digest: b },
-        ) => a == b,
+        _ => false,
+    }
+}
+
+fn runtime_error_admission_record_mismatch_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
         (
             RuntimeError::AdmissionDigestMismatch {
                 requested: a,
@@ -258,8 +276,14 @@ fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeErr
 fn runtime_error_admission_budget_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
         (
-            RuntimeError::AdmissionBudgetExceeded { actual: a, limit: b },
-            RuntimeError::AdmissionBudgetExceeded { actual: c, limit: d },
+            RuntimeError::AdmissionBudgetExceeded {
+                actual: a,
+                limit: b,
+            },
+            RuntimeError::AdmissionBudgetExceeded {
+                actual: c,
+                limit: d,
+            },
         ) => a == c && b == d,
         _ => false,
     }

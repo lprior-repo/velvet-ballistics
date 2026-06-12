@@ -18,4 +18,7 @@ for arg in "$@"; do
   esac
 done
 
-cargo flux -p "$package" --message-format human "$@"
+flux_toolchain="nightly-2026-04-28"
+
+PATH="$HOME/.cargo/bin:$PATH" env -u CARGO \
+  rustup run "$flux_toolchain" cargo flux -p "$package" --message-format human "$@"

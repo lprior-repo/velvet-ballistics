@@ -981,7 +981,7 @@ fn each_step_has_independent_attempt_counter() {
 /// fails to compile (preserves the failing-first signal).
 #[test]
 fn jggy_lifecycle_idempotent_retry_safety_recognized() {
-    use vb_core::action::{is_idempotent, RetrySafety};
+    use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"

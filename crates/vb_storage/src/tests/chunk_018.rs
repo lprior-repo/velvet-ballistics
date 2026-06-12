@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn journal_event_record_kind_returns_correct_kind_for_all_variants() {
     // Given every JournalEvent variant
@@ -167,7 +166,6 @@ fn journal_event_record_kind_returns_correct_kind_for_all_variants() {
     );
 }
 
-
 // --- Section 5: Encode/Decode Roundtrip Tests ---
 
 #[test]
@@ -187,7 +185,6 @@ fn encode_decode_roundtrip_for_run_accepted_record() {
     assert_eq!(decoded, event);
 }
 
-
 #[test]
 fn encode_decode_roundtrip_for_step_started_record() {
     // Given a StepStarted event
@@ -205,7 +202,6 @@ fn encode_decode_roundtrip_for_step_started_record() {
         .expect("decoding should succeed");
     assert_eq!(decoded, event);
 }
-
 
 #[test]
 fn encode_decode_roundtrip_for_step_ended_record() {

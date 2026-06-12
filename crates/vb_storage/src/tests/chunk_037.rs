@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn adversarial_snapshot_with_empty_slots_roundtrips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -34,7 +33,6 @@ fn adversarial_snapshot_with_empty_slots_roundtrips() {
     assert_eq!(loaded.run, run);
 }
 
-
 #[test]
 fn adversarial_blob_with_single_byte_roundtrips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -50,7 +48,6 @@ fn adversarial_blob_with_single_byte_roundtrips() {
     assert_eq!(loaded.bytes, bytes);
 }
 
-
 #[test]
 fn adversarial_workflow_source_with_empty_bytes_roundtrips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -65,7 +62,6 @@ fn adversarial_workflow_source_with_empty_bytes_roundtrips() {
         .expect("must exist");
     assert_eq!(loaded.source, vec![]);
 }
-
 
 #[test]
 fn adversarial_run_header_with_max_run_id_roundtrips() {
@@ -86,7 +82,6 @@ fn adversarial_run_header_with_max_run_id_roundtrips() {
     assert_eq!(loaded.workflow_id, WorkflowId::new(u32::MAX));
     assert_eq!(loaded.accepted_at_ms, u64::MAX);
 }
-
 
 #[test]
 fn adversarial_batch_strict_commit_survives_immediate_reopen() {
@@ -112,7 +107,6 @@ fn adversarial_batch_strict_commit_survives_immediate_reopen() {
     assert_eq!(header.run, run);
     assert_eq!(header.status, 1);
 }
-
 
 #[test]
 fn adversarial_events_for_run_isolates_run_a_from_run_b() {
@@ -149,7 +143,6 @@ fn adversarial_events_for_run_isolates_run_a_from_run_b() {
     assert_eq!(events_b.len(), 1, "run B should have 1 event");
 }
 
-
 #[test]
 fn adversarial_run_header_overwrite_replaces_previous() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -179,7 +172,6 @@ fn adversarial_run_header_overwrite_replaces_previous() {
     assert_eq!(header.status, 3);
     assert_eq!(header.accepted_at_ms, 200);
 }
-
 
 #[test]
 fn adversarial_batch_commit_with_5_puts_persists_all() {

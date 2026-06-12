@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn flush_profile_wrapper_flushes_queued_events() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -49,7 +48,6 @@ fn flush_profile_wrapper_flushes_queued_events() {
     assert_eq!(events, vec![journaled, strict]);
 }
 
-
 #[test]
 fn replay_returns_contiguous_events_for_run() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -80,7 +78,6 @@ fn replay_returns_contiguous_events_for_run() {
     assert_eq!(replay, vec![accepted, finished]);
 }
 
-
 #[test]
 fn decode_rejects_truncated_header() {
     // Given a byte slice shorter than the required 60-byte header
@@ -91,7 +88,6 @@ fn decode_rejects_truncated_header() {
     let result = decode_record::<JournalEvent>(&truncated, MAGIC_JOURNAL_EVENT, 128);
     assert!(matches!(result, Err(JournalError::UnexpectedEof)));
 }
-
 
 #[test]
 fn decode_rejects_migration_required_schema() {
@@ -129,7 +125,6 @@ fn decode_rejects_migration_required_schema() {
     ));
 }
 
-
 #[test]
 fn decode_rejects_unsupported_future_schema() {
     // Given a valid record whose schema version byte is 99 (greater than current)
@@ -165,7 +160,6 @@ fn decode_rejects_unsupported_future_schema() {
         Err(JournalError::UnsupportedSchemaVersion { version: 99 })
     ));
 }
-
 
 #[test]
 fn decode_rejects_record_kind_family_mismatch() {

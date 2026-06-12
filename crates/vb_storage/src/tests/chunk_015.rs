@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn append_strict_handles_concurrent_runs_interleaved() {
     // Given a journal with interleaved events from run A and run B
@@ -83,7 +82,6 @@ fn append_strict_handles_concurrent_runs_interleaved() {
     assert_eq!(events_b[1], b1);
 }
 
-
 #[test]
 fn append_journaled_succeeds_without_flush() {
     // Given an open journal
@@ -106,7 +104,6 @@ fn append_journaled_succeeds_without_flush() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn run_header_record_roundtrip_with_large_timestamp() {
@@ -131,7 +128,6 @@ fn run_header_record_roundtrip_with_large_timestamp() {
     assert_eq!(retrieved, Some(record));
 }
 
-
 #[test]
 fn snapshot_record_roundtrip_with_nonempty_slots() {
     // Given a snapshot with non-empty slot data
@@ -155,7 +151,6 @@ fn snapshot_record_roundtrip_with_nonempty_slots() {
     assert_eq!(retrieved, Some(snapshot));
 }
 
-
 #[test]
 fn compiled_ir_returns_none_when_different_digest_queried() {
     // Given an open journal with a compiled IR stored at digest [1;32]
@@ -172,7 +167,6 @@ fn compiled_ir_returns_none_when_different_digest_queried() {
         .expect("lookup should succeed");
     assert_eq!(result, None);
 }
-
 
 #[test]
 fn workflow_source_returns_none_for_different_digest() {

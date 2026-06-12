@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn journal_error_diagnostic_code_wrong_run() {
     assert_eq!(
@@ -24,7 +23,6 @@ fn journal_error_diagnostic_code_wrong_run() {
         DiagnosticCode::new(0x4008)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_sequence_gap() {
@@ -38,7 +36,6 @@ fn journal_error_diagnostic_code_sequence_gap() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_sequence_overflow() {
     assert_eq!(
@@ -46,7 +43,6 @@ fn journal_error_diagnostic_code_sequence_overflow() {
         DiagnosticCode::new(0x400A)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_bad_magic() {
@@ -56,7 +52,6 @@ fn journal_error_diagnostic_code_bad_magic() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_unsupported_schema_version() {
     assert_eq!(
@@ -64,7 +59,6 @@ fn journal_error_diagnostic_code_unsupported_schema_version() {
         DiagnosticCode::new(0x400C)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_migration_required() {
@@ -74,7 +68,6 @@ fn journal_error_diagnostic_code_migration_required() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_unknown_record_kind() {
     assert_eq!(
@@ -82,7 +75,6 @@ fn journal_error_diagnostic_code_unknown_record_kind() {
         DiagnosticCode::new(0x400E)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_record_kind_family_mismatch() {
@@ -96,7 +88,6 @@ fn journal_error_diagnostic_code_record_kind_family_mismatch() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_header_length_mismatch() {
     assert_eq!(
@@ -104,7 +95,6 @@ fn journal_error_diagnostic_code_header_length_mismatch() {
         DiagnosticCode::new(0x4010)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_payload_too_large() {
@@ -114,7 +104,6 @@ fn journal_error_diagnostic_code_payload_too_large() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_header_checksum_mismatch() {
     assert_eq!(
@@ -122,7 +111,6 @@ fn journal_error_diagnostic_code_header_checksum_mismatch() {
         DiagnosticCode::new(0x4012)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_payload_digest_mismatch() {
@@ -132,7 +120,6 @@ fn journal_error_diagnostic_code_payload_digest_mismatch() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_unexpected_eof() {
     assert_eq!(
@@ -140,7 +127,6 @@ fn journal_error_diagnostic_code_unexpected_eof() {
         DiagnosticCode::new(0x4014)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_unexpected_trailing_bytes() {
@@ -158,7 +144,6 @@ fn journal_error_diagnostic_code_unexpected_trailing_bytes() {
     );
 }
 
-
 #[test]
 fn journal_error_symbolic_code_unexpected_trailing_bytes() {
     let symbolic = JournalError::UnexpectedTrailingBytes {
@@ -169,7 +154,6 @@ fn journal_error_symbolic_code_unexpected_trailing_bytes() {
 
     assert_eq!(symbolic.as_str(), "JOURNAL_UNEXPECTED_TRAILING_BYTES");
 }
-
 
 #[test]
 fn code_registry_contains_unexpected_trailing_bytes_numeric_and_symbolic_code() {
@@ -183,7 +167,6 @@ fn code_registry_contains_unexpected_trailing_bytes_numeric_and_symbolic_code() 
     assert_eq!(matches.len(), 1);
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_postcard_decode_failed() {
     assert_eq!(
@@ -191,7 +174,6 @@ fn journal_error_diagnostic_code_postcard_decode_failed() {
         DiagnosticCode::new(0x4015)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_too_many_events() {
@@ -205,7 +187,6 @@ fn journal_error_diagnostic_code_too_many_events() {
         DiagnosticCode::new(0x401E)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_replay_allocation_failed() {

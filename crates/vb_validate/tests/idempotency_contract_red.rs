@@ -966,7 +966,12 @@ fn idempotency_contract_red_pure_passes_all_4variant_combos() {
             Idempotency::IdempotentExternal,
             Idempotency::AtLeastOnceExternal,
         ] {
-            let c = contract(action(count as u16), SideEffect::Pure, idempotency, retry_safety);
+            let c = contract(
+                action(count as u16),
+                SideEffect::Pure,
+                idempotency,
+                retry_safety,
+            );
             let result = is_statically_idempotent_contract(&c);
             assert_eq!(
                 result,

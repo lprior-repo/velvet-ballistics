@@ -755,7 +755,7 @@ fn record_retry_attempt_integration_gap() {
 /// fails to compile (preserves the failing-first signal).
 #[test]
 fn durable_retry_idempotent_retry_safety_recognized() {
-    use vb_core::action::{is_idempotent, RetrySafety};
+    use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"

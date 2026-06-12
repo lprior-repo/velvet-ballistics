@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn append_strict_writes_step_started_event_with_correct_step() {
     // Given an open journal
@@ -43,7 +42,6 @@ fn append_strict_writes_step_started_event_with_correct_step() {
     };
     assert_eq!(found_step, step);
 }
-
 
 #[test]
 fn append_strict_writes_step_ended_event_with_correct_step() {
@@ -80,7 +78,6 @@ fn append_strict_writes_step_ended_event_with_correct_step() {
     assert_eq!(found_output, output);
 }
 
-
 #[test]
 fn append_strict_writes_slot_written_event_with_correct_slot() {
     // Given an open journal
@@ -113,7 +110,6 @@ fn append_strict_writes_slot_written_event_with_correct_slot() {
     };
     assert_eq!(found_slot, slot);
 }
-
 
 #[test]
 fn append_strict_writes_action_scheduled_event_with_correct_step() {
@@ -151,7 +147,6 @@ fn append_strict_writes_action_scheduled_event_with_correct_step() {
     assert_eq!(found_action, action);
 }
 
-
 #[test]
 fn append_strict_writes_action_completed_event_with_correct_step() {
     // Given an open journal
@@ -187,7 +182,6 @@ fn append_strict_writes_action_completed_event_with_correct_step() {
     assert_eq!(found_step, step);
     assert_eq!(found_action, action);
 }
-
 
 #[test]
 fn append_strict_writes_run_finished_event_with_correct_result() {

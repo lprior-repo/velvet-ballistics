@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 // =========================================================================
 // Section: Adversarial Postcard / Encoding Edge Cases
 // =========================================================================
@@ -50,7 +49,6 @@ fn adversarial_valid_header_garbage_postcard_returns_decode_failed() {
     ));
 }
 
-
 #[test]
 fn adversarial_run_header_wrong_magic_returns_bad_magic() {
     let record = RunHeaderRecord {
@@ -74,7 +72,6 @@ fn adversarial_run_header_wrong_magic_returns_bad_magic() {
     ));
 }
 
-
 #[test]
 fn adversarial_decode_empty_returns_unexpected_eof() {
     assert!(matches!(
@@ -82,7 +79,6 @@ fn adversarial_decode_empty_returns_unexpected_eof() {
         Err(JournalError::UnexpectedEof)
     ));
 }
-
 
 #[test]
 fn adversarial_encode_empty_blob_succeeds() {
@@ -101,7 +97,6 @@ fn adversarial_encode_empty_blob_succeeds() {
     );
 }
 
-
 #[test]
 fn adversarial_encode_empty_source_succeeds() {
     assert!(
@@ -118,7 +113,6 @@ fn adversarial_encode_empty_source_succeeds() {
         .is_ok()
     );
 }
-
 
 #[test]
 fn adversarial_encode_empty_ir_succeeds() {
@@ -137,7 +131,6 @@ fn adversarial_encode_empty_ir_succeeds() {
         .is_ok()
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_codes_are_unique() {
@@ -188,7 +181,6 @@ fn journal_error_diagnostic_codes_are_unique() {
     assert_eq!(seen.len(), errors.len());
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_fjall() {
     // Fjall and Encode variants hold external errors; we verify via KeyCapacity
@@ -197,7 +189,6 @@ fn journal_error_diagnostic_code_fjall() {
         DiagnosticCode::new(0x4003)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_duplicate_event() {
@@ -211,7 +202,6 @@ fn journal_error_diagnostic_code_duplicate_event() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_write_lock_poisoned() {
     assert_eq!(
@@ -220,7 +210,6 @@ fn journal_error_diagnostic_code_write_lock_poisoned() {
     );
 }
 
-
 #[test]
 fn journal_error_diagnostic_code_queue_capacity() {
     assert_eq!(
@@ -228,7 +217,6 @@ fn journal_error_diagnostic_code_queue_capacity() {
         DiagnosticCode::new(0x4006)
     );
 }
-
 
 #[test]
 fn journal_error_diagnostic_code_queue_full() {

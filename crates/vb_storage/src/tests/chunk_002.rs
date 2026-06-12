@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn decode_rejects_corrupt_header_checksum() {
     let event = JournalEvent::RunAccepted {
@@ -38,7 +37,6 @@ fn decode_rejects_corrupt_header_checksum() {
 
     assert!(matches!(decoded, Err(JournalError::HeaderChecksumMismatch)));
 }
-
 
 #[test]
 fn decode_rejects_corrupt_payload_digest() {
@@ -66,7 +64,6 @@ fn decode_rejects_corrupt_payload_digest() {
     assert!(matches!(decoded, Err(JournalError::PayloadDigestMismatch)));
 }
 
-
 #[test]
 fn decode_rejects_payload_before_allocation() {
     let event = JournalEvent::RunAccepted {
@@ -89,7 +86,6 @@ fn decode_rejects_payload_before_allocation() {
 
     assert!(matches!(decoded, Err(JournalError::PayloadTooLarge { .. })));
 }
-
 
 #[test]
 fn decode_rejects_bad_magic_and_unknown_kind() {
@@ -147,7 +143,6 @@ fn decode_rejects_bad_magic_and_unknown_kind() {
     ));
 }
 
-
 #[test]
 fn append_strict_batch_writes_all_events_with_single_fsync() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -184,7 +179,6 @@ fn append_strict_batch_writes_all_events_with_single_fsync() {
     assert_eq!(replayed, events);
 }
 
-
 #[test]
 fn append_strict_batch_rejects_duplicate_within_batch() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -205,7 +199,6 @@ fn append_strict_batch_rejects_duplicate_within_batch() {
         result
     );
 }
-
 
 #[test]
 fn batch_builder_collects_events() {

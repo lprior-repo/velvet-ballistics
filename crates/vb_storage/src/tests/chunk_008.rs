@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn decode_record_returns_header_length_mismatch_for_wrong_len() {
     // Given an encoded record with header_len patched to 99
@@ -50,7 +49,6 @@ fn decode_record_returns_header_length_mismatch_for_wrong_len() {
     assert_eq!(found, 99);
 }
 
-
 // --- Section 2: Key Function Behavior Tests ---
 
 #[test]
@@ -65,7 +63,6 @@ fn run_event_key_produces_expected_key_bytes() {
     assert_eq!(key[9..17], 0u64.to_be_bytes());
 }
 
-
 #[test]
 fn run_header_key_produces_expected_key_bytes() {
     // Given run_id=0xAABBCCDD_EEFF0011
@@ -77,7 +74,6 @@ fn run_header_key_produces_expected_key_bytes() {
     assert_eq!(key[0], 0x10);
     assert_eq!(key[1..9], run.get().to_be_bytes());
 }
-
 
 #[test]
 fn run_snapshot_key_produces_expected_key_bytes() {
@@ -91,7 +87,6 @@ fn run_snapshot_key_produces_expected_key_bytes() {
     assert_eq!(key[9..17], 99u64.to_be_bytes());
 }
 
-
 #[test]
 fn workflow_source_key_produces_expected_key_bytes() {
     // Given a 32-byte digest of all 7s
@@ -104,7 +99,6 @@ fn workflow_source_key_produces_expected_key_bytes() {
     assert_eq!(key[1..33], digest);
 }
 
-
 #[test]
 fn compiled_ir_key_produces_expected_key_bytes() {
     // Given a 32-byte digest of all 2s
@@ -116,7 +110,6 @@ fn compiled_ir_key_produces_expected_key_bytes() {
     assert_eq!(key[0], 0x02);
     assert_eq!(key[1..33], digest);
 }
-
 
 #[test]
 fn index_action_key_produces_expected_key_bytes() {
@@ -131,7 +124,6 @@ fn index_action_key_produces_expected_key_bytes() {
     assert_eq!(key[11..13], 300u16.to_be_bytes());
 }
 
-
 #[test]
 fn index_status_key_produces_expected_key_bytes() {
     // Given state=5, timestamp=1000, run=50
@@ -145,7 +137,6 @@ fn index_status_key_produces_expected_key_bytes() {
     assert_eq!(key[10..18], 50u64.to_be_bytes());
 }
 
-
 #[test]
 fn index_workflow_key_produces_expected_key_bytes() {
     // Given workflow_id=42, run=99
@@ -157,7 +148,6 @@ fn index_workflow_key_produces_expected_key_bytes() {
     assert_eq!(key[1..5], 42u32.to_be_bytes());
     assert_eq!(key[5..13], 99u64.to_be_bytes());
 }
-
 
 #[test]
 fn blob_key_produces_expected_key_bytes() {
@@ -171,7 +161,6 @@ fn blob_key_produces_expected_key_bytes() {
     assert_eq!(key[1..33], digest);
 }
 
-
 // --- Section 3: BDD Integration-Style Tests ---
 
 #[test]
@@ -183,7 +172,6 @@ fn journal_opens_and_closes_without_error() {
     let journal = FjallJournal::open(temp_dir.path(), None);
     assert!(journal.is_ok(), "journal should open with default config");
 }
-
 
 #[test]
 fn public_open_wrappers_create_declared_keyspaces() {

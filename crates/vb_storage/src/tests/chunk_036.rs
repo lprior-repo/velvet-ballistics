@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn adversarial_reopen_after_flushed_journaled_events_preserves_them() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -36,7 +35,6 @@ fn adversarial_reopen_after_flushed_journaled_events_preserves_them() {
     );
 }
 
-
 #[test]
 fn adversarial_reopen_after_strict_event_preserves_it() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -55,7 +53,6 @@ fn adversarial_reopen_after_strict_event_preserves_it() {
         .expect("events_for_run succeeds");
     assert_eq!(events.len(), 1, "strict event must survive reopen");
 }
-
 
 #[test]
 fn adversarial_batch_commit_then_reopen_preserves_all_keys() {
@@ -99,7 +96,6 @@ fn adversarial_batch_commit_then_reopen_preserves_all_keys() {
     assert!(blob.is_some(), "blob must survive reopen");
 }
 
-
 #[test]
 fn adversarial_double_append_same_run_seq_returns_duplicate_error() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -118,7 +114,6 @@ fn adversarial_double_append_same_run_seq_returns_duplicate_error() {
     );
 }
 
-
 #[test]
 fn adversarial_events_for_run_on_empty_journal_returns_empty() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -129,7 +124,6 @@ fn adversarial_events_for_run_on_empty_journal_returns_empty() {
     assert_eq!(events.len(), 0, "no events for nonexistent run");
 }
 
-
 #[test]
 fn adversarial_run_header_for_never_written_run_returns_none() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -137,7 +131,6 @@ fn adversarial_run_header_for_never_written_run_returns_none() {
     let header = journal.run_header(RunId::new(8888)).expect("run_header");
     assert!(header.is_none(), "no header for nonexistent run");
 }
-
 
 #[test]
 fn adversarial_snapshot_for_nonexistent_run_returns_none() {
@@ -149,7 +142,6 @@ fn adversarial_snapshot_for_nonexistent_run_returns_none() {
     assert!(snapshot.is_none(), "no snapshot for nonexistent run");
 }
 
-
 #[test]
 fn adversarial_blob_for_nonexistent_digest_returns_none() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -157,7 +149,6 @@ fn adversarial_blob_for_nonexistent_digest_returns_none() {
     let blob = journal.blob([0xAA; 32]).expect("blob");
     assert!(blob.is_none(), "no blob for nonexistent digest");
 }
-
 
 #[test]
 fn adversarial_workflow_source_for_wrong_digest_returns_none() {
@@ -174,7 +165,6 @@ fn adversarial_workflow_source_for_wrong_digest_returns_none() {
     let result = journal.workflow_source(digest_b).expect("get");
     assert!(result.is_none(), "wrong digest must return None");
 }
-
 
 #[test]
 fn adversarial_multiple_snapshots_same_run_different_seq_all_retrievable() {
@@ -196,7 +186,6 @@ fn adversarial_multiple_snapshots_same_run_different_seq_all_retrievable() {
         assert!(loaded.is_some(), "snapshot at seq {seq_val} must exist");
     }
 }
-
 
 #[test]
 fn adversarial_batch_two_sequential_commits_both_visible() {

@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn adversarial_compiled_ir_with_same_digest_rewrites_valid_envelope() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -45,7 +44,6 @@ fn adversarial_compiled_ir_with_same_digest_rewrites_valid_envelope() {
     assert_eq!(loaded, first, "original record must be preserved");
 }
 
-
 /// VB-FN4VT PO-006: Metadata mutation via required_capabilities is rejected.
 #[test]
 fn metadata_hash_rejects_required_capabilities_mutation() {
@@ -76,7 +74,6 @@ fn metadata_hash_rejects_required_capabilities_mutation() {
         "required_capabilities mutation must be rejected"
     );
 }
-
 
 /// VB-FN4VT PO-006: Metadata mutation via warnings is rejected.
 #[test]
@@ -112,7 +109,6 @@ fn metadata_hash_rejects_warnings_mutation() {
     );
 }
 
-
 /// VB-FN4VT PO-006: Metadata mutation via idempotency evidence is rejected.
 #[test]
 fn metadata_hash_rejects_idempotency_evidence_mutation() {
@@ -140,7 +136,6 @@ fn metadata_hash_rejects_idempotency_evidence_mutation() {
     );
 }
 
-
 /// VB-FN4VT PO-006: Metadata hash covers `idempotency_attested` actions.
 #[test]
 fn metadata_hash_rejects_idempotency_attested_mutation() {
@@ -167,7 +162,6 @@ fn metadata_hash_rejects_idempotency_attested_mutation() {
         "idempotency_attested mutation must be rejected"
     );
 }
-
 
 /// VB-FN4VT PO-006: Metadata hash covers verification proof flags.
 #[test]
@@ -199,7 +193,6 @@ fn metadata_hash_rejects_verification_flags_mutation() {
         err
     );
 }
-
 
 /// VB-FN4VT PO-006: Batch path also rejects metadata mutation.
 #[test]

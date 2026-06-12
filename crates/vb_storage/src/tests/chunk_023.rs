@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn adversarial_decode_header_len_not_60_returns_mismatch() {
     let event = JournalEvent::RunAccepted {
@@ -20,15 +19,13 @@ fn adversarial_decode_header_len_not_60_returns_mismatch() {
         seq: EventSeq::new(0),
         workflow: test_digest(6),
     };
-    let encoded =
-        encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
+    let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 8, &48u32.to_le_bytes());
     let result = decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128);
     let Err(JournalError::HeaderLengthMismatch { found }) = result else {
         panic!("expected mismatch, got {:?}", result)
     };
     assert_eq!(found, 48);
 }
-
 
 #[test]
 fn adversarial_decode_payload_len_above_limit_returns_too_large() {
@@ -46,7 +43,6 @@ fn adversarial_decode_payload_len_above_limit_returns_too_large() {
     assert_eq!(len, 9999);
     assert_eq!(max, 100);
 }
-
 
 #[test]
 fn adversarial_decode_corrupt_header_crc_returns_checksum_mismatch() {
@@ -72,7 +68,6 @@ fn adversarial_decode_corrupt_header_crc_returns_checksum_mismatch() {
     ));
 }
 
-
 #[test]
 fn adversarial_decode_corrupt_payload_digest_returns_digest_mismatch() {
     let event = JournalEvent::RunAccepted {
@@ -97,7 +92,6 @@ fn adversarial_decode_corrupt_payload_digest_returns_digest_mismatch() {
     ));
 }
 
-
 #[test]
 fn adversarial_decode_truncated_before_full_header_returns_unexpected_eof() {
     let truncated = [0u8; 45];
@@ -106,7 +100,6 @@ fn adversarial_decode_truncated_before_full_header_returns_unexpected_eof() {
         Err(JournalError::UnexpectedEof)
     ));
 }
-
 
 #[test]
 fn adversarial_decode_truncated_before_full_payload_returns_unexpected_eof() {
@@ -130,7 +123,6 @@ fn adversarial_decode_truncated_before_full_payload_returns_unexpected_eof() {
     ));
 }
 
-
 // =========================================================================
 // Section: Adversarial Key Encoding Tests
 // =========================================================================
@@ -147,7 +139,6 @@ fn adversarial_key_prefix_isolation_proves_different_prefixes() {
     assert_eq!(ws[1..], bl[1..]);
 }
 
-
 #[test]
 fn adversarial_key_wrong_endianness_produces_different_keys() {
     let key = run_header_key(RunId::new(1)).expect("key");
@@ -158,14 +149,12 @@ fn adversarial_key_wrong_endianness_produces_different_keys() {
     assert_eq!(key[1..9], 1u64.to_be_bytes());
 }
 
-
 #[test]
 fn adversarial_key_no_collision_different_runs_same_seq() {
     let k1 = run_event_key(RunId::new(100), EventSeq::new(5)).expect("k1");
     let k2 = run_event_key(RunId::new(200), EventSeq::new(5)).expect("k2");
     assert_ne!(k1.as_slice(), k2.as_slice());
 }
-
 
 #[test]
 fn adversarial_key_no_collision_same_run_different_seq() {
@@ -174,7 +163,6 @@ fn adversarial_key_no_collision_same_run_different_seq() {
     assert_ne!(k1.as_slice(), k2.as_slice());
 }
 
-
 #[test]
 fn adversarial_key_no_collision_different_digests() {
     assert_ne!(
@@ -182,7 +170,6 @@ fn adversarial_key_no_collision_different_digests() {
         blob_key([2u8; 32]).expect("k2").as_slice()
     );
 }
-
 
 // =========================================================================
 // Section: Adversarial Journal / Replay Tests

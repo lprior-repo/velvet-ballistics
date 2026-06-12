@@ -387,7 +387,12 @@ fn parity_requires_idempotency_key_passes_with_key_all_side_effects() {
     let mut count = 0usize;
     for side_effect in side_effects.iter().copied() {
         for idempotency in idempotencies.iter().copied() {
-            let c = contract(3000, side_effect, idempotency, RetrySafety::RequiresIdempotencyKey);
+            let c = contract(
+                3000,
+                side_effect,
+                idempotency,
+                RetrySafety::RequiresIdempotencyKey,
+            );
             assert!(
                 static_ok(&c),
                 "static accepts RequiresIdempotencyKey+{side_effect:?}+{idempotency:?}"
@@ -473,28 +478,48 @@ fn parity_unknown_retry_all_side_effects_rejected() {
 /// Tier 2: `is_compile_idempotency_gate_accepted` accepts `Idempotent`.
 #[test]
 fn is_compile_idempotency_gate_accepted_idempotent_returns_true() {
-    let c = contract(6000, SideEffect::ExternalRead, Idempotency::IdempotentExternal, RetrySafety::Idempotent);
+    let c = contract(
+        6000,
+        SideEffect::ExternalRead,
+        Idempotency::IdempotentExternal,
+        RetrySafety::Idempotent,
+    );
     assert!(vb_compile::is_compile_idempotency_gate_accepted(&c));
 }
 
 /// Tier 2: `is_compile_idempotency_gate_accepted` accepts `RequiresIdempotencyKey` with `IdempotentExternal`.
 #[test]
 fn is_compile_idempotency_gate_accepted_requires_key_returns_true_with_key() {
-    let c = contract(6001, SideEffect::LocalWrite, Idempotency::IdempotentExternal, RetrySafety::RequiresIdempotencyKey);
+    let c = contract(
+        6001,
+        SideEffect::LocalWrite,
+        Idempotency::IdempotentExternal,
+        RetrySafety::RequiresIdempotencyKey,
+    );
     assert!(vb_compile::is_compile_idempotency_gate_accepted(&c));
 }
 
 /// Tier 2: `is_compile_idempotency_gate_accepted` rejects `NotRetrySafe`.
 #[test]
 fn is_compile_idempotency_gate_accepted_not_retry_safe_returns_false() {
-    let c = contract(6002, SideEffect::ExternalWrite, Idempotency::AtLeastOnceExternal, RetrySafety::NotRetrySafe);
+    let c = contract(
+        6002,
+        SideEffect::ExternalWrite,
+        Idempotency::AtLeastOnceExternal,
+        RetrySafety::NotRetrySafe,
+    );
     assert!(!vb_compile::is_compile_idempotency_gate_accepted(&c));
 }
 
 /// Tier 2: `is_compile_idempotency_gate_accepted` rejects `Unknown`.
 #[test]
 fn is_compile_idempotency_gate_accepted_unknown_returns_false() {
-    let c = contract(6003, SideEffect::ExternalWrite, Idempotency::AtLeastOnceExternal, RetrySafety::Unknown);
+    let c = contract(
+        6003,
+        SideEffect::ExternalWrite,
+        Idempotency::AtLeastOnceExternal,
+        RetrySafety::Unknown,
+    );
     assert!(!vb_compile::is_compile_idempotency_gate_accepted(&c));
 }
 
@@ -546,8 +571,7 @@ fn is_compile_idempotency_gate_accepted_exhaustive_60_cells() {
     }
     assert_eq!(total, 60, "exhaustive 60-cell table must be covered");
     assert_eq!(
-        agree_count,
-        EXPECTED_ACCEPTED_COUNT,
+        agree_count, EXPECTED_ACCEPTED_COUNT,
         "parity count must match the 28-cell policy table; \
          got {agree_count} accepted, expected {EXPECTED_ACCEPTED_COUNT}"
     );

@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn batch_builder_round_trips_via_append_strict_batch() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -40,7 +39,6 @@ fn batch_builder_round_trips_via_append_strict_batch() {
         .expect("events_for_run should succeed");
     assert_eq!(events.len(), 2);
 }
-
 
 #[test]
 fn flush_profile_batches_strict_events_into_single_fsync() {
@@ -77,7 +75,6 @@ fn flush_profile_batches_strict_events_into_single_fsync() {
     let events = events.expect("read_run_events should succeed");
     assert_eq!(events, vec![strict1, strict2]);
 }
-
 
 #[test]
 fn write_batch_commits_cross_keyspace_atomically() {
@@ -117,7 +114,6 @@ fn write_batch_commits_cross_keyspace_atomically() {
     assert_eq!(header.unwrap().run, run);
 }
 
-
 #[test]
 fn write_batch_strict_commits_with_durability() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -138,7 +134,6 @@ fn write_batch_strict_commits_with_durability() {
     assert!(blob.is_some());
     assert_eq!(blob.unwrap().bytes, b"blob data".to_vec());
 }
-
 
 #[test]
 fn write_batch_appends_events_and_indexes() {
@@ -174,7 +169,6 @@ fn write_batch_appends_events_and_indexes() {
     assert_eq!(events.len(), 1);
 }
 
-
 #[test]
 fn write_batch_empty_commit_succeeds() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -186,7 +180,6 @@ fn write_batch_empty_commit_succeeds() {
     batch.commit().expect("batch.commit must succeed");
 }
 
-
 #[test]
 fn write_batch_is_empty_after_construction() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -196,7 +189,6 @@ fn write_batch_is_empty_after_construction() {
     assert!(batch.is_empty());
     assert_eq!(batch.len(), 0);
 }
-
 
 #[test]
 fn write_batch_len_tracks_operations() {

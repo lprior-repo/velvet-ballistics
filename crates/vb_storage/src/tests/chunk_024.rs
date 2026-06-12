@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn adversarial_read_events_with_sequence_gap_returns_exact_gap() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -37,14 +36,12 @@ fn adversarial_read_events_with_sequence_gap_returns_exact_gap() {
             })
             .is_ok()
     );
-    let Err(JournalError::SequenceGap { expected, actual }) = journal.events_for_run(run)
-    else {
+    let Err(JournalError::SequenceGap { expected, actual }) = journal.events_for_run(run) else {
         panic!("expected SequenceGap")
     };
     assert_eq!(expected, EventSeq::new(1));
     assert_eq!(actual, EventSeq::new(5));
 }
-
 
 // =========================================================================
 // Section: Adversarial Blob / Snapshot / Size Boundary Tests
@@ -63,7 +60,6 @@ fn adversarial_put_blob_exceeding_max_returns_payload_too_large() {
     ));
 }
 
-
 #[test]
 fn adversarial_blob_zero_length_round_trips() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -79,7 +75,6 @@ fn adversarial_blob_zero_length_round_trips() {
         .expect("journal.put_blob must succeed");
     assert_eq!(journal.blob(digest).expect("ok"), Some(record));
 }
-
 
 #[test]
 fn adversarial_snapshot_exceeding_max_returns_payload_too_large() {
@@ -97,7 +92,6 @@ fn adversarial_snapshot_exceeding_max_returns_payload_too_large() {
         Err(JournalError::PayloadTooLarge { .. })
     ));
 }
-
 
 #[test]
 fn adversarial_snapshot_corrupt_magic_returns_bad_magic() {
@@ -125,7 +119,6 @@ fn adversarial_snapshot_corrupt_magic_returns_bad_magic() {
     ));
 }
 
-
 #[test]
 fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -138,7 +131,6 @@ fn adversarial_workflow_source_exceeding_max_returns_payload_too_large() {
         Err(JournalError::PayloadTooLarge { .. })
     ));
 }
-
 
 #[test]
 fn adversarial_compiled_ir_exceeding_max_returns_payload_too_large() {
@@ -155,7 +147,6 @@ fn adversarial_compiled_ir_exceeding_max_returns_payload_too_large() {
     ));
 }
 
-
 // =========================================================================
 // Section: Adversarial Schema Migration Tests
 // =========================================================================
@@ -167,8 +158,7 @@ fn adversarial_schema_migration_from_zero_exact_fields() {
         seq: EventSeq::new(0),
         workflow: test_digest(11),
     };
-    let encoded =
-        encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
+    let encoded = encode_and_patch_field(&event, RecordKind::RunAccepted, 4, &0u16.to_le_bytes());
     let Err(JournalError::MigrationRequired { from, to }) =
         decode_record::<JournalEvent>(&encoded, MAGIC_JOURNAL_EVENT, 128)
     else {
@@ -177,7 +167,6 @@ fn adversarial_schema_migration_from_zero_exact_fields() {
     assert_eq!(from, 0);
     assert_eq!(to, CURRENT_SCHEMA_VERSION);
 }
-
 
 #[test]
 fn adversarial_schema_future_version_max_unsupported() {
@@ -196,7 +185,6 @@ fn adversarial_schema_future_version_max_unsupported() {
     assert_eq!(version, u16::MAX);
 }
 
-
 // =========================================================================
 // Section: Adversarial Queue Tests
 // =========================================================================
@@ -209,7 +197,6 @@ fn adversarial_queue_zero_capacity_returns_queue_capacity() {
     ));
 }
 
-
 #[test]
 fn adversarial_queue_zero_batch_returns_queue_capacity() {
     assert!(matches!(
@@ -217,7 +204,6 @@ fn adversarial_queue_zero_batch_returns_queue_capacity() {
         Err(JournalError::QueueCapacity)
     ));
 }
-
 
 #[test]
 fn adversarial_queue_full_returns_queue_full() {

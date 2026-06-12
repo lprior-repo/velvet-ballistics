@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn batch_append_run_cancelled_event_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -35,7 +34,6 @@ fn batch_append_run_cancelled_event_round_trips() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 #[test]
 fn batch_append_slot_written_event_round_trips() {
@@ -62,7 +60,6 @@ fn batch_append_slot_written_event_round_trips() {
     assert_eq!(events[0], event);
 }
 
-
 #[test]
 fn batch_append_suspended_event_round_trips() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -86,7 +83,6 @@ fn batch_append_suspended_event_round_trips() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0], event);
 }
-
 
 // --- Multi-run isolation (tests 13-16) ---
 
@@ -136,7 +132,6 @@ fn events_for_run_isolates_run_a_from_run_b() {
     assert_eq!(events_b[0], event_b);
 }
 
-
 #[test]
 fn run_header_isolation_between_runs() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -174,7 +169,6 @@ fn run_header_isolation_between_runs() {
         .expect("run_header run_2 must succeed");
     assert_eq!(found_2, Some(header_2), "run 2 header must match exactly");
 }
-
 
 #[test]
 fn snapshot_isolation_between_runs() {

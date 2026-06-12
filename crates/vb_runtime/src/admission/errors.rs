@@ -187,7 +187,9 @@ pub enum AdmissionError {
     /// step-count-specific failure that the production admission preflight
     /// surfaces in place of a generic `BudgetPolicyExceeded` so the runtime
     /// can fail closed before any persistence.
-    #[error("admission rejected: workflow step count {actual} exceeds per-workflow ceiling {limit}")]
+    #[error(
+        "admission rejected: workflow step count {actual} exceeds per-workflow ceiling {limit}"
+    )]
     BudgetExceeded {
         /// Step count declared by the workflow's `ResourceContract::max_steps`.
         actual: u32,

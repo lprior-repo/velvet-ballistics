@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn journal_event_seq_returns_correct_seq_for_all_variants() {
     // Given every JournalEvent variant with seq 42

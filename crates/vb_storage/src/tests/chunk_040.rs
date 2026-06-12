@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn adversarial_workflow_index_multiple_runs_same_workflow() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -24,7 +23,6 @@ fn adversarial_workflow_index_multiple_runs_same_workflow() {
     // All three runs indexed under same workflow
 }
 
-
 #[test]
 fn adversarial_batch_empty_strict_commit_succeeds() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -35,7 +33,6 @@ fn adversarial_batch_empty_strict_commit_succeeds() {
         .commit()
         .expect("empty strict commit must succeed");
 }
-
 
 #[test]
 fn adversarial_append_event_at_max_seq_stores_correctly() {
@@ -62,7 +59,6 @@ fn adversarial_append_event_at_max_seq_stores_correctly() {
     let events = journal.events_for_run(run).expect("replay");
     assert_eq!(events.len(), 2, "contiguous seq 0,1 must replay");
 }
-
 
 #[test]
 fn adversarial_batch_commit_persists_all_keys_or_none() {
@@ -93,7 +89,6 @@ fn adversarial_batch_commit_persists_all_keys_or_none() {
     assert!(journal.run_header(run).expect("g3").is_some());
 }
 
-
 // =====================================================================
 // vb-apn5: Single-server database lock enforcement tests
 // =====================================================================
@@ -110,18 +105,15 @@ fn test_first_open_succeeds_and_creates_lock_file() {
     );
 }
 
-
 #[test]
 fn test_lock_releases_on_journal_drop() {
     let temp = tempfile::tempdir().expect("tempdir creation should succeed");
     {
-        let _journal =
-            FjallJournal::open(temp.path(), None).expect("first open should succeed");
+        let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
     } // journal dropped here, lock released
     let result = FjallJournal::open(temp.path(), None);
     assert!(result.is_ok(), "re-open after drop must succeed");
 }
-
 
 #[test]
 fn test_second_open_fails_in_same_process() {
@@ -135,7 +127,6 @@ fn test_second_open_fails_in_same_process() {
         "second open in same process must fail (Fjall detects open DB)"
     );
 }
-
 
 #[test]
 fn test_lock_file_contains_holder_pid() {
@@ -154,7 +145,6 @@ fn test_lock_file_contains_holder_pid() {
     );
 }
 
-
 #[test]
 fn test_no_keyspace_created_when_lock_fails() {
     let temp = tempfile::tempdir().expect("tempdir creation should succeed");
@@ -172,7 +162,6 @@ fn test_no_keyspace_created_when_lock_fails() {
         "no new files should appear when lock fails"
     );
 }
-
 
 // ══ vb-hbav B19: JournalError exhaustiveness compile-time check ════════
 #[test]

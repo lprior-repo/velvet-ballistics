@@ -40,7 +40,7 @@ vb_core = { path = "../vb_core" }
 vb_expr = { path = "../vb_expr" }
 vb_ipc = { path = "../vb_ipc" }
 vb_proof_kernels = { path = "../vb_proof_kernels" }
-vb_runtime = { path = "../vb_runtime" }
+vb_runtime = { path = "../vb_runtime", features = ["test-util"] }
 vb_storage = { path = "../vb_storage", features = ["test-support"] }
 vb_validate = { path = "../vb_validate" }
 vb_benchmark = { path = "../vb_benchmark" }

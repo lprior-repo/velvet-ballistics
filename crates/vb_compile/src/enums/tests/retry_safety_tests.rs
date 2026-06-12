@@ -12,8 +12,8 @@
 // Top-level `RetrySafety` import for the simple-discriminant tests.
 // Other tests in this file have their own inner `use vb_core::{}` blocks.
 use vb_core::{
-    action::{ActionName, verify_idempotency},
     RetrySafety, SideEffect,
+    action::{ActionName, verify_idempotency},
 };
 
 /// Helper to extract the #[repr(u8)] discriminant of a RetrySafety variant.
@@ -151,7 +151,7 @@ fn retry_safety_idempotent_allows_retry_without_key() {
 /// - NotRetrySafe: retry rejected by default
 #[test]
 fn retry_safety_not_retry_safe_rejects_retry() {
-    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, StepIdx, SlotIdx};
+    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, SlotIdx, StepIdx};
 
     let contract = ActionContract {
         id: ActionId::new(2),
@@ -174,8 +174,9 @@ fn retry_safety_not_retry_safe_rejects_retry() {
     // NotRetrySafe should be rejected even with a key provided
     let key_slots = [SlotIdx::new(0)];
     let result = verify_idempotency(&contract, &key_slots, &frame);
-    assert!(
+    assert_eq!(
         result.is_err(),
+        true,
         "NotRetrySafe should reject even with key"
     );
 }
@@ -186,7 +187,9 @@ fn retry_safety_not_retry_safe_rejects_retry() {
 /// - RequiresIdempotencyKey: safe with a valid idempotency key
 #[test]
 fn retry_safety_requires_idempotency_key_passes_with_key() {
-    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, StepIdx, SlotIdx, SlotValue, Taint};
+    use vb_core::{
+        ActionContract, ActionId, Idempotency, RunFrame, RunId, SlotIdx, SlotValue, StepIdx, Taint,
+    };
 
     let contract = ActionContract {
         id: ActionId::new(3),
@@ -214,7 +217,11 @@ fn retry_safety_requires_idempotency_key_passes_with_key() {
     // RequiresIdempotencyKey should pass with a clean (non-secret) key
     let key_slots = [SlotIdx::new(0)];
     let result = verify_idempotency(&contract, &key_slots, &frame);
-    assert_eq!(result, Ok(()), "RequiresIdempotencyKey should pass with valid key");
+    assert_eq!(
+        result,
+        Ok(()),
+        "RequiresIdempotencyKey should pass with valid key"
+    );
 }
 
 /// Test that RetrySafety::RequiresIdempotencyKey fails without a key.
@@ -290,7 +297,7 @@ fn retry_safety_unknown_rejects_retry() {
 /// the implementation, this test will not compile.
 #[test]
 fn verify_idempotency_match_is_exhaustive_for_all_master_plan_variants() {
-    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, StepIdx, SideEffect};
+    use vb_core::{ActionContract, ActionId, Idempotency, RunFrame, RunId, SideEffect, StepIdx};
 
     // Create a contract that exercises each RetrySafety variant
     fn check_variant(safety: RetrySafety, should_pass: bool) {

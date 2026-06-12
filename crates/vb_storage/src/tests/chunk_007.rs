@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn validate_replayed_event_returns_wrong_run_when_run_id_mismatch() {
     // Given events stored for run 10 and a replay request for run 20
@@ -36,7 +35,6 @@ fn validate_replayed_event_returns_wrong_run_when_run_id_mismatch() {
     let events = result.expect("events_for_run should succeed for missing run");
     assert!(events.is_empty(), "no events should exist for run_b");
 }
-
 
 #[test]
 fn validate_replayed_event_returns_sequence_gap_when_seq_out_of_order() {
@@ -75,7 +73,6 @@ fn validate_replayed_event_returns_sequence_gap_when_seq_out_of_order() {
     assert_eq!(actual, EventSeq::new(2));
 }
 
-
 #[test]
 fn next_seq_returns_sequence_overflow_at_max() {
     // Given EventSeq at u64::MAX
@@ -85,7 +82,6 @@ fn next_seq_returns_sequence_overflow_at_max() {
     let result = seq.get().checked_add(1).map(EventSeq::new);
     assert!(result.is_none());
 }
-
 
 #[test]
 fn duplicate_event_returns_exact_run_and_seq() {
@@ -111,7 +107,6 @@ fn duplicate_event_returns_exact_run_and_seq() {
     assert_eq!(run, RunId::new(42));
     assert_eq!(seq, EventSeq::new(7));
 }
-
 
 #[test]
 fn decode_record_returns_migration_required_for_old_schema() {
@@ -150,7 +145,6 @@ fn decode_record_returns_migration_required_for_old_schema() {
     assert_eq!(to, 1);
 }
 
-
 #[test]
 fn decode_record_returns_unsupported_schema_version_for_future() {
     // Given an encoded record with schema version 99
@@ -184,7 +178,6 @@ fn decode_record_returns_unsupported_schema_version_for_future() {
     };
     assert_eq!(version, 99);
 }
-
 
 #[test]
 fn decode_record_returns_unknown_record_kind_for_invalid_kind() {

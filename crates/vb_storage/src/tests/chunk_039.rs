@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 /// VB-FN4VT PO-006: A record written via batch, committed, read back via journal,
 /// then re-written via batch with mutated metadata must be rejected.
 #[test]
@@ -63,7 +62,6 @@ fn batch_put_compiled_ir_then_journal_then_batch_rejects_mutation() {
     );
 }
 
-
 /// VB-FN4VT PO-006: First write of a given ir_digest succeeds with metadata hash.
 #[test]
 fn metadata_hash_accepts_first_write_of_digest() {
@@ -90,7 +88,6 @@ fn metadata_hash_accepts_first_write_of_digest() {
         "metadata_hash must match original"
     );
 }
-
 
 /// VB-FN4VT PO-006: Records written without metadata_hash (before this feature)
 /// still read correctly - backward compatibility.
@@ -127,7 +124,6 @@ fn metadata_hash_accepts_none_for_backward_compat() {
         .expect("re-write of same artifact must succeed for backward compat");
 }
 
-
 /// VB-FN4VT PO-006: Relaxed/Strict policy semantics - two records with same
 /// ir_digest but different policies have different metadata hashes.
 #[test]
@@ -156,7 +152,6 @@ fn metadata_hash_differs_for_different_policies() {
     );
 }
 
-
 #[test]
 fn adversarial_journal_open_fresh_database_is_empty() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
@@ -180,7 +175,6 @@ fn adversarial_journal_open_fresh_database_is_empty() {
         0
     );
 }
-
 
 #[test]
 fn adversarial_snapshot_isolation_between_runs() {
@@ -217,7 +211,6 @@ fn adversarial_snapshot_isolation_between_runs() {
     assert_eq!(s1.workflow, WorkflowDigest::from_bytes([1; 32]));
     assert_eq!(s2.workflow, WorkflowDigest::from_bytes([2; 32]));
 }
-
 
 #[test]
 fn adversarial_status_index_multiple_runs_same_state() {

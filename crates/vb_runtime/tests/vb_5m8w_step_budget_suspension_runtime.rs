@@ -452,7 +452,7 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
 /// fails to compile (preserves the failing-first signal).
 #[test]
 fn step_budget_suspension_idempotent_retry_safety_recognized() {
-    use vb_core::action::{is_idempotent, RetrySafety};
+    use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"

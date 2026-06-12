@@ -12,7 +12,6 @@
 )]
 use super::prelude::*;
 
-
 #[test]
 fn prefix_constants_have_expected_values() {
     // Given the prefix constants
@@ -29,7 +28,6 @@ fn prefix_constants_have_expected_values() {
     assert_eq!(PREFIX_INDEX_ACTION, 0x32);
 }
 
-
 #[test]
 fn max_payload_constants_are_sensible() {
     // Given the max payload constants
@@ -42,7 +40,6 @@ fn max_payload_constants_are_sensible() {
     assert!(MAX_SNAPSHOT_BYTES > 0);
     assert!(MAX_BLOB_BYTES > 0);
 }
-
 
 #[test]
 fn validate_replayed_event_accepts_matching_run_and_seq() {
@@ -64,7 +61,6 @@ fn validate_replayed_event_accepts_matching_run_and_seq() {
         .expect("should succeed with contiguous events");
     assert_eq!(events.len(), 1);
 }
-
 
 #[test]
 fn journal_reopen_preserves_multiple_event_types() {
@@ -140,7 +136,6 @@ fn journal_reopen_preserves_multiple_event_types() {
     assert_eq!(events[6].seq(), EventSeq::new(6));
 }
 
-
 #[test]
 fn run_header_stores_all_fields_correctly() {
     // Given a RunHeaderRecord with specific field values
@@ -170,7 +165,6 @@ fn run_header_stores_all_fields_correctly() {
     assert_eq!(found.accepted_at_ms, record.accepted_at_ms);
 }
 
-
 #[test]
 fn journal_stores_and_retrieves_blob_with_zero_bytes() {
     // Given a blob with zero bytes
@@ -190,7 +184,6 @@ fn journal_stores_and_retrieves_blob_with_zero_bytes() {
     assert_eq!(retrieved, Some(record));
 }
 
-
 #[test]
 fn workflow_source_stores_and_retrieves_empty_source() {
     // Given a workflow source with zero source bytes
@@ -208,7 +201,6 @@ fn workflow_source_stores_and_retrieves_empty_source() {
         .expect("lookup should succeed");
     assert_eq!(retrieved, Some(record));
 }
-
 
 #[test]
 fn encode_decode_roundtrip_for_wait_scheduled_record() {
