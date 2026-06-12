@@ -98,6 +98,7 @@ tasks:
       - 'agent-cli-contract'
       - 'beads-server-mode'
       - 'hot-cold-forbidden-apis'
+      - 'check-no-dead-ir-duplicates'
     toolchains:
       - rust
     inputs:
