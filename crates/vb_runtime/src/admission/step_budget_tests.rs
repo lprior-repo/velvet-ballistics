@@ -21,7 +21,9 @@ use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
-use crate::admission::preflight_step_budget;
+use crate::admission::{
+    AdmissionBudgetRequest, BoundednessPolicy, admit_run_with_budget_policy, preflight_step_budget,
+};
 use crate::shard::ShardConfig;
 use crate::{Runtime, RuntimeError};
 
@@ -260,4 +262,147 @@ fn admission_lock_serializes_sequential_submits() {
             other => panic!("unexpected submit result: {other:?}"),
         }
     }
+}
+
+// -------------------------------------------------------------------------
+// Boundary-case unit tests for `admit_run_with_budget_policy`
+// (black-hat BLOCKER C1-B1 follow-up: missing tests named in the close
+// report are added here. The tests exercise the step-count dimension at
+// the master contract ceiling so the boundary is captured at the
+// budget-policy level, complementing the typed `BudgetExceeded` errors
+// surfaced by `preflight_step_budget`.
+// -------------------------------------------------------------------------
+
+/// Builds a stub `ArtifactStore` that always reports artifacts as present
+/// so `admit_run_with_budget_policy` can complete its validation chain
+/// without producing an `ArtifactNotFound` error.
+struct AlwaysPresentArtifactStoreForBudget;
+
+impl crate::admission::ArtifactStore for AlwaysPresentArtifactStoreForBudget {
+    fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+        true
+    }
+}
+
+/// Builds an `AdmissionBudgetRequest` whose policy caps
+/// `max_steps_executable` at `MAX_STEPS_PER_WORKFLOW` and capacity is
+/// generous. Only the requested `max_steps_executable` varies per test.
+fn build_step_budget_request(max_steps_executable: u32) -> AdmissionBudgetRequest {
+    let requested = vb_core::budget::AggregateResourceBudget {
+        max_steps_executable,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+        max_timer_entries: 0,
+        max_trace_events: 0,
+        max_queue_depth: 0,
+        max_journal_batch_bytes: 0,
+        max_ipc_payload_bytes: 0,
+        max_blob_bytes: 0,
+        max_input_bytes: 0,
+        max_step_budget_per_tick: 0,
+        max_transitions_per_tick: 0,
+    };
+    let available = vb_core::budget::AggregateResourceCapacity {
+        max_steps_executable: u64::MAX,
+        max_action_tickets: u64::MAX,
+        max_parallel_in_flight: u32::MAX,
+        max_gather_pages: u64::MAX,
+        max_gather_items: u64::MAX,
+        max_result_bytes: u64::MAX,
+        max_total_slots_written: u64::MAX,
+        max_timer_entries: u64::MAX,
+        max_trace_events: u64::MAX,
+        max_active_runs: u64::MAX,
+        max_queue_depth: u64::MAX,
+        max_journal_batch_bytes: u64::MAX,
+        max_ipc_payload_bytes: u64::MAX,
+        max_blob_bytes: u64::MAX,
+        max_input_bytes: u64::MAX,
+        max_step_budget_per_tick: u64::MAX,
+        max_transitions_per_tick: u64::MAX,
+    };
+    // Clamp `absolute_max_steps_executable` to `MAX_STEPS_PER_WORKFLOW`
+    // so the policy validates the step-count dimension against the master
+    // contract ceiling (1,000).
+    let policy = BoundednessPolicy {
+        absolute_max_steps_executable: u32::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
+            .expect("MAX_STEPS_PER_WORKFLOW fits in u32"),
+        ..BoundednessPolicy::DEFAULT
+    };
+    AdmissionBudgetRequest {
+        requested,
+        available,
+        policy,
+    }
+}
+
+/// `admit_run_with_budget_policy` rejects a workflow whose step-count
+/// request exceeds the per-workflow ceiling of `MAX_STEPS_PER_WORKFLOW = 1_000`.
+///
+/// The step-count dimension is checked in the `validate_aggregate_budget`
+/// chain inside `admit_run_with_budget_policy`, which surfaces a
+/// `BudgetPolicyExceeded { resource: "max_steps_executable", ... }` error.
+/// This is the budget-policy-level counterpart to the typed
+/// `BudgetExceeded { actual, limit }` error returned by
+/// `preflight_step_budget` for the same dimension.
+#[test]
+fn admit_run_with_budget_policy_rejects_over_limit() {
+    let store = AlwaysPresentArtifactStoreForBudget;
+    let limit = u32::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
+        .expect("MAX_STEPS_PER_WORKFLOW fits in u32");
+    let actual = limit
+        .checked_add(1)
+        .expect("limit + 1 does not overflow u32");
+    let result = admit_run_with_budget_policy(
+        &store,
+        RuntimePolicy::Strict,
+        WorkflowDigest::from_bytes([0xCC; 32]),
+        RunId::new(500),
+        vb_core::capability::CapabilitySet::empty(),
+        build_step_budget_request(actual),
+    );
+    assert_eq!(
+        result,
+        Err(crate::admission::AdmissionError::BudgetPolicyExceeded {
+            resource: "max_steps_executable",
+            actual: u64::from(actual),
+            limit: u64::from(limit),
+        })
+    );
+}
+
+/// `admit_run_with_budget_policy` accepts a workflow whose step-count
+/// request is exactly at the per-workflow ceiling of
+/// `MAX_STEPS_PER_WORKFLOW = 1_000`.
+///
+/// The boundary case is admitted (the limit is inclusive), confirming the
+/// policy validation does not erroneously reject the master contract
+/// maximum. Capacity is generous; the success path requires the artifact
+/// store to report the artifact as present (satisfied by the stub).
+#[test]
+fn admit_run_with_budget_policy_accepts_at_limit() {
+    let store = AlwaysPresentArtifactStoreForBudget;
+    let limit = u32::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
+        .expect("MAX_STEPS_PER_WORKFLOW fits in u32");
+    let result = admit_run_with_budget_policy(
+        &store,
+        RuntimePolicy::Strict,
+        WorkflowDigest::from_bytes([0xDD; 32]),
+        RunId::new(501),
+        vb_core::capability::CapabilitySet::empty(),
+        build_step_budget_request(limit),
+    );
+    assert!(
+        result.is_ok(),
+        "admit_run_with_budget_policy should accept at-limit step count, got {result:?}"
+    );
 }
