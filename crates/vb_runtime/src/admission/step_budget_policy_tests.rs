@@ -3,9 +3,7 @@
 use vb_core::ids::{RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 
-use crate::admission::{
-    AdmissionBudgetRequest, BoundednessPolicy, admit_run_with_budget_policy,
-};
+use crate::admission::{AdmissionBudgetRequest, BoundednessPolicy, admit_run_with_budget_policy};
 
 /// Builds a stub `ArtifactStore` that always reports artifacts as present
 /// so `admit_run_with_budget_policy` can complete its validation chain
