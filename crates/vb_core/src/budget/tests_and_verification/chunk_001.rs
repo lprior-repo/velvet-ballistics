@@ -1,8 +1,13 @@
+//! Test chunk 001 of 1 from the original
+//! `tests_and_verification.rs` (tests-and-verification).
+//! Lines 6–331 of the original. Semantic content is
+//! preserved exactly; only the file structure changed.
 // Kani harnesses for PO-RUST-002-BUDGET-KANI: add_dim/sub_dim panic-freedom and correctness.
 // Uses a minimal local error enum to avoid transitive inclusion of AggregateBudgetError
 // -> WorkflowError -> Capability (Vec<Capability> causes deep drop_in_place unwind).
 // add_dim/sub_dim are pure checked_add/checked_sub — we prove these directly.
 #[cfg(kani)]
+
 mod kani_harnesses {
     use crate::budget::{
         AggregateBudgetError, AggregateResourceBudget, AggregateResourceCapacity,

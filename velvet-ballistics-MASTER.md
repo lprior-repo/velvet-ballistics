@@ -455,6 +455,7 @@ pub struct ResourceContract {
     pub max_expressions: u16,
     pub max_expr_stack: u8,
     pub max_step_budget_per_tick: u64,
+    pub max_transitions_per_tick: u64,
     pub max_input_bytes: u32,
     pub max_output_bytes: u32,
     pub max_blob_bytes: u64,
@@ -464,6 +465,7 @@ pub struct ResourceContract {
     pub max_collect_items: u32,
     pub max_queue_depth: u32,
     pub max_journal_batch_bytes: u32,
+    pub allows_secret_results: bool,
 }
 ```
 
