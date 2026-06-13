@@ -8,6 +8,7 @@ use crate::recovery::{
     recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
+    write_recovered_snapshot,
 };
 use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
@@ -747,7 +748,10 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
         entry.step == StepIdx::ZERO && entry.state == RecoveredStepState::Succeeded
     }));
     assert!(!seed.unsupported.slot_values);
-    assert!(!seed.unsupported.action_payloads);
+    // Envelope-style events (ActionScheduledTicket, ActionCompletedEnvelope) carry
+    // action payload bodies that the runtime boundary cannot re-attach to a live
+    // frame, so the seed must explicitly flag them as unsupported.
+    assert!(seed.unsupported.action_payloads);
     Ok(())
 }
 
@@ -856,6 +860,79 @@ fn recover_runtime_frame_seed_reads_events_from_journal() {
 }
 
 #[test]
+fn write_recovered_snapshot_persists_supported_seed_to_journal() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+    let run = RunId::new(95);
+    let workflow = sample_digest(15);
+
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        })
+        .expect("accepted append succeeds");
+    journal
+        .append_journaled(&JournalEvent::AskScheduledEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+            deadline_ms: 30000,
+        })
+        .expect("ask scheduled append succeeds");
+
+    let seed = recover_runtime_frame_seed(&journal, run).expect("seed recovers");
+    assert!(seed.unsupported.is_fully_supported());
+    assert!(seed.summary.workflow.is_some());
+
+    write_recovered_snapshot(&journal, &seed).expect("snapshot persists");
+
+    let stored = journal
+        .snapshot(run, seed.summary.last_seq)
+        .expect("snapshot lookup");
+    let stored = stored.expect("snapshot was written");
+    assert_eq!(stored.run, run);
+    assert_eq!(stored.seq, seed.summary.last_seq);
+    assert_eq!(stored.workflow, workflow);
+}
+
+#[test]
+fn write_recovered_snapshot_rejects_seed_with_pending_actions() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+    let run = RunId::new(96);
+    let workflow = sample_digest(16);
+
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        })
+        .expect("accepted append succeeds");
+    journal
+        .append_journaled(&JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(7),
+            attempt: 1,
+        })
+        .expect("action scheduled append succeeds");
+
+    let seed = recover_runtime_frame_seed(&journal, run).expect("seed recovers");
+    assert!(seed.unsupported.pending_actions);
+
+    let result = write_recovered_snapshot(&journal, &seed);
+    assert!(
+        matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+        "snapshot write must reject pending_actions, got {result:?}"
+    );
+}
+
+#[test]
 fn recover_all_incomplete_runs_returns_only_non_terminal_runs() {
     let dir = tempfile::tempdir().expect("temp dir");
     let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
@@ -916,6 +993,126 @@ fn recover_all_incomplete_runs_rejects_header_without_journal() {
     let result = recover_all_incomplete_runs(&journal);
 
     assert!(matches!(result, Err(RecoveryError::NoRecoveryData { run: found }) if found == run));
+}
+
+#[test]
+fn recover_all_incomplete_runs_returns_frameseed_variant_not_summary() {
+    // Mutation-resistance: prove the result is the FrameSeed variant, not Summary.
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(dir.path(), None).expect("open journal");
+    let workflow = sample_digest(20);
+    let run = RunId::new(91);
+    put_test_header(&journal, run, workflow);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        })
+        .expect("append");
+    journal
+        .append_journaled(&JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+        })
+        .expect("append");
+
+    let recovered = recover_all_incomplete_runs(&journal).expect("succeeds");
+    assert_eq!(recovered.len(), 1);
+    let first = recovered.first().expect("one");
+    assert!(
+        matches!(first, RecoveryHydration::FrameSeed(_)),
+        "recover_all_incomplete_runs must return FrameSeed variant, got {first:?}"
+    );
+}
+
+#[test]
+fn recover_all_incomplete_runs_frameseed_contains_recovered_step_state() {
+    // End-to-end: prove the FrameSeed has actual step content, not just a header.
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(dir.path(), None).expect("open journal");
+    let workflow = sample_digest(21);
+    let run = RunId::new(92);
+    put_test_header(&journal, run, workflow);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        })
+        .expect("append");
+    journal
+        .append_journaled(&JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(3),
+            attempt: 1,
+        })
+        .expect("append");
+
+    let recovered = recover_all_incomplete_runs(&journal).expect("succeeds");
+    match recovered.first().expect("one") {
+        RecoveryHydration::FrameSeed(seed) => {
+            assert!(
+                !seed.steps.is_empty(),
+                "FrameSeed must contain recovered step entries from the journal; got {:?}",
+                seed.steps
+            );
+            assert!(
+                seed.steps.iter().any(|s| s.step == StepIdx::new(3)),
+                "FrameSeed must contain the StepStarted step"
+            );
+        }
+        other => panic!("expected FrameSeed, got {other:?}"),
+    }
+}
+
+#[test]
+fn recover_all_incomplete_runs_mixed_incomplete_and_complete_returns_only_frameseed() {
+    // Proves filter: terminal runs are excluded; incomplete returns FrameSeed.
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let journal = FjallJournal::open(dir.path(), None).expect("open journal");
+    let workflow = sample_digest(22);
+    let incomplete = RunId::new(93);
+    let finished = RunId::new(94);
+    for &r in &[incomplete, finished] {
+        put_test_header(&journal, r, workflow);
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run: r,
+                seq: EventSeq::new(0),
+                workflow,
+            })
+            .expect("append");
+    }
+    journal
+        .append_journaled(&JournalEvent::StepStarted {
+            run: incomplete,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+        })
+        .expect("append");
+    journal
+        .append_journaled(&JournalEvent::RunFinished {
+            run: finished,
+            seq: EventSeq::new(1),
+            result: SlotIdx::ZERO,
+            attempt: 1,
+        })
+        .expect("append");
+
+    let recovered = recover_all_incomplete_runs(&journal).expect("succeeds");
+    assert_eq!(recovered.len(), 1);
+    assert!(matches!(
+        recovered.first().unwrap(),
+        RecoveryHydration::FrameSeed(_)
+    ));
 }
 
 fn put_test_header(journal: &FjallJournal, run: RunId, digest: WorkflowDigest) {

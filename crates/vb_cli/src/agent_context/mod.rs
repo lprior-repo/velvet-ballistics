@@ -257,6 +257,61 @@ fn commands() -> Value {
                 "flags": output_flags()
             }),
         ),
+        command(
+            "help",
+            serde_json::json!({
+                "summary": "Print CLI help.",
+                "flags": output_flags()
+            }),
+        ),
+        command(
+            "version",
+            serde_json::json!({
+                "summary": "Print CLI version.",
+                "outputs": ["text"]
+            }),
+        ),
+        command(
+            "status",
+            serde_json::json!({
+                "summary": "Runtime status snapshot.",
+                "flags": db_output_flags()
+            }),
+        ),
+        command(
+            "system-status",
+            serde_json::json!({
+                "summary": "System status (storage + runtime backend).",
+                "flags": {
+                    "--profile": {"type": "enum", "values": ["quick", "standard", "full"], "default": "standard"},
+                    "--server": {"type": "enum", "values": ["strict", "journaled", "none"], "default": "none"},
+                    "--emit": output_emit_flag()
+                }
+            }),
+        ),
+        command(
+            "action-list",
+            serde_json::json!({
+                "summary": "List registered actions.",
+                "flags": output_flags()
+            }),
+        ),
+        command(
+            "action-inspect",
+            serde_json::json!({
+                "summary": "Inspect an action contract.",
+                "positionals": ["action"],
+                "flags": output_flags()
+            }),
+        ),
+        command(
+            "ai-context",
+            serde_json::json!({
+                "summary": "Emit machine-readable per-run context.",
+                "positionals": ["run_id"],
+                "flags": db_output_flags()
+            }),
+        ),
     ]))
 }
 

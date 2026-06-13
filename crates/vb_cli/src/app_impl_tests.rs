@@ -1000,7 +1000,7 @@ mod mode_activation {
     use super::*;
     use crate::args::{
         ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
-        StatusOptions, VerifyProfile,
+        StatusOptions, SystemStatusOptions, VerifyProfile,
     };
     use proptest::prelude::*;
 
@@ -1260,13 +1260,25 @@ mod mode_activation {
     }
 
     #[test]
-    fn command_mode_status_is_pure() {
-        // status: transient in-memory Shard::new, no FjallJournal::open
+    fn command_mode_status_is_storage() {
+        // status: may call FjallJournal::open when --db <path> is supplied,
+        // so it is classified as Storage (similar to doctor).
         let cmd = Command::Status {
             options: StatusOptions::default(),
             output: OutputFormat::Text,
         };
-        assert_eq!(command_mode(&cmd), CommandMode::Pure);
+        assert_eq!(command_mode(&cmd), CommandMode::Storage);
+    }
+
+    #[test]
+    fn command_mode_system_status_is_storage() {
+        // system status: may call FjallJournal::open when --db <path> is
+        // supplied, so it is classified as Storage.
+        let cmd = Command::SystemStatus {
+            options: SystemStatusOptions::default(),
+            output: OutputFormat::Text,
+        };
+        assert_eq!(command_mode(&cmd), CommandMode::Storage);
     }
 
     #[test]
@@ -1471,7 +1483,7 @@ mod mode_activation {
         // Every Command variant must appear in the Mode Activation Matrix.
         // This is a completeness check: no command falls through without classification.
 
-        // Pure commands (11)
+        // Pure commands (8)
         assert_eq!(
             command_mode(&Command::AgentContext { deliver: None }),
             CommandMode::Pure
@@ -1533,7 +1545,7 @@ mod mode_activation {
                 options: StatusOptions::default(),
                 output: OutputFormat::Text,
             }),
-            CommandMode::Pure
+            CommandMode::Storage
         );
         assert_eq!(
             command_mode(&Command::ActionList {
@@ -1552,7 +1564,7 @@ mod mode_activation {
             CommandMode::Pure
         );
 
-        // Storage commands (14)
+        // Storage commands (16)
         assert_eq!(
             command_mode(&Command::Run {
                 workflow: PathBuf::from("w.yaml"),
@@ -1732,10 +1744,6 @@ mod mode_activation {
                 workflow: PathBuf::from("w.yaml"),
                 output: OutputFormat::Text,
             },
-            Command::Status {
-                options: StatusOptions::default(),
-                output: OutputFormat::Text,
-            },
         ];
 
         for cmd in pure_commands {
@@ -1780,6 +1788,14 @@ mod mode_activation {
             },
             Command::Doctor {
                 db: Some(PathBuf::from("/tmp/j")),
+                output: OutputFormat::Text,
+            },
+            Command::Status {
+                options: StatusOptions::default(),
+                output: OutputFormat::Text,
+            },
+            Command::SystemStatus {
+                options: SystemStatusOptions::default(),
                 output: OutputFormat::Text,
             },
         ];

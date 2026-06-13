@@ -61,8 +61,6 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
         | Command::Simulate { .. }
         | Command::BenchRun { .. }
         | Command::AgentContext { .. }
-        | Command::Status { .. }
-        | Command::SystemStatus { .. }
         | Command::ActionList { .. }
         | Command::ActionInspect { .. }
         | Command::Help
@@ -81,7 +79,9 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
         | Command::Diff { .. }
         | Command::Incident { .. }
         | Command::Cancel { .. }
-        | Command::AiContext { .. } => CommandMode::Storage,
+        | Command::AiContext { .. }
+        | Command::Status { .. }
+        | Command::SystemStatus { .. } => CommandMode::Storage,
         Command::IpcServe { .. } => CommandMode::Runtime,
     }
 }

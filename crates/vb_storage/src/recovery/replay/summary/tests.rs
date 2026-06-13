@@ -1,10 +1,11 @@
+use crate::DurableActionOutcome;
 use crate::EventSeq;
 use crate::recovery::replay::summary::*;
 use crate::recovery::types::RecoveryTerminalState;
 use vb_core::replay::SuspensionKind;
 use vb_core::{
-    ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx, StepIdx,
-    Taint, WorkflowDigest,
+    ActionId, ActionTicket, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy,
+    SeqNo, SlotIdx, StepIdx, Taint, WorkflowDigest,
 };
 
 fn fresh_summary() -> RecoveryRuntimeSummary {
@@ -406,7 +407,7 @@ fn event_slot_values_cover_valid_corrupt_and_missing_frame_paths() {
 }
 
 #[test]
-fn unresolved_action_recovers_as_pending_action_supported() {
+fn unresolved_action_recovers_as_pending_action_unsupported() {
     let run = RunId::new(61);
     let events = [JournalEvent::ActionScheduled {
         run,
@@ -418,13 +419,14 @@ fn unresolved_action_recovers_as_pending_action_supported() {
 
     let seed = recover_runtime_frame_seed_from_events(&events);
 
-    // After fix: pending_actions are recovered as a supported state.
+    // Pending actions are recovered into the seed but block full-frame
+    // rehydration: the runtime boundary cannot re-attach them to a live frame.
     // The action remains in pending_actions (it was scheduled but not completed),
-    // but unsupported.pending_actions is FALSE (pending_actions no longer blocks hydration).
+    // and unsupported.pending_actions is TRUE so the runtime rejects the seed.
     assert!(
         matches!(seed, Ok(recovered) if recovered.pending_actions.iter().any(|entry|
             entry.step == StepIdx::new(3) && entry.action == ActionId::new(9)
-        ) && !recovered.unsupported.pending_actions)
+        ) && recovered.unsupported.pending_actions)
     );
 }
 
@@ -590,4 +592,339 @@ fn assert_replay_divergence(error: ReplayError, step: StepIdx, detail: &str) {
         RecoveryError::ReplayDivergence { step: s, detail: d }
             if s == step && d == detail
     ));
+}
+
+// ══ pending_actions_from_events unit tests (vb-av1y0 / P0-5b2) ════════════
+
+/// B1: Happy path — 5 scheduled, 3 completed → 2 pending.
+#[test]
+fn pending_actions_from_events_returns_collected_actions() {
+    let run = RunId::new(100);
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(4),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(5),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(6),
+            step: StepIdx::new(3),
+            action: ActionId::new(4),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(7),
+            step: StepIdx::new(4),
+            action: ActionId::new(5),
+            attempt: 1,
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+
+    assert_eq!(result.len(), 2);
+    let set: std::collections::HashSet<_> = result.into_iter().collect();
+    assert!(set.contains(&crate::recovery::types::RecoveredPendingAction {
+        step: StepIdx::new(3),
+        action: ActionId::new(4),
+    }));
+    assert!(set.contains(&crate::recovery::types::RecoveredPendingAction {
+        step: StepIdx::new(4),
+        action: ActionId::new(5),
+    }));
+}
+
+/// B2: Empty input → empty output.
+#[test]
+fn pending_actions_from_events_empty_input() {
+    let events: Vec<JournalEvent> = vec![];
+    let result = pending_actions_from_events(&events);
+    assert!(result.is_empty());
+}
+
+/// B4: Only terminal events → empty output (no scheduled actions).
+#[test]
+fn pending_actions_from_events_only_terminal_events() {
+    let run = RunId::new(200);
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(0),
+            result: SlotIdx::new(0),
+            attempt: 1,
+        },
+        JournalEvent::RunFailedEvent {
+            run,
+            seq: EventSeq::new(1),
+            attempt: 1,
+        },
+        JournalEvent::RunCancelled {
+            run,
+            seq: EventSeq::new(2),
+            attempt: 1,
+            reason: None,
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+    assert!(result.is_empty());
+}
+
+/// B4: Orphan completed (no matching scheduled) → empty, no panic.
+#[test]
+fn pending_actions_from_events_orphan_completed_event() {
+    let run = RunId::new(201);
+    let events = vec![JournalEvent::ActionCompletedEvent {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(0),
+        action: ActionId::new(99),
+        attempt: 1,
+    }];
+
+    let result = pending_actions_from_events(&events);
+    assert!(result.is_empty());
+}
+
+/// B5: All scheduled, no completed → all pending.
+#[test]
+fn pending_actions_from_events_all_scheduled_no_completed() {
+    let run = RunId::new(202);
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+            attempt: 1,
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+    assert_eq!(result.len(), 3);
+}
+
+/// B6: One scheduled, one completed → empty.
+#[test]
+fn pending_actions_from_events_all_completed_no_pending() {
+    let run = RunId::new(203);
+    let events = vec![
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+    assert!(result.is_empty());
+}
+
+/// B7: Precondition — empty slice returns empty.
+#[test]
+fn pending_actions_from_events_empty_slice_precondition() {
+    let events: Vec<JournalEvent> = vec![];
+    let result = pending_actions_from_events(&events);
+    assert!(result.is_empty());
+}
+
+/// B8: Contract — return length = scheduled - completed.
+#[test]
+fn pending_actions_from_events_length_equals_scheduled_minus_completed() {
+    // Property: for any sequence of ActionScheduled/ActionCompleted events,
+    // the result length equals the set-difference count.
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::ActionScheduled {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+    // 2 scheduled - 1 completed = 1 pending
+    assert_eq!(result.len(), 1);
+}
+
+/// B9: Invariant — pure function, deterministic output.
+#[test]
+fn pending_actions_from_events_is_pure_deterministic() {
+    let run = RunId::new(300);
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+    ];
+
+    let r1 = pending_actions_from_events(&events);
+    let r2 = pending_actions_from_events(&events);
+
+    // Both calls produce the same elements (same HashSet, same iteration)
+    let s1: std::collections::HashSet<_> = r1.into_iter().collect();
+    let s2: std::collections::HashSet<_> = r2.into_iter().collect();
+    assert_eq!(s1, s2, "function must be deterministic (pure)");
+}
+
+/// B10: Ticket variants — ActionScheduledTicket and ActionCompletedEnvelope.
+#[test]
+fn pending_actions_from_events_handles_ticket_variants() {
+    let run = RunId::new(400);
+
+    let ticket1 = ActionTicket {
+        run,
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(10),
+        attempt: 1,
+        idempotency_key: 0xdeadbeef,
+        capacity: 3,
+    };
+    let ticket2 = ActionTicket {
+        run,
+        step: StepIdx::new(1),
+        seq: SeqNo::new(1),
+        action: ActionId::new(11),
+        attempt: 1,
+        idempotency_key: 0xcafebabe,
+        capacity: 3,
+    };
+
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::ActionScheduledTicket {
+            run,
+            seq: EventSeq::new(0),
+            ticket: ticket1.clone(),
+            input: SlotIdx::new(0),
+            output: SlotIdx::new(1),
+        },
+        JournalEvent::ActionScheduledTicket {
+            run,
+            seq: EventSeq::new(1),
+            ticket: ticket2.clone(),
+            input: SlotIdx::new(1),
+            output: SlotIdx::new(2),
+        },
+        JournalEvent::ActionCompletedEnvelope {
+            run,
+            seq: EventSeq::new(2),
+            ticket: ticket1,
+            output: SlotIdx::new(1),
+            outcome: DurableActionOutcome::Ready,
+            value: vec![],
+            encoded_len: 0,
+            taint: Taint::Clean,
+            value_digest: [0u8; 32],
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+    assert_eq!(result.len(), 1);
+    let set: std::collections::HashSet<_> = result.into_iter().collect();
+    assert!(set.contains(&crate::recovery::types::RecoveredPendingAction {
+        step: StepIdx::new(1),
+        action: ActionId::new(11),
+    }));
 }

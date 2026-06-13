@@ -376,6 +376,15 @@ impl Runtime {
         let run = seed.summary.run;
         let slot_count = seed.slot_count;
         let pc = seed.pc;
+        // Persist a snapshot of the recovered seed so future recoveries can
+        // short-circuit full event replay via `recover_snapshot_plus_tail`.
+        // This is the only caller of the production snapshot write API.
+        if let Some(fjall_journal) = journal.storage_journal()
+            && seed.unsupported.is_fully_supported()
+        {
+            vb_storage::recovery::write_recovered_snapshot(fjall_journal.as_ref(), &seed)
+                .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
+        }
         let frame = Self::hydrate_frame(seed)?;
         let pending_timer = Self::recover_timer_from_journal(journal, run, pc)?;
         Self::rehydrate_run_state(self, run, frame, slot_count, pending_timer)?;

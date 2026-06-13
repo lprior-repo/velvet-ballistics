@@ -474,3 +474,9 @@ mod tests;
 #[cfg(test)]
 #[path = "../tests/do_choose_digest_unit_tests.rs"]
 mod do_choose_digest_tests;
+
+// Unit tests for Save digest field sensitivity.
+// Mutation-resistant tests proving the Save arm hashes the value field.
+#[cfg(test)]
+#[path = "../tests/save_digest_unit_tests.rs"]
+mod save_digest_tests;

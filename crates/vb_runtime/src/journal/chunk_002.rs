@@ -314,6 +314,35 @@ impl RuntimeJournal for StorageRuntimeJournal {
         Ok(())
     }
 
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        seq_start: EventSeq,
+    ) -> RuntimeResult<()> {
+        // P2-14a storage-batch: commit the events and their per-event action
+        // index markers atomically via a single `JournalWriteBatch::commit`.
+        //
+        // Invariant: either ALL events in the batch are visible after this
+        // call returns, or NONE are. The same applies to the action index
+        // markers staged for `ActionScheduledTicket` events.
+        if events.is_empty() {
+            return Ok(());
+        }
+
+        let mut batch = self.journal.batch();
+        for (offset, event) in events.iter().enumerate() {
+            let offset_u64 = u64::try_from(offset).map_err(|_| RuntimeError::EncodeFailed)?;
+            let seq = EventSeq::new(seq_start.get().saturating_add(offset_u64));
+            let storage_event = Self::storage_event(event.clone(), seq)?;
+            batch.append_event(&storage_event)?;
+            if let RuntimeJournalEvent::ActionScheduledTicket { ticket, .. } = event {
+                batch.put_action_index(ticket.action, ticket.run, ticket.step)?;
+            }
+        }
+        batch.commit().map_err(RuntimeError::from)?;
+        Ok(())
+    }
+
     fn probe(&self) -> RuntimeResult<()> {
         Ok(())
     }

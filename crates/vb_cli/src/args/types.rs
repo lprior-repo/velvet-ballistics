@@ -232,19 +232,27 @@ pub(crate) enum DiffMode {
 pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, system, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
 
 /// Optional diagnostic status values used when no live runtime handle exists.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct StatusOptions {
     pub(crate) active_runs: Option<usize>,
     pub(crate) queue_depth: Option<usize>,
     pub(crate) trace_dropped: Option<u64>,
+    /// Path to a Fjall journal to probe. When `Some`, `build_status` opens the
+    /// journal and derives live state. When `None`, status reports a transient
+    /// shard view with no live storage attachment.
+    pub(crate) db: Option<PathBuf>,
     pub(crate) emit_yaml: bool,
 }
 
 /// System-status probe depth and runtime selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SystemStatusOptions {
     pub(crate) profile: VerifyProfile,
     pub(crate) server: DurabilityMode,
+    /// Path to a Fjall journal to probe. When `Some`, the system-status
+    /// command opens the journal and reports live storage health. When `None`,
+    /// the command reports the bounded no-backend state.
+    pub(crate) db: Option<PathBuf>,
     pub(crate) emit_yaml: bool,
 }
 
@@ -253,6 +261,7 @@ impl Default for SystemStatusOptions {
         Self {
             profile: VerifyProfile::Standard,
             server: DurabilityMode::None,
+            db: None,
             emit_yaml: false,
         }
     }

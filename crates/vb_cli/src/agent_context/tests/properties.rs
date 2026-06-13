@@ -206,13 +206,13 @@ proptest! {
     }
 
     #[test]
-    fn prop_build_commands_count_is_22(version in "\\PC*") {
+    fn prop_build_commands_count_is_29(version in "\\PC*") {
         let result = build(&version);
         let commands = result
             .get("commands")
             .and_then(serde_json::Value::as_object)
             .expect("commands must be an object");
-        prop_assert_eq!(commands.len(), 22);
+        prop_assert_eq!(commands.len(), 29);
     }
 
     #[test]

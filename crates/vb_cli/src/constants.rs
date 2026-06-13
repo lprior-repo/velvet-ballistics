@@ -39,8 +39,8 @@ commands:
   help                                                Print this message
   version                                             Print version
   agent-context [--deliver stdout|file:<path>]       Emit or deliver versioned AI-agent CLI schema
-  status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--emit text|yaml]  Report runtime shard status
-  system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]  Report bounded system health
+  status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--db <path>] [--emit text|yaml]  Report runtime shard status (with live Fjall probe when --db is supplied)
+  system status [--profile <quick|standard|full>] [--server none] [--db <path>] [--emit text|yaml]  Report bounded system health (probes Fjall when --db is supplied)
   action list [--emit text|yaml|postcard]                       List registered action contracts
   action inspect <action-name> [--emit text|yaml|postcard]       Show one registered action contract
 

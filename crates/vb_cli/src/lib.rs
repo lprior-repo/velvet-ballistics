@@ -58,6 +58,7 @@ pub mod run;
 pub mod run_compiled;
 pub mod run_compiled_runtime;
 pub mod run_compiled_runtime_trace;
+pub(crate) mod run_id;
 pub mod run_ops;
 pub mod run_step;
 pub mod semantic_diff;

@@ -73,6 +73,20 @@ pub(crate) fn known_flag_spec(command: &'static str, token: &str) -> Option<Flag
             "--reason" => Some(FlagSpec::Value("--reason")),
             _ => None,
         }),
+        "status" => output_flag_spec(token).or(match token {
+            "--active-runs" => Some(FlagSpec::Value("--active-runs")),
+            "--queue-depth" => Some(FlagSpec::Value("--queue-depth")),
+            "--trace-dropped" => Some(FlagSpec::Value("--trace-dropped")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            _ => None,
+        }),
+        "system" => match token {
+            "--emit" => Some(FlagSpec::Value("--emit")),
+            "--profile" => Some(FlagSpec::Value("--profile")),
+            "--server" => Some(FlagSpec::Value("--server")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            _ => None,
+        },
         "doctor" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
         "answer" => output_flag_spec(token).or(match token {
             "--slot" => Some(FlagSpec::Value("--slot")),

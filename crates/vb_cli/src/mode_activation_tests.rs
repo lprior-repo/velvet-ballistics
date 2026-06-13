@@ -25,7 +25,7 @@ use std::path::PathBuf;
 // Import from the crate — these exist
 use crate::args::{
     ActionName, ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat,
-    ParseError, StatusOptions, VerifyProfile,
+    ParseError, StatusOptions, SystemStatusOptions, VerifyProfile,
 };
 use crate::exit_code::CliExitCode;
 use proptest::prelude::*;
@@ -497,7 +497,7 @@ fn command_mode_all_25_command_variants_are_classified() {
     // Every Command variant must appear in the Mode Activation Matrix.
     // This is a completeness check: no command falls through without classification.
 
-    // Pure commands (11)
+    // Pure commands (8)
     assert_eq!(
         command_mode(&Command::AgentContext { deliver: None }),
         CommandMode::Pure
@@ -559,7 +559,7 @@ fn command_mode_all_25_command_variants_are_classified() {
             options: StatusOptions::default(),
             output: OutputFormat::Text,
         }),
-        CommandMode::Pure
+        CommandMode::Storage
     );
     assert_eq!(
         command_mode(&Command::ActionList {
@@ -578,7 +578,7 @@ fn command_mode_all_25_command_variants_are_classified() {
         CommandMode::Pure
     );
 
-    // Storage commands (14)
+    // Storage commands (16)
     assert_eq!(
         command_mode(&Command::Run {
             workflow: PathBuf::from("w.yaml"),
@@ -758,10 +758,6 @@ fn pure_commands_are_not_storage_nor_runtime_nor_ui() {
             workflow: PathBuf::from("w.yaml"),
             output: OutputFormat::Text,
         },
-        Command::Status {
-            options: StatusOptions::default(),
-            output: OutputFormat::Text,
-        },
     ];
 
     for cmd in pure_commands {
@@ -806,6 +802,14 @@ fn storage_commands_are_not_pure_nor_runtime_nor_ui() {
         },
         Command::Doctor {
             db: Some(PathBuf::from("/tmp/j")),
+            output: OutputFormat::Text,
+        },
+        Command::Status {
+            options: StatusOptions::default(),
+            output: OutputFormat::Text,
+        },
+        Command::SystemStatus {
+            options: SystemStatusOptions::default(),
             output: OutputFormat::Text,
         },
     ];

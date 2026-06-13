@@ -74,6 +74,7 @@ fn reject_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> RuntimeResul
     if seed.unsupported.slot_values
         || seed.unsupported.slot_taint
         || seed.unsupported.action_payloads
+        || seed.unsupported.pending_actions
     {
         Err(RuntimeError::InvalidRecoveryHydration)
     } else {

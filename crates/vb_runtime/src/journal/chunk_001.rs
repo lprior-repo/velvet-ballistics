@@ -223,6 +223,45 @@ pub trait RuntimeJournal: Send + Sync {
         self.append(event)
     }
 
+    /// Appends a slice of lifecycle events atomically with a single durability
+    /// commit.
+    ///
+    /// The default implementation calls [`append_sequenced`](Self::append_sequenced)
+    /// for each event in order. **This default is NOT atomic across events**:
+    /// if the implementation supports cross-keyspace atomicity (e.g.,
+    /// `StorageRuntimeJournal` backed by a `JournalWriteBatch`), it MUST
+    /// override this method to commit all events as a single unit.
+    ///
+    /// Contracts:
+    /// - `events.is_empty()` MUST return `Ok(())` without committing.
+    /// - The first event is assigned `seq_start`, the next `seq_start + 1`, etc.
+    /// - On success, all events and their per-event index markers are visible
+    ///   in the journal atomically.
+    /// - On failure, NO events from the batch are visible in the journal.
+    /// - The behavior is deterministic: a given `events` slice with a given
+    ///   `seq_start` always produces the same journal state.
+    ///
+    /// This method is the P2-14a `storage-batch` extension; it exists so the
+    /// runtime can persist a coalesced batch of events and their per-event
+    /// action index markers in a single Fjall WAL fsync.
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        seq_start: EventSeq,
+    ) -> RuntimeResult<()> {
+        // Default implementation: loop over the single-event path. This
+        // preserves backward compatibility for any external implementer of
+        // `RuntimeJournal` and matches the pre-P2-14a behavior for the
+        // `QueuedStorageRuntimeJournal` (which uses an in-memory queue; the
+        // queue's own flush batch provides cross-event atomicity downstream).
+        for (offset, event) in events.iter().enumerate() {
+            let offset_u64 = u64::try_from(offset).map_err(|_| RuntimeError::EncodeFailed)?;
+            let seq = EventSeq::new(seq_start.get().saturating_add(offset_u64));
+            self.append_sequenced(event.clone(), seq)?;
+        }
+        Ok(())
+    }
+
     /// Probes journal health without side effects.
     /// Returns `JournalPoisoned` if the underlying storage is unavailable.
     fn probe(&self) -> RuntimeResult<()>;

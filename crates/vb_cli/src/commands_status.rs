@@ -2,12 +2,25 @@
 #![forbid(unsafe_code)]
 
 use vb_runtime::shard::{Shard, ShardConfig, ShardHealth, ShardStatus};
+use vb_storage::records::{KnownRunHeaderStatus, RunHeaderStatusClass};
 
 use crate::args::{OutputFormat, StatusOptions};
 use crate::cli_envelope;
 
-/// Serializable status view for CLI output.
+/// Probe outcome that drives the `db_probe_status` field on `CliStatus`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DbProbeStatus {
+    /// No `--db` was supplied; the snapshot is derived from a transient shard.
+    NotRequested,
+    /// `--db` was supplied and the journal opened; live state is reported.
+    Live,
+    /// `--db` was supplied but the journal could not be opened; the snapshot
+    /// is derived from a transient shard with a diagnostic reason attached.
+    Fallback,
+}
+
+/// Serializable status view for CLI output.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CliStatus {
     pub(crate) health: &'static str,
     pub(crate) running: bool,
@@ -20,19 +33,103 @@ pub(crate) struct CliStatus {
     pub(crate) trace_dropped: u64,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) runtime_policy: &'static str,
+    /// Live-storage probe outcome. Only meaningful when `--db` is supplied.
+    pub(crate) db_probe_status: DbProbeStatus,
+    /// Diagnostic reason when `db_probe_status` is `Fallback`. Empty otherwise.
+    pub(crate) db_probe_reason: String,
 }
 
-/// Builds a status snapshot from a transient shard. Optional values are diagnostic overlays for
-/// no-runtime smoke tests and do not mutate a shard.
+/// Builds a status snapshot.
+///
+/// When `options.db` is `Some(path)`, the journal is opened and live storage
+/// state (active run count, pending queue depth) is read from it. When the
+/// open fails, the snapshot falls back to a transient shard view with a
+/// non-empty `db_probe_reason` so operators can see the difference between
+/// "no backend" and "backend could not be probed".
+///
+/// When `options.db` is `None`, the snapshot is derived from a fresh
+/// in-memory `Shard` (no storage attachment).
 #[must_use]
 pub(crate) fn build_status(options: StatusOptions) -> CliStatus {
+    match options.db.as_deref() {
+        Some(path) => build_status_with_journal(path),
+        None => build_status_transient(options),
+    }
+}
+
+fn build_status_transient(options: StatusOptions) -> CliStatus {
     let shard = Shard::new(ShardConfig::default());
     let status = shard.status();
-    from_shard_status(status, options)
+    from_shard_status(status, options, DbProbeStatus::NotRequested, String::new())
+}
+
+fn build_status_with_journal(path: &std::path::Path) -> CliStatus {
+    match vb_storage::FjallJournal::open(path, None) {
+        Ok(journal) => {
+            let (active_runs, pending_runs) = match journal.run_headers() {
+                Ok(headers) => {
+                    let mut active = 0_usize;
+                    let mut pending = 0_usize;
+                    for header in &headers {
+                        match header.run_header_status().classify() {
+                            vb_storage::records::RunHeaderStatusClass::Known(
+                                KnownRunHeaderStatus::Pending,
+                            )
+                            | vb_storage::records::RunHeaderStatusClass::Known(
+                                KnownRunHeaderStatus::Accepted,
+                            ) => {
+                                pending = pending.saturating_add(1);
+                            }
+                            vb_storage::records::RunHeaderStatusClass::Known(
+                                KnownRunHeaderStatus::Active,
+                            ) => {
+                                active = active.saturating_add(1);
+                            }
+                            // Finished and any future-known status are
+                            // counted as "not active, not pending".
+                            vb_storage::records::RunHeaderStatusClass::Known(_) => {}
+                            vb_storage::records::RunHeaderStatusClass::Unknown(_) => {}
+                        }
+                    }
+                    (active, pending)
+                }
+                Err(_) => (0, 0),
+            };
+            let shard = Shard::new(ShardConfig::default());
+            let status = shard.status();
+            // Build a status that overlays the live counters on top of the
+            // transient-shard defaults; the transient shard supplies the
+            // capacity / runtime policy / trace numbers that are not journal
+            // state.
+            let options = StatusOptions {
+                active_runs: Some(active_runs),
+                queue_depth: Some(pending_runs),
+                db: None,
+                ..StatusOptions::default()
+            };
+            from_shard_status(status, options, DbProbeStatus::Live, String::new())
+        }
+        Err(error) => {
+            let shard = Shard::new(ShardConfig::default());
+            let status = shard.status();
+            let reason = format!("journal open at {} failed: {error}", path.display());
+            from_shard_status(
+                status,
+                StatusOptions::default(),
+                DbProbeStatus::Fallback,
+                reason,
+            )
+        }
+    }
 }
 
 #[must_use]
-fn from_shard_status(status: ShardStatus, options: StatusOptions) -> CliStatus {
+fn from_shard_status(
+    status: ShardStatus,
+    options: StatusOptions,
+    db_probe_status: DbProbeStatus,
+    db_probe_reason: String,
+) -> CliStatus {
     CliStatus {
         health: health_name(status.health),
         running: status.running,
@@ -54,6 +151,8 @@ fn from_shard_status(status: ShardStatus, options: StatusOptions) -> CliStatus {
         },
         step_budget_per_tick: status.step_budget_per_tick,
         runtime_policy: policy_name(status.runtime_policy),
+        db_probe_status,
+        db_probe_reason,
     }
 }
 
@@ -73,6 +172,15 @@ fn policy_name(policy: vb_core::policy::RuntimePolicy) -> &'static str {
         vb_core::policy::RuntimePolicy::Journaled => "Journaled",
         vb_core::policy::RuntimePolicy::Relaxed => "Relaxed",
         _ => "unknown",
+    }
+}
+
+#[must_use]
+fn db_probe_status_name(status: DbProbeStatus) -> &'static str {
+    match status {
+        DbProbeStatus::NotRequested => "not_requested",
+        DbProbeStatus::Live => "live",
+        DbProbeStatus::Fallback => "fallback",
     }
 }
 
@@ -117,7 +225,18 @@ fn print_status_yaml(status: &CliStatus) -> Result<(), crate::OutputError> {
         "step_budget_per_tick: {}",
         status.step_budget_per_tick
     ))?;
-    crate::write_stdout_line_checked(format_args!("runtime_policy: {}", status.runtime_policy))
+    crate::write_stdout_line_checked(format_args!("runtime_policy: {}", status.runtime_policy))?;
+    crate::write_stdout_line_checked(format_args!(
+        "db_probe: {}",
+        db_probe_status_name(status.db_probe_status)
+    ))?;
+    if !status.db_probe_reason.is_empty() {
+        crate::write_stdout_line_checked(format_args!(
+            "db_probe_reason: {}",
+            status.db_probe_reason
+        ))?;
+    }
+    Ok(())
 }
 
 fn print_text(status: &CliStatus) {
@@ -141,6 +260,13 @@ fn print_text(status: &CliStatus) {
         status.step_budget_per_tick
     ));
     crate::write_stdout_line(format_args!("RuntimePolicy: {}", status.runtime_policy));
+    crate::write_stdout_line(format_args!(
+        "db_probe: {}",
+        db_probe_status_name(status.db_probe_status)
+    ));
+    if !status.db_probe_reason.is_empty() {
+        crate::write_stdout_line(format_args!("db_probe_reason: {}", status.db_probe_reason));
+    }
 }
 
 fn print_json(status: &CliStatus, output: OutputFormat) -> Result<(), crate::OutputError> {
@@ -161,7 +287,9 @@ fn print_json(status: &CliStatus, output: OutputFormat) -> Result<(), crate::Out
             "dropped": status.trace_dropped
         },
         "step_budget_per_tick": status.step_budget_per_tick,
-        "runtime_policy": status.runtime_policy
+        "runtime_policy": status.runtime_policy,
+        "db_probe": db_probe_status_name(status.db_probe_status),
+        "db_probe_reason": status.db_probe_reason,
     });
     let envelope =
         crate::cli_envelope::serialize_with_version(&payload, crate::cli_envelope::Kind::CliStatus);
@@ -171,6 +299,45 @@ fn print_json(status: &CliStatus, output: OutputFormat) -> Result<(), crate::Out
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::{RunId, WorkflowDigest, WorkflowId};
+    use vb_storage::records::{KnownRunHeaderStatus, RunHeaderRecord, RunHeaderStatus};
+
+    fn make_header(run: u64, status: RunHeaderStatus) -> RunHeaderRecord {
+        RunHeaderRecord {
+            run: RunId::new(run),
+            workflow_id: WorkflowId::new(1),
+            compiled_digest: WorkflowDigest::from_bytes([0xAB; 32]),
+            status: status.as_byte(),
+            accepted_at_ms: 1_000,
+        }
+    }
+
+    fn temp_journal() -> (tempfile::TempDir, std::path::PathBuf) {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let path = temp.path().to_path_buf();
+        let mut journal =
+            vb_storage::FjallJournal::open(&path, None).expect("journal open should succeed");
+        // Mix of pending, active, and finished runs to exercise every branch.
+        journal
+            .put_run_header(&make_header(1, RunHeaderStatus::PENDING))
+            .expect("header 1 should store");
+        journal
+            .put_run_header(&make_header(2, RunHeaderStatus::ACCEPTED))
+            .expect("header 2 should store");
+        journal
+            .put_run_header(&make_header(3, RunHeaderStatus::ACTIVE))
+            .expect("header 3 should store");
+        journal
+            .put_run_header(&make_header(4, RunHeaderStatus::FINISHED))
+            .expect("header 4 should store");
+        // 5 is intentionally an unknown status byte (255) to exercise
+        // the classify() "Err" branch.
+        journal
+            .put_run_header(&make_header(5, RunHeaderStatus::from_byte(255)))
+            .expect("header 5 should store");
+        journal.close().expect("close should succeed");
+        (temp, path)
+    }
 
     #[test]
     fn build_status_reports_default_no_runtime_shard() {
@@ -186,6 +353,8 @@ mod tests {
         assert_eq!(status.trace_dropped, 0);
         assert_eq!(status.step_budget_per_tick, 1000);
         assert_eq!(status.runtime_policy, "Strict");
+        assert_eq!(status.db_probe_status, DbProbeStatus::NotRequested);
+        assert!(status.db_probe_reason.is_empty());
     }
 
     #[test]
@@ -194,11 +363,13 @@ mod tests {
             active_runs: Some(5),
             queue_depth: Some(3),
             trace_dropped: Some(0),
+            db: None,
             emit_yaml: false,
         });
         assert_eq!(status.active_runs, 5);
         assert_eq!(status.command_queue_depth, 3);
         assert_eq!(status.trace_dropped, 0);
+        assert_eq!(status.db_probe_status, DbProbeStatus::NotRequested);
     }
 
     #[test]
@@ -207,10 +378,82 @@ mod tests {
             active_runs: Some(2048),
             queue_depth: Some(2048),
             trace_dropped: Some(7),
+            db: None,
             emit_yaml: false,
         });
         assert_eq!(status.active_runs, 2048);
         assert_eq!(status.command_queue_depth, 2048);
         assert_eq!(status.trace_dropped, 7);
+    }
+
+    #[test]
+    fn build_status_probes_journal_when_db_is_provided() {
+        let (_temp, path) = temp_journal();
+        let status = build_status(StatusOptions {
+            db: Some(path),
+            ..StatusOptions::default()
+        });
+        assert_eq!(status.db_probe_status, DbProbeStatus::Live);
+        assert!(status.db_probe_reason.is_empty());
+        // 1 pending + 1 accepted = 2 queued; 1 active.
+        assert_eq!(status.command_queue_depth, 2);
+        assert_eq!(status.active_runs, 1);
+    }
+
+    #[test]
+    fn build_status_reports_fallback_when_journal_open_fails() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        // Create a regular file at the candidate path; Fjall requires a
+        // directory and will fail to open a file as a journal.
+        let bad_path = temp.path().join("not_a_directory");
+        std::fs::write(&bad_path, b"not a journal").expect("test fixture: file should be written");
+        let status = build_status(StatusOptions {
+            db: Some(bad_path.clone()),
+            ..StatusOptions::default()
+        });
+        assert_eq!(status.db_probe_status, DbProbeStatus::Fallback);
+        assert!(
+            !status.db_probe_reason.is_empty(),
+            "fallback reason must be populated when journal open fails"
+        );
+        assert!(
+            status.db_probe_reason.contains("journal open"),
+            "fallback reason should describe the failure: {0}",
+            status.db_probe_reason
+        );
+        // Active runs fall back to the transient shard default.
+        assert_eq!(status.active_runs, 0);
+        assert_eq!(status.command_queue_depth, 0);
+    }
+
+    #[test]
+    fn db_probe_status_name_returns_stable_labels() {
+        assert_eq!(
+            db_probe_status_name(DbProbeStatus::NotRequested),
+            "not_requested"
+        );
+        assert_eq!(db_probe_status_name(DbProbeStatus::Live), "live");
+        assert_eq!(db_probe_status_name(DbProbeStatus::Fallback), "fallback");
+    }
+
+    #[test]
+    fn run_header_status_known_classification_matches_status_byte() {
+        // Pin the status-byte mapping that the live probe depends on.
+        assert!(matches!(
+            KnownRunHeaderStatus::try_from(RunHeaderStatus::PENDING.as_byte()),
+            Ok(KnownRunHeaderStatus::Pending)
+        ));
+        assert!(matches!(
+            KnownRunHeaderStatus::try_from(RunHeaderStatus::ACCEPTED.as_byte()),
+            Ok(KnownRunHeaderStatus::Accepted)
+        ));
+        assert!(matches!(
+            KnownRunHeaderStatus::try_from(RunHeaderStatus::ACTIVE.as_byte()),
+            Ok(KnownRunHeaderStatus::Active)
+        ));
+        assert!(matches!(
+            KnownRunHeaderStatus::try_from(RunHeaderStatus::FINISHED.as_byte()),
+            Ok(KnownRunHeaderStatus::Finished)
+        ));
     }
 }

@@ -9,9 +9,9 @@ use crate::mod_compile_validation::{
 use saphyr::Yaml;
 use std::collections::HashMap;
 use vb_core::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowDigest,
-    WorkflowError, WorkflowParts,
+    AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
+    ConstValue, ExprIdx, ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx,
+    WorkflowDigest, WorkflowError, WorkflowParts,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -92,6 +92,42 @@ pub(super) fn lower_canonical_step(
             step_names.as_ref(),
             builder,
         ),
+        vb_yaml::ast::StepPrimitive::Do { action, input } => {
+            // Do executes an action with an input. The node construction is
+            // delegated to the shared `lower_do` helper in part_05.rs; only
+            // the parse + u16-overflow checks live here. The action overflow
+            // emits `PrimitiveLoweringLimitExceeded` (canonical for action id
+            // range), and the input overflow emits `SlotIndexOutOfRange` (the
+            // standard variant for slot index u16 overflow used by
+            // `slot_from_text`).
+            let action_value = action.parse::<i64>().map_err(|_| {
+                CompileErrors(vec![CompileError::StepFieldShape {
+                    step: index,
+                    field: "do.action",
+                    expected: "integer action id",
+                }])
+            })?;
+            let action_id = u16::try_from(action_value).map_err(|_| {
+                CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                    primitive: "do",
+                    field: "action",
+                    value: integer_error_value(action_value),
+                    limit: usize::from(u16::MAX),
+                }])
+            })?;
+            let input_slot = slot_from_text(input, index, "do.input")?;
+            let output = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
+            let node = lower_do(
+                id,
+                ActionId::new(action_id),
+                input_slot,
+                Some(output),
+                next,
+                builder,
+            );
+            builder.push_node(node);
+            Ok(())
+        }
         other => Err(CompileErrors(vec![
             CompileError::UnsupportedStepPrimitive {
                 step: index,

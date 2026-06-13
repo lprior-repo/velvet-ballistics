@@ -13,11 +13,12 @@ use crate::output::{
 };
 use crate::output_utils::*;
 use crate::run_compiled_runtime::runtime_config_for_durability;
+use crate::run_id::generate_run_id_from_clock;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
@@ -51,7 +52,7 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
     let compile_elapsed = compile_start.elapsed();
 
     let run_start = Instant::now();
-    let run_id = vb_core::RunId::new(1);
+    let run_id = generate_run_id_from_clock();
     let Some(shard_count) = NonZeroUsize::new(1) else {
         if output != OutputFormat::Text {
             json_error(

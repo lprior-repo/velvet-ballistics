@@ -1621,3 +1621,130 @@ fn each_successful_command_appends_exactly_one_event() {
         );
     }
 }
+
+// ============================================================================
+// Group I: lifecycle::retry / lifecycle::resume journal-write behavior
+//
+// These tests cover the gap identified in the test review: the lifecycle
+// functions (the actual side-effecting surface used by cmd_retry / cmd_resume)
+// must write a lifecycle event to the journal. A pre-fix regression where
+// either function was a no-op (returning success but never appending) would
+// be caught by the "any RunRetried/RunResumed event" assertion below.
+//
+// These tests call the public `lifecycle::retry` / `lifecycle::resume`
+// functions directly so the `cmd_*` CLI surface wrappers can stay
+// `pub(crate)` and the test path doesn't need a duplicate `OutputFormat`
+// re-export. The journal is held across the call — the public lifecycle
+// functions do not re-open it, so no `drop(journal)` is required.
+// ============================================================================
+
+/// `lifecycle::retry` must append exactly one `RunRetried` event to the journal.
+///
+/// CONTRACT: when called on a run in `Failed` state, `lifecycle::retry` writes
+/// a `RunRetried` event with seq strictly greater than the prior tail seq.
+#[test]
+fn retry_writes_lifecycle_event_to_journal() {
+    let (_dir, journal) = temp_journal();
+    let run = RunId::new(100);
+
+    // Drive run to Failed state via journal events (no in-memory state).
+    create_run_header(&journal, run);
+    write_failed(&journal, run);
+
+    // Snapshot event count and tail seq before invoking the lifecycle function.
+    let pre_events = journal
+        .events_for_run(run)
+        .expect("events_for_run must succeed");
+    let pre_count = pre_events.len();
+    let pre_max_seq = pre_events.last().map(|e| e.seq().get()).unwrap_or(0);
+
+    // When: lifecycle::retry is invoked directly on the seed journal.
+    let result = vb_cli::lifecycle::retry(run, &journal);
+
+    // Then: the operation succeeded.
+    assert!(
+        result.is_ok(),
+        "lifecycle::retry from Failed state must succeed: {result:?}"
+    );
+
+    // Then: exactly one RunRetried event was appended to the journal.
+    let post_events = journal
+        .events_for_run(run)
+        .expect("events_for_run must succeed");
+    assert_eq!(
+        post_events.len(),
+        pre_count + 1,
+        "lifecycle::retry must append exactly 1 event (pre={pre_count}, post={})",
+        post_events.len()
+    );
+    let new_event = &post_events[post_events.len() - 1];
+    assert!(
+        matches!(new_event, JournalEvent::RunRetried { .. }),
+        "lifecycle::retry must write RunRetried to journal; got={new_event:?}"
+    );
+
+    // Then: the new event's sequence is strictly greater than the prior tail.
+    assert!(
+        new_event.seq().get() > pre_max_seq,
+        "RunRetried seq must advance past pre-call tail (pre_max_seq={pre_max_seq}, new_seq={})",
+        new_event.seq().get()
+    );
+}
+
+/// `lifecycle::resume` must append exactly one `RunResumed` event to the journal.
+///
+/// CONTRACT: when called on a run in a non-terminal resumable state,
+/// `lifecycle::resume` writes a `RunResumed` event with seq strictly greater
+/// than the prior tail seq.
+///
+/// Note: `lifecycle::resume` accepts both `Cancelled` and `WaitingAnswer`,
+/// so this test drives the run to `WaitingAnswer` via `AskScheduledEvent`
+/// to keep parity with the previous `cmd_resume`-driven contract.
+#[test]
+fn resume_writes_lifecycle_event_to_journal() {
+    let (_dir, journal) = temp_journal();
+    let run = RunId::new(101);
+
+    // Drive run to WaitingAnswer state via journal events (no in-memory state).
+    create_run_header(&journal, run);
+    write_waiting_answer(&journal, run);
+
+    // Snapshot event count and tail seq before invoking the lifecycle function.
+    let pre_events = journal
+        .events_for_run(run)
+        .expect("events_for_run must succeed");
+    let pre_count = pre_events.len();
+    let pre_max_seq = pre_events.last().map(|e| e.seq().get()).unwrap_or(0);
+
+    // When: lifecycle::resume is invoked directly on the seed journal.
+    let result = vb_cli::lifecycle::resume(run, &journal);
+
+    // Then: the operation succeeded.
+    assert!(
+        result.is_ok(),
+        "lifecycle::resume from WaitingAnswer state must succeed: {result:?}"
+    );
+
+    // Then: exactly one RunResumed event was appended to the journal.
+    let post_events = journal
+        .events_for_run(run)
+        .expect("events_for_run must succeed");
+    assert_eq!(
+        post_events.len(),
+        pre_count + 1,
+        "lifecycle::resume must append exactly 1 event (pre={pre_count}, post={})",
+        post_events.len()
+    );
+    let new_event = &post_events[post_events.len() - 1];
+    assert!(
+        matches!(new_event, JournalEvent::RunResumed { .. }),
+        "lifecycle::resume must write RunResumed to journal; got={new_event:?}"
+    );
+
+    // Then: the new event's sequence is strictly greater than the prior tail.
+    assert!(
+        new_event.seq().get() > pre_max_seq,
+        "RunResumed seq must advance past pre-call tail (pre_max_seq={pre_max_seq}, new_seq={})",
+        new_event.seq().get()
+    );
+}

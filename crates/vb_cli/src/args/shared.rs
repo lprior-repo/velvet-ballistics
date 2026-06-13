@@ -114,6 +114,8 @@ fn command_flag_spec_name(command: Option<&str>) -> &'static str {
         Some("answer") => "answer",
         Some("diff") => "diff",
         Some("submit") => "submit",
+        Some("status") => "status",
+        Some("system") => "system",
         _ => "fake",
     }
 }

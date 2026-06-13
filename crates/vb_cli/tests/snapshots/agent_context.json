@@ -38,11 +38,63 @@
   ],
   "cli": "velvet-ballistics",
   "commands": {
+    "action-inspect": {
+      "flags": {
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
+      },
+      "positionals": [
+        "action"
+      ],
+      "summary": "Inspect an action contract."
+    },
+    "action-list": {
+      "flags": {
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
+      },
+      "summary": "List registered actions."
+    },
     "agent-context": {
       "outputs": [
         "json"
       ],
       "summary": "Emit this versioned machine-readable CLI schema."
+    },
+    "ai-context": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Emit machine-readable per-run context."
     },
     "answer": {
       "flags": {
@@ -232,6 +284,20 @@
         "workflow.yaml"
       ],
       "summary": "Output the control-flow graph."
+    },
+    "help": {
+      "flags": {
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
+      },
+      "summary": "Print CLI help."
     },
     "incident": {
       "flags": {
@@ -432,6 +498,24 @@
       ],
       "summary": "Dry-run a workflow without executing actions."
     },
+    "status": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        }
+      },
+      "summary": "Runtime status snapshot."
+    },
     "submit": {
       "flags": {
         "--db": {
@@ -465,6 +549,38 @@
         "workflow.yaml"
       ],
       "summary": "Submit a workflow run to durable storage."
+    },
+    "system-status": {
+      "flags": {
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
+        "--profile": {
+          "default": "standard",
+          "type": "enum",
+          "values": [
+            "quick",
+            "standard",
+            "full"
+          ]
+        },
+        "--server": {
+          "default": "none",
+          "type": "enum",
+          "values": [
+            "strict",
+            "journaled",
+            "none"
+          ]
+        }
+      },
+      "summary": "System status (storage + runtime backend)."
     },
     "trace": {
       "flags": {
@@ -503,6 +619,12 @@
         "workflow.yaml"
       ],
       "summary": "Validate a workflow definition."
+    },
+    "version": {
+      "outputs": [
+        "text"
+      ],
+      "summary": "Print CLI version."
     },
     "verify": {
       "flags": {

@@ -206,6 +206,48 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
 }
 
 #[test]
+fn durable_frame_recovery_boundary_rejects_unsupported_pending_actions() {
+    let summary = RecoveryRuntimeSummary {
+        run: RunId::new(24),
+        first_seq: EventSeq::new(0),
+        last_seq: EventSeq::new(1),
+        workflow: None,
+        steps_started: 1,
+        steps_succeeded: 0,
+        actions_scheduled: 1,
+        actions_resolved: 0,
+        suspensions: 0,
+        slots_written: 0,
+        terminal: None,
+    };
+    let seed = RecoveryFrameSeed {
+        summary,
+        first_step: StepIdx::ZERO,
+        step_count: 1,
+        slot_count: 0,
+        pc: StepIdx::ZERO,
+        steps: vec![RecoveredStepEntry {
+            step: StepIdx::ZERO,
+            state: RecoveredStepState::Running,
+        }],
+        slots: Vec::new(),
+        pending_actions: Vec::new(),
+        unsupported: UnsupportedRecoveryState {
+            slot_values: false,
+            slot_taint: false,
+            action_payloads: false,
+            pending_actions: true,
+        },
+    };
+    let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+
+    assert_eq!(
+        boundary.hydrate_run_frame(),
+        Err(RuntimeError::InvalidRecoveryHydration)
+    );
+}
+
+#[test]
 fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), String> {
     let run = RunId::new(22);
     let summary = RecoveryRuntimeSummary {

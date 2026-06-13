@@ -209,6 +209,52 @@ fn assert_absent_run_exit_2(args: &[&std::ffi::OsStr], command: &str, run_id: &s
     stderr_contains_no_panic_text(&stderr);
 }
 
+/// Extracts the actual `RunId` from a `run` command's text-mode stdout.
+///
+/// The text format emitted by `cmd_run` is:
+///
+/// ```text
+/// run {id}: submitted=<n> completed=<n> failed=<n> steps=<n>
+///   trace: StepStarted step=0
+///   ...
+/// run completed
+/// ```
+///
+/// The first non-empty line always carries the run id in the form
+/// `run <id>: ...`, so we split on the prefix and the colon. The id is
+/// returned as the decimal string that the operator can pass back to
+/// `events`, `inspect`, `replay`, `diff`, `ai-context`, and friends.
+///
+/// `cmd_run` (and friends) now generate a unique nanosecond `RunId` per
+/// invocation, so callers that previously hardcoded `"1"` after a
+/// successful `run` must thread the captured id through every subsequent
+/// CLI call.
+fn extract_run_id_from_run_text_output(output: &std::process::Output, command: &str) -> String {
+    let stdout = output_stdout(output);
+    let first_line = match stdout.lines().find(|line| !line.trim().is_empty()) {
+        Some(line) => line,
+        None => panic!("{command} emitted empty stdout; cannot extract run id: {stdout}"),
+    };
+    let after_prefix = match first_line.strip_prefix("run ") {
+        Some(rest) => rest,
+        None => panic!(
+            "{command} stdout first line missing 'run ' prefix: {first_line:?}; full stdout: {stdout}"
+        ),
+    };
+    let id_part = match after_prefix.split(':').next() {
+        Some(id) => id.trim(),
+        None => {
+            panic!("{command} stdout first line missing run id separator: {first_line:?}")
+        }
+    };
+    if id_part.is_empty() {
+        panic!(
+            "{command} stdout first line has empty run id: {first_line:?}; full stdout: {stdout}"
+        );
+    }
+    id_part.to_string()
+}
+
 fn assert_storage_error_contains(args: &[&std::ffi::OsStr], command: &str, diagnostic: &str) {
     let output = match run_cli(args) {
         Some(output) => output,
@@ -1647,17 +1693,19 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
         run_stdout.contains("run completed"),
         "run stdout should report completion: {run_stdout}"
     );
+    let run_id =
+        extract_run_id_from_run_text_output(&run_output, "run --durability journaled --db");
 
     let events_output = match run_cli(&[
         std::ffi::OsStr::new("events"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&events_output, "events 1 --db");
+    assert_cli_success(&events_output, "events <run_id> --db");
     let events_stdout = output_stdout(&events_output);
     assert!(
         events_stdout.contains("RunAccepted"),
@@ -1674,14 +1722,14 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
 
     let inspect_output = match run_cli(&[
         std::ffi::OsStr::new("inspect"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&inspect_output, "inspect 1 --db");
+    assert_cli_success(&inspect_output, "inspect <run_id> --db");
     let inspect_stdout = output_stdout(&inspect_output);
     assert!(
         inspect_stdout.contains("status=finished"),
@@ -1722,10 +1770,12 @@ fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
         None => return,
     };
     assert_cli_success(&run_output, "run --durability journaled --db");
+    let run_id =
+        extract_run_id_from_run_text_output(&run_output, "run --durability journaled --db");
 
     let context_output = match run_cli(&[
         std::ffi::OsStr::new("ai-context"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--json"),
@@ -1733,7 +1783,7 @@ fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&context_output, "ai-context 1 --json");
+    assert_cli_success(&context_output, "ai-context <run_id> --json");
     let stdout = output_stdout(&context_output);
     let packet: serde_json::Value = match serde_json::from_str(&stdout) {
         Ok(packet) => packet,
@@ -1794,22 +1844,25 @@ fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
             return;
         }
     };
+    let inspect_fragment = format!("inspect {run_id} --db");
+    let events_fragment = format!("events {run_id} --db");
+    let replay_fragment = format!("replay {run_id} --db");
     assert!(
         suggestions.iter().any(|value| value
             .as_str()
-            .is_some_and(|command| command.contains("inspect 1 --db"))),
+            .is_some_and(|command| command.contains(&inspect_fragment))),
         "finished run should suggest inspect: {packet}"
     );
     assert!(
         suggestions.iter().any(|value| value
             .as_str()
-            .is_some_and(|command| command.contains("events 1 --db"))),
+            .is_some_and(|command| command.contains(&events_fragment))),
         "finished run should suggest events: {packet}"
     );
     assert!(
         suggestions.iter().any(|value| value
             .as_str()
-            .is_some_and(|command| command.contains("replay 1 --db"))),
+            .is_some_and(|command| command.contains(&replay_fragment))),
         "finished run should suggest replay: {packet}"
     );
     let rendered = packet.to_string();
@@ -2478,10 +2531,11 @@ fn cli_run_strict_durability_writes_journal_events() {
         stdout.contains("run completed"),
         "strict run should complete: {stdout}"
     );
+    let run_id = extract_run_id_from_run_text_output(&run_output, "run --durability strict");
 
     let events_output = match run_cli(&[
         std::ffi::OsStr::new("events"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
     ]) {
@@ -2579,17 +2633,18 @@ fn cli_inspect_compiled_run_shows_status_and_event_count() {
         None => return,
     };
     assert_cli_success(&run_output, "run for inspect setup");
+    let run_id = extract_run_id_from_run_text_output(&run_output, "run for inspect setup");
 
     let inspect_output = match run_cli(&[
         std::ffi::OsStr::new("inspect"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&inspect_output, "inspect 1");
+    assert_cli_success(&inspect_output, "inspect <run_id>");
     let stdout = output_stdout(&inspect_output);
     assert!(
         stdout.contains("status=finished"),
@@ -3667,10 +3722,20 @@ fn cli_help_is_bounded_and_non_interactive() {
         "help should list commands: {stdout}"
     );
     assert!(
-        stdout.contains(
-            "system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]"
-        ),
+        stdout.contains("system status"),
         "help should list canonical system status command: {stdout}"
+    );
+    assert!(
+        stdout.contains("[--profile <quick|standard|full>]"),
+        "help should document the --profile flag for system status: {stdout}"
+    );
+    assert!(
+        stdout.contains("[--server none]"),
+        "help should document the --server flag for system status: {stdout}"
+    );
+    assert!(
+        stdout.contains("[--db <path>]"),
+        "help should document the --db flag for system status (live probe): {stdout}"
     );
     assert!(
         stdout.len() <= 8192,
@@ -3940,10 +4005,11 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
     ])
     .expect("run setup for emit yaml must run");
     assert_cli_success(&run_output, "run setup for emit yaml");
+    let run_id = extract_run_id_from_run_text_output(&run_output, "run setup for emit yaml");
 
     let events_output = run_cli(&[
         std::ffi::OsStr::new("events"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -3968,7 +4034,7 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
 
     let trace_output = run_cli(&[
         std::ffi::OsStr::new("trace"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -3983,7 +4049,7 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
 
     let replay_output = run_cli(&[
         std::ffi::OsStr::new("replay"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4004,8 +4070,8 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
 
     let diff_output = run_cli(&[
         std::ffi::OsStr::new("diff"),
-        std::ffi::OsStr::new("1"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4016,8 +4082,8 @@ fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
     assert_eq!(output_stderr(&diff_output), "");
     let diff = parse_yaml_stdout(&diff_output, "diff --emit yaml");
     assert_eq!(diff.get("kind"), Some(&serde_json::json!("diff_report")));
-    assert_eq!(diff.get("run_a"), Some(&serde_json::json!("1")));
-    assert_eq!(diff.get("run_b"), Some(&serde_json::json!("1")));
+    assert_eq!(diff.get("run_a"), Some(&serde_json::json!(run_id.as_str())));
+    assert_eq!(diff.get("run_b"), Some(&serde_json::json!(run_id.as_str())));
     assert_eq!(diff.get("total_differences"), Some(&serde_json::json!(0)));
     assert_eq!(diff.get("diffs"), Some(&serde_json::json!([])));
 }
@@ -4090,10 +4156,11 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
     ])
     .expect("run setup for emit postcard must run");
     assert_cli_success(&run_output, "run setup for emit postcard");
+    let run_id = extract_run_id_from_run_text_output(&run_output, "run setup for emit postcard");
 
     let events_output = run_cli(&[
         std::ffi::OsStr::new("events"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4110,7 +4177,7 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
 
     let trace_output = run_cli(&[
         std::ffi::OsStr::new("trace"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4127,7 +4194,7 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
 
     let replay_output = run_cli(&[
         std::ffi::OsStr::new("replay"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4150,8 +4217,8 @@ fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
 
     let diff_output = run_cli(&[
         std::ffi::OsStr::new("diff"),
-        std::ffi::OsStr::new("1"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4658,17 +4725,18 @@ fn cli_replay_journaled_run_produces_deterministic_output() {
         None => return,
     };
     assert_cli_success(&run_output, "run setup for replay test");
+    let run_id = extract_run_id_from_run_text_output(&run_output, "run setup for replay test");
 
     let replay_output = match run_cli(&[
         std::ffi::OsStr::new("replay"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
     ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&replay_output, "replay 1 --db");
+    assert_cli_success(&replay_output, "replay <run_id> --db");
     let stdout = output_stdout(&replay_output);
     assert!(
         stdout.contains("recovered"),
@@ -4713,11 +4781,12 @@ fn cli_diff_identical_runs_reports_zero_differences() {
         None => return,
     };
     assert_cli_success(&run_output, "run setup for diff test");
+    let run_id = extract_run_id_from_run_text_output(&run_output, "run setup for diff test");
 
     let diff_output = match run_cli(&[
         std::ffi::OsStr::new("diff"),
-        std::ffi::OsStr::new("1"),
-        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new(&run_id),
+        std::ffi::OsStr::new(&run_id),
         std::ffi::OsStr::new("--db"),
         db_path.as_os_str(),
         std::ffi::OsStr::new("--emit"),
@@ -4726,12 +4795,12 @@ fn cli_diff_identical_runs_reports_zero_differences() {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&diff_output, "diff 1 1 --db");
+    assert_cli_success(&diff_output, "diff <run_id> <run_id> --db");
     assert_eq!(output_stderr(&diff_output), "");
-    let diff = parse_yaml_stdout(&diff_output, "diff 1 1 --db --emit yaml");
+    let diff = parse_yaml_stdout(&diff_output, "diff <run_id> <run_id> --db --emit yaml");
     assert_eq!(diff.get("kind"), Some(&serde_json::json!("diff_report")));
-    assert_eq!(diff.get("run_a"), Some(&serde_json::json!("1")));
-    assert_eq!(diff.get("run_b"), Some(&serde_json::json!("1")));
+    assert_eq!(diff.get("run_a"), Some(&serde_json::json!(run_id.as_str())));
+    assert_eq!(diff.get("run_b"), Some(&serde_json::json!(run_id.as_str())));
     assert_eq!(diff.get("total_differences"), Some(&serde_json::json!(0)));
     assert_eq!(diff.get("diffs"), Some(&serde_json::json!([])));
 }

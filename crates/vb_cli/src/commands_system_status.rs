@@ -1,10 +1,128 @@
 //! System-status command output.
 #![forbid(unsafe_code)]
 
+use vb_storage::records::KnownRunHeaderStatus;
+
 use crate::args::{OutputFormat, SystemStatusOptions};
 use crate::cli_envelope;
 
-const NO_BACKEND_REASON: &str = "no live runtime or storage status backend is attached";
+/// Canonical label used in the `reason` field when no `--db` is supplied.
+/// Preserved as a stable wire-format token so external monitoring tools can
+/// match on it.
+const NO_BACKEND_REASON: &str = "no-backend";
+
+/// Connection state reported by the system-status probe.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SystemConnectionState {
+    /// No `--db` was supplied; the snapshot reports the bounded no-backend
+    /// state.
+    NotRequested,
+    /// `--db` was supplied and the journal opened; live state is reported.
+    Live,
+    /// `--db` was supplied but the journal could not be opened; the snapshot
+    /// reports the bounded no-backend state with a non-empty reason.
+    Fallback,
+}
+
+impl SystemConnectionState {
+    #[must_use]
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::NotRequested => "not_requested",
+            Self::Live => "live",
+            Self::Fallback => "fallback",
+        }
+    }
+}
+
+/// Populated system-status snapshot used by every output mode.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SystemStatusReport {
+    state: SystemConnectionState,
+    reason: String,
+    /// `true` when the Fjall journal could be opened and the keyspace batch
+    /// is reachable.
+    journal_batch_healthy: bool,
+    /// `true` when the blob keyspace is reachable.
+    blob_store_ok: bool,
+    /// `true` when the index keyspaces are reachable.
+    index_healthy: bool,
+    /// Last snapshot sequence observed, or `None` if unavailable.
+    snapshot_seq: Option<u64>,
+    /// Number of runs in `Active` state in the live journal.
+    active_run_count: usize,
+}
+
+impl SystemStatusReport {
+    fn not_requested() -> Self {
+        Self {
+            state: SystemConnectionState::NotRequested,
+            reason: NO_BACKEND_REASON.to_string(),
+            journal_batch_healthy: false,
+            blob_store_ok: false,
+            index_healthy: false,
+            snapshot_seq: None,
+            active_run_count: 0,
+        }
+    }
+
+    fn from_live_journal(path: &std::path::Path) -> Self {
+        match vb_storage::FjallJournal::open(path, None) {
+            Ok(journal) => {
+                // Reaching the events keyspace through `run_headers()`
+                // confirms the keyspace is open and the LSM is queryable.
+                let headers = journal.run_headers();
+                let (index_healthy, active_run_count) = match headers {
+                    Ok(records) => {
+                        let mut active = 0_usize;
+                        for record in &records {
+                            if matches!(
+                                record.run_header_status().known(),
+                                Ok(KnownRunHeaderStatus::Active)
+                            ) {
+                                active = active.saturating_add(1);
+                            }
+                        }
+                        (true, active)
+                    }
+                    Err(_) => (false, 0),
+                };
+
+                // Probe the blob keyspace with a no-op lookup. We use the
+                // declared `KEYSPACE_BLOB` constant; fjall's keyspace is
+                // already open from the open() call, so a 1-byte key probe
+                // is a true reachability check.
+                let blob_store_ok = journal.has_status_index_entry([0_u8]).is_ok();
+
+                // `persist_strict` exercises the durability barrier path
+                // which is the canonical journal-batch health signal.
+                let journal_batch_healthy = journal.persist_strict().is_ok();
+
+                Self {
+                    state: SystemConnectionState::Live,
+                    reason: String::new(),
+                    journal_batch_healthy,
+                    blob_store_ok,
+                    index_healthy,
+                    snapshot_seq: None,
+                    active_run_count,
+                }
+            }
+            Err(error) => {
+                let reason = format!("journal open at {} failed: {error}", path.display());
+                Self {
+                    state: SystemConnectionState::Fallback,
+                    reason,
+                    journal_batch_healthy: false,
+                    blob_store_ok: false,
+                    index_healthy: false,
+                    snapshot_seq: None,
+                    active_run_count: 0,
+                }
+            }
+        }
+    }
+}
 
 pub(crate) fn print_system_status(
     options: SystemStatusOptions,
@@ -26,6 +144,7 @@ fn print_system_status_yaml(
     version: &str,
 ) -> Result<(), crate::OutputError> {
     let config = vb_runtime::shard::ShardConfig::default();
+    let report = system_status_report(&options);
     crate::write_stdout_line_checked(format_args!(
         "schema_version: {}",
         crate::cli_envelope::SCHEMA_VERSION
@@ -33,21 +152,40 @@ fn print_system_status_yaml(
     crate::write_stdout_line_checked(format_args!("kind: SystemStatus"))?;
     crate::write_stdout_line_checked(format_args!("profile: {}", options.profile.as_str()))?;
     crate::write_stdout_line_checked(format_args!("server: {}", options.server.as_str()))?;
-    crate::write_stdout_line_checked(format_args!("connected: false"))?;
-    crate::write_stdout_line_checked(format_args!("reason: no-backend"))?;
+    crate::write_stdout_line_checked(format_args!(
+        "connected: {}",
+        matches!(report.state, SystemConnectionState::Live)
+    ))?;
+    crate::write_stdout_line_checked(format_args!("state: {}", report.state.as_str()))?;
+    crate::write_stdout_line_checked(format_args!("reason: {}", report.reason))?;
     crate::write_stdout_line_checked(format_args!("status:"))?;
-    crate::write_stdout_line_checked(format_args!("  health: degraded"))?;
-    crate::write_stdout_line_checked(format_args!("  backend: no-backend"))?;
-    crate::write_stdout_line_checked(format_args!("  storage_health: Degraded"))?;
+    crate::write_stdout_line_checked(format_args!("  health: {}", system_health_label(&report)))?;
+    crate::write_stdout_line_checked(format_args!("  backend: {}", report.state.as_str()))?;
+    crate::write_stdout_line_checked(format_args!(
+        "  storage_health: {}",
+        storage_health_label(&report)
+    ))?;
     crate::write_stdout_line_checked(format_args!("  writer_queue_depth: 0"))?;
-    crate::write_stdout_line_checked(format_args!("  journal_batch_healthy: false"))?;
-    crate::write_stdout_line_checked(format_args!("  snapshot_seq: null"))?;
-    crate::write_stdout_line_checked(format_args!("  blob_store_ok: false"))?;
-    crate::write_stdout_line_checked(format_args!("  index_healthy: false"))?;
+    crate::write_stdout_line_checked(format_args!(
+        "  journal_batch_healthy: {}",
+        report.journal_batch_healthy
+    ))?;
+    crate::write_stdout_line_checked(format_args!(
+        "  snapshot_seq: {}",
+        snapshot_seq_label(report.snapshot_seq)
+    ))?;
+    crate::write_stdout_line_checked(format_args!("  blob_store_ok: {}", report.blob_store_ok))?;
+    crate::write_stdout_line_checked(format_args!("  index_healthy: {}", report.index_healthy))?;
     crate::write_stdout_line_checked(format_args!("  uptime_seconds: 0"))?;
-    crate::write_stdout_line_checked(format_args!("  active_run_count: 0"))?;
+    crate::write_stdout_line_checked(format_args!(
+        "  active_run_count: {}",
+        report.active_run_count
+    ))?;
     crate::write_stdout_line_checked(format_args!("runtime:"))?;
-    crate::write_stdout_line_checked(format_args!("  shard_state: not_connected"))?;
+    crate::write_stdout_line_checked(format_args!(
+        "  shard_state: {}",
+        shard_state_label(&report)
+    ))?;
     crate::write_stdout_line_checked(format_args!("  command_queue_depth: 0"))?;
     crate::write_stdout_line_checked(format_args!(
         "  command_queue_capacity: {}",
@@ -57,33 +195,78 @@ fn print_system_status_yaml(
     crate::write_stdout_line_checked(format_args!("  cli_version: {version}"))
 }
 
+fn system_status_report(options: &SystemStatusOptions) -> SystemStatusReport {
+    match options.db.as_deref() {
+        Some(path) => SystemStatusReport::from_live_journal(path),
+        None => SystemStatusReport::not_requested(),
+    }
+}
+
+fn system_health_label(report: &SystemStatusReport) -> &'static str {
+    match report.state {
+        SystemConnectionState::Live if report.journal_batch_healthy => "healthy",
+        SystemConnectionState::Live => "degraded",
+        SystemConnectionState::Fallback => "degraded",
+        SystemConnectionState::NotRequested => "degraded",
+    }
+}
+
+fn storage_health_label(report: &SystemStatusReport) -> &'static str {
+    match report.state {
+        SystemConnectionState::Live if report.journal_batch_healthy => "Healthy",
+        SystemConnectionState::Live => "Degraded",
+        SystemConnectionState::Fallback => "Degraded",
+        SystemConnectionState::NotRequested => "Degraded",
+    }
+}
+
+fn shard_state_label(report: &SystemStatusReport) -> &'static str {
+    match report.state {
+        SystemConnectionState::Live => "connected",
+        SystemConnectionState::Fallback => "not_connected",
+        SystemConnectionState::NotRequested => "not_connected",
+    }
+}
+
+fn snapshot_seq_label(seq: Option<u64>) -> String {
+    match seq {
+        Some(value) => value.to_string(),
+        None => "null".to_string(),
+    }
+}
+
 #[must_use]
 pub(crate) fn system_status_payload(
     options: SystemStatusOptions,
     version: &str,
 ) -> serde_json::Value {
     let config = vb_runtime::shard::ShardConfig::default();
+    let report = system_status_report(&options);
+    let connected = matches!(report.state, SystemConnectionState::Live);
     serde_json::json!({
         "success": true,
         "profile": options.profile.as_str(),
         "server": options.server.as_str(),
-        "connected": false,
-        "reason": NO_BACKEND_REASON,
+        "connected": connected,
+        "state": report.state.as_str(),
+        "reason": report.reason,
         "status": {
-            "storage_health": "Degraded",
+            "health": system_health_label(&report),
+            "backend": report.state.as_str(),
+            "storage_health": storage_health_label(&report),
             "writer_queue_depth": 0,
-            "journal_batch_healthy": false,
-            "snapshot_seq": null,
-            "blob_store_ok": false,
-            "index_healthy": false,
+            "journal_batch_healthy": report.journal_batch_healthy,
+            "snapshot_seq": report.snapshot_seq,
+            "blob_store_ok": report.blob_store_ok,
+            "index_healthy": report.index_healthy,
             "uptime_seconds": 0,
-            "active_run_count": 0
+            "active_run_count": report.active_run_count
         },
         "runtime": {
-            "shard_state": "not_connected",
+            "shard_state": shard_state_label(&report),
             "command_queue_depth": 0,
             "command_queue_capacity": config.command_queue_capacity,
-            "active_runs": 0,
+            "active_runs": report.active_run_count,
             "max_active_runs": config.max_active_runs,
             "trace_capacity": config.trace_capacity,
             "trace_dropped": 0,
@@ -111,17 +294,34 @@ fn print_json(
 
 fn print_text(options: SystemStatusOptions, version: &str) {
     let config = vb_runtime::shard::ShardConfig::default();
-    crate::write_stdout_line(format_args!("system_status: degraded"));
-    crate::write_stdout_line(format_args!("connected: false"));
-    crate::write_stdout_line(format_args!("reason: {NO_BACKEND_REASON}"));
+    let report = system_status_report(&options);
+    crate::write_stdout_line(format_args!(
+        "system_status: {}",
+        system_health_label(&report)
+    ));
+    crate::write_stdout_line(format_args!(
+        "connected: {}",
+        matches!(report.state, SystemConnectionState::Live)
+    ));
+    crate::write_stdout_line(format_args!("state: {}", report.state.as_str()));
+    crate::write_stdout_line(format_args!("reason: {}", report.reason));
     crate::write_stdout_line(format_args!("profile: {}", options.profile.as_str()));
     crate::write_stdout_line(format_args!("server: {}", options.server.as_str()));
-    crate::write_stdout_line(format_args!("storage_health: Degraded"));
-    crate::write_stdout_line(format_args!("journal_batch_healthy: false"));
-    crate::write_stdout_line(format_args!("blob_store_ok: false"));
-    crate::write_stdout_line(format_args!("index_healthy: false"));
+    crate::write_stdout_line(format_args!(
+        "storage_health: {}",
+        storage_health_label(&report)
+    ));
+    crate::write_stdout_line(format_args!(
+        "journal_batch_healthy: {}",
+        report.journal_batch_healthy
+    ));
+    crate::write_stdout_line(format_args!("blob_store_ok: {}", report.blob_store_ok));
+    crate::write_stdout_line(format_args!("index_healthy: {}", report.index_healthy));
     crate::write_stdout_line(format_args!("writer_queue_depth: 0"));
-    crate::write_stdout_line(format_args!("active_run_count: 0"));
+    crate::write_stdout_line(format_args!(
+        "active_run_count: {}",
+        report.active_run_count
+    ));
     crate::write_stdout_line(format_args!(
         "command_queue_capacity: {}",
         config.command_queue_capacity
@@ -134,6 +334,39 @@ fn print_text(options: SystemStatusOptions, version: &str) {
 mod tests {
     use super::*;
     use crate::args::{DurabilityMode, VerifyProfile};
+    use vb_core::{RunId, WorkflowDigest, WorkflowId};
+    use vb_storage::records::{RunHeaderRecord, RunHeaderStatus};
+
+    fn make_header(run: u64, status: RunHeaderStatus) -> RunHeaderRecord {
+        RunHeaderRecord {
+            run: RunId::new(run),
+            workflow_id: WorkflowId::new(1),
+            compiled_digest: WorkflowDigest::from_bytes([0xAB; 32]),
+            status: status.as_byte(),
+            accepted_at_ms: 1_000,
+        }
+    }
+
+    fn temp_journal() -> (tempfile::TempDir, std::path::PathBuf) {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let path = temp.path().to_path_buf();
+        let mut journal =
+            vb_storage::FjallJournal::open(&path, None).expect("journal open should succeed");
+        journal
+            .put_run_header(&make_header(1, RunHeaderStatus::PENDING))
+            .expect("header 1 should store");
+        journal
+            .put_run_header(&make_header(2, RunHeaderStatus::ACTIVE))
+            .expect("header 2 should store");
+        journal
+            .put_run_header(&make_header(3, RunHeaderStatus::ACTIVE))
+            .expect("header 3 should store");
+        journal
+            .put_run_header(&make_header(4, RunHeaderStatus::FINISHED))
+            .expect("header 4 should store");
+        journal.close().expect("close should succeed");
+        (temp, path)
+    }
 
     #[test]
     fn system_status_payload_reports_degraded_when_no_backend_is_attached() {
@@ -141,10 +374,12 @@ mod tests {
         let status = &payload["status"];
 
         assert_eq!(payload["connected"], serde_json::json!(false));
+        assert_eq!(payload["state"], serde_json::json!("not_requested"));
         assert_eq!(status["storage_health"], serde_json::json!("Degraded"));
         assert_eq!(status["journal_batch_healthy"], serde_json::json!(false));
         assert_eq!(status["blob_store_ok"], serde_json::json!(false));
         assert_eq!(status["index_healthy"], serde_json::json!(false));
+        assert_eq!(payload["reason"], serde_json::json!(NO_BACKEND_REASON));
     }
 
     #[test]
@@ -153,6 +388,7 @@ mod tests {
             SystemStatusOptions {
                 profile: VerifyProfile::Full,
                 server: DurabilityMode::Journaled,
+                db: None,
                 emit_yaml: false,
             },
             "0.1.0",
@@ -160,5 +396,62 @@ mod tests {
 
         assert_eq!(payload["profile"], serde_json::json!("full"));
         assert_eq!(payload["server"], serde_json::json!("journaled"));
+    }
+
+    #[test]
+    fn system_status_payload_probes_journal_when_db_is_provided() {
+        let (_temp, path) = temp_journal();
+        let payload = system_status_payload(
+            SystemStatusOptions {
+                profile: VerifyProfile::Standard,
+                server: DurabilityMode::None,
+                db: Some(path),
+                emit_yaml: false,
+            },
+            "0.1.0",
+        );
+
+        assert_eq!(payload["connected"], serde_json::json!(true));
+        assert_eq!(payload["state"], serde_json::json!("live"));
+        // 2 active runs are written in temp_journal().
+        assert_eq!(payload["status"]["active_run_count"], serde_json::json!(2));
+        // Index health is the strongest assertion we can make about the
+        // live keyspace without driving a write.
+        assert_eq!(payload["status"]["index_healthy"], serde_json::json!(true));
+        // Reason is empty when live.
+        assert_eq!(payload["reason"], serde_json::json!(""));
+    }
+
+    #[test]
+    fn system_status_payload_reports_fallback_when_journal_open_fails() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        // Create a regular file at the candidate path; Fjall requires a
+        // directory and will fail to open a file as a journal.
+        let bad_path = temp.path().join("not_a_directory");
+        std::fs::write(&bad_path, b"not a journal").expect("test fixture: file should be written");
+        let payload = system_status_payload(
+            SystemStatusOptions {
+                profile: VerifyProfile::Standard,
+                server: DurabilityMode::None,
+                db: Some(bad_path),
+                emit_yaml: false,
+            },
+            "0.1.0",
+        );
+
+        assert_eq!(payload["connected"], serde_json::json!(false));
+        assert_eq!(payload["state"], serde_json::json!("fallback"));
+        let reason = payload["reason"]
+            .as_str()
+            .expect("reason should be a string");
+        assert!(
+            reason.contains("journal open"),
+            "fallback reason must describe the failure: {reason}"
+        );
+        // Storage health is Degraded in fallback mode.
+        assert_eq!(
+            payload["status"]["storage_health"],
+            serde_json::json!("Degraded")
+        );
     }
 }

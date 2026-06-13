@@ -68,5 +68,5 @@ pub use recover::{
     check_action_abi_digest, check_action_abi_digests, check_compiled_ir_digest,
     check_policy_digest, check_policy_digests, check_workflow_source_digest,
     recover_all_incomplete_runs, recover_runtime_frame_seed, recover_runtime_summary,
-    recover_runtime_summary_with_expected, verify_digests,
+    recover_runtime_summary_with_expected, verify_digests, write_recovered_snapshot,
 };

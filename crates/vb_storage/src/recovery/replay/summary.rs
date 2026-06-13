@@ -378,7 +378,22 @@ fn seed_unsupported_state(
         } else {
             UnsupportedRecoveryState::SUPPORTED
         },
-        // pending_actions are always supported; they are a normal part of recovery hydration
+        if accumulator.envelope_event_seen {
+            // Ticket envelopes carry action payload bodies that the current runtime
+            // rehydration boundary cannot re-attach to a live frame, so the seed
+            // must explicitly mark these as unsupported.
+            UnsupportedRecoveryState::action_payloads_unsupported()
+        } else {
+            UnsupportedRecoveryState::SUPPORTED
+        },
+        if !accumulator.pending_actions.is_empty() {
+            // Recovered pending actions have no runtime rehydration path: the
+            // seed carries `(step, action)` pairs but loses the ticket envelope
+            // `(input, output)` slot mapping, so we must block full-frame recovery.
+            UnsupportedRecoveryState::pending_actions_unsupported()
+        } else {
+            UnsupportedRecoveryState::SUPPORTED
+        },
     ]
     .into_iter()
     .fold(
@@ -403,6 +418,7 @@ struct FrameSeedAccumulator {
     last_succeeded_step: Option<StepIdx>,
     missing_slot_values: bool,
     event_slot_taint_unsupported: bool,
+    envelope_event_seen: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -446,6 +462,7 @@ impl FrameSeedAccumulator {
             last_succeeded_step: None,
             missing_slot_values: false,
             event_slot_taint_unsupported: false,
+            envelope_event_seen: false,
         }
     }
 
@@ -584,6 +601,7 @@ impl FrameSeedAccumulator {
         mut self,
         envelope: ActionEnvelopeView<'_>,
     ) -> RecoveryResult<Self> {
+        self.envelope_event_seen = true;
         let verified_digest = verified_action_envelope_digest(
             envelope.run,
             envelope.ticket,
@@ -648,6 +666,7 @@ impl FrameSeedAccumulator {
         input: SlotIdx,
         output: SlotIdx,
     ) -> RecoveryResult<Self> {
+        self.envelope_event_seen = true;
         let effect = self
             .action_tracker
             .mark_scheduled_ticket_effect(ticket, input, output)?;
@@ -811,6 +830,38 @@ fn recovered_steps(step_states: HashMap<StepIdx, RecoveredStepState>) -> Vec<Rec
         .collect()
 }
 
+/// Inner accumulator: scans events to build the pending actions HashSet.
+/// Tracks both ActionScheduled/ActionScheduledTicket as "scheduled" and
+/// ActionCompletedEvent/ActionCompletedEnvelope as "completed".
+fn recover_pending_actions_from_events_inner(
+    events: &[JournalEvent],
+) -> HashSet<(ActionId, StepIdx)> {
+    let mut pending: HashSet<(ActionId, StepIdx)> = HashSet::new();
+
+    for event in events {
+        match event {
+            JournalEvent::ActionScheduled { step, action, .. } => {
+                pending.insert((*action, *step));
+            }
+            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+                pending.insert((ticket.action, ticket.step));
+            }
+            JournalEvent::ActionCompletedEvent { step, action, .. } => {
+                pending.remove(&(*action, *step));
+            }
+            JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
+                pending.remove(&(ticket.action, ticket.step));
+            }
+            // All other events are irrelevant for pending actions tracking
+            _ => {}
+        }
+    }
+
+    pending
+}
+
+/// Production proof surface: converts the accumulator HashSet into the
+/// public-facing `Vec<RecoveredPendingAction>` representation.
 fn recovered_pending_actions(
     pending_actions: HashSet<(ActionId, StepIdx)>,
 ) -> Vec<RecoveredPendingAction> {
@@ -818,6 +869,18 @@ fn recovered_pending_actions(
         .into_iter()
         .map(|(action, step)| RecoveredPendingAction { step, action })
         .collect()
+}
+
+/// Public accessor for tests and observability.
+/// Returns the set of actions that were scheduled but not completed
+/// from a sequence of journal events.
+///
+/// This is a convenience wrapper around the private `recovered_pending_actions`
+/// that accepts raw journal events instead of a pre-built accumulator.
+#[must_use]
+pub fn pending_actions_from_events(events: &[JournalEvent]) -> Vec<RecoveredPendingAction> {
+    let accumulator = recover_pending_actions_from_events_inner(events);
+    recovered_pending_actions(accumulator)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

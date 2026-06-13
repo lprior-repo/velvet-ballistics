@@ -562,7 +562,10 @@ fn commands_includes_all_expected_names() {
         .expect("commands must be an object");
 
     let expected = [
+        "action-inspect",
+        "action-list",
         "agent-context",
+        "ai-context",
         "answer",
         "bench-run",
         "compile",
@@ -571,6 +574,7 @@ fn commands_includes_all_expected_names() {
         "events",
         "explain",
         "graph",
+        "help",
         "incident",
         "inspect",
         "ipc-serve",
@@ -580,9 +584,12 @@ fn commands_includes_all_expected_names() {
         "run",
         "run-compiled",
         "simulate",
+        "status",
         "submit",
+        "system-status",
         "trace",
         "validate",
+        "version",
         "verify",
     ];
     for name in &expected {
@@ -601,7 +608,7 @@ fn command_count_is_stable() {
         .get("commands")
         .and_then(Value::as_object)
         .expect("commands must be an object");
-    assert_eq!(commands.len(), 22);
+    assert_eq!(commands.len(), 29);
 }
 
 #[test]

@@ -318,17 +318,71 @@ fn parse_status_accepts_active_runs_at_maximum() {
     }
 }
 
-#[test]
-fn parse_status_accepts_trace_dropped_with_large_u64() {
-    let parsed = parse_args(&args(&[
-        "velvet-ballistics",
-        "status",
-        "--trace-dropped",
-        "18446744073709551615",
-    ]));
-    if let Ok(Command::Status { options, .. }) = parsed {
-        assert_eq!(options.trace_dropped, Some(18446744073709551615));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    #[test]
+    fn parse_status_accepts_trace_dropped_with_large_u64() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballistics",
+            "status",
+            "--trace-dropped",
+            "18446744073709551615",
+        ]));
+        if let Ok(Command::Status { options, .. }) = parsed {
+            assert_eq!(options.trace_dropped, Some(18446744073709551615));
+        } else {
+            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+        }
     }
+
+    #[test]
+    fn parse_status_accepts_db_path_for_live_probe() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballistics",
+            "status",
+            "--db",
+            "/var/lib/velvet/journal",
+        ]));
+        if let Ok(Command::Status { options, .. }) = parsed {
+            assert_eq!(
+                options.db,
+                Some(std::path::PathBuf::from("/var/lib/velvet/journal"))
+            );
+        } else {
+            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+        }
+    }
+
+    #[test]
+    fn parse_status_rejects_missing_db_value() {
+        let parsed = parse_args(&args(&["velvet-ballistics", "status", "--db"]));
+        assert!(matches!(parsed, Err(ParseError::InvalidStatusArgument(_))));
+    }
+
+    #[test]
+    fn parse_system_status_accepts_db_path_for_live_probe() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballistics",
+            "system",
+            "status",
+            "--db",
+            "/var/lib/velvet/journal",
+        ]));
+        if let Ok(Command::SystemStatus { options, .. }) = parsed {
+            assert_eq!(
+                options.db,
+                Some(std::path::PathBuf::from("/var/lib/velvet/journal"))
+            );
+        } else {
+            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+        }
+    }
+
+    #[test]
+    fn parse_system_status_rejects_missing_db_value() {
+        let parsed = parse_args(&args(&["velvet-ballistics", "system", "status", "--db"]));
+        assert!(matches!(
+            parsed,
+            Err(ParseError::MissingArgument("--db"))
+        ));
+    }
+}
 }

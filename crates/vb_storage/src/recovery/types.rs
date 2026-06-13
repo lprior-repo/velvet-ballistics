@@ -288,7 +288,7 @@ pub struct RecoveredSlotEntry {
 }
 
 /// One pending action reconstructed from unresolved action lifecycle events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RecoveredPendingAction {
     /// Step that scheduled the action.
     pub step: StepIdx,
@@ -332,6 +332,18 @@ impl UnsupportedRecoveryState {
     pub const fn slot_values_unsupported() -> Self {
         Self {
             slot_values: true,
+            ..Self::SUPPORTED
+        }
+    }
+
+    /// Ticket-envelope events (scheduled-ticket or completed-envelope) carry
+    /// action payload bodies that the runtime rehydration boundary cannot
+    /// re-attach to a live frame, so the seed must explicitly mark these as
+    /// unsupported.
+    #[must_use]
+    pub const fn action_payloads_unsupported() -> Self {
+        Self {
+            action_payloads: true,
             ..Self::SUPPORTED
         }
     }

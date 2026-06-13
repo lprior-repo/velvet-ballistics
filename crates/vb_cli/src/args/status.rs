@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 use super::error::ParseError;
 use super::shared::{named_flag, parse_output_format, validate_known_flags};
@@ -119,6 +120,26 @@ fn parse_status_options(
                     options = updated;
                     args = remaining;
                 }
+                Some("--db") => {
+                    let raw = rest
+                        .split_first()
+                        .ok_or(ParseError::MissingArgument("--db"))?
+                        .0;
+                    if let Some(value) = raw.to_str() {
+                        if value.starts_with("--") {
+                            return Err(ParseError::MissingArgument("--db"));
+                        }
+                    } else {
+                        return Err(ParseError::InvalidStatusArgument(
+                            "--db value is not valid UTF-8".into(),
+                        ));
+                    }
+                    options = StatusOptions {
+                        db: Some(PathBuf::from(raw)),
+                        ..options
+                    };
+                    args = rest.get(1..).unwrap_or(rest);
+                }
                 Some(other) if other.starts_with('-') => {
                     return Err(ParseError::InvalidStatusArgument(format!(
                         "unknown flag {other}"
@@ -166,6 +187,7 @@ fn parse_system_status_options(
             Some("--emit") => parse_system_status_emit(rest, options),
             Some("--profile") => parse_system_status_profile(rest, options),
             Some("--server") => parse_system_status_server(rest, options),
+            Some("--db") => parse_system_status_db(rest, options),
             Some(other) if other.starts_with('-') => Err(ParseError::InvalidSystemStatusArgument(
                 format!("unknown flag {other}"),
             )),
@@ -258,6 +280,28 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
     match raw {
         "none" => Ok(DurabilityMode::None),
         other => Err(ParseError::UnknownServerMode(other.into())),
+    }
+}
+
+fn parse_system_status_db(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
+    match args.split_first() {
+        Some((raw, remaining)) => match raw.to_str() {
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument("--db")),
+            Some(_value) => parse_system_status_options(
+                remaining,
+                SystemStatusOptions {
+                    db: Some(PathBuf::from(raw)),
+                    ..options
+                },
+            ),
+            None => Err(ParseError::InvalidSystemStatusArgument(
+                "--db value is not valid UTF-8".into(),
+            )),
+        },
+        None => Err(ParseError::MissingArgument("--db")),
     }
 }
 

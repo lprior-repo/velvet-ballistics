@@ -4,11 +4,21 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use crate::args::{OutputFormat, VerifyProfile};
+use crate::args::{DurabilityMode, OutputFormat, VerifyProfile};
 use crate::commands_verify::{VerifyError, VerifyOk, exit_code_for_error, run_verification};
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::output::{json_error, write_failure_message};
+
+/// Default durability profile used by the `verify` command.
+///
+/// `verify` is a static-analysis pipeline and does not itself write a journal;
+/// the durability block in the emitted report describes the *runtime* profile
+/// the artifact is intended to run under, not the verify-time profile. The
+/// `None` default is the most conservative: "this workflow has not been
+/// durably accepted for any specific runtime profile". Callers that want a
+/// stricter profile can pass a different [`DurabilityMode`] explicitly.
+const VERIFY_DEFAULT_DURABILITY: DurabilityMode = DurabilityMode::None;
 
 /// Run the `verify` command: full static analysis pipeline.
 ///
@@ -16,6 +26,20 @@ use crate::output::{json_error, write_failure_message};
 pub(crate) fn cmd_verify(
     workflow: &Path,
     profile: VerifyProfile,
+    output: OutputFormat,
+) -> ExitCode {
+    cmd_verify_with_durability(workflow, profile, VERIFY_DEFAULT_DURABILITY, output)
+}
+
+/// Run the `verify` command with an explicit durability profile.
+///
+/// Internal entry point that lets callers (notably the explain command, which
+/// already knows the durability mode the workflow will run under) propagate
+/// the actual runtime durability into the verify report.
+pub(crate) fn cmd_verify_with_durability(
+    workflow: &Path,
+    profile: VerifyProfile,
+    durability: DurabilityMode,
     output: OutputFormat,
 ) -> ExitCode {
     let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
@@ -35,7 +59,7 @@ pub(crate) fn cmd_verify(
         }
     };
 
-    match run_verification(text, &bytes, profile) {
+    match run_verification(text, &bytes, profile, durability) {
         Ok(result) => {
             if output == OutputFormat::Text {
                 crate::outln!(
@@ -179,12 +203,24 @@ pub(crate) fn verify_success_report(
             "gate_sequence": &result.checks,
             "replay_safe": true
         },
-        "durability": {
-            "profile": "none",
-            "journal_written": false
-        },
+        "durability": durability_block(result.durability_mode),
         "repair_hints": [],
         "exit_code": cli_exit_code_number(CliExitCode::Success)
+    })
+}
+
+/// Build the `durability` block of the verify report from the durability
+/// profile the workflow is intended to run under.
+///
+/// `journal_written` is `true` only for the `Strict` and `Journaled`
+/// profiles (both imply persistence to a journal); for `None` there is no
+/// journal, so the block reports `journal_written: false` honestly.
+fn durability_block(mode: DurabilityMode) -> serde_json::Value {
+    let profile = mode.as_str();
+    let journal_written = matches!(mode, DurabilityMode::Strict | DurabilityMode::Journaled);
+    serde_json::json!({
+        "profile": profile,
+        "journal_written": journal_written,
     })
 }
 

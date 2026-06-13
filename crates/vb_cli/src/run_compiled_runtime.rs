@@ -12,11 +12,12 @@ use crate::output::{
     write_stderr_line, write_stdout_line,
 };
 use crate::output_utils::*;
+use crate::run_id::generate_run_id_from_clock;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 use vb_runtime::{InputMappingFailureKind, RuntimeError};
 
 pub(crate) fn map_runtime_inputs(
@@ -122,7 +123,7 @@ pub(crate) fn run_compiled_workflow(
         Ok(workflow) => workflow,
         Err(code) => return code,
     };
-    let run_id = vb_core::RunId::new(1);
+    let run_id = generate_run_id_from_clock();
     let Some(shard_count) = NonZeroUsize::new(1) else {
         report_runtime_error(
             format_args!("runtime configuration error: shard count must be non-zero"),

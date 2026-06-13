@@ -47,7 +47,7 @@ fn wait_event_returns_awaiting_wait() {
     assert_eq!(
         result,
         Ok(vb_core::EngineSignal::AwaitingWait {
-            deadline_slot: vb_core::ids::SlotIdx::new(0)
+            deadline_slot: vb_core::ids::SlotIdx::new(1)
         })
     );
 }
@@ -68,7 +68,9 @@ fn ask_returns_awaiting_ask() {
 
     assert_eq!(
         result,
-        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+        Ok(vb_core::EngineSignal::AwaitingAsk {
+            timeout_slot: Some(SlotIdx::new(1))
+        })
     );
 }
 
@@ -266,7 +268,7 @@ fn wait_event_reads_timeout_when_provided() {
     assert_eq!(
         result,
         Ok(vb_core::EngineSignal::AwaitingWait {
-            deadline_slot: vb_core::ids::SlotIdx::new(0)
+            deadline_slot: vb_core::ids::SlotIdx::new(1)
         })
     );
 }
@@ -285,10 +287,12 @@ fn ask_reads_timeout_when_provided() {
         .unwrap_or_else(|| panic!("write must succeed"));
     // When calling ask with timeout
     let result = ask(&mut run, prompt, Some(timeout));
-    // Then it returns AwaitingAsk
+    // Then it returns AwaitingAsk with the timeout slot forwarded
     assert_eq!(
         result,
-        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+        Ok(vb_core::EngineSignal::AwaitingAsk {
+            timeout_slot: Some(SlotIdx::new(1))
+        })
     );
 }
 
@@ -498,7 +502,9 @@ fn ask_with_zero_timeout_returns_awaiting_ask() {
     // Then it returns AwaitingAsk (no timeout validation at primitive level)
     assert_eq!(
         result,
-        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None })
+        Ok(vb_core::EngineSignal::AwaitingAsk {
+            timeout_slot: Some(SlotIdx::new(1))
+        })
     );
 }
 
@@ -520,7 +526,7 @@ fn wait_event_negative_timeout_returns_awaiting_wait() {
     assert_eq!(
         result,
         Ok(vb_core::EngineSignal::AwaitingWait {
-            deadline_slot: vb_core::ids::SlotIdx::new(0)
+            deadline_slot: vb_core::ids::SlotIdx::new(1)
         })
     );
 }
@@ -692,5 +698,100 @@ fn ask_with_bool_prompt_returns_type_mismatch() {
             expected: "prompt",
             found: "boolean",
         })
+    );
+}
+
+// ── Pass-through semantics: deadline_slot must reflect the parameter, not a hardcoded value ─
+
+#[test]
+fn wait_until_passes_input_deadline_slot_through_to_signal() {
+    // Use a non-zero slot to distinguish parameter from output.
+    let mut run = fresh_frame();
+    let deadline = SlotIdx::new(5);
+    run.write_slot(deadline, SlotValue::I64(1000)).unwrap();
+    let result = wait_until(&mut run, deadline);
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(5)
+        }),
+        "wait_until must return the deadline_slot parameter, not a hardcoded value"
+    );
+}
+
+#[test]
+fn wait_event_with_timeout_returns_timeout_slot_as_deadline() {
+    let mut run = fresh_frame();
+    let event = SlotIdx::new(2);
+    let timeout = SlotIdx::new(7);
+    run.write_slot(event, SlotValue::I64(1)).unwrap();
+    run.write_slot(timeout, SlotValue::I64(500)).unwrap();
+    let result = wait_event(&mut run, event, Some(timeout));
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(7)
+        }),
+        "wait_event with Some(timeout) must return timeout as deadline_slot"
+    );
+}
+
+#[test]
+fn wait_event_without_timeout_returns_event_as_deadline() {
+    let mut run = fresh_frame();
+    let event = SlotIdx::new(3);
+    run.write_slot(event, SlotValue::I64(1)).unwrap();
+    let result = wait_event(&mut run, event, None);
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingWait {
+            deadline_slot: SlotIdx::new(3)
+        }),
+        "wait_event without timeout must return event as deadline_slot"
+    );
+}
+
+// ── Pass-through semantics: ask must forward timeout_slot, not hardcode None ──
+
+#[test]
+fn ask_passes_input_timeout_slot_through_to_signal() {
+    use crate::primitives::wait_ask::ask;
+    // Use non-zero slots to distinguish input parameter from output signal.
+    let mut run = fresh_frame();
+    let prompt = SlotIdx::new(4);
+    let timeout = SlotIdx::new(7);
+    run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
+        .ok()
+        .unwrap_or_else(|| panic!("write must succeed"));
+    run.write_slot(timeout, SlotValue::I64(500))
+        .ok()
+        .unwrap_or_else(|| panic!("write must succeed"));
+    // When ask is called with Some(timeout)
+    let result = ask(&mut run, prompt, Some(timeout));
+    // Then the signal must carry the timeout_slot parameter through, not None.
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk {
+            timeout_slot: Some(SlotIdx::new(7))
+        }),
+        "ask must pass the timeout_slot parameter through, not hardcode None"
+    );
+}
+
+#[test]
+fn ask_without_timeout_returns_none_in_signal() {
+    use crate::primitives::wait_ask::ask;
+    let mut run = fresh_frame();
+    let prompt = SlotIdx::new(4);
+    run.write_slot(prompt, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
+        .ok()
+        .unwrap_or_else(|| panic!("write must succeed"));
+    // When ask is called with None timeout
+    let result = ask(&mut run, prompt, None);
+    // Then the signal carries None in timeout_slot.
+    assert_eq!(
+        result,
+        Ok(vb_core::EngineSignal::AwaitingAsk { timeout_slot: None }),
+        "ask with None timeout must produce None in signal"
     );
 }

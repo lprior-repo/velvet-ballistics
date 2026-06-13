@@ -8,6 +8,7 @@ use crate::commands_journal;
 use crate::exit_code::CliExitCode;
 use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
+use crate::lifecycle;
 use crate::output::{
     json_error, json_out, output_error_exit, write_contract_error_json, write_failure_message,
     write_stderr_line, write_stdout_line,
@@ -70,16 +71,12 @@ pub(crate) fn cmd_retry(
             .map(|s| s.saturating_add(1))
             .unwrap_or(0),
     };
-    if output != OutputFormat::Text {
-        crate::emit_json_or_return!(
-            &serde_json::json!({
-                "run_id": run_id, "failed_at_step": analysis.failed_at_step,
-                "last_successful_step": analysis.last_successful_step,
-                "resume_from_step": resume_step, "events": events.len()
-            }),
-            output,
-        );
-    } else {
+    // Analysis data is reported only on text stdout — it is intentionally
+    // omitted from the structured JSON/YAML output so the lifecycle result is the
+    // sole mapping at the document root (no duplicate `run_id` key). For
+    // structured formats, the analysis goes to stderr (best-effort diagnostic)
+    // to keep stdout parseable.
+    if output == OutputFormat::Text {
         match (analysis.failed_at_step, analysis.last_successful_step) {
             (Some(fail), Some(last)) => {
                 crate::outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.")
@@ -93,6 +90,71 @@ pub(crate) fn cmd_retry(
             (None, None) => crate::outln!("Run {run_id} failed. No step progress recorded."),
         }
         crate::outln!("Retry will resume from step {resume_step} with recovered state.");
+    } else {
+        // Best-effort diagnostic on stderr so structured-output consumers see a clean
+        // document on stdout. Best-effort: stderr write errors are ignored.
+        match (analysis.failed_at_step, analysis.last_successful_step) {
+            (Some(fail), Some(last)) => {
+                crate::errln!("Run {run_id} failed at step {fail}. Last successful: step {last}.")
+            }
+            (Some(fail), None) => {
+                crate::errln!("Run {run_id} failed at step {fail}. No successful steps recorded.")
+            }
+            (None, Some(last)) => {
+                crate::errln!("Run {run_id} failed. Last successful: step {last}.")
+            }
+            (None, None) => crate::errln!("Run {run_id} failed. No step progress recorded."),
+        }
+        crate::errln!("Retry will resume from step {resume_step} with recovered state.");
+    }
+
+    // Actually call the lifecycle retry function to write the event
+    let rid = match parse_run_id(run_id, output) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            report_storage_open_error(&e, db, output);
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    if let Err(e) = lifecycle::retry(rid, &journal) {
+        let message = format!("error retrying run {run_id}: {e}");
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({ "success": false, "error": message }),
+                CliExitCode::RuntimeFailed,
+                output,
+            );
+        } else {
+            crate::errln!("{message}");
+        }
+        return CliExitCode::RuntimeFailed.into();
+    }
+
+    // Single, deterministic user-visible summary that merges the analysis
+    // and the success status. The prior implementation emitted two payloads
+    // (analysis then success) which produced duplicate `run_id` keys in the
+    // structured YAML/JSON output and broke downstream parsers.
+    if output != OutputFormat::Text {
+        crate::emit_json_or_return!(
+            &serde_json::json!({
+                "success": true,
+                "run_id": run_id,
+                "status": "retrying",
+                "failed_at_step": analysis.failed_at_step,
+                "last_successful_step": analysis.last_successful_step,
+                "resume_from_step": resume_step,
+                "events": events.len()
+            }),
+            output,
+        );
+    } else {
+        crate::outln!("Run {run_id} retry event written.");
     }
     ExitCode::SUCCESS
 }
@@ -151,6 +213,43 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
                 "Run {run_id} is active but no explicit suspension point found. Resume would continue from current state."
             ),
         }
+    }
+
+    // Actually call the lifecycle resume function to write the event
+    let rid = match parse_run_id(run_id, output) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            report_storage_open_error(&e, db, output);
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    if let Err(e) = lifecycle::resume(rid, &journal) {
+        let message = format!("error resuming run {run_id}: {e}");
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({ "success": false, "error": message }),
+                CliExitCode::RuntimeFailed,
+                output,
+            );
+        } else {
+            crate::errln!("{message}");
+        }
+        return CliExitCode::RuntimeFailed.into();
+    }
+
+    if output != OutputFormat::Text {
+        crate::emit_json_or_return!(
+            &serde_json::json!({ "success": true, "run_id": run_id, "status": "resumed" }),
+            output,
+        );
+    } else {
+        crate::outln!("Run {run_id} resume event written.");
     }
     ExitCode::SUCCESS
 }

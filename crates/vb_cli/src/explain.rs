@@ -98,8 +98,16 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
 
     let plan_ast = crate::explain_plan::parse_plan_ast(&bytes);
 
-    // Phase 3: Verification (runs all gates)
-    match crate::commands_verify::run_verification(text, &bytes, VerifyProfile::Standard) {
+    // Phase 3: Verification (runs all gates). The explain command does not
+    // accept a durability flag, so the verify pipeline tags the result with
+    // the default runtime durability profile (`None`). The result is still
+    // surfaced honestly in the report's `durability` block.
+    match crate::commands_verify::run_verification(
+        text,
+        &bytes,
+        VerifyProfile::Standard,
+        crate::args::DurabilityMode::None,
+    ) {
         Ok(result) => {
             if output == OutputFormat::Text {
                 crate::outln!("Workflow verification certificate:");
