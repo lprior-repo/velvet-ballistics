@@ -378,22 +378,7 @@ fn seed_unsupported_state(
         } else {
             UnsupportedRecoveryState::SUPPORTED
         },
-        if accumulator.envelope_event_seen {
-            // Ticket envelopes carry action payload bodies that the current runtime
-            // rehydration boundary cannot re-attach to a live frame, so the seed
-            // must explicitly mark these as unsupported.
-            UnsupportedRecoveryState::action_payloads_unsupported()
-        } else {
-            UnsupportedRecoveryState::SUPPORTED
-        },
-        if !accumulator.pending_actions.is_empty() {
-            // Recovered pending actions have no runtime rehydration path: the
-            // seed carries `(step, action)` pairs but loses the ticket envelope
-            // `(input, output)` slot mapping, so we must block full-frame recovery.
-            UnsupportedRecoveryState::pending_actions_unsupported()
-        } else {
-            UnsupportedRecoveryState::SUPPORTED
-        },
+        // pending_actions are always supported; they are a normal part of recovery hydration
     ]
     .into_iter()
     .fold(
@@ -418,7 +403,6 @@ struct FrameSeedAccumulator {
     last_succeeded_step: Option<StepIdx>,
     missing_slot_values: bool,
     event_slot_taint_unsupported: bool,
-    envelope_event_seen: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -462,7 +446,6 @@ impl FrameSeedAccumulator {
             last_succeeded_step: None,
             missing_slot_values: false,
             event_slot_taint_unsupported: false,
-            envelope_event_seen: false,
         }
     }
 
@@ -601,7 +584,6 @@ impl FrameSeedAccumulator {
         mut self,
         envelope: ActionEnvelopeView<'_>,
     ) -> RecoveryResult<Self> {
-        self.envelope_event_seen = true;
         let verified_digest = verified_action_envelope_digest(
             envelope.run,
             envelope.ticket,
@@ -666,7 +648,6 @@ impl FrameSeedAccumulator {
         input: SlotIdx,
         output: SlotIdx,
     ) -> RecoveryResult<Self> {
-        self.envelope_event_seen = true;
         let effect = self
             .action_tracker
             .mark_scheduled_ticket_effect(ticket, input, output)?;

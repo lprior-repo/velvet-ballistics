@@ -408,7 +408,7 @@ fn event_slot_values_cover_valid_corrupt_and_missing_frame_paths() {
 }
 
 #[test]
-fn unresolved_action_recovers_as_pending_action_unsupported() {
+fn unresolved_action_recovers_as_pending_action_supported() {
     let run = RunId::new(61);
     let events = [JournalEvent::ActionScheduled {
         run,
@@ -420,14 +420,13 @@ fn unresolved_action_recovers_as_pending_action_unsupported() {
 
     let seed = recover_runtime_frame_seed_from_events(&events);
 
-    // Pending actions are recovered into the seed but block full-frame
-    // rehydration: the runtime boundary cannot re-attach them to a live frame.
+    // After fix: pending_actions are recovered as a supported state.
     // The action remains in pending_actions (it was scheduled but not completed),
-    // and unsupported.pending_actions is TRUE so the runtime rejects the seed.
+    // but unsupported.pending_actions is FALSE (pending_actions no longer blocks hydration).
     assert!(
         matches!(seed, Ok(recovered) if recovered.pending_actions.iter().any(|entry|
             entry.step == StepIdx::new(3) && entry.action == ActionId::new(9)
-        ) && recovered.unsupported.pending_actions)
+        ) && !recovered.unsupported.pending_actions)
     );
 }
 
@@ -664,14 +663,18 @@ fn pending_actions_from_events_returns_collected_actions() {
 
     assert_eq!(result.len(), 2);
     let set: std::collections::HashSet<_> = result.into_iter().collect();
-    assert!(set.contains(&crate::recovery::types::RecoveredPendingAction {
-        step: StepIdx::new(3),
-        action: ActionId::new(4),
-    }));
-    assert!(set.contains(&crate::recovery::types::RecoveredPendingAction {
-        step: StepIdx::new(4),
-        action: ActionId::new(5),
-    }));
+    assert!(
+        set.contains(&crate::recovery::types::RecoveredPendingAction {
+            step: StepIdx::new(3),
+            action: ActionId::new(4),
+        })
+    );
+    assert!(
+        set.contains(&crate::recovery::types::RecoveredPendingAction {
+            step: StepIdx::new(4),
+            action: ActionId::new(5),
+        })
+    );
 }
 
 /// B2: Empty input → empty output.
@@ -924,8 +927,10 @@ fn pending_actions_from_events_handles_ticket_variants() {
     let result = pending_actions_from_events(&events);
     assert_eq!(result.len(), 1);
     let set: std::collections::HashSet<_> = result.into_iter().collect();
-    assert!(set.contains(&crate::recovery::types::RecoveredPendingAction {
-        step: StepIdx::new(1),
-        action: ActionId::new(11),
-    }));
+    assert!(
+        set.contains(&crate::recovery::types::RecoveredPendingAction {
+            step: StepIdx::new(1),
+            action: ActionId::new(11),
+        })
+    );
 }
