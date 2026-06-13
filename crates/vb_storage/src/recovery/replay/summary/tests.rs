@@ -2,6 +2,7 @@ use crate::DurableActionOutcome;
 use crate::EventSeq;
 use crate::recovery::replay::summary::*;
 use crate::recovery::types::RecoveryTerminalState;
+use vb_core::action::compute_action_idempotency_key;
 use vb_core::replay::SuspensionKind;
 use vb_core::{
     ActionId, ActionTicket, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy,
@@ -879,7 +880,7 @@ fn pending_actions_from_events_handles_ticket_variants() {
         seq: SeqNo::new(0),
         action: ActionId::new(10),
         attempt: 1,
-        idempotency_key: 0xdeadbeef,
+        idempotency_key: compute_action_idempotency_key(run, SeqNo::new(0), ActionId::new(10)),
         capacity: 3,
     };
     let ticket2 = ActionTicket {
@@ -888,7 +889,7 @@ fn pending_actions_from_events_handles_ticket_variants() {
         seq: SeqNo::new(1),
         action: ActionId::new(11),
         attempt: 1,
-        idempotency_key: 0xcafebabe,
+        idempotency_key: compute_action_idempotency_key(run, SeqNo::new(1), ActionId::new(11)),
         capacity: 3,
     };
 
