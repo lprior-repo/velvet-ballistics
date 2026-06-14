@@ -50,8 +50,7 @@ verus! {
     pub proof fn proof_propagate_action_taint_idempotent(
         idempotency: u8, input_taint: u8
     )
-        ensures spec_propagate_action_taint(idempotency, spec_propagate_action_taint(idempotency, input_taint))
-            == spec_propagate_action_taint(idempotency, input_taint)
+        ensures spec_propagate_action_taint(idempotency, spec_propagate_action_taint(idempotency, input_taint)) == spec_propagate_action_taint(idempotency, input_taint)
     {
         // Case analysis on idempotency discriminant.
         // Each case uses compute to evaluate the spec function.
@@ -66,7 +65,7 @@ verus! {
         input_taint: u8
     )
         ensures spec_propagate_action_taint(0, input_taint) == input_taint
-        ensures spec_propagate_action_taint(1, input_taint) == input_taint
+            && spec_propagate_action_taint(1, input_taint) == input_taint
     {
         reveal(spec_propagate_action_taint);
         assert(spec_propagate_action_taint(0, input_taint) == input_taint) by (compute);

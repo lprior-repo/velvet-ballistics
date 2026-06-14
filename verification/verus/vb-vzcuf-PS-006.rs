@@ -24,6 +24,26 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file's spec models are bound to production via:
+//
+//   (a) `new_byte_limit_exec` — a Verus-verified exec fn that validates
+//       the byte limit is non-zero (C1), using the same check the
+//       production `JournalWriteBatch` constructor must perform.
+//
+//   (b) Kani POB-vb-vzcuf-022 (`kani_vb_vzcuf_ps006.rs`) — tests the
+//       actual production constants (MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+//       RECORD_HEADER_LEN) and byte-limit arithmetic invariants.
+//
+// TRUSTED BOUNDARY:
+//   JournalBatchByteLimit is a proposed value object not yet in production.
+//   The Verus spec establishes the non-zero invariant; the production
+//   constructor must enforce it.  Kani covers the actual constant values.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps006.rs
+
 /// Default max journal batch bytes from vb_core policy.
 /// PRODUCTION BINDING: matches vb_core::workflow budget constant.
 pub open spec fn default_byte_limit() -> u64 {
@@ -101,6 +121,28 @@ pub proof fn lemma_batch_invariant_holds(staged: u64, limit: u64)
     ensures
         batch_byte_invariant(staged, limit),
 {
+}
+
+// =============================================================================
+// Exec bridge — Verus-verified implementation matching the spec.
+// =============================================================================
+
+/// Exec bridge: validates that a byte-limit value is non-zero (C1).
+///
+/// PRODUCTION BINDING:
+///   The production `JournalWriteBatch::new` defaults `byte_limit` to
+///   `Some(DEFAULT_JOURNAL_BATCH_BYTE_LIMIT)` (1_048_576, non-zero).
+///   This exec fn verifies that the non-zero invariant is decidable
+///   for any u64 value, matching the `limit_constructor_invariant` spec.
+pub exec fn new_byte_limit_exec(value: u64) -> (result: Option<JournalBatchByteLimit>)
+    ensures
+        result.is_some() == limit_constructor_invariant(value),
+{
+    if value > 0 {
+        Some(JournalBatchByteLimit { value })
+    } else {
+        None
+    }
 }
 
 } // verus!

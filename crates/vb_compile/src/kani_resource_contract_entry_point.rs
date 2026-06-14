@@ -88,7 +88,10 @@ fn prove_non_default_contract_encoding_differs() {
     let default = ResourceContract::DEFAULT;
 
     let mut modified = default;
-    modified.max_steps = 50;
+    let max_steps: u16 = kani::any();
+    kani::assume(max_steps > 0 && max_steps < 10_000);
+    kani::assume(max_steps != default.max_steps);
+    modified.max_steps = max_steps;
     modified.allows_secret_results = true;
 
     assert_ne!(default, modified);

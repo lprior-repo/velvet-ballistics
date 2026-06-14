@@ -23,6 +23,26 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file's spec models are bound to production via:
+//
+//   (a) `bridge_check_exec` — a Verus-verified exec fn that compares
+//       core policy and storage default values, proving the alignment
+//       contract (C8) is decidable via simple u64 comparison.
+//
+//   (b) Kani POB-vb-vzcuf-026 (`kani_vb_vzcuf_ps007.rs`) — tests the
+//       actual production constants from vb_storage (MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+//       RECORD_HEADER_LEN) and verifies they match the expected policy values.
+//
+// TRUSTED BOUNDARY:
+//   The core policy value (1_048_576) is duplicated in Verus spec and
+//   in vb_core code.  A CI gate (not yet implemented) should assert
+//   core_policy_value == storage_default_value to detect silent drift.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps007.rs
+
 /// Core policy constant: max_journal_batch_bytes from vb_core.
 /// PRODUCTION BINDING: matches vb_core::workflow budget constant.
 pub open spec fn core_max_journal_batch_bytes() -> u64 {
