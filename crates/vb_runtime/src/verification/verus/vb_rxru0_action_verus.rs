@@ -26,7 +26,7 @@ verus! {
     // ============================================================================
 
     /// Abstract ActionTicket matching vb_core::action::ActionTicket fields.
-    struct AbstractTicket {
+    pub struct AbstractTicket {
         run: u64,
         step: u64,
         seq: u64,
@@ -37,7 +37,7 @@ verus! {
     }
 
     /// Abstract ActionOutcome matching vb_core::action::ActionOutcome variants.
-    enum AbstractOutcome {
+    pub enum AbstractOutcome {
         Ok(AbstractTicket),
         Err,
     }
