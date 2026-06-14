@@ -8,7 +8,7 @@
 //    replacement, or Temporal clone. Those frames hide the actual wedge and
 //    invite false comparisons."
 //
-// Banned phrases (case-insensitive substring match, not whole-word):
+// Banned phrases (case-insensitive after normalization, not whole-word):
 //   - generic dag runner
 //   - low-code graph editor
 //   - yaml-as-programming
@@ -18,31 +18,33 @@
 //   - temporal clone
 //   - temporal alternative
 //
-// Per-line allowlist: a single line containing the substring
-// "<!-- ALLOW_HISTORICAL: <reason> -->" suppresses the banned phrase(s) on
-// that same line. The suppressed line is reported as
-// "<rel>:<lineno>: allowlisted: <reason>: <line>" and never causes a failure.
+// Matching normalizes Unicode with NFKC, strips zero-width characters,
+// collapses hyphen/underscore/whitespace runs to a single space, and lower-
+// cases the result before matching.
 //
-// Block allowlist: a "<!-- position-disclaimer -->" line opens a block; the
-// matching "<!-- /position-disclaimer -->" line closes it. Every match
-// inside the block is reported as
-// "<rel>:<lineno>: disclaimered: <phrase>: <line>" and never causes a
-// failure.
+// Block disclaimer: a "<!-- position-disclaimer -->" line opens a block; the
+// matching "<!-- /position-disclaimer -->" line closes it. Only lines inside
+// the block that also contain an explicit negation marker such as
+// "is not", "isn't", "must not be", "is not a", "isn't a", "not a",
+// or "not the" are disclaimered. Any banned phrase on a non-negated line is
+// ACTIVE. Unbalanced blocks are hard scan errors.
 //
 // Self-skip basenames (any directory): velvet-ballistics-MASTER.md,
 // CHANGELOG.md, HISTORY.md, MIGRATION.md.
 // Self-skip directories (and their descendants): target, node_modules,
-// .bead-progress, .evidence.
+// .git, .beads, .dolt, .moon, .jj, .evidence, .bead-progress, and any
+// directory starting with '.'
 //
 // Default scan surface (relative to repo root):
+//   - *.md at the repository root
 //   - README.md
 //   - docs/**/*.md
 //   - crates/**/README.md
 //   - crates/vb_cli/**/*.md
+//   - fuzz/*.md
 //
 // Output (all on stderr):
 //   <rel>:N: POSITIONING: <phrase>: <line>      (active violation)
-//   <rel>:N: allowlisted: <reason>: <line>      (suppressed by per-line marker)
 //   <rel>:N: disclaimered: <phrase>: <line>     (suppressed by block marker)
 // Final line:
 //   "summary: active=N allowlisted=M disclaimered=K files_scanned=J"
@@ -60,9 +62,12 @@
 )]
 
 use std::fs;
+use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+
+use unicode_normalization::UnicodeNormalization;
 
 const BANNED_PHRASES: &[&str] = &[
     "generic dag runner",
@@ -75,6 +80,16 @@ const BANNED_PHRASES: &[&str] = &[
     "temporal alternative",
 ];
 
+const NEGATION_MARKERS: &[&str] = &[
+    "is not",
+    "isn't",
+    "must not be",
+    "is not a",
+    "isn't a",
+    "not a",
+    "not the",
+];
+
 const SKIP_BASENAMES: &[&str] = &[
     "velvet-ballistics-MASTER.md",
     "CHANGELOG.md",
@@ -85,19 +100,22 @@ const SKIP_BASENAMES: &[&str] = &[
 const SKIP_DIR_NAMES: &[&str] = &[
     "target",
     "node_modules",
-    ".bead-progress",
+    ".git",
+    ".beads",
+    ".dolt",
+    ".moon",
+    ".jj",
     ".evidence",
+    ".bead-progress",
 ];
 
-const ALLOW_HISTORICAL_MARKER: &str = "<!-- ALLOW_HISTORICAL:";
 const DISCLAIMER_START: &str = "<!-- position-disclaimer -->";
 const DISCLAIMER_END: &str = "<!-- /position-disclaimer -->";
-const COMMENT_TERMINATOR: &str = "-->";
+const ZERO_WIDTH_CHARS: [char; 4] = ['\u{200B}', '\u{200C}', '\u{200D}', '\u{FEFF}'];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum FindingKind {
     Active,
-    Allowlisted { reason: String },
     Disclaimered,
 }
 
@@ -107,6 +125,25 @@ struct Finding {
     text: String,
     phrase: String,
     kind: FindingKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ScanError {
+    UnmatchedDisclaimerEnd { line_no: usize },
+    UnclosedDisclaimerBlock { line_no: usize },
+}
+
+impl fmt::Display for ScanError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnmatchedDisclaimerEnd { line_no } => {
+                write!(f, "unmatched position-disclaimer end at line {line_no}")
+            }
+            Self::UnclosedDisclaimerBlock { line_no } => {
+                write!(f, "unclosed position-disclaimer block opened at line {line_no}")
+            }
+        }
+    }
 }
 
 fn is_skipped_basename(name: &str) -> bool {
@@ -120,7 +157,7 @@ fn is_skipped_dir(name: &str) -> bool {
 fn path_under_skip_dir(path: &Path) -> bool {
     for component in path.components() {
         let s = component.as_os_str().to_string_lossy();
-        if is_skipped_dir(s.as_ref()) {
+        if s.starts_with('.') || is_skipped_dir(s.as_ref()) {
             return true;
         }
     }
@@ -134,7 +171,7 @@ fn relative_label(root: &Path, path: &Path) -> String {
 }
 
 fn matches_scan_surface(rel: &str) -> bool {
-    if rel == "README.md" {
+    if rel.ends_with(".md") && !rel.contains('/') {
         return true;
     }
     if rel.starts_with("docs/") && rel.ends_with(".md") {
@@ -146,71 +183,147 @@ fn matches_scan_surface(rel: &str) -> bool {
     if rel.starts_with("crates/vb_cli/") && rel.ends_with(".md") {
         return true;
     }
+    if let Some(remainder) = rel.strip_prefix("fuzz/") {
+        if rel.ends_with(".md") && !remainder.contains('/') {
+            return true;
+        }
+    }
     false
 }
 
-fn parse_allow_reason(line: &str) -> Option<String> {
-    let idx = line.find(ALLOW_HISTORICAL_MARKER)?;
-    let after = &line[idx + ALLOW_HISTORICAL_MARKER.len()..];
-    let trimmed_start = after.trim_start();
-    let end_idx = trimmed_start.find(COMMENT_TERMINATOR)?;
-    let reason = trimmed_start[..end_idx].trim();
-    if reason.is_empty() {
-        None
-    } else {
-        Some(reason.to_owned())
-    }
+fn is_zero_width(ch: char) -> bool {
+    ZERO_WIDTH_CHARS.contains(&ch)
 }
 
-fn find_banned_phrases(line: &str) -> Vec<String> {
-    let lower = line.to_lowercase();
+fn is_separator(ch: char) -> bool {
+    ch.is_whitespace() || ch == '-' || ch == '_'
+}
+
+fn canonicalize_text(text: &str) -> String {
+    let mut canonical = String::with_capacity(text.len());
+    let mut needs_space = false;
+
+    for ch in text.nfkc() {
+        if is_zero_width(ch) {
+            continue;
+        }
+        if is_separator(ch) {
+            needs_space = !canonical.is_empty();
+            continue;
+        }
+        if needs_space && !canonical.ends_with(' ') {
+            canonical.push(' ');
+        }
+        needs_space = false;
+        for lower in ch.to_lowercase() {
+            canonical.push(lower);
+        }
+    }
+
+    if canonical.ends_with(' ') {
+        canonical.pop();
+    }
+
+    canonical
+}
+
+fn contains_negation_marker(line: &str) -> bool {
+    NEGATION_MARKERS.iter().any(|marker| line.contains(marker))
+}
+
+fn find_banned_phrases(normalized_line: &str) -> Vec<&'static str> {
     BANNED_PHRASES
         .iter()
-        .filter(|p| lower.contains(**p))
-        .map(|p| (*p).to_owned())
+        .copied()
+        .filter(|phrase| normalized_line.contains(&canonicalize_text(phrase)))
         .collect()
 }
 
-fn scan_text(text: &str) -> Vec<Finding> {
+fn scan_text(text: &str) -> Result<Vec<Finding>, ScanError> {
     let mut findings: Vec<Finding> = Vec::new();
-    let mut in_disclaimer: bool = false;
+    let mut disclaimer_depth: usize = 0;
+    let mut disclaimer_open_line: Option<usize> = None;
 
     for (idx, raw_line) in text.lines().enumerate() {
         let line_no = idx + 1;
+        let normalized_line = canonicalize_text(raw_line);
+        let starts = normalized_line.contains(DISCLAIMER_START);
+        let ends = normalized_line.contains(DISCLAIMER_END);
+        let line_in_disclaimer = disclaimer_depth > 0 || starts;
 
-        if raw_line.contains(DISCLAIMER_START) {
-            in_disclaimer = true;
-        }
-        if raw_line.contains(DISCLAIMER_END) {
-            in_disclaimer = false;
+        if ends && !line_in_disclaimer {
+            return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
         }
 
-        let phrases = find_banned_phrases(raw_line);
+        let phrases = find_banned_phrases(&normalized_line);
         if phrases.is_empty() {
+            if starts {
+                if disclaimer_depth == 0 {
+                    disclaimer_open_line = Some(line_no);
+                }
+                if disclaimer_depth == usize::MAX {
+                    return Err(ScanError::UnclosedDisclaimerBlock { line_no });
+                }
+                disclaimer_depth += 1;
+            }
+            if ends {
+                if disclaimer_depth == 0 {
+                    return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
+                }
+                disclaimer_depth -= 1;
+                if disclaimer_depth == 0 {
+                    disclaimer_open_line = None;
+                }
+            }
             continue;
         }
 
+        let disclaimered = line_in_disclaimer && contains_negation_marker(&normalized_line);
+        let kind = if disclaimered {
+            FindingKind::Disclaimered
+        } else {
+            FindingKind::Active
+        };
+
         for phrase in phrases {
-            let kind = if in_disclaimer {
-                FindingKind::Disclaimered
-            } else if let Some(reason) = parse_allow_reason(raw_line) {
-                FindingKind::Allowlisted { reason }
-            } else {
-                FindingKind::Active
-            };
             findings.push(Finding {
                 line_no,
                 text: raw_line.to_owned(),
                 phrase,
-                kind,
+                kind: kind.clone(),
             });
+        }
+
+        if starts {
+            if disclaimer_depth == 0 {
+                disclaimer_open_line = Some(line_no);
+            }
+            if disclaimer_depth == usize::MAX {
+                return Err(ScanError::UnclosedDisclaimerBlock { line_no });
+            }
+            disclaimer_depth += 1;
+        }
+        if ends {
+            if disclaimer_depth == 0 {
+                return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
+            }
+            disclaimer_depth -= 1;
+            if disclaimer_depth == 0 {
+                disclaimer_open_line = None;
+            }
         }
     }
 
-    findings
+    if disclaimer_depth != 0 {
+        return Err(ScanError::UnclosedDisclaimerBlock {
+            line_no: disclaimer_open_line.unwrap_or_default(),
+        });
+    }
+
+    Ok(findings)
 }
 
-fn scan_file(path: &Path) -> io::Result<Vec<Finding>> {
+fn scan_file(path: &Path) -> io::Result<Result<Vec<Finding>, ScanError>> {
     let text = fs::read_to_string(path)?;
     Ok(scan_text(&text))
 }
@@ -268,19 +381,7 @@ fn walk(
 }
 
 fn collect_default_files(root: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
-    let readme = root.join("README.md");
-    if readme.is_file() && should_scan_file(root, &readme, true) {
-        out.push(readme);
-    }
-    let docs = root.join("docs");
-    if docs.exists() {
-        walk(root, &docs, out, true)?;
-    }
-    let crates = root.join("crates");
-    if crates.exists() {
-        walk(root, &crates, out, true)?;
-    }
-    Ok(())
+    walk(root, root, out, true)
 }
 
 fn collect_arg_files(root: &Path, arg: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
@@ -298,7 +399,7 @@ fn collect_arg_files(root: &Path, arg: &Path, out: &mut Vec<PathBuf>) -> io::Res
 
 fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
     let mut active_total: usize = 0;
-    let mut allowlisted_total: usize = 0;
+    let allowlisted_total: usize = 0;
     let mut disclaimered_total: usize = 0;
     let mut files_scanned: usize = 0;
 
@@ -307,7 +408,7 @@ fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
             continue;
         }
         match scan_file(file) {
-            Ok(findings) => {
+            Ok(Ok(findings)) => {
                 files_scanned = files_scanned.saturating_add(1);
                 let rel = relative_label(root, file);
                 for finding in findings {
@@ -317,13 +418,6 @@ fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
                             eprintln!(
                                 "{}:{}: POSITIONING: {}: {}",
                                 rel, finding.line_no, finding.phrase, finding.text
-                            );
-                        }
-                        FindingKind::Allowlisted { reason } => {
-                            allowlisted_total = allowlisted_total.saturating_add(1);
-                            eprintln!(
-                                "{}:{}: allowlisted: {}: {}",
-                                rel, finding.line_no, reason, finding.text
                             );
                         }
                         FindingKind::Disclaimered => {
@@ -336,6 +430,13 @@ fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
                     }
                 }
             }
+            Ok(Err(error)) => {
+                eprintln!(
+                    "check-product-positioning: scan error: {}: {error}",
+                    file.display()
+                );
+                return ExitCode::from(2);
+            }
             Err(error) => {
                 eprintln!(
                     "check-product-positioning: unreadable: {}: {error}",
@@ -346,7 +447,7 @@ fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
     }
 
     eprintln!(
-        "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
+            "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
         active_total, allowlisted_total, disclaimered_total, files_scanned
     );
 
@@ -357,7 +458,7 @@ fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
     }
 }
 
-fn main() -> ExitCode {
+pub fn main() -> ExitCode {
     let root = match std::env::current_dir() {
         Ok(path) => path,
         Err(error) => {

@@ -27,7 +27,7 @@ verus! {
     ///   else: output = input  (unknown idempotency: identity)
     ///
     /// Binding to production: `vb_core::action::propagate_action_taint`
-    pub spec fn spec_propagate_action_taint(idempotency: u8, input_taint: u8) -> u8 {
+    spec fn spec_propagate_action_taint(idempotency: u8, input_taint: u8) -> u8 {
         match idempotency {
             0 | 1 => input_taint, // DeterministicPure or IdempotentExternal: identity
             2 => match input_taint {
@@ -124,7 +124,7 @@ verus! {
     /// where C1, C2, C3 are the hash constants.
     ///
     /// Binding to production: `vb_core::action::compute_action_idempotency_key`
-    pub spec fn spec_compute_action_idempotency_key(run: u128, seq: u128, action: u128) -> u128 {
+    spec fn spec_compute_action_idempotency_key(run: u128, seq: u128, action: u128) -> u128 {
         run.wrapping_mul(0x6c62272e07bb0143_u128)
             .wrapping_add(seq)
             .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
@@ -209,7 +209,7 @@ verus! {
         pub capacity: u16,
     }
 
-    pub spec fn spec_issue_action_ticket(
+    spec fn spec_issue_action_ticket(
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     ) -> spec_ActionTicket {
@@ -226,10 +226,13 @@ verus! {
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     )
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
+        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).run == run
+            && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
+            && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).seq == seq
             && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).action == action
+            && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).attempt == attempt
             && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).idempotency_key == idempotency_key
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).run == run && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).seq == seq && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).attempt == attempt && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).capacity == capacity
+            && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).capacity == capacity
     {
         let ticket = spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity);
         assert(ticket.run == run) by (compute);
@@ -240,6 +243,7 @@ verus! {
         assert(ticket.idempotency_key == idempotency_key) by (compute);
         assert(ticket.capacity == capacity) by (compute);
     }
+
 
     // ============================================================================
     // Spec-Exec Binding: action_ticket_has_valid_key vs compute_action_idempotency_key
@@ -253,7 +257,7 @@ verus! {
     ///
     /// The spec-level validation predicate mirrors `action_ticket_has_valid_key`:
     /// it checks whether the ticket's stored key equals the recomputed key.
-    pub spec fn spec_ticket_has_valid_key(
+    spec fn spec_ticket_has_valid_key(
         run: u64, seq: u64, action: u64,
         stored_key: u128, computed_key: u128,
     ) -> bool {
@@ -282,24 +286,20 @@ verus! {
     ///
     /// The theorem proves that steps 1 and 2 are consistent: a ticket
     /// constructed with the computed key will always pass validation.
-    proof fn theorem_cross_crate_derivation_soundness(
+        proof fn theorem_cross_crate_derivation_soundness(
         run: u64, seq: u64, action: u64,
     )
-            // The key computed by the hash function matches what the ticket stores.
+        ensures
             spec_issue_action_ticket(
                 run, 0, seq, action, 1,
-                spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action)), 1
-            ).idempotency_key == spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action))
-            // The stored key equals the recomputed key (validation succeeds).
-            spec_issue_action_ticket(
-                run, 0, seq, action, 1,
-                spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action)), 1
-            ).idempotency_key == spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action))
-        ensures 
+                spec_compute_action_idempotency_key(run as u128, seq as u128, action as u128), 1
+            ).idempotency_key == spec_compute_action_idempotency_key(run as u128, seq as u128, action as u128)
     {
-        let key = spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action));
+        let key = spec_compute_action_idempotency_key(run as u128, seq as u128, action as u128);
         let ticket = spec_issue_action_ticket(run, 0, seq, action, 1, key, 1);
         assert(ticket.idempotency_key == key) by (compute);
     }
 
+
 } // verus!
+

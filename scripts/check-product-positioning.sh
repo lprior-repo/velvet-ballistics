@@ -17,12 +17,12 @@
 #   - temporal clone
 #   - temporal alternative
 #
-# Per-line allowlist: a line containing "<!-- ALLOW_HISTORICAL: <reason> -->"
-# suppresses that same line. Reported as "allowlisted:" (informational).
+# Matching normalizes Unicode, strips zero-width characters, and collapses
+# hyphen/underscore/whitespace runs before applying the banned phrase scan.
 #
-# Block allowlist: "<!-- position-disclaimer -->" ... "<!-- /position-disclaimer -->"
-# around a paragraph suppresses every match inside. Reported as "disclaimered:"
-# (informational).
+# Block disclaimer: "<!-- position-disclaimer -->" ...
+# "<!-- /position-disclaimer -->" only suppresses lines that also contain an
+# explicit negation marker. Unbalanced blocks fail closed.
 #
 # Self-skip basenames: velvet-ballistics-MASTER.md, CHANGELOG.md, HISTORY.md,
 # MIGRATION.md.
@@ -48,8 +48,35 @@ if [[ ! -f "$ROOT/Cargo.toml" || ! -d "$ROOT/crates" ]]; then
   exit 64
 fi
 
-mkdir -p target/gate-tools
-BIN="$ROOT/target/gate-tools/check-product-positioning"
-rustc --edition=2024 "$ROOT/scripts/check-product-positioning.rs" -o "$BIN"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vb-check-product-positioning.XXXXXX")"
+cleanup() {
+  rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT INT TERM
 
-"$BIN" "$@"
+cat >"$TMP_DIR/Cargo.toml" <<EOF
+[package]
+name = "vb-check-product-positioning"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+unicode-normalization = "0.1"
+EOF
+
+mkdir -p "$TMP_DIR/src"
+cat >"$TMP_DIR/src/main.rs" <<EOF
+#![forbid(unsafe_code)]
+
+use std::process::ExitCode;
+
+#[path = "$ROOT/scripts/check-product-positioning.rs"]
+mod check_product_positioning;
+
+fn main() -> ExitCode {
+    check_product_positioning::main()
+}
+EOF
+
+cargo run --quiet --manifest-path "$TMP_DIR/Cargo.toml" -- "$@"
