@@ -41,15 +41,15 @@ verus! {
         Seq::new(0, |_i: int| 0)
     }
 
-    pub spec fn tagged_field_eq(a: TaggedField, b: TaggedField) -> bool {
+    pub open spec fn tagged_field_eq(a: TaggedField, b: TaggedField) -> bool {
         a.tag == b.tag && a.value == b.value
     }
 
-    pub spec fn contract_encodings_equal(a: ContractEncoding, b: ContractEncoding) -> bool {
+    pub open spec fn contract_encodings_equal(a: ContractEncoding, b: ContractEncoding) -> bool {
         a.fields == b.fields
     }
 
-    pub spec fn theorem_contract_inequality_implies_digest_inequality(a: ContractEncoding, b: ContractEncoding) -> bool {
+    pub open spec fn theorem_contract_inequality_implies_digest_inequality(a: ContractEncoding, b: ContractEncoding) -> bool {
         !contract_encodings_equal(a, b) ==> canonical_digest_spec(a.fields) != canonical_digest_spec(b.fields)
     }
 
@@ -61,7 +61,7 @@ verus! {
 // ============================================================================
 
 /// The field tag for allows_secret_results.
-pub const ALLOWS_SECRET_RESULTS_TAG: &str = "allows_secret_results";
+pub const ALLOWS_SECRET_RESULTS_TAG: &'static str = "allows_secret_results";
 
 /// Encode a boolean as a single byte: true → [1], false → [0].
 pub fn secret_results_value_bytes(allows: bool) -> Seq<u8> {
