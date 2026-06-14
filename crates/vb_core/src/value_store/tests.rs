@@ -2084,3 +2084,278 @@ fn value_store_default_has_zero_arena_entries() -> Result<(), String> {
     assert_eq!(store.max_arena_entries(), 0);
     Ok(())
 }
+
+/// vb-k9nqx: insertion order must be preserved when caller provides fields
+/// in a non-sorted order. This is a mutation-strong guard: if `objects` were
+/// swapped to a `HashMap<SymbolId, ObjectField>`, the order would be lost
+/// and this test would fail.
+#[test]
+fn value_store_object_slice_iteration_matches_caller_insertion_order(
+) -> Result<(), String> {
+    let mut store = ValueStore::new();
+    // Deliberately non-sorted, non-alphabetical order.
+    let input_keys = [SymbolId::new(7), SymbolId::new(2), SymbolId::new(9), SymbolId::new(4)];
+    let input_values = [
+        SlotValue::I64(70),
+        SlotValue::I64(20),
+        SlotValue::I64(90),
+        SlotValue::I64(40),
+    ];
+    let fields: Vec<ObjectField> = input_keys
+        .iter()
+        .zip(input_values.iter())
+        .map(|(k, v)| ObjectField {
+            key: *k,
+            value: *v,
+            taint: Taint::Clean,
+        })
+        .collect();
+    let id = store
+        .insert_object(fields.into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    let stored = store.object(id).map_err(|e| e.to_string())?;
+    if stored.len() != input_keys.len() {
+        return Err(format!(
+            "object length mismatch: expected {}, got {}",
+            input_keys.len(),
+            stored.len()
+        ));
+    }
+    for (i, (expected_key, expected_value)) in
+        input_keys.iter().zip(input_values.iter()).enumerate()
+    {
+        let actual = stored.get(i).ok_or_else(|| {
+            format!("missing field at index {i}; field count is {}", stored.len())
+        })?;
+        if actual.key != *expected_key {
+            return Err(format!(
+                "field {i} key mismatch: expected {:?}, got {:?}",
+                expected_key, actual.key
+            ));
+        }
+        if actual.value != *expected_value {
+            return Err(format!(
+                "field {i} value mismatch: expected {:?}, got {:?}",
+                expected_value, actual.value
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// vb-k9nqx: the IndexMap-backed secondary index must reflect the caller's
+/// insertion order, matching the order in the underlying `objects` slice.
+/// A swap from `IndexMap` to `HashMap` would change iteration order
+/// and this test would fail.
+#[test]
+fn value_store_object_indexmap_secondary_index_matches_insertion_order(
+) -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let keys = [SymbolId::new(1), SymbolId::new(2), SymbolId::new(3), SymbolId::new(4)];
+    let values = [
+        SlotValue::I64(100),
+        SlotValue::I64(200),
+        SlotValue::I64(300),
+        SlotValue::I64(400),
+    ];
+    let fields: Vec<ObjectField> = keys
+        .iter()
+        .zip(values.iter())
+        .map(|(k, v)| ObjectField {
+            key: *k,
+            value: *v,
+            taint: Taint::Clean,
+        })
+        .collect();
+    let id = store
+        .insert_object(fields.into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    // Each lookup must hit the IndexMap and return the value at insertion.
+    for (i, (k, v)) in keys.iter().zip(values.iter()).enumerate() {
+        let resolved = store.object_field(id, *k).map_err(|e| e.to_string())?;
+        if resolved != *v {
+            return Err(format!(
+                "IndexMap lookup at index {i} returned wrong value: expected {:?}, got {:?}",
+                v, resolved
+            ));
+        }
+    }
+    // Re-resolving the slice and cross-checking positions confirms the
+    // IndexMap and the Box<[ObjectField]> are aligned.
+    let stored = store.object(id).map_err(|e| e.to_string())?;
+    if stored.len() != keys.len() {
+        return Err(String::from("secondary index length drift detected"));
+    }
+    for (i, (k, v)) in keys.iter().zip(values.iter()).enumerate() {
+        let actual = stored
+            .get(i)
+            .ok_or_else(|| String::from("indexed field missing"))?;
+        if actual.key != *k || actual.value != *v {
+            return Err(format!(
+                "slice/IndexMap drift at index {i}: slice=({:?},{:?}) vs expected=({:?},{:?})",
+                actual.key, actual.value, k, v
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// vb-k9nqx: a deliberately reverse-sorted object must NOT be re-sorted
+/// internally. Caller-provided order is authoritative. Detects a mutation
+/// that sorts or canonicalizes the field order.
+#[test]
+fn value_store_object_reversed_field_order_is_preserved_not_sorted() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let keys = [
+        SymbolId::new(99),
+        SymbolId::new(50),
+        SymbolId::new(25),
+        SymbolId::new(1),
+    ];
+    let values = [
+        SlotValue::I64(1),
+        SlotValue::I64(2),
+        SlotValue::I64(3),
+        SlotValue::I64(4),
+    ];
+    let fields: Vec<ObjectField> = keys
+        .iter()
+        .zip(values.iter())
+        .map(|(k, v)| ObjectField {
+            key: *k,
+            value: *v,
+            taint: Taint::Clean,
+        })
+        .collect();
+    let id = store
+        .insert_object(fields.into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    let stored = store.object(id).map_err(|e| e.to_string())?;
+    for (i, (expected_key, expected_value)) in
+        keys.iter().zip(values.iter()).enumerate()
+    {
+        let actual = stored
+            .get(i)
+            .ok_or_else(|| format!("missing field at index {i}"))?;
+        if actual.key != *expected_key {
+            return Err(format!(
+                "reverse order was re-sorted: index {i} expected {:?}, got {:?}",
+                expected_key, actual.key
+            ));
+        }
+        if actual.value != *expected_value {
+            return Err(format!(
+                "reverse order values reordered: index {i} expected {:?}, got {:?}",
+                expected_value, actual.value
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// vb-k9nqx: each object must maintain its own independent insertion order
+/// even when the orders differ between objects. Detects a mutation that
+/// would share state between objects or canonicalize across objects.
+#[test]
+fn value_store_multiple_objects_each_preserve_independent_order() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    // Object 1: ascending.
+    let id_a = store
+        .insert_object(
+            vec![
+                ObjectField {
+                    key: SymbolId::new(1),
+                    value: SlotValue::I64(10),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: SymbolId::new(2),
+                    value: SlotValue::I64(20),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: SymbolId::new(3),
+                    value: SlotValue::I64(30),
+                    taint: Taint::Clean,
+                },
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    // Object 2: descending.
+    let id_b = store
+        .insert_object(
+            vec![
+                ObjectField {
+                    key: SymbolId::new(3),
+                    value: SlotValue::I64(300),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: SymbolId::new(2),
+                    value: SlotValue::I64(200),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: SymbolId::new(1),
+                    value: SlotValue::I64(100),
+                    taint: Taint::Clean,
+                },
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    // Object 3: alternating.
+    let id_c = store
+        .insert_object(
+            vec![
+                ObjectField {
+                    key: SymbolId::new(2),
+                    value: SlotValue::I64(2),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: SymbolId::new(1),
+                    value: SlotValue::I64(1),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: SymbolId::new(3),
+                    value: SlotValue::I64(3),
+                    taint: Taint::Clean,
+                },
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    let keys_a = [SymbolId::new(1), SymbolId::new(2), SymbolId::new(3)];
+    let keys_b = [SymbolId::new(3), SymbolId::new(2), SymbolId::new(1)];
+    let keys_c = [SymbolId::new(2), SymbolId::new(1), SymbolId::new(3)];
+    let stored_a = store.object(id_a).map_err(|e| e.to_string())?;
+    let stored_b = store.object(id_b).map_err(|e| e.to_string())?;
+    let stored_c = store.object(id_c).map_err(|e| e.to_string())?;
+    for (i, k) in keys_a.iter().enumerate() {
+        if stored_a.get(i).ok_or_else(|| String::from("a missing"))?.key != *k {
+            return Err(format!("object a order broken at {i}"));
+        }
+    }
+    for (i, k) in keys_b.iter().enumerate() {
+        if stored_b.get(i).ok_or_else(|| String::from("b missing"))?.key != *k {
+            return Err(format!("object b order broken at {i}"));
+        }
+    }
+    for (i, k) in keys_c.iter().enumerate() {
+        if stored_c.get(i).ok_or_else(|| String::from("c missing"))?.key != *k {
+            return Err(format!("object c order broken at {i}"));
+        }
+    }
+    // Lookups in object B must use B's first occurrence (300 for key=3).
+    if store
+        .object_field(id_b, SymbolId::new(3))
+        .map_err(|e| e.to_string())?
+        != SlotValue::I64(300)
+    {
+        return Err(String::from("object b duplicate-key first-wins broken"));
+    }
+    Ok(())
+}
