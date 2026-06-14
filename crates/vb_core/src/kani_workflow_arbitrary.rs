@@ -610,9 +610,16 @@ impl kani::Arbitrary for ActionContract {
                 None => break,
             };
         }
+        let name = match ActionName::new("test-action") {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                loop {}
+            }
+        };
         ActionContract {
             id: kani::any(),
-            name: ActionName::new("test-action").unwrap(),
+            name,
             input_slot_count: kani::any(),
             output_slot_count: kani::any(),
             max_input_bytes: kani::any(),

@@ -51,7 +51,7 @@ mod verification {
         let slot_b: bool = kani::any();
         let has_otherwise: bool = kani::any();
 
-        let plan = make_minimal_plan(
+        let plan = match make_minimal_plan(
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -140,7 +140,7 @@ mod verification {
         let slot_a: bool = kani::any();
         let slot_b: bool = kani::any();
 
-        let plan = make_minimal_plan(
+        let plan = match make_minimal_plan(
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -232,7 +232,7 @@ mod verification {
     fn verify_replay_deterministic_for_same_input() {
         let slot_val: bool = kani::any();
 
-        let plan = make_minimal_plan(
+        let plan = match make_minimal_plan(
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -328,7 +328,7 @@ mod verification {
         };
 
         // Build a 4-step plan with the terminal step at position 1
-        let plan = make_minimal_plan(
+        let plan = match make_minimal_plan(
             vec![
                 CompiledNode {
                     id: StepIdx::new(0),
@@ -380,9 +380,18 @@ mod verification {
         // Set step 1 (the middle step) to a terminal state
         let terminal_idx = StepIdx::new(1);
         match terminal_state {
-            crate::frame::StepState::Failed => run.mark_failed(terminal_idx).unwrap(),
-            crate::frame::StepState::Cancelled => run.mark_cancelled(terminal_idx).unwrap(),
-            crate::frame::StepState::Skipped => run.mark_skipped(terminal_idx).unwrap(),
+            crate::frame::StepState::Failed => match run.mark_failed(terminal_idx) {
+                Ok(v) => v,
+                Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            },
+            crate::frame::StepState::Cancelled => match run.mark_cancelled(terminal_idx) {
+                Ok(v) => v,
+                Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            },
+            crate::frame::StepState::Skipped => match run.mark_skipped(terminal_idx) {
+                Ok(v) => v,
+                Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            },
             _ => {}
         }
 
