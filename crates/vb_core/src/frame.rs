@@ -1135,7 +1135,13 @@ mod frame_kani_harnesses {
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         let result = frame.set_pc(pc);
         kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
@@ -1150,7 +1156,13 @@ mod frame_kani_harnesses {
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         let _result = frame.increment_executed();
     }
@@ -1168,7 +1180,13 @@ mod frame_kani_harnesses {
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         let result = frame.set_pc(pc);
         kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
@@ -1189,7 +1207,13 @@ mod frame_kani_harnesses {
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         let init_result = frame.write_slot(slot, SlotValue::Null);
         kani::assume(init_result.is_ok());
@@ -1213,7 +1237,13 @@ mod frame_kani_harnesses {
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         let result = frame.write_slot(slot, SlotValue::Null);
         kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
@@ -1231,7 +1261,13 @@ mod parallel_in_flight_kani {
 
         let frame = RunFrame::new(RunId::new(0), StepIdx::ZERO, 2, 4);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         kani::cover(count == u16::MAX, "max count");
         kani::cover(count == 0, "zero count");
@@ -1247,7 +1283,13 @@ mod parallel_in_flight_kani {
 
         let frame = RunFrame::new(RunId::new(0), StepIdx::ZERO, 2, 4);
         kani::assume(frame.is_ok());
-        let mut frame = frame.expect("Kani assume: frame construction always Ok per prior assume");
+        let mut frame = match frame {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                return;
+            }
+        };
 
         let _result = frame.sub_parallel_in_flight(count);
     }

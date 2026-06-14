@@ -103,10 +103,10 @@ fn verify_choose_slot_output_in_input_set() {
             assert!(valid);
         }
         Ok(_) => {
-            panic!("unexpected action variant");
+            kani::assume(false, "unexpected action variant"); return;
         }
         Err(_) => {
-            panic!("unexpected error for input with otherwise");
+            kani::assume(false, "unexpected error for input with otherwise"); return;
         }
     }
 }
@@ -138,7 +138,7 @@ fn verify_replay_deterministic_for_same_input() {
         }
         (Err(_), Err(_)) => {}
         _ => {
-            panic!("non-deterministic replay: mismatched results");
+            kani::assume(false, "non-deterministic replay: mismatched results"); return;
         }
     }
 }

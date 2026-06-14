@@ -44,13 +44,36 @@ use vb_core::{
 
 /// Build a minimal for_each workflow with 4 nodes.
 ///
-/// GOD RULE compliant: uses kani::any() for structural variety where applicable.
-/// The for_each topology (4 nodes: ForEachStart→SetConst→ForEachNext→Finish)
-/// is fixed to verify the lowering correctness; slot/step indices are
-/// bounded via kani::any() within the fixed topology.
+/// The 4-node topology (ForEachStart→SetConst→ForEachNext→Finish) is fixed to
+/// verify the lowering correctness; slot/step/const indices within that topology
+/// are generated via kani::any() with bounds, satisfying GOD RULE #1.
 fn build_foreach_parts() -> WorkflowParts {
+    // Symbolic slot/step/const indices within the 4-node topology.
+    // Bounds ensure they reference valid slots (0..4) and const (0..1).
+    let input_slot: SlotIdx = kani::any();
+    kani::assume(input_slot.as_u16() < 4);
+    let item_slot: SlotIdx = kani::any();
+    kani::assume(item_slot.as_u16() < 4);
+    let const_idx: ConstIdx = kani::any();
+    kani::assume(const_idx.as_u16() < 1);
+    let result_slot: SlotIdx = kani::any();
+    kani::assume(result_slot.as_u16() < 4);
+    let limit: u16 = kani::any();
+    kani::assume(limit >= 1 && limit <= 16);
+
+    // Const value: use kani::any() for variety (bounded to a few representative values)
+    let const_val: u64 = kani::any();
+
+    // Step name for entry step
+    let step_name: Box<str> = if kani::any() {
+        "step_0".into()
+    } else {
+        "entry".into()
+    };
+
     let mut nodes: Vec<CompiledNode> = Vec::with_capacity(4);
 
+    // Node 0: ForEachStart { input, item_slot, body=1, done=3 }
     nodes.push(CompiledNode {
         id: StepIdx::new(0),
         output: None,
@@ -58,25 +81,27 @@ fn build_foreach_parts() -> WorkflowParts {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::ForEachStart {
-            input: SlotIdx::new(0),
-            item_slot: SlotIdx::new(1),
-            limit: 4,
+            input: input_slot,
+            item_slot,
+            limit,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
     });
 
+    // Node 1: SetConst { value, next=2 }
     nodes.push(CompiledNode {
         id: StepIdx::new(1),
-        output: Some(SlotIdx::new(1)),
+        output: Some(item_slot), // body item slot is the output
         next: Some(StepIdx::new(2)),
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
+            value: const_idx,
         },
     });
 
+    // Node 2: ForEachNext { body=1, done=3 }
     nodes.push(CompiledNode {
         id: StepIdx::new(2),
         output: None,
@@ -84,12 +109,13 @@ fn build_foreach_parts() -> WorkflowParts {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::ForEachNext {
-            iterator_slot: SlotIdx::new(1),
+            iterator_slot: input_slot,
             body: StepIdx::new(1),
             done: StepIdx::new(3),
         },
     });
 
+    // Node 3: Finish { result }
     nodes.push(CompiledNode {
         id: StepIdx::new(3),
         output: None,
@@ -97,12 +123,12 @@ fn build_foreach_parts() -> WorkflowParts {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(2),
+            result: result_slot,
         },
     });
 
-    let constants: Vec<ConstValue> = vec![ConstValue::I64(0)];
-    let step_names: Vec<Box<str>> = vec!["step_0".into()];
+    let constants: Vec<ConstValue> = vec![ConstValue::I64(const_val as i64)];
+    let step_names: Vec<Box<str>> = vec![step_name];
 
     WorkflowParts {
         name: "foreach_harness".into(),

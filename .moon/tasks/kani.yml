@@ -16,6 +16,8 @@ fileGroups:
     - 'crates/vb_validate/src/**/*'
     - 'crates/vb_core/src/ids/**/*'
     - 'crates/vb_core/src/workflow/**/*'
+  kani_compile_sources:
+    - 'crates/vb_compile/src/**/*'
 
 tasks:
   verify-kani:

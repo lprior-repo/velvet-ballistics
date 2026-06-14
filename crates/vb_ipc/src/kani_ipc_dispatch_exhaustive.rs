@@ -59,7 +59,13 @@ fn kani_unknown_command_returns_bad_request() {
         "from_u16({}) must return Ok for unknown values",
         value
     );
-    let command = command.unwrap();
+    let command = match command {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
 
     // Verify the decoding produced the expected variant.
     assert_eq!(

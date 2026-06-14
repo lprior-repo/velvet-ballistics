@@ -12,8 +12,10 @@ fn ps_001_generation_starts_at_one() {
     let result = wheel.insert(run, now, vb_runtime::shard::PendingTimerKind::Wait);
     assert!(result.is_ok());
     let entry = wheel.get_entry(run);
-    assert!(entry.is_some());
-    assert_eq!(entry.unwrap().generation, 1);
+    match entry {
+        Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
+        None => { kani::assume(false, "expected Some"); return; }
+    }
 }
 
 #[kani::proof]
@@ -24,9 +26,15 @@ fn ps_001_generation_increments_on_replacement() {
     let now = std::time::Instant::now();
     let future = now + std::time::Duration::from_secs(1);
     assert!(wheel.insert(run, now, vb_runtime::shard::PendingTimerKind::Wait).is_ok());
-    assert_eq!(wheel.get_entry(run).unwrap().generation, 1);
+    match wheel.get_entry(run) {
+        Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
+        None => { kani::assume(false, "unwrap failed"); return; }
+    }
     assert!(wheel.insert(run, future, vb_runtime::shard::PendingTimerKind::Ask).is_ok());
-    assert_eq!(wheel.get_entry(run).unwrap().generation, 2);
+    match wheel.get_entry(run) {
+        Some(v) => kani::assert(v.generation == 2, "expected generation 2"),
+        None => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]

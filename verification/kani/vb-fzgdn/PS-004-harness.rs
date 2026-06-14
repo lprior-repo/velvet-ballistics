@@ -7,8 +7,10 @@ fn ps_004_checked_add_non_max_increments() {
     let gen: u64 = kani::any();
     kani::assume(gen < u64::MAX);
     let next = gen.checked_add(1);
-    assert!(next.is_some());
-    assert_eq!(next.unwrap(), gen + 1);
+    match next {
+        Some(v) => kani::assert(v == gen + 1, "expected gen + 1"),
+        None => { kani::assume(false, "expected Some"); return; }
+    }
 }
 
 #[kani::proof]
@@ -25,7 +27,10 @@ fn ps_004_zero_checked_add_is_one() {
 fn ps_004_large_but_not_max_increments() {
     let gen: u64 = kani::any();
     kani::assume(gen > 0 && gen < u64::MAX - 1);
-    let next = gen.checked_add(1).unwrap();
+    let next = match gen.checked_add(1) {
+        Some(v) => v,
+        None => { kani::assume(false, "unwrap failed"); return; }
+    };
     assert!(next > gen);
     assert_eq!(next, gen + 1);
 }

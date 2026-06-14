@@ -46,7 +46,10 @@ fn base_contract() -> ResourceContract {
 /// Helper: Get a representative WorkflowSource for Kani verification.
 fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: field_sensitivity_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
-    vb_yaml::parse_workflow_source(yaml).expect("valid representative YAML source for Kani")
+    match vb_yaml::parse_workflow_source(yaml) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "valid representative YAML source for Kani"); return; }
+    }
 }
 
 /// PO-K02: Prove that changing a single field changes the digest.

@@ -60,7 +60,10 @@ fn arbitrary_accepted_artifact() -> (
     };
 
     // Serialize to postcard envelope bytes
-    let envelope = postcard::to_allocvec(&artifact).expect("postcard serialize must succeed");
+    let envelope = match postcard::to_allocvec(&artifact) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "postcard serialize must succeed"); return; }
+    };
     (artifact, envelope)
 }
 

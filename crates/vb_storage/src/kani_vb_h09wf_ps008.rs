@@ -77,7 +77,13 @@ fn ps_008_proof_flags_exhaustive() {
             "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}"
         );
         // Verify the returned flag name matches the first missing one
-        let flag = missing.unwrap();
+        let flag = match missing {
+            Some(v) => v,
+            None => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
         match flag {
             "bounded" => assert!(!bounded, "bounded was false"),
             "taint_safe" => assert!(

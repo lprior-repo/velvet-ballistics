@@ -19,13 +19,25 @@ fn make_wf_with_node(node: CompiledNode) -> CompiledWorkflow {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    CompiledWorkflow::try_from_parts(parts).expect("valid workflow")
+    match CompiledWorkflow::try_from_parts(parts) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid workflow");
+            return;
+        }
+    }
 }
 
 fn make_state(wf: CompiledWorkflow) -> vb_runtime::shard::RunState {
-    let frame = vb_core::frame::RunFrame::new(
+    let frame = match vb_core::frame::RunFrame::new(
         vb_core::ids::RunId::new(1), StepIdx::ZERO, 1, 1,
-    ).expect("valid frame");
+    ) {
+        Ok(frame) => frame,
+        Err(_) => {
+            kani::assume(false, "valid frame");
+            return;
+        }
+    };
     vb_runtime::shard::RunState {
         frame,
         workflow: wf,

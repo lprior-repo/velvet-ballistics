@@ -28,7 +28,13 @@ fn bounded_contract_for_retry(retry_safety: RetrySafety) -> ActionContract {
 fn symbolic_contract_no_caps() -> ActionContract {
     ActionContract {
         id: ActionId::new(kani::any()),
-        name: ActionName::new("test-action").expect("hardcoded valid name"),
+        name: match ActionName::new("test-action") {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "hardcoded valid name");
+                return;
+            }
+        },
         input_slot_count: kani::any(),
         output_slot_count: kani::any(),
         max_input_bytes: kani::any(),
@@ -183,7 +189,13 @@ fn unreachable_for_kani_frame_bounds() -> RunFrame {
 fn concrete_key_required_contract() -> ActionContract {
     ActionContract {
         id: ActionId::new(1),
-        name: ActionName::new("test-action").expect("hardcoded valid name"),
+        name: match ActionName::new("test-action") {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "hardcoded valid name");
+                return;
+            }
+        },
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -696,7 +708,13 @@ fn kani_verify_idempotency_missing_key() {
     // Build a non-None side-effect contract
     let make_contract = |retry_safety| ActionContract {
         id: ActionId::new(kani::any()),
-        name: ActionName::new("test-action").expect("hardcoded valid name"),
+        name: match ActionName::new("test-action") {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "hardcoded valid name");
+                return;
+            }
+        },
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

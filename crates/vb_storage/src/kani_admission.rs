@@ -62,11 +62,23 @@ fn minimal_valid_workflow() -> CompiledWorkflow {
         step_names: Box::new([]),
     };
 
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = match postcard::to_allocvec(&parts) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(computed.into());
 
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    match CompiledWorkflow::try_from_parts(parts) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
 }
 
 #[kani::proof]

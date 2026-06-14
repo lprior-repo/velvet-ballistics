@@ -7,7 +7,10 @@
 fn ps_009_exact_deadline_fires() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let deadline = std::time::Instant::now();
-    wheel.insert(vb_core::ids::RunId::new(1), deadline, vb_runtime::shard::PendingTimerKind::Wait).unwrap();
+    match wheel.insert(vb_core::ids::RunId::new(1), deadline, vb_runtime::shard::PendingTimerKind::Wait) {
+        Ok(_) => {},
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
     let fired = wheel.fire_expired(deadline);
     assert_eq!(fired.len(), 1);
     assert!(wheel.is_empty());
@@ -19,7 +22,10 @@ fn ps_009_future_deadline_not_fired() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let now = std::time::Instant::now();
     let future = now + std::time::Duration::from_millis(1);
-    wheel.insert(vb_core::ids::RunId::new(1), future, vb_runtime::shard::PendingTimerKind::Wait).unwrap();
+    match wheel.insert(vb_core::ids::RunId::new(1), future, vb_runtime::shard::PendingTimerKind::Wait) {
+        Ok(_) => {},
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
     let fired = wheel.fire_expired(now);
     assert_eq!(fired.len(), 0);
     assert_eq!(wheel.len(), 1);

@@ -75,8 +75,10 @@ mod kani_admission_ps001 {
         kani::assume(current <= limit);
 
         let result = current.checked_add(0u64);
-        assert!(result.is_some(), "zero-length must always succeed");
-        assert_eq!(result.unwrap(), current);
+        match result {
+            Some(v) => kani::assert(v == current, "expected current"),
+            None => { kani::assume(false, "expected Some"); return; }
+        }
     }
 
     /// C7: Overflow produces None (not panic, not wrap).

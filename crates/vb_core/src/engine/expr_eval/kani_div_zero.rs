@@ -15,15 +15,24 @@ use crate::workflow::ExprOp;
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_div_by_zero_returns_error() {
-    let mut stack = ExprStack::new(MAX_EXPRESSION_STACK).unwrap();
+    let mut stack = match ExprStack::new(MAX_EXPRESSION_STACK) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     let mut store = ValueStore::new();
 
     let left: i64 = kani::any();
     let right: i64 = kani::any();
     kani::assume(right == 0);
 
-    stack.push(SlotValue::I64(left)).unwrap();
-    stack.push(SlotValue::I64(right)).unwrap();
+    match stack.push(SlotValue::I64(left)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    match stack.push(SlotValue::I64(right)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
 
@@ -34,7 +43,10 @@ fn kani_div_by_zero_returns_error() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_div_by_nonzero_succeeds() {
-    let mut stack = ExprStack::new(MAX_EXPRESSION_STACK).unwrap();
+    let mut stack = match ExprStack::new(MAX_EXPRESSION_STACK) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     let mut store = ValueStore::new();
 
     let left: i64 = kani::any();
@@ -42,8 +54,14 @@ fn kani_div_by_nonzero_succeeds() {
     kani::assume(right != 0);
     kani::assume(left.checked_div(right).is_some());
 
-    stack.push(SlotValue::I64(left)).unwrap();
-    stack.push(SlotValue::I64(right)).unwrap();
+    match stack.push(SlotValue::I64(left)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    match stack.push(SlotValue::I64(right)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
 
@@ -53,11 +71,20 @@ fn kani_div_by_nonzero_succeeds() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_div_i64_min_neg_one() {
-    let mut stack = ExprStack::new(MAX_EXPRESSION_STACK).unwrap();
+    let mut stack = match ExprStack::new(MAX_EXPRESSION_STACK) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     let mut store = ValueStore::new();
 
-    stack.push(SlotValue::I64(i64::MIN)).unwrap();
-    stack.push(SlotValue::I64(-1)).unwrap();
+    match stack.push(SlotValue::I64(i64::MIN)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    match stack.push(SlotValue::I64(-1)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
 

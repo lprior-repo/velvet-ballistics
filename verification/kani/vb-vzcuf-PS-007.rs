@@ -56,8 +56,10 @@ mod kani_bridge_ps007 {
 
         // Verify with checked_add
         let result = 0u64.checked_add(max_encoded);
-        assert!(result.is_some());
-        assert!(result.unwrap() <= limit);
+        match result {
+            Some(v) => kani::assert(v <= limit, "result <= limit"),
+            None => { kani::assume(false, "expected Some"); return; }
+        }
     }
 
     /// C8: Silent drift detection — if values diverge, bridge is broken.

@@ -8,9 +8,15 @@ fn ps_008_len_tracks_active_timers() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     assert_eq!(wheel.len(), 0);
     let now = std::time::Instant::now();
-    wheel.insert(vb_core::ids::RunId::new(1), now, vb_runtime::shard::PendingTimerKind::Wait).unwrap();
+    match wheel.insert(vb_core::ids::RunId::new(1), now, vb_runtime::shard::PendingTimerKind::Wait) {
+        Ok(_) => {},
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
     assert_eq!(wheel.len(), 1);
-    wheel.insert(vb_core::ids::RunId::new(2), now, vb_runtime::shard::PendingTimerKind::Ask).unwrap();
+    match wheel.insert(vb_core::ids::RunId::new(2), now, vb_runtime::shard::PendingTimerKind::Ask) {
+        Ok(_) => {},
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
     assert_eq!(wheel.len(), 2);
     wheel.cancel(vb_core::ids::RunId::new(1));
     assert_eq!(wheel.len(), 1);
@@ -21,7 +27,10 @@ fn ps_008_is_empty_reflects_state() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     assert!(wheel.is_empty());
     let now = std::time::Instant::now();
-    wheel.insert(vb_core::ids::RunId::new(1), now, vb_runtime::shard::PendingTimerKind::Wait).unwrap();
+    match wheel.insert(vb_core::ids::RunId::new(1), now, vb_runtime::shard::PendingTimerKind::Wait) {
+        Ok(_) => {},
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
     assert!(!wheel.is_empty());
 }
 

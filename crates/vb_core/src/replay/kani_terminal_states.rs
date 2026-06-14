@@ -20,14 +20,25 @@ fn kani_replay_skips_terminal_states() {
         _ => crate::frame::StepState::Skipped,
     };
 
-    let plan = terminal_plan().expect("plan construction failed");
-    let mut run = RunFrame::new(
+    let plan = match terminal_plan() {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    };
+    let mut run = match RunFrame::new(
         RunId::new(0),
         StepIdx::new(0),
         plan.node_count(),
         plan.slot_count(),
-    )
-    .expect("frame construction failed");
+    ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "frame construction failed");
+            return;
+        }
+    };
 
     let terminal_idx = StepIdx::new(u16::from(step_raw % 4));
     kani::cover!(

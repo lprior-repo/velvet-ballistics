@@ -63,8 +63,13 @@ fn check_empty_prompt_distinct() {
     for i in 0..non_empty_len {
         non_empty_bytes[i] = kani::any();
     }
-    let non_empty_prompt = String::from_utf8(non_empty_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let non_empty_prompt = match String::from_utf8(non_empty_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     let source_non_empty = source_with_ask_prompt(non_empty_prompt);
 

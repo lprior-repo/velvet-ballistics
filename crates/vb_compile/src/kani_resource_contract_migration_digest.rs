@@ -20,7 +20,10 @@ use vb_core::workflow::ResourceContract;
 
 fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: migration_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
-    vb_yaml::parse_workflow_source(yaml).expect("valid representative YAML source for Kani")
+    match vb_yaml::parse_workflow_source(yaml) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "valid representative YAML source for Kani"); return; }
+    }
 }
 
 /// PO-K04: Prove that the post-fix canonical_digest incorporates contract encoding.

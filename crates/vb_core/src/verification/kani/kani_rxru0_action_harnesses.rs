@@ -116,7 +116,13 @@ fn check_action_ticket_serialization_size() {
     };
 
     // Serialize to postcard bytes.
-    let serialized = postcard::to_allocvec(&action_ticket).expect("Serialization must succeed");
+    let serialized = match postcard::to_allocvec(&action_ticket) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "Serialization must succeed");
+            return;
+        }
+    };
 
     // Lower bound: at least 1 byte for each field's varint encoding.
     // Minimum: 7 fields * 1 byte (minimum varint) = 7 bytes.
