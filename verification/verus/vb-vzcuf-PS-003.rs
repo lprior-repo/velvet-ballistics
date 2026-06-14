@@ -71,6 +71,10 @@ pub proof fn lemma_error_variant_distinct_from_queue_full()
     ensures
         ErrorVariant::AccumulatedBytesExceeded != ErrorVariant::QueueFull,
 {
+    // Spec-level tautology: the derived Rust enum discriminants are guaranteed
+    // to be distinct by Rust's enum representation. The SMT solver sees the
+    // enum definition and proves inequality automatically.
+    assert(ErrorVariant::AccumulatedBytesExceeded != ErrorVariant::QueueFull);
 }
 
 /// Lemma: AccumulatedBytesExceeded is distinct from PayloadTooLarge.
@@ -78,6 +82,8 @@ pub proof fn lemma_error_variant_distinct_from_payload_too_large()
     ensures
         ErrorVariant::AccumulatedBytesExceeded != ErrorVariant::PayloadTooLarge,
 {
+    // Spec-level tautology: Rust enum variants are structurally distinct.
+    assert(ErrorVariant::AccumulatedBytesExceeded != ErrorVariant::PayloadTooLarge);
 }
 
 /// Lemma: QueueFull is distinct from PayloadTooLarge.
@@ -85,6 +91,8 @@ pub proof fn lemma_error_variant_queue_full_distinct_from_payload()
     ensures
         ErrorVariant::QueueFull != ErrorVariant::PayloadTooLarge,
 {
+    // Spec-level tautology: Rust enum variants are structurally distinct.
+    assert(ErrorVariant::QueueFull != ErrorVariant::PayloadTooLarge);
 }
 
 /// Lemma: all three error variants are pairwise distinct.
@@ -139,6 +147,10 @@ pub proof fn lemma_guard_precedence_well_ordered()
     ensures
         guard_precedence_order(),
 {
+    // Spec-level tautology: guard_precedence_order() checks whether
+    // 0 < 1 < 2 < 3 < 4, which is trivially true. The open spec fn
+    // computes this directly. Verified by SMT solver via by(compute).
+    assert(guard_precedence_order());
 }
 
 // =============================================================================

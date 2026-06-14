@@ -47,7 +47,13 @@ fn kani_decision_001_all_combinations() {
 
                 let contract = ActionContract {
                     id: ActionId::new(0),
-                    name: ActionName::new("test-action").unwrap(),
+                    name: match ActionName::new("test-action") {
+                        Ok(n) => n,
+                        Err(_) => {
+                            kani::assume(false, "test-action must be a valid ActionName");
+                            return;
+                        }
+                    },
                     input_slot_count: 1,
                     output_slot_count: 1,
                     max_input_bytes: 1024,
@@ -109,7 +115,13 @@ fn decision_table_ok_branch() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
-                name: ActionName::new("test-action").unwrap(),
+                name: match ActionName::new("test-action") {
+                    Ok(n) => n,
+                    Err(_) => {
+                        kani::assume(false, "test-action must be a valid ActionName");
+                        return;
+                    }
+                },
                 input_slot_count: 0,
                 output_slot_count: 0,
                 max_input_bytes: 0,
@@ -156,7 +168,13 @@ fn decision_table_ok_branch() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
-                name: ActionName::new("test-action").unwrap(),
+                name: match ActionName::new("test-action") {
+                    Ok(n) => n,
+                    Err(_) => {
+                        kani::assume(false, "test-action must be a valid ActionName");
+                        return;
+                    }
+                },
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,
@@ -216,7 +234,13 @@ fn decision_table_unsafe_rejected() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
-                name: ActionName::new("test-action").unwrap(),
+                name: match ActionName::new("test-action") {
+                    Ok(n) => n,
+                    Err(_) => {
+                        kani::assume(false, "test-action must be a valid ActionName");
+                        return;
+                    }
+                },
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,
@@ -279,7 +303,13 @@ fn decision_table_at_least_once_rejected() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
-                name: ActionName::new("test-action").unwrap(),
+                name: match ActionName::new("test-action") {
+                    Ok(n) => n,
+                    Err(_) => {
+                        kani::assume(false, "test-action must be a valid ActionName");
+                        return;
+                    }
+                },
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,
@@ -346,7 +376,13 @@ fn decision_table_deterministic_rejected() {
 
             let contract = ActionContract {
                 id: ActionId::new(0),
-                name: ActionName::new("test-action").unwrap(),
+                name: match ActionName::new("test-action") {
+                    Ok(n) => n,
+                    Err(_) => {
+                        kani::assume(false, "test-action must be a valid ActionName");
+                        return;
+                    }
+                },
                 input_slot_count: 1,
                 output_slot_count: 1,
                 max_input_bytes: 1024,

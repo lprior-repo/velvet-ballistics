@@ -6,22 +6,37 @@ use vstd::prelude::*;
 
 verus! {
 
-    // Simplified model: use u64 directly for IDs (no newtype wrapping)
+    // Standalone model types
 
-    /// Model: TimerWheel tracks timers by (generation, deadline)
+    /// Model of PendingTimerKind
+    pub enum PendingTimerKind {
+        WaitUntil,
+        WaitEvent,
+        Ask,
+    }
+
+    /// Model of TimerEntry
+    pub struct TimerEntry {
+        pub run: u64,
+        pub generation: u64,
+        pub deadline: u64,
+        pub kind: PendingTimerKind,
+    }
+
+    /// Model of TimerWheelError
+    pub enum TimerWheelError {
+        GenerationExhausted,
+    }
+
+    /// Model of TimerWheel
     pub struct TimerWheel {
-        pub entries: Map<(u64, u64), (u64, u64)>,
+        pub entries: Map<(u64, u64), TimerEntry>,
         pub next_generation: u64,
     }
 
-    impl TimerWheel {
-        pub closed spec fn entries(&self) -> Map<(u64, u64), (u64, u64)> { self.entries }
-        pub closed spec fn next_generation(&self) -> u64 { self.next_generation }
-    }
-
-    /// Model: TimerWheel has valid state when next_generation > 0
+    /// Model: TimerWheel is valid when next_generation > 0
     pub open spec fn timer_wheel_valid(tw: TimerWheel) -> bool {
         tw.next_generation > 0
     }
-}
 
+} // verus!

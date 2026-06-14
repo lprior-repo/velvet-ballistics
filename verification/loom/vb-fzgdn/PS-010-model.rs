@@ -12,7 +12,7 @@
 
 #![cfg(loom)]
 
-use loom::collections::VecDeque;
+use std::collections::VecDeque;
 use loom::sync::Arc;
 use loom::sync::Mutex;
 use loom::thread;

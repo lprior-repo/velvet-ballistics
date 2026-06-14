@@ -93,6 +93,11 @@ pub proof fn lemma_conservative_always_increases(
     ensures
         conservative_accounting(key, encoded_len, current_bytes, keys) > current_bytes as int,
 {
+    // Spec-level tautology: conservative_accounting is defined as
+    // current_bytes + encoded_len. With encoded_len > 0, the sum is strictly larger.
+    assert(conservative_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int + encoded_len as int);
+    assert(current_bytes as int + encoded_len as int > current_bytes as int) by (nonlinear_arith)
+        requires encoded_len > 0;
 }
 
 /// Lemma: precise accounting preserves bytes for duplicates.
@@ -107,6 +112,9 @@ pub proof fn lemma_precise_duplicate_unchanged(
     ensures
         precise_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int,
 {
+    // Spec-level tautology: precise_accounting returns current_bytes (not adding)
+    // when keys.contains(key) is true (the duplicate case).
+    assert(precise_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int);
 }
 
 /// Lemma: precise accounting increases bytes for new keys.
@@ -122,6 +130,11 @@ pub proof fn lemma_precise_new_key_increases(
     ensures
         precise_accounting(key, encoded_len, current_bytes, keys) > current_bytes as int,
 {
+    // Spec-level tautology: precise_accounting returns current_bytes + encoded_len
+    // when keys.contains(key) is false (new key case). With encoded_len > 0, sum is larger.
+    assert(precise_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int + encoded_len as int);
+    assert(current_bytes as int + encoded_len as int > current_bytes as int) by (nonlinear_arith)
+        requires encoded_len > 0;
 }
 
 /// Lemma: both policies produce the same result for first-time keys.
@@ -137,6 +150,10 @@ pub proof fn lemma_policies_agree_on_new_key(
         conservative_accounting(key, encoded_len, current_bytes, keys)
             == precise_accounting(key, encoded_len, current_bytes, keys),
 {
+    // Spec-level tautology: both policies compute current_bytes + encoded_len
+    // when keys.contains(key) is false (new key case).
+    assert(conservative_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int + encoded_len as int);
+    assert(precise_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int + encoded_len as int);
 }
 
 /// Lemma: staged byte totals are always monotonic under either policy.
@@ -150,6 +167,11 @@ pub proof fn lemma_staged_bytes_monotonic(
         conservative_accounting(key, encoded_len, current_bytes, keys) >= current_bytes as int,
         precise_accounting(key, encoded_len, current_bytes, keys) >= current_bytes as int,
 {
+    // Spec-level tautology: conservative_accounting always adds encoded_len >= 0.
+    // precise_accounting either adds encoded_len >= 0 (new key) or returns current_bytes (duplicate).
+    // Both preserve or increase. Verified by SMT solver.
+    assert(conservative_accounting(key, encoded_len, current_bytes, keys) >= current_bytes as int);
+    assert(precise_accounting(key, encoded_len, current_bytes, keys) >= current_bytes as int);
 }
 
 /// Lemma: policy choice does not affect byte-limit safety.
@@ -168,6 +190,16 @@ pub proof fn lemma_byte_limit_safe(
         conservative_accounting(key, encoded_len, current_bytes, keys) <= limit as int,
         precise_accounting(key, encoded_len, current_bytes, keys) <= limit as int,
 {
+    // Spec-level tautology: conservative_accounting returns current_bytes + encoded_len,
+    // which is required to be <= limit. precise_accounting returns either the same sum
+    // (new key) or current_bytes (duplicate), both of which are <= limit by the requires.
+    assert(conservative_accounting(key, encoded_len, current_bytes, keys) == current_bytes as int + encoded_len as int);
+    assert(current_bytes as int + encoded_len as int <= limit as int);
+    assert(conservative_accounting(key, encoded_len, current_bytes, keys) <= limit as int);
+    // For precise: either current_bytes + encoded_len (same as conservative) or current_bytes.
+    // In the duplicate case, current_bytes <= limit holds via the first requires.
+    assert(current_bytes as int <= limit as int);
+    assert(precise_accounting(key, encoded_len, current_bytes, keys) <= limit as int);
 }
 
 // =============================================================================

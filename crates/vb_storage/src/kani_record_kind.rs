@@ -43,7 +43,7 @@ fn check_kind_28_journal_family() {
     match result {
         Ok(()) => {}
         Err(e) => {
-            assert!(
+            kani::assert(
                 false,
                 "kind 28 with MAGIC_JOURNAL_EVENT must return Ok(()) — got {:?}",
                 e
@@ -60,7 +60,7 @@ fn check_kind_28_validate_known_kind() {
     match result {
         Ok(()) => {}
         Err(e) => {
-            assert!(
+            kani::assert(
                 false,
                 "validate_known_kind(28) must return Ok(()) — got {:?}",
                 e
@@ -113,7 +113,7 @@ fn check_all_existing_kinds_known() {
     ];
     for kind in known_kinds {
         let result = crate::codec::validation::is_known_record_kind(kind);
-        assert!(result, "kind {} must remain a known record kind", kind);
+        kani::assert(result, "kind {} must remain a known record kind", kind);
     }
 }
 
@@ -131,14 +131,14 @@ fn check_journal_family_exhaustive() {
 
     match result {
         Ok(()) => {
-            assert!(
+            kani::assert(
                 is_valid_journal_kind,
                 "kind {} returned Ok but is not in valid journal range 10..=28",
                 kind
             );
         }
         Err(_) => {
-            assert!(
+            kani::assert(
                 !is_valid_journal_kind,
                 "kind {} returned Err but is in valid journal range 10..=28",
                 kind
@@ -162,7 +162,7 @@ fn check_replay_contiguity_with_killed() {
 
     // Verify contiguity property
     for i in 0..seqs.len() - 1 {
-        assert!(
+        kani::assert(
             seqs[i] + 1 == seqs[i + 1],
             "gap detected between seq[{}]={} and seq[{}]={}",
             i,
@@ -174,7 +174,7 @@ fn check_replay_contiguity_with_killed() {
 
     // Verify all sequences are within valid u64 range (not overflow sentinel)
     for seq in seqs {
-        assert!(
+        kani::assert(
             seq != u64::MAX,
             "seq {} is at overflow sentinel u64::MAX",
             seq

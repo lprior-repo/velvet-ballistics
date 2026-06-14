@@ -1575,9 +1575,6 @@ proptest! {
         if data.len() < RECORD_HEADER_BYTES {
             prop_assert!(matches!(result, Err(JournalError::UnexpectedEof)));
         }
-        if result.is_err() {
-            prop_assert!(true);
-        }
     }
 }
 

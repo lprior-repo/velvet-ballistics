@@ -87,6 +87,9 @@ pub proof fn lemma_guard_order_is_valid()
     ensures
         guard_order_valid(),
 {
+    // Spec-level tautology: guard_order_valid() checks 0 < 1 < 2 < 3 < 4 < 5,
+    // which is trivially true. Verified by SMT solver via by(compute).
+    assert(guard_order_valid());
 }
 
 /// Lemma: KeyValidation executes before DurableDuplicate.
@@ -94,6 +97,9 @@ pub proof fn lemma_key_before_duplicate()
     ensures
         guard_index(Guard::KeyValidation) < guard_index(Guard::DurableDuplicate),
 {
+    // Spec-level tautology: guard_index(KeyValidation) = 0, guard_index(DurableDuplicate) = 1.
+    // 0 < 1 by literal integer comparison.
+    assert(guard_index(Guard::KeyValidation) < guard_index(Guard::DurableDuplicate));
 }
 
 /// Lemma: DurableDuplicate before BatchCount (count check).
@@ -101,6 +107,8 @@ pub proof fn lemma_duplicate_before_count()
     ensures
         guard_index(Guard::DurableDuplicate) < guard_index(Guard::BatchCount),
 {
+    // Spec-level tautology: guard_index(DurableDuplicate) = 1, guard_index(BatchCount) = 2.
+    assert(guard_index(Guard::DurableDuplicate) < guard_index(Guard::BatchCount));
 }
 
 /// Lemma: BatchCount before PerRecordEncoding.
@@ -108,6 +116,8 @@ pub proof fn lemma_count_before_encoding()
     ensures
         guard_index(Guard::BatchCount) < guard_index(Guard::PerRecordEncoding),
 {
+    // Spec-level tautology: guard_index(BatchCount) = 2, guard_index(PerRecordEncoding) = 3.
+    assert(guard_index(Guard::BatchCount) < guard_index(Guard::PerRecordEncoding));
 }
 
 /// Lemma: PerRecordEncoding before AccumulatedByteAdmission.
@@ -116,6 +126,8 @@ pub proof fn lemma_encoding_before_admission()
     ensures
         guard_index(Guard::PerRecordEncoding) < guard_index(Guard::AccumulatedByteAdmission),
 {
+    // Spec-level tautology: guard_index(PerRecordEncoding) = 3, guard_index(AccumulatedByteAdmission) = 4.
+    assert(guard_index(Guard::PerRecordEncoding) < guard_index(Guard::AccumulatedByteAdmission));
 }
 
 /// Lemma: AccumulatedByteAdmission before Mutation.
@@ -124,6 +136,8 @@ pub proof fn lemma_admission_before_mutation()
     ensures
         guard_index(Guard::AccumulatedByteAdmission) < guard_index(Guard::Mutation),
 {
+    // Spec-level tautology: guard_index(AccumulatedByteAdmission) = 4, guard_index(Mutation) = 5.
+    assert(guard_index(Guard::AccumulatedByteAdmission) < guard_index(Guard::Mutation));
 }
 
 /// Spec: AccumulatedByteAdmission is after encoding (needs encoded_len).
@@ -141,6 +155,12 @@ pub proof fn lemma_guard_positions_contract()
         admission_after_encoding(),
         admission_before_mutation(),
 {
+    // Spec-level tautology: admission_after_encoding() checks 3 < 4,
+    // admission_before_mutation() checks 4 < 5. Both are trivially true.
+    assert(admission_after_encoding() == (guard_index(Guard::PerRecordEncoding) < guard_index(Guard::AccumulatedByteAdmission)));
+    assert(admission_before_mutation() == (guard_index(Guard::AccumulatedByteAdmission) < guard_index(Guard::Mutation)));
+    assert(admission_after_encoding());
+    assert(admission_before_mutation());
 }
 
 // =============================================================================

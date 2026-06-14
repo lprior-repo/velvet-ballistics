@@ -30,8 +30,14 @@ fn test_mock_marker_no_panic_on_all_variants() {
 
     for m in &variants {
         // Serialization roundtrip must not panic.
-        let buf = postcard::to_allocvec(m).expect("serialize must not panic");
-        let _: MockMarker = postcard::from_bytes(&buf).expect("deserialize must not panic");
+        let buf = match postcard::to_allocvec(m) {
+            Ok(b) => b,
+            Err(_) => { kani::assume(false, "serialize must not panic"); return; }
+        };
+        let _: MockMarker = match postcard::from_bytes(&buf) {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "deserialize must not panic"); return; }
+        };
 
         // Debug formatting must not panic.
         let _ = format!("{m:?}");
@@ -59,11 +65,16 @@ fn test_legacy_7field_deserialize_fallback() {
         mock: MockMarker::GithubIssueCreate, // discriminant 0 — legacy default
     };
 
-    let buf = postcard::to_allocvec(&legacy_ticket).expect("serialization must not panic");
+    let buf = match postcard::to_allocvec(&legacy_ticket) {
+        Ok(b) => b,
+        Err(_) => { kani::assume(false, "serialization must not panic"); return; }
+    };
 
     // Deserialize back.
-    let restored: vb_core::action::ActionTicket =
-        postcard::from_bytes(&buf).expect("deserialization must not panic");
+    let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "deserialization must not panic"); return; }
+    };
 
     assert_eq!(
         restored.mock,
@@ -86,9 +97,14 @@ fn test_action_ticket_serde_no_panic_boundary() {
         mock: MockMarker::HttpGet,
     };
 
-    let buf = postcard::to_allocvec(&ticket).expect("max-value serialization must not panic");
-    let restored: vb_core::action::ActionTicket =
-        postcard::from_bytes(&buf).expect("max-value deserialization must not panic");
+    let buf = match postcard::to_allocvec(&ticket) {
+        Ok(b) => b,
+        Err(_) => { kani::assume(false, "max-value serialization must not panic"); return; }
+    };
+    let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "max-value deserialization must not panic"); return; }
+    };
 
     assert_eq!(restored.run.get(), u64::MAX, "max run must be preserved");
     assert_eq!(restored.step.get(), u16::MAX, "max step must be preserved");

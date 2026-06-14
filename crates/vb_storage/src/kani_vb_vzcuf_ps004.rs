@@ -52,8 +52,8 @@ mod kani_batch_state_ps004 {
 
         match err {
             JournalError::DuplicateEvent { run: r, seq: s } => {
-                assert_eq!(r, run);
-                assert_eq!(s, seq);
+                kani::assert(r == run, "DuplicateEvent run matches");
+                kani::assert(s == seq, "DuplicateEvent seq matches");
                 // Error is well-formed
             }
             _ => { kani::assume(false); loop {}}
@@ -191,8 +191,8 @@ mod kani_batch_state_ps004 {
 
         match (&r1, &r2) {
             (Ok(v1), Ok(v2)) => {
-                assert_eq!(v1, v2, "encode_record must be deterministic");
-                assert_eq!(v1.len(), v2.len());
+                kani::assert(v1 == v2, "encode_record must be deterministic");
+                kani::assert(v1.len() == v2.len(), "encode_record lengths match");
             }
             (Err(_), Err(_)) => {} // Both fail the same way
             _ => { kani::assume(false); loop {}}

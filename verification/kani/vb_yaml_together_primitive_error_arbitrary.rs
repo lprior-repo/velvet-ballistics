@@ -24,8 +24,15 @@ together:
   branches: []
 "#;
 
-    let docs = saphyr::Yaml::load_from_str(yaml_text).unwrap();
-    let root = docs.into_iter().next().unwrap();
+    let Ok(yaml_doc) = saphyr::Yaml::load_from_str(yaml_text) else {
+        kani::assume(false, "hardcoded YAML must parse");
+        return;
+    };
+    let docs = yaml_doc;
+    let Some(root) = docs.into_iter().next() else {
+        kani::assume(false, "hardcoded YAML must have a document");
+        return;
+    };
 
     let result = crate::ast::parse_steps::parse_step(&root);
 

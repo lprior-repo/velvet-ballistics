@@ -86,10 +86,9 @@ fn ps_002_anti_contract() {
     // This MUST be false for valid records — the envelope contains metadata
     // (verification, capabilities, etc.) so its hash differs from ir_digest.
     // The only exception is a BLAKE3 collision (astronomically unlikely).
-    assert!(
+    kani::assert(
         !envelope_hash_matches,
-        "Anti-contract: BLAKE3(envelope) must NOT equal record.digest. \
-         vb-6uue check would reject ALL valid records."
+        "Anti-contract: BLAKE3(envelope) must NOT equal record.digest",
     );
 
     kani::cover!(
@@ -118,7 +117,7 @@ fn ps_002_correct_two_step_verification() {
     let envelope_hash = blake3::hash(&record.ir);
     // The envelope hash should differ, but the inner hash should match
     let inner_matches = inner_hash.as_bytes() == &correct_digest.as_bytes();
-    assert!(inner_matches, "Correct pattern: inner hash matches digest");
+    kani::assert(inner_matches, "Correct pattern: inner hash matches digest");
 
     // Structural proof: envelope hash != inner hash
     if envelope_hash.as_bytes() != inner_hash.as_bytes() {

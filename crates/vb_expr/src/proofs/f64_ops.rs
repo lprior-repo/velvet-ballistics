@@ -30,8 +30,20 @@ fn kani_f64_add_preserves_finiteness() {
     kani::assume(left_f64.abs() <= f64::MAX / 2.0);
     kani::assume(right_f64.abs() <= f64::MAX / 2.0);
 
-    let left = FiniteF64::new(left_f64).unwrap();
-    let right = FiniteF64::new(right_f64).unwrap();
+    let left = match FiniteF64::new(left_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            return;
+        }
+    };
+    let right = match FiniteF64::new(right_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            return;
+        }
+    };
 
     let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(left), SlotValue::F64(right));
 
@@ -62,8 +74,20 @@ fn kani_f64_sub_preserves_finiteness() {
     kani::assume(left_f64.abs() <= f64::MAX / 2.0);
     kani::assume(right_f64.abs() <= f64::MAX / 2.0);
 
-    let left = FiniteF64::new(left_f64).unwrap();
-    let right = FiniteF64::new(right_f64).unwrap();
+    let left = match FiniteF64::new(left_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            return;
+        }
+    };
+    let right = match FiniteF64::new(right_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            return;
+        }
+    };
 
     let result = eval_binary_op(BinaryOp::Sub, SlotValue::F64(left), SlotValue::F64(right));
 
@@ -97,8 +121,20 @@ fn kani_f64_mul_preserves_finiteness() {
     kani::assume(left_f64.abs() <= max_sqrt);
     kani::assume(right_f64.abs() <= max_sqrt);
 
-    let left = FiniteF64::new(left_f64).unwrap();
-    let right = FiniteF64::new(right_f64).unwrap();
+    let left = match FiniteF64::new(left_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            return;
+        }
+    };
+    let right = match FiniteF64::new(right_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            return;
+        }
+    };
 
     let result = eval_binary_op(BinaryOp::Mul, SlotValue::F64(left), SlotValue::F64(right));
 
@@ -122,7 +158,13 @@ fn kani_f64_neg_preserves_finiteness() {
     let val_f64: f64 = kani::any();
     kani::assume(val_f64.is_finite());
 
-    let val = FiniteF64::new(val_f64).unwrap();
+    let val = match FiniteF64::new(val_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite input");
+            return;
+        }
+    };
 
     let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(val));
 

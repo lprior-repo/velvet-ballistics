@@ -105,9 +105,14 @@ proof fn test_advance_zero()
 
 /// Theorem: production contract binding is well-formed.
 pub proof fn theorem_production_contract_holds()
+    ensures
+        forall |g: u64|
+            generation_advance(g) ==
+            (if g < u64::MAX { Some((g + 1u64) as u64) } else { Option::None }),
 {
-    // Empty body: production binding established by `generation_advance_exec`'s
-    // `ensures` clause, which asserts the production return equals the spec.
+    // Confirms the spec is total: every u64 input maps to a well-defined output.
+    test_advance_non_max();
+    test_advance_max();
 }
 
 } // verus!

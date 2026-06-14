@@ -334,12 +334,20 @@ pub proof fn theorem_missing_step_never_requires_timer()
 /// collectively establish that the spec is total over its domain
 /// and that the production contract is well-formed.
 pub proof fn theorem_production_signature_contract_holds()
+    ensures
+        timer_required_spec(Option::None::<NodeKindExt>) == false,
+        timer_required_spec(Option::Some(NodeKindExt::WaitUntil)) == true,
+        timer_required_spec(Option::Some(NodeKindExt::WaitEvent { has_timeout: true })) == true,
+        timer_required_spec(Option::Some(NodeKindExt::WaitEvent { has_timeout: false })) == false,
+        timer_required_spec(Option::Some(NodeKindExt::Ask { has_timeout: true })) == true,
+        timer_required_spec(Option::Some(NodeKindExt::Ask { has_timeout: false })) == false,
+        timer_required_spec(Option::Some(NodeKindExt::Other)) == false,
 {
-    // Empty body: the production binding is established by the
-    // existence of the external_body stub and its `ensures` clause
-    // (asserted at any exec-context call site). The theorem is a
-    // proof-context marker that the production signature shape
-    // (RunStateMirror, StepIdxGhost) -> bool is in scope.
+    // The production binding is established by the existence of the
+    // external_body stubs and their `ensures` clauses. This theorem
+    // confirms the spec is total and matches the production match arms
+    // (helpers/timer.rs:11-21) for every input shape.
+    corollary_production_matches_spec_universally();
 }
 
 /// Corollary: the universal hold — the production function's contract

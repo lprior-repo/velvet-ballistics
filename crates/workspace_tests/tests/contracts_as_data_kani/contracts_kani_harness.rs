@@ -379,7 +379,10 @@ fn kani_schema_version_accepts_valid() {
         version
     );
 
-    let validated = result.unwrap();
+    let validated = match result {
+        Ok(v) => v,
+        Err(_e) => { kani::assume(false, "operation should succeed"); return; }
+    };
     assert_eq!(validated, version, "Validated version must equal input");
 }
 
@@ -526,7 +529,10 @@ fn kani_gate_evidence_parity() {
         "gate_evidence_from_report should always return Ok when valid + invalid == total"
     );
 
-    let evidence = result.unwrap();
+    let evidence = match result {
+        Ok(v) => v,
+        Err(_e) => { kani::assume(false, "operation should succeed"); return; }
+    };
 
     // Postcondition: status == Pass iff invalid == 0
     if invalid == 0 {
@@ -576,7 +582,10 @@ fn kani_gate_evidence_empty() {
     let result = gate_evidence_from_report(0, 0, 0);
 
     assert!(result.is_ok());
-    let evidence = result.unwrap();
+    let evidence = match result {
+        Ok(v) => v,
+        Err(_e) => { kani::assume(false, "operation should succeed"); return; }
+    };
 
     assert!(matches!(evidence.status, GateStatus::Pass));
     assert_eq!(evidence.exit_code, 0);
@@ -596,7 +605,10 @@ fn kani_gate_evidence_all_invalid() {
     let result = gate_evidence_from_report(invalid, 0, invalid);
 
     assert!(result.is_ok());
-    let evidence = result.unwrap();
+    let evidence = match result {
+        Ok(v) => v,
+        Err(_e) => { kani::assume(false, "operation should succeed"); return; }
+    };
 
     assert!(matches!(evidence.status, GateStatus::Fail));
     assert_eq!(evidence.exit_code, 1);

@@ -70,7 +70,7 @@ fn ps_009_source_digest() {
             // Other errors also acceptable (policy_digest may also fail)
         }
     }
-    assert!(result.is_err(), "source_digest mismatch must be an error");
+    kani::assert(result.is_err(), "source_digest mismatch must be an error");
 }
 
 /// PS-009b: When source_digest == digest, the metadata function proceeds to the next gate.

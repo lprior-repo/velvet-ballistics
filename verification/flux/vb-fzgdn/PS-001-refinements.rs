@@ -11,6 +11,10 @@ use vb_runtime::shard::timer_wheel::TimerWheelError;
 #[flux_rs::refined_by(gen: int)]
 pub struct SafeGeneration(u64);
 
+/// TRUSTED BOUNDARY justification: SafeGeneration wraps u64 with a
+/// gen < u64::MAX refinement. Flux cannot prove the type-level refinement
+/// without a trusted impl. Arithmetic safety verified by Kani
+/// (PO-KANI-vb-fzgdn-003) and unit tests (timer_wheel.rs:172-185).
 #[flux_rs::trusted]
 impl SafeGeneration {
     /// Creates a SafeGeneration from a u64 value that is guaranteed < u64::MAX.

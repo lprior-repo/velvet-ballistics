@@ -122,6 +122,44 @@ fn agent_context_deliver_rejects_symlink_alias_to_blocked_root() -> Result<(), S
 }
 
 #[cfg(unix)]
+#[test]
+fn agent_context_deliver_accepts_symlink_alias_to_allowed_parent() -> Result<(), String> {
+    let dir = deliver_tempdir()?;
+    let real_parent = dir.path().join("real-parent");
+    std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;
+    let alias_parent = dir.path().join("alias-parent");
+    std::os::unix::fs::symlink(&real_parent, &alias_parent).map_err(|error| error.to_string())?;
+
+    let deliver_path = alias_parent.join("agent-context.jsonl");
+    let actual_path = real_parent.join("agent-context.jsonl");
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(["agent-context", "--deliver", target.as_str()])
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    assert!(
+        output.status.success(),
+        "agent-context --deliver via symlink alias must succeed, stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert!(deliver_path.exists());
+
+    let delivered = std::fs::read_to_string(&actual_path).map_err(|error| error.to_string())?;
+    let value: serde_json::Value =
+        serde_json::from_str(delivered.trim_end()).map_err(|error| error.to_string())?;
+    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
+    assert_eq!(
+        value.get("cli"),
+        Some(&serde_json::json!("velvet-ballistics"))
+    );
+    assert_eq!(delivered.lines().count(), 1);
+    Ok(())
+}
+
+#[cfg(unix)]
 fn blocked_root_symlink_target() -> Option<&'static std::path::Path> {
     let candidate = std::path::Path::new("/proc");
     if cfg!(target_os = "linux") && candidate.is_dir() {

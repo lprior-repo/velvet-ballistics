@@ -2172,6 +2172,7 @@ dependencies = [
  "crc32c",
  "fjall",
  "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
+ "loom",
  "postcard",
  "proptest",
  "rustix",

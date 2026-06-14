@@ -17,19 +17,24 @@ pub mod reentry_harnesses {
     use vb_core::value::SlotValue;
     use vb_core::value_store::ValueStore;
 
-    use crate::primitives::collect::{CollectStates, collect_next, collect_page};
+    use crate::primitives::collect::{collect_next, collect_page, CollectStates};
     use crate::primitives::for_each::for_each_next;
     use crate::primitives::reduce::reduce_next;
     use crate::primitives::repeat::{repeat_attempt, repeat_check};
 
     fn fresh_frame(step_count: u16, slot_count: u16) -> RunFrame {
-        RunFrame::new(
+        match RunFrame::new(
             vb_core::ids::RunId::new(1),
             StepIdx::ZERO,
             step_count,
             slot_count,
-        )
-        .unwrap()
+        ) {
+            Ok(frame) => frame,
+            Err(_) => {
+                kani::assume(false, "RunFrame::new failed");
+                return;
+            }
+        }
     }
 
     fn list_in_slot(
@@ -38,8 +43,20 @@ pub mod reentry_harnesses {
         slot: SlotIdx,
         items: Vec<SlotValue>,
     ) {
-        let id = store.insert_list(items.into_boxed_slice()).unwrap();
-        run.write_slot(slot, SlotValue::List(id)).unwrap();
+        let id = match store.insert_list(items.into_boxed_slice()) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "insert_list failed");
+                return;
+            }
+        };
+        match run.write_slot(slot, SlotValue::List(id)) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false, "write_slot failed");
+                return;
+            }
+        }
     }
 
     fn step_state_from_u8(v: u8) -> StepState {
@@ -101,30 +118,58 @@ pub mod reentry_harnesses {
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
-            StepState::Pending => {
-                run.mark_pending(body_step).unwrap();
-            }
+            StepState::Pending => match run.mark_pending(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
             StepState::Running => {
                 // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
-            StepState::Succeeded => {
-                run.mark_succeeded(body_step).unwrap();
-            }
-            StepState::Failed => {
-                run.mark_failed(body_step).unwrap();
-            }
-            StepState::Skipped => {
-                run.mark_skipped(body_step).unwrap();
-            }
-            StepState::Waiting => {
-                run.mark_waiting(body_step).unwrap();
-            }
-            StepState::Asking => {
-                run.mark_asking(body_step).unwrap();
-            }
-            StepState::Cancelled => {
-                run.mark_cancelled(body_step).unwrap();
-            }
+            StepState::Succeeded => match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 
@@ -189,30 +234,58 @@ pub mod reentry_harnesses {
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
-            StepState::Pending => {
-                run.mark_pending(body_step).unwrap();
-            }
+            StepState::Pending => match run.mark_pending(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
             StepState::Running => {
                 // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
-            StepState::Succeeded => {
-                run.mark_succeeded(body_step).unwrap();
-            }
-            StepState::Failed => {
-                run.mark_failed(body_step).unwrap();
-            }
-            StepState::Skipped => {
-                run.mark_skipped(body_step).unwrap();
-            }
-            StepState::Waiting => {
-                run.mark_waiting(body_step).unwrap();
-            }
-            StepState::Asking => {
-                run.mark_asking(body_step).unwrap();
-            }
-            StepState::Cancelled => {
-                run.mark_cancelled(body_step).unwrap();
-            }
+            StepState::Succeeded => match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 
@@ -296,30 +369,58 @@ pub mod reentry_harnesses {
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
-            StepState::Pending => {
-                run.mark_pending(body_step).unwrap();
-            }
+            StepState::Pending => match run.mark_pending(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
             StepState::Running => {
                 // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
-            StepState::Succeeded => {
-                run.mark_succeeded(body_step).unwrap();
-            }
-            StepState::Failed => {
-                run.mark_failed(body_step).unwrap();
-            }
-            StepState::Skipped => {
-                run.mark_skipped(body_step).unwrap();
-            }
-            StepState::Waiting => {
-                run.mark_waiting(body_step).unwrap();
-            }
-            StepState::Asking => {
-                run.mark_asking(body_step).unwrap();
-            }
-            StepState::Cancelled => {
-                run.mark_cancelled(body_step).unwrap();
-            }
+            StepState::Succeeded => match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 
@@ -393,30 +494,58 @@ pub mod reentry_harnesses {
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
-            StepState::Pending => {
-                run.mark_pending(body_step).unwrap();
-            }
+            StepState::Pending => match run.mark_pending(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
             StepState::Running => {
                 // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
-            StepState::Succeeded => {
-                run.mark_succeeded(body_step).unwrap();
-            }
-            StepState::Failed => {
-                run.mark_failed(body_step).unwrap();
-            }
-            StepState::Skipped => {
-                run.mark_skipped(body_step).unwrap();
-            }
-            StepState::Waiting => {
-                run.mark_waiting(body_step).unwrap();
-            }
-            StepState::Asking => {
-                run.mark_asking(body_step).unwrap();
-            }
-            StepState::Cancelled => {
-                run.mark_cancelled(body_step).unwrap();
-            }
+            StepState::Succeeded => match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 
@@ -458,8 +587,13 @@ pub mod reentry_harnesses {
         let done = StepIdx::new(2);
 
         let packed: i64 = (3_i64 << 32) | 1_i64;
-        run.write_slot(attempt_slot, SlotValue::I64(packed))
-            .unwrap();
+        match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false, "write_slot failed");
+                return;
+            }
+        }
 
         let body_step = StepIdx::new(1);
 
@@ -471,30 +605,58 @@ pub mod reentry_harnesses {
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
-            StepState::Pending => {
-                run.mark_pending(body_step).unwrap();
-            }
+            StepState::Pending => match run.mark_pending(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
             StepState::Running => {
                 // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
-            StepState::Succeeded => {
-                run.mark_succeeded(body_step).unwrap();
-            }
-            StepState::Failed => {
-                run.mark_failed(body_step).unwrap();
-            }
-            StepState::Skipped => {
-                run.mark_skipped(body_step).unwrap();
-            }
-            StepState::Waiting => {
-                run.mark_waiting(body_step).unwrap();
-            }
-            StepState::Asking => {
-                run.mark_asking(body_step).unwrap();
-            }
-            StepState::Cancelled => {
-                run.mark_cancelled(body_step).unwrap();
-            }
+            StepState::Succeeded => match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 
@@ -548,7 +710,13 @@ pub mod reentry_harnesses {
 
         // Body completes execution → Succeeded
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
-        run.mark_succeeded(body_step).unwrap();
+        match run.mark_succeeded(body_step) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false, "mark_succeeded failed");
+                return;
+            }
+        }
 
         // for_each_next re-enters for next item
         let result = for_each_next(
@@ -562,7 +730,13 @@ pub mod reentry_harnesses {
 
         // If re-entry succeeded (Continue), body state must be Running.
         if let Ok(vb_core::EngineSignal::Continue) = result {
-            let state_after = run.step_state(body_step).unwrap();
+            let state_after = match run.step_state(body_step) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "step_state failed");
+                    return;
+                }
+            };
             kani::assert(
                 state_after == StepState::Running,
                 "for_each_next re-entry must mark body step Running (PO-KANI-008)",
@@ -592,7 +766,13 @@ pub mod reentry_harnesses {
         let body_step = StepIdx::new(1);
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
-        run.mark_succeeded(body_step).unwrap();
+        match run.mark_succeeded(body_step) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false, "mark_succeeded failed");
+                return;
+            }
+        }
 
         let result = reduce_next(
             &mut run,
@@ -605,7 +785,13 @@ pub mod reentry_harnesses {
         );
 
         if let Ok(vb_core::EngineSignal::Continue) = result {
-            let state_after = run.step_state(body_step).unwrap();
+            let state_after = match run.step_state(body_step) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "step_state failed");
+                    return;
+                }
+            };
             kani::assert(
                 state_after == StepState::Running,
                 "reduce_next re-entry must mark body step Running (PO-KANI-009)",
@@ -651,7 +837,13 @@ pub mod reentry_harnesses {
 
             let body_step = StepIdx::new(1);
             // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
-            run.mark_succeeded(body_step).unwrap();
+            match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            }
             let result = collect_next(
                 &mut run,
                 &mut store,
@@ -662,7 +854,13 @@ pub mod reentry_harnesses {
             );
 
             if let Ok(vb_core::EngineSignal::Continue) = result {
-                let state_after = run.step_state(body_step).unwrap();
+                let state_after = match run.step_state(body_step) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        kani::assume(false, "step_state failed");
+                        return;
+                    }
+                };
                 kani::assert(
                     state_after == StepState::Running,
                     "collect_next must mark body state Running (PO-KANI-010)",
@@ -678,16 +876,33 @@ pub mod reentry_harnesses {
             let done = StepIdx::new(2);
 
             let packed: i64 = (3_i64 << 32) | 1_i64;
-            run.write_slot(attempt_slot, SlotValue::I64(packed))
-                .unwrap();
+            match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "write_slot failed");
+                    return;
+                }
+            }
 
             let body_step = StepIdx::new(1);
             // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
-            run.mark_succeeded(body_step).unwrap();
+            match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            }
             let result = repeat_attempt(&mut run, attempt_slot, body, done);
 
             if let Ok(vb_core::EngineSignal::Continue) = result {
-                let state_after = run.step_state(body_step).unwrap();
+                let state_after = match run.step_state(body_step) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        kani::assume(false, "step_state failed");
+                        return;
+                    }
+                };
                 kani::assert(
                     state_after == StepState::Running,
                     "repeat_attempt must mark body state Running (PO-KANI-010)",
@@ -703,16 +918,33 @@ pub mod reentry_harnesses {
             let next_body = StepIdx::new(1);
 
             let packed: i64 = (3_i64 << 32) | 1_i64;
-            run.write_slot(attempt_slot, SlotValue::I64(packed))
-                .unwrap();
+            match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "write_slot failed");
+                    return;
+                }
+            }
 
             let body_step = StepIdx::new(1);
             // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
-            run.mark_succeeded(body_step).unwrap();
+            match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            }
             let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
             if let Ok(vb_core::EngineSignal::Continue) = result {
-                let state_after = run.step_state(body_step).unwrap();
+                let state_after = match run.step_state(body_step) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        kani::assume(false, "step_state failed");
+                        return;
+                    }
+                };
                 kani::assert(
                     state_after == StepState::Running,
                     "repeat_check must mark body state Running (PO-KANI-010)",
@@ -742,18 +974,72 @@ pub mod reentry_harnesses {
 
         // Set the body step to a symbolic state
         match body_state {
-            StepState::Pending => run.mark_pending(body).unwrap(),
-            StepState::Running => run.mark_running(body).unwrap(),
-            StepState::Succeeded => run.mark_succeeded(body).unwrap(),
-            StepState::Failed => run.mark_failed(body).unwrap(),
-            StepState::Skipped => run.mark_skipped(body).unwrap(),
-            StepState::Waiting => run.mark_waiting(body).unwrap(),
-            StepState::Asking => run.mark_asking(body).unwrap(),
-            StepState::Cancelled => run.mark_cancelled(body).unwrap(),
+            StepState::Pending => match run.mark_pending(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
+            StepState::Running => match run.mark_running(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_running failed");
+                    return;
+                }
+            },
+            StepState::Succeeded => match run.mark_succeeded(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 
-        let state_before = run.step_state(body).unwrap();
+        let state_before = match run.step_state(body) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "step_state failed");
+                return;
+            }
+        };
         let pc_before = run.pc();
         let executed_before = run.executed();
 
@@ -772,7 +1058,13 @@ pub mod reentry_harnesses {
         }
 
         // Body state must follow the explicit re-entry contract.
-        let state_after = run.step_state(body).unwrap();
+        let state_after = match run.step_state(body) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "step_state failed");
+                return;
+            }
+        };
         let expected = if state_before == StepState::Succeeded {
             StepState::Running
         } else {
@@ -803,8 +1095,13 @@ pub mod reentry_harnesses {
         let next_body = StepIdx::new(1);
 
         let packed: i64 = (3_i64 << 32) | 1_i64;
-        run.write_slot(attempt_slot, SlotValue::I64(packed))
-            .unwrap();
+        match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false, "write_slot failed");
+                return;
+            }
+        }
 
         let body_step = StepIdx::new(1);
 
@@ -816,30 +1113,58 @@ pub mod reentry_harnesses {
 
         // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
         match body_state {
-            StepState::Pending => {
-                run.mark_pending(body_step).unwrap();
-            }
+            StepState::Pending => match run.mark_pending(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_pending failed");
+                    return;
+                }
+            },
             StepState::Running => {
                 // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
             }
-            StepState::Succeeded => {
-                run.mark_succeeded(body_step).unwrap();
-            }
-            StepState::Failed => {
-                run.mark_failed(body_step).unwrap();
-            }
-            StepState::Skipped => {
-                run.mark_skipped(body_step).unwrap();
-            }
-            StepState::Waiting => {
-                run.mark_waiting(body_step).unwrap();
-            }
-            StepState::Asking => {
-                run.mark_asking(body_step).unwrap();
-            }
-            StepState::Cancelled => {
-                run.mark_cancelled(body_step).unwrap();
-            }
+            StepState::Succeeded => match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_succeeded failed");
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_failed failed");
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_skipped failed");
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_waiting failed");
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_asking failed");
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false, "mark_cancelled failed");
+                    return;
+                }
+            },
             _ => {}
         }
 

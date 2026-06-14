@@ -16,10 +16,10 @@
 #                          "makepad-2.0" do not false-match). "Makepad"
 #                          (capitalised) is allowed.
 #
-# Per-line allowlist: a single line containing
-# "# allow-removed-crate: <reason>" or "// allow-removed-crate: <reason>"
-# suppresses the NEXT non-blank line; the scanner reports the suppression as
-# "allowlisted:" (informational) but does not fail on it.
+# Per-line allowlist: a true comment-start marker only suppresses the next
+# non-blank line when that target line is itself comment-like or historical
+# doc prose. Active manifest lines and source `use` / `extern crate` lines stay
+# active even if preceded by an allowlist marker.
 #
 # Usage:
 #   bash scripts/check-removed-crate-residue.sh                # full repo scan
@@ -35,8 +35,22 @@ if [[ ! -f "$ROOT/Cargo.toml" || ! -d "$ROOT/crates" ]]; then
 fi
 
 mkdir -p target/gate-tools
-rustc --edition=2024 scripts/check-removed-crate-residue.rs \
-  -o target/gate-tools/check-removed-crate-residue
+if ! command -v clippy-driver >/dev/null 2>&1; then
+  echo "check-removed-crate-residue: clippy-driver is required for lint enforcement" >&2
+  exit 127
+fi
+
+clippy-driver --edition=2024 --crate-name check_removed_crate_residue \
+  scripts/check-removed-crate-residue.rs \
+  -o target/gate-tools/check-removed-crate-residue \
+  -D warnings \
+  -D unsafe_code \
+  -D clippy::unwrap_used \
+  -D clippy::expect_used \
+  -D clippy::panic \
+  -D clippy::todo \
+  -D clippy::unimplemented \
+  -D clippy::dbg_macro
 
 if [[ $# -gt 0 ]]; then
   target/gate-tools/check-removed-crate-residue "$@"

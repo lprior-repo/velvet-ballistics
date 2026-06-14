@@ -13,7 +13,7 @@ fn vb_mrwe_7_flush_batch_atomic_all_or_retained() {
     let prefix = if pending < batch { pending } else { batch };
     let drained = if commit_ok { prefix } else { 0 };
     let remaining = pending - drained;
-    assert!(drained <= prefix);
-    assert!(!commit_ok || drained == prefix);
-    assert!(commit_ok || remaining == pending);
+    kani::assert(drained <= prefix, "drained <= prefix");
+    kani::assert(!commit_ok || drained == prefix, "commit_ok or drained == prefix");
+    kani::assert(commit_ok || remaining == pending, "commit_ok or remaining == pending");
 }

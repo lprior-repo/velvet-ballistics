@@ -125,7 +125,10 @@ proof fn test_deadline_past_is_expired()
 {
     assert forall |tick: u64, deadline: u64| deadline <= tick ==>
         (ClockTick { value: tick }).is_expired_spec(deadline) by {
-        // Directly from spec definition.
+        // Tautology: is_expired_spec is defined as "deadline <= self.value".
+        // When deadline <= tick, the condition deadline <= tick holds by hypothesis.
+        assert((ClockTick { value: 10u64 }).is_expired_spec(5u64));
+        assert((ClockTick { value: 10u64 }).is_expired_spec(10u64));
     };
 }
 
@@ -137,15 +140,23 @@ proof fn test_deadline_future_not_expired()
 {
     assert forall |tick: u64, deadline: u64| deadline > tick ==>
         (ClockTick { value: tick }).is_expired_spec(deadline) == false by {
-        // Directly from spec definition.
+        // Tautology: is_expired_spec is defined as "deadline <= self.value".
+        // When deadline > tick, the inequality deadline <= tick is false.
+        assert((ClockTick { value: 5u64 }).is_expired_spec(10u64) == false);
     };
 }
 
 /// Theorem: production contract binding is well-formed.
 pub proof fn theorem_production_contract_holds()
+    ensures
+        forall |t: u64| (ClockTick { value: t }).advance_to_spec(t).is_Some(),
+        forall |tick: u64, deadline: u64|
+            (ClockTick { value: tick }).is_expired_spec(deadline) == (deadline <= tick),
 {
-    // Empty body: production binding established by `clock_advance_to_exec`
-    // and `clock_is_expired_exec` ensures clauses.
+    // The theorem confirms the spec is total and matches the exec fn contracts.
+    test_advance_to_same_tick();
+    test_deadline_past_is_expired();
+    test_deadline_future_not_expired();
 }
 
 } // verus!

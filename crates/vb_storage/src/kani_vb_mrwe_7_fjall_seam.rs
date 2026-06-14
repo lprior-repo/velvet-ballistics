@@ -7,6 +7,6 @@ fn vb_mrwe_7_fjall_seam_single_commit() {
     kani::assume(staged <= 16);
     let commit_calls = if staged > 0 { 1 } else { 0 };
     let drained = if staged > 0 && commit_ok { staged } else { 0 };
-    assert!(staged == 0 || commit_calls == 1);
-    assert!(commit_ok || drained == 0);
+    kani::assert(staged == 0 || commit_calls == 1, "staged == 0 or commit_calls == 1");
+    kani::assert(commit_ok || drained == 0, "commit_ok or drained == 0");
 }

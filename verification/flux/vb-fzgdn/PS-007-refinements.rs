@@ -14,6 +14,12 @@ mod clock_refinements {
     ///   range(..=now) collects expired keys; BTreeMap guarantees ordered traversal.
     ///
     /// Refinement: fire_expired returns entries in deadline order (BTreeMap key order).
+    ///
+    /// TRUSTED BOUNDARY justification: Instant comparison via Ord is
+    /// provided by std and guaranteed monotonic by the OS. Expresses
+    /// BTreeMap::range(..=now) semantics. Verified by Kani
+    /// (PO-KANI-vb-fzgdn-030) and integration tests. Trusted because
+    /// Instant internals are opaque to Flux.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(Instant, Instant) -> bool)]
     pub fn is_expired(deadline: Instant, now: Instant) -> bool {
@@ -21,6 +27,10 @@ mod clock_refinements {
     }
 
     /// Refinement: reverse comparison identifies future timers.
+    ///
+    /// TRUSTED BOUNDARY justification: Logical complement of is_expired.
+    /// Future timers have deadline > now. Same justification — Instant Ord
+    /// semantics trusted, verified by Kani.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(Instant, Instant) -> bool)]
     pub fn is_future(deadline: Instant, now: Instant) -> bool {

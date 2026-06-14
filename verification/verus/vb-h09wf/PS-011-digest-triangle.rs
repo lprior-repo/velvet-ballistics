@@ -165,6 +165,14 @@ pub proof fn lemma_all_gates_required_for_ok(
             && verification_digest_ok && content_hash_ok
         ),
 {
+    // Spec-level tautology: the spec is defined as that exact 9-way conjunction.
+    // The ensures restates the definition; the SMT solver verifies equality.
+    assert(validate_compiled_ir_record_spec(
+        ir_len_ok, decode_ok, source_digest_ok, policy_digest_ok,
+        gate_count_ok, flags_ok, artifact_digest_ok, verification_digest_ok, content_hash_ok,
+    ) == (ir_len_ok && decode_ok && source_digest_ok && policy_digest_ok
+        && gate_count_ok && flags_ok && artifact_digest_ok
+        && verification_digest_ok && content_hash_ok));
 }
 
 /// Lemma: If any single gate fails, the conjunction fails.
@@ -183,6 +191,15 @@ pub proof fn lemma_any_gate_failure_denies(
             gate_count_ok, flags_ok, artifact_digest_ok, verification_digest_ok, content_hash_ok,
         ),
 {
+    // Spec-level tautology: the spec is a 9-way AND. If any conjunct is false,
+    // the conjunction is false. Verified by SMT solver automatically.
+    assert(!ir_len_ok || !decode_ok || !source_digest_ok || !policy_digest_ok
+        || !gate_count_ok || !flags_ok || !artifact_digest_ok
+        || !verification_digest_ok || !content_hash_ok);
+    assert(!validate_compiled_ir_record_spec(
+        ir_len_ok, decode_ok, source_digest_ok, policy_digest_ok,
+        gate_count_ok, flags_ok, artifact_digest_ok, verification_digest_ok, content_hash_ok,
+    ));
 }
 
 /// Lemma: The anti-contract (CS-3) is preserved: BLAKE3(record.ir) is NOT checked.
@@ -192,6 +209,9 @@ pub proof fn lemma_anti_contract_preserved()
     ensures
         true,
 {
+    // Spec-level tautology: this lemma documents that the spec does NOT model
+    // BLAKE3(record.ir) == record.digest. The ensures `true` is vacuously true.
+    assert(true);
 }
 
 fn main() {}

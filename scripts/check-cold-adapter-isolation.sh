@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # check-cold-adapter-isolation: scans the four runtime-core boundary
-# crates (vb_core, vb_runtime, vb_storage, vb_ipc) for ACTIVE HTTP /
-# JSON / YAML / adapter-only dependencies or `use` / `extern crate`
-# imports. Companion to check-workspace-assertions.rs (which only
-# checks [dependencies]/[dev-dependencies] + generated/) and to
+# crates (vb_core, vb_runtime, vb_storage, vb_ipc) recursively for
+# ACTIVE HTTP / JSON / YAML / adapter-only dependencies and tokenized
+# `use` / `extern crate` imports. Companion to
+# check-workspace-assertions.rs (which only checks
+# [dependencies]/[dev-dependencies] + generated/) and to
 # xtask::dependency_boundary (which is a manifest-only proptest
 # harness). This scanner adds:
-#   - source-level detection of `use <forbidden>` / `extern crate
-#     <forbidden>` lines in `crates/<boundary>/src/**/*.rs`,
+#   - source-level detection of tokenized `use` / `extern crate`
+#     imports in `crates/<boundary>/**/*.rs`, including tests/benches/
+#     examples,
+#   - manifest alias detection via `package = "..."` in boundary
+#     crate `Cargo.toml` dependency tables,
 #   - file:line diagnostics on stderr,
 #   - per-line `# allow-cold-adapter: <reason>` / `// allow-cold-adapter:
 #     <reason>` allowlist markers,

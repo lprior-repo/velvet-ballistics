@@ -722,12 +722,10 @@ pub fn emit_compiled_artifact(workflow: &CompiledWorkflow) -> Result<Box<[u8]>, 
 }
 
 pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, CompileErrors> {
-    // allow-removed-crate: legacy generated-rust entry point is gated out of current builds
-    vb_codegen::emit_rust_workflow(workflow).map_err(|error| {
-        CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
-            feature: error.to_string().into_boxed_str(),
-        }])
-    })
+    let _ = workflow;
+    Err(CompileErrors(vec![CompileError::ExpressionLoweringUnsupported {
+        feature: "generated Rust workflow emission is removed from current scope".into(),
+    }]))
 }
 
 pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), CompileErrors> {

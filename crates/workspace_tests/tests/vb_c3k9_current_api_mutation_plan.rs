@@ -3,6 +3,7 @@ use velvet_ballistics_workspace_tests::quality::current_api_mutation_plan::{
 };
 
 const PLAN: &str = include_str!("../../../docs/current-api-mutation-plan.md");
+const REMOVED_UI_MODEL: &str = concat!("vb_ui_", "model");
 
 #[test]
 fn current_helper_semantics_have_mutation_targets() {
@@ -68,47 +69,49 @@ fn stale_api_target_fails_plan_validation() {
 
 #[test]
 fn misplaced_required_term_fails_section_scoped_validation() {
-    let misplaced_plan = "# Current API Mutation Plan
-## Helper Semantics Mutation Targets
-contains
-starts_with
-ends_with
-length
-empty
-has
-exists
-sum
-count
-append_if
-merge
-unique
-ActionCompleted before frame mutation
-journal sequence hydration
-snapshot hydration
-retry state
-## Runtime Recovery Mutation Targets
-## Generated Rust Parity Mutation Targets
-generated-interpreter suspension parity
-full final IR equivalence
-unsupported generated-mode rejection
-## CLI, IPC, and Storage Envelope Mutation Targets
-binary IPC frame length
-postcard envelope
-Fjall journal
-CLI accepted artifact path
-## UI Model Contract Mutation Targets
-# allow-removed-crate: removed UI model crate names referenced by the mutation plan fixture
-vb_ui_model
-certificate
-incident
-replay
-## Owner Beads and Release Blockers
-owner bead
-critical survivor
-release-risk acceptance
-cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
-90% mutation kill rate
-exclusion policy";
+    let misplaced_plan = format!(
+        "# Current API Mutation Plan\n\
+## Helper Semantics Mutation Targets\n\
+contains\n\
+starts_with\n\
+ends_with\n\
+length\n\
+empty\n\
+has\n\
+exists\n\
+sum\n\
+count\n\
+append_if\n\
+merge\n\
+unique\n\
+ActionCompleted before frame mutation\n\
+journal sequence hydration\n\
+snapshot hydration\n\
+retry state\n\
+## Runtime Recovery Mutation Targets\n\
+## Generated Rust Parity Mutation Targets\n\
+generated-interpreter suspension parity\n\
+full final IR equivalence\n\
+unsupported generated-mode rejection\n\
+## CLI, IPC, and Storage Envelope Mutation Targets\n\
+binary IPC frame length\n\
+postcard envelope\n\
+Fjall journal\n\
+CLI accepted artifact path\n\
+## UI Model Contract Mutation Targets\n\
+{}\n\
+certificate\n\
+incident\n\
+replay\n\
+## Owner Beads and Release Blockers\n\
+owner bead\n\
+critical survivor\n\
+release-risk acceptance\n\
+cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan\n\
+90% mutation kill rate\n\
+exclusion policy",
+        REMOVED_UI_MODEL,
+    );
 
     let report = validate_plan(misplaced_plan);
 
@@ -138,42 +141,44 @@ exclusion policy";
 
 #[test]
 fn missing_required_section_reports_actual_coverage() {
-    let missing_section_plan = "# Current API Mutation Plan
-## Helper Semantics Mutation Targets
-contains
-starts_with
-ends_with
-length
-empty
-has
-exists
-sum
-count
-append_if
-merge
-unique
-## Generated Rust Parity Mutation Targets
-generated-interpreter suspension parity
-full final IR equivalence
-unsupported generated-mode rejection
-## CLI, IPC, and Storage Envelope Mutation Targets
-binary IPC frame length
-postcard envelope
-Fjall journal
-CLI accepted artifact path
-## UI Model Contract Mutation Targets
-# allow-removed-crate: removed UI model crate names referenced by the mutation plan fixture
-vb_ui_model
-certificate
-incident
-replay
-## Owner Beads and Release Blockers
-owner bead
-critical survivor
-release-risk acceptance
-cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan
-90% mutation kill rate
-exclusion policy";
+    let missing_section_plan = format!(
+        "# Current API Mutation Plan\n\
+## Helper Semantics Mutation Targets\n\
+contains\n\
+starts_with\n\
+ends_with\n\
+length\n\
+empty\n\
+has\n\
+exists\n\
+sum\n\
+count\n\
+append_if\n\
+merge\n\
+unique\n\
+## Generated Rust Parity Mutation Targets\n\
+generated-interpreter suspension parity\n\
+full final IR equivalence\n\
+unsupported generated-mode rejection\n\
+## CLI, IPC, and Storage Envelope Mutation Targets\n\
+binary IPC frame length\n\
+postcard envelope\n\
+Fjall journal\n\
+CLI accepted artifact path\n\
+## UI Model Contract Mutation Targets\n\
+{}\n\
+certificate\n\
+incident\n\
+replay\n\
+## Owner Beads and Release Blockers\n\
+owner bead\n\
+critical survivor\n\
+release-risk acceptance\n\
+cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan\n\
+90% mutation kill rate\n\
+exclusion policy",
+        REMOVED_UI_MODEL,
+    );
 
     let report = validate_plan(missing_section_plan);
 

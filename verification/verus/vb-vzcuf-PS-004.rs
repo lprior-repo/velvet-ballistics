@@ -94,6 +94,10 @@ pub proof fn lemma_rejection_state_reflexive(state: BatchState)
     ensures
         state_unchanged_after_rejection(state, state),
 {
+    // Spec-level tautology: state_unchanged_after_rejection(s, s) compares
+    // s.staged_bytes == s.staged_bytes, s.staged_count == s.staged_count, etc.
+    // Reflexivity of equality makes this trivially true.
+    assert(state_unchanged_after_rejection(state, state));
 }
 
 /// Lemma: acceptance properly updates state.
@@ -108,6 +112,16 @@ pub proof fn lemma_acceptance_updates_state(
         after.staged_bytes > before.staged_bytes || added_bytes == 0,
         after.staged_count == before.staged_count + 1,
 {
+    // Spec-level tautology: state_updated_after_acceptance is defined as
+    // after.staged_bytes == before.staged_bytes + added_bytes (1)
+    // && after.staged_count == before.staged_count + 1   (2)
+    // && !after.aborted.
+    // From (2): after.staged_count == before.staged_count + 1.
+    // From (1): after.staged_bytes > before.staged_bytes when added_bytes > 0,
+    // or the || alternative added_bytes == 0 handles the zero case.
+    assert(state_updated_after_acceptance(before, after, added_bytes));
+    assert(after.staged_bytes == before.staged_bytes + added_bytes);
+    assert(after.staged_count == before.staged_count + 1);
 }
 
 /// Lemma: rejection preserves non-aborted state.
@@ -130,7 +144,10 @@ pub proof fn lemma_aborted_batch_no_commit()
     ensures
         !(BatchState { staged_bytes: 0, staged_count: 0, aborted: true }.aborted) == false,
 {
-    // aborted == true means the batch won't commit, satisfying C5.
+    // Spec-level tautology: BatchState{aborted: true}.aborted == true,
+    // therefore !aborted == false. Structural record access is definitional.
+    assert(BatchState { staged_bytes: 0, staged_count: 0, aborted: true }.aborted == true);
+    assert(!(BatchState { staged_bytes: 0, staged_count: 0, aborted: true }.aborted) == false);
 }
 
 /// Lemma: batch with zero staged bytes is effectively empty.
@@ -140,6 +157,9 @@ pub proof fn lemma_zero_staged_bytes_is_empty(state: BatchState)
     ensures
         state.staged_bytes == 0,
 {
+    // Spec-level tautology: the ensures is a restatement of the requires clause.
+    // Identity property — verified by SMT solver.
+    assert(state.staged_bytes == 0);
 }
 
 // =============================================================================

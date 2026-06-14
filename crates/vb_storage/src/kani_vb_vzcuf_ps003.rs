@@ -43,8 +43,8 @@ mod kani_errors_ps003 {
         let ptl = JournalError::PayloadTooLarge { len: 100, max: 50 };
         match ptl {
             JournalError::PayloadTooLarge { len, max } => {
-                assert_eq!(len, 100);
-                assert_eq!(max, 50);
+                kani::assert(len == 100, "PayloadTooLarge.len == 100");
+                kani::assert(max == 50, "PayloadTooLarge.max == 50");
             }
             _ => { kani::assume(false); loop {}}
         }
@@ -55,8 +55,8 @@ mod kani_errors_ps003 {
         let dup = JournalError::DuplicateEvent { run, seq };
         match dup {
             JournalError::DuplicateEvent { run: r, seq: s } => {
-                assert_eq!(r, run);
-                assert_eq!(s, seq);
+                kani::assert(r == run, "DuplicateEvent.run matches");
+                kani::assert(s == seq, "DuplicateEvent.seq matches");
             }
             _ => { kani::assume(false); loop {}}
         }
@@ -120,7 +120,7 @@ mod kani_errors_ps003 {
 
         match result {
             Ok(value) => {
-                assert!(value.len() >= RECORD_HEADER_LEN as usize);
+                kani::assert(value.len() >= RECORD_HEADER_LEN as usize, "encoded >= header len");
             }
             Err(_) => {
                 // Could fail if event serialization is too large,
@@ -138,8 +138,8 @@ mod kani_errors_ps003 {
         };
         let msg = format!("{err}");
         // Error message must contain the diagnostic fields
-        assert!(msg.contains("5000"), "error message missing len: {msg}");
-        assert!(msg.contains("1000"), "error message missing max: {msg}");
+        kani::assert(msg.contains("5000"), "error message missing len: {msg}");
+        kani::assert(msg.contains("1000"), "error message missing max: {msg}");
     }
 
     /// C4: QueueFull error message is descriptive.
@@ -147,10 +147,10 @@ mod kani_errors_ps003 {
     fn check_queue_full_error_message() {
         let err = JournalError::QueueFull;
         let msg = format!("{err}");
-        assert!(!msg.is_empty(), "QueueFull must have error message");
-        assert!(
+        kani::assert(!msg.is_empty(), "QueueFull must have error message");
+        kani::assert(
             msg.contains("full") || msg.contains("queue"),
-            "QueueFull message should indicate queue fullness: {msg}"
+            "QueueFull message should indicate queue fullness: {msg}",
         );
     }
 }

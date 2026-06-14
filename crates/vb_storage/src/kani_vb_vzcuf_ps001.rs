@@ -54,14 +54,14 @@ mod kani_admission_ps001 {
             Some(total) => {
                 if total <= limit {
                     // Accept: total == current + candidate
-                    assert_eq!(total, current + candidate);
-                    assert!(total >= current);
+                    kani::assert(total == current + candidate, "total == current + candidate");
+                    kani::assert(total >= current, "total >= current");
                 }
                 // Else: over-limit rejection
             }
             None => {
                 // Overflow rejection (C7)
-                assert!(current as u128 + candidate as u128 > u64::MAX as u128);
+                kani::assert(current as u128 + candidate as u128 > u64::MAX as u128, "overflow check");
             }
         }
     }
@@ -89,7 +89,7 @@ mod kani_admission_ps001 {
     #[kani::proof]
     fn check_overflow_produces_none() {
         let result = u64::MAX.checked_add(1u64);
-        assert!(result.is_none(), "u64::MAX + 1 must overflow to None");
+        kani::assert(result.is_none(), "u64::MAX + 1 must overflow to None");
     }
 
     /// PRODUCTION BINDING: encode_record output length >= RECORD_HEADER_LEN.
@@ -110,14 +110,14 @@ mod kani_admission_ps001 {
             Ok(value) => {
                 let len = value.len() as u64;
                 // Production constant: RECORD_HEADER_LEN = 60
-                assert!(
+                kani::assert(
                     len >= RECORD_HEADER_LEN as u64,
-                    "encoded record must be at least RECORD_HEADER_LEN (60) bytes, got {len}"
+                    "encoded record must be at least RECORD_HEADER_LEN (60) bytes",
                 );
                 // Max encoded: header + max payload = 60 + 1_048_576
-                assert!(
+                kani::assert(
                     len <= RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64,
-                    "encoded length {len} exceeds theoretical max"
+                    "encoded length within theoretical max",
                 );
             }
             Err(_) => {
@@ -145,9 +145,9 @@ mod kani_admission_ps001 {
         ) {
             Ok(value) => {
                 // The header alone is 60 bytes. Payload adds more.
-                assert!(
+                kani::assert(
                     value.len() as u64 > RECORD_HEADER_LEN as u64,
-                    "encoded value.len() must exceed RECORD_HEADER_LEN due to payload"
+                    "encoded value.len() must exceed RECORD_HEADER_LEN due to payload",
                 );
             }
             Err(_) => {}

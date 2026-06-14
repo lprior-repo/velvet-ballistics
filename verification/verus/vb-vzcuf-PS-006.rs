@@ -83,6 +83,10 @@ pub proof fn lemma_positive_is_valid(value: u64)
     ensures
         limit_constructor_invariant(value),
 {
+    // Spec-level tautology: limit_constructor_invariant(v) is defined as v > 0.
+    // The requires clause directly satisfies the spec body.
+    assert(limit_constructor_invariant(value) == (value > 0));
+    assert(value > 0);
 }
 
 /// Lemma: zero is not a valid limit (C1: non-zero).
@@ -90,6 +94,9 @@ pub proof fn lemma_zero_is_invalid()
     ensures
         !limit_constructor_invariant(0u64),
 {
+    // Spec-level tautology: limit_constructor_invariant(v) is defined as v > 0.
+    // For v = 0, 0 > 0 is false.
+    assert(!limit_constructor_invariant(0u64));
 }
 
 /// Lemma: u64::MAX is a valid limit (extreme but valid).
@@ -107,6 +114,12 @@ pub proof fn lemma_valid_limit_stable(value: u64)
     ensures
         valid_byte_limit(JournalBatchByteLimit { value }),
 {
+    // Spec-level tautology: valid_byte_limit(l) is defined as l.value > 0,
+    // and limit_constructor_invariant(v) is defined as v > 0.
+    // Given requires, the ensures follows directly.
+    assert(valid_byte_limit(JournalBatchByteLimit { value }) == (value > 0));
+    assert(limit_constructor_invariant(value) == (value > 0));
+    assert(value > 0);
 }
 
 /// Lemma: staged bytes cannot exceed limit (batch invariant).
@@ -121,6 +134,10 @@ pub proof fn lemma_batch_invariant_holds(staged: u64, limit: u64)
     ensures
         batch_byte_invariant(staged, limit),
 {
+    // Spec-level tautology: batch_byte_invariant(s, l) is defined as l > 0 && s <= l.
+    // Both conditions are provided in the requires clause.
+    assert(batch_byte_invariant(staged, limit) == (limit > 0 && staged <= limit));
+    assert(limit > 0 && staged <= limit);
 }
 
 // =============================================================================

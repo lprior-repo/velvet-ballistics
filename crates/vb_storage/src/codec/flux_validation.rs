@@ -61,6 +61,11 @@ fn model_validate_kind_family(magic: u32, kind: u16) -> Result<(), crate::Journa
 
 /// Refinement: validate_kind_family(MAGIC_JOURNAL_EVENT, kind) returns Ok(()) iff 10 <= kind <= 29.
 /// Precondition: magic == crate::constants::MAGIC_JOURNAL_EVENT
+///
+/// TRUSTED BOUNDARY justification: The production validate_kind_family is a
+/// pure match expression over (magic, kind). Kani (PO-KANI-004) verifies
+/// exhaustive kind-space behavior. This refinement captures the specific
+/// journal-magic range contract that 10..=29 is the valid kind window.
 #[flux_rs::trusted]
 #[sig(fn(kind: u16) -> bool[{
     (kind >= 10 && kind <= 29) == model_validate_kind_family_ok(kind)
@@ -72,6 +77,11 @@ fn model_journal_kind_valid(kind: u16) -> bool {
 }
 
 /// Helper: check if validate_kind_family returns Ok for MAGIC_JOURNAL_EVENT.
+///
+/// TRUSTED BOUNDARY justification: This helper delegates directly to the
+/// production const fn. It exists as a trusted bridge because Flux cannot
+/// infer the Result<bool> → bool conversion. The underlying logic is
+/// verified by Kani (PO-KANI-004) for all u16 inputs.
 #[flux_rs::trusted]
 fn model_validate_kind_family_ok(kind: u16) -> bool {
     crate::codec::validation::validate_kind_family(crate::constants::MAGIC_JOURNAL_EVENT, kind)
@@ -79,6 +89,11 @@ fn model_validate_kind_family_ok(kind: u16) -> bool {
 }
 
 /// Refinement: validate_kind_family(MAGIC_SNAPSHOT, 28) returns Err.
+///
+/// TRUSTED BOUNDARY justification: Snapshot magic only admits kinds 1-3.
+/// Kind 28 (RunKilled) is a journal-only record kind. This refinement
+/// captures the cross-magic exclusion invariant. Verified by Kani (PO-KANI-004)
+/// which checks all magic/kind combinations exhaustively.
 #[flux_rs::trusted]
 #[sig(fn() -> bool[true])]
 fn model_kind_28_rejected_for_snapshot() -> bool {
@@ -86,6 +101,10 @@ fn model_kind_28_rejected_for_snapshot() -> bool {
 }
 
 /// Refinement: validate_kind_family(MAGIC_BLOB, 28) returns Err.
+///
+/// TRUSTED BOUNDARY justification: Blob magic only admits kind 0.
+/// Kind 28 (RunKilled) is always rejected for blob context. Verified by
+/// Kani (PO-KANI-004) exhaustive kind-space check across all magics.
 #[flux_rs::trusted]
 #[sig(fn() -> bool[true])]
 fn model_kind_28_rejected_for_blob() -> bool {
@@ -119,6 +138,12 @@ fn model_runkilled_field_preservation(run_val: u64, seq_val: u64, attempt_val: u
 
 /// Refinement: RecordKind::RunKilled.id() is stable at 28.
 /// Production: records.rs:212 — RunKilled => 28 (part of durable storage contract).
+///
+/// TRUSTED BOUNDARY justification: RecordKind::id() is a const fn returning
+/// a fixed discriminant. The value 28 is a durable storage contract that
+/// must never change. Unit test PO-FLUX-005 at line 210 verifies this.
+/// Kani (PO-KANI-005) verifies all RecordKind::id() values are within
+/// their declared ranges.
 #[flux_rs::trusted]
 #[sig(fn() -> bool[true])]
 fn model_runkilled_kind_id_stable() -> bool {
@@ -127,6 +152,13 @@ fn model_runkilled_kind_id_stable() -> bool {
 
 /// Trusted model: contiguous sequence check.
 /// Replay requires EventSeq values to be gap-free and duplicate-free.
+///
+/// TRUSTED BOUNDARY justification: This is a pure iteration over a slice
+/// with no side effects or panics (saturating_add prevents overflow).
+/// The contiguous property is verified by proptest (PO-PROP-004) for
+/// random sequence inputs and by unit tests (PO-FLUX-005 at line 224-236).
+/// The trusted annotation exists because Flux cannot reason about
+/// loop invariants over non-refined slice lengths at this time.
 #[flux_rs::trusted]
 #[sig(fn(seqs: &[u64]) -> bool[true])]
 fn model_contiguous_check(seqs: &[u64]) -> bool {
@@ -142,6 +174,12 @@ fn model_contiguous_check(seqs: &[u64]) -> bool {
 }
 
 /// Refinement: A sequence with gap is detected as non-contiguous.
+///
+/// TRUSTED BOUNDARY justification: Pure iteration with no side effects.
+/// The gap-detection logic mirrors the replay validation in production
+/// (validation.rs:142-158). Verified by proptest (PO-PROP-004) and unit
+/// tests (PO-FLUX-005 at line 230). Trusted because Flux loop reasoning
+/// is not yet viable for non-trivial slice iteration.
 #[flux_rs::trusted]
 #[sig(fn(seqs: &[u64]) -> bool[true])]
 fn model_gap_detection(seqs: &[u64]) -> bool {
@@ -159,6 +197,11 @@ fn model_gap_detection(seqs: &[u64]) -> bool {
 }
 
 /// Refinement: Duplicate EventSeq values detected as non-contiguous.
+///
+/// TRUSTED BOUNDARY justification: Pure O(n²) iteration with no side effects.
+/// The duplicate-detection logic mirrors the replay validation in production.
+/// Verified by proptest (PO-PROP-004) and unit tests (PO-FLUX-005 at line 235).
+/// Trusted because Flux cannot verify loop invariants over nested iteration.
 #[flux_rs::trusted]
 #[sig(fn(seqs: &[u64]) -> bool[true])]
 fn model_duplicate_detection(seqs: &[u64]) -> bool {

@@ -154,9 +154,23 @@ proof fn test_fire_post_state_consistent()
 
 /// Theorem: production contract binding is well-formed.
 pub proof fn theorem_production_contract_holds()
+    ensures
+        forall |q: CommandQueueModel| q.count < q.capacity ==>
+            atomic_fire_spec(PendingTimerState { present: true }, q).2,
+        forall |q: CommandQueueModel| q.count >= q.capacity ==>
+            atomic_fire_spec(PendingTimerState { present: true }, q)
+                == (PendingTimerState { present: true }, q, false),
+        forall |q: CommandQueueModel|
+            atomic_fire_spec(PendingTimerState { present: false }, q)
+                == (PendingTimerState { present: false }, q, false),
 {
-    // Empty body: production binding established by `atomic_fire_exec`
-    // ensures clause.
+    // The theorem confirms the atomic-fire spec is total and enforces
+    // the all-or-nothing invariant: either both state transitions happen
+    // (pending removed, queue incremented) or neither does.
+    test_fire_succeeds_when_room();
+    test_fire_preserves_when_full();
+    test_fire_noop_when_no_pending();
+    test_fire_post_state_consistent();
 }
 
 } // verus!

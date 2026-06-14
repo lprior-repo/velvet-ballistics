@@ -17,13 +17,16 @@ fn kani_next_seq_monotonic_for_all_values() {
     let result = crate::codec::next_seq(seq);
 
     if raw == u64::MAX {
-        assert!(matches!(result, Err(JournalError::SequenceOverflow)));
+        kani::assert(
+            matches!(result, Err(JournalError::SequenceOverflow)),
+            "u64::MAX must overflow",
+        );
     } else {
         let Ok(next) = result else {
             kani::assert(false, "next_seq must not fail for non-max values");
             return;
         };
-        assert_eq!(next.get(), raw + 1, "next_seq must increment by 1");
+        kani::assert(next.get() == raw + 1, "next_seq must increment by 1");
     }
 }
 
@@ -35,8 +38,8 @@ fn kani_event_seq_ordering_invariant() {
     kani::assume(a < b);
     let seq_a = EventSeq::new(a);
     let seq_b = EventSeq::new(b);
-    assert!(seq_a < seq_b, "EventSeq ordering must match raw ordering");
-    assert!(seq_a.get() < seq_b.get(), "get() must match raw ordering");
+    kani::assert(seq_a < seq_b, "EventSeq ordering must match raw ordering");
+    kani::assert(seq_a.get() < seq_b.get(), "get() must match raw ordering");
 }
 
 #[kani::proof]
@@ -44,10 +47,10 @@ fn kani_event_seq_ordering_invariant() {
 fn kani_event_seq_zones_preserved() {
     let val: u64 = kani::any();
     let seq = EventSeq::new(val);
-    assert_eq!(seq.get(), val, "EventSeq::new must be identity");
-    assert_eq!(EventSeq::ZERO.get(), 0, "ZERO must be 0");
-    assert_eq!(EventSeq::MIN.get(), 0, "MIN must be 0");
-    assert_eq!(EventSeq::MAX.get(), u64::MAX, "MAX must be u64::MAX");
+    kani::assert(seq.get() == val, "EventSeq::new must be identity");
+    kani::assert(EventSeq::ZERO.get() == 0, "ZERO must be 0");
+    kani::assert(EventSeq::MIN.get() == 0, "MIN must be 0");
+    kani::assert(EventSeq::MAX.get() == u64::MAX, "MAX must be u64::MAX");
 }
 
 // ---------------------------------------------------------------------------
@@ -61,9 +64,9 @@ fn kani_queue_capacity_must_be_nonzero() {
     let batch: usize = kani::any();
     let result = JournalWriterQueue::new(cap, batch, StorageLimits::DEFAULT);
     if cap == 0 || batch == 0 {
-        assert!(
+        kani::assert(
             matches!(result, Err(JournalError::QueueCapacity)),
-            "zero capacity/batch must be rejected"
+            "zero capacity/batch must be rejected",
         );
     }
 }
@@ -86,10 +89,10 @@ fn kani_queue_capacity_contract_preservation() {
     };
 
     let result = JournalWriterQueue::with_contracts(cap, batch, StorageLimits::DEFAULT);
-    assert!(result.is_ok(), "valid contracts must construct queue");
+    kani::assert(result.is_ok(), "valid contracts must construct queue");
 
-    assert_eq!(cap.get(), cap_raw, "JournalQueueCapacity get must roundtrip");
-    assert_eq!(batch.get(), batch_raw, "JournalBatchSize get must roundtrip");
+    kani::assert(cap.get() == cap_raw, "JournalQueueCapacity get must roundtrip");
+    kani::assert(batch.get() == batch_raw, "JournalBatchSize get must roundtrip");
 }
 
 // ---------------------------------------------------------------------------
@@ -103,8 +106,8 @@ fn kani_sequence_overflow_boundary() {
     let result = crate::codec::next_seq(EventSeq::new(raw));
     match (raw, result) {
         (u64::MAX, Err(JournalError::SequenceOverflow)) => {}
-        (_, Ok(next)) => assert_eq!(next.get(), raw + 1),
-        _ => assert!(false, "unexpected result for {raw}: {result:?}"),
+        (_, Ok(next)) => kani::assert(next.get() == raw + 1, "next must be raw+1"),
+        _ => kani::assert(false, "unexpected result for {raw}: {result:?}"),
     }
 }
 
@@ -117,7 +120,7 @@ fn kani_event_seq_comparison_is_total() {
     let sb = EventSeq::new(b);
     let by_get = a.cmp(&b);
     let by_cmp = sa.cmp(&sb);
-    assert_eq!(by_cmp, by_get, "PartialOrd must match raw ordering");
+    kani::assert(by_cmp == by_get, "PartialOrd must match raw ordering");
 }
 
 // ---------------------------------------------------------------------------
@@ -143,9 +146,9 @@ fn kani_validate_replayed_event_rejects_wrong_run() {
     };
 
     let result = crate::codec::validate_replayed_event(run, EventSeq::new(0), &event);
-    assert!(
+    kani::assert(
         matches!(result, Err(JournalError::WrongRun { .. })),
-        "wrong run must be rejected"
+        "wrong run must be rejected",
     );
 }
 
@@ -168,9 +171,9 @@ fn kani_validate_replayed_event_rejects_sequence_gap() {
     };
 
     let result = crate::codec::validate_replayed_event(run, EventSeq::new(expected_raw), &event);
-    assert!(
+    kani::assert(
         matches!(result, Err(JournalError::SequenceGap { .. })),
-        "sequence gap must be rejected"
+        "sequence gap must be rejected",
     );
 }
 
@@ -189,9 +192,9 @@ fn kani_encode_reject_rejects_kind_family_mismatch() {
         &record,
         128,
     );
-    assert!(
+    kani::assert(
         matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
-        "kind family mismatch must be rejected"
+        "kind family mismatch must be rejected",
     );
 }
 
@@ -210,9 +213,9 @@ fn kani_encode_rejects_kind_family_mismatch_blob() {
         &record,
         128,
     );
-    assert!(
+    kani::assert(
         matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
-        "kind family mismatch must be rejected"
+        "kind family mismatch must be rejected",
     );
 }
 
@@ -227,8 +230,8 @@ fn kani_next_seq_compares_correctly_with_event_seq_ordering() {
         kani::assert(false, "non-max should not overflow");
         return;
     };
-    assert!(next > seq, "next_seq result must be strictly greater than input");
-    assert_eq!(next.get() - seq.get(), 1, "next_seq must increment by exactly 1");
+    kani::assert(next > seq, "next_seq result must be strictly greater than input");
+    kani::assert(next.get() - seq.get() == 1, "next_seq must increment by exactly 1");
 }
 
 #[kani::proof]
@@ -241,7 +244,7 @@ fn kani_record_kind_valid_range() {
     match (is_valid, result) {
         (true, Ok(())) => {}
         (false, Err(JournalError::UnknownRecordKind { .. })) => {}
-        _ => assert!(false, "validate_known_kind result mismatch for {kind_id}: {result:?}"),
+        _ => kani::assert(false, "validate_known_kind result mismatch for {kind_id}: {result:?}"),
     }
 }
 
@@ -256,7 +259,7 @@ fn kani_validate_schema_version_all_values() {
         (std::cmp::Ordering::Equal, Ok(())) => {}
         (std::cmp::Ordering::Less, Err(JournalError::MigrationRequired { .. })) => {}
         (std::cmp::Ordering::Greater, Err(JournalError::UnsupportedSchemaVersion { .. })) => {}
-        _ => assert!(false, "schema version validation mismatch for {version}: {result:?}"),
+        _ => kani::assert(false, "schema version validation mismatch for {version}: {result:?}"),
     }
 }
 

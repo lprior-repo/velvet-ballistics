@@ -142,7 +142,13 @@ pub proof fn theorem_production_contract_holds()
     assert forall |gen: u64|
         checked_increment_spec_inline(gen) ==
         if gen < u64::MAX { Some((gen + 1u64) as u64) } else { Option::None } by {
-        // The spec is trivially identical.
+        // Tautology: checked_increment_spec_inline is defined as
+        //   "if gen < u64::MAX { Some((gen + 1u64) as u64) } else { None }"
+        // which is syntactically identical to the RHS (None vs Option::None).
+        // We confirm structural identity with concrete cases:
+        assert(checked_increment_spec_inline(0) == Some(1u64));
+        assert(checked_increment_spec_inline(1) == Some(2u64));
+        assert(checked_increment_spec_inline(u64::MAX).is_None());
     };
 }
 

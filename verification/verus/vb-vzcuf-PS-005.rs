@@ -67,6 +67,9 @@ pub proof fn lemma_encoded_length_min()
     ensures
         forall |p: u32| encoded_length(p) >= record_header_len() as int,
 {
+    // Spec-level tautology: encoded_length(p) = 60 + p, and p >= 0 for all u32 p.
+    // Therefore encoded_length(p) >= 60 for all p. Verified by SMT solver.
+    assert(forall |p: u32| encoded_length(p) >= record_header_len() as int);
 }
 
 /// Lemma: encoded length >= payload length (strictly larger due to header).
@@ -107,6 +110,9 @@ pub proof fn lemma_encoding_overhead_exact(payload_len: u32)
     ensures
         encoded_length(payload_len) - payload_len as int == record_header_len() as int,
 {
+    // Spec-level tautology: encoded_length(p) = 60 + p, so (60 + p) - p = 60.
+    // The subtraction in int is exact. Verified by SMT solver.
+    assert(encoded_length(payload_len) - payload_len as int == record_header_len() as int);
 }
 
 /// Lemma: maximum encoded record fits comfortably in u64.
@@ -114,6 +120,10 @@ pub proof fn lemma_max_encoded_in_u64()
     ensures
         encoded_length(max_payload_bytes()) < u64::MAX as int,
 {
+    // Spec-level tautology: encoded_length(1_048_576) = 60 + 1_048_576 = 1_048_636,
+    // which is far less than u64::MAX (18_446_744_073_709_551_615).
+    // Verified by SMT solver via integer arithmetic.
+    assert(encoded_length(max_payload_bytes()) < u64::MAX as int);
 }
 
 /// Lemma: encoded length is monotonic in payload length.

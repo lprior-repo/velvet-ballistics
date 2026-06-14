@@ -1,0 +1,38 @@
+{"category":"CHECK_DEADLOCK","severity":"pass","detail":"All 54 .cfg files have CHECK_DEADLOCK TRUE","files_checked":54,"files_missing":0}
+{"category":"UNBOUNDED_NAT","severity":"gap","file":"verification/tla/specs/ActionRouting.tla","lines":[28,29,31],"detail":"TypeOK uses Nat for ticket_counter, pending[].ticket_id, and valid_tickets — no bounded substitute such as 0..MAX_U64","fix":"Replace Nat with FINAL_MAX_TICKET_ID == SOME_MAX or model overflow explicitly"}
+{"category":"UNBOUNDED_NAT","severity":"gap","file":"verification/tla/specs/RunLifecycle.tla","lines":[30],"detail":"TypeOK uses Nat for step_count — guard bounded by MAX_STEPS but TypeOK declares Nat","fix":"Change TypeOK to step_count \in 0..MAX_STEPS or model u64 overflow"}
+{"category":"UNBOUNDED_NAT","severity":"gap","file":"verification/tla/specs/ShardProcessing.tla","lines":[36,39,40],"detail":"TypeOK uses Nat for queue[].seq, commands_issued, insert_counter — insert_counter guard bounded by MaxInsertCounter but TypeOK still Nat","fix":"Bound all three to explicit finite ranges matching concrete types"}
+{"category":"UNBOUNDED_NAT","severity":"gap","file":"verification/tla/specs/TimerWheel.tla","lines":[25,32],"detail":"TimerEntry.gen field and generation variable typed as Nat — no upper bound, could hide u32/u64 overflow in real system","fix":"Constrain gen/generation to 0..MAX_GENERATION like main TimerWheel model does"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/AcceptedCliAdmission.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/AtomicAcceptedRunAdmission.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/CapabilityLifecycle.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/collect_body_model.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/ConcurrencyControl.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/EngineYamlAdmission.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/EngineYamlIngress.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/EngineYamlRecovery.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/EngineYamlRunLifecycle.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/IdempotencySafety.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/IpcSyncEvidence.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/LifecycleJournal.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/RecoveryCrashRestart.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/RecoveryHydration.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/StepBudgetSuspension.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/TimerWheel.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/V1PrimitiveLowering.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/VbKyyfReplayDeterminism.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/Vt2fRuntimeLifecycle.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/Vt2fStrictAdmission.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/WorkflowBoundedAdmission.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/YamlE2eChain.tla","detail":"TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/specs/ActionRouting.tla","detail":"Spec TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/specs/MultiShardRuntime.tla","detail":"Spec TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/specs/RunLifecycle.tla","detail":"Spec TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/specs/ShardProcessing.tla","detail":"Spec TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"NO_BRIDGE_REF","severity":"gap","file":"verification/tla/specs/TimerWheel.tla","detail":"Spec TLA model has no entry in proof-to-rust-map.md bridge matrix"}
+{"category":"STALE_BRIDGE_REF","severity":"gap","file":"specs/AskAnswerLifecycle","detail":"Referenced in bridge matrix but .tla file does not exist on disk"}
+{"category":"STALE_BRIDGE_REF","severity":"gap","file":"specs/RetryFSM","detail":"Referenced in bridge matrix but .tla file does not exist on disk"}
+{"category":"STALE_BRIDGE_REF","severity":"gap","file":"specs/RetryJournal","detail":"Referenced in bridge matrix but .tla file does not exist on disk"}
+{"category":"STALE_BRIDGE_REF","severity":"gap","file":"specs/ResumeStateMachine","detail":"Referenced in bridge matrix but .tla file does not exist on disk"}
+{"category":"STALE_BRIDGE_REF","severity":"gap","file":"specs/admission_header_before_ack","detail":"Referenced in bridge matrix but .tla file does not exist on disk"}
+{"category":"NO_CFG","severity":"pass","detail":"All .tla files have matching .cfg files","files_checked":54,"files_missing":0}

@@ -138,10 +138,24 @@ pub proof fn proof_secret_projection_is_fail_closed(
         sensitivity != SecretSensitivity::Public ==> view.digest_present,
     ensures spec_redacted_view_contains_no_raw_secret(sensitivity, view),
 {
+    assert(spec_summary_bounded(view));
     match sensitivity {
-        SecretSensitivity::Public => {},
-        SecretSensitivity::Secret => {},
-        SecretSensitivity::Unknown => {},
+        SecretSensitivity::Public => {
+            // Public sensitivity: no restriction on raw secret presence.
+            assert(spec_summary_bounded(view));
+        },
+        SecretSensitivity::Secret => {
+            // Secret: raw secret must be absent, redaction status and digest must be present.
+            assert(!view.raw_secret_present);
+            assert(view.redaction_status_present);
+            assert(view.digest_present);
+        },
+        SecretSensitivity::Unknown => {
+            // Unknown: same requirements as Secret for fail-closed behavior.
+            assert(!view.raw_secret_present);
+            assert(view.redaction_status_present);
+            assert(view.digest_present);
+        },
     }
 }
 

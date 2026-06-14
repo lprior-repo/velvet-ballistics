@@ -115,8 +115,11 @@ pub proof fn lemma_verification_digest_mismatch_breaks_triangle(
     ensures
         !digest_triangle_invariant(artifact_digest, verification_digest, record_digest),
 {
-    // If the second equality fails, the conjunction fails.
-    // The first equality (artifact == verification) is not sufficient alone.
+    // Spec-level tautology: digest_triangle_invariant(a, v, r) is defined as
+    // a == v && v == r. If v != r, the second conjunct is false. Verified by SMT solver.
+    assert(verification_digest != record_digest);
+    assert(digest_triangle_invariant(artifact_digest, verification_digest, record_digest)
+        == (artifact_digest == verification_digest && verification_digest == record_digest));
 }
 
 /// Lemma: If artifact.digest != record.digest, the triangle fails regardless
@@ -131,8 +134,12 @@ pub proof fn lemma_artifact_digest_mismatch_breaks_triangle(
     ensures
         !digest_triangle_invariant(artifact_digest, verification_digest, record_digest),
 {
-    // Even if verification.digest == artifact.digest, if artifact.digest != record.digest
-    // then verification.digest != record.digest by transitivity.
+    // Spec-level tautology: digest_triangle_invariant(a, v, r) is defined as a == v && v == r.
+    // If a != r, the conjunction a == v && v == r cannot hold (by transitivity of ==).
+    // The SMT solver handles this automatically.
+    assert(artifact_digest != record_digest);
+    assert(digest_triangle_invariant(artifact_digest, verification_digest, record_digest)
+        == (artifact_digest == verification_digest && verification_digest == record_digest));
 }
 
 /// Lemma: When all three digests are equal, the triangle holds.
@@ -147,6 +154,10 @@ pub proof fn lemma_all_equal_implies_triangle(
     ensures
         digest_triangle_invariant(artifact_digest, verification_digest, record_digest),
 {
+    // Spec-level tautology: digest_triangle_invariant(a, v, r) is defined as a == v && v == r.
+    // With a == r and v == r, the conjunction a == v && v == r follows transitively.
+    assert(artifact_digest == record_digest && verification_digest == record_digest);
+    assert(digest_triangle_invariant(artifact_digest, verification_digest, record_digest));
 }
 
 /// Lemma: Triangle transitivity — if artifact == record and verification == record,
@@ -162,6 +173,11 @@ pub proof fn lemma_triangle_transitivity(
     ensures
         artifact_digest == verification_digest,
 {
+    // Spec-level tautology: from a == r and v == r, transitivity of equality gives a == v.
+    // The SMT solver handles this automatically.
+    assert(artifact_digest == record_digest);
+    assert(verification_digest == record_digest);
+    assert(artifact_digest == verification_digest);
 }
 
 fn main() {}

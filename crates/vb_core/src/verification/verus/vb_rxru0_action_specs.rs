@@ -10,7 +10,7 @@ use vstd::prelude::*;
 
 verus! {
 
-    use vstd::prelude::*;
+    use vstd::{prelude::*, set::Set, map::Map};
 
     // ============================================================================
     // Spec: propagate_action_taint — mathematical model of taint propagation
@@ -27,7 +27,7 @@ verus! {
     ///   else: output = input  (unknown idempotency: identity)
     ///
     /// Binding to production: `vb_core::action::propagate_action_taint`
-    spec fn spec_propagate_action_taint(idempotency: u8, input_taint: u8) -> u8 {
+    pub open spec fn spec_propagate_action_taint(idempotency: u8, input_taint: u8) -> u8 {
         match idempotency {
             0 | 1 => input_taint, // DeterministicPure or IdempotentExternal: identity
             2 => match input_taint {
@@ -47,10 +47,11 @@ verus! {
     ///
     /// Binding: the production `propagate_action_taint` satisfies this
     /// because each arm is either identity or a join operation.
-    proof fn proof_propagate_action_taint_idempotent(
+    pub proof fn proof_propagate_action_taint_idempotent(
         idempotency: u8, input_taint: u8
     )
-        ensures spec_propagate_action_taint(idempotency, spec_propagate_action_taint(idempotency, input_taint)) == spec_propagate_action_taint(idempotency, input_taint)
+        ensures spec_propagate_action_taint(idempotency, spec_propagate_action_taint(idempotency, input_taint))
+            == spec_propagate_action_taint(idempotency, input_taint)
     {
         // Case analysis on idempotency discriminant.
         // Each case uses compute to evaluate the spec function.
@@ -61,10 +62,11 @@ verus! {
 
     /// OBL-009 (part 2): For DeterministicPure/idempotent-external,
     /// taint passes through unchanged (identity behavior).
-    proof fn proof_propagate_action_taint_identity_pure(
+    pub proof fn proof_propagate_action_taint_identity_pure(
         input_taint: u8
     )
-        ensures spec_propagate_action_taint(0, input_taint) == input_taint             && spec_propagate_action_taint(1, input_taint) == input_taint
+        ensures spec_propagate_action_taint(0, input_taint) == input_taint
+            && spec_propagate_action_taint(1, input_taint) == input_taint
     {
         reveal(spec_propagate_action_taint);
         assert(spec_propagate_action_taint(0, input_taint) == input_taint) by (compute);
@@ -73,7 +75,7 @@ verus! {
 
     /// OBL-009 (part 3): AtLeastOnceExternal escalates Secret
     /// to DerivedFromSecret but leaves Clean unchanged.
-    proof fn proof_propagate_action_taint_at_least_once(
+    pub proof fn proof_propagate_action_taint_at_least_once(
         input_taint: u8
     )
         ensures spec_propagate_action_taint(2, 0) == 0
@@ -88,7 +90,7 @@ verus! {
 
     /// OBL-009 (part 4): propagation never produces an unknown taint
     /// when given known inputs (Clean=0, Secret=1, DerivedFromSecret=2).
-    proof fn proof_propagate_action_taint_known_inputs(
+    pub proof fn proof_propagate_action_taint_known_inputs(
         idempotency: u8, input_taint: u8
     )
         ensures input_taint <= 2 ==> spec_propagate_action_taint(idempotency, input_taint) <= 2
@@ -124,7 +126,7 @@ verus! {
     /// where C1, C2, C3 are the hash constants.
     ///
     /// Binding to production: `vb_core::action::compute_action_idempotency_key`
-    spec fn spec_compute_action_idempotency_key(run: u128, seq: u128, action: u128) -> u128 {
+    pub open spec fn spec_compute_action_idempotency_key(run: u128, seq: u128, action: u128) -> u128 {
         run.wrapping_mul(0x6c62272e07bb0143_u128)
             .wrapping_add(seq)
             .wrapping_mul(0x3b4f1a5b6c2d8e7f_u128)
@@ -136,7 +138,7 @@ verus! {
     ///
     /// This ensures the polynomial has meaningful mixing — not identity
     /// or zero multiplication, which would produce degenerate keys.
-    proof fn proof_hash_constants_non_trivial()
+    pub proof fn proof_hash_constants_non_trivial()
         ensures 0x6c62272e07bb0143_u128 > 1
             && 0x3b4f1a5b6c2d8e7f_u128 > 1
             && 0x5bd1e9956c7b4d3a_u128 > 1
@@ -148,7 +150,7 @@ verus! {
 
     /// OBL-010 (part 2): The spec function is a well-defined mapping from
     /// (u128, u128, u128) to u128 — same inputs always produce the same output.
-    proof fn proof_key_function_well_defined(
+    pub proof fn proof_key_function_well_defined(
         run: u128, seq: u128, action: u128
     )
         ensures spec_compute_action_idempotency_key(run, seq, action) == spec_compute_action_idempotency_key(run, seq, action)
@@ -162,7 +164,7 @@ verus! {
     /// OBL-010 (part 3): If two different (run, seq, action) tuples produce
     /// the same key, the key is still valid — the hash is not required to be
     /// injective, only deterministic.
-    proof fn proof_key_uniqueness_not_required(
+    pub proof fn proof_key_uniqueness_not_required(
         run1: u128, seq1: u128, action1: u128,
         run2: u128, seq2: u128, action2: u128
     )
@@ -178,7 +180,7 @@ verus! {
 
     /// OBL-010 (part 4): The key is always a valid u128 (no overflow panics
     /// since wrapping arithmetic is used).
-    proof fn proof_key_always_valid_u128(
+    pub proof fn proof_key_always_valid_u128(
         run: u128, seq: u128, action: u128
     )
         ensures spec_compute_action_idempotency_key(run, seq, action) >= 0
@@ -209,7 +211,7 @@ verus! {
         pub capacity: u16,
     }
 
-    spec fn spec_issue_action_ticket(
+    pub open spec fn spec_issue_action_ticket(
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     ) -> spec_ActionTicket {
@@ -222,7 +224,7 @@ verus! {
     ///
     /// Each field of the constructed ticket equals its corresponding argument.
     /// This is verified for every field individually.
-    proof fn proof_issue_action_ticket_field_preservation(
+    pub proof fn proof_issue_action_ticket_field_preservation(
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     )
@@ -244,7 +246,6 @@ verus! {
         assert(ticket.capacity == capacity) by (compute);
     }
 
-
     // ============================================================================
     // Spec-Exec Binding: action_ticket_has_valid_key vs compute_action_idempotency_key
     // ============================================================================
@@ -257,7 +258,7 @@ verus! {
     ///
     /// The spec-level validation predicate mirrors `action_ticket_has_valid_key`:
     /// it checks whether the ticket's stored key equals the recomputed key.
-    spec fn spec_ticket_has_valid_key(
+    pub open spec fn spec_ticket_has_valid_key(
         run: u64, seq: u64, action: u64,
         stored_key: u128, computed_key: u128,
     ) -> bool {
@@ -266,14 +267,18 @@ verus! {
 
     /// Proof: The key computed from (run, seq, action) matches the key
     /// that issue_action_ticket would store, so the ticket is always valid.
-    proof fn proof_ticket_key_consistency(
+    pub proof fn proof_ticket_key_consistency(
         run: u64, seq: u64, action: u64,
     )
-        ensures true
+        ensures spec_ticket_has_valid_key(
+            run, seq, action,
+            spec_compute_action_idempotency_key(run as u128, seq as u128, action as u128),
+            spec_compute_action_idempotency_key(run as u128, seq as u128, action as u128),
+        )
     {
-        let _run = run; let _seq = seq; let _action = action;
+        let computed = spec_compute_action_idempotency_key(run as u128, seq as u128, action as u128);
+        assert(spec_ticket_has_valid_key(run, seq, action, computed, computed)) by (compute);
     }
-
 
     // ============================================================================
     // Theorem: Cross-crate derivation soundness (vb_core action functions)
@@ -286,7 +291,7 @@ verus! {
     ///
     /// The theorem proves that steps 1 and 2 are consistent: a ticket
     /// constructed with the computed key will always pass validation.
-        proof fn theorem_cross_crate_derivation_soundness(
+    pub proof fn theorem_cross_crate_derivation_soundness(
         run: u64, seq: u64, action: u64,
     )
         ensures
@@ -300,6 +305,4 @@ verus! {
         assert(ticket.idempotency_key == key) by (compute);
     }
 
-
 } // verus!
-

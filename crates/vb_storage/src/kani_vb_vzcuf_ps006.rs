@@ -25,25 +25,25 @@ mod kani_byte_limit_ps006 {
     /// C1: MAX_JOURNAL_EVENT_PAYLOAD_BYTES is non-zero.
     #[kani::proof]
     fn check_max_payload_nonzero() {
-        assert!(
+        kani::assert(
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES > 0,
-            "max payload must be non-zero"
+            "max payload must be non-zero",
         );
     }
 
     /// C1: RECORD_HEADER_LEN is non-zero.
     #[kani::proof]
     fn check_header_len_nonzero() {
-        assert!(
+        kani::assert(
             RECORD_HEADER_LEN > 0,
-            "record header length must be non-zero"
+            "record header length must be non-zero",
         );
     }
 
     /// C1: MAX_BATCH_COUNT is non-zero.
     #[kani::proof]
     fn check_max_batch_nonzero() {
-        assert!(MAX_BATCH_COUNT > 0, "max batch count must be non-zero");
+        kani::assert(MAX_BATCH_COUNT > 0, "max batch count must be non-zero");
     }
 
     /// C1: Byte limit arithmetic — checked_add is safe with limits.
@@ -59,16 +59,16 @@ mod kani_byte_limit_ps006 {
             Some(total) => {
                 // Within limit: accept
                 if total <= limit {
-                    assert!(total >= staged);
+                    kani::assert(total >= staged, "total >= staged within limit");
                 }
                 // Over limit: typed rejection (no panic)
             }
             None => {
                 // Overflow: typed rejection (no panic)
                 // Verify that overflow detection works correctly
-                assert!(
+                kani::assert(
                     staged as u128 + candidate as u128 > u64::MAX as u128,
-                    "overflow must occur when sum exceeds u64::MAX"
+                    "overflow must occur when sum exceeds u64::MAX",
                 );
             }
         }
@@ -80,9 +80,9 @@ mod kani_byte_limit_ps006 {
         let default_limit: u64 = 1_048_576;
         let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
         // 60 + 1_048_576 = 1_048_636
-        assert!(
+        kani::assert(
             max_encoded <= default_limit,
-            "max single-event encoded ({max_encoded}) must fit in default limit ({default_limit})"
+            "max single-event encoded must fit in default limit",
         );
     }
 
@@ -93,9 +93,9 @@ mod kani_byte_limit_ps006 {
         let small_event_bytes: u64 = 100; // typical encoded event size
         let max_count = default_limit / small_event_bytes;
         // Should fit >10,000 small events comfortably
-        assert!(
+        kani::assert(
             max_count > 100,
-            "default limit should accommodate many small events, got {max_count}"
+            "default limit should accommodate many small events",
         );
     }
 
@@ -109,7 +109,7 @@ mod kani_byte_limit_ps006 {
         // but even then no progress can be made.
         match staged.checked_add(1u64) {
             Some(total) => {
-                assert!(total > zero_limit, "any addition exceeds zero limit");
+                kani::assert(total > zero_limit, "any addition exceeds zero limit");
             }
             None => {} // overflow also fine
         }

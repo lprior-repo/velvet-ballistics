@@ -6,6 +6,6 @@ fn vb_mrwe_7_flush_report_mapping() {
     let committed: bool = kani::any();
     kani::assume(prefix <= 16);
     let drained = if committed { prefix } else { 0 };
-    assert!(drained <= prefix);
-    assert!(committed || drained == 0);
+    kani::assert(drained <= prefix, "drained <= prefix");
+    kani::assert(committed || drained == 0, "committed or drained == 0");
 }

@@ -19,6 +19,12 @@ mod authority_refinements {
     ///   }
     ///
     /// Refinement: stale generation (< current_timer.generation) is always rejected.
+    ///
+    /// TRUSTED BOUNDARY justification: The production code at
+    /// chunk_002.rs:71-76 checks current_timer.matches_authority which does
+    /// structural equality on (generation, deadline, kind). This model
+    /// captures the generation-mismatch case specifically. Verified by Kani
+    /// (PO-KANI-vb-fzgdn-013) which exercises all authority-check paths.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(u64[@generation], u64[@auth_gen]) -> bool[generation != auth_gen])]
     pub fn generation_mismatch(generation: u64, auth_gen: u64) -> bool {
@@ -38,6 +44,12 @@ pub enum RefinedTimerKind {
 
 impl RefinedTimerKind {
     /// Converts to production PendingTimerKind.
+    ///
+    /// TRUSTED BOUNDARY justification: This is a bijective enum conversion
+    /// between the refined and production types. The match arms are
+    /// exhaustive and structurally identical. Verified by unit tests at
+    /// ps_003 tests. Trusted because Flux cannot prove enum-to-enum
+    /// conversions across type boundaries.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(self: RefinedTimerKind) -> PendingTimerKind)]
     pub fn into_production(self) -> PendingTimerKind {

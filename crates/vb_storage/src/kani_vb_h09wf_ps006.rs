@@ -76,7 +76,7 @@ fn ps_006_artifact_digest_match() {
     let result = validate_accepted_artifact_digest(&artifact, record_digest);
 
     // Must be an error: artifact.digest != record.digest
-    assert!(result.is_err(), "artifact.digest mismatch must be rejected");
+    kani::assert(result.is_err(), "artifact.digest mismatch must be rejected");
 
     // If the error is ArtifactChecksumMismatch (not ArtifactMalformed), that's the
     // direct path. ArtifactMalformed is also acceptable if metadata fails first.

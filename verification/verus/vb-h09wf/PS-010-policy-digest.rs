@@ -116,6 +116,10 @@ pub proof fn lemma_policy_digest_match(
     ensures
         policy_digest_invariant(stored, recomputed),
 {
+    // Spec-level tautology: policy_digest_invariant(s, r) is defined as s == r.
+    // The requires clause directly satisfies the spec body.
+    assert(policy_digest_invariant(stored, recomputed) == (stored == recomputed));
+    assert(stored == recomputed);
 }
 
 /// Lemma: When the recomputed policy digest differs, invariant is broken.
@@ -128,6 +132,10 @@ pub proof fn lemma_policy_digest_mismatch(
     ensures
         !policy_digest_invariant(stored, recomputed),
 {
+    // Spec-level tautology: policy_digest_invariant(s, r) is defined as s == r.
+    // The requires clause (s != r) directly negates the spec body.
+    assert(policy_digest_invariant(stored, recomputed) == (stored == recomputed));
+    assert(stored != recomputed);
 }
 
 /// Lemma: The policy digest is deterministic.

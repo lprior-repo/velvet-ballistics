@@ -55,13 +55,13 @@ proptest! {
             seq = seq.saturating_add(1);
         }
 
-        let Ok(dir1) = TempDir::new() else {
-            prop_assert!(false, "tempdir one creation failed");
-            return Ok(());
+        let dir1 = match TempDir::new() {
+            Ok(d) => d,
+            Err(_e) => return Err(TestCaseError::fail("tempdir one creation failed")),
         };
-        let Ok(journal1) = FjallJournal::open(dir1.path(), Some(FjallConfig::default())) else {
-            prop_assert!(false, "journal one open failed");
-            return Ok(());
+        let journal1 = match FjallJournal::open(dir1.path(), Some(FjallConfig::default())) {
+            Ok(j) => j,
+            Err(_e) => return Err(TestCaseError::fail("journal one open failed")),
         };
         for event in &events {
             let append = journal1.append_strict(event);
@@ -69,13 +69,13 @@ proptest! {
         }
         let summary1 = recover_runtime_summary(&journal1, run);
 
-        let Ok(dir2) = TempDir::new() else {
-            prop_assert!(false, "tempdir two creation failed");
-            return Ok(());
+        let dir2 = match TempDir::new() {
+            Ok(d) => d,
+            Err(_e) => return Err(TestCaseError::fail("tempdir two creation failed")),
         };
-        let Ok(journal2) = FjallJournal::open(dir2.path(), Some(FjallConfig::default())) else {
-            prop_assert!(false, "journal two open failed");
-            return Ok(());
+        let journal2 = match FjallJournal::open(dir2.path(), Some(FjallConfig::default())) {
+            Ok(j) => j,
+            Err(_e) => return Err(TestCaseError::fail("journal two open failed")),
         };
         for event in &events {
             let append = journal2.append_strict(event);

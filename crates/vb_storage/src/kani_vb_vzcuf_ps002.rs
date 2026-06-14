@@ -31,13 +31,13 @@ mod kani_overflow_ps002 {
         match a.checked_add(b) {
             Some(total) => {
                 // If it succeeds, total must be exactly a + b (modular)
-                assert_eq!(total, a + b);
+                kani::assert(total == a + b, "total == a + b");
             }
             None => {
                 // Overflow detected — no wrap, no panic
-                assert!(
+                kani::assert(
                     a as u128 + b as u128 > u64::MAX as u128,
-                    "overflow must occur exactly when a + b > u64::MAX"
+                    "overflow must occur exactly when a + b > u64::MAX",
                 );
             }
         }
@@ -56,7 +56,7 @@ mod kani_overflow_ps002 {
             Some(total) => {
                 if total <= limit {
                     // Acceptance: total within limit, monotonic
-                    assert!(total >= staged);
+                    kani::assert(total >= staged, "total >= staged (monotonic)");
                 }
                 // Else: over-limit — typed rejection, no panic
             }
@@ -72,8 +72,8 @@ mod kani_overflow_ps002 {
         let n: u32 = kani::any();
         let wide: u64 = n as u64;
         // u32::MAX (4_294_967_295) fits in u64
-        assert_eq!(wide as u32, n, "u32->u64->u32 roundtrip must be exact");
-        assert!(wide <= u32::MAX as u64);
+        kani::assert(wide as u32 == n, "u32->u64->u32 roundtrip must be exact");
+        kani::assert(wide <= u32::MAX as u64, "wide fits u32 range");
     }
 
     /// C7: usize -> u64 conversion is safe on 64-bit.
@@ -82,9 +82,9 @@ mod kani_overflow_ps002 {
         let n: usize = kani::any();
         kani::assume(n <= u64::MAX as usize);
         let wide: u64 = n as u64;
-        assert_eq!(
-            wide as usize, n,
-            "usize->u64->usize roundtrip within u64 range"
+        kani::assert(
+            wide as usize == n,
+            "usize->u64->usize roundtrip within u64 range",
         );
     }
 
@@ -129,9 +129,9 @@ mod kani_overflow_ps002 {
         use crate::constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
 
         let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        assert!(
+        kani::assert(
             max_encoded < u64::MAX,
-            "max encoded (header + payload) must fit in u64: {max_encoded}"
+            "max encoded (header + payload) must fit in u64",
         );
         // 60 + 1_048_576 = 1_048_636 < u64::MAX
     }

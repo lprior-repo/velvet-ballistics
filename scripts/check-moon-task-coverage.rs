@@ -52,12 +52,14 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ),
     ("nightly feature gate", &["nightly-feature-gate"]),
     ("Kani list", &["kani-list"]),
+    // Model-only stand-in smoke lanes are intentionally excluded here so they
+    // cannot satisfy production-bound Kani verification accounting.
     (
-        "Kani verify",
+        "Kani verify (production-bound)",
         &[
             "verify-kani",
             "verify-kani-vb-validate",
-            "verify-kani-shard-command-queue-standin-model",
+            "verify-kani-vb-compile",
         ],
     ),
     ("Loom smoke", &["loom-run", "loom-list-smoke"]),

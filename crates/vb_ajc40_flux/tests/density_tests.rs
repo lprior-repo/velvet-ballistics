@@ -399,10 +399,4 @@ fn validator_iteration_count_for_summary_check_is_bounded() {
 }
 
 #[test]
-fn validator_no_dynamic_allocation() {
-    let _count: u64 = 100;
-    let _declared: u64 = 100;
-    let _depth: u64 = 1;
-    let _max: u64 = 1000;
-    assert!(true);
-}
+fn validator_no_dynamic_allocation() {}

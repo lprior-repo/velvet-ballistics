@@ -5,8 +5,7 @@
 #   [2/5] the negative serde_json fixture fails (exit 1, file:line finding),
 #   [3/5] the negative http (hyper/reqwest) fixture fails (exit 1, file:line finding),
 #   [4/5] the negative allowlisted fixture passes (exit 0, allowlisted=1),
-#   [5/5] the real repository scan reports summary=... and either clean or
-#         document a known historical serde_json dev-dep in vb_core.
+#   [5/5] the real repository scan reports summary=... and exits 0.
 #
 # Exits 0 on success, exits 1 on any failed assertion.
 set -euo pipefail
@@ -112,7 +111,7 @@ assert_output_contains "allowlisted marker" "allowlisted:" "$GATE_OUTPUT"
 echo "  ok: exit 0"
 echo "  ok: allowlisted marker consumes the violation"
 
-printf '[5/5] real repository scan must complete and emit a summary line\n'
+printf '[5/5] real repository scan must complete, emit a summary line, and PASS\n'
 run_gate_capture
 case "$GATE_OUTPUT" in
   *"summary: "*) ;;
@@ -122,13 +121,13 @@ case "$GATE_OUTPUT" in
     exit 1
     ;;
 esac
-# Real-repo status: the bead's evidence.md records the exact state.
-# The scan MUST emit a summary line; it MAY exit 0 (clean) or 1
-# (active violations, with file:line evidence). We do not assert a
-# specific exit code here because vb_core's [dev-dependencies] table
-# carries a historical serde_json entry that this scanner will flag.
+# Real-repo status: the scan MUST exit 0 and emit a summary line.
+# The allowlisted vb_core serde_json dev-dependency remains permitted;
+# the active count must stay at zero.
+assert_exit "real repository scan" "0" "$GATE_EXIT" "$GATE_OUTPUT"
+assert_output_contains "real repo summary" "summary: active=0" "$GATE_OUTPUT"
 echo "  ok: summary line emitted"
-echo "  ok: real-repo exit code: $GATE_EXIT (see evidence.md for context)"
+echo "  ok: real-repo exit code 0"
 
 echo "self-test PASSED"
 exit 0

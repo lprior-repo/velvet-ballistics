@@ -8,26 +8,23 @@ use vstd::prelude::*;
 verus! {
 
     // Standalone model types
-    struct Instant(u64);
 
-    impl Instant {
-        pub closed spec fn val(&self) -> u64 { self.0 }
-    }
-
-    enum PendingTimerKind {
+    /// Model of PendingTimerKind
+    pub enum PendingTimerKind {
         WaitUntil,
         WaitEvent,
         Ask,
     }
 
-    struct PendingTimer {
+    /// Model of PendingTimer
+    pub struct PendingTimer {
+        pub step: u64,
         pub kind: PendingTimerKind,
-        pub deadline: Instant,
     }
 
-    impl PendingTimer {
-        pub closed spec fn kind(&self) -> PendingTimerKind { self.kind }
-        pub closed spec fn deadline(&self) -> Instant { self.deadline }
+    /// Model: PendingTimer is valid when step > 0
+    pub open spec fn pending_timer_valid(t: PendingTimer) -> bool {
+        t.step > 0
     }
-}
 
+} // verus!

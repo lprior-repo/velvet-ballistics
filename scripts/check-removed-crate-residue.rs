@@ -15,10 +15,14 @@
 //                          "velvet-ballistics" and "makepad-2.0" do not
 //                          false-match. "Makepad" (capitalised) is allowed.
 //
-// Per-line allowlist: a single line containing the substring
-// "# allow-removed-crate: <reason>" or "// allow-removed-crate: <reason>"
-// suppresses the NEXT non-blank line. The suppressed line is reported as
-// "allowlisted:" (still counts in the summary) and never causes a failure.
+// Per-line allowlist: a single true comment-start line containing
+// "# allow-removed-crate: <reason>" or a `//`/`//!`/`///` comment that
+// starts with `allow-removed-crate: <reason>`
+// suppresses the NEXT non-blank line only if that target line is itself
+// comment-like or doc-only/historical prose with an explicit historical or
+// negation marker. Active manifest entries, workspace members, and source
+// `use` / `extern crate` lines are always active even if preceded by an
+// allowlist marker.
 //
 // Output (all on stderr):
 //   <path>:<lineno>: REMOVED-CRATE: <token>: <line>      (active violation)
@@ -68,6 +72,38 @@ const SELF_SKIP_NAMES: &[&str] = &[
 
 const SKIP_DIRS: &[&str] = &["target", "node_modules", ".bead-progress", ".evidence"];
 
+const ALLOWLIST_PREFIXES: &[&str] = &[
+    "# allow-removed-crate:",
+    "// allow-removed-crate:",
+    "//! allow-removed-crate:",
+    "/// allow-removed-crate:",
+    "! allow-removed-crate:",
+    "; allow-removed-crate:",
+    "<!-- allow-removed-crate:",
+];
+
+const HISTORICAL_MARKERS: &[&str] = &[
+    "removed",
+    "deferred",
+    "historical",
+    "legacy",
+    "retired",
+    "obsolete",
+    "post-merge",
+    "out of scope",
+    "not active",
+    "no longer",
+    "current-scope",
+    "release blocker",
+    "cleanup debt",
+    "fenced out",
+    "exclude",
+    "excluded",
+    "forbid",
+    "forbidden",
+    "drop",
+];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Finding {
     line_no: usize,
@@ -79,58 +115,67 @@ struct Finding {
 }
 
 fn parse_allow_reason(line: &str) -> Option<String> {
-    let reason_token = "allow-removed-crate:";
-    let Some(token_idx) = line.find(reason_token) else {
-        return None;
-    };
-    if !is_valid_marker_prefix(line, token_idx) {
-        return None;
+    let trimmed = line.trim_start();
+    for prefix in ALLOWLIST_PREFIXES {
+        if let Some(reason) = trimmed.strip_prefix(prefix) {
+            let reason = reason.trim();
+            if !reason.is_empty() {
+                return Some(reason.to_owned());
+            }
+        }
     }
-    let after = &line[token_idx + reason_token.len()..];
-    let reason = after.trim();
-    if reason.is_empty() {
-        None
-    } else {
-        Some(reason.to_owned())
-    }
+    None
 }
 
-fn is_valid_marker_prefix(line: &str, token_idx: usize) -> bool {
-    let bytes = line.as_bytes();
-    if token_idx == 0 {
+fn is_comment_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with('#')
+        || trimmed.starts_with("//")
+        || trimmed.starts_with('!')
+        || trimmed.starts_with(';')
+        || trimmed.starts_with("<!--")
+}
+
+fn is_doc_like(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|ext| ext.to_str()),
+        Some("md" | "txt" | "rst" | "adoc")
+    )
+}
+
+fn contains_historical_marker(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    HISTORICAL_MARKERS.iter().any(|marker| lower.contains(marker))
+}
+
+fn is_historical_doc_line(path: &Path, line: &str) -> bool {
+    if !is_doc_like(path) {
         return false;
     }
-    if bytes[token_idx - 1] != b' ' && bytes[token_idx - 1] != b'\t' {
-        return false;
-    }
-    if token_idx == 1 {
-        return false;
-    }
-    let prev_byte = bytes[token_idx - 2];
-    if prev_byte == b'#' {
+    if contains_historical_marker(line) {
         return true;
     }
-    if prev_byte == b'/' || prev_byte == b'!' {
-        return true;
-    }
-    false
+    let Some(file_stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return false;
+    };
+    let lower = file_stem.to_ascii_lowercase();
+    lower.contains("deferred") || lower.contains("historical") || lower.contains("adr")
 }
 
 fn is_standalone_makepad(line: &str) -> bool {
     let needle = MAKEPAD_BARE;
     for (idx, _) in line.match_indices(needle) {
-        if idx > 0 {
-            if let Some(prev) = line[..idx].chars().next_back() {
-                if is_word_or_underscore(prev) {
-                    continue;
-                }
-            }
+        if idx > 0
+            && let Some(prev) = line[..idx].chars().next_back()
+            && is_word_or_underscore(prev)
+        {
+            continue;
         }
         let after_idx = idx + needle.len();
-        if let Some(next) = line[after_idx..].chars().next() {
-            if is_word_underscore_or_dash(next) {
-                continue;
-            }
+        if let Some(next) = line[after_idx..].chars().next()
+            && is_word_underscore_or_dash(next)
+        {
+            continue;
         }
         return true;
     }
@@ -190,7 +235,7 @@ enum ScanOutcome {
     Unreadable(String),
 }
 
-fn scan_text(text: &str) -> Vec<Finding> {
+fn scan_text(path: &Path, text: &str) -> Vec<Finding> {
     let mut findings: Vec<Finding> = Vec::new();
     let mut pending_reason: Option<String> = None;
     for (idx, raw_line) in text.lines().enumerate() {
@@ -202,7 +247,9 @@ fn scan_text(text: &str) -> Vec<Finding> {
         if raw_line.trim().is_empty() {
             continue;
         }
-        if let Some(reason) = pending_reason.take() {
+        if let Some(reason) = pending_reason.take()
+            && (is_comment_line(raw_line) || is_historical_doc_line(path, raw_line))
+        {
             findings.push(Finding {
                 line_no,
                 line_text: (*raw_line).to_owned(),
@@ -236,10 +283,10 @@ fn scan_file(path: &Path) -> ScanOutcome {
             return ScanOutcome::Unreadable(format!("{}: unreadable: {error}", path.display()));
         }
     };
-    ScanOutcome::File(scan_text(&text))
+    ScanOutcome::File(scan_text(path, &text))
 }
 
-fn collect_scan_files(root: &Path, target: &Path) -> io::Result<Vec<PathBuf>> {
+fn collect_scan_files(_root: &Path, target: &Path) -> io::Result<Vec<PathBuf>> {
     if !target.exists() {
         return Ok(Vec::new());
     }
@@ -248,12 +295,12 @@ fn collect_scan_files(root: &Path, target: &Path) -> io::Result<Vec<PathBuf>> {
         out.push(target.to_path_buf());
         return Ok(out);
     }
-    walk(root, target, &mut out)?;
+    walk(target, &mut out)?;
     out.sort();
     Ok(out)
 }
 
-fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
+fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return Ok(()),
@@ -268,11 +315,11 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
         if name.starts_with('.') && name != ".moon" {
             continue;
         }
-        if SKIP_DIRS.iter().any(|d| *d == name) {
+        if SKIP_DIRS.contains(&name) {
             continue;
         }
         if path.is_dir() {
-            walk(root, &path, out)?;
+            walk(&path, out)?;
         } else if should_scan_file(&path) {
             out.push(path);
         }
@@ -284,7 +331,7 @@ fn should_scan_file(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
         return false;
     };
-    if SELF_SKIP_NAMES.iter().any(|n| *n == name) {
+    if SELF_SKIP_NAMES.contains(&name) {
         return false;
     }
     if name == "Cargo.toml"

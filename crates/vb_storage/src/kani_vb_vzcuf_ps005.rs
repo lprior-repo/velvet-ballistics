@@ -53,14 +53,14 @@ mod kani_encoding_ps005 {
         ) {
             Ok(value) => {
                 let len = value.len();
-                assert!(
+                kani::assert(
                     len >= RECORD_HEADER_LEN as usize,
-                    "encoded record len {len} must be >= RECORD_HEADER_LEN (60)"
+                    "encoded record len >= RECORD_HEADER_LEN (60)",
                 );
                 // Verify that len includes header overhead
-                assert!(
+                kani::assert(
                     len > RECORD_HEADER_LEN as usize,
-                    "encoded record len {len} must be > 60 due to payload content"
+                    "encoded record len > 60 due to payload content",
                 );
             }
             Err(_) => {}
@@ -90,15 +90,14 @@ mod kani_encoding_ps005 {
                 if let Ok(payload_only) = postcard::to_allocvec(&event) {
                     let payload_len = payload_only.len();
                     // Full encoded length must exceed payload-only length
-                    assert!(
+                    kani::assert(
                         full_len > payload_len,
-                        "full_len={full_len} must exceed payload_len={payload_len}"
+                        "full_len={full_len} must exceed payload_len={payload_len}",
                     );
                     // Difference should be RECORD_HEADER_LEN (60 bytes)
-                    assert_eq!(
-                        full_len - payload_len,
-                        RECORD_HEADER_LEN as usize,
-                        "encoding overhead must be exactly RECORD_HEADER_LEN (60)"
+                    kani::assert(
+                        full_len - payload_len == RECORD_HEADER_LEN as usize,
+                        "encoding overhead must be exactly RECORD_HEADER_LEN (60)",
                     );
                 }
             }
@@ -141,10 +140,9 @@ mod kani_encoding_ps005 {
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             ) {
                 Ok(value) => {
-                    assert!(
+                    kani::assert(
                         value.len() >= RECORD_HEADER_LEN as usize,
-                        "event kind {i}: encoded len {} < RECORD_HEADER_LEN",
-                        value.len()
+                        "event kind {i}: encoded len >= RECORD_HEADER_LEN",
                     );
                 }
                 Err(_) => {}
@@ -158,9 +156,9 @@ mod kani_encoding_ps005 {
     fn check_max_encoded_fits_u64() {
         use crate::constants::RECORD_HEADER_LEN;
         let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        assert!(
+        kani::assert(
             max_encoded < u64::MAX,
-            "max encoded = {max_encoded}, must be < u64::MAX"
+            "max encoded must be < u64::MAX",
         );
     }
 
@@ -173,6 +171,6 @@ mod kani_encoding_ps005 {
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         };
         let kind = event.record_kind();
-        assert_eq!(kind.id(), 0x0001u16, "RunAccepted kind must be 0x0001");
+        kani::assert(kind.id() == 0x0001u16, "RunAccepted kind must be 0x0001");
     }
 }

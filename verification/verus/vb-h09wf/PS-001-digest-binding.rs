@@ -160,7 +160,15 @@ pub proof fn lemma_digest_mismatch_denies(
             artifact_digest, verification_digest, record_digest, hash_of_artifact_ir,
         ),
 {
-    // If triangle fails, the conjunction must be false.
+    // Spec-level tautology: validate_accepted_artifact_digest_spec is defined as
+    // digest_triangle_holds(…) && content_binding_holds(…).
+    // The requires clause (!digest_triangle_holds) makes the first conjunct false,
+    // so the conjunction is false. The SMT solver discharges this automatically.
+    assert(!digest_triangle_holds(artifact_digest, verification_digest, record_digest));
+    assert(validate_accepted_artifact_digest_spec(
+        artifact_digest, verification_digest, record_digest, hash_of_artifact_ir,
+    ) == (digest_triangle_holds(artifact_digest, verification_digest, record_digest)
+        && content_binding_holds(hash_of_artifact_ir, record_digest)));
 }
 
 /// Lemma: If content binding does NOT hold (BLAKE3 mismatch), the spec returns false.
@@ -177,6 +185,15 @@ pub proof fn lemma_content_mismatch_denies(
             artifact_digest, verification_digest, record_digest, hash_of_artifact_ir,
         ),
 {
+    // Spec-level tautology: validate_accepted_artifact_digest_spec is defined as
+    // digest_triangle_holds(…) && content_binding_holds(…).
+    // The requires clause (!content_binding_holds) makes the second conjunct false,
+    // so the conjunction is false. The SMT solver discharges this automatically.
+    assert(!content_binding_holds(hash_of_artifact_ir, record_digest));
+    assert(validate_accepted_artifact_digest_spec(
+        artifact_digest, verification_digest, record_digest, hash_of_artifact_ir,
+    ) == (digest_triangle_holds(artifact_digest, verification_digest, record_digest)
+        && content_binding_holds(hash_of_artifact_ir, record_digest)));
 }
 
 /// Lemma: When all checks pass, the spec returns true.
@@ -194,6 +211,11 @@ pub proof fn lemma_all_checks_pass(
             artifact_digest, verification_digest, record_digest, hash_of_artifact_ir,
         ),
 {
+    // Spec-level tautology: when both conjuncts of the spec definition hold,
+    // the conjunction is true. Verified by SMT solver automatically.
+    assert(validate_accepted_artifact_digest_spec(
+        artifact_digest, verification_digest, record_digest, hash_of_artifact_ir,
+    ) == true);
 }
 
 /// Lemma: Digest triangle equality implies all three digests are equal.
@@ -209,6 +231,11 @@ pub proof fn lemma_triangle_implies_equality(
         verification_digest == record_digest,
         artifact_digest == verification_digest,
 {
+    // Spec-level tautology: digest_triangle_holds is defined as
+    // artifact_digest == verification_digest && verification_digest == record_digest.
+    // The three equality conclusions follow directly from the conjunction.
+    assert(digest_triangle_holds(artifact_digest, verification_digest, record_digest));
+    assert(artifact_digest == verification_digest && verification_digest == record_digest);
 }
 
 fn main() {}

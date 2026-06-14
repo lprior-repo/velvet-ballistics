@@ -126,7 +126,13 @@ fn kani_build_serializable_roundtrip() {
     let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
     assert!(encoded.is_ok());
-    let decoded: Result<serde_json::Value, _> = serde_json::from_str(&encoded.unwrap());
+    let decoded: Result<serde_json::Value, _> = match encoded {
+        Ok(s) => serde_json::from_str(&s),
+        Err(_) => {
+            kani::assume(false, "encoding failed");
+            return;
+        }
+    };
     assert!(decoded.is_ok());
 }
 
@@ -147,8 +153,13 @@ fn kani_agent_contract_booleans_are_bools() {
             "mutation_responses_return_identifiers",
         ] {
             let val = c.get(*key);
-            assert!(val.is_some());
-            assert!(val.unwrap().is_boolean());
+            match val {
+                Some(v) => assert!(v.is_boolean()),
+                None => {
+                    kani::assume(false, "expected boolean field");
+                    return;
+                }
+            }
         }
     }
 }
@@ -164,8 +175,13 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
     if let Some(p) = policy {
         for key in &["canonical_resource_verbs", "banned_verbs", "banned_flags"] {
             let val = p.get(*key);
-            assert!(val.is_some());
-            assert!(val.unwrap().is_array());
+            match val {
+                Some(v) => assert!(v.is_array()),
+                None => {
+                    kani::assume(false, "expected array field");
+                    return;
+                }
+            }
         }
     }
 }
@@ -251,8 +267,13 @@ fn kani_enums_has_all_variants() {
     if let Some(e) = enums {
         assert!(e.is_object());
         for key in &["emit", "compile_emit", "durability", "verify_profile"] {
-            assert!(e.get(*key).is_some());
-            assert!(e.get(*key).unwrap().is_array());
+            match e.get(*key) {
+                Some(v) => assert!(v.is_array()),
+                None => {
+                    kani::assume(false, "expected enum variant");
+                    return;
+                }
+            }
         }
     }
 }

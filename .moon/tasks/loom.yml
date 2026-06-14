@@ -33,3 +33,197 @@ tasks:
     options:
       cache: false
       runInCI: true
+
+  loom-ps-001-model:
+    command: 'cargo test'
+    args: '--test ps_001_model -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'verification/loom/vb-fzgdn/PS-001-model.rs'
+      - 'crates/vb_runtime/tests/ps_001_model.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-ps-002-model:
+    command: 'cargo test'
+    args: '--test ps_002_model -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'verification/loom/vb-fzgdn/PS-002-model.rs'
+      - 'crates/vb_runtime/tests/ps_002_model.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-ps-007-model:
+    command: 'cargo test'
+    args: '--test ps_007_model -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'verification/loom/vb-fzgdn/PS-007-model.rs'
+      - 'crates/vb_runtime/tests/ps_007_model.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-ps-009-model:
+    command: 'cargo test'
+    args: '--test ps_009_model -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'verification/loom/vb-fzgdn/PS-009-model.rs'
+      - 'crates/vb_runtime/tests/ps_009_model.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-ps-010-model:
+    command: 'cargo test'
+    args: '--test ps_010_model -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'verification/loom/vb-fzgdn/PS-010-model.rs'
+      - 'crates/vb_runtime/tests/ps_010_model.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-idempotency-retry-eviction:
+    command: 'cargo test'
+    args: '-p vb_runtime --features loom --lib models::loom::idempotency_retry_eviction --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_runtime/src/models/loom/idempotency_retry_eviction.rs'
+      - 'crates/vb_runtime/src/models/loom/mod.rs'
+      - 'crates/vb_runtime/src/models/sync.rs'
+      - 'crates/vb_runtime/src/idempotency/**/*'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-vb-mrwe6-atomic-index:
+    command: 'cargo test'
+    args: '--test vb_mrwe6_atomic_index_loom -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_runtime/src/verification/loom/vb_mrwe6_atomic_index_loom.rs'
+      - 'crates/vb_runtime/tests/vb_mrwe6_atomic_index_loom.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-vb-mrwe6-completion-policy:
+    command: 'cargo test'
+    args: '--test vb_mrwe6_completion_policy_loom -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_runtime/src/verification/loom/vb_mrwe6_completion_policy_loom.rs'
+      - 'crates/vb_runtime/tests/vb_mrwe6_completion_policy_loom.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-vb-mrwe6-duplicate:
+    command: 'cargo test'
+    args: '--test vb_mrwe6_duplicate_loom -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_runtime/src/verification/loom/vb_mrwe6_duplicate_loom.rs'
+      - 'crates/vb_runtime/tests/vb_mrwe6_duplicate_loom.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-vb-mrwe6-queue-intent:
+    command: 'cargo test'
+    args: '--test vb_mrwe6_queue_intent_loom -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_runtime/src/verification/loom/vb_mrwe6_queue_intent_loom.rs'
+      - 'crates/vb_runtime/tests/vb_mrwe6_queue_intent_loom.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-vb-mrwe6-recovery-reliance:
+    command: 'cargo test'
+    args: '--test vb_mrwe6_recovery_reliance_loom -p vb_runtime --features loom --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_runtime/src/verification/loom/vb_mrwe6_recovery_reliance_loom.rs'
+      - 'crates/vb_runtime/tests/vb_mrwe6_recovery_reliance_loom.rs'
+      - 'crates/vb_runtime/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true
+
+  loom-vb-mrwe-7:
+    command: 'cargo test'
+    args: '--test loom_vb_mrwe_7 -p vb_storage --features loom-vb-mrwe-7 --release'
+    env:
+      RUSTFLAGS: '--cfg loom'
+      LOOM_MAX_PREEMPTIONS: '2'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_storage/src/queue/loom_vb_mrwe_7.rs'
+      - 'crates/vb_storage/tests/loom_vb_mrwe_7.rs'
+      - 'crates/vb_storage/Cargo.toml'
+    options:
+      cache: false
+      runInCI: true

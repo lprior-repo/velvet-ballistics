@@ -32,8 +32,8 @@ mod kani_guards_ps008 {
     /// C6: MAX_BATCH_COUNT is a reasonable limit.
     #[kani::proof]
     fn check_max_batch_count_reasonable() {
-        assert!(MAX_BATCH_COUNT > 0);
-        assert!(MAX_BATCH_COUNT <= 100_000, "batch count cap too high");
+        kani::assert(MAX_BATCH_COUNT > 0, "MAX_BATCH_COUNT > 0");
+        kani::assert(MAX_BATCH_COUNT <= 100_000, "batch count cap too high");
     }
 
     /// C6: Guard ordering: QueueFull is checked before encoding.
@@ -43,7 +43,7 @@ mod kani_guards_ps008 {
         // MAX_BATCH_COUNT = 10_000
         // When inner.len() reaches this, QueueFull fires.
         // encode_record would only fire after QueueFull passes.
-        assert!(MAX_BATCH_COUNT > 0, "guard check exists");
+        kani::assert(MAX_BATCH_COUNT > 0, "guard check exists");
     }
 
     /// C6: Guard ordering: DuplicateEvent is checked before QueueFull.
@@ -53,10 +53,10 @@ mod kani_guards_ps008 {
         // The durable duplicate check (line 211) happens before
         // the batch count check (line 218) in append_event.
         // Verify that MAX_BATCH_COUNT is a positive constant.
-        assert!(MAX_BATCH_COUNT > 0, "batch count limit must be positive");
-        assert!(
+        kani::assert(MAX_BATCH_COUNT > 0, "batch count limit must be positive");
+        kani::assert(
             MAX_BATCH_COUNT < u64::MAX as usize,
-            "batch count must be bounded"
+            "batch count must be bounded",
         );
     }
 
@@ -78,7 +78,7 @@ mod kani_guards_ps008 {
 
         // With max=0, any non-empty payload triggers PayloadTooLarge
         let result = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, 0);
-        assert!(result.is_err(), "zero max must reject");
+        kani::assert(result.is_err(), "zero max must reject");
 
         // With large max, encoding succeeds
         let result = encode_record(
@@ -88,7 +88,7 @@ mod kani_guards_ps008 {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        assert!(result.is_ok(), "adequate max must accept");
+        kani::assert(result.is_ok(), "adequate max must accept");
     }
 
     /// C6: Sequencing proof: must not attempt byte admission before encoding.
@@ -101,9 +101,9 @@ mod kani_guards_ps008 {
         // Therefore, encoding must succeed before byte admission can run.
         // This is a structural requirement of the guard ordering.
         use crate::constants::RECORD_HEADER_LEN;
-        assert!(
+        kani::assert(
             RECORD_HEADER_LEN > 0,
-            "header length must be non-zero for encoding guard"
+            "header length must be non-zero for encoding guard",
         );
     }
 }

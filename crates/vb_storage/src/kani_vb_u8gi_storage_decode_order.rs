@@ -36,7 +36,10 @@ pub fn vb_u8gi_storage_decode_order_bad_magic() {
     header[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes()); // valid header_len
 
     let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len);
-    assert!(matches!(result, Err(JournalError::BadMagic { .. })));
+    kani::assert(
+        matches!(result, Err(JournalError::BadMagic { .. })),
+        "BadMagic has highest priority",
+    );
 }
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-002: UnsupportedSchemaVersion is checked after magic.
@@ -57,10 +60,10 @@ pub fn vb_u8gi_storage_decode_order_bad_version() {
     header[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes()); // valid header_len
 
     let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len);
-    assert!(matches!(
-        result,
-        Err(JournalError::UnsupportedSchemaVersion { .. })
-    ));
+    kani::assert(
+        matches!(result, Err(JournalError::UnsupportedSchemaVersion { .. })),
+        "UnsupportedSchemaVersion checked after magic",
+    );
 }
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-003: UnknownRecordKind for invalid kind values.
@@ -80,10 +83,10 @@ pub fn vb_u8gi_storage_decode_order_unknown_kind() {
     header[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes()); // valid header_len
 
     let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len);
-    assert!(matches!(
-        result,
-        Err(JournalError::UnknownRecordKind { .. })
-    ));
+    kani::assert(
+        matches!(result, Err(JournalError::UnknownRecordKind { .. })),
+        "UnknownRecordKind for invalid kind values",
+    );
 }
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-004: RecordKindFamilyMismatch for kind not in 10..=27.
@@ -110,10 +113,10 @@ pub fn vb_u8gi_storage_decode_order_family_mismatch() {
     header[12..16].copy_from_slice(&payload_len.to_le_bytes());
 
     let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len);
-    assert!(matches!(
-        result,
-        Err(JournalError::RecordKindFamilyMismatch { .. })
-    ));
+    kani::assert(
+        matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
+        "RecordKindFamilyMismatch for kind not in 10..=27",
+    );
 }
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-005: HeaderLengthMismatch checked after kind family.
@@ -140,10 +143,10 @@ pub fn vb_u8gi_storage_decode_order_bad_header_len() {
     header[12..16].copy_from_slice(&payload_len.to_le_bytes());
 
     let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len);
-    assert!(matches!(
-        result,
-        Err(JournalError::HeaderLengthMismatch { .. })
-    ));
+    kani::assert(
+        matches!(result, Err(JournalError::HeaderLengthMismatch { .. })),
+        "HeaderLengthMismatch checked after kind family",
+    );
 }
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-006: PayloadTooLarge has lowest priority.
@@ -168,5 +171,8 @@ pub fn vb_u8gi_storage_decode_order_payload_too_large() {
     header[12..16].copy_from_slice(&payload_len.to_le_bytes());
 
     let result = decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len);
-    assert!(matches!(result, Err(JournalError::PayloadTooLarge { .. })));
+    kani::assert(
+        matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+        "PayloadTooLarge has lowest priority",
+    );
 }

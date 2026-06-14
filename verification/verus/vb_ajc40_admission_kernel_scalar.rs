@@ -95,9 +95,13 @@ pub fn accumulate_yield_cost(total: u64, item_cost: u64) -> (result: Result<u64,
     }
 }
 
+/// Every usize value is non-negative. This property is needed for the
+/// empty-path admission case where path depth is 0, which is always <=
+/// any valid max_path_segments (a usize >= 0).
 pub proof fn proof_empty_root_path_not_too_deep(max_path_segments: usize)
     ensures 0usize <= max_path_segments,
 {
+    assert(0usize <= max_path_segments);
 }
 
 } // verus!

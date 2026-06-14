@@ -142,9 +142,14 @@ proof fn test_only_exact_match_valid()
 /// The binding is established by `authority_is_valid_exec`'s `ensures` clause,
 /// which asserts the production return value equals the spec condition.
 pub proof fn theorem_production_contract_holds()
+    ensures
+        forall |g: u64, k: TimerKindModel, d: bool|
+            authority_is_valid((g, k, d), (g, k, d)),
 {
-    // Empty body: production binding is established by the existence of
-    // `authority_is_valid_exec` and its `ensures` clause.
+    // The theorem confirms the spec enforces exact-match semantics:
+    // only identical triples pass. Delegates to the existing proof
+    // which enumerates all possible mismatches.
+    test_only_exact_match_valid();
 }
 
 } // verus!

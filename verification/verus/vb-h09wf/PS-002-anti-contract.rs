@@ -133,9 +133,11 @@ pub proof fn lemma_anti_contract(
     ensures
         has_extra_metadata,
 {
-    // The proof is immediate from the precondition.
-    // In a full model, we would chain: extra_metadata -> different_bytes -> different_hashes.
-    // The BLAKE3 collision resistance bridge is a trusted boundary.
+    // Spec-level tautology: envelope_distinct_from_content(hm) is defined as
+    // `hm` (the identity function). So the requires directly gives the ensures.
+    // The SMT solver discharges this automatically.
+    assert(envelope_distinct_from_content(has_extra_metadata));
+    assert(has_extra_metadata);
 }
 
 /// Concrete lemma: The AcceptedArtifact ALWAYS has extra metadata.
@@ -146,6 +148,9 @@ pub proof fn lemma_accepted_artifact_has_extra_metadata()
     ensures
         envelope_distinct_from_content(true),
 {
+    // Spec-level tautology: envelope_distinct_from_content(true) is defined as
+    // `true`. The ensures is trivially true from the spec definition.
+    assert(envelope_distinct_from_content(true));
 }
 
 /// Top-level anti-contract theorem:

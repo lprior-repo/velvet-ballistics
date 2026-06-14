@@ -208,6 +208,12 @@ pub proof fn proof_invalid_artifact_never_allows_recovery_success(
     ));
 }
 
+/// Determinism of recovery classification: the same inputs always yield the
+/// same output. This follows from `recovery_error` being a pure spec function
+/// (no side effects, no mutable state). The ensures clause states this
+/// determinism property; the body uses the fact that `recovery_error`'s
+/// definition is a pure expression, so repeated evaluation with identical
+/// arguments is identical by reflexivity of equality.
 pub proof fn proof_same_inputs_same_recovery_classification(
     source_claim: int,
     source_actual: int,
@@ -238,6 +244,7 @@ pub proof fn proof_same_inputs_same_recovery_classification(
         replay_ok,
     ),
 {
+    // recovery_error is pure; identical arguments => identical result by reflexivity.
     assert(recovery_error(
         source_claim,
         source_actual,

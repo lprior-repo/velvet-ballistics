@@ -64,6 +64,9 @@ pub proof fn lemma_checked_add_total(a: u64, b: u64)
     ensures
         model_checked_add_u64(a, b).is_ok() || model_checked_add_u64(a, b).is_err(),
 {
+    // Spec-level tautology: Result<a,b>.is_ok() || Result<a,b>.is_err() is always true
+    // for any Result. Verified by SMT solver from Rust enum definition.
+    assert(model_checked_add_u64(a, b).is_ok() || model_checked_add_u64(a, b).is_err());
 }
 
 /// Lemma: if checked_add succeeds, the result is exactly a + b.
@@ -74,6 +77,12 @@ pub proof fn lemma_checked_add_exact(a: u64, b: u64)
             Err(_) => true,
         },
 {
+    // Spec-level tautology: model_checked_add_u64 returns Ok(a + b) when no overflow,
+    // Err otherwise. In the Ok branch, the result equals a + b by definition.
+    assert(match model_checked_add_u64(a, b) {
+        Ok(r) => r == a as int + b as int,
+        Err(_) => true,
+    });
 }
 
 /// Lemma: overflow case rejects — a + b > u64::MAX implies Err.
@@ -105,6 +114,9 @@ pub proof fn lemma_u32_to_u64_safe(n: u32)
     ensures
         model_u32_to_u64(n) == n as u64,
 {
+    // Spec-level tautology: model_u32_to_u64(n) is defined as n as u64.
+    // The ensures is definitionally true.
+    assert(model_u32_to_u64(n) == n as u64);
 }
 
 /// Complete admission check: staged + candidate with overflow + limit guard.
@@ -128,6 +140,10 @@ pub proof fn lemma_admission_check_total(staged: u64, candidate: u64, limit: u64
         admission_check(staged, candidate, limit).is_ok()
             || admission_check(staged, candidate, limit).is_err(),
 {
+    // Spec-level tautology: Result always has is_ok() || is_err() = true.
+    // Verified by SMT solver from Rust enum definition.
+    assert(admission_check(staged, candidate, limit).is_ok()
+        || admission_check(staged, candidate, limit).is_err());
 }
 
 /// Lemma: overflow returns Err, not Ok (C7: overflow is rejection).

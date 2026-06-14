@@ -70,10 +70,7 @@ fn ps_007_verification_digest_match() {
     let result = validate_accepted_artifact_digest(&artifact, record_digest);
 
     // Must be an error: verification.digest != record.digest
-    assert!(
-        result.is_err(),
-        "verification.digest mismatch must be rejected"
-    );
+    kani::assert(result.is_err(), "verification.digest mismatch must be rejected");
 
     kani::cover!(
         matches!(result, Err(JournalError::ArtifactChecksumMismatch)),

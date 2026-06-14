@@ -1979,7 +1979,7 @@ mod kani_recovery {
         let result = hydrate_run_frame_from_events(&[], RunId::new(1));
         match result {
             Err(RecoveryError::NoRecoveryData { .. }) => {}
-            _ => panic!("expected NoRecoveryData"),
+            _ => { kani::assume(false, "expected NoRecoveryData"); return; }
         }
     }
 
@@ -1998,7 +1998,7 @@ mod kani_recovery {
             found: err_found,
         }) = result
         else {
-            panic!("expected mismatch error");
+            kani::assume(false, "expected mismatch error"); return;
         };
         assert!(err_expected == expected);
         assert!(err_found == found);
@@ -2012,7 +2012,7 @@ mod kani_recovery {
         let result = vb_storage::recovery::check_compiled_ir_digest(digest, digest);
         match result {
             Ok(()) => {}
-            Err(_) => panic!("identical digests must pass"),
+            Err(_) => { kani::assume(false, "identical digests must pass"); return; }
         }
     }
 
@@ -2097,7 +2097,7 @@ mod kani_recovery {
         let result = hydrate_run_frame_from_events(&[], RunId::new(1));
         match result {
             Err(RecoveryError::NoRecoveryData { run: _ }) => {}
-            _ => panic!("empty events must produce NoRecoveryData"),
+            _ => { kani::assume(false, "empty events must produce NoRecoveryData"); return; }
         }
     }
 }

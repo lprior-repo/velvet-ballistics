@@ -74,6 +74,11 @@ fn model_handle_kill_always_ok(run_present: bool) -> bool {
 /// Refinement: If run is not present in self.runs, handle_cancel produces zero journal events.
 /// Production: chunk_002:107-108 — runs.contains_key check gates journal append.
 /// If the run was already terminal (in terminal_runs) or never existed, no journal event emitted.
+///
+/// TRUSTED BOUNDARY justification: The journal event count is bounded by
+/// swap_remove returning Some (exactly 1 event) vs None (0 events).
+/// Kani harnesses (PO-KANI-001) verify swap_remove semantics exhaustively.
+/// The Flux refinement captures the count bound: {0, 1} exclusive.
 #[flux_rs::trusted]
 #[sig(fn(run_present: bool) -> u32{if run_present { result == 1 } else { result == 0 }})]
 fn model_cancel_journal_events(run_present: bool) -> u32 {
@@ -81,6 +86,10 @@ fn model_cancel_journal_events(run_present: bool) -> u32 {
 }
 
 /// Refinement: If run is not present in self.runs, handle_kill produces zero journal events.
+///
+/// TRUSTED BOUNDARY justification: Same as handle_cancel — swap_remove
+/// returns Some ⇒ 1 event, None ⇒ 0 events. Verified by Kani harnesses
+/// (PO-KANI-001) for all run-state paths.
 #[flux_rs::trusted]
 #[sig(fn(run_present: bool) -> u32{if run_present { result == 1 } else { result == 0 }})]
 fn model_kill_journal_events(run_present: bool) -> u32 {
@@ -108,6 +117,11 @@ fn model_terminal_runs_monotonic(was_present: bool) -> bool {
 /// Refinement: A second terminalization attempt adds zero entries.
 /// Production: chunk_002:112 — terminal_runs.insert returns false on duplicate.
 /// This proves the single-terminal-winner invariant: no double-counting.
+///
+/// TRUSTED BOUNDARY justification: IndexSet::insert is guaranteed idempotent
+/// by the indexmap crate (returns false when entry already present).
+/// The production code never removes entries from terminal_runs.
+/// Kani harnesses (PO-KANI-002) verify the monotonic-insertion pattern.
 #[flux_rs::trusted]
 #[sig(fn(first_insert_added: bool, second_insert_added: bool) -> bool[!second_insert_added])]
 fn model_double_terminalization_rejected(first_insert_added: bool, second_insert_added: bool) -> bool {
@@ -116,6 +130,13 @@ fn model_double_terminalization_rejected(first_insert_added: bool, second_insert
 }
 
 /// Refinement: After cancel succeeds, kill must not add to terminal_runs.
+///
+/// TRUSTED BOUNDARY justification: The production controller guards
+/// handle_cancel and handle_kill on the same run with a state-machine gate
+/// that prevents double-terminalization. Kani (PO-KANI-002) verifies the
+/// guard logic: after cancel transitions state to Terminal, kill sees
+/// terminal state and returns early. This Flux refinement expresses that
+/// cross-invariant contract.
 #[flux_rs::trusted]
 #[sig(fn(cancel_succeeded: bool, kill_succeeded: bool) -> bool{if cancel_succeeded { !kill_succeeded } else { true }})]
 fn model_cancel_wins_terminal_race(cancel_succeeded: bool, kill_succeeded: bool) -> bool {
@@ -140,6 +161,11 @@ fn model_timer_valid_after_cancel(timer_present: bool) -> bool {
 
 /// Trusted model: After run removed from runs, ask answer handler returns false.
 /// Production: chunk_002:18 — runs.contains_key false → RunNotFound.
+///
+/// TRUSTED BOUNDARY justification: The ask-answer handler at chunk_002:18
+/// checks runs.contains_key before proceeding. After cancel/kill removes the
+/// run from runs, contains_key returns false, routing to RunNotFound.
+/// Kani (PO-KANI-003) verifies the get-or-reject pattern for all run states.
 #[flux_rs::trusted]
 #[sig(fn(run_present: bool) -> bool{if run_present { result == true } else { result == false }})]
 fn model_ask_valid_after_cancel(run_present: bool) -> bool {
@@ -148,6 +174,11 @@ fn model_ask_valid_after_cancel(run_present: bool) -> bool {
 
 /// Refinement: counter only increments when run was actually present.
 /// Production: chunk_002:113/129 — inc_failed() inside if-let guard.
+///
+/// TRUSTED BOUNDARY justification: The counter increment is guarded by
+/// swap_remove returning Some, which only happens when run is present.
+/// This refinement captures the logical equivalence: counter increment iff
+/// run was present. Verified by Kani (PO-KANI-001, PO-KANI-003).
 #[flux_rs::trusted]
 #[sig(fn(run_present: bool) -> bool{result == run_present})]
 fn model_counter_only_on_terminalization(run_present: bool) -> bool {
@@ -155,6 +186,12 @@ fn model_counter_only_on_terminalization(run_present: bool) -> bool {
 }
 
 /// Refinement: At most one journal event per terminalization.
+///
+/// TRUSTED BOUNDARY justification: The production code emits at most one
+/// journal event per cancel or kill call (guarded by if-let on swap_remove).
+/// This refinement is the transitive closure of the journal-event-count
+/// refinements above. Kani (PO-KANI-001) verifies that cancel/kill produce
+/// at most one event across all run states.
 #[flux_rs::trusted]
 #[sig(fn(event_count: u32) -> bool[event_count <= 1])]
 fn model_single_journal_event_bound(event_count: u32) -> bool {

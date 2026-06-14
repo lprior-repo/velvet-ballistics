@@ -124,6 +124,10 @@ pub proof fn lemma_zero_length_always_fits(t: u64, limit: u64)
     ensures
         admit_bytes(t, 0u64, limit).is_ok(),
 {
+    // Spec-level tautology: admit_bytes(t, 0, limit) = Ok(t as int + 0)
+    // because t <= limit ensures t + 0 = t <= limit and t + 0 <= u64::MAX.
+    // Verified by SMT solver from the open spec fn definition.
+    assert(admit_bytes(t, 0u64, limit).is_ok());
 }
 
 /// Lemma: Overflow is rejected — t + n overflows u64 yields Err.
@@ -143,6 +147,13 @@ pub proof fn lemma_admission_exact(t: u64, n: u64, limit: u64)
             Err(_) => true,
         },
 {
+    // Spec-level tautology: admit_bytes returns Ok(t + n) when t + n <= limit
+    // and t + n <= u64::MAX, otherwise Err. In the Ok case, the returned total
+    // is exactly t + n by the spec definition. Verified by SMT solver.
+    assert(match admit_bytes(t, n, limit) {
+        Ok(total) => total == t as int + n as int,
+        Err(_) => true,
+    });
 }
 
 // =============================================================================

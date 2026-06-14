@@ -904,8 +904,10 @@ mod kani {
         kani::assume(contract.side_effect != SideEffect::Pure);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-        kani::assume(frame.is_ok());
-        let frame = frame.ok().unwrap();
+        let frame = match frame {
+            Ok(f) => f,
+            Err(_) => { kani::assume(false, "frame construction"); return; }
+        };
 
         let key_slots: [SlotIdx; 0] = [];
         let r1 = verify_idempotency(&contract, &key_slots, &frame);
@@ -925,8 +927,10 @@ mod kani {
         kani::assume(contract.side_effect != SideEffect::Pure);
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4);
-        kani::assume(frame.is_ok());
-        let mut frame = frame.ok().unwrap();
+        let mut frame = match frame {
+            Ok(f) => f,
+            Err(_) => { kani::assume(false, "frame construction"); return; }
+        };
 
         let _ = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
         let _ = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);

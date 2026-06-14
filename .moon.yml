@@ -13,7 +13,7 @@ pipeline:
   - 'sanitizer-address-check'
   - 'verify-kani'
   - 'verify-kani-vb-validate'
-  - 'verify-kani-shard-command-queue-standin-model'
+  - 'kani-model-smoke-shard-command-queue-standin'
   - 'flux-check-vb-compile'
   - 'flux-check-vb-runtime'
   - 'loom-list-smoke'

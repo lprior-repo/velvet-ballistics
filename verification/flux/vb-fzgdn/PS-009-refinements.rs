@@ -14,6 +14,11 @@ mod zero_duration_refinements {
     ///   .range(..=now) — Rust's RangeToInclusive includes the upper bound.
     ///
     /// Refinement: deadline <= now fires (inclusive upper bound).
+    ///
+    /// TRUSTED BOUNDARY justification: Rust's RangeToInclusive includes the
+    /// upper bound, so BTreeMap::range(..=now) selects all deadlines <= now.
+    /// Verified by Kani (PO-KANI-vb-fzgdn-039) and integration tests.
+    /// Trusted because Instant internals are opaque to Flux.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(Instant) -> bool[true])]
     pub fn exact_deadline_fires_if_at_now(deadline: Instant) -> bool {

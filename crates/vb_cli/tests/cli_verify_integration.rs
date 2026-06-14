@@ -937,27 +937,51 @@ fn bdd_inv002_gate_parity_between_text_and_structured_output_on_full_profile_fai
 // ---------------------------------------------------------------------------
 
 #[test]
-fn integration_verify_all_profiles_complete_without_panic() {
-    for profile in &["quick", "standard", "full"] {
-        let output = run_cli(&[
+fn integration_verify_all_profiles_match_default_text_contract() {
+    for (profile, expected_exit_code) in
+        [("quick", Some(0)), ("standard", Some(0)), ("full", Some(4))]
+    {
+        let output = must_run_cli(&[
             std::ffi::OsStr::new("verify"),
             std::ffi::OsStr::new("--profile"),
             std::ffi::OsStr::new(profile),
-            std::ffi::OsStr::new("tests/fixtures/valid/minimal.yaml"),
+            &fixture_os("tests/fixtures/valid/minimal.yaml"),
         ]);
 
-        assert!(
-            output.is_some(),
-            "verify {} must complete without panicking",
-            profile
+        assert_eq!(
+            output.status.code(),
+            expected_exit_code,
+            "verify {profile} default text mode must use the expected exit code"
         );
 
-        let out = match output {
-            Some(output) => output,
-            None => std::process::abort(),
-        };
-        // Must not panic - any exit code is valid (could be 0 or 1 depending on validation)
-        let _code = out.status.code();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if expected_exit_code == Some(0) {
+            assert_empty_stream(
+                &output.stderr,
+                &format!("verify {profile} default text success stderr"),
+            );
+            assert!(
+                stdout.contains("verified (") && stdout.contains(&format!("profile={profile}")),
+                "verify {profile} default text success output must identify the verified profile: {stdout}"
+            );
+            assert!(
+                stdout.contains("gate statuses: ") && stdout.contains("passed gates: "),
+                "verify {profile} default text success output must include gate summaries: {stdout}"
+            );
+        } else {
+            assert_empty_stream(
+                &output.stdout,
+                &format!("verify {profile} default text deferred stdout"),
+            );
+            assert!(
+                stderr.contains("full verification blocked: deferred gates remain")
+                    && stderr.contains("gate statuses: ")
+                    && stderr.contains("deferred gates: contracts, taint, idempotency, durability, capabilities, evidence"),
+                "verify {profile} default text deferred output must report the blocked gate contract: {stderr}"
+            );
+        }
     }
 }
 

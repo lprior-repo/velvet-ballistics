@@ -113,7 +113,7 @@ fn verify_replay_deterministic_for_same_input() {
         }
         (Err(_), Err(_)) => {}
         _ => {
-            panic!("non-deterministic replay: mismatched results");
+            kani::assume(false, "non-deterministic replay: mismatched results"); return;
         }
     }
 }

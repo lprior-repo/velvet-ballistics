@@ -114,6 +114,10 @@ pub proof fn lemma_artifact_digest_mismatch_fails(
     ensures
         !artifact_digest_matches_record(artifact_digest, record_digest),
 {
+    // Spec-level tautology: artifact_digest_matches_record(a, r) is defined as a == r.
+    // The requires clause (a != r) directly negates the spec body.
+    assert(artifact_digest_matches_record(artifact_digest, record_digest) == (artifact_digest == record_digest));
+    assert(artifact_digest != record_digest);
 }
 
 /// Lemma: If artifact.digest == record.digest, the check passes.
@@ -126,6 +130,10 @@ pub proof fn lemma_artifact_digest_match_passes(
     ensures
         artifact_digest_matches_record(artifact_digest, record_digest),
 {
+    // Spec-level tautology: artifact_digest_matches_record(a, r) is defined as a == r.
+    // The requires clause (a == r) directly satisfies the spec body.
+    assert(artifact_digest_matches_record(artifact_digest, record_digest) == (artifact_digest == record_digest));
+    assert(artifact_digest == record_digest);
 }
 
 /// Combined check: both artifact.digest AND verification.digest must match record.
@@ -151,6 +159,12 @@ pub proof fn lemma_either_mismatch_fails(
     ensures
         !both_digests_match_record(artifact_digest, verification_digest, record_digest),
 {
+    // Spec-level tautology: both_digests_match_record is defined as
+    // artifact_digest_matches_record(a, r) && v == r.
+    // If either a != r or v != r, the conjunction is false.
+    assert(both_digests_match_record(artifact_digest, verification_digest, record_digest)
+        == (artifact_digest == record_digest && verification_digest == record_digest));
+    assert(artifact_digest != record_digest || verification_digest != record_digest);
 }
 
 /// Lemma: Both matching triggers success.
@@ -165,6 +179,12 @@ pub proof fn lemma_both_match_succeeds(
     ensures
         both_digests_match_record(artifact_digest, verification_digest, record_digest),
 {
+    // Spec-level tautology: both_digests_match_record is defined as
+    // artifact_digest_matches_record(a, r) && v == r, which expands to a == r && v == r.
+    // Both conditions are given in requires, so the conjunction is true.
+    assert(both_digests_match_record(artifact_digest, verification_digest, record_digest)
+        == (artifact_digest == record_digest && verification_digest == record_digest));
+    assert(artifact_digest == record_digest && verification_digest == record_digest);
 }
 
 fn main() {}

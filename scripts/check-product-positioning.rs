@@ -61,10 +61,10 @@
     clippy::dbg_macro
 )]
 
-use std::fs;
 use std::fmt;
+use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;
 
 use unicode_normalization::UnicodeNormalization;
@@ -113,7 +113,7 @@ const DISCLAIMER_START: &str = "<!-- position-disclaimer -->";
 const DISCLAIMER_END: &str = "<!-- /position-disclaimer -->";
 const ZERO_WIDTH_CHARS: [char; 4] = ['\u{200B}', '\u{200C}', '\u{200D}', '\u{FEFF}'];
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FindingKind {
     Active,
     Disclaimered,
@@ -123,7 +123,7 @@ enum FindingKind {
 struct Finding {
     line_no: usize,
     text: String,
-    phrase: String,
+    phrase: &'static str,
     kind: FindingKind,
 }
 
@@ -140,7 +140,10 @@ impl fmt::Display for ScanError {
                 write!(f, "unmatched position-disclaimer end at line {line_no}")
             }
             Self::UnclosedDisclaimerBlock { line_no } => {
-                write!(f, "unclosed position-disclaimer block opened at line {line_no}")
+                write!(
+                    f,
+                    "unclosed position-disclaimer block opened at line {line_no}"
+                )
             }
         }
     }
@@ -156,7 +159,10 @@ fn is_skipped_dir(name: &str) -> bool {
 
 fn path_under_skip_dir(path: &Path) -> bool {
     for component in path.components() {
-        let s = component.as_os_str().to_string_lossy();
+        let Component::Normal(name) = component else {
+            continue;
+        };
+        let s = name.to_string_lossy();
         if s.starts_with('.') || is_skipped_dir(s.as_ref()) {
             return true;
         }
@@ -227,6 +233,21 @@ fn canonicalize_text(text: &str) -> String {
     canonical
 }
 
+fn normalize_marker_text(text: &str) -> String {
+    let mut normalized = String::with_capacity(text.len());
+
+    for ch in text.nfkc() {
+        if is_zero_width(ch) {
+            continue;
+        }
+        for lower in ch.to_lowercase() {
+            normalized.push(lower);
+        }
+    }
+
+    normalized
+}
+
 fn contains_negation_marker(line: &str) -> bool {
     NEGATION_MARKERS.iter().any(|marker| line.contains(marker))
 }
@@ -246,9 +267,10 @@ fn scan_text(text: &str) -> Result<Vec<Finding>, ScanError> {
 
     for (idx, raw_line) in text.lines().enumerate() {
         let line_no = idx + 1;
+        let marker_line = normalize_marker_text(raw_line);
         let normalized_line = canonicalize_text(raw_line);
-        let starts = normalized_line.contains(DISCLAIMER_START);
-        let ends = normalized_line.contains(DISCLAIMER_END);
+        let starts = marker_line.contains(DISCLAIMER_START);
+        let ends = marker_line.contains(DISCLAIMER_END);
         let line_in_disclaimer = disclaimer_depth > 0 || starts;
 
         if ends && !line_in_disclaimer {
@@ -290,7 +312,7 @@ fn scan_text(text: &str) -> Result<Vec<Finding>, ScanError> {
                 line_no,
                 text: raw_line.to_owned(),
                 phrase,
-                kind: kind.clone(),
+                kind,
             });
         }
 
@@ -335,7 +357,10 @@ fn should_scan_file(root: &Path, path: &Path, enforce_surface: bool) -> bool {
     if is_skipped_basename(name) {
         return false;
     }
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or_default();
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or_default();
     if ext != "md" {
         return false;
     }
@@ -348,12 +373,7 @@ fn should_scan_file(root: &Path, path: &Path, enforce_surface: bool) -> bool {
     true
 }
 
-fn walk(
-    root: &Path,
-    dir: &Path,
-    out: &mut Vec<PathBuf>,
-    enforce_surface: bool,
-) -> io::Result<()> {
+fn walk(root: &Path, dir: &Path, out: &mut Vec<PathBuf>, enforce_surface: bool) -> io::Result<()> {
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return Ok(()),
@@ -447,7 +467,7 @@ fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
     }
 
     eprintln!(
-            "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
+        "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
         active_total, allowlisted_total, disclaimered_total, files_scanned
     );
 
@@ -484,7 +504,10 @@ pub fn main() -> ExitCode {
         for raw in &args {
             let arg = PathBuf::from(raw);
             if let Err(error) = collect_arg_files(&root, &arg, &mut files) {
-                eprintln!("check-product-positioning: collect {}: {error}", arg.display());
+                eprintln!(
+                    "check-product-positioning: collect {}: {error}",
+                    arg.display()
+                );
                 return ExitCode::from(2);
             }
         }

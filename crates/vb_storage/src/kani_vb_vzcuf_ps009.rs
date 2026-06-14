@@ -57,12 +57,12 @@ mod kani_duplicate_ps009 {
         match (r1, r2) {
             (Ok(v1), Ok(v2)) => {
                 // Deterministic: same input → same output
-                assert_eq!(v1, v2);
-                assert_eq!(v1.len(), v2.len());
+                kani::assert(v1 == v2, "deterministic: same input produces same output");
+                kani::assert(v1.len() == v2.len(), "lengths match for same input");
 
                 // The encoded output includes RECORD_HEADER_LEN overhead
                 use crate::constants::RECORD_HEADER_LEN;
-                assert!(v1.len() as u64 > RECORD_HEADER_LEN as u64);
+                kani::assert(v1.len() as u64 > RECORD_HEADER_LEN as u64, "encoded > header len");
             }
             _ => {}
         }
@@ -100,10 +100,7 @@ mod kani_duplicate_ps009 {
         match (r1, r2) {
             (Ok(v1), Ok(v2)) => {
                 // Different events produce different encoded bytes
-                assert_ne!(
-                    v1, v2,
-                    "different events must produce different encoded output"
-                );
+                kani::assert(v1 != v2, "different events produce different encoded output");
             }
             _ => {}
         }
@@ -112,8 +109,8 @@ mod kani_duplicate_ps009 {
     /// C2: JOURNAL_KEY_BYTES is configurable and non-zero.
     #[kani::proof]
     fn check_journal_key_bytes_valid() {
-        assert!(JOURNAL_KEY_BYTES > 0, "journal key bytes must be non-zero");
-        assert!(JOURNAL_KEY_BYTES <= 256, "journal key bytes too large");
+        kani::assert(JOURNAL_KEY_BYTES > 0, "journal key bytes must be non-zero");
+        kani::assert(JOURNAL_KEY_BYTES <= 256, "journal key bytes too large");
     }
 
     /// C2: Conservative vs precise duplicate accounting.
@@ -129,19 +126,19 @@ mod kani_duplicate_ps009 {
 
         // Conservative: always add encoded_len
         let conservative = current_bytes + encoded_len;
-        assert!(conservative > current_bytes);
+        kani::assert(conservative > current_bytes, "conservative increases staged bytes");
 
         // Precise for new key: add encoded_len (same as conservative)
         let precise_new = current_bytes + encoded_len;
-        assert_eq!(precise_new, conservative);
+        kani::assert(precise_new == conservative, "precise new == conservative");
 
         // Precise for duplicate key: don't add encoded_len
         let precise_dup = current_bytes;
-        assert!(
+        kani::assert(
             precise_dup < conservative,
-            "precise duplicate < conservative"
+            "precise duplicate < conservative",
         );
-        assert_eq!(precise_dup, current_bytes);
+        kani::assert(precise_dup == current_bytes, "precise duplicate == current");
     }
 
     /// C2: Staged bytes never decrease regardless of policy.
@@ -154,15 +151,15 @@ mod kani_duplicate_ps009 {
 
         // Conservative policy
         let new_cons = current + encoded_len;
-        assert!(new_cons >= current);
+        kani::assert(new_cons >= current, "conservative policy monotonic");
 
         // Precise policy: new key
         let new_precise_new = current + encoded_len;
-        assert!(new_precise_new >= current);
+        kani::assert(new_precise_new >= current, "precise new key monotonic");
 
         // Precise policy: duplicate key
         let new_precise_dup = current;
-        assert!(new_precise_dup >= current);
-        assert_eq!(new_precise_dup, current);
+        kani::assert(new_precise_dup >= current, "precise dup key monotonic");
+        kani::assert(new_precise_dup == current, "precise dup key == current");
     }
 }

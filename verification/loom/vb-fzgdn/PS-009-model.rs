@@ -11,7 +11,7 @@
 
 #![cfg(loom)]
 
-use loom::collections::HashMap;
+use std::collections::HashMap;
 use loom::sync::Arc;
 use loom::sync::Mutex;
 use loom::thread;

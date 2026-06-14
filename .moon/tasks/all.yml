@@ -756,12 +756,23 @@ tasks:
         filter="$2"
         TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p "${package}" --lib --all-features "${filter}"
       }
+      run_miri_smoke_integration() {
+        package="$1"
+        test_name="$2"
+        filter="$3"
+        TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p "${package}" --all-features --test "${test_name}" -- "${filter}"
+      }
       # CI policy: Miri is a bounded UB smoke lane for pure crates. The full
       # native test lane owns exhaustive behavior; sweeping all normal unit tests
       # under Miri exceeds the configured 30m automation budget.
       run_miri_smoke vb_core validate_action_outcome_failed_always_succeeds
       run_miri_smoke vb_expr miri_tests
       run_miri_smoke vb_compile compile_error_empty_source_code
+      # Widen Miri coverage
+      run_miri_smoke vb_storage codec_miri_tests
+      run_miri_smoke vb_runtime miri_trace
+      run_miri_smoke_integration vb_runtime vb_ko29_7_idempotency_miri miri_idempotency
+      run_miri_smoke vb_ipc frame
     toolchains:
       - rust
     inputs:
@@ -837,10 +848,16 @@ tasks:
         cat target/fuzz-smoke/build.err
         exit 1
       fi
-      for fuzz_target in yaml_events ipc_frame journal_event_fuzz compiled_ir expression; do
+      for fuzz_target in yaml_events ipc_frame journal_event_fuzz compiled_ir expression strict_yaml_profile storage_journal_roundtrip storage_journal_decode_reject storage_journal_kind_parity ipc_decode; do
         corpus_source="${fuzz_target}"
         if [ "${fuzz_target}" = "journal_event_fuzz" ]; then
           corpus_source="journal_event"
+        fi
+        if [ "${fuzz_target}" = "ipc_decode" ]; then
+          corpus_source="ipc_frame"
+        fi
+        if [ "${fuzz_target}" = "strict_yaml_profile" ]; then
+          corpus_source="yaml_events"
         fi
         corpus="target/fuzz-smoke/corpus/${fuzz_target}"
         artifacts="target/fuzz-smoke/artifacts/${fuzz_target}"
@@ -849,7 +866,7 @@ tasks:
         if [ -d "fuzz/corpus/${corpus_source}" ]; then
           cp -R "fuzz/corpus/${corpus_source}/." "${corpus}/"
         fi
-        flock --shared target/moon-locks/source-mutation.lock timeout 30s "fuzz/target/x86_64-unknown-linux-gnu/release/${fuzz_target}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=1 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+        flock --shared target/moon-locks/source-mutation.lock timeout 30s "fuzz/target/x86_64-unknown-linux-gnu/release/${fuzz_target}" -artifact_prefix="${PWD}/${artifacts}/" -max_total_time=3 "${PWD}/${corpus}" >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
       done
     toolchains:
       - rust

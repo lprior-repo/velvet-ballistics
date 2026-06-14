@@ -26,14 +26,17 @@
 #
 # Self-skip basenames: velvet-ballistics-MASTER.md, CHANGELOG.md, HISTORY.md,
 # MIGRATION.md.
-# Self-skip directories (and descendants): target, node_modules, .bead-progress,
-# .evidence.
+# Self-skip directories (and descendants): target, node_modules, .git,
+# .beads, .dolt, .moon, .jj, .evidence, .bead-progress, and any directory
+# starting with '.'
 #
 # Default scan surface (relative to repo root):
+#   - *.md at the repository root
 #   - README.md
 #   - docs/**/*.md
 #   - crates/**/README.md
 #   - crates/vb_cli/**/*.md
+#   - fuzz/*.md
 #
 # Usage:
 #   bash scripts/check-product-positioning.sh                       # full repo scan

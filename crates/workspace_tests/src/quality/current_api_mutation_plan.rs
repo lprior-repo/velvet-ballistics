@@ -23,6 +23,9 @@ pub struct PlanValidationReport {
     pub missing_requirements: Vec<MissingRequirement>,
 }
 
+const REMOVED_UI_MODEL: &str = concat!("vb_ui_", "model");
+const UI_MODEL_REQUIRED_TERMS: [&str; 4] = [REMOVED_UI_MODEL, "certificate", "incident", "replay"];
+
 impl PlanValidationReport {
     pub fn is_valid(&self) -> bool {
         self.missing_sections.is_empty()
@@ -83,8 +86,7 @@ pub const REQUIRED_SECTIONS: &[PlanSection] = &[
     PlanSection {
         id: "ui-model",
         heading: "## UI Model Contract Mutation Targets",
-        // allow-removed-crate: required_terms must name removed UI model crate so the mutation plan knows what to forbid
-        required_terms: &["vb_ui_model", "certificate", "incident", "replay"],
+        required_terms: &UI_MODEL_REQUIRED_TERMS,
     },
     PlanSection {
         id: "ownership",

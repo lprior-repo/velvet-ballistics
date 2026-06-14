@@ -5,5 +5,8 @@ fn vb_mrwe_7_commit_before_drain_retry() {
     let committed_before_crash: bool = kani::any();
     let equal_duplicate: bool = kani::any();
     let drains_on_retry = committed_before_crash && equal_duplicate;
-    assert!(!(committed_before_crash && !equal_duplicate && drains_on_retry));
+    kani::assert(
+        !(committed_before_crash && !equal_duplicate && drains_on_retry),
+        "commit-before-drain retry invariant",
+    );
 }

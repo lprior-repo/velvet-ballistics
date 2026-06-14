@@ -30,9 +30,9 @@ fn ps_008_gate_count_exhaustive() {
     let accepted = is_accepted_gate_count(gate_count);
 
     if gate_count == 0 || gate_count == 15 {
-        assert!(accepted, "gate_count={gate_count} must be accepted");
+        kani::assert(accepted, "gate_count={gate_count} must be accepted");
     } else {
-        assert!(!accepted, "gate_count={gate_count} must be rejected");
+        kani::assert(!accepted, "gate_count={gate_count} must be rejected");
     }
 
     kani::cover!(accepted, "valid gate_count accepted");
@@ -67,14 +67,14 @@ fn ps_008_proof_flags_exhaustive() {
     let all_true = bounded && taint_safe && retry_safe && idempotency_verified && replayable;
 
     if all_true {
-        assert!(
+        kani::assert(
             missing.is_none(),
-            "all flags true: missing_proof_flag must return None"
+            "all flags true: missing_proof_flag must return None",
         );
     } else {
-        assert!(
+        kani::assert(
             missing.is_some(),
-            "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}"
+            "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}",
         );
         // Verify the returned flag name matches the first missing one
         let flag = match missing {
@@ -85,17 +85,17 @@ fn ps_008_proof_flags_exhaustive() {
             }
         };
         match flag {
-            "bounded" => assert!(!bounded, "bounded was false"),
-            "taint_safe" => assert!(
+            "bounded" => kani::assert(!bounded, "bounded was false"),
+            "taint_safe" => kani::assert(
                 !taint_safe && bounded,
-                "taint_safe was false and bounded was true"
+                "taint_safe was false and bounded was true",
             ),
-            "retry_safe" => assert!(!retry_safe && bounded && taint_safe, "retry_safe was false"),
+            "retry_safe" => kani::assert(!retry_safe && bounded && taint_safe, "retry_safe was false"),
             "idempotency_verified" => {
-                assert!(!idempotency_verified && bounded && taint_safe && retry_safe);
+                kani::assert(!idempotency_verified && bounded && taint_safe && retry_safe);
             }
             "replayable" => {
-                assert!(!replayable && bounded && taint_safe && retry_safe && idempotency_verified);
+                kani::assert(!replayable && bounded && taint_safe && retry_safe && idempotency_verified);
             }
             _ => kani::assert(false, "unknown proof flag name"),
         }

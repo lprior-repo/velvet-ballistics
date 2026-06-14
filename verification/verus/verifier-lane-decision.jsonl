@@ -1,0 +1,152 @@
+{"file": "verification/verus/accepted_artifact_admission_decision.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/accepted_cli_digest_binding.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/accepted_envelope_model.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/accepted_run_atomic_admission.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/admission_artifact_model.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/budget_binding.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/budget_bounded.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/budget_computation.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/budget_monotonic.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/cancel_kill_lattice.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/capability_artifact_model.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/collect_ir_structure.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/collect_lowering.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/diagnostic_envelope_verus.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/emit_single_body_set.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/error_parity.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/idempotency_certificate_summary.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/idempotency_decision.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/idempotency_replay_tracker.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/ipc_capacity_bounds.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/ipc_runtime_transitions.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/ipc_strict_admission.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/recovery_hydration_contracts.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/recovery_verification.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/resource_budget.rs", "lane": "verus", "status": "BLOCKED", "has_gaps": true, "gap_summary": "Self-admitted DISCONNECTED SPEC MIRROR - GOD RULE 2 VIOLATION"}
+{"file": "verification/verus/run_frame_invariant.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/run_frame_new_postconditions.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/run_loop_termination.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/run_loop_termination_bound.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/signals_invariant.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/signals_invariant_bound.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/signals_try_take.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/signals_try_take_bound.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/step_budget.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/step_budget_bound_proofs.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/step_offset.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/step_state_machine.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/storage_kind_family.rs", "lane": "verus", "status": "BLOCKED", "has_gaps": true, "gap_summary": "Production blocker vb-b8i8f-BLOCK-001: production is_known_record_kind does not yet include kind 28"}
+{"file": "verification/verus/strict_admission_witness.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/taint_lattice.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/try_from_parts.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/v1_primitive_lowering.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/value_store_invariant.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb-fzgdn/PS-001-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-002-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-003-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-004-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-005-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-006-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-007-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-008-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-009-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-fzgdn/PS-010-proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-001-digest-binding.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-001-digest-binding.rs", "lane": "verus", "status": "TRUSTED_BOUNDARY", "has_gaps": true, "gap_summary": "Uses #[verifier::external_type_specification] for cross-crate types"}
+{"file": "verification/verus/vb-h09wf/PS-002-anti-contract.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-002-anti-contract.rs", "lane": "verus", "status": "TRUSTED_BOUNDARY", "has_gaps": true, "gap_summary": "Uses #[verifier::external_type_specification] for cross-crate types"}
+{"file": "verification/verus/vb-h09wf/PS-006-artifact-digest-match.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-006-artifact-digest-match.rs", "lane": "verus", "status": "TRUSTED_BOUNDARY", "has_gaps": true, "gap_summary": "Uses #[verifier::external_type_specification] for cross-crate types"}
+{"file": "verification/verus/vb-h09wf/PS-007-verification-digest-match.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-007-verification-digest-match.rs", "lane": "verus", "status": "TRUSTED_BOUNDARY", "has_gaps": true, "gap_summary": "Uses #[verifier::external_type_specification] for cross-crate types"}
+{"file": "verification/verus/vb-h09wf/PS-010-policy-digest.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-010-policy-digest.rs", "lane": "verus", "status": "TRUSTED_BOUNDARY", "has_gaps": true, "gap_summary": "Uses #[verifier::external_type_specification] for cross-crate types"}
+{"file": "verification/verus/vb-h09wf/PS-011-digest-triangle.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-h09wf/PS-011-digest-triangle.rs", "lane": "verus", "status": "TRUSTED_BOUNDARY", "has_gaps": true, "gap_summary": "Uses #[verifier::external_type_specification] for cross-crate types"}
+{"file": "verification/verus/vb-runtime/contract_identity_tracking.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-001.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-01.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-02.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-03.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-04.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-05.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-06.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-07.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-08.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb-vzcuf/vb-vzcuf-PS-09.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_8mdp_12_storage_queue_exec_spec.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_8mdp_8/queue_state_shared_source.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ahfl_bounds_production.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ahfl_graph_events_production.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ahfl_metadata_envelope_production.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ahfl_redaction_production.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ahfl_ui_artifact_contract.rs", "lane": "verus", "status": "BLOCKED", "has_gaps": true, "gap_summary": "Intentionally does not import production crates - no production binding"}
+{"file": "verification/verus/vb_ajc40_admission_kernel_scalar.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_admission_kernel_scalar_include.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_compiled_query_decode.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_compiled_query_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_compiled_slug_decode.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_compiled_slug_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_empty_path_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_empty_path_semantics.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_query_budget.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_query_budget_summary.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_query_count.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_query_count_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_query_path_depth.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_query_path_depth_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_slug_budget.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_slug_budget_summary.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_slug_count.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_slug_count_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_slug_path_depth.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_ajc40_slug_path_depth_post_decode.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_ajc40_total_yield_cost_validation.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_awhr_fanout_spec.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_cli_commands_journal_trace.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/body_dispatcher_proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/body_step_width_proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/digest_contract_binding.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/emit_order_proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/encoding_injectivity.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/mod_compile_lowering/part_04_reduce_body_width.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/mod_compile_lowering/part_04_reduce_chain.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/mod_compile_lowering/part_04_reduce_foreach.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/mod_compile_lowering/part_04_reduce_nested_next.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/mod_compile_lowering/part_04_reduce_offset.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/recursive_lowering_proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/secret_results_injectivity.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/src/choose_bool_invariant.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/src/choose_depth_invariant.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/src/mod.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_compile/width_parity_proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_jnz9_journal_event_seq_valid.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_jpq724_events_for_run_production.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_kyyf_normalization.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe5_compat_kind_family.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe5_decode_reject.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe5_kind_parity.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe5_roundtrip.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe6_atomic_index.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe6_completion_policy.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe6_duplicate_schedule.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe6_kernel_binding.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe6_queue_intent.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_mrwe6_recovery_reliance.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_oewy_bdd_runner_invariant.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_rpch_action_replay_tracker.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_action_tracker.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_rpch_digest_check.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_hydrate_events.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_hydrate_preconditions.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_rpch_hydrate_snapshot_tail.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_production_bridge.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_replay_events.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_replay_invariants.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_rpch_replay_refinement.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_rpch_seed_dimensions.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_unsupported_recovery_state.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_rpch_unsupported_state.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_xi2f_compile_source.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/vb_xi2f_error_mapping.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
+{"file": "verification/verus/yaml_e2e_digest_roles.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}

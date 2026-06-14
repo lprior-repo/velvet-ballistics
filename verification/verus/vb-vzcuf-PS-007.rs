@@ -86,6 +86,10 @@ pub proof fn lemma_divergence_requires_explicit_bridge(core_val: u64, storage_va
     ensures
         !(core_val == storage_val),
 {
+    // Spec-level tautology: silent_drift(c, s) is defined as c != s.
+    // The requires directly negates the equality in the ensures.
+    assert(silent_drift(core_val, storage_val) == (core_val != storage_val));
+    assert(core_val != storage_val);
 }
 
 /// Spec: storage limit preserves core policy value.
@@ -140,6 +144,15 @@ pub proof fn lemma_default_bridge_valid()
             storage_limit: storage_default_limit(),
         }),
 {
+    // Spec-level tautology: bridge_valid(b) is defined as
+    // bridge_storage_valid(b.storage_limit) && bridge_preserves_value(b.core_policy, b.storage_limit).
+    // Both use 1_048_576 == 1_048_576, which satisfies storage == core and > 0.
+    assert(core_max_journal_batch_bytes() == 1_048_576u64);
+    assert(storage_default_limit() == 1_048_576u64);
+    assert(bridge_valid(Bridge {
+        core_policy: core_max_journal_batch_bytes(),
+        storage_limit: storage_default_limit(),
+    }));
 }
 
 // =============================================================================

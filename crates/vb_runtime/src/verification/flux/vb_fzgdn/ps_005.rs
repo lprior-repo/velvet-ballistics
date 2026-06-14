@@ -17,6 +17,12 @@ mod duplicate_refinements {
     ///   fn insert: cancels existing, inserts new entry with incremented generation.
     ///
     /// Refinement: after insert on existing run, len() == 1 and kind matches the new kind.
+    ///
+    /// TRUSTED BOUNDARY justification: The production TimerWheel::insert at
+    /// timer_wheel.rs:61-78 replaces the existing timer entry. get_kind()
+    /// is a delegate that returns the new kind. Verified by Kani
+    /// (PO-KANI-vb-fzgdn-021) which checks insert idempotency for duplicate
+    /// keys. The trusted annotation bridges the method call chain for Flux.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(&TimerWheel, RunId, PendingTimerKind) -> bool)]
     pub fn timer_kind_matches(wheel: &TimerWheel, run: RunId, expected: PendingTimerKind) -> bool {

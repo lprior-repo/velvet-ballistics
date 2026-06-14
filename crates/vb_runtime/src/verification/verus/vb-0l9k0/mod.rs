@@ -7,5 +7,5 @@
 use vstd::prelude::*;
 
 verus! {
+    // Module file - no standalone proofs needed
 }
-

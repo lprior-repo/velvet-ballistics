@@ -31,10 +31,22 @@ fn kani_f64_div_by_zero_returns_non_finite_float() {
     kani::assume(dividend_f64.is_finite());
     kani::assume(dividend_f64 != 0.0); // Exclude 0/0 = NaN case
 
-    let dividend = FiniteF64::new(dividend_f64).unwrap();
+    let dividend = match FiniteF64::new(dividend_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite non-zero dividend");
+            return;
+        }
+    };
 
     // The divisor is zero
-    let divisor = FiniteF64::new(0.0_f64).unwrap();
+    let divisor = match FiniteF64::new(0.0_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new(0.0) should succeed — zero is finite");
+            return;
+        }
+    };
 
     let result = eval_binary_op(
         BinaryOp::Div,
@@ -78,8 +90,20 @@ fn kani_f64_div_by_nonzero_finite_succeeds() {
     kani::assume(dividend_f64.abs() <= f64::MAX / 2.0);
     kani::assume(divisor_f64.abs() >= 1.0);
 
-    let dividend = FiniteF64::new(dividend_f64).unwrap();
-    let divisor = FiniteF64::new(divisor_f64).unwrap();
+    let dividend = match FiniteF64::new(dividend_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded dividend");
+            return;
+        }
+    };
+    let divisor = match FiniteF64::new(divisor_f64) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "FiniteF64::new should succeed with finite/bounded divisor");
+            return;
+        }
+    };
 
     let result = eval_binary_op(
         BinaryOp::Div,

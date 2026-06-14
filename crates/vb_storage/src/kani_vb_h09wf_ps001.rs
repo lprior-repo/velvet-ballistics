@@ -78,14 +78,14 @@ fn ps_001_inner_ir_digest() {
     match result {
         Ok(()) => {
             // Success: artifact digest equals computed digest
-            assert_eq!(artifact.digest, digest);
-            assert_eq!(artifact.verification.digest, digest);
+            kani::assert(artifact.digest == digest, "digest matches");
+            kani::assert(artifact.verification.digest == digest, "verification.digest matches");
         }
         Err(JournalError::ArtifactChecksumMismatch) => {
             // Failure: either artifact.digest != digest or verification.digest != digest
-            assert!(
+            kani::assert(
                 artifact.digest != digest || artifact.verification.digest != digest,
-                "ArtifactChecksumMismatch should only occur when digests disagree"
+                "ArtifactChecksumMismatch should only occur when digests disagree",
             );
         }
         Err(_) => {
@@ -117,10 +117,7 @@ fn ps_001_forged_digest_rejected() {
     let result = validate_accepted_artifact_digest(&artifact, forged_digest);
 
     // This must return Err (either ArtifactChecksumMismatch or ArtifactMalformed)
-    assert!(
-        result.is_err(),
-        "Forged digest must be rejected by validate_accepted_artifact_digest"
-    );
+    kani::assert(result.is_err(), "Forged digest must be rejected");
 
     kani::cover!(result.is_err(), "Forged digest always rejected");
 }

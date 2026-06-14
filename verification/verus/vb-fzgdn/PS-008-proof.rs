@@ -146,8 +146,18 @@ proof fn test_remove_empty_stays_empty()
 
 /// Theorem: production contract binding is well-formed.
 pub proof fn theorem_production_contract_holds()
+    ensures
+        forall |r: TimerRegistry| r.count < r.max_capacity ==>
+            r.try_insert_spec().1 && r.try_insert_spec().0.count == r.count + 1,
+        forall |r: TimerRegistry| r.count > 0 ==>
+            r.remove_spec().count == r.count - 1,
 {
-    // Empty body: production binding established by exec fn ensures clauses.
+    // The theorem confirms the capacity-based admission spec is total:
+    // insert succeeds below capacity, remove decrements when non-empty.
+    test_insert_non_full_succeeds();
+    test_insert_full_fails();
+    test_remove_decrements();
+    test_remove_empty_stays_empty();
 }
 
 } // verus!

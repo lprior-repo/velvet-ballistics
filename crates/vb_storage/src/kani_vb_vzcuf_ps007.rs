@@ -23,14 +23,14 @@ mod kani_bridge_ps007 {
     /// C8: Storage limits are well-defined and non-zero.
     #[kani::proof]
     fn check_storage_constants_well_defined() {
-        assert!(MAX_JOURNAL_EVENT_PAYLOAD_BYTES > 0);
-        assert!(
+        kani::assert(MAX_JOURNAL_EVENT_PAYLOAD_BYTES > 0, "payload bytes > 0");
+        kani::assert(
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES <= 100_000_000,
-            "payload limit too large"
+            "payload limit not too large",
         );
-        assert!(MAX_BATCH_COUNT > 0);
-        assert!(MAX_BATCH_COUNT <= 1_000_000, "batch count limit too large");
-        assert!(RECORD_HEADER_LEN == 60, "RECORD_HEADER_LEN must be 60");
+        kani::assert(MAX_BATCH_COUNT > 0, "batch count > 0");
+        kani::assert(MAX_BATCH_COUNT <= 1_000_000, "batch count limit not too large");
+        kani::assert(RECORD_HEADER_LEN == 60, "RECORD_HEADER_LEN must be 60");
     }
 
     /// C8: The storage default batch byte limit is 1_048_576.
@@ -41,12 +41,12 @@ mod kani_bridge_ps007 {
         // Core policy value (must match vb_core)
         let core_policy: u64 = 1_048_576;
 
-        assert_eq!(
-            default_limit, core_policy,
-            "storage default must match core policy"
+        kani::assert(
+            default_limit == core_policy,
+            "storage default must match core policy",
         );
-        assert!(default_limit > 0);
-        assert!(default_limit <= u64::MAX);
+        kani::assert(default_limit > 0, "default_limit > 0");
+        kani::assert(default_limit <= u64::MAX, "default_limit fits u64");
     }
 
     /// C8: Bridge arithmetic: limit must accommodate at least one
@@ -55,9 +55,9 @@ mod kani_bridge_ps007 {
     fn check_bridge_accommodates_single_event() {
         let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
         let limit: u64 = 1_048_576;
-        assert!(
+        kani::assert(
             max_encoded <= limit,
-            "max encoded ({max_encoded}) must fit in default limit ({limit})"
+            "max encoded ({max_encoded}) must fit in default limit ({limit})",
         );
 
         // Verify with checked_add
@@ -82,13 +82,13 @@ mod kani_bridge_ps007 {
         if storage_limit != core_policy {
             // C8: if values diverge, bridge must be explicitly documented
             // Record the divergence for audit
-            assert!(
+            kani::assert(
                 storage_limit != core_policy,
-                "divergence: storage={storage_limit}, core={core_policy}"
+                "divergence: storage={storage_limit}, core={core_policy}",
             );
         } else {
             // Values are aligned — bridge is valid
-            assert_eq!(storage_limit, core_policy);
+            kani::assert(storage_limit == core_policy, "storage == core policy");
         }
     }
 
@@ -97,13 +97,13 @@ mod kani_bridge_ps007 {
     fn check_bridge_value_u32_safe() {
         let limit: u64 = 1_048_576;
         // The limit fits in u32 (for payload_len comparison)
-        assert!(
+        kani::assert(
             limit <= u32::MAX as u64,
-            "default limit must fit in u32 for payload comparisons"
+            "default limit must fit in u32 for payload comparisons",
         );
         // Round-trip
         let as_u32: u32 = limit as u32;
-        assert_eq!(as_u32 as u64, limit);
+        kani::assert(as_u32 as u64 == limit, "limit round-trips through u32");
     }
 
     /// C8: MAX_BATCH_COUNT * typical_event_size must not overflow u64.
@@ -113,9 +113,9 @@ mod kani_bridge_ps007 {
         let max_batch_bytes_if_all_max = MAX_BATCH_COUNT as u64 * typical_event_bytes;
         // 10_000 * 200 = 2_000_000, which is > default limit
         // This means the byte budget will naturally gate before count.
-        assert!(
+        kani::assert(
             max_batch_bytes_if_all_max > 1_048_576,
-            "batch count limit should not be the primary gate"
+            "batch count limit should not be the primary gate",
         );
     }
 }

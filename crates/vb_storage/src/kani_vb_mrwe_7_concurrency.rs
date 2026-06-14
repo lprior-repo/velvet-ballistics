@@ -7,6 +7,6 @@ fn vb_mrwe_7_queue_lifecycle_invariants() {
     let capacity: usize = kani::any();
     kani::assume(capacity <= 16 && pending <= capacity);
     let enqueue_ok = !shutdown && pending < capacity;
-    assert!(!shutdown || !enqueue_ok);
-    assert!(pending <= capacity);
+    kani::assert(!shutdown || !enqueue_ok, "shutdown disables enqueue");
+    kani::assert(pending <= capacity, "pending <= capacity");
 }

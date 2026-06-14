@@ -827,7 +827,7 @@ mod kani_proofs {
             2 => super::RuntimeState::Resumable,
             3 => super::RuntimeState::Resuming,
             4 => super::RuntimeState::Failed,
-            _ => unreachable!(),
+            _ => { kani::assume(false, "unreachable: state >= 5 is ruled out by kani::assume"); return; },
         };
         match runtime_state {
             super::RuntimeState::Initial => {

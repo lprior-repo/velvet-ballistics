@@ -104,8 +104,5 @@ fn ps_012_oversized_after_corruption_rejected() {
     let result = validate_compiled_ir_record(&record);
 
     // Must fail — size gate catches oversized stored data
-    assert!(
-        result.is_err(),
-        "oversized stored data must be rejected on read"
-    );
+    kani::assert(result.is_err(), "oversized stored data must be rejected on read");
 }

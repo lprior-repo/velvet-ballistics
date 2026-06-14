@@ -20,6 +20,11 @@ mod atomic_fire_refinements {
     ///
     /// Refinement: swap_remove returns Option<PendingTimer> atomically.
     /// If it returns None, the timer was already absent, and error is returned.
+    ///
+    /// TRUSTED BOUNDARY justification: Delegates to IndexMap::contains_key
+    /// which is O(1) and lock-free. The production code at chunk_002.rs:78-84
+    /// uses swap_remove with same semantics. Verified by Kani
+    /// (PO-KANI-vb-fzgdn-044) across all timer-fire code paths.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn(&indexmap::IndexMap<RunId, PendingTimer>, RunId) -> bool)]
     pub fn pending_timer_present(
@@ -33,6 +38,10 @@ mod atomic_fire_refinements {
     /// Production reference:
     ///   crates/vb_runtime/src/shard/types.rs:568-572
     ///   ShardCommandQueue::enqueue returns Err(QueueFull) when at capacity.
+    ///
+    /// TRUSTED BOUNDARY justification: The production enqueue returns
+    /// Err(QueueFull) at capacity. This model captures the fallibility
+    /// invariant. Verified by Kani (PO-KANI-vb-fzgdn-044) and unit tests.
     #[flux_rs::trusted]
     #[flux_rs::sig(fn() -> bool)]
     pub fn queue_full_possible() -> bool {

@@ -2,147 +2,163 @@
 
 Bead: `vb-h3y19` — product-positioning-lint (P2, IN_PROGRESS)
 
-## Master quote (verbatim)
+## Modified files
 
-`velvet-ballistics-MASTER.md:29`:
+- `scripts/check-product-positioning.rs`
+- `scripts/check-product-positioning.sh`
+- `scripts/test-check-product-positioning.sh`
+- `fixtures/product-positioning/negative.md`
 
-> Publicly, velvet-ballistics must not be described as a generic DAG
-> runner, low-code graph editor, YAML-as-programming framework, Airflow
-> replacement, or Temporal clone. Those frames hide the actual wedge and
-> invite false comparisons.
+## Change summary
 
-## Files delivered
+- Unicode NFKC + zero-width stripping + separator folding before phrase matching.
+- Shell wrapper now compiles through a temp cargo manifest so it can use `unicode-normalization`.
+- Disclaimer blocks now require negation markers and fail closed on unclosed EOF.
+- Default scan surface now includes root `*.md` and `fuzz/*.md`.
+- Negative fixture and self-test now cover all banned phrases and bypass shapes.
 
-| Path | Bytes | Mode |
-|------|------:|------|
-| `scripts/check-product-positioning.sh`  |  1958 | `-rwxr-xr-x` |
-| `scripts/check-product-positioning.rs`  | 11623 | `-rw-r--r--` |
-| `scripts/test-check-product-positioning.sh` | 3065 | `-rwxr-xr-x` |
-| `fixtures/product-positioning/positive.md`  |  1069 | `-rw-r--r--` |
-| `fixtures/product-positioning/negative.md`  |   719 | `-rw-r--r--` |
-| `.bead-progress/vb-h3y19/evidence.md`       |  this | `-rw-r--r--` |
+## Power-of-Ten / zero-panic impact
 
-Plus a one-line disclaimer-block wrap on
-`docs/adr/v1/ADR-001-v1-backend-ir-north-star.md:15-17` so its existing
-"the product is not a …" paragraph is recognized as a legitimate
-disclaimer (see §"Repo hygiene change" below).
+- No `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, or `dbg!` added.
+- No unchecked indexing or ignored fallible results added.
+- Balanced disclaimer handling is explicit and fail-closed.
 
-## Repo hygiene change
+## Verification
 
-`docs/adr/v1/ADR-001-v1-backend-ir-north-star.md` already used a
-"the product is not a …" sentence that contains four banned phrases
-(`generic DAG runner`, `low-code graph editor`, `Airflow replacement`,
-`Temporal clone`). The new scanner treats that as a legitimate
-"disclaimered" block, not an active violation. The block markers
-`<!-- position-disclaimer -->` … `<!-- /position-disclaimer -->` were
-added around that single sentence. No other prose changed.
+### 1. `bash scripts/test-check-product-positioning.sh`
 
-## Raw `ls -la` output (6 deliverable files)
+Observed exit: `0`
 
-```
--rw-r--r-- 1 lewis lewis   719 Jun 14 15:23 fixtures/product-positioning/negative.md
--rw-r--r-- 1 lewis lewis  1069 Jun 14 15:23 fixtures/product-positioning/positive.md
--rw-r--r-- 1 lewis lewis 11623 Jun 14 15:23 scripts/check-product-positioning.rs
--rwxr-xr-x 1 lewis lewis  1958 Jun 14 15:23 scripts/check-product-positioning.sh
--rwxr-xr-x 1 lewis lewis  3065 Jun 14 15:23 scripts/test-check-product-positioning.sh
--rw-r--r-- 1 lewis lewis   ~  Jun 14 15:24 .bead-progress/vb-h3y19/evidence.md
-```
-
-## Verification command outputs
-
-### 1. `bash scripts/test-check-product-positioning.sh` → exit 0
-
-```
-[1/3] positive fixture must PASS (exit 0, no active findings)
+```text
+[1/7] positive fixture must PASS (exit 0, no active findings)
   ok: exit 0
   ok: summary reports active=0
-[2/3] negative fixture must FAIL (exit 1, file:line finding)
-  ok: exit 1 with file:line finding
-[3/3] real repository scan must PASS (exit 0, no active residue)
+[2/7] negative fixture must FAIL and exercise every banned phrase
+  ok: exit 1 with file:line findings
+  ok: every banned phrase category appeared
+[3/7] disclaimer-spam bypass must FAIL with active findings
+  ok: exit 1 with active findings
+[4/7] inline hyphen/underscore bypass must FAIL
+  ok: exit 1 with active findings
+[5/7] Unicode lookalike bypass must FAIL
+  ok: exit 1 with active findings
+[6/7] unclosed disclaimer block must FAIL hard
+  ok: exit 2 scan error
+[7/7] real repository scan must PASS (exit 0, no active residue)
   ok: exit 0
   ok: summary reports active=0
   ok: no POSITIONING line in output
 self-test PASSED
-exit=0
 ```
 
-### 2. `bash scripts/check-product-positioning.sh` (full repo scan) → exit 0
+### 2. `bash scripts/check-product-positioning.sh`
 
-```
+Observed exit: `0`
+
+```text
 docs/adr/v1/ADR-001-v1-backend-ir-north-star.md:16: disclaimered: generic dag runner: The product is not a generic DAG runner, low-code graph editor, YAML programming framework, Airflow replacement, Temporal clone, distributed workflow cluster, or current generated-code engine.
 docs/adr/v1/ADR-001-v1-backend-ir-north-star.md:16: disclaimered: low-code graph editor: The product is not a generic DAG runner, low-code graph editor, YAML programming framework, Airflow replacement, Temporal clone, distributed workflow cluster, or current generated-code engine.
 docs/adr/v1/ADR-001-v1-backend-ir-north-star.md:16: disclaimered: airflow replacement: The product is not a generic DAG runner, low-code graph editor, YAML programming framework, Airflow replacement, Temporal clone, distributed workflow cluster, or current generated-code engine.
 docs/adr/v1/ADR-001-v1-backend-ir-north-star.md:16: disclaimered: temporal clone: The product is not a generic DAG runner, low-code graph editor, YAML programming framework, Airflow replacement, Temporal clone, distributed workflow cluster, or current generated-code engine.
-summary: active=0 allowlisted=0 disclaimered=4 files_scanned=89
-exit=0
+summary: active=0 allowlisted=0 disclaimered=4 files_scanned=118
 ```
 
-(`exit=0` confirmed with `bash scripts/check-product-positioning.sh >/dev/null 2>&1; echo $?` → `0`.)
+### 3. `bash scripts/check-product-positioning.sh fixtures/product-positioning/positive.md`
 
-### 3a. `bash scripts/check-product-positioning.sh fixtures/product-positioning/positive.md` → exit 0
+Observed exit: `0`
 
-```
+```text
 summary: active=0 allowlisted=0 disclaimered=0 files_scanned=1
-exit=0
 ```
 
-### 3b. `bash scripts/check-product-positioning.sh fixtures/product-positioning/negative.md` → exit 1
+### 4. `bash scripts/check-product-positioning.sh fixtures/product-positioning/negative.md`
 
+Observed exit: `1`
+
+```text
+fixtures/product-positioning/negative.md:9: POSITIONING: generic dag runner: - velvet-ballistics is the generic dag runner for local teams.
+fixtures/product-positioning/negative.md:10: POSITIONING: low-code graph editor: - velvet-ballistics is the low-code graph editor your ops team wanted.
+fixtures/product-positioning/negative.md:11: POSITIONING: yaml-as-programming: - velvet-ballistics is the yaml-as-programming framework for builders.
+fixtures/product-positioning/negative.md:11: POSITIONING: yaml as programming: - velvet-ballistics is the yaml-as-programming framework for builders.
+fixtures/product-positioning/negative.md:12: POSITIONING: yaml-as-programming: - velvet-ballistics is the yaml as programming framework for builders.
+fixtures/product-positioning/negative.md:12: POSITIONING: yaml as programming: - velvet-ballistics is the yaml as programming framework for builders.
+fixtures/product-positioning/negative.md:13: POSITIONING: airflow replacement: - velvet-ballistics is the airflow replacement for brittle scheduling.
+fixtures/product-positioning/negative.md:14: POSITIONING: airflow alternative: - velvet-ballistics is the airflow alternative for brittle scheduling.
+fixtures/product-positioning/negative.md:15: POSITIONING: temporal clone: - velvet-ballistics is the temporal clone for durable execution.
+fixtures/product-positioning/negative.md:16: POSITIONING: temporal alternative: - velvet-ballistics is the temporal alternative for durable execution.
+summary: active=10 allowlisted=0 disclaimered=0 files_scanned=1
 ```
-fixtures/product-positioning/negative.md:5: POSITIONING: airflow replacement: airflow replacement on the market, which is exactly the framing master
-fixtures/product-positioning/negative.md:11: POSITIONING: airflow replacement: velvet-ballistics is the fastest airflow replacement on the market.
-fixtures/product-positioning/negative.md:12: POSITIONING: temporal alternative: It also doubles as a temporal alternative for legacy migrations.
-summary: active=3 allowlisted=0 disclaimered=0 files_scanned=1
+
+### 5. synthetic disclaimer-spam bypass
+
+Observed exit: `1`
+
+```text
+/tmp/tmp7glbpwmm.md:2: POSITIONING: generic dag runner: velvet-ballistics is a generic DAG runner.
+/tmp/tmp7glbpwmm.md:3: POSITIONING: low-code graph editor: velvet-ballistics is a low-code graph editor.
+/tmp/tmp7glbpwmm.md:4: POSITIONING: yaml-as-programming: velvet-ballistics is a yaml-as-programming framework.
+/tmp/tmp7glbpwmm.md:4: POSITIONING: yaml as programming: velvet-ballistics is a yaml-as-programming framework.
+/tmp/tmp7glbpwmm.md:5: POSITIONING: yaml-as-programming: velvet-ballistics is a yaml as programming framework.
+/tmp/tmp7glbpwmm.md:5: POSITIONING: yaml as programming: velvet-ballistics is a yaml as programming framework.
+/tmp/tmp7glbpwmm.md:6: POSITIONING: airflow replacement: velvet-ballistics is a airflow replacement.
+/tmp/tmp7glbpwmm.md:7: POSITIONING: airflow alternative: velvet-ballistics is a airflow alternative.
+/tmp/tmp7glbpwmm.md:8: POSITIONING: temporal clone: velvet-ballistics is a temporal clone.
+/tmp/tmp7glbpwmm.md:9: POSITIONING: temporal alternative: velvet-ballistics is a temporal alternative.
+summary: active=10 allowlisted=0 disclaimered=0 files_scanned=1
 exit=1
 ```
 
-### 4. `rtk rg -n '\.unwrap\(\)|\.expect\(|panic!|todo!|unimplemented!|dbg!|unsafe[^_]' scripts/check-product-positioning.rs` → empty (exit 1, no match)
+### 6. synthetic inline hyphen/underscore bypass
 
+Observed exit: `1`
+
+```text
+/tmp/tmpblti1ak6.md:1: POSITIONING: generic dag runner: generic_dag_runner
+/tmp/tmpblti1ak6.md:2: POSITIONING: low-code graph editor: low-code-graph-editor
+/tmp/tmpblti1ak6.md:3: POSITIONING: yaml-as-programming: yaml-as-programming
+/tmp/tmpblti1ak6.md:3: POSITIONING: yaml as programming: yaml-as-programming
+/tmp/tmpblti1ak6.md:4: POSITIONING: yaml-as-programming: yaml_as_programming
+/tmp/tmpblti1ak6.md:4: POSITIONING: yaml as programming: yaml_as_programming
+/tmp/tmpblti1ak6.md:5: POSITIONING: airflow replacement: airflow-replacement
+/tmp/tmpblti1ak6.md:6: POSITIONING: airflow replacement: airflow_replacement
+/tmp/tmpblti1ak6.md:7: POSITIONING: airflow alternative: airflow-alternative
+/tmp/tmpblti1ak6.md:8: POSITIONING: temporal clone: temporal-clone
+/tmp/tmpblti1ak6.md:9: POSITIONING: temporal clone: temporal_clone
+/tmp/tmpblti1ak6.md:10: POSITIONING: temporal alternative: temporal-alternative
+summary: active=12 allowlisted=0 disclaimered=0 files_scanned=1
+exit=1
 ```
-exit=1 (1=no match = PASS)
+
+### 7. synthetic Unicode lookalike / zero-width bypass
+
+Observed exit: `1`
+
+```text
+/tmp/tmp_f1wu6t1.md:1: POSITIONING: generic dag runner: ｇｅｎｅｒｉｃ＿ｄａｇ＿ｒｕｎｎｅｒ
+/tmp/tmp_f1wu6t1.md:2: POSITIONING: low-code graph editor: ｌｏｗ－ｃｏｄｅ－ｇｒａｐｈ－ｅｄｉｔｏｒ
+/tmp/tmp_f1wu6t1.md:3: POSITIONING: yaml-as-programming: ｙａｍｌ－ａｓ－ｐｒｏｇｒａｍｍｉｎｇ
+/tmp/tmp_f1wu6t1.md:3: POSITIONING: yaml as programming: ｙａｍｌ－ａｓ－ｐｒｏｇｒａｍｍｉｎｇ
+/tmp/tmp_f1wu6t1.md:4: POSITIONING: yaml-as-programming: ｙａｍｌ＿ａｓ＿ｐｒｏｇｒａｍｍｉｎｇ
+/tmp/tmp_f1wu6t1.md:4: POSITIONING: yaml as programming: ｙａｍｌ＿ａｓ＿ｐｒｏｇｒａｍｍｉｎｇ
+/tmp/tmp_f1wu6t1.md:5: POSITIONING: airflow replacement: ａｉｒｆｌｏｗ＿ｒｅｐｌａｃｅｍｅｎｔ
+/tmp/tmp_f1wu6t1.md:6: POSITIONING: airflow alternative: ａｉｒｆｌｏｗ＿ａｌｔｅｒｎａｔｉｖｅ
+/tmp/tmp_f1wu6t1.md:7: POSITIONING: temporal clone: ｔｅｍｐｏｒａｌ＿ｃｌｏｎｅ
+/tmp/tmp_f1wu6t1.md:8: POSITIONING: temporal alternative: ｔｅｍｐｏｒａｌ＿ａｌｔｅｒｎａｔｉｖｅ
+/tmp/tmp_f1wu6t1.md:9: POSITIONING: temporal clone: t​emporal clone
+summary: active=11 allowlisted=0 disclaimered=0 files_scanned=1
+exit=1
 ```
 
-The scanner source contains zero forbidden constructs:
-no `.unwrap()`, no `.expect(`, no `panic!`, no `todo!`, no `unimplemented!`,
-no `dbg!`, and no `unsafe` followed by a non-`_` character.
-`#![forbid(unsafe_code)]` and the `clippy::unwrap_used / expect_used /
-panic / todo / unimplemented / dbg_macro` `deny` group are the only
-constructs that mention those tokens, and they all use the underscore
-spelling required by the regex.
+### 8. synthetic unclosed disclaimer block
 
-## Exit-code summary table
+Observed exit: `2`
 
-| Command | Required exit | Observed exit |
-|---|---:|---:|
-| `bash scripts/test-check-product-positioning.sh` | 0 | **0** |
-| `bash scripts/check-product-positioning.sh` | 0 | **0** |
-| `bash scripts/check-product-positioning.sh fixtures/product-positioning/positive.md` | 0 | **0** |
-| `bash scripts/check-product-positioning.sh fixtures/product-positioning/negative.md` | 1 | **1** |
-| `rtk rg -n '<forbidden>' scripts/check-product-positioning.rs` | empty | **empty** |
-
-## Implementation contract
-
-- **Holzman compliance**: `#![forbid(unsafe_code)]` + `clippy::unwrap_used`,
-  `expect_used`, `panic`, `todo`, `unimplemented`, `dbg_macro` all `deny`.
-  No `unwrap()` / `expect()` / `panic!` / `todo!` / `unimplemented!` / `dbg!`
-  in source. Counters use `saturating_add`.
-- **Scan surface** (default): `README.md`, `docs/**/*.md`,
-  `crates/**/README.md`, `crates/vb_cli/**/*.md`. Recursive top-down.
-- **Self-skip basenames**: `velvet-ballistics-MASTER.md`, `CHANGELOG.md`,
-  `HISTORY.md`, `MIGRATION.md`.
-- **Self-skip directories**: `target/`, `node_modules/`, `.bead-progress/`,
-  `.evidence/`.
-- **Per-line allowlist**: `<!-- ALLOW_HISTORICAL: <reason> -->` on the
-  same line as a banned phrase suppresses that line; reported as
-  `allowlisted: <reason>: <line>`.
-- **Block allowlist**: `<!-- position-disclaimer -->` … `<!-- /position-disclaimer -->`
-  suppresses every match inside; reported as `disclaimered: <phrase>: <line>`.
-- **Output format**: `<rel>:N: POSITIONING: <phrase>: <line>` to stderr.
-  Summary line: `summary: active=N allowlisted=M disclaimered=K files_scanned=J`.
-  Exit 0 iff `active == 0`.
-
-## Suggested `bd close` reason
-
-```bash
-bd close vb-h3y19 --reason "Implemented product-positioning-lint per velvet-ballistics-MASTER.md:29. Delivered: scripts/check-product-positioning.{sh,rs} (Holzman-compliant scanner, no unsafe/unwrap/expect/panic/todo/unimplemented/dbg), scripts/test-check-product-positioning.sh (3-step self-test, exit 0), fixtures/product-positioning/{positive,negative}.md. Negative fixture fails with file:line findings (3 active matches). Real repo scan passes (active=0, 4 disclaimered lines in ADR-001 wrapped in <!-- position-disclaimer -->) exit 0. Forbidden-construct rg check is empty. Evidence: .bead-progress/vb-h3y19/evidence.md."
+```text
+check-product-positioning: scan error: /tmp/tmpr18x1agt.md: unclosed position-disclaimer block opened at line 1
+exit=2
 ```
+
+## Residual risk
+
+- The scanner still canonicalizes phrases by simple separator folding; any new bypass shape needs a matching test.
+- `allowlisted=0` remains in the summary for compatibility, but the historical allowlist marker is not used.

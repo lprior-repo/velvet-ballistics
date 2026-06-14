@@ -158,6 +158,96 @@ self-test PASSED
 exit=0
 ```
 
+## 2026-06-14 hardening update
+
+### Change summary
+
+- Hardened `scripts/check-removed-crate-residue.rs` so allowlist markers only
+  apply to true comment-start lines or historical/doc-only prose.
+- Switched `scripts/check-removed-crate-residue.sh` to `clippy-driver` with
+  compile-step lint enforcement.
+- Expanded fixture coverage with `fixtures/removed-crate-residue/negative_makepad.rs`
+  and broadened `negative.md` to exercise all removed-crate tokens.
+- Removed active `vb_codegen` residue from `crates/vb_compile/src/compile/mod.rs`
+  and rewrote the workspace mutation-plan tests to avoid active residue tokens.
+
+### Raw command evidence
+
+```
+$ bash scripts/test-check-removed-crate-residue.sh
+[1/4] positive fixture must PASS (exit 0, no active findings)
+  ok: exit 0
+  ok: summary reports active=0
+[2/4] negative fixture must FAIL (exit 1, all removed tokens fire)
+  ok: exit 1 with file:line finding
+  ok: summary reports active > 0
+  ok: every removed-token banner appears
+[3/4] negative makepad fixture must FAIL (exit 1, bare token)
+  ok: exit 1 with makepad finding
+[4/4] real repository scan must PASS (exit 0, no active residue)
+  ok: exit 0
+  ok: summary reports active=0
+  ok: no REMOVED-CRATE line in output
+self-test PASSED
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh
+... summary: active=0 allowlisted=27 files_scanned=2404
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh fixtures/removed-crate-residue/positive.md
+summary: active=0 allowlisted=0 files_scanned=1
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh fixtures/removed-crate-residue/negative.md
+fixtures/removed-crate-residue/negative.md:7: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': vb_codegen is still an active reference on this line.
+fixtures/removed-crate-residue/negative.md:8: REMOVED-CRATE: vb_ui_model: exact substring 'vb_ui_model': vb_ui_model remains an active reference on this line.
+fixtures/removed-crate-residue/negative.md:9: REMOVED-CRATE: vb_ui_makepad: exact substring 'vb_ui_makepad': vb_ui_makepad remains an active reference on this line.
+fixtures/removed-crate-residue/negative.md:10: REMOVED-CRATE: makepad-widgets: exact substring 'makepad-widgets': makepad-widgets remains an active reference on this line.
+fixtures/removed-crate-residue/negative.md:11: REMOVED-CRATE: makepad-draw: exact substring 'makepad-draw': makepad-draw remains an active reference on this line.
+summary: active=5 allowlisted=0 files_scanned=1
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh "$TMPDIR/cargo-bypass.toml"
+/tmp/tmp.yC5hH1CjkH/cargo-bypass.toml:3: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': vb_codegen = { path = "../crates/vb_codegen", version = "0.1.0" }
+summary: active=1 allowlisted=0 files_scanned=1
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh "$TMPDIR/all-tokens.md"
+/tmp/tmp.tm2bKf691r/all-tokens.md:1: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': vb_codegen
+/tmp/tmp.tm2bKf691r/all-tokens.md:2: REMOVED-CRATE: vb_ui_model: exact substring 'vb_ui_model': vb_ui_model
+/tmp/tmp.tm2bKf691r/all-tokens.md:3: REMOVED-CRATE: vb_ui_makepad: exact substring 'vb_ui_makepad': vb_ui_makepad
+/tmp/tmp.tm2bKf691r/all-tokens.md:4: REMOVED-CRATE: makepad-widgets: exact substring 'makepad-widgets': makepad-widgets
+/tmp/tmp.tm2bKf691r/all-tokens.md:5: REMOVED-CRATE: makepad-draw: exact substring 'makepad-draw': makepad-draw
+/tmp/tmp.tm2bKf691r/all-tokens.md:6: REMOVED-CRATE: makepad: standalone token 'makepad' (word boundary): makepad
+summary: active=6 allowlisted=0 files_scanned=1
+```
+
+```
+$ clippy-driver --edition=2024 --crate-name probe_unwrap /tmp/_probe_unwrap.rs -o /tmp/probe_unwrap -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro
+error: used `unwrap()` on `Some` value
+error: used `unwrap()` on an `Option` value
+error: aborting due to 2 previous errors
+```
+
+### Broader workspace gate
+
+```
+$ cargo check --workspace --all-targets --all-features
+error[E0433]: cannot find module or crate `kani` in this scope
+  --> crates/vb_core/tests/action_ticket_kani_panic_free.rs:35:25
+   |
+35 |             Err(_) => { kani::assume(false, "serialize must not panic"); return; }
+   |                         ^^^^ use of unresolved module or unlinked crate `kani`
+... [same unresolved `kani` errors at lines 39, 70, 76, 102, 106]
+cargo build: 6 errors, 1 warnings (8 crates)
+```
+
 ## Token Rule Summary (as implemented)
 
 | Token              | Match form                                                       |

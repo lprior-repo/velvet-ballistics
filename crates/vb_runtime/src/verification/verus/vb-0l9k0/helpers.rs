@@ -6,26 +6,26 @@ use vstd::prelude::*;
 
 verus! {
 
-    // Standalone model types
-    struct StepIdx(u64);
-
-    impl StepIdx {
-        pub closed spec fn val(&self) -> u64 { self.0 }
+    // Standalone model types (inlined since crate types not available in --crate-type=lib)
+    
+    /// Model of StepIdx
+    pub struct StepIdx {
+        pub val: u64,
     }
 
-    struct RunState {
+    /// Model of RunState
+    pub struct RunState {
         pub num_steps: u64,
     }
 
-    impl RunState {
-        pub closed spec fn num_steps(&self) -> u64 { self.num_steps }
+// ============================================================================
+// timer_registration_required model
+// ============================================================================
+
+    /// Model: timer_registration_required returns true if step < num_steps
+    /// Production: `helpers.rs:145-155`
+    pub open spec fn model_timer_registration_required(state: RunState, step: StepIdx) -> bool {
+        step.val < state.num_steps
     }
 
-    /// Model: WaitUntil nodes always require timers.
-    /// WaitEvent/Ask nodes require timers only if they have a timeout_slot.
-    /// Other node kinds do not require timers.
-    pub closed spec fn timer_registration_required(state: RunState, step: StepIdx) -> bool {
-        step.val() < state.num_steps()
-    }
-}
-
+} // verus!

@@ -197,11 +197,11 @@ proptest! {
         std::hint::black_box(value);
         let journal = match temp_journal() {
             Ok(j) => j,
-            Err(e) => { prop_assume!(false, "journal open failed: {}", e); return Ok(()); }
+            Err(e) => return Err(TestCaseError::reject(format!("journal open failed: {e}"))),
         };
         let workflow = match minimal_workflow(value) {
             Ok(w) => w,
-            Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
+            Err(e) => return Err(TestCaseError::reject(format!("workflow build failed: {e}"))),
         };
         let expected_digest = workflow.digest();
 
@@ -233,11 +233,11 @@ proptest! {
         std::hint::black_box(value);
         let journal = match temp_journal() {
             Ok(j) => j,
-            Err(e) => { prop_assume!(false, "journal open failed: {}", e); return Ok(()); }
+            Err(e) => return Err(TestCaseError::reject(format!("journal open failed: {e}"))),
         };
         let workflow = match minimal_workflow(value) {
             Ok(w) => w,
-            Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
+            Err(e) => return Err(TestCaseError::reject(format!("workflow build failed: {e}"))),
         };
         let expected_digest = workflow.digest();
 
@@ -266,11 +266,11 @@ proptest! {
         std::hint::black_box(value);
         let journal = match temp_journal() {
             Ok(j) => j,
-            Err(e) => { prop_assume!(false, "journal open failed: {}", e); return Ok(()); }
+            Err(e) => return Err(TestCaseError::reject(format!("journal open failed: {e}"))),
         };
         let workflow = match minimal_workflow(value) {
             Ok(w) => w,
-            Err(e) => { prop_assume!(false, "workflow build failed: {}", e); return Ok(()); }
+            Err(e) => return Err(TestCaseError::reject(format!("workflow build failed: {e}"))),
         };
         let expected_digest = workflow.digest();
 
