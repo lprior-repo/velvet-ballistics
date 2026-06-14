@@ -1,0 +1,188 @@
+{
+  "id": "p1-13-cli-filters-locks-records",
+  "title": "cli-filters-locks-records: Fix events --status/--limit filters, locked read surface, run writes source/header records",
+  "type": "bug",
+  "priority": 1,
+  "effort": "1hr",
+  "description": "Bug P1-13 (rolls up 3 sub-issues). (1) vb_cli/src/commands/events.rs:32-33 binds status_filter and limit_filter as `let _status_filter = …; let _limit_filter = limit;` — bound but never used. The events command accepts --status and --limit flags but ignores them. (2) vb_cli/src/commands/inspect.rs:95-101 and events.rs:378-385 have local write_locked_read_surface stubs (a copy of the replay.rs implementation; should be promoted to file_io.rs and shared). (3) vb_cli/src/commands/run.rs:140 → run_compiled_runtime.rs:114 — the `run` command does NOT write a WorkflowSourceRecord or RunHeaderRecord (only `submit` does at submit.rs:91-126). The result: a run started via `vb run` is invisible to `vb inspect` and `vb events`. This bead fixes all three sub-issues.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL apply --status and --limit filters to the events output, never silently ignore them",
+      "THE SYSTEM SHALL write a WorkflowSourceRecord and RunHeaderRecord whenever a run is started, regardless of whether the path is submit or run"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb events <run-id> --db <path> --status failed --limit 5`",
+        "shall": "THE SYSTEM SHALL return at most 5 events, all with status == failed"
+      },
+      {
+        "trigger": "WHEN the user runs `vb run foo.yaml --db <path>`",
+        "shall": "THE SYSTEM SHALL write a WorkflowSourceRecord and a RunHeaderRecord to the journal before executing any step"
+      },
+      {
+        "trigger": "WHEN the user runs `vb inspect <run-id> --db <path>` under lock contention",
+        "shall": "THE SYSTEM SHALL acquire the read lock via the shared write_locked_read_surface helper and succeed"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the user passes --status with a value not in the events status enum",
+        "shall_not": "THE SYSTEM SHALL NOT silently default to 'all'; it must return InvalidStatusFilter with the list of valid values",
+        "because": "Operator error must be loud, not silent"
+      },
+      {
+        "condition": "IF the run path writes the source/header records but the journal commit fails",
+        "shall_not": "THE SYSTEM SHALL NOT proceed with execution; it must abort with JournalCommitFailed",
+        "because": "Master §68.1: 'Journal entry persisted = step happened' — a failed commit must roll back"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Run exists in the Fjall journal at --db path (for inspect/events)",
+      "Workflow YAML at the supplied path parses to a valid CompiledWorkflow (for run)"
+    ],
+    "postconditions": [
+      "events --status and --limit are applied to the result set",
+      "write_locked_read_surface is defined once in file_io.rs and called from inspect.rs and events.rs (no duplication)",
+      "run path writes both WorkflowSourceRecord and RunHeaderRecord before executing"
+    ],
+    "invariants": [
+      "Every run (whether started via submit or run) has both a WorkflowSourceRecord and a RunHeaderRecord in the journal",
+      "Duplicate write_locked_read_surface implementations are eliminated; one canonical version in file_io.rs"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "events_with_status_filter_returns_only_matching: a run with 10 events (3 failed, 7 succeeded); `vb events <id> --db /tmp/db --status failed` returns exactly 3",
+      "events_with_limit_returns_at_most_n: a run with 10 events; `vb events <id> --db /tmp/db --limit 5` returns exactly 5 (most recent first)",
+      "run_writes_source_and_header_records: `vb run foo.yaml --db /tmp/db` followed by `vb inspect <id> --db /tmp/db` finds the run"
+    ],
+    "error": [
+      "events_with_invalid_status_filter_returns_invalid_status: `vb events <id> --db /tmp/db --status bogus` exits 3 with InvalidStatusFilter and the list of valid values",
+      "run_with_journal_commit_failure_aborts: a Fjall journal with a read-only filesystem fails the run with JournalCommitFailed"
+    ],
+    "edge": [
+      "events_with_no_matches_returns_empty: a run with 0 failed events and --status failed returns events: [] (not an error)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands/events.rs:32-33 (the let _status_filter, let _limit_filter bug)",
+      "crates/vb_cli/src/commands/events.rs:378-385 (local write_locked_read_surface stub)",
+      "crates/vb_cli/src/commands/inspect.rs:95-101 (local write_locked_read_surface stub)",
+      "crates/vb_cli/src/commands/replay.rs (canonical write_locked_read_surface to promote)",
+      "crates/vb_cli/src/file_io.rs (target for the promoted helper)",
+      "crates/vb_cli/src/commands/run.rs:140 (the run path that doesn't write source/header)",
+      "crates/vb_cli/src/run_compiled_runtime.rs:114 (the runtime function called by run)",
+      "crates/vb_cli/src/commands/submit.rs:91-126 (the submit path that DOES write source/header; reference to copy)"
+    ],
+    "patterns": [
+      "Pattern: filter_trace / build_trace in commands_journal (used by submit-style events; pattern to apply for run-path events)",
+      "Pattern: write_locked_read_surface in replay.rs (canonical helper; promote to file_io.rs)"
+    ],
+    "questions": [
+      "Should --limit be applied BEFORE or AFTER --status filter? (Spec: status first, then limit; limit applies to filtered set.)",
+      "Does the run path use the same RunId allocation as submit (P0-1 fix)? (Spec: yes, after P0-1 lands.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "Operator runs `vb events <id> --status failed` and gets all events (filter ignored), missing the security signal",
+        "prevention": "Filter is applied at the Fjall query level, not as a post-filter",
+        "test_for_it": "events_with_status_filter_applies_before_return (assert 3, not 10)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "User runs `vb run foo.yaml` and then `vb inspect <id>` and gets 'run not found' because no header was written",
+        "prevention": "run path writes WorkflowSourceRecord and RunHeaderRecord (P0-1 fix + P1-13)",
+        "test_for_it": "run_writes_source_and_header_records"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Two copies of write_locked_read_surface drift (one in inspect.rs, one in events.rs)",
+        "prevention": "Promote to file_io.rs; remove the duplicates",
+        "test_for_it": "write_locked_read_surface_is_canonical (grep test: only one definition)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "External monitoring tool depends on a specific filter behavior; the new behavior is non-back-compatible",
+        "prevention": "Filter behavior is documented in master §33.3; schema version is bumped if needed",
+        "test_for_it": "events_filter_behavior_matches_master_spec (assert against the spec example)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands/events.rs:32-33,378-385 in full",
+      "Read crates/vb_cli/src/commands/inspect.rs:95-101 in full",
+      "Read crates/vb_cli/src/commands/replay.rs to find the canonical write_locked_read_surface",
+      "Read crates/vb_cli/src/commands/submit.rs:91-126 (the reference run-start path)"
+    ],
+    "phase_1": [
+      "Write test test_events_with_status_filter_returns_only_matching",
+      "Write test test_events_with_limit_returns_at_most_n",
+      "Write test test_run_writes_source_and_header_records"
+    ],
+    "phase_2": [
+      "In events.rs:32-33: replace the let _status_filter / let _limit_filter with actual filter application via commands_journal::build_trace + filter_trace",
+      "In file_io.rs: add the canonical write_locked_read_surface function (moved from replay.rs)",
+      "In inspect.rs:95-101 and events.rs:378-385: remove the local stubs; call file_io::write_locked_read_surface",
+      "In run.rs:140 → run_compiled_runtime.rs:114: when durability != None, call vb_storage::put_workflow_source and vb_storage::put_run_header (same as submit.rs:91-126)"
+    ],
+    "phase_3": [
+      "Add InvalidStatusFilter to CliError with the list of valid values"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Manual: `vb run foo.yaml --db /tmp/db && vb events <id> --db /tmp/db --status failed --limit 5` should work end-to-end"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands/events.rs (filters, locked read surface)",
+      "crates/vb_cli/src/commands/inspect.rs (locked read surface)",
+      "crates/vb_cli/src/commands/replay.rs (canonical write_locked_read_surface)",
+      "crates/vb_cli/src/file_io.rs (target for promoted helper)",
+      "crates/vb_cli/src/commands/run.rs:140 (run path)",
+      "crates/vb_cli/src/run_compiled_runtime.rs:114 (runtime call)",
+      "crates/vb_cli/src/commands/submit.rs:91-126 (reference for record writes)",
+      "crates/vb_storage/src/lib.rs (put_workflow_source, put_run_header)"
+    ],
+    "similar_implementations": [
+      "submit.rs:91-126 already does this; pattern to copy for the run path"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface (events --status, --limit)",
+      "Master §68.1 Log-First Invariant 1: Journal entry persisted = step happened"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands/submit.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Lines 91-126: how WorkflowSourceRecord and RunHeaderRecord are written",
+          "The error handling when the commit fails"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "vb_storage::put_workflow_source(journal, record) -> Result<(), StorageError>",
+      "vb_storage::put_run_header(journal, record) -> Result<(), StorageError>",
+      "commands_journal::build_trace(journal, run_id, filter) -> Vec<JournalEvent>",
+      "commands_journal::filter_trace(events, status_filter, limit) -> Vec<JournalEvent>"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no file_io::write_locked_read_surface today; this bead promotes it from replay.rs"
+    ],
+    "no_placeholder_values": [
+      "Do NOT default --status to 'all' when invalid; return the typed error"
+    ]
+  }
+}

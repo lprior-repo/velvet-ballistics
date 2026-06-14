@@ -1,0 +1,174 @@
+{
+  "id": "p0-3-cli-resume",
+  "title": "cli-resume: Wire cmd_resume to lifecycle::resume (currently no-op)",
+  "type": "bug",
+  "priority": 0,
+  "effort": "1hr",
+  "description": "Bug P0-3. lifecycle::resume at crates/vb_cli/src/lifecycle.rs:150-220 is fully implemented (opens Fjall, validates the run is suspended with a valid suspended_at_step, then enqueues ShardCommand::Resume with the step). But run_ops.rs:100-156 (cmd_resume) only calls commands_journal::analyze_resume (pure read-only) and returns. analyze_resume (commands_journal.rs:386-429) sets can_resume: true whenever the run is non-terminal, which is wrong: a non-terminal run that is not actually suspended (no suspended_at_step) cannot be resumed, and the current logic allows that no-op. Master §33.3 (Lifecycle Command Surface) lists resume as a first-class command. This bead: (1) imports crate::lifecycle in run_ops.rs and calls lifecycle::resume after analyze_resume confirms can_resume: true AND suspended_at_step.is_some(); (2) fixes analyze_resume to require suspended_at_step.is_some() before setting can_resume: true.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL emit a JournalEvent::RunResumed when cmd_resume is invoked on a suspended run",
+      "THE SYSTEM SHALL reject resume of a non-suspended run with a typed NotSuspended error"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb resume <run-id> --db <path>` on a run with suspended_at_step: Some(step)",
+        "shall": "THE SYSTEM SHALL open the Fjall journal, call lifecycle::resume, and append JournalEvent::RunResumed"
+      },
+      {
+        "trigger": "WHEN the user runs `vb resume <run-id> --db <path>` on a run with suspended_at_step: None",
+        "shall": "THE SYSTEM SHALL exit 3 with NotSuspended and write nothing to the journal"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF cmd_resume is called on a terminal run (RunFinished, RunFailed, RunCancelled, RunRetried)",
+        "shall_not": "THE SYSTEM SHALL NOT silently succeed; it must return a typed TerminalRunNotResumable error",
+        "because": "Terminal runs are immutable from the runtime's perspective; silent no-op hides operator confusion"
+      },
+      {
+        "condition": "IF cmd_resume is called with a run id for a run that has no suspended steps",
+        "shall_not": "THE SYSTEM SHALL NOT enqueue a ShardCommand::Resume that no-ops in the shard loop",
+        "because": "Wastes a shard tick and pollutes the trace with empty Resume events"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Run exists in the Fjall journal at the supplied --db path",
+      "Run is in a non-terminal state",
+      "Run has at least one step in StepState::Waiting or StepState::Asking (suspended_at_step is Some)"
+    ],
+    "postconditions": [
+      "JournalEvent::RunResumed is appended with the original run_id and the suspended step index",
+      "ShardCommand::Resume(run_id, suspended_at_step) is enqueued to the run's owning shard"
+    ],
+    "invariants": [
+      "Resume is the inverse of suspension; suspended_at_step preserves the exact step boundary (master §68.4: recovery is deterministic)",
+      "cmd_resume never resumes a step that has already advanced past suspended_at_step (idempotency check at shard)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "cli_resume_after_wait_until_writes_run_resumed_event: submit a workflow with a WaitUntil step, wait for the timer to expire (or use vb timer-fire), then `vb resume <id> --db /tmp/db`; journal contains JournalEvent::RunResumed with the WaitUntil step",
+      "cli_resume_preserves_waiting_step_state: after resume, the previously Waiting step transitions to Succeeded and pc advances"
+    ],
+    "error": [
+      "cli_resume_after_finished_run_returns_terminal_error: finish a run, then resume; exits 3 with TerminalRunNotResumable",
+      "cli_resume_on_running_run_with_no_suspended_step_returns_not_suspended: run a fast workflow that never suspends, then resume; exits 3 with NotSuspended",
+      "cli_resume_with_unknown_run_id_returns_not_found"
+    ],
+    "edge": [
+      "cli_resume_after_cancellation_returns_terminal_error: cancel a suspended run, then resume; exits 3 (terminal trumps suspended)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/lifecycle.rs:150-220 (full resume implementation; reference to copy from)",
+      "crates/vb_cli/src/run_ops.rs:100-156 (cmd_resume function; needs the import + call)",
+      "crates/vb_cli/src/commands/journal.rs:386-429 (analyze_resume: missing suspended_at_step check)",
+      "crates/vb_storage/src/recovery.rs (JournalEvent::RunResumed encoding)",
+      "crates/vb_runtime/src/runtime/mod.rs (ShardCommand::Resume variant)"
+    ],
+    "patterns": [
+      "Pattern: existing `use crate::lifecycle;` import (none yet; P0-2 will add the first one for retry)",
+      "Pattern: analyze_resume returns AnalyzeResult { can_resume: bool, suspended_at_step: Option<StepIdx>, reason: String }"
+    ],
+    "questions": [
+      "Should the suspended_at_step check be a separate variant of AnalyzeResult or part of can_resume logic? (Spec: separate; can_resume is for terminal-vs-not, suspended_at_step gate the actual call.)",
+      "Does lifecycle::resume need a NotSuspended error variant, or is the existing CliError::InvalidRunState enough? (Spec: add a typed NotSuspended for clarity.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "Operator resumes a run with a corrupted journal record, advancing past a step that should have failed",
+        "prevention": "lifecycle::resume must verify the digest of the WorkflowSourceRecord before enqueuing Resume (defense in depth)",
+        "test_for_it": "cli_resume_with_corrupted_source_record_returns_digest_mismatch"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator runs `vb resume` on a run that has no `vb inspect` output to confirm suspension; gets an opaque error",
+        "prevention": "NotSuspended error message includes a hint: 'Use `vb events <id>` to inspect the last event; resume requires a Waiting or Asking step'",
+        "test_for_it": "cli_resume_error_message_includes_inspect_hint (assert message contains 'vb events')"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Resume advances the run past suspended_at_step but the journal lacks the corresponding StepSucceeded event",
+        "prevention": "lifecycle::resume writes a StepResumed placeholder event before enqueuing; recovery can use it as a marker",
+        "test_for_it": "cli_resume_journal_contains_step_resumed_marker (proptest with 1000 wait/resume cycles)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "Resume enqueues to the wrong shard, leaving the run suspended indefinitely",
+        "prevention": "lifecycle::resume reads run_header.owning_shard and enqueues to that exact shard (shard routing is mandatory per master §20)",
+        "test_for_it": "cli_resume_routes_to_owning_shard (proptest with 16 shards, 1000 runs)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/lifecycle.rs:150-220 to understand the existing resume contract",
+      "Read crates/vb_cli/src/run_ops.rs:100-156 to find the cmd_resume function and its current `analyze_resume` return handling",
+      "Read crates/vb_cli/src/commands/journal.rs:386-429 (analyze_resume) and the surrounding state machine"
+    ],
+    "phase_1": [
+      "Write test test_cli_resume_after_wait_until_writes_run_resumed_event",
+      "Write test test_cli_resume_after_finished_run_returns_terminal_error",
+      "Write test test_cli_resume_on_running_run_with_no_suspended_step_returns_not_suspended"
+    ],
+    "phase_2": [
+      "In run_ops.rs:100-156 cmd_resume, add `use crate::lifecycle;` import",
+      "In cmd_resume, after `analyze_resume` confirms can_resume: true AND result.suspended_at_step.is_some(), call `lifecycle::resume(parse_run_id(run_id), suspended_at_step, &journal)?`",
+      "In commands/journal.rs:386-429 analyze_resume, add a check: if suspended_at_step.is_none(), return AnalyzeResult { can_resume: false, suspended_at_step: None, reason: 'No suspended step; cannot resume' }"
+    ],
+    "phase_3": [
+      "Add `CancelledRunNotRetryable` and `NotSuspended` to CliError if not present"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Manual: `vb submit workflow_with_wait.yaml --db /tmp/db && vb resume <id> --db /tmp/db` should succeed only after the timer fires"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/lifecycle.rs:150-220 (resume implementation)",
+      "crates/vb_cli/src/run_ops.rs:100-156 (cmd_resume)",
+      "crates/vb_cli/src/commands/journal.rs:386-429 (analyze_resume)",
+      "crates/vb_storage/src/recovery.rs (JournalEvent::RunResumed)",
+      "crates/vb_runtime/src/runtime/mod.rs (ShardCommand::Resume)"
+    ],
+    "similar_implementations": [
+      "lifecycle::retry at lifecycle.rs:235-302 is the parallel pattern (P0-2 wires the retry side)"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface",
+      "Master §68.4 Recovery is deterministic"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/lifecycle.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "lifecycle::resume function signature (input args, return type, error variants)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "lifecycle::resume(run_id: RunId, suspended_at_step: StepIdx, journal: &FjallJournal) -> Result<(), CliError>",
+      "commands_journal::analyze_resume(journal, run_id) -> AnalyzeResumeResult",
+      "JournalEvent::RunResumed enum variant"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no Runtime::resume method; resume is at the CLI/lifecycle layer"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use StepIdx::new(0) as a default; suspended_at_step must come from analyze_resume's Option<StepIdx>"
+    ]
+  }
+}

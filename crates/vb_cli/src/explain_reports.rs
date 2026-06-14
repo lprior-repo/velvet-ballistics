@@ -7,8 +7,8 @@ pub(crate) fn explain_compile_repair_hint(_err: &vb_compile::CompileError) {
     crate::outln!("For compilation errors, check the workflow YAML structure.");
 }
 
-pub(crate) fn explain_gate_pass(_gate: &str) {
-    crate::outln!("Verification passed all gates.");
+pub(crate) fn explain_gate_status(gate: &str) {
+    crate::outln!("  - {gate}");
 }
 
 pub(crate) fn explain_verification_failure(_err: &VerifyError) -> String {

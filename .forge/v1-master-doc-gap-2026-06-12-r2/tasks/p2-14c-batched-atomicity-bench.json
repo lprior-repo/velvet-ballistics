@@ -1,0 +1,146 @@
+{
+  "id": "p2-14c-batched-atomicity-bench",
+  "title": "P2-14c batched-atomicity-bench: A/B benchmark on `submit + 100 actions`; flip batched_atomicity default after ≥3× throughput",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-14c (split from black-hat-revised vb-8fbja). Black-hat review round 1 split the original P2-14 into 3 sub-beads; this is the third. This bead (P2-14c) handles sub-phase (14c) only: feature-flag batched_atomicity = false (default), A/B benchmark on `submit + 100 actions` workload, and flip the default to true after the benchmark shows ≥3× throughput. Depends on P2-14a (the storage batch) and P2-14b (the coalescing layer). Real source: crates/vb_runtime/src/shard/config.rs (ShardConfig — this bead adds batched_atomicity: bool to ShardConfig v2, from P0-COORD), crates/vb_benchmark/benches/ (the benchmark suite — we add a new bench target). The new logic: (1) add `batched_atomicity: bool` to ShardConfig v2 (default false); (2) when false, Shard::tick commits each command individually (no coalescing); (3) when true, the P2-14b coalescing layer is enabled; (4) run the A/B benchmark on `submit + 100 actions`; (5) record the throughput ratio in `.evidence/batched_atomicity_bench.json`; (6) if the ratio is ≥3×, flip the default to true (this is a one-line change to ShardConfig::default()). Master §61: the ≥3× threshold is the acceptance bar. Kani harness: prove batched_atomicity=true is functionally equivalent to batched_atomicity=false modulo throughput. proptest: 100 random workflows assert functional equivalence.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose batched_atomicity: bool in ShardConfig (default false)",
+      "THE SYSTEM SHALL flip the default to true after the A/B benchmark shows ≥3× throughput on `submit + 100 actions`"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the A/B benchmark on `submit + 100 actions` records a throughput ratio ≥3×",
+        "shall": "THE SYSTEM SHALL set ShardConfig::default().batched_atomicity = true (a one-line change in the default impl)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the A/B benchmark ratio is <3×",
+        "shall_not": "THE SYSTEM SHALL NOT flip the default; it must remain false and the benchmark result must be reported",
+        "because": "Master §61: the ≥3× threshold is the acceptance bar; flipping below the threshold would violate the contract"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "P2-14a (storage-batch) and P2-14b (shard-coalesce) have landed",
+      "P0-COORD has defined ShardConfig v2 (this bead adds batched_atomicity to it)"
+    ],
+    "postconditions": [
+      "ShardConfig has batched_atomicity: bool (default false initially)",
+      "The A/B benchmark on `submit + 100 actions` is recorded in `.evidence/batched_atomicity_bench.json`",
+      "If the ratio is ≥3×, ShardConfig::default().batched_atomicity is flipped to true",
+      "Functional equivalence: batched_atomicity=true produces the same workflow outcomes as batched_atomicity=false (modulo throughput)"
+    ],
+    "invariants": [
+      "Functional equivalence: same workflow + different batched_atomicity values produce the same outcomes (master §61)",
+      "The benchmark ratio is reported in `.evidence/batched_atomicity_bench.json` regardless of the flip decision"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "ab_benchmark_records_throughput_ratio: A/B on `submit + 100 actions`; assert the ratio is recorded in .evidence/batched_atomicity_bench.json",
+      "shard_config_default_batch_atomicity_false_initially: ShardConfig::default().batched_atomicity == false (before flip)"
+    ],
+    "error": [
+      "ab_benchmark_below_threshold_does_not_flip_default: forge a ratio of 2.5×; assert default remains false",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "ab_benchmark_above_threshold_flips_default: forge a ratio of 4.0×; assert default is flipped to true",
+      "proptest_batched_atomicity_functional_equivalence: 100 random workflows; assert batched=true and batched=false produce the same outcomes",
+      "kani_batched_atomicity_equivalence: bounded model check with 4 workflow patterns and 2 batched values"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — the new field; the v2 schema is from P0-COORD)",
+      "crates/vb_benchmark/benches/ (the benchmark suite — we add a new bench target)",
+      "master doc §61 (the ≥3× threshold spec)",
+      ".evidence/batched_atomicity_bench.json (the output file)"
+    ],
+    "patterns": [
+      "Pattern: existing A/B benchmarks in the codebase — the new bench follows the same pattern"
+    ],
+    "questions": [
+      "Should the default flip be automatic (in code) or manual (in a follow-up bead after the benchmark)? Recommend: automatic — the ≥3× condition is checked at the bench, and a one-line code change flips the default; this is the simplest path"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "batched_atomicity=true produces a different workflow outcome than batched_atomicity=false (e.g., a command is committed in a different order)",
+        "prevention": "Functional equivalence is tested in proptest_batched_atomicity_functional_equivalence; the batch commit is atomic so the order is preserved within the batch",
+        "test_for_it": "batched_atomicity_functional_equivalence (regression shield for master §61)"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "The A/B benchmark is rigged (e.g., the test code skips the actual work) to report a fake ≥3× ratio, triggering a default flip on broken code",
+        "prevention": "The benchmark uses real `submit + 100 actions` workload (no mocks); the result is recorded in .evidence/batched_atomicity_bench.json for human review",
+        "test_for_it": "ab_benchmark_uses_real_workload (the bench calls Runtime::submit and Runtime::execute_action, not mocks)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Wait for P0-COORD, P2-14a, P2-14b to land",
+      "Read crates/vb_benchmark/benches/ to find the existing A/B benchmark pattern"
+    ],
+    "phase_1": [
+      "Write test test_ab_benchmark_records_throughput_ratio (REGRESSION SHIELD)",
+      "Write proptest proptest_batched_atomicity_functional_equivalence (100 random workflows)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/shard/config.rs: add `pub batched_atomicity: bool` to ShardConfig v2 (from P0-COORD); default false",
+      "In vb_runtime/src/shard/tick.rs: gate the P2-14b coalescing layer on self.config.batched_atomicity",
+      "Add a Criterion bench target in crates/vb_benchmark/benches/batched_atomicity.rs that runs the A/B on `submit + 100 actions` and records the ratio in .evidence/batched_atomicity_bench.json",
+      "In ShardConfig::default(): if the recorded ratio in .evidence/batched_atomicity_bench.json is ≥3×, set batched_atomicity = true (one-line conditional)"
+    ],
+    "phase_3": [
+      "Run `moon run :bench -p vb_benchmark` and record the A/B throughput ratio",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — the new field)",
+      "crates/vb_runtime/src/shard/tick.rs (Shard::tick — the gate on batched_atomicity)",
+      "crates/vb_benchmark/benches/batched_atomicity.rs (NEW — the A/B bench target)",
+      ".evidence/batched_atomicity_bench.json (NEW — the recorded ratio)"
+    ],
+    "similar_implementations": [
+      "Existing A/B benchmarks in the codebase — the new bench follows the same pattern"
+    ],
+    "external_references": [
+      "Master §61 Fjall Storage Contract (≥3× threshold)",
+      "Master §68.4 (replay determinism)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_benchmark/benches/",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The existing A/B benchmark pattern — the new bench follows it"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "Criterion is in the dev-dependencies; the new bench uses criterion::Bencher",
+      "ShardConfig::default() exists but does NOT have batched_atomicity yet"
+    ],
+    "apis_that_do_not_exist": [
+      "batched_atomicity: bool is NOT in ShardConfig yet — it is what this bead adds (within the v2 schema from P0-COORD)"
+    ],
+    "no_placeholder_values": [
+      "Do NOT add the storage batch (that's P2-14a)",
+      "Do NOT add the coalescing layer (that's P2-14b)",
+      "Do NOT use a 10× threshold (matches P2-14's 3× floor)"
+    ]
+  }
+}

@@ -408,7 +408,7 @@ fn event_slot_values_cover_valid_corrupt_and_missing_frame_paths() {
 }
 
 #[test]
-fn unresolved_action_recovers_as_pending_action_supported() {
+fn unresolved_action_recovers_as_pending_action_unsupported() {
     let run = RunId::new(61);
     let events = [JournalEvent::ActionScheduled {
         run,
@@ -420,13 +420,14 @@ fn unresolved_action_recovers_as_pending_action_supported() {
 
     let seed = recover_runtime_frame_seed_from_events(&events);
 
-    // After fix: pending_actions are recovered as a supported state.
+    // Pending actions are recovered into the seed but block full-frame
+    // rehydration: the runtime boundary cannot re-attach them to a live frame.
     // The action remains in pending_actions (it was scheduled but not completed),
-    // but unsupported.pending_actions is FALSE (pending_actions no longer blocks hydration).
+    // and unsupported.pending_actions is TRUE so the runtime rejects the seed.
     assert!(
         matches!(seed, Ok(recovered) if recovered.pending_actions.iter().any(|entry|
             entry.step == StepIdx::new(3) && entry.action == ActionId::new(9)
-        ) && !recovered.unsupported.pending_actions)
+        ) && recovered.unsupported.pending_actions)
     );
 }
 

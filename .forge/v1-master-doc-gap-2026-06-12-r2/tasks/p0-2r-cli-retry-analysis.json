@@ -1,0 +1,144 @@
+{
+  "id": "p0-2r-cli-retry-analysis",
+  "title": "P0-2r cli-retry-analysis: Fix analyze_retry to return can_retry=false for RunCancelled runs",
+  "type": "bug",
+  "priority": 0,
+  "effort": "30min",
+  "description": "Bug P0-2r (revision of black-hat-rejected vb-5rg5y). Black-hat review round 1 found that cmd_retry IS already wired to lifecycle::retry at run_ops.rs:25 (the original 'no-op' framing was fabricated). The real bug is in crates/vb_cli/src/commands_journal.rs:351-353 where analyze_retry returns can_retry: true for RunCancelled runs. The function checks `is_failed` (RunFailedEvent | RunCancelled) and exits early only on the negation; once the run is failed/cancelled, the function returns can_retry: true unconditionally. The fix is a one-liner: when the terminal event is RunCancelled, return can_retry: false with reason 'run was cancelled, not failed; use submit to restart'. When terminal is RunFailedEvent, keep can_retry: true. This bead does NOT touch run_ops.rs (the wiring is already correct). Master §33.3 lifecycle: retry is for failed runs; cancelled runs require explicit submit. Kani harness: prove analyze_retry({...RunCancelled...}) -> can_retry == false. proptest: 100 random journal sequences with terminal in {Finished, Failed, Cancelled, Succeeded, None} all return correct can_retry.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL return can_retry=false from analyze_retry when the run was cancelled, not failed",
+      "THE SYSTEM SHALL preserve existing analyze_retry behavior for the RunFailedEvent terminal case"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN analyze_retry is called with a journal ending in RunCancelled",
+        "shall": "THE SYSTEM SHALL return RetryAnalysis { can_retry: false, reason: 'run was cancelled, not failed; use submit to restart', .. }"
+      },
+      {
+        "trigger": "WHEN analyze_retry is called with a journal ending in RunFailedEvent",
+        "shall": "THE SYSTEM SHALL return RetryAnalysis { can_retry: true, failed_at_step: Some(step), .. } (preserved behavior)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the journal is empty or non-terminal",
+        "shall_not": "THE SYSTEM SHALL NOT return can_retry: true; the existing 'no retry needed' early-return is correct",
+        "because": "Preserves the existing happy-path behavior and is the current contract"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "analyze_retry is the single source of truth for retry decisions (run_ops.rs:25 calls it)",
+      "JournalEvent::RunCancelled is a distinct variant from RunFailedEvent"
+    ],
+    "postconditions": [
+      "analyze_retry on RunCancelled journal returns can_retry=false with explicit reason string",
+      "analyze_retry on RunFailedEvent journal still returns can_retry=true (regression-protected)",
+      "No other analyze_retry behavior changes; the failure_step calculation is preserved"
+    ],
+    "invariants": [
+      "For any journal whose terminal event is RunFinished, analyze_retry returns can_retry=false (no change)",
+      "For any journal whose terminal event is RunFailedEvent, analyze_retry returns can_retry=true (regression-protected)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "analyze_retry_on_failed_run_returns_can_retry_true: journal = [StepSucceeded, RunFailedEvent] -> can_retry: true (regression)",
+      "analyze_retry_on_cancelled_run_returns_can_retry_false: journal = [StepSucceeded, RunCancelled] -> can_retry: false with reason"
+    ],
+    "error": [
+      "analyze_retry_on_empty_journal_returns_can_retry_false: empty journal -> can_retry: false with 'no retry needed' (regression)",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "analyze_retry_on_finished_run_returns_can_retry_false: journal = [StepSucceeded, RunFinished] -> can_retry: false (regression)",
+      "proptest_journal_terminal_event_drives_retry_decision: 100 random journal sequences with explicit terminal variants; assert can_retry matches the truth table {Finished: false, Failed: true, Cancelled: false, None: false, Succeeded: false}"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands_journal.rs:329-360 (analyze_retry function — the fix lives here)",
+      "crates/vb_cli/src/run_ops.rs:25 (cmd_retry entry; calls analyze_retry; no change needed)",
+      "crates/vb_cli/src/lifecycle.rs (retry() — verify the existing retry function surfaces the can_retry=false reason correctly)"
+    ],
+    "patterns": [
+      "Pattern: existing match-guard in analyze_retry: `matches!(terminal, Some(JournalEvent::RunFailedEvent { .. }) | Some(JournalEvent::RunCancelled { .. }))` — the fix must narrow the is_failed check to RunFailedEvent only, then handle RunCancelled as a separate case"
+    ],
+    "questions": [
+      "Should the CLI's cmd_retry error message be 'run was cancelled' or 'cannot retry cancelled runs' (UX wording)?"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Operator retries a cancelled run; the retry silently re-schedules from the last successful step and overwrites the cancel marker",
+        "prevention": "analyze_retry returns can_retry=false for RunCancelled; cmd_retry surfaces a typed CLI error",
+        "test_for_it": "cli_retry_on_cancelled_run_returns_validation_failed: `vb retry <cancelled-id>` exits with code 3 and message 'cancelled, use submit'"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker cancels a run, then retries it, defeating the cancel signal in audit logs",
+        "prevention": "analyze_retry explicitly rejects RunCancelled; the cancel remains in the journal as the final word",
+        "test_for_it": "cancelled_run_cannot_be_retried_via_analyze_retry: proptest with 1000 random cancel-then-retry sequences; assert can_retry=false on all"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands_journal.rs:329-360 to confirm the bug location and the exact match-guard to narrow",
+      "Read crates/vb_cli/src/run_ops.rs:25 cmd_retry to confirm it surfaces analyze_retry's reason field"
+    ],
+    "phase_1": [
+      "Write test test_analyze_retry_on_cancelled_run_returns_can_retry_false (REGRESSION SHIELD)",
+      "Write proptest proptest_analyze_retry_terminal_decision with 100 random journal sequences covering all 4 terminal variants"
+    ],
+    "phase_2": [
+      "In commands_journal.rs:351-353: split the `is_failed` check. New is_failed matches only RunFailedEvent. Add an `is_cancelled` check that matches RunCancelled and returns can_retry: false with reason 'run was cancelled, not failed; use submit to restart'"
+    ],
+    "phase_3": [
+      "Run `moon run :test -p vb_cli`; verify all analyze_retry tests pass",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands_journal.rs:329-360 (analyze_retry — the fix site)",
+      "crates/vb_cli/src/run_ops.rs:25 (cmd_retry — already correctly wired)",
+      "crates/vb_cli/src/lifecycle.rs (retry function — verify the call site)",
+      "crates/vb_core/src/journal/events.rs (JournalEvent enum — confirm RunCancelled variant exists)"
+    ],
+    "similar_implementations": [
+      "analyze_resume (commands_journal.rs:386+) has the symmetric structure: scan for suspension events, check terminal, return can_resume — this is the reference pattern to mirror in the analyze_retry fix"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface (retry semantics)",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands_journal.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "analyze_retry (lines 329-360) — exact match-guard structure",
+          "analyze_resume (lines 386+) — symmetric pattern"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "JournalEvent::RunFailedEvent and JournalEvent::RunCancelled are distinct variants",
+      "analyze_retry is called by run_ops.rs:25 cmd_retry and surfaced to the user"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no `RetryPolicy` enum that could disambiguate at a higher level; the fix is in analyze_retry itself"
+    ],
+    "no_placeholder_values": [
+      "Do NOT change cmd_retry's wiring (it's correct)",
+      "Do NOT change analyze_retry's failure_step calculation (preserve behavior)"
+    ]
+  }
+}

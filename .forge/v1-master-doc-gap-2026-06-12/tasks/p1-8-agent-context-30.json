@@ -1,0 +1,159 @@
+{
+  "id": "p1-8-agent-context-30",
+  "title": "agent-context-30: Extend agent-context JSON to 30/30 entries",
+  "type": "feature",
+  "priority": 1,
+  "effort": "1hr",
+  "description": "Feature P1-8. vb_cli/src/agent_context/mod.rs:103-261 has 22 `command(...)` literals in the commands() function. The agent-context JSON is the AI-native control plane (master §75) — it enumerates every CLI command an AI agent can invoke. Master §33.3 Lifecycle Command Surface lists 14+ commands; the current 22 are missing 8: help, version, status, system status, action list, action inspect, ai-context, cancel. Proptest in crates/vb_cli/src/agent_context/tests/properties.rs:208-216 asserts commands.len() == 22 and will fail when the count is bumped to 30. This bead: (1) adds the 8 missing command(...) literals; (2) updates the proptest constant to 30.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose every CLI command listed in master §33.3 in the agent-context JSON",
+      "THE SYSTEM SHALL keep the agent-context command count equal to the number of distinct CLI subcommands"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb agent-context --deliver stdout`",
+        "shall": "THE SYSTEM SHALL emit a JSON object with commands.len() == 30 (matching master §33.3)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a new CLI command is added but the agent-context JSON is not updated",
+        "shall_not": "THE SYSTEM SHALL NOT silently drop the new command; the proptest must fail (P1-21 catches the drift)",
+        "because": "AI agents reading the agent-context JSON rely on it as the source of truth; missing commands break automation"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Master §33.3 Lifecycle Command Surface is the source of truth for command names",
+      "args/constants.rs::VALID_COMMANDS is the source of truth for parse-time validation"
+    ],
+    "postconditions": [
+      "agent_context::commands() returns exactly 30 entries",
+      "Each entry has at least: name, description, args (Vec<String>), examples (Vec<String>)"
+    ],
+    "invariants": [
+      "The set of command names in agent_context is a subset of VALID_COMMANDS",
+      "P1-21 (cli_matrix_conformance) locks down the cross-reference between Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, and agent_context"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "agent_context_commands_length_is_30: `vb agent-context --deliver stdout | jq .commands | length` returns 30",
+      "agent_context_includes_all_8_new_commands: each of help, version, status, system-status, action list, action inspect, ai-context, cancel is present in the JSON"
+    ],
+    "error": [
+      "agent_context_with_duplicate_command_name_fails_to_compile: a duplicate entry in commands() is a compile error (use a const-set or HashSet check)",
+      "agent_context_with_31_entries_fails_proptest: a deliberate test that adds a 31st entry to commands() should fail the proptest constant check",
+      "agent_context_proptest_with_22_entries_fails: a deliberate test that reverts the constant to 22 (after the 30 bump) should fail"
+    ],
+    "edge": [
+      "agent_context_proptest_with_30_entries_passes: proptest constant updated to 30, runs 100 random subsets, all subsets are subsets of the 30"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/agent_context/mod.rs:103-261 (the 22 command(...) literals; add 8 more)",
+      "crates/vb_cli/src/agent_context/tests/properties.rs:208-216 (the proptest constant; update from 22 to 30)",
+      "crates/vb_cli/src/args/constants.rs::VALID_COMMANDS (the cross-reference target)",
+      "crates/vb_cli/src/lib.rs::Command (the Command enum, source of truth for names)"
+    ],
+    "patterns": [
+      "Pattern: existing command(...) literal in mod.rs:103-261 — copy the structure for each new entry"
+    ],
+    "questions": [
+      "Are there any commands that are not in master §33.3 but are still valid subcommands? (Spec: focus on the 8 missing ones; the master list is the source of truth.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker injects a fake command into agent_context that isn't actually implemented, causing AI agents to invoke a non-existent CLI subcommand",
+        "prevention": "P1-21 (cli_matrix_conformance) proptest cross-references every agent_context command against Command enum variants",
+        "test_for_it": "cli_matrix_conformance_proptest_ensures_every_agent_context_command_is_a_command_variant"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "AI agent reads the agent-context JSON, sees 22 commands, doesn't know about `cancel` (master §33.3 mandates it)",
+        "prevention": "Bump to 30; add the 8 missing commands",
+        "test_for_it": "agent_context_includes_cancel_command (assert the literal 'cancel' appears)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "agent_context JSON is hand-edited and drifts from the Command enum",
+        "prevention": "P1-21 proptest locks it down; the test fails on drift",
+        "test_for_it": "agent_context_count_matches_proptest_constant (assert 30 == proptest constant)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "An external tool (e.g., a docs generator) reads agent_context and produces 22 entries, missing 8",
+        "prevention": "External tool sees the new 30; no further action needed",
+        "test_for_it": "external_tool_sees_30_commands (manual)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/agent_context/mod.rs:103-261 in full to understand the command literal pattern",
+      "Read crates/vb_cli/src/agent_context/tests/properties.rs:208-216 to find the proptest constant",
+      "Read master §33.3 Lifecycle Command Surface for the canonical command list"
+    ],
+    "phase_1": [
+      "Write test test_agent_context_commands_length_is_30",
+      "Write test test_agent_context_includes_all_8_new_commands"
+    ],
+    "phase_2": [
+      "In agent_context/mod.rs, add 8 new command(...) literals: help, version, status, system-status (or 'system status'), action list, action inspect, ai-context, cancel",
+      "In agent_context/tests/properties.rs:208-216, change the constant 22 to 30"
+    ],
+    "phase_3": [
+      "Add a #[test] that runs `vb agent-context --deliver stdout | jq .commands | length` and asserts 30"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Manual: `vb agent-context --deliver stdout | jq '.commands | length'` should return 30"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/agent_context/mod.rs:103-261 (the 22 command literals)",
+      "crates/vb_cli/src/agent_context/tests/properties.rs:208-216 (the proptest constant)",
+      "crates/vb_cli/src/args/constants.rs (VALID_COMMANDS, the cross-reference)",
+      "crates/vb_cli/src/lib.rs (Command enum, source of truth)",
+      "crates/workspace_tests/tests/cli_matrix_conformance.rs (P1-21; the cross-reference proptest)"
+    ],
+    "similar_implementations": [
+      "Other agent-context command literals (e.g., `validate`, `compile`, `explain`)"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface (canonical list)",
+      "Master §75 AI-Native CLI Control Plane (agent-context role)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/agent_context/mod.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The structure of a single command(...) literal",
+          "How the 22 existing entries are organized (alphabetical? by lifecycle phase?)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "command(name: &str, description: &str, args: &[&str], examples: &[&str]) helper in agent_context::builder",
+      "VALID_COMMANDS in args/constants.rs"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no auto-derivation from Command enum to agent_context; this is a hand-curated list"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use placeholder descriptions like 'TBD'; each new command gets a real 1-2 sentence description"
+    ]
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "id": "p0-1-cli-run",
+  "title": "cli-run: Replace hardcoded RunId(1) with --run-id flag and monotonic counter",
+  "type": "bug",
+  "priority": 0,
+  "effort": "30min",
+  "description": "Bug P0-1. Five CLI call sites hardcode RunId::new(1) for run/run-compiled/bench-run invocations. submit.rs correctly uses SystemTime::now().as_nanos() for unique IDs. Two concurrent vb run invocations would collide on the same RunId, breaking the journal keyspace uniqueness invariant. Master §33.3 (CLI Commands) and §44.15 (Direct API submit/inspect/cancel/list events/answer ask/complete action/fail action/drain trace/health/shutdown) imply every submit/run must allocate a unique RunId. This bead threads an explicit run_id from the parsed Command to the run path, adds --run-id flag (auto-derived when omitted), and adds an AtomicU64 monotonic-counter fallback in submit.rs::generate_submit_run_id. Evidence: run_compiled_runtime.rs:125, bench_run.rs:54, workflow.rs:40,170, bench.rs:27, commands_incident.rs:70,80,91,102,111. Reference: submit.rs:69-71,195-203.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL allocate a unique RunId for every run, run-compiled, and bench-run invocation",
+      "THE SYSTEM SHALL use the provided --run-id value as the RunId when present"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user passes --run-id N on the run/run-compiled/bench-run CLI",
+        "shall": "THE SYSTEM SHALL use RunId(N) as the run identifier and parse N as a u64"
+      },
+      {
+        "trigger": "WHEN the user omits --run-id on the run CLI",
+        "shall": "THE SYSTEM SHALL derive a unique RunId from the submit path monotonic counter (AtomicU64 fallback after SystemTime::now().as_nanos())"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF two vb run invocations land in the same nanosecond",
+        "shall_not": "THE SYSTEM SHALL NOT collide on the same RunId",
+        "because": "RunId is the Fjall keyspace primary key; collision would silently overwrite prior run data and destroy journal history"
+      },
+      {
+        "condition": "IF --run-id is provided with a value that does not parse as u64",
+        "shall_not": "THE SYSTEM SHALL NOT silently default to RunId(1)",
+        "because": "Silent fallback hides a CLI usage error from the operator and corrupts the journal"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "CLI binary velvet-ballistics is built and on PATH",
+      "Workflow YAML at the supplied path parses to a valid CompiledWorkflow"
+    ],
+    "postconditions": [
+      "RunId written to the Fjall keyspace is the explicit --run-id value, OR a fresh value from generate_submit_run_id, OR RunId(1) ONLY when --run-id 1 is explicitly passed",
+      "run_compiled_workflow receives run_id: RunId as a function parameter, never reads a hardcoded constant",
+      "submit.rs::generate_submit_run_id falls back to an AtomicU64 monotonic counter when SystemTime::now().as_nanos() collides with a prior in-process allocation"
+    ],
+    "invariants": [
+      "RunId uniqueness: two concurrent CLI invocations produce two distinct RunIds",
+      "submit path and run path use the same RunId allocation policy",
+      "No .unwrap() / .expect() / panic! on parse failure of --run-id; the CLI exits with a typed ValidationFailed error"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "cli_run_uses_unique_run_ids_per_invocation: two parallel `vb run foo.yaml` invocations write distinct RunIds to the journal",
+      "cli_run_with_explicit_run_id_flag_uses_provided_value: `vb run foo.yaml --run-id 42` writes RunId(42) regardless of clock",
+      "submit_and_run_paths_agree_on_run_id: a submit+run pair of the same workflow produces a single journal entry with the same RunId"
+    ],
+    "error": [
+      "cli_run_with_invalid_run_id_returns_validation_failed: `vb run foo.yaml --run-id notanumber` exits 3 with ValidationFailed message",
+      "cli_run_with_negative_run_id_returns_validation_failed: `vb run foo.yaml --run-id -1` exits 3 (u64 underflow is a parse error)"
+    ],
+    "edge": [
+      "cli_run_with_run_id_zero_writes_run_id_zero: `vb run foo.yaml --run-id 0` writes RunId(0) (valid, not a default sentinel)",
+      "cli_run_with_run_id_u64_max_succeeds: `vb run foo.yaml --run-id 18446744073709551615` writes RunId(u64::MAX) without overflow"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/run_compiled_runtime.rs (line 125 hardcode, line 114 signature)",
+      "crates/vb_cli/src/bench_run.rs (line 54 hardcode)",
+      "crates/vb_cli/src/commands/workflow.rs (lines 40, 170 hardcode)",
+      "crates/vb_cli/src/bench.rs (line 27 hardcode)",
+      "crates/vb_cli/src/commands/incident.rs (lines 70, 80, 91, 102, 111 hardcode)",
+      "crates/vb_cli/src/commands/submit.rs (lines 69-71 nanos, 195-203 nanos)",
+      "crates/vb_cli/src/args/workflow.rs (parse_run, parse_run_compiled, parse_bench_run signatures)"
+    ],
+    "patterns": [
+      "Pattern: existing nanos-based RunId allocation in submit.rs (the reference correct implementation)",
+      "Pattern: clap derive flags for --run-id with u64 parser (see vb_cli/src/args/patterns.rs)"
+    ],
+    "questions": [
+      "Should --run-id be available on submit as well, or only on run/run-compiled/bench-run? (Spec says run-path; submit is correct.)",
+      "Does the AtomicU64 fallback live in submit.rs::generate_submit_run_id only, or should run path also have one? (Spec says submit fallback; run path delegates.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "Operator passes --run-id matching a prior run's ID, overwriting or corrupting journal state",
+        "prevention": "Document --run-id as 'advanced/replay-only'; do not warn loudly because replay tools may legitimately reuse IDs against a fresh DB",
+        "test_for_it": "cli_run_with_duplicate_run_id_in_fresh_db_succeeds; cli_run_with_duplicate_run_id_in_existing_db_overwrites (documented behaviour)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "User cannot reproduce a flaky run because RunId is non-deterministic across invocations",
+        "prevention": "Provide --run-id so the same RunId can be passed to replay, inspect, and events subcommands across runs",
+        "test_for_it": "cli_run_with_run_id_42_then_inspect_42_finds_run (manual; required by master §33.3 lifecycle)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Two parallel invocations both write RunId(1), silently losing one run's journal events",
+        "prevention": "Use submit-style nanos + AtomicU64 fallback in run path too, OR explicit --run-id from caller",
+        "test_for_it": "cli_run_uses_unique_run_ids_per_invocation (50 parallel runs, count distinct RunIds in journal — must be 50)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "vb inspect and vb events cannot find a run that was started via `vb run` because no RunHeaderRecord was written",
+        "prevention": "Pair with P1-13: ensure run path writes WorkflowSourceRecord and RunHeaderRecord (separate bead; P0-1 just fixes the ID allocation)",
+        "test_for_it": "P1-13 covers this; P0-1 is strictly the ID allocation"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands/submit.rs:69-71 and :195-203 to understand the existing nanos-based RunId allocation",
+      "Read crates/vb_cli/src/args/workflow.rs to find parse_run, parse_run_compiled, parse_bench_run signatures",
+      "Read crates/vb_cli/src/commands/incident.rs:70,80,91,102,111 to find the hardcoded RunId::new(1) call sites",
+      "Read crates/vb_cli/src/run_compiled_runtime.rs:114 to find the run_compiled_workflow function signature"
+    ],
+    "phase_1": [
+      "Write test test_cli_run_uses_unique_run_ids_per_invocation (50 parallel vb run invocations, assert 50 distinct RunIds in journal)",
+      "Write test test_cli_run_with_explicit_run_id_flag_uses_provided_value (--run-id 42, assert journal has RunId(42))",
+      "Write test test_cli_run_with_invalid_run_id_returns_validation_failed (--run-id NaN, assert exit code 3)"
+    ],
+    "phase_2": [
+      "In args/workflow.rs: add `run_id: Option<u64>` field with `--run-id <u64>` clap arg to parse_run, parse_run_compiled, parse_bench_run",
+      "In Command enum: add `run_id: Option<RunId>` field to Run, RunCompiled, BenchRun variants",
+      "In run_compiled_runtime.rs:114: change `run_compiled_workflow(...)` to accept `run_id: RunId` parameter; use it instead of `RunId::new(1)`",
+      "In submit.rs:69-71 generate_submit_run_id: add an AtomicU64 fallback counter that increments when nanos collide with a prior in-process allocation",
+      "In commands/workflow.rs and commands/incident.rs: thread the parsed `run_id` from Command to the runtime call sites"
+    ],
+    "phase_3": [
+      "Update run_from_env dispatch in vb_cli/src/lib.rs to pass the parsed run_id through"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Run `moon run :ci` and verify no clippy warnings on the modified files",
+      "Manual: `vb run fixtures/minimal.yaml --run-id 99999 && bd events 99999 --db /tmp/db` should show the run"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/run_compiled_runtime.rs:114 (signature change)",
+      "crates/vb_cli/src/run_compiled_runtime.rs:125 (hardcode to remove)",
+      "crates/vb_cli/src/bench_run.rs:54 (hardcode to remove)",
+      "crates/vb_cli/src/commands/workflow.rs:40,170 (hardcodes to remove)",
+      "crates/vb_cli/src/bench.rs:27 (hardcode to remove)",
+      "crates/vb_cli/src/commands/incident.rs:70,80,91,102,111 (hardcodes to remove)",
+      "crates/vb_cli/src/commands/submit.rs:69-71,195-203 (reference correct implementation)",
+      "crates/vb_cli/src/args/workflow.rs (parse_run, parse_run_compiled, parse_bench_run)",
+      "crates/vb_core/src/ids.rs (RunId::new signature)"
+    ],
+    "similar_implementations": [
+      "submit.rs nanos allocation is the canonical pattern to copy"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands/submit.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "generate_submit_run_id function (lines 69-71 and 195-203)",
+          "how nanos + AtomicU64 allocation works"
+        ]
+      },
+      {
+        "file": "crates/vb_cli/src/args/workflow.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "parse_run / parse_run_compiled / parse_bench_run clap derive",
+          "existing flag patterns (see --durability, --db)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "RunId::new(u64) in crates/vb_core/src/ids.rs",
+      "SystemTime::now().as_nanos() returns u128 (must convert to u64 or use lower 64 bits)",
+      "AtomicU64::fetch_add(1, Ordering::Relaxed) is the standard monotonic counter primitive"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no `Command::RunId::derive()` helper — must construct RunId from u64 explicitly"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use RunId::new(1) as a 'default' value; the default must be a fresh allocation from generate_submit_run_id",
+      "Do NOT use 0 as a sentinel for 'uninitialized'; --run-id 0 is a valid explicit value"
+    ]
+  }
+}

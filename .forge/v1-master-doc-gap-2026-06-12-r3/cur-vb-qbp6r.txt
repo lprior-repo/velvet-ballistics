@@ -1,0 +1,236 @@
+○ vb-qbp6r · P0-5a recover-frame-seed-wire: Wire Runtime::recover to recover_runtime_frame_seed (no P2-15 dep)   [● P0 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-yziumlts.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-yziumlts.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-yziumlts"
+  title: "P0-5a recover-frame-seed-wire: Wire Runtime::recover to recover_runtime_frame_seed (no P2-15 dep)"
+  type: "feature"
+  priority: 0
+  effort_estimate: "2hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL wire Runtime::recover to call recover_runtime_frame_seed for each non-terminal run during startup\",
+      \"THE SYSTEM SHALL make Runtime::recover publicly callable (drop the #[cfg(test-util)] gate)\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN the runtime starts and a non-terminal run is detected in the journal\", shall: \"THE SYSTEM SHALL call Runtime::recover(run_id) which calls recover_runtime_frame_seed, reattaches the RecoveredRunAdmission, and returns a reconstructed RunFrame\"},
+      {trigger: \"WHEN the user runs `vb replay <run-id> --db <path>` on a non-terminal run\", shall: \"THE SYSTEM SHALL call Runtime::recover + Runtime::snapshot_run and emit a ReplayReport containing the reconstructed RunFrame\"}
+    ]
+    unwanted: [
+      {condition: \"IF the journal contains a digest mismatch (workflow, action, or policy)\", shall_not: \"THE SYSTEM SHALL NOT silently default to a substituted value; it must return a typed ReplayDiverged error\", because: \"Master §68 invariant 4: recovery is deterministic; divergence is a hard failure\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"recover_runtime_frame_seed at recover.rs:251-260 is fully implemented and tested (this bead does NOT modify it)\",
+        \"Runtime::snapshot_run at runtime/mod.rs:198 is fully implemented and tested (this bead does NOT modify it)\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"Runtime::recover is publicly callable (no #[cfg(test-util)] gate)\",
+        \"Runtime::recover calls recover_runtime_frame_seed and reattaches RecoveredRunAdmission to RunState.admission\",
+        \"cmd_replay produces a ReplayReport with reconstructed RunFrame (pending_actions are NOT yet re-attached; that's P0-5b)\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"Recovery is deterministic: same journal sequence → same reconstructed frame (master §68 invariant 4)\",
+      \"The 5 master §68 invariants hold for the rehydrated frame\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed — already implemented, we just call it)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs — returns Summary; we extend or replace)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — reference for the public API)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should Runtime::recover be a method on Runtime, or a free function in vb_runtime::recover? Recommend: method on Runtime to keep the API symmetric with snapshot_run\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Attacker mutates the journal workflow digest; on restart, the runtime silently uses the mutated workflow\", prevention: \"Runtime::recover returns ReplayDiverged on digest mismatch (preserved invariant)\", test_for_it: \"runtime_recover_on_mutated_workflow_digest_returns_replay_diverged\"},\n      {failure: \"Restart does not recover the in-flight run; the run is silently dropped and the journal is out of sync with the runtime state\", prevention: \"Runtime::recover is publicly callable; on startup, every non-terminal journal entry triggers a recover call\", test_for_it: \"runtime_startup_recovers_all_incomplete_runs: 10 non-terminal runs in journal; startup; assert all 10 are in shard::active_runs\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_runtime_recover_returns_reconstructed_runframe_a_non-terminal_run_with_10_journa\", given: \"Feature P0-5a (split from black-hat-flagged vb-pi2zl). Black-hat review round 1 found a priority inversion: P0-5 depended on P2-15 (P0 blocked on P2). This bead (P0-5a) does the frame-seed wire-up WITHOUT depending on P2-15, removing the inversion. Real source: vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed is fully implemented but orphaned — never called); vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover is gated behind #[cfg(feature = 'test-util')] and calls recover_all_incomplete_runs which returns Summary only, dropping the frame data). This bead: (1) drops the #[cfg(test-util)] gate on Runtime::recover; (2) makes Runtime::recover call recover_runtime_frame_seed for each non-terminal run; (3) reattaches the RecoveredRunAdmission to RunState.admission; (4) wires cmd_replay to call Runtime::recover + Runtime::snapshot_run to produce a ReplayReport with reconstructed RunFrame. The pending_actions coordination is split off into P0-5b. Master §68 invariants 1-5 apply. Kani harness: prove Runtime::recover is bit-identical to a live runtime at the same journal sequence. proptest: 1000 random (journal, replay) cycles produce identical reconstructed frames.\", when: \"runtime_recover_returns_reconstructed_runframe: a non-terminal run with 10 journal events; recover; assert reconstructed slots, taint, step states match the journal\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_cmd_replay_produces_replay_report_`vb_replay_<run-id>_--db_<path>`;_assert_exit_\", given: \"Feature P0-5a (split from black-hat-flagged vb-pi2zl). Black-hat review round 1 found a priority inversion: P0-5 depended on P2-15 (P0 blocked on P2). This bead (P0-5a) does the frame-seed wire-up WITHOUT depending on P2-15, removing the inversion. Real source: vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed is fully implemented but orphaned — never called); vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover is gated behind #[cfg(feature = 'test-util')] and calls recover_all_incomplete_runs which returns Summary only, dropping the frame data). This bead: (1) drops the #[cfg(test-util)] gate on Runtime::recover; (2) makes Runtime::recover call recover_runtime_frame_seed for each non-terminal run; (3) reattaches the RecoveredRunAdmission to RunState.admission; (4) wires cmd_replay to call Runtime::recover + Runtime::snapshot_run to produce a ReplayReport with reconstructed RunFrame. The pending_actions coordination is split off into P0-5b. Master §68 invariants 1-5 apply. Kani harness: prove Runtime::recover is bit-identical to a live runtime at the same journal sequence. proptest: 1000 random (journal, replay) cycles produce identical reconstructed frames.\", when: \"cmd_replay_produces_replay_report: `vb replay <run-id> --db <path>`; assert exit 0 and ReplayReport contains reconstructed RunFrame\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_runtime_recover_on_digest_mismatch_returns_replay_diverged_journal_with_mutated_\", given: \"Error precondition\", when: \"runtime_recover_on_digest_mismatch_returns_replay_diverged: journal with mutated workflow digest; recover; assert ReplayDiverged error\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_runtime_recover_on_terminal_run_returns_completed_journal_ending_in_runfinished;\", given: \"Error precondition\", when: \"runtime_recover_on_terminal_run_returns_completed: journal ending in RunFinished; recover; assert no frame (the run is done)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P0-5a recover-frame-seed-wire: Wire Runtime::recover to recover_runtime_frame_seed (no P2-15 dep)"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/vb_storage/src/recovery/recover.rs:251-296 to understand the existing recovery framework\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_runtime/src/runtime/mod.rs:198 (snapshot_run) and :343-365 (recover) to find the wire-up site\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Write test test_runtime_recover_returns_reconstructed_runframe (REGRESSION SHIELD)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Write proptest proptest_recovery_is_deterministic (1000 random cycles)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"In vb_runtime/src/runtime/mod.rs:343-365 Runtime::recover: drop the #[cfg(feature = 'test-util')] gate\", done_when: \"Tests pass\"},
+        {task: \"In the same function: call vb_storage::recovery::recover_runtime_frame_seed(events) for each non-terminal run, reattach RecoveredRunAdmission to RunState.admission, return the reconstructed RunFrame\", done_when: \"Tests pass\"},
+        {task: \"In vb_cli/src/commands/replay.rs cmd_replay: call Runtime::recover + Runtime::snapshot_run and emit ReplayReport\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_storage/src/recovery/recover.rs:251-296 (the source of recover_runtime_frame_seed)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — the symmetric reference)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_cli/src/commands/replay.rs (cmd_replay — the user-facing entry point)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-yziumlts/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_storage/src/recovery/recover.rs:251-296 (the source of recover_runtime_frame_seed)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — the symmetric reference)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_cli/src/commands/replay.rs (cmd_replay — the user-facing entry point)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+BLOCKS
+  ← ○ vb-8tjk8: P2-18r snapshot-writer: Runtime writes RunSnapshot after N steps (≥3× throughput on submit + 100 actions) ● P2
+

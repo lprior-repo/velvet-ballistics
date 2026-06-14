@@ -833,10 +833,11 @@ mod invariant_tests {
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-profile.yaml", MINIMAL_WORKFLOW).unwrap();
         for profile in &["quick", "standard", "full"] {
             let output = run_cli(&["verify", tmp.to_str().unwrap(), "--profile", profile]).unwrap();
-            // All profiles should be recognized (may pass or fail based on env)
-            assert!(
-                output.status.code() == Some(0) || output.status.code() == Some(2),
-                "profile {} should be recognized",
+            let expected = if *profile == "full" { Some(4) } else { Some(0) };
+            assert_eq!(
+                output.status.code(),
+                expected,
+                "profile {} should produce the expected verify exit code",
                 profile
             );
         }

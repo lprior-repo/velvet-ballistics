@@ -1,0 +1,153 @@
+{
+  "id": "s-19-vb-benchmark-cleanup",
+  "title": "vb-benchmark-cleanup: Remove RED-PHASE STUB marker; convert aggregate_resource_budget.rs to real Criterion bench",
+  "type": "chore",
+  "priority": 3,
+  "effort": "30min",
+  "description": "Chore S-19. Master §39 Mandatory Benchmarks and §40 CI Gate require a real bench-build task with Criterion benchmarks that produce actionable numbers, not compileable scaffolds. Today vb_benchmark is declared 'RED PHASE STUB' by its own module doc; tests/benchmark_tests.rs has 12 `// STUB: This test will FAIL` markers. vb_core/benches/aggregate_resource_budget.rs is a soft no-op scaffold (uses black_box(source).contains(...) as the 'benchmark'). The 'every speed claim requires real evidence' rule (master §0, §39) is violated by these stubs. This bead: (1) in vb_benchmark/src/lib.rs, remove the 'RED PHASE NOTICE' comment; either implement the real benchmark infrastructure or delete the crate; (2) in vb_core/benches/aggregate_resource_budget.rs, replace the black_box(source).contains(...) with a real Criterion benchmark; (3) add the bench to .moon.yml bench-build task list.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL NOT ship benchmarks as no-op scaffolds; every bench in the bench-build task must measure real work",
+      "THE SYSTEM SHALL remove the 'RED PHASE STUB' marker from vb_benchmark/src/lib.rs"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN `cargo bench -p vb_benchmark` is run",
+        "shall": "THE SYSTEM SHALL execute real Criterion benchmarks, not no-op scaffolds"
+      },
+      {
+        "trigger": "WHEN `moon run :bench-build` is run",
+        "shall": "THE SYSTEM SHALL build all benches including vb_benchmark and vb_core/benches/aggregate_resource_budget.rs"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a bench file uses `black_box(x).contains(y)` or similar no-op pattern",
+        "shall_not": "THE SYSTEM SHALL NOT pass it off as a benchmark",
+        "because": "Master §0: 'Every speed claim requires real baseline/result benchmark evidence' — no-op scaffolds prove the harness builds, not that the implementation is faster"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Criterion is in the workspace dependency tree",
+      "Existing fixtures for vb_benchmark exist or can be created"
+    ],
+    "postconditions": [
+      "vb_benchmark/src/lib.rs has no 'RED PHASE' comment",
+      "vb_core/benches/aggregate_resource_budget.rs uses Criterion's bencher with real work",
+      ".moon.yml bench-build task includes both benches"
+    ],
+    "invariants": [
+      "Every bench in bench-build produces real numbers (criterion::Bencher::iter is called with non-trivial work)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "vb_benchmark_lib_no_red_phase_comment: a grep test asserts the 'RED PHASE' string is absent from vb_benchmark/src/lib.rs",
+      "aggregate_resource_budget_bench_uses_criterion: a grep test asserts the file uses criterion::Bencher or c.bench_function, not just black_box",
+      "moon_bench_build_includes_both_benches: a test asserts that `moon run :bench-build` builds both vb_benchmark and vb_core's aggregate_resource_budget bench"
+    ],
+    "error": [
+      "bench_build_fails_if_stub_detected: a CI check fails if any bench file contains a no-op pattern",
+      "red_phase_comment_reappears_fails_grep: a CI check fails if 'RED PHASE' string reappears in vb_benchmark/src/lib.rs",
+      "stub_marker_reappears_fails_grep: a CI check fails if `// STUB: This test will FAIL` reappears in benchmark_tests.rs"
+    ],
+    "edge": [
+      "tests_benchmark_tests_rs_no_stub_markers: a grep test asserts no `// STUB: This test will FAIL` markers remain"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_benchmark/src/lib.rs (the 'RED PHASE NOTICE' comment to remove)",
+      "crates/vb_benchmark/tests/benchmark_tests.rs (the 12 `// STUB: This test will FAIL` markers)",
+      "crates/vb_core/benches/aggregate_resource_budget.rs (the no-op scaffold to convert)",
+      ".moon.yml (bench-build task to update)"
+    ],
+    "patterns": [
+      "Pattern: existing Criterion benches in the workspace (use one as a template)"
+    ],
+    "questions": [
+      "Should vb_benchmark be deleted or implemented? (Spec: implement with real Criterion benches; if no workloads exist, create representative ones.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [],
+    "usability_failures": [
+      {
+        "failure": "CI passes with no-op benches, giving a false sense of 'benchmarks are passing'",
+        "prevention": "Add a grep test that fails if any no-op pattern is detected",
+        "test_for_it": "bench_build_fails_if_stub_detected"
+      }
+    ],
+    "data_integrity_failures": [],
+    "integration_failures": [
+      {
+        "failure": ".moon.yml bench-build is missing the new benches, so they are never built",
+        "prevention": "Add the benches to the task list",
+        "test_for_it": "moon_bench_build_includes_both_benches"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_benchmark/src/lib.rs to find the 'RED PHASE NOTICE' comment",
+      "Read crates/vb_benchmark/tests/benchmark_tests.rs to find the 12 STUB markers",
+      "Read crates/vb_core/benches/aggregate_resource_budget.rs to see the no-op pattern",
+      "Read .moon.yml to find the bench-build task"
+    ],
+    "phase_1": [
+      "Write test test_vb_benchmark_lib_no_red_phase_comment (grep test)",
+      "Write test test_aggregate_resource_budget_bench_uses_criterion (grep test)",
+      "Write test test_tests_benchmark_tests_rs_no_stub_markers (grep test)"
+    ],
+    "phase_2": [
+      "In vb_benchmark/src/lib.rs: remove the 'RED PHASE NOTICE' comment block",
+      "In vb_benchmark: implement at least one real Criterion benchmark (or delete the crate if no workloads exist)",
+      "In vb_core/benches/aggregate_resource_budget.rs: replace the black_box(source).contains(...) with a real c.bench_function(...) that measures actual aggregate_resource_budget work",
+      "In vb_benchmark/tests/benchmark_tests.rs: remove the 12 `// STUB: This test will FAIL` markers (or replace with real tests)"
+    ],
+    "phase_3": [
+      "Update .moon.yml bench-build task to include vb_benchmark and vb_core's aggregate_resource_budget bench"
+    ],
+    "phase_4": [
+      "Run `moon run :bench-build` and verify both benches build",
+      "Run `cargo bench -p vb_benchmark` and verify real numbers are produced"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_benchmark/src/lib.rs (RED PHASE comment)",
+      "crates/vb_benchmark/tests/benchmark_tests.rs (12 STUB markers)",
+      "crates/vb_core/benches/aggregate_resource_budget.rs (no-op scaffold)",
+      ".moon.yml (bench-build task)"
+    ],
+    "similar_implementations": [
+      "Other Criterion benches in the workspace (use as template)"
+    ],
+    "external_references": [
+      "Master §0 Prime Directive (real evidence, not scaffolds)",
+      "Master §39 Mandatory Benchmarks",
+      "Master §40 CI Gate"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_benchmark/src/lib.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The 'RED PHASE NOTICE' comment and the surrounding stub structure"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "criterion::criterion_main, criterion::criterion_group in the criterion crate",
+      "c.bench_function, c.bench_with_input in criterion::Bencher"
+    ],
+    "apis_that_do_not_exist": [],
+    "no_placeholder_values": [
+      "Do NOT replace a stub with another stub; use real work"
+    ]
+  }
+}

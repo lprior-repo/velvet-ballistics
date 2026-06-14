@@ -1,0 +1,232 @@
+○ vb-5dgth · P1-12r simulate-structured: Add kind, action_id, mock_output, suspension_reason fields to SimulationStep (per master §75)   [● P1 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-ucctgrcb.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-ucctgrcb.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-ucctgrcb"
+  title: "P1-12r simulate-structured: Add kind, action_id, mock_output, suspension_reason fields to SimulationStep (per master §75)"
+  type: "feature"
+  priority: 1
+  effort_estimate: "1hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL include kind, action_id, mock_output, suspension_reason fields in every SimulationStep (per master §75)\",
+      \"THE SYSTEM SHALL serialize SimulationStep to JSON with the 4 fields present (even if None)\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN simulate_workflow is called and a step is a Do step with action_id=42 and mock=EchoAction\", shall: \"THE SYSTEM SHALL emit SimulationStep { kind: Do, action_id: Some(42), mock_output: Some(input_bytes), suspension_reason: None, .. }\"},
+      {trigger: \"WHEN simulate_workflow is called and a step is a Wait step that suspends on deadline=1000ms\", shall: \"THE SYSTEM SHALL emit SimulationStep { kind: Wait, action_id: None, mock_output: None, suspension_reason: Some(AwaitingDeadline(1000)), .. }\"}
+    ]
+    unwanted: [
+      {condition: \"IF a step is a Set or Finish (no action, no suspension)\", shall_not: \"THE SYSTEM SHALL NOT emit a non-None action_id, mock_output, or suspension_reason; they must be None\", because: \"Master §75: only Do has action_id+mock_output; only Wait/Ask/Do have suspension_reason\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"SimulationResult at commands_workflow/mod.rs:23-26 is already structured (steps, total_steps, action_count, branch_count)\",
+        \"simulate_workflow at commands_workflow/mod.rs:30-60 is already implemented\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"SimulationStep has 8 fields (was 4): id, name, kind, action_id, mock_output, suspension_reason, duration_estimate, notes\",
+        \"JSON output includes all 8 fields, with the 4 new fields as Option types that serialize as null when None\",
+        \"No regression: existing fields (id, name, duration_estimate, notes) are preserved\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"action_id is Some iff kind == Do\",
+      \"mock_output is Some iff kind == Do AND the action has a mock registered\",
+      \"suspension_reason is Some iff kind is Wait/Ask/Do (i.e., the step suspended)\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_cli/src/commands_workflow/mod.rs:17-26 (SimulationStep struct — the fix site)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/commands_workflow/mod.rs:30-60 (simulate_workflow function — populate the 4 new fields)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §75 (the simulation output schema — the authoritative spec)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should SuspensionReason be a flat enum (AwaitingDeadline, AwaitingEvent, AwaitingAsk) or a structured variant (AwaitingDeadline { ms: u64 })? Recommend: structured variant to allow more fields in the future (e.g., AwaitingAsk { prompt: String, timeout_ms: Option<u64> })\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"mock_output leaks sensitive data (e.g., a hashed password) into the JSON output; the user expects None but gets Some(bytes)\", prevention: \"mock_output is only populated for explicit mock actions (Echo, ComputeHash, Delay); user-defined actions get None\", test_for_it: \"simulate_user_defined_action_has_none_mock_output: workflow with a non-mock action; simulate; assert step.mock_output is None\"},\n      {failure: \"User runs `vb simulate` and gets a JSON without the action_id field; downstream tooling that expects action_id crashes on missing field\", prevention: \"All 8 fields are always present in the JSON output (with null for None)\", test_for_it: \"simulate_json_always_includes_all_8_fields: proptest with 100 random workflows; assert all 8 fields are present in the JSON\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_simulate_set_step_has_none_action_id_workflow_with_`set_{_output_x,_value_42_}`;\", given: \"Feature P1-12r (revision of black-hat-revised vb-upqq9). Black-hat review round 1 found that the original bead cited 'simulate_workflow is unstructured' as the framing, but the function is ALREADY structured. Real source: crates/vb_cli/src/commands_workflow/mod.rs:30-60 (simulate_workflow returns SimulationResult { steps: Vec<SimulationStep>, total_steps, action_count, branch_count }; the function is implemented and tested). The black-hat also flagged that the cited line range 95-125 was wrong; the actual implementation is at lines 30-60. The real gap, per master §75, is that SimulationStep lacks four required fields: (1) `kind: StepKind` (the type of step: Set, Do, Wait, etc.), (2) `action_id: Option<ActionId>` (the action for Do steps; None for non-Do steps), (3) `mock_output: Option<Vec<u8>>` (the mock action's output, for Do steps using mock actions; None otherwise), (4) `suspension_reason: Option<SuspensionReason>` (why the step suspended, for Wait/Ask/Do; None otherwise). Real source: commands_workflow/mod.rs:17-26 (SimulationStep struct definition — currently has 4 fields; missing the 4 above). This bead adds the 4 fields, populates them in the existing simulation logic, and ensures the JSON output schema matches master §75. Kani harness: prove SimulationStep::json_serialize never panics on any step kind. proptest: 100 random workflows produce 100% valid JSON output.\", when: \"simulate_set_step_has_none_action_id: workflow with `set: { output: x, value: 42 }`; simulate; assert step.kind == Set, step.action_id is None\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_simulate_do_step_with_mock_has_action_id_and_mock_output_workflow_with_`do_{_act\", given: \"Feature P1-12r (revision of black-hat-revised vb-upqq9). Black-hat review round 1 found that the original bead cited 'simulate_workflow is unstructured' as the framing, but the function is ALREADY structured. Real source: crates/vb_cli/src/commands_workflow/mod.rs:30-60 (simulate_workflow returns SimulationResult { steps: Vec<SimulationStep>, total_steps, action_count, branch_count }; the function is implemented and tested). The black-hat also flagged that the cited line range 95-125 was wrong; the actual implementation is at lines 30-60. The real gap, per master §75, is that SimulationStep lacks four required fields: (1) `kind: StepKind` (the type of step: Set, Do, Wait, etc.), (2) `action_id: Option<ActionId>` (the action for Do steps; None for non-Do steps), (3) `mock_output: Option<Vec<u8>>` (the mock action's output, for Do steps using mock actions; None otherwise), (4) `suspension_reason: Option<SuspensionReason>` (why the step suspended, for Wait/Ask/Do; None otherwise). Real source: commands_workflow/mod.rs:17-26 (SimulationStep struct definition — currently has 4 fields; missing the 4 above). This bead adds the 4 fields, populates them in the existing simulation logic, and ensures the JSON output schema matches master §75. Kani harness: prove SimulationStep::json_serialize never panics on any step kind. proptest: 100 random workflows produce 100% valid JSON output.\", when: \"simulate_do_step_with_mock_has_action_id_and_mock_output: workflow with `do: { action: 42, input: x }` and EchoAction mock; simulate; assert step.kind == Do, step.action_id == Some(42), step.mock_output == Some(input_bytes)\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_simulate_wait_step_has_suspension_reason_workflow_with_`wait_{_event_x,_timeout_\", given: \"Error precondition\", when: \"simulate_wait_step_has_suspension_reason: workflow with `wait: { event: x, timeout: y }`; simulate; assert step.suspension_reason == Some(AwaitingDeadline(timeout))\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_negative_test_compile_failure_path_returns_typed_error_a_malformed_input_is_reje\", given: \"Error precondition\", when: \"negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P1-12r simulate-structured: Add kind, action_id, mock_output, suspension_reason fields to SimulationStep (per master §75)"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/vb_cli/src/commands_workflow/mod.rs:17-60 to confirm the existing structure\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read master doc §75 to confirm the 4 required fields and their semantics\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Write test test_simulate_set_step_has_none_action_id (REGRESSION SHIELD)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Write proptest proptest_simulate_json_round_trip (100 random workflows)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"In commands_workflow/mod.rs:17-26: add 4 new fields to SimulationStep: kind, action_id, mock_output, suspension_reason\", done_when: \"Tests pass\"},
+        {task: \"In commands_workflow/mod.rs:30-60 simulate_workflow: populate the 4 new fields per the truth table (action_id Some iff kind==Do, etc.)\", done_when: \"Tests pass\"},
+        {task: \"Update the JSON serializer to emit all 8 fields (use #[derive(Serialize)] with skip_serializing_if = false)\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_cli/src/commands_workflow/mod.rs:17-60 (the fix site)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"master doc §75 (the simulation output schema)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-ucctgrcb/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_cli/src/commands_workflow/mod.rs:17-60 (the fix site)\", relevance: \"Related implementation\"},
+      {path: \"master doc §75 (the simulation output schema)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+

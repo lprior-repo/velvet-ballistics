@@ -1127,6 +1127,8 @@ velvet-ballistics/
   supply-chain/
     config.toml
   crates/
+    vb_boundary_inventory/
+    vb_queue_semantics/
     vb_core/
     vb_yaml/
     vb_validate/
@@ -1134,14 +1136,21 @@ velvet-ballistics/
     vb_compile/
     vb_storage/
     vb_runtime/
+    vb_doc/
     vb_ipc/
-    velvet_ballistics/
+    vb_proof_kernels/
+    vb_cli/
+    vb_verification/
+    vb_test_util/
+    vb_benchmark/
+    workspace_tests/
+      idempotency_suite/
   benches/
   fuzz/
-  crates/workspace_tests/
+  xtask/
 ```
 
-Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballistics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
+Current state: the workspace-member list is defined by the repository `Cargo.toml`. The `velvet-ballistics` binary lives in `crates/vb_cli`; see §33.6. Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
 
 Removed crates: `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are not active current-scope workspace requirements. They must not appear as active workspace members or current release gates.
 
@@ -1409,7 +1418,7 @@ back without a master amendment:
 | `verify` (as IPC `VerifyWorkflow`)               | REMOVED | S21 reserved range 12..=16 explicitly forbids `VerifyWorkflow` on the IPC wire. CLI `verify` (row 9) is the dry-run form and is in the matrix. |
 | `list-runs`, `get-metrics`, `get-workflow-graph`, `get-taint-report` (IPC) | REMOVED | S21 reserved range 12..=16 explicitly forbids these on the IPC wire. |
 | `vb` (binary alias)                              | REMOVED | S33 line 1303 + S69 lines 3481-3483: the only supported binary name is `velvet-ballistics`. `crates/vb_cli/Cargo.toml:28-30` rejects `[[bin]] name = "vb"`. |
-| `velvet_ballistics` (snake_case workspace member) | DRIFT | S34 lists `crates/velvet_ballistics` as a workspace member; the binary actually lives in `crates/vb_cli` with `name = "velvet-ballistics"`. Workspace-shape drift, not command-surface drift; out of scope for vb-k8ut.4 and flagged separately. |
+| `velvet_ballistics` (snake_case workspace member) | RESOLVED | Historical workspace-shape drift removed. The binary lives in `crates/vb_cli` with `name = "velvet-ballistics"`; `crates/velvet_ballistics` is not a workspace member. |
 | `ai context` (space form, parser token)          | NORMALIZED | The parser token is `ai-context` (kebab-case). The space form `ai context` is a documentation spelling preserved in §33.1 row 30 for Section 33 historical parity; the parser does NOT accept the space form. |
 
 **Single-source rule:** a future Section 69 / Section 75
@@ -1425,42 +1434,17 @@ matrix first; the matrix is the upper bound.
 | `parse_args` dispatch | `crates/vb_cli/src/args/shared.rs:208-254` | 30/30 | Matches matrix exactly. |
 | `run_from_env` dispatcher | `crates/vb_cli/src/dispatcher.rs:49-159` | 30/30 | Matches matrix exactly. |
 | `HELP` string | `crates/vb_cli/src/constants.rs:8-53` | 30/30 (36 lines counting multi-token subshapes) | Matches matrix exactly. |
-| `agent_context::commands()` JSON | `crates/vb_cli/src/agent_context/mod.rs:103-260` | **22/30** | **GAP — 7 entries missing (see §33.4).** |
+| `agent_context::commands()` JSON | `crates/vb_cli/src/agent_context/mod.rs:103-327` | 30/30 | Matches matrix exactly. |
 
 The matrix-conformance proptest
 (`crates/workspace_tests/tests/cli_matrix_conformance.rs`)
 asserts that all six sources stay in lockstep with §33.1.
 
-### 33.4 Agent-context gap (7 entries missing from `agent_context::commands`)
+### 33.4 Agent-context parity
 
-The `agent-context` JSON (v1 introspection surface; see
-`agent_context/mod.rs:103-260`) currently returns 22 of the
-30 matrix entries. The following 7 entries are present in the
-implementation `Command` enum and in the matrix but **are NOT
-yet exposed in the agent-context schema**. (`agent-context`
-itself IS in the source at `agent_context/mod.rs:105-111` as
-the first command, so it is NOT a gap.) This is a
-documentation/introspection gap, not a behaviour gap; the
-commands parse and dispatch correctly.
-
-| # | Token | `Command` variant | Status |
-|---|-------|-------------------|--------|
-| 1 | `help` | `Command::Help` | **GAP** — not in `agent_context::commands()` |
-| 2 | `version` | `Command::Version` | **GAP** — not in `agent_context::commands()` |
-| 3 | `status` | `Command::Status` | **GAP** — top-level `status` not in `agent_context::commands()` |
-| 4 | `system` | `Command::SystemStatus` | **GAP** — `system status` not in `agent_context::commands()` |
-| 5 | `action` (list) | `Command::ActionList` | **GAP** — `action list` not in `agent_context::commands()` |
-| 6 | `action` (inspect) | `Command::ActionInspect` | **GAP** — `action inspect` not in `agent_context::commands()` |
-| 7 | `ai-context` | `Command::AiContext` | **GAP** — `ai-context` not in `agent_context::commands()` (the `ai context` S33 spelling is also missing) |
-
-**Resolution path:** the matrix-conformance proptest asserts
-that `agent_context::commands()` returns 30/30; a future bead
-(recommended `vb-k8ut.4.1`) extends `agent_context/mod.rs` to
-enumerate all 30 variants. Until then, the 22/30 gap is
-documented here and the contract is satisfied as long as
-**the impl never rejects a command listed in the matrix** (which
-it does not: the parser, dispatcher, and `VALID_COMMANDS`
-all match 30/30).
+Resolved: `agent_context::commands()` now returns all 30 matrix
+entries, including `help`, `version`, `status`, `system-status`,
+`action-list`, `action-inspect`, `ai-context`, and `cancel`.
 
 ### 33.5 Cross-reference (where else in master the matrix appears)
 
@@ -1472,7 +1456,7 @@ all match 30/30).
 | Section 69 (Operator CLI Contract, lines 3448-3585) | The 24-row "Canonical Command Surface" block at lines 3452-3479 is now a **summary pointer** to this matrix. Section 69's Single-Step Testing (lines 3487-3498), Durable Execution Controls table (lines 3502-3512), Explain/Dry-Run contract (lines 3514-3528), Semantic Diff contract (lines 3530-3538), Structured Observability (lines 3540-3553), CLI Design Rules (lines 3555-3561), and Agent-First CLI Principles (lines 3563-3584) remain authoritative for those topics. The binary-name policy (lines 3481-3483) and the `ui` removal (line 3485) remain authoritative. |
 | Section 70 (Phase Extension: Operator Features, lines 3588-3606) | A phase-tracking overlay. Phases 50-54 deliver the matrix rows that were added in this amendment; phases 55-60 are internal or cleanup. The phase table remains a delivery tracker, not a command-surface source. |
 | Section 75 (AI-Native CLI Control Plane, lines 3719-4317) | The 16-row "Lifecycle Command Surface" block at lines 3755-3776 is a **downstream extension** that adds output-schema addenda for `verify` (lines 3808-3872), `explain` (lines 3875-3912), `simulate` (lines 3947-3984), `inspect`/`replay`/`incident` (lines 3987-4103), and `graph` (lines 4107-4180). These addenda are authoritative for those specific commands' output payloads. |
-| Section 34 (Workspace Cargo Contract, lines 1307-1388) | Unchanged. Drift on `crates/velvet_ballistics` workspace membership is a separate contract reconciliation; out of scope for vb-k8ut.4. |
+| Section 34 (Workspace Cargo Contract, lines 1307-1388) | Workspace membership drift on `crates/velvet_ballistics` has been removed; Section 34 remains a historical workspace snapshot for the other listed members. |
 
 ### 33.6 Binary-name policy (preserved)
 
@@ -1495,6 +1479,8 @@ CLI structured output is a cold-path operator/agent contract and never enters `v
 ```toml
 [workspace]
 members = [
+  "crates/vb_boundary_inventory",
+  "crates/vb_queue_semantics",
   "crates/vb_core",
   "crates/vb_yaml",
   "crates/vb_validate",
@@ -1502,12 +1488,19 @@ members = [
   "crates/vb_compile",
   "crates/vb_storage",
   "crates/vb_runtime",
+  "crates/vb_doc",
   "crates/vb_ipc",
-  "crates/velvet_ballistics",
+  "crates/vb_proof_kernels",
+  "crates/vb_cli",
+  "crates/vb_verification",
+  "crates/vb_test_util",
+  "crates/workspace_tests/idempotency_suite",
   "crates/workspace_tests",
-  "fuzz",
+  "crates/vb_benchmark",
+  "xtask",
 ]
 resolver = "2"
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz", "crates/vb_ajc40_flux"]
 
 [workspace.package]
 edition = "2024"

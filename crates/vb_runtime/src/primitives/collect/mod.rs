@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Collect pagination primitive handlers.
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-collect-pagination"))]
 mod kani;
 mod state;
 mod validation;

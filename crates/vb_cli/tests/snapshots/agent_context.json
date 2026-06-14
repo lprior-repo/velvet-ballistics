@@ -143,6 +143,31 @@
       ],
       "summary": "Benchmark a workflow fixture."
     },
+    "cancel": {
+      "flags": {
+        "--db": {
+          "required": true,
+          "type": "path"
+        },
+        "--emit": {
+          "default": "text",
+          "type": "enum",
+          "values": [
+            "text",
+            "yaml",
+            "postcard"
+          ]
+        },
+        "--reason": {
+          "max_length": 256,
+          "type": "string"
+        }
+      },
+      "positionals": [
+        "run_id"
+      ],
+      "summary": "Cancel a durable run."
+    },
     "compile": {
       "flags": {
         "--emit": {

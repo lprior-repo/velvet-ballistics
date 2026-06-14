@@ -1,0 +1,148 @@
+{
+  "id": "p0-5a-recover-frame-seed-wire",
+  "title": "P0-5a recover-frame-seed-wire: Wire Runtime::recover to recover_runtime_frame_seed (no P2-15 dep)",
+  "type": "feature",
+  "priority": 0,
+  "effort": "2hr",
+  "description": "Feature P0-5a (split from black-hat-flagged vb-pi2zl). Black-hat review round 1 found a priority inversion: P0-5 depended on P2-15 (P0 blocked on P2). This bead (P0-5a) does the frame-seed wire-up WITHOUT depending on P2-15, removing the inversion. Real source: vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed is fully implemented but orphaned — never called); vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover is gated behind #[cfg(feature = 'test-util')] and calls recover_all_incomplete_runs which returns Summary only, dropping the frame data). This bead: (1) drops the #[cfg(test-util)] gate on Runtime::recover; (2) makes Runtime::recover call recover_runtime_frame_seed for each non-terminal run; (3) reattaches the RecoveredRunAdmission to RunState.admission; (4) wires cmd_replay to call Runtime::recover + Runtime::snapshot_run to produce a ReplayReport with reconstructed RunFrame. The pending_actions coordination is split off into P0-5b. Master §68 invariants 1-5 apply. Kani harness: prove Runtime::recover is bit-identical to a live runtime at the same journal sequence. proptest: 1000 random (journal, replay) cycles produce identical reconstructed frames.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL wire Runtime::recover to call recover_runtime_frame_seed for each non-terminal run during startup",
+      "THE SYSTEM SHALL make Runtime::recover publicly callable (drop the #[cfg(test-util)] gate)"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the runtime starts and a non-terminal run is detected in the journal",
+        "shall": "THE SYSTEM SHALL call Runtime::recover(run_id) which calls recover_runtime_frame_seed, reattaches the RecoveredRunAdmission, and returns a reconstructed RunFrame"
+      },
+      {
+        "trigger": "WHEN the user runs `vb replay <run-id> --db <path>` on a non-terminal run",
+        "shall": "THE SYSTEM SHALL call Runtime::recover + Runtime::snapshot_run and emit a ReplayReport containing the reconstructed RunFrame"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the journal contains a digest mismatch (workflow, action, or policy)",
+        "shall_not": "THE SYSTEM SHALL NOT silently default to a substituted value; it must return a typed ReplayDiverged error",
+        "because": "Master §68 invariant 4: recovery is deterministic; divergence is a hard failure"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "recover_runtime_frame_seed at recover.rs:251-260 is fully implemented and tested (this bead does NOT modify it)",
+      "Runtime::snapshot_run at runtime/mod.rs:198 is fully implemented and tested (this bead does NOT modify it)"
+    ],
+    "postconditions": [
+      "Runtime::recover is publicly callable (no #[cfg(test-util)] gate)",
+      "Runtime::recover calls recover_runtime_frame_seed and reattaches RecoveredRunAdmission to RunState.admission",
+      "cmd_replay produces a ReplayReport with reconstructed RunFrame (pending_actions are NOT yet re-attached; that's P0-5b)"
+    ],
+    "invariants": [
+      "Recovery is deterministic: same journal sequence → same reconstructed frame (master §68 invariant 4)",
+      "The 5 master §68 invariants hold for the rehydrated frame"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "runtime_recover_returns_reconstructed_runframe: a non-terminal run with 10 journal events; recover; assert reconstructed slots, taint, step states match the journal",
+      "cmd_replay_produces_replay_report: `vb replay <run-id> --db <path>`; assert exit 0 and ReplayReport contains reconstructed RunFrame"
+    ],
+    "error": [
+      "runtime_recover_on_digest_mismatch_returns_replay_diverged: journal with mutated workflow digest; recover; assert ReplayDiverged error",
+      "runtime_recover_on_terminal_run_returns_completed: journal ending in RunFinished; recover; assert no frame (the run is done)"
+    ],
+    "edge": [
+      "proptest_recovery_is_deterministic: 1000 random (journal, replay) cycles; assert reconstructed frame == previously reconstructed frame",
+      "kani_recover_is_bit_identical: bounded model check with 4 journal events in 4! permutations; assert all orderings produce the same frame"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed — already implemented, we just call it)",
+      "crates/vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs — returns Summary; we extend or replace)",
+      "crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — reference for the public API)",
+      "crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)"
+    ],
+    "patterns": [
+      "Pattern: existing Runtime::snapshot_run at runtime/mod.rs:198 is the canonical public API; Runtime::recover should mirror it"
+    ],
+    "questions": [
+      "Should Runtime::recover be a method on Runtime, or a free function in vb_runtime::recover? Recommend: method on Runtime to keep the API symmetric with snapshot_run"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Restart does not recover the in-flight run; the run is silently dropped and the journal is out of sync with the runtime state",
+        "prevention": "Runtime::recover is publicly callable; on startup, every non-terminal journal entry triggers a recover call",
+        "test_for_it": "runtime_startup_recovers_all_incomplete_runs: 10 non-terminal runs in journal; startup; assert all 10 are in shard::active_runs"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker mutates the journal workflow digest; on restart, the runtime silently uses the mutated workflow",
+        "prevention": "Runtime::recover returns ReplayDiverged on digest mismatch (preserved invariant)",
+        "test_for_it": "runtime_recover_on_mutated_workflow_digest_returns_replay_diverged"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_storage/src/recovery/recover.rs:251-296 to understand the existing recovery framework",
+      "Read crates/vb_runtime/src/runtime/mod.rs:198 (snapshot_run) and :343-365 (recover) to find the wire-up site"
+    ],
+    "phase_1": [
+      "Write test test_runtime_recover_returns_reconstructed_runframe (REGRESSION SHIELD)",
+      "Write proptest proptest_recovery_is_deterministic (1000 random cycles)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/runtime/mod.rs:343-365 Runtime::recover: drop the #[cfg(feature = 'test-util')] gate",
+      "In the same function: call vb_storage::recovery::recover_runtime_frame_seed(events) for each non-terminal run, reattach RecoveredRunAdmission to RunState.admission, return the reconstructed RunFrame",
+      "In vb_cli/src/commands/replay.rs cmd_replay: call Runtime::recover + Runtime::snapshot_run and emit ReplayReport"
+    ],
+    "phase_3": [
+      "Add Kani harness at crates/vb_runtime/src/kani/recover_frame_seed.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_runtime -p vb_cli -p vb_storage`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_storage/src/recovery/recover.rs:251-296 (the source of recover_runtime_frame_seed)",
+      "crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — the symmetric reference)",
+      "crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)",
+      "crates/vb_cli/src/commands/replay.rs (cmd_replay — the user-facing entry point)"
+    ],
+    "similar_implementations": [
+      "Runtime::snapshot_run at runtime/mod.rs:198 is the canonical public recovery-style API to mirror"
+    ],
+    "external_references": [
+      "Master §68 Durable Execution Architecture Contract (invariants 1-5)",
+      "Master §33.3 Lifecycle Command Surface (replay)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/runtime/mod.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Runtime::snapshot_run (line 198) — the symmetric public API",
+          "Runtime::recover (lines 343-365) — currently gated behind #[cfg(test-util)]"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "recover_runtime_frame_seed is fully implemented at recover.rs:251-260",
+      "Runtime::snapshot_run is fully implemented at runtime/mod.rs:198"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no public Runtime::recover today (it's gated); this bead makes it public"
+    ],
+    "no_placeholder_values": [
+      "Do NOT modify recover_runtime_frame_seed (it works)",
+      "Do NOT add 'TODO' or 'unimplemented' to the new method"
+    ]
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "id": "p2-16-validation-emission",
+  "title": "validation-emission: Close 15-of-35 §16 validation code emission gaps (rolls in S-23)",
+  "type": "feature",
+  "priority": 2,
+  "effort": "4hr",
+  "description": "Feature P2-16. vb_validate/src/lib.rs declares 49 ValidationError variants (35 master §16 + 14 extras), but only 20 are ever emitted. 15 missing: SecretNotDeclared (folds into UnknownReference), SecretResultLeak (explicitly disabled), 11 Invalid* body-shape variants, PayloadTooLarge, plus 2 missing ResourceLimits field checks. Master §16 requires all 35 codes to be emitted. This bead closes the gap per code: SecretNotDeclared (split off the $secrets.* check in validate_declared to emit SecretNotDeclared), SecretResultLeak (re-enable the taint check for Finish{result} when ResourceContract::allows_secret_results == false), 11 Invalid* body-shape (add 11 per-primitive validators in vb_validate/src/gates.rs or remove the variants), PayloadTooLarge (add to validate_resource_limits), ResourceLimits (add checks for the missing 2 fields; rolls in S-23). S-23 is a sub-bullet of P2-16 — do NOT file S-23 as a separate bead.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL emit every validation error code defined in master §16 (all 35 codes reachable from the validate pipeline)",
+      "THE SYSTEM SHALL NOT silently fold one code into another (e.g., SecretNotDeclared into UnknownReference) without a typed emission"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a workflow uses $secrets.foo with no `secrets: [foo]` declaration",
+        "shall": "THE SYSTEM SHALL emit ValidationError::SecretNotDeclared (not fold into UnknownReference)"
+      },
+      {
+        "trigger": "WHEN a workflow has a Finish{result} that reads a Secret-tainted slot and ResourceContract::allows_secret_results == false",
+        "shall": "THE SYSTEM SHALL emit ValidationError::SecretResultLeak (currently disabled)"
+      },
+      {
+        "trigger": "WHEN a workflow uses a primitive with an invalid body shape (e.g., for_each with no body)",
+        "shall": "THE SYSTEM SHALL emit the matching Invalid* variant (11 of these)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a validation code is declared in vb_validate/src/lib.rs but never emitted",
+        "shall_not": "THE SYSTEM SHALL NOT keep it; it must be emitted OR removed (no dead codes)",
+        "because": "Master §16: 35 codes are the contract; dead codes are documentation lies"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Workflow YAML parses under the strict profile",
+      "All 11 Invalid* body-shape primitives are known: set, do, choose, for_each, together, collect, reduce, repeat, wait, ask, finish"
+    ],
+    "postconditions": [
+      "All 35 master §16 codes are emitted by some validator",
+      "proptest assertion: every variant declared in vb_validate::ValidationError is emitted by at least one test fixture"
+    ],
+    "invariants": [
+      "No silent code folding: each error has a unique code (0x0X00) and a unique variant",
+      "All 18 ResourceContract fields are checked (rolls in S-23)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "secret_not_declared_is_emitted: a workflow with $secrets.foo and no `secrets: [foo]` declaration emits SecretNotDeclared",
+      "secret_result_leak_is_emitted: a workflow with Finish{result = Secret-tainted slot} and allows_secret_results: false emits SecretResultLeak",
+      "all_11_invalid_body_shape_variants_are_emitted: proptest with 11 fixtures, one per primitive, each emits the matching Invalid* variant",
+      "payload_too_large_is_emitted: a workflow with a payload > max_result_bytes emits PayloadTooLarge"
+    ],
+    "error": [
+      "no_unemitted_codes: a proptest walks all 35 codes, asserting each is emitted by at least one fixture",
+      "duplicate_code_assignment_fails_proptest: if two variants share the same code (0x0X00), the proptest fails with a 'duplicate code' error",
+      "no_silent_folding: if SecretNotDeclared folds into UnknownReference (the bug), the proptest fails with the specific folded path"
+    ],
+    "edge": [
+      "all_18_resource_contract_fields_checked: proptest over 18 ResourceContract fields, asserting each is checked by validate_resource_limits (rolls in S-23)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_validate/src/lib.rs (the 49 declared variants, 20 emitted)",
+      "crates/vb_validate/src/gates.rs (the per-primitive validators; 11 Invalid* go here or are removed)",
+      "crates/vb_validate/src/lib.rs::validate_declared (the $secrets.* check that folds into UnknownReference)",
+      "crates/vb_validate/src/lib.rs::validate_resource_limits (where PayloadTooLarge and the 2 missing field checks go; rolls in S-23)",
+      "crates/vb_core/src/resource_contract.rs (ResourceContract, allows_secret_results)"
+    ],
+    "patterns": [
+      "Pattern: existing validators emit typed ValidationError variants with stable codes (0x0X00)",
+      "Pattern: ResourceContract field checks follow a `match contract.field { Some(v) if v > limit => PayloadTooLarge, _ => Ok(()) }` pattern"
+    ],
+    "questions": [
+      "For the 11 Invalid* body-shape variants, is it better to add validators or remove the variants? (Spec: prefer adding validators; only remove if a primitive is truly not in the IR.)",
+      "For the 2 missing ResourceContract fields, are they `max_together_branches` and `max_result_bytes`, or different fields? (Spec: S-23 sub-bullet; the answer is documented in S-23.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "A workflow smuggles a Secret result via Finish{result = Secret slot} because SecretResultLeak is disabled",
+        "prevention": "Re-enable the taint check; emit SecretResultLeak",
+        "test_for_it": "secret_result_leak_is_emitted"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Workflow author gets a generic 'InvalidWorkflow' error with no specific code, can't tell what's wrong",
+        "prevention": "All 35 codes are emitted; the error message includes the code and the path",
+        "test_for_it": "every_invalid_workflow_error_has_a_specific_code (proptest over 100 invalid workflows)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Two error variants are silently folded into one (e.g., SecretNotDeclared into UnknownReference), losing the security signal",
+        "prevention": "Each variant has its own emission path; no folding",
+        "test_for_it": "no_silent_folding (assertion: each declared variant has a unique emitter)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "External monitoring tool counts emitted error codes; missing emissions skew the count",
+        "prevention": "All 35 codes are emitted; the count is stable",
+        "test_for_it": "emitted_code_count_is_35 (proptest over 1000 random workflows)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_validate/src/lib.rs to enumerate the 49 declared variants",
+      "Read crates/vb_validate/src/gates.rs to find the existing validators",
+      "Read master §16 for the canonical 35-code list"
+    ],
+    "phase_1": [
+      "Write proptest test_no_unemitted_codes (35 codes, one fixture each)",
+      "Write test test_all_18_resource_contract_fields_checked (rolls in S-23)"
+    ],
+    "phase_2": [
+      "In validate_declared: split off the $secrets.* check to emit SecretNotDeclared (separate from UnknownReference)",
+      "In validate_taint: re-enable the SecretResultLeak check for Finish{result} when allows_secret_results == false",
+      "In gates.rs: add 11 per-primitive validators for the Invalid* body-shape variants (or remove them if not in the IR)",
+      "In validate_resource_limits: add the PayloadTooLarge check; add the 2 missing ResourceContract field checks (S-23 sub-bullet)"
+    ],
+    "phase_3": [
+      "Verify proptest passes for all 35 codes"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_validate` and verify all new tests pass",
+      "Manual: `vb validate fixtures/secret_result_leak.yaml` should emit SecretResultLeak, not a generic error"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_validate/src/lib.rs (49 declared variants)",
+      "crates/vb_validate/src/gates.rs (per-primitive validators)",
+      "crates/vb_core/src/resource_contract.rs (ResourceContract, 18 fields)",
+      "fixtures/secret_result_leak.yaml (new test fixture)",
+      "fixtures/11_invalid_body_shape/*.yaml (11 new fixtures)"
+    ],
+    "similar_implementations": [
+      "Existing per-primitive validators in gates.rs (copy the pattern for 11 Invalid* variants)"
+    ],
+    "external_references": [
+      "Master §16 Validation Error Codes (35 codes)",
+      "Master §13 ResourceContracts (18 fields)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_validate/src/lib.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The 49 declared variants and which 20 are emitted",
+          "The validate_declared function for the SecretNotDeclared split"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ValidationError::SecretNotDeclared, ValidationError::SecretResultLeak, ValidationError::PayloadTooLarge in vb_validate",
+      "ResourceContract with 18 fields in vb_core::resource_contract"
+    ],
+    "apis_that_do_not_exist": [
+      "11 Invalid* body-shape validators may not all exist; this bead adds or removes them"
+    ],
+    "no_placeholder_values": [
+      "Do NOT leave variants as 'unemitted'; either wire or remove"
+    ]
+  }
+}

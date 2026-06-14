@@ -1,0 +1,179 @@
+{
+  "id": "p2-18-snapshot-writer",
+  "title": "snapshot-writer: Runtime should write RunSnapshot after every N steps",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-18. Master §68 (Durable Execution Architecture Contract) requires snapshot-plus-tail recovery: load latest snapshot, replay tail events. RunSnapshot writer is dead in production. hydrate_run_frame(snapshot, tail) (hydrate.rs:182-201) is the master §68 primary path. P2-15 decides whether to wire RunSnapshot; this bead assumes WIRED. Add snapshot_interval_steps: u64 to ShardConfig (default 1000, configurable). In drive_deterministic_full (engine/drive.rs:46), after every snapshot_interval_steps successful steps, call journal.put_snapshot(&RunSnapshot { ... }). In Runtime::recover (P0-5 fix), for each non-terminal run, try journal.snapshot(run, last_snapshot_seq) first; if present, use hydrate_run_frame(snapshot, tail). Otherwise, fall back. Add a benchmark: submit + 10_000 step workflow + recover measures <100ms with snapshots, vs 10s+ with events. Depends on P0-5.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL write a RunSnapshot to the journal every snapshot_interval_steps successful steps",
+      "THE SYSTEM SHALL use snapshot-plus-tail recovery when a snapshot is present, falling back to full replay only when no snapshot exists"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN drive_deterministic_full completes N successful steps where N is a multiple of snapshot_interval_steps",
+        "shall": "THE SYSTEM SHALL call journal.put_snapshot(&RunSnapshot { slots, taint, step_states, last_seq })"
+      },
+      {
+        "trigger": "WHEN Runtime::recover is called and a snapshot exists for the run",
+        "shall": "THE SYSTEM SHALL call hydrate_run_frame(snapshot, tail_events_from_last_snapshot_seq) instead of full replay"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF snapshot_interval_steps is 0",
+        "shall_not": "THE SYSTEM SHALL NOT default to 'no snapshots' silently; it must return InvalidSnapshotInterval",
+        "because": "Operators must explicitly opt in to the no-snapshot path for benchmarking"
+      },
+      {
+        "condition": "IF the snapshot write fails",
+        "shall_not": "THE SYSTEM SHALL NOT continue executing steps; it must abort the run with SnapshotCommitFailed",
+        "because": "Master §68.1: journal entry persisted = step happened; a failed snapshot write must roll back"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "snapshot_interval_steps is a positive u64 (default 1000)",
+      "Runtime::recover has the P0-5 fix landed (depends on P0-5)"
+    ],
+    "postconditions": [
+      "A 1000-step workflow has at least one RunSnapshot in the journal at the end",
+      "Recovery with a snapshot is at least 10× faster than recovery without (per the benchmark evidence)"
+    ],
+    "invariants": [
+      "Snapshot integrity: snapshot.slots + tail_events == full journal replay (master §68.4 deterministic recovery)",
+      "last_snapshot_seq is monotonic per run"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "snapshot_written_after_n_steps: a 1000-step workflow produces at least 1 RunSnapshot in the journal at the end",
+      "recovery_uses_snapshot_when_available: a run with a snapshot recovers via hydrate_run_frame, not full replay",
+      "benchmark_snapshot_recovery_is_10x_faster: the benchmark (10_000 step workflow + recover) shows ≥10× speedup vs full replay"
+    ],
+    "error": [
+      "snapshot_with_zero_interval_returns_invalid: --snapshot-interval-steps 0 returns InvalidSnapshotInterval",
+      "snapshot_with_commit_failure_aborts_run: a Fjall commit failure aborts the run with SnapshotCommitFailed"
+    ],
+    "edge": [
+      "snapshot_with_no_steps_does_not_write: a 0-step workflow does not write a RunSnapshot (the trigger is `N is a multiple of snapshot_interval_steps`)",
+      "snapshot_with_workflow_smaller_than_interval_writes_one_at_end: a 500-step workflow with interval 1000 writes exactly 1 RunSnapshot at the end"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig: where snapshot_interval_steps goes)",
+      "crates/vb_runtime/src/engine/drive.rs:46 (drive_deterministic_full: where the snapshot trigger goes)",
+      "crates/vb_storage/src/snapshots.rs:33-45 (put_snapshot, get_snapshot: the writer/reader API)",
+      "crates/vb_storage/src/hydrate.rs:182-201 (hydrate_run_frame: the master §68 primary recovery path)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::recover: where the snapshot-first path goes, depends on P0-5)"
+    ],
+    "patterns": [
+      "Pattern: existing snapshot_interval_steps or similar config in ShardConfig (may already be a stub)",
+      "Pattern: hydrate_run_frame is already implemented; this bead wires it into Runtime::recover"
+    ],
+    "questions": [
+      "Should the snapshot write be synchronous (block the engine tick) or async (fire-and-forget)? (Spec: synchronous, to maintain the journal-first invariant.)",
+      "Is the benchmark a separate bead or part of this one? (Spec: part of this one, with evidence in .evidence/snapshot_recovery_bench.json.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "A snapshot is corrupted on disk, and recovery reads the corrupted data, leading to wrong state",
+        "prevention": "BLAKE3 + CRC32C envelope on every snapshot record; corrupt records are detected on read",
+        "test_for_it": "snapshot_recovery_with_corrupted_snapshot_returns_io_error (proptest with 100 random bit flips)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator can't tell whether snapshot recovery is enabled at runtime",
+        "prevention": "vb status shows snapshot_interval_steps (depends on P1-11)",
+        "test_for_it": "status_includes_snapshot_interval_steps"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Snapshot and tail events diverge (e.g., tail events overwrite snapshot data with a different value)",
+        "prevention": "hydrate_run_frame applies tail events in strict order; divergence is a typed ReplayDiverged",
+        "test_for_it": "snapshot_recovery_detects_divergence (proptest with 100 divergent scenarios)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "Benchmark shows no improvement, leaving the operator wondering if the feature is broken",
+        "prevention": "Run the benchmark as part of this bead's evidence; commit the numbers",
+        "test_for_it": "benchmark_artifact_in_evidence_dir (assert .evidence/snapshot_recovery_bench.json exists)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_storage/src/snapshots.rs:33-45 in full",
+      "Read crates/vb_storage/src/hydrate.rs:182-201 in full",
+      "Read crates/vb_runtime/src/engine/drive.rs:46 in full",
+      "Read crates/vb_runtime/src/shard/config.rs (ShardConfig)"
+    ],
+    "phase_1": [
+      "Write test test_snapshot_written_after_n_steps",
+      "Write test test_recovery_uses_snapshot_when_available",
+      "Run the benchmark; record the result in .evidence/snapshot_recovery_bench.json"
+    ],
+    "phase_2": [
+      "In ShardConfig: add snapshot_interval_steps: u64 (default 1000)",
+      "In engine/drive.rs:46 drive_deterministic_full: after every snapshot_interval_steps successful steps, call journal.put_snapshot(&RunSnapshot { ... })",
+      "In Runtime::recover (depends on P0-5): for each non-terminal run, try journal.snapshot(run) first; if Some, use hydrate_run_frame(snapshot, tail); if None, fall back to full replay"
+    ],
+    "phase_3": [
+      "Add the benchmark to .moon.yml bench-build task list"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_runtime -p vb_storage` and verify all new tests pass",
+      "Run the benchmark; commit .evidence/snapshot_recovery_bench.json with the ≥10× speedup numbers",
+      "Manual: submit a 1000-step workflow, kill, recover; verify the journal has a RunSnapshot and the recover is fast"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig + snapshot_interval_steps)",
+      "crates/vb_runtime/src/engine/drive.rs:46 (snapshot trigger)",
+      "crates/vb_storage/src/snapshots.rs:33-45 (put_snapshot, get_snapshot)",
+      "crates/vb_storage/src/hydrate.rs:182-201 (hydrate_run_frame)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::recover, depends on P0-5)",
+      ".evidence/snapshot_recovery_bench.json (new evidence file)",
+      ".moon.yml (bench-build task)"
+    ],
+    "similar_implementations": [
+      "AWS Step Functions snapshot-plus-tail recovery; same model"
+    ],
+    "external_references": [
+      "Master §68 Durable Execution Architecture Contract (snapshot-plus-tail)",
+      "Master §68.4 Recovery is deterministic"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_storage/src/hydrate.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "hydrate_run_frame signature and return type",
+          "How it merges snapshot with tail events"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "RunSnapshot { slots, taint, step_states, last_seq } in vb_storage::snapshots",
+      "hydrate_run_frame(snapshot, tail_events) -> Result<RunFrame, HydrateError>",
+      "journal.put_snapshot(&RunSnapshot) and journal.get_snapshot(run) -> Option<RunSnapshot>"
+    ],
+    "apis_that_do_not_exist": [
+      "snapshot_interval_steps in ShardConfig does not exist; this bead adds it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use snapshot_interval_steps = 0; the default is 1000"
+    ]
+  }
+}

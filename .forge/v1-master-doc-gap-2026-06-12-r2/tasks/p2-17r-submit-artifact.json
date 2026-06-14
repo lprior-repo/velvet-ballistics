@@ -1,0 +1,150 @@
+{
+  "id": "p2-17r-submit-artifact",
+  "title": "P2-17r submit-artifact: Add submit_artifact as a public Runtime method (master §66); caller is run_compiled_runtime.rs:256",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-17r (revision of black-hat-revised vb-9i6wg). Black-hat review round 1 found that the original bead cited submit.rs as the caller of submit_artifact, but the actual caller is crates/vb_cli/src/run_compiled_runtime.rs:256 inside store_compiled_artifact. The submit path uses put_workflow_source (line 92) and put_run_header (line 126) directly, NOT submit_artifact. Real source: crates/vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact calls submit_artifact), vb_runtime/src/ (submit_artifact is not currently a public Runtime method — it's an internal helper). Master §66 requires submit_artifact to be a public Runtime method so that the IPC layer (vb_ipc) and the CLI layer can both call it through the same code path. This bead: (1) moves submit_artifact from vb_cli's internal helper to vb_runtime::Runtime::submit_artifact (public method), (2) updates run_compiled_runtime.rs:256 to call Runtime::submit_artifact, (3) ensures the IPC layer can also call it. Kani harness: prove Runtime::submit_artifact is idempotent (same artifact → same result). proptest: 100 random (workflow, artifact) pairs produce consistent submissions.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose submit_artifact as a public method on vb_runtime::Runtime",
+      "THE SYSTEM SHALL make submit_artifact callable from both the CLI layer (run_compiled_runtime.rs) and the IPC layer (vb_ipc)"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the CLI layer calls Runtime::submit_artifact(workflow, artifact) via run_compiled_runtime.rs:256",
+        "shall": "THE SYSTEM SHALL write the artifact to the journal and return a SubmissionReceipt with the assigned RunId"
+      },
+      {
+        "trigger": "WHEN the IPC layer calls Runtime::submit_artifact via vb_ipc::IpcCommand::SubmitArtifact",
+        "shall": "THE SYSTEM SHALL write the artifact to the journal and return a SubmissionReceipt"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF submit_artifact is called with an artifact whose digest does not match the workflow digest",
+        "shall_not": "THE SYSTEM SHALL NOT silently accept it; it must return a typed DigestMismatch error",
+        "because": "Master §66 invariant: artifact and workflow must be digest-consistent; mismatch is a hard failure"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "submit_artifact is currently an internal helper in vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact)",
+      "Master §66 is the authoritative spec for the public Runtime::submit_artifact API"
+    ],
+    "postconditions": [
+      "Runtime::submit_artifact is a public method on vb_runtime::Runtime",
+      "Both vb_cli and vb_ipc call sites go through Runtime::submit_artifact (no duplication)",
+      "SubmissionReceipt is a public type in vb_runtime::api (so both layers can return it)"
+    ],
+    "invariants": [
+      "submit_artifact is idempotent: same (workflow, artifact) pair returns the same SubmissionReceipt (master §66 invariant)",
+      "The artifact's digest matches the workflow's digest (master §66 invariant)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "runtime_submit_artifact_returns_receipt: Runtime::submit_artifact(workflow, artifact) -> SubmissionReceipt { run_id, accepted_at }",
+      "cli_store_compiled_artifact_calls_runtime_submit_artifact: run_compiled_runtime.rs:256 calls Runtime::submit_artifact (not the internal helper)"
+    ],
+    "error": [
+      "submit_artifact_with_digest_mismatch_returns_typed_error: artifact digest != workflow digest; assert Err(DigestMismatch)",
+      "submit_artifact_with_already_submitted_run_returns_idempotent_receipt: same run_id submitted twice; assert same receipt (idempotent)"
+    ],
+    "edge": [
+      "proptest_submit_artifact_idempotency: 100 random (workflow, artifact) pairs submitted twice; assert the two receipts are equal",
+      "kani_submit_artifact_does_not_panic: bounded model check with 4 workflows and 4 artifacts; assert no panic"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact — the current caller)",
+      "crates/vb_cli/src/commands/submit.rs:92,126 (put_workflow_source, put_run_header — the direct writers used by the submit path; they DO NOT use submit_artifact)",
+      "crates/vb_runtime/src/ (search for submit_artifact — find the internal helper)",
+      "crates/vb_ipc/src/ (search for SubmitArtifact — find the IPC layer call site)",
+      "master doc §66 (the public Runtime::submit_artifact spec)"
+    ],
+    "patterns": [
+      "Pattern: existing Runtime methods (e.g., Runtime::snapshot_run at runtime/mod.rs:198) are public and callable from both CLI and IPC layers"
+    ],
+    "questions": [
+      "Should the direct writers (put_workflow_source, put_run_header in submit.rs:92,126) also be routed through Runtime::submit_artifact, or kept as direct writers? Recommend: keep them as direct writers for now; this bead is scoped to the artifact submission only"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "CLI layer uses an internal submit_artifact helper; IPC layer uses a different helper; the two diverge and produce inconsistent submission results",
+        "prevention": "Both layers call Runtime::submit_artifact (single source of truth)",
+        "test_for_it": "cli_and_ipc_submit_artifact_produce_same_receipt: proptest with 100 (workflow, artifact) pairs; assert CLI receipt == IPC receipt"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker submits an artifact whose digest does not match the workflow; the silent accept pollutes the journal with a mismatched entry",
+        "prevention": "Runtime::submit_artifact returns DigestMismatch on digest mismatch (preserved invariant)",
+        "test_for_it": "submit_artifact_rejects_digest_mismatch (regression shield)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/run_compiled_runtime.rs:256 to confirm the caller",
+      "Read crates/vb_cli/src/commands/submit.rs:92,126 to confirm the submit path does NOT use submit_artifact",
+      "Search vb_runtime for the existing internal submit_artifact helper"
+    ],
+    "phase_1": [
+      "Write test test_runtime_submit_artifact_returns_receipt (REGRESSION SHIELD)",
+      "Write proptest proptest_submit_artifact_idempotency (100 random pairs)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/runtime/mod.rs: add `pub fn submit_artifact(&self, workflow: &CompiledWorkflow, artifact: &CompiledArtifact) -> RuntimeResult<SubmissionReceipt>`",
+      "Move the body from the internal helper in vb_cli/src/run_compiled_runtime.rs:256 to the new public method",
+      "Update run_compiled_runtime.rs:256 to call Runtime::submit_artifact",
+      "Add SubmissionReceipt to vb_runtime::api (public type)"
+    ],
+    "phase_3": [
+      "Add Kani harness at crates/vb_runtime/src/kani/submit_artifact.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_runtime -p vb_cli -p vb_ipc`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/run_compiled_runtime.rs:256 (the current caller)",
+      "crates/vb_cli/src/commands/submit.rs:92,126 (the direct writers — NOT submit_artifact callers)",
+      "crates/vb_runtime/src/runtime/mod.rs (the new public method lives here)",
+      "crates/vb_ipc/src/ (the IPC layer call site)"
+    ],
+    "similar_implementations": [
+      "Runtime::snapshot_run at runtime/mod.rs:198 is the canonical public Runtime method pattern to mirror"
+    ],
+    "external_references": [
+      "Master §66 Public Runtime API",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/run_compiled_runtime.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "store_compiled_artifact at line 256 — the current caller of submit_artifact"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "submit_artifact is an internal helper in vb_cli (we move it to vb_runtime)",
+      "Runtime::snapshot_run is the symmetric public method to mirror"
+    ],
+    "apis_that_do_not_exist": [
+      "Runtime::submit_artifact (public) does NOT exist yet — it is what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT cite submit.rs as the caller of submit_artifact (it uses put_workflow_source/put_run_header directly, not submit_artifact)",
+      "Do NOT add 'TODO' or 'unimplemented' to the new method"
+    ]
+  }
+}

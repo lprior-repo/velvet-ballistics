@@ -1,0 +1,145 @@
+{
+  "id": "p2-18r-snapshot-writer",
+  "title": "P2-18r snapshot-writer: Runtime writes RunSnapshot after N steps (≥3× throughput on submit + 100 actions)",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-18r (revision of black-hat-revised vb-7rxsp). Black-hat review round 1 flagged the original 10× speedup claim as aspirational. The revised target is ≥3× (matches P2-14's batched-atomicity floor) and the actual measured throughput must be reported in `.evidence/snapshot_recovery_bench.json`. The 10× claim is dangerous because an LLM-generated test asserting `>= 10.0` will silently pass on 9.99× or fail on a legitimate 8×. The ≥3× floor is conservative and reportable. Real source: vb_runtime/src/runtime/mod.rs (Runtime does not currently call Runtime::snapshot_run during execution; snapshots are only taken on cmd_replay). This bead: (1) add a `snapshot_interval_steps: u32` field to ShardConfig (default 50 steps; this is the new ShardConfig v2 field from P0-COORD); (2) Runtime::execute_workflow calls Runtime::snapshot_run every N steps during a long workflow; (3) the snapshot is written to the journal as a JournalEvent::RunSnapshotted { step, frame_digest }; (4) A/B benchmark on the `submit + 100 actions` workload measures the throughput delta between snapshot-on and snapshot-off modes. The 3× floor is the acceptance threshold; the actual number is recorded.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL write a RunSnapshot to the journal every N steps during long workflow execution (N is configurable via ShardConfig.snapshot_interval_steps, default 50)",
+      "THE SYSTEM SHALL achieve ≥3× throughput on the `submit + 100 actions` benchmark workload compared to the snapshot-off baseline"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a workflow executes step N*interval for any N >= 1",
+        "shall": "THE SYSTEM SHALL emit JournalEvent::RunSnapshotted { step, frame_digest } and continue execution"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF snapshot_interval_steps is set to 0",
+        "shall_not": "THE SYSTEM SHALL NOT divide by zero; it must treat 0 as 'snapshotting disabled' (master §68 default)",
+        "because": "snapshot_interval_steps = 0 is a valid opt-out configuration"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "P0-COORD has defined ShardConfig v2 with snapshot_interval_steps field (this bead depends on P0-COORD)",
+      "Runtime::snapshot_run at runtime/mod.rs:198 is fully implemented and tested (we just call it)"
+    ],
+    "postconditions": [
+      "Runtime::execute_workflow calls Runtime::snapshot_run every snapshot_interval_steps steps",
+      "A JournalEvent::RunSnapshotted is written for each snapshot",
+      "The A/B benchmark on `submit + 100 actions` is recorded in `.evidence/snapshot_recovery_bench.json`",
+      "The actual throughput ratio is reported (target: ≥3×)"
+    ],
+    "invariants": [
+      "Snapshotting is a no-op when snapshot_interval_steps == 0 (master §68 default)",
+      "The frame_digest of the snapshot is bit-identical to a rehydrated frame from the journal (master §68 invariant 4)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "snapshot_written_every_n_steps: a 200-step workflow with snapshot_interval_steps=50; assert 4 JournalEvent::RunSnapshotted events in the journal",
+      "snapshot_off_when_interval_is_zero: a 100-step workflow with snapshot_interval_steps=0; assert 0 JournalEvent::RunSnapshotted events"
+    ],
+    "error": [
+      "snapshot_with_zero_interval_does_not_panic: snapshot_interval_steps=0; assert no panic and no journal events",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "ab_benchmark_throughput_ratio: A/B on `submit + 100 actions`; assert the ratio is ≥3.0× (per black-hat revision; original 10× was aspirational)",
+      "proptest_snapshot_digest_consistency: 100 random workflows with snapshots; assert snapshot.frame_digest == recovered.frame_digest"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — the existing public API)",
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — the field we add; depends on P0-COORD for the v2 schema)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::execute_workflow — the loop that calls snapshot_run)",
+      "master doc §68 (the recovery architecture spec — snapshotting is a §68 affordance)"
+    ],
+    "patterns": [
+      "Pattern: existing Runtime::snapshot_run at runtime/mod.rs:198 returns RuntimeResult<InspectedRunState> — the call site is straightforward"
+    ],
+    "questions": [
+      "Should the benchmark A/B be run as part of the test suite (cargo bench) or as a one-shot script? Recommend: cargo bench with a Criterion bench target, but the ≥3× assertion is in the test suite (not the bench)"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Snapshot written with a corrupted frame_digest; recovery reads the snapshot and rebuilds a wrong frame",
+        "prevention": "frame_digest is computed from the canonical digest of the frame; corrupted digest is detected at recovery time",
+        "test_for_it": "snapshot_with_corrupted_digest_fails_recovery: mutate the digest in the journal; recover; assert ReplayDiverged"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker forces snapshot_interval_steps=1, causing a journal write on every step and a denial-of-service via journal bloat",
+        "prevention": "snapshot_interval_steps has a minimum bound (e.g., >= 1) and a maximum bound (e.g., <= 1000) enforced at ShardConfig validation",
+        "test_for_it": "snapshot_interval_steps_out_of_bounds_returns_config_error: snapshot_interval_steps=2000; assert Err(ConfigOutOfBounds)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/runtime/mod.rs:198 (snapshot_run) to confirm the call signature",
+      "Read crates/vb_runtime/src/shard/config.rs (ShardConfig) to find the field to add",
+      "Wait for P0-COORD to land ShardConfig v2 (this bead depends on it)"
+    ],
+    "phase_1": [
+      "Write test test_snapshot_written_every_n_steps (REGRESSION SHIELD)",
+      "Write A/B benchmark bench_submit_100_actions_with_snapshot vs bench_submit_100_actions_without_snapshot"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/shard/config.rs: add snapshot_interval_steps: u32 to ShardConfig v2 (from P0-COORD)",
+      "In vb_runtime/src/runtime/mod.rs execute_workflow: call Runtime::snapshot_run every snapshot_interval_steps steps; emit JournalEvent::RunSnapshotted",
+      "Add validation: snapshot_interval_steps in [0, 1000]"
+    ],
+    "phase_3": [
+      "Run `moon run :bench -p vb_runtime` and record the A/B throughput ratio in `.evidence/snapshot_recovery_bench.json`",
+      "Assert the ratio is ≥3× (revised from 10× per black-hat)",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/runtime/mod.rs:198 (Runtime::snapshot_run — the existing public API)",
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — the new field)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::execute_workflow — the loop that calls snapshot_run)"
+    ],
+    "similar_implementations": [
+      "Runtime::snapshot_run at runtime/mod.rs:198 is the existing public API we just call"
+    ],
+    "external_references": [
+      "Master §68 Durable Execution Architecture Contract",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/runtime/mod.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Runtime::snapshot_run (line 198) — the existing public API to call",
+          "Runtime::execute_workflow — the loop we extend"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "Runtime::snapshot_run is fully implemented and tested",
+      "ShardConfig exists but does NOT have snapshot_interval_steps (that's P0-COORD's contribution)"
+    ],
+    "apis_that_do_not_exist": [
+      "The snapshot-on-execute logic does NOT exist yet — it is what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use 10× as the throughput target (aspirational); use ≥3× (per black-hat revision)",
+      "Do NOT cite recover.rs:484 (the file is 296 lines)"
+    ]
+  }
+}

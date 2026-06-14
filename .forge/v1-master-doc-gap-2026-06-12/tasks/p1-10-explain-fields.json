@@ -1,0 +1,174 @@
+{
+  "id": "p1-10-explain-fields",
+  "title": "explain-fields: Add failure_modes, durability, retry_safe fields to explain output",
+  "type": "feature",
+  "priority": 1,
+  "effort": "2hr",
+  "description": "Feature P1-10. Master §75 (explain Command) defines the WorkflowExplanation schema: per-step {id, kind, action, reads, writes, max_calls, taint, idempotency, strict_durable, retry_safety}, top-level {failure_modes: [{step, errors}], durability: {side_effects_journaled_before_dispatch, replay_safe}}. Today cmd_explain emits kind: 'explain_report' instead of 'WorkflowExplanation' and lacks the §75 fields. The explain output is the AI agent's primary planning input (per master §75: 'Output includes: what the workflow does, what actions it calls, what secrets it touches, what can fail, what is durable, what is safe to retry'). This bead adds the missing per-step fields (walks the IR via compiled.nodes), the top-level durability, the per-step failure_modes (derived from action contract), and changes kind to 'WorkflowExplanation'. Depends on P0-4 (action contract must be well-defined for the per-step failure_modes derivation).",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL emit a WorkflowExplanation with per-step {idempotency, strict_durable, retry_safety} for every Do step",
+      "THE SYSTEM SHALL emit a top-level durability block with {side_effects_journaled_before_dispatch, replay_safe} for every accepted workflow"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb explain workflow.yaml --emit yaml`",
+        "shall": "THE SYSTEM SHALL emit a WorkflowExplanation with kind: 'WorkflowExplanation', per-step fields per master §75, and a top-level durability block"
+      },
+      {
+        "trigger": "WHEN a Do step references an action with a SideEffect::ExternalWrite contract",
+        "shall": "THE SYSTEM SHALL mark the step as strict_durable: true and durability.side_effects_journaled_before_dispatch: true"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a Do step has an action with no registered contract",
+        "shall_not": "THE SYSTEM SHALL NOT emit strict_durable: false as a default; it must emit a typed MissingContract error",
+        "because": "Master §65: 'Every retry requires idempotency proof' — missing contract means no proof, which is a hard failure"
+      },
+      {
+        "condition": "IF the workflow has zero Do steps",
+        "shall_not": "THE SYSTEM SHALL NOT emit a failure_modes array of length 0 without an explanatory note; it must emit failure_modes: [] with a top-level note 'no external actions; all failures are local'",
+        "because": "AI agents reading the explain output need to know whether failure_modes is empty intentionally or by oversight"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Workflow YAML compiles to a CompiledWorkflow (passes gate 2 = shape)",
+      "All Do steps have a registered action contract (passes gate 9 = contracts; depends on P0-4)"
+    ],
+    "postconditions": [
+      "WorkflowExplanation.kind == 'WorkflowExplanation'",
+      "execution_plan.steps.len() == compiled.nodes.len()",
+      "Each Do step has: idempotency, retry_safety, strict_durable, failure_modes (list of error codes)",
+      "Top-level durability.side_effects_journaled_before_dispatch is true iff at least one Do step has SideEffect::ExternalWrite"
+    ],
+    "invariants": [
+      "Per-step failure_modes is derived from the action contract's SideEffect + RetrySafety, not hand-curated",
+      "durability.replay_safe is true iff every Do step has Idempotency::IdempotentExternal OR Idempotency::DeterministicPure (no AtLeastOnceExternal without a proof)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "explain_emits_workflow_explanation_kind: `vb explain foo.yaml --emit yaml | jq .kind` returns 'WorkflowExplanation'",
+      "explain_includes_per_step_idempotency_retry_safety: a workflow with 2 Do steps produces 2 entries with both fields populated",
+      "explain_includes_durability_block: `vb explain foo.yaml --emit yaml | jq .durability` returns {side_effects_journaled_before_dispatch, replay_safe}"
+    ],
+    "error": [
+      "explain_with_missing_contract_returns_missing_contract_error: depends on P0-4; explain of a workflow with a contract-less Do returns MissingContract",
+      "explain_with_invalid_workflow_returns_validation_error: a malformed YAML fails at parse, not at explain",
+      "explain_with_no_yaml_file_returns_io_error: `vb explain nonexistent.yaml` exits 4 with FileNotFound"
+    ],
+    "edge": [
+      "explain_proptest_output_shape_locks_down_schema: 5 fixtures, all produce the same WorkflowExplanation shape"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands/explain.rs (cmd_explain: the current implementation)",
+      "crates/vb_compile/src/compiled.rs (CompiledWorkflow.nodes; the source of truth for steps)",
+      "crates/vb_runtime/src/action.rs (ActionContract: idempotency, side_effect, retry_safety; the source of truth for per-step fields)"
+    ],
+    "patterns": [
+      "Pattern: walking compiled.nodes with a for_each_node iterator (used by simulate in P1-12)",
+      "Pattern: existing JSON output uses 'kind' as a discriminator; master §75 specifies 'WorkflowExplanation' for explain output"
+    ],
+    "questions": [
+      "Should the per-step failure_modes include only the action's contract error codes, or also workflow-level errors (e.g., MissingNextStep)? (Spec: action contract codes only; workflow-level errors are a separate diagnostic.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker submits a workflow with a Do step that has a DeterministicPure contract but reads a Secret slot; the explain output should flag this as a taint violation",
+        "prevention": "Per-step failure_modes includes 'TAINT_VIOLATION' for any Do step where input taint violates the contract",
+        "test_for_it": "explain_emits_taint_violation_for_secret_input_to_pure_action"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "AI agent reads explain output but doesn't know which steps are strict_durable (so it can't prioritize durability review)",
+        "prevention": "strict_durable is a boolean per step, populated from the contract",
+        "test_for_it": "explain_marks_external_write_actions_as_strict_durable"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Per-step failure_modes is hand-curated and drifts from the actual contract",
+        "prevention": "Derived automatically from the contract; no hand-edited list",
+        "test_for_it": "explain_failure_modes_derived_from_contract (proptest over 100 contracts)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "External tool reads explain output and expects kind == 'explain_report' (the old name)",
+        "prevention": "Schema version field tells the tool which version; both 'explain_report' and 'WorkflowExplanation' are accepted for v1, with 'WorkflowExplanation' preferred",
+        "test_for_it": "explain_kind_field_is_workflow_explanation (assert exactly 'WorkflowExplanation')"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands/explain.rs in full",
+      "Read crates/vb_compile/src/compiled.rs to find the CompiledWorkflow.nodes structure",
+      "Read crates/vb_runtime/src/action.rs to find the ActionContract enum"
+    ],
+    "phase_1": [
+      "Write test test_explain_emits_workflow_explanation_kind",
+      "Write test test_explain_includes_per_step_idempotency_retry_safety",
+      "Write test test_explain_includes_durability_block",
+      "Write proptest test_explain_proptest_output_shape_locks_down_schema (5 fixtures)"
+    ],
+    "phase_2": [
+      "In cmd_explain: walk compiled.nodes, emit per-step entries with {id, kind, action, reads, writes, max_calls, taint, idempotency, retry_safety, strict_durable, failure_modes}",
+      "In cmd_explain: emit top-level durability block: {side_effects_journaled_before_dispatch, replay_safe}",
+      "In cmd_explain: change kind from 'explain_report' to 'WorkflowExplanation'"
+    ],
+    "phase_3": [
+      "Update master §75 example to match the new output (no schema break, just clarifying the kind name)"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Manual: `vb explain fixtures/issue_triage.yaml --emit yaml | jq .kind` returns 'WorkflowExplanation'"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands/explain.rs (cmd_explain)",
+      "crates/vb_compile/src/compiled.rs (CompiledWorkflow.nodes)",
+      "crates/vb_runtime/src/action.rs (ActionContract)",
+      "fixtures/issue_triage.yaml (test fixture with 2 Do steps)"
+    ],
+    "similar_implementations": [
+      "simulate command (P1-12) walks the same compiled.nodes; share the iterator"
+    ],
+    "external_references": [
+      "Master §75 explain Command schema",
+      "Master §65 Idempotency Verification Gate"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands/explain.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Current kind field and how it's set",
+          "The compiled.nodes walk pattern"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "CompiledWorkflow { nodes: Vec<CompiledNode>, ... } in vb_compile/src/compiled.rs",
+      "ActionContract { idempotency, side_effect, retry_safety } in vb_runtime/src/action.rs",
+      "Taint::join in vb_core/src/taint.rs"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no WorkflowExplanation struct today; this bead defines it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use 'various' or 'multiple' for failure_modes; enumerate the actual error codes"
+    ]
+  }
+}

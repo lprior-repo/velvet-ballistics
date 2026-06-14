@@ -1,0 +1,188 @@
+{
+  "id": "p0-5-runtime-recover",
+  "title": "runtime-recover: Wire Runtime::recover to reconstruct RunFrames from journal",
+  "type": "feature",
+  "priority": 0,
+  "effort": "4hr",
+  "description": "Feature P0-5. Master §68 (Durable Execution Architecture Contract) requires journal-first recovery: rehydrate slot values, taint, step states from the journal and return them to a caller as a reconstructed RunFrame. Today, vb_runtime/src/runtime/mod.rs:339-362 calls vb_storage::recovery::recover_all_incomplete_runs (recover.rs:274-296), which always returns Summary (no frame data). recover_one_run (line 364-383) drops every Summary. recover_runtime_frame_seed (recover.rs:251-260) is fully implemented but orphaned. insert_into_shard (line 484) passes admission: None. seed.pending_actions is built and dropped. The Runtime is structurally capable of rehydrating, but the wiring is missing. This bead: (1) adds recover_all_incomplete_runs_with_frame_seed to vb_storage::recovery::recover.rs:274+ that calls recover_runtime_frame_seed for each non-terminal run; (2) drops the #[cfg(feature = 'test-util')] gate on Runtime::recover (line 343) and makes it call the new frame-seed function, reattach the RecoveredRunAdmission to RunState.admission, re-attach seed.pending_actions to the shard's action queue, and honor seed.unsupported.action_payloads and seed.unsupported.pending_actions in reject_unsupported_live_frame_state; (3) changes cmd_replay to call Runtime::recover + Runtime::snapshot_run to produce a ReplayReport with reconstructed RunFrame. Acceptance: submit, kill, restart, replay; reconstructed state matches; Kani harness proves bit-identical rehydration; Verus proof per master §68 invariants 1-5.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL reconstruct a complete RunFrame from the journal events alone (slots, taint, step states, admission) without re-executing any step",
+      "THE SYSTEM SHALL treat the journal as the ground truth; reconstructed state must equal the live state at the last persisted journal sequence"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb replay <run-id> --db <path>` on a non-terminal run",
+        "shall": "THE SYSTEM SHALL call Runtime::recover, then Runtime::snapshot_run, and emit a ReplayReport containing the reconstructed RunFrame"
+      },
+      {
+        "trigger": "WHEN the runtime starts and a non-terminal run is detected in the journal",
+        "shall": "THE SYSTEM SHALL call Runtime::recover and re-attach the run to its owning shard with full state"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the journal contains a digest mismatch (workflow, action, or policy)",
+        "shall_not": "THE SYSTEM SHALL NOT silently default to a substituted value; it must return a typed ReplayDiverged error",
+        "because": "Master §68 invariant 4: recovery is deterministic; divergence is a hard failure"
+      },
+      {
+        "condition": "IF the journal has a pending action (action scheduled but not yet completed)",
+        "shall_not": "THE SYSTEM SHALL NOT silently drop the pending action; it must surface it in the run frame's pending_actions list",
+        "because": "Master §68.3: non-idempotent actions are blocked during replay; the operator must decide whether to re-dispatch"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Run exists in the Fjall journal at the supplied --db path",
+      "Run is in a non-terminal state OR terminal with last event RunFinished/RunFailed/RunCancelled",
+      "Journal record CRCs verify cleanly (BLAKE3 + CRC32C envelope intact)"
+    ],
+    "postconditions": [
+      "Reconstructed RunFrame has the same slot values, taint array, and step states as the live frame at the last persisted journal sequence",
+      "If pending_actions existed in the live frame, they appear in the reconstructed frame's pending_actions list",
+      "If action_payloads existed, they are honored in the gate (master §68.3)"
+    ],
+    "invariants": [
+      "Rehydration is bit-identical: re-recovering the same journal twice produces two equal RunFrames",
+      "Recovery never re-executes a step that has a StepSucceeded journal event",
+      "Recovery preserves the digest chain (every event's prev_digest matches the prior event's digest)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "runtime_recover_reconstructs_run_frame_from_journal: submit a 5-step workflow, kill the process after step 2, restart, call Runtime::recover; reconstructed RunFrame slots/taint/step_states match the snapshot at step 2",
+      "cmd_replay_emits_replay_report_with_reconstructed_frame: `vb replay <id> --db /tmp/db` returns a ReplayReport with a non-empty reconstructed frame",
+      "kani_harness_proves_bit_identical_rehydration: 100 random journals, recover twice, assert frame1 == frame2"
+    ],
+    "error": [
+      "runtime_recover_with_digest_mismatch_returns_replay_diverged: corrupt one byte in the journal; Runtime::recover returns ReplayDiverged",
+      "runtime_recover_with_corrupt_crc_returns_io_error: corrupt the CRC32C; Runtime::recover returns IoError with a typed variant"
+    ],
+    "edge": [
+      "runtime_recover_with_pending_actions_surfaces_them: run a workflow with an action that does not complete; recover; reconstructed frame has pending_actions: [ticket]",
+      "runtime_recover_with_unsupported_action_payload_returns_typed_error: a journal entry with an unknown action_id returns UnsupportedActionPayload"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/runtime/mod.rs:339-362 (recover() call to recover_all_incomplete_runs)",
+      "crates/vb_runtime/src/runtime/mod.rs:343 (the #[cfg(feature = 'test-util')] gate to drop)",
+      "crates/vb_runtime/src/runtime/mod.rs:364-383 (recover_one_run that drops Summaries)",
+      "crates/vb_storage/src/recovery.rs:251-260 (recover_runtime_frame_seed: the full impl, orphaned)",
+      "crates/vb_storage/src/recovery.rs:274-296 (recover_all_incomplete_runs: returns Summary only)",
+      "crates/vb_storage/src/recovery.rs:484 (insert_into_shard: passes admission: None)",
+      "crates/vb_runtime/src/recovery.rs:73-82 (the gate that omits pending_actions)",
+      "crates/vb_cli/src/commands/replay.rs (cmd_replay: current no-op to replace)"
+    ],
+    "patterns": [
+      "Pattern: existing FjallJournal::recover_full_journal returns Vec<JournalEvent>; we chain recover_runtime_frame_seed on top",
+      "Pattern: RecoveredRunAdmission is a struct already in vb_storage/src/recovery.rs; just reattach it"
+    ],
+    "questions": [
+      "Should Runtime::recover be a method on Runtime or a free function? (Spec: method on Runtime, matches existing structure.)",
+      "Does insert_into_shard need a new signature to accept the RecoveredRunAdmission? (Spec: yes; admission parameter is currently None.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker tampers with a journal entry to inject a fake StepSucceeded, causing recovery to skip a step that should have run",
+        "prevention": "BLAKE3 + CRC32C envelope verification; any tampering returns typed IoError, never silent acceptance",
+        "test_for_it": "runtime_recover_with_bit_flipped_journal_returns_io_error (proptest with 100 random bit flips)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator sees a successful `vb replay` exit but the reconstructed frame is empty",
+        "prevention": "ReplayReport includes a `frame.byte_size` field; operator can verify non-zero",
+        "test_for_it": "cmd_replay_report_frame_byte_size_is_nonzero"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Recovery advances pc past a step that the journal says is Waiting (not Succeeded)",
+        "prevention": "Recovery applies events in strict sequence; no event is applied out of order, and a Waiting step is not marked Succeeded until a StepSucceeded event is seen",
+        "test_for_it": "runtime_recover_does_not_advance_past_waiting_step (proptest with 100 WaitUntil workflows)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "Runtime::recover returns a frame but the shard is in a state that cannot accept it (queue full)",
+        "prevention": "RecoveredRunAdmission is enqueued with priority; shard::tick drains it before any new submissions",
+        "test_for_it": "runtime_recover_with_full_shard_queue_drains_admission_first"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/runtime/mod.rs:339-383 (the recover() and recover_one_run code)",
+      "Read crates/vb_storage/src/recovery.rs:251-296 (the frame_seed and summary functions)",
+      "Read crates/vb_storage/src/recovery.rs:484 (insert_into_shard)",
+      "Read crates/vb_runtime/src/recovery.rs:73-82 (the gate that omits pending_actions)"
+    ],
+    "phase_1": [
+      "Write test test_runtime_recover_reconstructs_run_frame_from_journal (submit, kill, recover, assert frame equality)",
+      "Write test test_cmd_replay_emits_replay_report_with_reconstructed_frame",
+      "Write Kani harness test_recovery_bit_identical_rehydration (100 unwind, 3 random journals, recover twice, assert equal)",
+      "Write Verus proof `proof fn recovery_preserves_journal_invariants` in verification/verus/runtime/recovery.rs"
+    ],
+    "phase_2": [
+      "Phase 5.1 (Storage): Add `recover_all_incomplete_runs_with_frame_seed` to vb_storage::recovery::recover.rs:274+ that calls recover_runtime_frame_seed for each non-terminal run and returns Vec<RunFrameSeed>",
+      "Phase 5.2 (Runtime): Drop the #[cfg(feature = 'test-util')] gate on Runtime::recover (line 343); make recover call the new frame-seed function; reattach RecoveredRunAdmission to RunState.admission; re-attach seed.pending_actions to the shard's action queue; honor seed.unsupported.action_payloads and seed.unsupported.pending_actions in reject_unsupported_live_frame_state",
+      "Phase 5.3 (CLI): Change cmd_replay in commands/replay.rs to call Runtime::recover + Runtime::snapshot_run and emit ReplayReport with reconstructed RunFrame"
+    ],
+    "phase_3": [
+      "Update insert_into_shard (recover.rs:484) to accept RecoveredRunAdmission as a parameter (no longer None)"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_runtime -p vb_storage -p vb_cli` and verify all new tests pass",
+      "Run `cargo kani -p vb_runtime --harness recovery_bit_identical` and verify the proof",
+      "Run `verus --crate-type=lib verification/verus/runtime/recovery.rs` and verify the proof",
+      "Manual: `vb submit foo.yaml --db /tmp/db && kill %1 && vb ipc-serve --db /tmp/db && vb replay <id> --db /tmp/db` should show reconstructed state"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/runtime/mod.rs:339-383 (the recover() to fix)",
+      "crates/vb_storage/src/recovery.rs:251-296,484 (frame_seed + insert_into_shard)",
+      "crates/vb_runtime/src/recovery.rs:73-82 (the gate)",
+      "crates/vb_cli/src/commands/replay.rs (cmd_replay)",
+      "crates/vb_storage/src/recovery.rs (RunFrameSeed, RecoveredRunAdmission, ReplayReport)",
+      "verification/verus/runtime/recovery.rs (new Verus proof)",
+      "crates/vb_runtime/kani/src/recovery.rs (new Kani harness)"
+    ],
+    "similar_implementations": [
+      "AWS Step Functions recovery from journal: same model, same invariants"
+    ],
+    "external_references": [
+      "Master §68 Durable Execution Architecture Contract (5 log-first invariants)",
+      "Master §44.14 Recovery and replay detect digest mismatch"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_storage/src/recovery.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "recover_runtime_frame_seed (line 251-260): the orphaned full impl",
+          "recover_all_incomplete_runs (line 274-296): the Summary-only path to extend"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "recover_runtime_frame_seed(journal: &FjallJournal, run_id: RunId) -> Result<RunFrameSeed, RecoveryError> (already exists)",
+      "RecoveredRunAdmission struct (in vb_storage/src/recovery.rs)",
+      "RunFrameSeed { slots, taint, step_states, admission, pending_actions, unsupported }"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no `recover_all_incomplete_runs_with_frame_seed` today; this bead adds it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use an empty Vec for pending_actions; if there are real pending actions, populate them from the journal",
+      "Do NOT skip the CRC32C check; verify every record"
+    ]
+  }
+}

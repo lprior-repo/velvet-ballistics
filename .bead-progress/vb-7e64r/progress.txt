@@ -1,0 +1,41 @@
+vb-7e64r P2-14a storage-batch progress
+
+## Status: GREEN (Tests Pass)
+
+## Completed
+- [x] Phase 0: Research
+- [x] Phase 1: Tests (TDD red phase, 11 tests written, all initially failing due to missing method)
+- [x] Phase 2: Implementation
+  - [x] Added `append_sequenced_batch(&[RuntimeJournalEvent], EventSeq) -> RuntimeResult<()>` to `RuntimeJournal` trait
+  - [x] Added default implementation that loops over single-event `append_sequenced` (backward compat)
+  - [x] Overrode in `StorageRuntimeJournal` to use `JournalWriteBatch::commit` for atomic commits
+- [x] Phase 3: All 11 acceptance tests pass
+- [x] Phase 4: Regression tests pass (existing 2059 tests in vb_runtime)
+- [x] Phase 5: Holzman Rust gate passes (clippy, fmt, panic-macro scan)
+
+## Files Modified
+- `crates/vb_runtime/src/journal.rs` - added include for tests/chunk_005.rs
+- `crates/vb_runtime/src/journal/chunk_001.rs` - added `append_sequenced_batch` default impl
+- `crates/vb_runtime/src/journal/chunk_002.rs` - added `append_sequenced_batch` override for `StorageRuntimeJournal`
+- `crates/vb_runtime/src/journal/tests/chunk_005.rs` - NEW: 11 acceptance tests
+
+## Test Results
+- 11 new tests in chunk_005.rs: all pass
+- 2059 existing tests in vb_runtime: all pass
+- Workspace tests: all pass (no new failures)
+- Clippy strict: clean
+- Formatting: clean
+- No production panic macros in touched files
+
+## Key Invariants Satisfied
+- Empty batch returns `Ok(())` without committing (boundary)
+- All events committed atomically via single `JournalWriteBatch::commit`
+- Per-event action index markers (`put_action_index`) staged in the SAME batch
+- On failure, NO events visible (atomicity)
+- Sequence numbers assigned `seq_start + offset`
+- Single-event `append_sequenced` still works (regression)
+
+## Performance
+- Single WAL fsync per batch (was: N fsyncs for N events)
+- No additional allocations vs single-event path
+- Public API extension (additive, backward compatible)

@@ -1,0 +1,171 @@
+{
+  "id": "p1-7-compiler-aliases",
+  "title": "compiler-aliases: Wire save=set and do=run aliases through parser + digester",
+  "type": "feature",
+  "priority": 1,
+  "effort": "2hr",
+  "description": "Feature P1-7. Master §45 lists the canonical StepPrimitive variants. The YAML user-facing surface includes `save:` (alias for `set:`) and `do:` (alias for `run:`) per master §75 explain output examples (which show step kinds as `do`). vb_compile/src/mod_compile_lowering/part_02.rs:28-101 lower_canonical_step matches 10 of 12 StepPrimitive variants; Save and Do hit the `other` arm and return UnsupportedStepPrimitive. canonical_primitive_name in part_05.rs:98-114 maps Save→'save' and Set→'set' to different strings. digest_step_primitive in part_05.rs:374-381 writes distinct digest bytes. The result: a workflow using `save:` is rejected at compile time, and a workflow using `do:` followed by an equivalent `set:` would have a different digest (cache miss). This bead normalizes parser-level: when the YAML key is `save`, fold to Set{output, value}; when it's `do`, fold to Run. It also makes digest_step_primitive produce the same bytes for Save as for Set (identity).",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL accept both `save:` and `set:` YAML keys as equivalent (parser-level alias)",
+      "THE SYSTEM SHALL produce identical WorkflowDigests for workflows that differ only in `save` vs `set` (digest-level identity)"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a workflow YAML contains `save: { output: $x, value: ... }`",
+        "shall": "THE SYSTEM SHALL compile to the same CompiledNodeKind::SetConst as if the author wrote `set: { output: $x, value: ... }`"
+      },
+      {
+        "trigger": "WHEN a workflow YAML contains `do: { action: ..., input: ... }`",
+        "shall": "THE SYSTEM SHALL compile to the same CompiledNodeKind::Do as if the author wrote `run: { action: ..., input: ... }`"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a workflow mixes `save:` and `set:` for the same logical step across versions",
+        "shall_not": "THE SYSTEM SHALL NOT produce different WorkflowDigests",
+        "because": "Master §44.13 Fjall stores compiled IR keyed by ir_digest; cache misses waste recompute and break in-flight runs"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "YAML parses under the strict profile (no anchors, no merge keys, single document)",
+      "Step key is one of the supported aliases: set, save, run, do"
+    ],
+    "postconditions": [
+      "CompiledNodeKind enum is the canonical form (SetConst, Do); aliases are stripped during lowering",
+      "WorkflowDigest of `save:` workflow == WorkflowDigest of equivalent `set:` workflow (byte-equal)"
+    ],
+    "invariants": [
+      "Alias normalization is idempotent: normalizing an already-normalized key returns the same key",
+      "Digest stability: same input, same digest, regardless of which alias the author used"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "save_alias_compiles_to_set_const: `vb validate` on a workflow with `save: { output: $x, value: 42 }` succeeds; IR has SetConst node",
+      "do_alias_compiles_to_do_node: `vb validate` on a workflow with `do: { action: github.issue.create, input: $x }` succeeds; IR has Do node",
+      "save_and_set_produce_equal_digests: two workflows identical except for `save:` vs `set:` have the same WorkflowDigest"
+    ],
+    "error": [
+      "unknown_step_primitive_returns_unsupported: a workflow with `frobnicate: ...` fails to compile with UnsupportedStepPrimitive",
+      "save_with_missing_value_returns_missing_field: `save: { output: $x }` (no value) fails with MissingRequiredField"
+    ],
+    "edge": [
+      "save_alias_in_nested_step_still_normalized: a Collect body with `save:` normalizes the same as top-level"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_compile/src/mod_compile_lowering/part_02.rs:28-101 (lower_canonical_step; the `other` arm catches Save and Do)",
+      "crates/vb_compile/src/mod_compile_lowering/part_05.rs:98-114 (canonical_primitive_name; Save → 'save' vs Set → 'set')",
+      "crates/vb_compile/src/mod_compile_lowering/part_05.rs:374-381 (digest_step_primitive; distinct bytes for Save)",
+      "crates/vb_yaml/src/ast/parse_steps.rs (is_primitive function; where the parser-level normalization goes)",
+      "crates/vb_core/src/workflow/types.rs (StepPrimitive enum: Set, Save, Run, Do variants)"
+    ],
+    "patterns": [
+      "Pattern: existing alias normalization in parse_steps.rs (e.g., `then:` → `next:` per master §33)",
+      "Pattern: existing digest byte computation uses BLAKE3 keyed on the canonical primitive name"
+    ],
+    "questions": [
+      "Should the alias be applied at the AST level (parse_steps.rs) or at the lowering level (part_02.rs)? (Spec: AST level — gives consistent digests.)",
+      "Does the digest computation need to keep the Save variant in its enum, or can Save be removed entirely from StepPrimitive? (Spec: keep Save as an identity alias in the enum; remove its distinct digest bytes.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker exploits the alias to smuggle a `save:` step that bypasses a deny-list compiled against `set:` steps",
+        "prevention": "After alias normalization, the IR is identical; deny-lists operate on the IR, not the YAML surface",
+        "test_for_it": "save_alias_normalized_before_deny_list_check (proptest with 100 deny-list patterns)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Workflow author uses `save:` and gets a confusing `UnsupportedStepPrimitive: Save` error",
+        "prevention": "Parser-level normalization accepts both; error is never surfaced",
+        "test_for_it": "save_alias_does_not_emit_unsupported_error (assert validate exit 0)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "A workflow in version 1 uses `set:`, version 2 uses `save:`; both are semantically identical but have different digests, fragmenting the compiled IR cache",
+        "prevention": "Digest is computed on the normalized form, so both versions share a digest",
+        "test_for_it": "save_and_set_produce_equal_digests (assert BLAKE3 hash bytes are equal)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "An external tool that reads the YAML source to extract step types gets confused by the alias",
+        "prevention": "Tool consumes the IR (canonical), not the YAML source; if it reads YAML, normalize first",
+        "test_for_it": "ir_does_not_contain_save_keyword (assert CompiledNodeKind::SetConst is the only form in the IR)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_compile/src/mod_compile_lowering/part_02.rs:28-101 (lower_canonical_step)",
+      "Read crates/vb_compile/src/mod_compile_lowering/part_05.rs:98-114,374-381 (canonical_primitive_name + digest_step_primitive)",
+      "Read crates/vb_yaml/src/ast/parse_steps.rs (is_primitive)"
+    ],
+    "phase_1": [
+      "Write test test_save_alias_compiles_to_set_const",
+      "Write test test_do_alias_compiles_to_do_node",
+      "Write test test_save_and_set_produce_equal_digests"
+    ],
+    "phase_2": [
+      "In vb_yaml/src/ast/parse_steps.rs is_primitive: add a normalization step: if the YAML key is `save`, return StepPrimitive::Set{...} with the same body; if the key is `do`, return StepPrimitive::Do",
+      "In vb_compile/src/mod_compile_lowering/part_05.rs digest_step_primitive: remove the Save arm or keep it as an identity (same bytes as Set)",
+      "In vb_compile/src/mod_compile_lowering/part_02.rs lower_canonical_step: remove the `other` arm's UnsupportedStepPrimitive for Save (it's now normalized away)"
+    ],
+    "phase_3": [
+      "Update master §33 example YAMLs to show `save:` and `do:` as the recommended user-facing aliases"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_compile -p vb_yaml` and verify all new tests pass",
+      "Manual: `vb validate fixtures/save_alias.yaml && vb digest fixtures/save_alias.yaml` should match `vb digest fixtures/set_equivalent.yaml`"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_compile/src/mod_compile_lowering/part_02.rs:28-101 (lower_canonical_step)",
+      "crates/vb_compile/src/mod_compile_lowering/part_05.rs:98-114,374-381 (canonical_primitive_name + digest)",
+      "crates/vb_yaml/src/ast/parse_steps.rs (parser normalization)",
+      "crates/vb_core/src/workflow/types.rs (StepPrimitive enum)",
+      "fixtures/save_alias.yaml (new test fixture)",
+      "fixtures/set_equivalent.yaml (new test fixture)"
+    ],
+    "similar_implementations": [
+      "Parser-level alias normalization in parse_steps.rs for `then:` → `next:` (master §33)"
+    ],
+    "external_references": [
+      "Master §33.6 Command surface (YAML examples)",
+      "Master §45 StepPrimitive contract (canonical forms)",
+      "Master §75 explain output uses `do` as the kind label"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_compile/src/mod_compile_lowering/part_02.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "lower_canonical_step's match arms for the 10 supported variants",
+          "The `other` arm that catches Save and Do (the bug)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "StepPrimitive::Set { output: SlotIdx, value: ConstValue } in vb_core/src/workflow/types.rs",
+      "StepPrimitive::Do { action: ActionId, input: SlotIdx } in vb_core/src/workflow/types.rs",
+      "BLAKE3 keyed hash for digest_step_primitive"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no StepPrimitive::Run variant today; `run` was a placeholder name; the canonical is `Do`"
+    ],
+    "no_placeholder_values": [
+      "Do NOT keep two separate digest paths; collapse to one"
+    ]
+  }
+}

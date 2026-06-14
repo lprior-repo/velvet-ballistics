@@ -1,4 +1,5 @@
 use super::*;
+use crate::args::run_ops::CANCEL_REASON_MAX_CHARS;
 
 #[test]
 fn parse_system_status_rejects_unknown_profile() {
@@ -310,7 +311,7 @@ fn parse_cancel_rejects_missing_db() {
 
 #[test]
 fn parse_cancel_rejects_reason_longer_than_256_bytes() {
-    let long_reason = "a".repeat(257);
+    let long_reason = "a".repeat(CANCEL_REASON_MAX_CHARS.saturating_add(1));
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "cancel",
@@ -328,7 +329,7 @@ fn parse_cancel_rejects_reason_longer_than_256_bytes() {
 
 #[test]
 fn parse_cancel_accepts_reason_exactly_256_bytes() {
-    let reason = "a".repeat(256);
+    let reason = "a".repeat(CANCEL_REASON_MAX_CHARS);
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "cancel",

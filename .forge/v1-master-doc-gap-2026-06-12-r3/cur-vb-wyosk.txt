@@ -1,0 +1,233 @@
+○ vb-wyosk · P2-15r index-status-workflow: Wire index_status and index_workflow as Runtime methods (or remove dead code)   [● P2 · OPEN]
+Owner: Lewis · Type: task
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-hax4i4q0.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-hax4i4q0.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-hax4i4q0"
+  title: "P2-15r index-status-workflow: Wire index_status and index_workflow as Runtime methods (or remove dead code)"
+  type: "task"
+  priority: 2
+  effort_estimate: "2hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL expose index_status and index_workflow as public Runtime methods that return real (not hardcoded) state\",
+      \"THE SYSTEM SHALL either wire the pending_actions gate or remove the dead code; no half-state allowed\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN status_subcommand is called and queries index_status for a run_id\", shall: \"THE SYSTEM SHALL return the actual run state from the index, not a hardcoded default\"}
+    ]
+    unwanted: [
+      {condition: \"IF the three APIs are kept as dead code (defined but never called)\", shall_not: \"THE SYSTEM SHALL NOT leave the three APIs in a half-state; they must be wired or removed\", because: \"Master §44.15 requires every API to be either live or absent; dead code is forbidden by the architecture contract\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"index_status, index_workflow, and pending_actions gate are currently defined but not wired into Runtime::new\",
+        \"Master §44.15 is the authoritative spec for the operational affordances\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"Either all three APIs are wired (Runtime::new initializes them) or all three are removed (no dead code remains)\",
+        \"The decision (wire vs remove) is documented in master doc §D-24 amendment\",
+        \"No regression: any existing call sites of the three APIs continue to compile\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"index_status is consistent with the journal sequence (master §44.15 invariant)\",
+      \"The three APIs are not in a half-state: either fully wired or fully removed\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_runtime/src/ (search for index_status, index_workflow, pending_actions — find the defined-but-not-wired APIs)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §44.15 (the operational affordances spec)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §D-24 (the dead-code amendment section)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Are there any existing call sites of the three APIs in the codebase? If yes, wire them; if no, remove them.\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Attacker exploits a half-wired pending_actions gate to inject action tickets without going through Runtime::recover\", prevention: \"The pending_actions gate is either fully wired (all entry points route through it) or fully removed\", test_for_it: \"pending_actions_gate_is_not_bypassable: proptest with 1000 entry points; assert all route through the gate or the gate is absent\"},\n      {failure: \"status_subcommand returns hardcoded 'idle' for all runs; the operator cannot tell if a run is actually in progress\", prevention: \"index_status is wired and returns real state from the index\", test_for_it: \"status_subcommand_returns_real_run_state (regression shield)\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_runtime_new_initializes_index_status_a_new_runtime_has_index_status_populated_wi\", given: \"Task P2-15r (revision of black-hat-revised vb-yrtka). Original bead asked to either wire or remove three dead-code APIs. Black-hat review round 1 confirmed the original framing is correct: the three APIs (index_status, index_workflow, pending_actions gate) are defined in the codebase but not wired into Runtime. Real source: crates/vb_runtime/src/ (Runtime struct has slots for index_status and index_workflow, but they are populated but not exposed). This bead's scope: (1) audit the three APIs and decide wire-vs-remove for each; (2) if wire, add them to Runtime::new_with_journal as initialization steps; (3) if remove, delete the dead code and the unit tests that reference them. The decision is binary: either all three are wired (preferred — they enable the status subcommand to query real state per master §44.15) or all three are removed (if they are unused). The black-hat recommended keeping P2-15 at P2 (not raising to P0) and accepting the dependency from P0-5b, because the pending_actions coordination in P0-5b requires the index_status machinery to be wired. Master §44.15 (operational affordances) implies these are needed; recommend: wire all three. Kani harness: prove index_status is consistent with the journal sequence. proptest: 100 random run states produce consistent index lookups.\", when: \"runtime_new_initializes_index_status: a new Runtime has index_status populated with an empty index; assert index.len() == 0\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_runtime_index_status_returns_real_state_10_runs_are_started;_index_status_return\", given: \"Task P2-15r (revision of black-hat-revised vb-yrtka). Original bead asked to either wire or remove three dead-code APIs. Black-hat review round 1 confirmed the original framing is correct: the three APIs (index_status, index_workflow, pending_actions gate) are defined in the codebase but not wired into Runtime. Real source: crates/vb_runtime/src/ (Runtime struct has slots for index_status and index_workflow, but they are populated but not exposed). This bead's scope: (1) audit the three APIs and decide wire-vs-remove for each; (2) if wire, add them to Runtime::new_with_journal as initialization steps; (3) if remove, delete the dead code and the unit tests that reference them. The decision is binary: either all three are wired (preferred — they enable the status subcommand to query real state per master §44.15) or all three are removed (if they are unused). The black-hat recommended keeping P2-15 at P2 (not raising to P0) and accepting the dependency from P0-5b, because the pending_actions coordination in P0-5b requires the index_status machinery to be wired. Master §44.15 (operational affordances) implies these are needed; recommend: wire all three. Kani harness: prove index_status is consistent with the journal sequence. proptest: 100 random run states produce consistent index lookups.\", when: \"runtime_index_status_returns_real_state: 10 runs are started; index_status returns all 10 in the correct order\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_runtime_index_status_on_unknown_run_returns_none_index_status_for_a_non-existent\", given: \"Error precondition\", when: \"runtime_index_status_on_unknown_run_returns_none: index_status for a non-existent run_id returns None, not a hardcoded value\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_negative_test_compile_failure_path_returns_typed_error_a_malformed_input_is_reje\", given: \"Error precondition\", when: \"negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P2-15r index-status-workflow: Wire index_status and index_workflow as Runtime methods (or remove dead code)"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Audit the codebase for call sites of index_status, index_workflow, pending_actions gate\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Decide wire-vs-remove based on the audit; document the decision in master doc §D-24\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"If wire: write test test_runtime_new_initializes_index_status (REGRESSION SHIELD)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"If remove: write test test_no_dead_code_for_index_apis\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"If wire: add the three APIs to Runtime::new initialization; ensure pending_actions gate is the single entry point\", done_when: \"Tests pass\"},
+        {task: \"If remove: delete the three API definitions and any unit tests that reference them\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_runtime/src/ (the Runtime module — the wire-up site)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"master doc §44.15 (the operational affordances spec)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"master doc §D-24 (the dead-code amendment section)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-hax4i4q0/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_runtime/src/ (the Runtime module — the wire-up site)\", relevance: \"Related implementation\"},
+      {path: \"master doc §44.15 (the operational affordances spec)\", relevance: \"Related implementation\"},
+      {path: \"master doc §D-24 (the dead-code amendment section)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+BLOCKS
+  ← ○ vb-v1jiq: P0-5b recover-pending-actions: Reattach pending_actions to action queue after Runtime::recover ● P0
+

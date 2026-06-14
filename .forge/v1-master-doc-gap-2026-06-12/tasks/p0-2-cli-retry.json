@@ -1,0 +1,174 @@
+{
+  "id": "p0-2-cli-retry",
+  "title": "cli-retry: Wire cmd_retry to lifecycle::retry (currently no-op)",
+  "type": "bug",
+  "priority": 0,
+  "effort": "1hr",
+  "description": "Bug P0-2. lifecycle::retry at crates/vb_cli/src/lifecycle.rs:235-302 is a fully implemented retry primitive that opens the Fjall journal, computes the new state, and writes JournalEvent::RunRetried. But run_ops.rs:24-98 (cmd_retry) only calls commands_journal::analyze_retry (a pure read-only check) and returns; grep across crates/vb_cli/src for `lifecycle::|crate::lifecycle` outside lifecycle.rs itself returns zero call sites. cmd_retry is a no-op. Worse, analyze_retry (commands_journal.rs:348) sets can_retry: true unconditionally for RunCancelled runs, allowing retry of a cancelled run which violates master §44.19 (typed and graceful failure of validation/compile/runtime/storage/IPC/action/replay). Master §33.3 (Lifecycle Command Surface) lists retry as a first-class command. This bead: (1) imports crate::lifecycle in run_ops.rs and calls lifecycle::retry after analyze_retry confirms can_retry: true; (2) fixes analyze_retry to set can_retry: false when run is in RunCancelled terminal state.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL emit a JournalEvent::RunRetried when cmd_retry is invoked on a retryable run",
+      "THE SYSTEM SHALL reject retry of a RunCancelled run with a typed CancelledRunNotRetryable error"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb retry <run-id> --db <path>` on a run in RunFailed state",
+        "shall": "THE SYSTEM SHALL open the Fjall journal, call lifecycle::retry, and append JournalEvent::RunRetried"
+      },
+      {
+        "trigger": "WHEN the user runs `vb retry <run-id> --db <path>` on a run in RunCancelled state",
+        "shall": "THE SYSTEM SHALL exit 3 with CancelledRunNotRetryable and write nothing to the journal"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF cmd_retry is called on a non-existent run id",
+        "shall_not": "THE SYSTEM SHALL NOT create a journal entry or silently exit 0",
+        "because": "Operators must be told the run id is wrong; silent success masks operator error"
+      },
+      {
+        "condition": "IF cmd_retry is called on a run already in RunRetried state",
+        "shall_not": "THE SYSTEM SHALL NOT stack multiple retried events on the same run",
+        "because": "Each retry must be a single explicit operator action; idempotency here would hide double-clicks"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Run exists in the Fjall journal at the supplied --db path",
+      "Run is in a retryable terminal state: RunFailed OR (post-fix: not RunCancelled)"
+    ],
+    "postconditions": [
+      "JournalEvent::RunRetried is appended with the original run_id and a fresh attempt_seq",
+      "Run's step states are reset to Pending for the failed steps only; succeeded steps remain Succeeded (lifecycle::retry preserves progress)"
+    ],
+    "invariants": [
+      "Retried runs retain all prior journal events (append-only, never truncate)",
+      "lifecycle::retry is called via the `crate::lifecycle` module path; no duplicate implementations are introduced"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "cli_retry_after_failed_run_writes_run_retried_event: submit a run that fails, then `vb retry <id> --db /tmp/db`; journal contains JournalEvent::RunRetried with the original run_id",
+      "cli_retry_preserves_succeeded_steps: run a 5-step workflow that fails at step 3, retry; steps 1-2 are still Succeeded, step 3 is Pending"
+    ],
+    "error": [
+      "cli_retry_after_cancelled_run_returns_cancelled_error: cancel a run, then retry; exits 3 with `CancelledRunNotRetryable`",
+      "cli_retry_with_unknown_run_id_returns_not_found: `vb retry 99999 --db /tmp/db` exits 4 with `RunNotFound`"
+    ],
+    "edge": [
+      "cli_retry_with_missing_db_path_returns_io_error: `vb retry <id>` (no --db) exits 2 with `DbPathRequired`"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/lifecycle.rs:235-302 (full retry implementation; reference to copy from)",
+      "crates/vb_cli/src/run_ops.rs:24-98 (cmd_retry function; needs the import + call)",
+      "crates/vb_cli/src/commands/journal.rs:348 (analyze_retry: RunCancelled bug)",
+      "crates/vb_cli/src/commands/journal.rs (analyze_retry, analyze_resume signatures)",
+      "crates/vb_storage/src/recovery.rs (JournalEvent::RunRetried write path)"
+    ],
+    "patterns": [
+      "Pattern: existing `use crate::lifecycle;` import in other call sites (if any) — grep result: zero, so we add the first one",
+      "Pattern: analyze_retry returns AnalyzeResult { can_retry: bool, reason: String }; cmd_retry currently only logs the result"
+    ],
+    "questions": [
+      "Should lifecycle::retry accept the existing run_id or allocate a new one? (Spec: same run_id, fresh attempt_seq.)",
+      "Does analyze_retry's fix need to thread to analyze_resume's can_resume logic too? (Yes for state-driven consistency; P0-3 covers the resume side.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "Operator retries a run that contains a Secret-tainted slot, leaking the secret into the new attempt's journal",
+        "prevention": "lifecycle::retry reuses the existing RunState (which already carries the taint array); new attempt inherits the same secret taint, no extra write",
+        "test_for_it": "cli_retry_of_secret_tainted_run_preserves_taint (proptest over 50 tainted slots)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator sees a successful `vb retry` exit but no journal event was written",
+        "prevention": "cmd_retry must verify the journal write succeeded (Fjall commit acked) before exiting 0",
+        "test_for_it": "cli_retry_returns_exit_0_only_if_journal_write_acked"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "lifecycle::retry is called twice on the same failed run, creating two Retried events and double-counting attempts",
+        "prevention": "analyze_retry must check current run state; once in RunRetried, can_retry: false",
+        "test_for_it": "cli_retry_on_already_retried_run_returns_already_retried_error"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "vb retry on a run owned by a different shard fails because run_ops.rs has no shard routing",
+        "prevention": "Pass run_id through to lifecycle::retry which already routes via Shard::enqueue",
+        "test_for_it": "cli_retry_routes_to_correct_shard (proptest with 16 shards)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/lifecycle.rs:235-302 to understand the existing retry contract (function signature, error variants, return type)",
+      "Read crates/vb_cli/src/run_ops.rs:24-98 to find the cmd_retry function and its current `analyze_retry` return handling",
+      "Read crates/vb_cli/src/commands/journal.rs:348 (analyze_retry) and the surrounding RunState matching arms"
+    ],
+    "phase_1": [
+      "Write test test_cli_retry_after_failed_run_writes_run_retried_event (submit+fail a workflow, then retry, scan journal for RunRetried)",
+      "Write test test_cli_retry_after_cancelled_run_returns_cancelled_error (cancel, then retry, assert exit 3 and CancelledRunNotRetryable)",
+      "Write test test_cli_retry_with_unknown_run_id_returns_not_found"
+    ],
+    "phase_2": [
+      "In run_ops.rs:24-98 cmd_retry, add `use crate::lifecycle;` import",
+      "In cmd_retry, after `analyze_retry` confirms can_retry: true, open the Fjall journal (using the existing open_journal helper) and call `lifecycle::retry(parse_run_id(run_id), &journal)?`",
+      "In commands/journal.rs:348 analyze_retry, add a match arm for RunState::RunCancelled that sets can_retry: false and reason: 'RunCancelled; not retryable'"
+    ],
+    "phase_3": [
+      "Update the cmd_retry --help text to mention the cancelled-run rejection"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Manual: `vb submit issue_triage --db /tmp/db && vb cancel <id> --db /tmp/db && vb retry <id> --db /tmp/db` should exit 3"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/lifecycle.rs (full implementation; lines 235-302 for retry, 150-220 for resume)",
+      "crates/vb_cli/src/run_ops.rs (cmd_retry at 24-98, cmd_resume at 100-156)",
+      "crates/vb_cli/src/commands/journal.rs (analyze_retry at 348, analyze_resume at 386-429)",
+      "crates/vb_storage/src/recovery.rs (JournalEvent::RunRetried encoding)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::retry if it exists; otherwise use lifecycle module directly)"
+    ],
+    "similar_implementations": [
+      "lifecycle::resume at lifecycle.rs:150-220 is the parallel pattern (P0-3 wires the resume side)"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface",
+      "Master §44.19 typed and graceful failure of retry"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/lifecycle.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "lifecycle::retry function signature (input args, return type)",
+          "how it opens the Fjall journal (don't reimplement; delegate)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "lifecycle::retry(parse_run_id, &journal) -> Result<(), CliError> (already exists in lifecycle.rs:235)",
+      "commands_journal::analyze_retry(journal, run_id) -> AnalyzeResult (already exists)",
+      "JournalEvent::RunRetried enum variant (in crates/vb_storage/src/recovery.rs)"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no Runtime::retry method; retry is at the CLI/lifecycle layer, not the runtime layer"
+    ],
+    "no_placeholder_values": [
+      "Do NOT hardcode any run_id in test fixtures; use the run_id returned by submit",
+      "Do NOT use 0 as a sentinel for `no run_id`; cmd_retry requires an explicit run_id argument"
+    ]
+  }
+}

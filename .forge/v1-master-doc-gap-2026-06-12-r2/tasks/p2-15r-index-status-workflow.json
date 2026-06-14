@@ -1,0 +1,139 @@
+{
+  "id": "p2-15r-index-status-workflow",
+  "title": "P2-15r index-status-workflow: Wire index_status and index_workflow as Runtime methods (or remove dead code)",
+  "type": "task",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Task P2-15r (revision of black-hat-revised vb-yrtka). Original bead asked to either wire or remove three dead-code APIs. Black-hat review round 1 confirmed the original framing is correct: the three APIs (index_status, index_workflow, pending_actions gate) are defined in the codebase but not wired into Runtime. Real source: crates/vb_runtime/src/ (Runtime struct has slots for index_status and index_workflow, but they are populated but not exposed). This bead's scope: (1) audit the three APIs and decide wire-vs-remove for each; (2) if wire, add them to Runtime::new_with_journal as initialization steps; (3) if remove, delete the dead code and the unit tests that reference them. The decision is binary: either all three are wired (preferred — they enable the status subcommand to query real state per master §44.15) or all three are removed (if they are unused). The black-hat recommended keeping P2-15 at P2 (not raising to P0) and accepting the dependency from P0-5b, because the pending_actions coordination in P0-5b requires the index_status machinery to be wired. Master §44.15 (operational affordances) implies these are needed; recommend: wire all three. Kani harness: prove index_status is consistent with the journal sequence. proptest: 100 random run states produce consistent index lookups.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose index_status and index_workflow as public Runtime methods that return real (not hardcoded) state",
+      "THE SYSTEM SHALL either wire the pending_actions gate or remove the dead code; no half-state allowed"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN status_subcommand is called and queries index_status for a run_id",
+        "shall": "THE SYSTEM SHALL return the actual run state from the index, not a hardcoded default"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the three APIs are kept as dead code (defined but never called)",
+        "shall_not": "THE SYSTEM SHALL NOT leave the three APIs in a half-state; they must be wired or removed",
+        "because": "Master §44.15 requires every API to be either live or absent; dead code is forbidden by the architecture contract"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "index_status, index_workflow, and pending_actions gate are currently defined but not wired into Runtime::new",
+      "Master §44.15 is the authoritative spec for the operational affordances"
+    ],
+    "postconditions": [
+      "Either all three APIs are wired (Runtime::new initializes them) or all three are removed (no dead code remains)",
+      "The decision (wire vs remove) is documented in master doc §D-24 amendment",
+      "No regression: any existing call sites of the three APIs continue to compile"
+    ],
+    "invariants": [
+      "index_status is consistent with the journal sequence (master §44.15 invariant)",
+      "The three APIs are not in a half-state: either fully wired or fully removed"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "runtime_new_initializes_index_status: a new Runtime has index_status populated with an empty index; assert index.len() == 0",
+      "runtime_index_status_returns_real_state: 10 runs are started; index_status returns all 10 in the correct order"
+    ],
+    "error": [
+      "runtime_index_status_on_unknown_run_returns_none: index_status for a non-existent run_id returns None, not a hardcoded value",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "proptest_index_consistency: 100 random (start_run, index_query) sequences; assert index_status matches the journal",
+      "kani_index_status_is_consistent: bounded model check with 5 runs and 5 queries; assert no inconsistency"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/ (search for index_status, index_workflow, pending_actions — find the defined-but-not-wired APIs)",
+      "master doc §44.15 (the operational affordances spec)",
+      "master doc §D-24 (the dead-code amendment section)"
+    ],
+    "patterns": [
+      "Pattern: existing Runtime::new initializes other indexes (e.g., the journal index) — the new APIs should follow the same pattern"
+    ],
+    "questions": [
+      "Are there any existing call sites of the three APIs in the codebase? If yes, wire them; if no, remove them."
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "status_subcommand returns hardcoded 'idle' for all runs; the operator cannot tell if a run is actually in progress",
+        "prevention": "index_status is wired and returns real state from the index",
+        "test_for_it": "status_subcommand_returns_real_run_state (regression shield)"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker exploits a half-wired pending_actions gate to inject action tickets without going through Runtime::recover",
+        "prevention": "The pending_actions gate is either fully wired (all entry points route through it) or fully removed",
+        "test_for_it": "pending_actions_gate_is_not_bypassable: proptest with 1000 entry points; assert all route through the gate or the gate is absent"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Audit the codebase for call sites of index_status, index_workflow, pending_actions gate",
+      "Decide wire-vs-remove based on the audit; document the decision in master doc §D-24"
+    ],
+    "phase_1": [
+      "If wire: write test test_runtime_new_initializes_index_status (REGRESSION SHIELD)",
+      "If remove: write test test_no_dead_code_for_index_apis"
+    ],
+    "phase_2": [
+      "If wire: add the three APIs to Runtime::new initialization; ensure pending_actions gate is the single entry point",
+      "If remove: delete the three API definitions and any unit tests that reference them"
+    ],
+    "phase_3": [
+      "Run `moon run :test -p vb_runtime`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/ (the Runtime module — the wire-up site)",
+      "master doc §44.15 (the operational affordances spec)",
+      "master doc §D-24 (the dead-code amendment section)"
+    ],
+    "similar_implementations": [
+      "Existing Runtime::new initializes other indexes (e.g., the journal index) — the new APIs should follow the same pattern"
+    ],
+    "external_references": [
+      "Master §44.15 Direct API operational affordances",
+      "Master §D-24 Dead Code Amendment"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Search for index_status, index_workflow, pending_actions — find the defined-but-not-wired APIs"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "The three APIs are defined in the codebase (defined-but-not-wired)",
+      "Runtime::new already initializes other indexes"
+    ],
+    "apis_that_do_not_exist": [
+      "The three APIs are not currently exposed as public Runtime methods (this bead wires them or removes them)"
+    ],
+    "no_placeholder_values": [
+      "Do NOT leave the APIs in a half-state (defined but not wired)",
+      "Do NOT cite files that don't exist; verify the path before claiming an API is at a specific line"
+    ]
+  }
+}

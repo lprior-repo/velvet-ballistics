@@ -8,7 +8,7 @@ use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
 use crate::explain_repair::explain_repair_hint;
 use crate::explain_reports::{
-    explain_compile_repair_hint, explain_gate_pass, explain_verification_failure,
+    explain_compile_repair_hint, explain_gate_status, explain_verification_failure,
     verify_error_message,
 };
 use crate::explain_validation::explain_validation_error;
@@ -110,7 +110,7 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
     ) {
         Ok(result) => {
             if output == OutputFormat::Text {
-                crate::outln!("Workflow verification certificate:");
+                crate::outln!("Workflow verification status:");
                 crate::outln!("  status:  valid");
                 crate::outln!("  digest:  {}", result.digest_hex);
                 crate::outln!("  nodes:   {}", result.node_count);
@@ -119,9 +119,9 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
                 // Execution plan section
                 crate::explain_plan::emit_execution_plan(&compiled, plan_ast.as_ref());
 
-                crate::outln!("Passed gates ({}):", result.checks.len());
+                crate::outln!("Gate statuses ({}):", result.checks.len());
                 for check in &result.checks {
-                    explain_gate_pass(check);
+                    explain_gate_status(check);
                 }
                 if !result.warnings.is_empty() {
                     crate::outln!("");
@@ -138,7 +138,7 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
                         ],
                     );
                 }
-                crate::outln!("All gates passed. Workflow is correct and verifiable.");
+                crate::outln!("{}", explain_completion_message(&result));
             } else {
                 crate::emit_json_or_return!(
                     &crate::explain_plan::success_report(&result, &compiled, plan_ast.as_ref()),
@@ -159,6 +159,18 @@ pub(crate) fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> E
             }
             code.into()
         }
+    }
+}
+
+fn explain_completion_message(result: &crate::commands_verify::VerifyOk) -> String {
+    let deferred_gates = result.deferred_gates();
+    if deferred_gates.is_empty() {
+        "All verification gates closed. Workflow is correct and verifiable.".to_string()
+    } else {
+        format!(
+            "Deferred gates remain: {}. This explain report is not a full verification certificate.",
+            deferred_gates.join(", ")
+        )
     }
 }
 
@@ -494,4 +506,27 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
         }
     }
     explain_compile_repair_hint(err);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::args::DurabilityMode;
+    use crate::commands_verify::VerifyOk;
+
+    #[test]
+    fn explain_completion_message_mentions_deferred_gates() {
+        let result = VerifyOk {
+            digest_hex: "0123456789abcdef".repeat(4),
+            node_count: 2,
+            checks: vec!["profile", "results", "evidence:deferred"],
+            warnings: Vec::new(),
+            durability_mode: DurabilityMode::None,
+        };
+
+        assert_eq!(
+            explain_completion_message(&result),
+            "Deferred gates remain: evidence. This explain report is not a full verification certificate."
+        );
+    }
 }

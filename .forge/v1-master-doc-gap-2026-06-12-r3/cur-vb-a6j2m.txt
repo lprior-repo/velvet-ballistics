@@ -1,0 +1,236 @@
+○ vb-a6j2m · P0-4r runtime-action-executor: Add ActionExecutor trait + 3 §19 mock actions (NOT a dispatch stub fix)   [● P0 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-pf3n3pl3.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-pf3n3pl3.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-pf3n3pl3"
+  title: "P0-4r runtime-action-executor: Add ActionExecutor trait + 3 §19 mock actions (NOT a dispatch stub fix)"
+  type: "feature"
+  priority: 0
+  effort_estimate: "4hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL expose a public ActionExecutor trait that the verify and simulate subcommands can call without depending on the full Runtime\",
+      \"THE SYSTEM SHALL provide at least 3 mock actions (Echo, ComputeHash, Delay) implementing the ActionExecutor trait\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN ActionExecutor::execute is called with an ActionInput whose contract matches a registered mock\", shall: \"THE SYSTEM SHALL return ActionResult<ActionOutcome::Suspended(ticket)> with the ticket's payload field set to the mock's output\"},
+      {trigger: \"WHEN ActionExecutor::execute is called with an ActionInput whose action is not registered\", shall: \"THE SYSTEM SHALL return ActionError::UnknownAction { action: input.action } (preserved from ActionRegistry::dispatch)\"}
+    ]
+    unwanted: [
+      {condition: \"IF a mock action's input exceeds the contract's byte limit\", shall_not: \"THE SYSTEM SHALL NOT panic; it must return ActionError::InputTooLarge\", because: \"Master §19: actions are capacity-bounded; exceeding the limit is a typed error, not a panic\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"ActionRegistry::dispatch is already implemented and tested (this bead does NOT touch it)\",
+        \"The new ActionExecutor trait lives in crates/vb_runtime/src/action.rs (additions go after line 194)\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"ActionExecutor trait is public and importable from vb_runtime::action\",
+        \"EchoAction, ComputeHashAction, and DelayAction each implement ActionExecutor\",
+        \"A default ActionExecutor::execute delegates to ActionRegistry::dispatch for any action it does not handle natively\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"ActionExecutor::execute preserves the byte-limit invariant from validate_input_bytes\",
+      \"Mock actions are pure functions: same input → same ticket payload (deterministic for Echo and ComputeHash; Delay is timing-dependent but ticket creation is deterministic)\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_runtime/src/action.rs:1-212 (the file we're extending; read the entire file to understand the existing ActionRegistry and dispatch_generic)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_core/src/actions/contracts.rs (ActionContract, ActionInput, ActionTicket, ActionOutcome types)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/runtime/mod.rs (the existing Runtime that already uses ActionRegistry; verify it still compiles after we add the trait)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should the 3 mock actions live in vb_runtime (this bead) or in a new vb_runtime::action::mocks module? Recommend: sub-module vb_runtime::action::mocks to keep action.rs under 300 lines\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"A user-supplied action name in YAML resolves to a mock that returns attacker-controlled bytes\", prevention: \"Mock actions are explicit (Echo, ComputeHash, Delay); the ActionRegistry contract check rejects unknown actions before execute is called\", test_for_it: \"action_executor_rejects_action_not_in_registry (typed error, no panics)\"},\n      {failure: \"verify command cannot run end-to-end because it depends on the full Runtime, which is unavailable in compile-only mode\", prevention: \"ActionExecutor trait is independent of Runtime; verify can call it directly\", test_for_it: \"verify_subcommand_runs_against_action_executor_without_runtime (integration test)\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_action_executor_echo_returns_input_bytes_executeregisterecho,_input='hello'_->_s\", given: \"Feature P0-4r (revision of black-hat-rejected vb-01vkw). Black-hat review round 1 found that the original 'ActionRegistry::dispatch is a stub' framing was fabricated. ActionRegistry::dispatch at crates/vb_runtime/src/action.rs:122-194 IS already implemented: it resolves the compile-time contract, validates the action ID matches, and returns ActionOutcome::Suspended(ticket) via dispatch_generic (line 182-194). The file is 212 lines total. This bead is NOT a dispatch fix. It IS adding a new layer: the ActionExecutor trait (master §19) that wraps the existing ActionRegistry::dispatch and provides 3 mock actions (Echo, ComputeHash, Delay) for the verify and simulate pipelines. The new trait is at crates/vb_runtime/src/action.rs:200+ (in the empty space below dispatch_generic). Master §19: the executor trait is the single entry point for verify+simulate to call mock actions without depending on the full Runtime. The 3 mocks: EchoAction (returns the input bytes as ActionOutcome::Suspended(ticket)), ComputeHashAction (Blake3 of the input), DelayAction (sleeps for an input-specified duration then returns). Kani harness: prove ActionExecutor::execute never panics on any ActionInput. proptest: 1000 random (input, contract) pairs all produce ActionResult<Suspended>.\", when: \"action_executor_echo_returns_input_bytes: execute(register(Echo), input='hello') -> Suspended(ticket{payload: b'hello'})\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_action_executor_compute_hash_returns_blake3_executeregistercomputehash,_input='a\", given: \"Feature P0-4r (revision of black-hat-rejected vb-01vkw). Black-hat review round 1 found that the original 'ActionRegistry::dispatch is a stub' framing was fabricated. ActionRegistry::dispatch at crates/vb_runtime/src/action.rs:122-194 IS already implemented: it resolves the compile-time contract, validates the action ID matches, and returns ActionOutcome::Suspended(ticket) via dispatch_generic (line 182-194). The file is 212 lines total. This bead is NOT a dispatch fix. It IS adding a new layer: the ActionExecutor trait (master §19) that wraps the existing ActionRegistry::dispatch and provides 3 mock actions (Echo, ComputeHash, Delay) for the verify and simulate pipelines. The new trait is at crates/vb_runtime/src/action.rs:200+ (in the empty space below dispatch_generic). Master §19: the executor trait is the single entry point for verify+simulate to call mock actions without depending on the full Runtime. The 3 mocks: EchoAction (returns the input bytes as ActionOutcome::Suspended(ticket)), ComputeHashAction (Blake3 of the input), DelayAction (sleeps for an input-specified duration then returns). Kani harness: prove ActionExecutor::execute never panics on any ActionInput. proptest: 1000 random (input, contract) pairs all produce ActionResult<Suspended>.\", when: \"action_executor_compute_hash_returns_blake3: execute(register(ComputeHash), input='abc') -> Suspended(ticket{payload: blake3('abc')})\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_action_executor_delay_returns_ticket_with_delay_duration_executeregisterdelay,_i\", given: \"Feature P0-4r (revision of black-hat-rejected vb-01vkw). Black-hat review round 1 found that the original 'ActionRegistry::dispatch is a stub' framing was fabricated. ActionRegistry::dispatch at crates/vb_runtime/src/action.rs:122-194 IS already implemented: it resolves the compile-time contract, validates the action ID matches, and returns ActionOutcome::Suspended(ticket) via dispatch_generic (line 182-194). The file is 212 lines total. This bead is NOT a dispatch fix. It IS adding a new layer: the ActionExecutor trait (master §19) that wraps the existing ActionRegistry::dispatch and provides 3 mock actions (Echo, ComputeHash, Delay) for the verify and simulate pipelines. The new trait is at crates/vb_runtime/src/action.rs:200+ (in the empty space below dispatch_generic). Master §19: the executor trait is the single entry point for verify+simulate to call mock actions without depending on the full Runtime. The 3 mocks: EchoAction (returns the input bytes as ActionOutcome::Suspended(ticket)), ComputeHashAction (Blake3 of the input), DelayAction (sleeps for an input-specified duration then returns). Kani harness: prove ActionExecutor::execute never panics on any ActionInput. proptest: 1000 random (input, contract) pairs all produce ActionResult<Suspended>.\", when: \"action_executor_delay_returns_ticket_with_delay_duration: execute(register(Delay), input=Duration::from_millis(100)) -> Suspended(ticket{payload: encoded_100ms})\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_action_executor_unknown_action_returns_typed_error_executeregisterecho,_input=un\", given: \"Error precondition\", when: \"action_executor_unknown_action_returns_typed_error: execute(register(Echo), input=UnknownAction) -> Err(UnknownAction)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_action_executor_input_too_large_returns_typed_error_executeregisterecho,_input=l\", given: \"Error precondition\", when: \"action_executor_input_too_large_returns_typed_error: execute(register(Echo), input=larger_than_contract_limit) -> Err(InputTooLarge)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P0-4r runtime-action-executor: Add ActionExecutor trait + 3 §19 mock actions (NOT a dispatch stub fix)"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/vb_runtime/src/action.rs in full (212 lines) to understand the existing ActionRegistry and dispatch_generic\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_core/src/actions/contracts.rs to understand ActionContract/ActionInput/ActionTicket/ActionOutcome\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Define ActionExecutor trait in crates/vb_runtime/src/action.rs after line 194: `pub trait ActionExecutor { fn execute(&self, input: &ActionInput, contract: &ActionContract) -> ActionResult<ActionOutcome>; }`\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Create new module crates/vb_runtime/src/action/mocks.rs (3 mock actions: Echo, ComputeHash, Delay)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Add 3 unit tests in mocks.rs covering happy/error/edge paths\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"Add a Kani harness at crates/vb_runtime/src/kani/action_executor.rs (behind `#[cfg(kani)]`) that proves execute never panics on any bounded input\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_runtime/src/action.rs (the file being extended)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/action/mocks.rs (NEW — the 3 mock actions)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_core/src/actions/contracts.rs (type definitions)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/kani/action_executor.rs (NEW — Kani harness)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-pf3n3pl3/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_runtime/src/action.rs (the file being extended)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/action/mocks.rs (NEW — the 3 mock actions)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_core/src/actions/contracts.rs (type definitions)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/kani/action_executor.rs (NEW — Kani harness)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+BLOCKS
+  ← ○ vb-gn6dn: status-live-probe: status and system-status must probe live runtime/storage, not return hardcoded defaults ● P1
+  ← ○ vb-s87f4: P2-17r submit-artifact: Add submit_artifact as a public Runtime method (master §66); caller is run_compiled_runtime.rs:256 ● P2
+

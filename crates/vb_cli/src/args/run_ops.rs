@@ -14,6 +14,8 @@ pub(super) struct RunDbArgs {
     pub(super) output: OutputFormat,
 }
 
+pub(crate) const CANCEL_REASON_MAX_CHARS: usize = 256;
+
 pub(super) fn parse_run_db_args(
     args: &[OsString],
     command: &'static str,
@@ -117,7 +119,10 @@ pub(super) fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
         .ok_or(ParseError::MissingArgument("run_id"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let reason = named_flag(args, "--reason");
-    if reason.as_ref().is_some_and(|r| r.len() > 256) {
+    if reason
+        .as_ref()
+        .is_some_and(|r| r.chars().count() > CANCEL_REASON_MAX_CHARS)
+    {
         return Err(ParseError::ReasonTooLong);
     }
     let output = parse_output_format(args);

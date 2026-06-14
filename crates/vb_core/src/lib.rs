@@ -89,6 +89,8 @@ pub mod kani;
 #[cfg(all(kani, feature = "kani-resource-contract-boundaries"))]
 pub mod kani_validate_resource_contract_boundaries;
 
+pub mod verification;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,

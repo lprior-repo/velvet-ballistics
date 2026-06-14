@@ -1,0 +1,147 @@
+{
+  "id": "p0-coord-shard-config-coord",
+  "title": "P0-COORD shard-config-coord: Define ShardConfig v2 and Runtime::new_with_journal signature before P2-14a/P2-17/P2-18 land",
+  "type": "feature",
+  "priority": 0,
+  "effort": "1hr",
+  "description": "Coordination P0-COORD (new bead per black-hat FIND-R4). Black-hat review round 1 identified a Risk 4: 3 P2 beads (P2-14a storage-batch, P2-14b shard-coalesce, P2-17r submit-artifact, P2-18r snapshot-writer) all touch ShardConfig and/or Runtime::new_with_journal. If they land in any order without coordination, the ShardConfig schema and the Runtime constructor signature will churn (each bead adds a field, breaking the previous bead's work). The fix: land a coordination commit FIRST that defines ShardConfig v2 (with all 3 new fields: coalesce_window_us, snapshot_interval_steps, batched_atomicity) and the canonical Runtime::new_with_journal signature, with no production behavior change. After this bead lands, the 3 dependent beads can be claimed in parallel without type churn. Real source: crates/vb_runtime/src/shard/config.rs (ShardConfig — currently v1; we define v2), crates/vb_runtime/src/runtime/mod.rs (Runtime::new_with_journal — the canonical signature). The v2 schema: `pub struct ShardConfig { pub coalesce_window_us: u64, pub snapshot_interval_steps: u32, pub batched_atomicity: bool, ..v1_fields }`. The new Runtime::new_with_journal signature: `pub fn new_with_journal(journal: Arc<FjallJournal>, config: ShardConfig) -> Self`. Kani harness: prove ShardConfig v2 default is consistent with v1 default for the v1 fields. proptest: 100 random ShardConfig v2 instances produce valid Runtime instances.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL define ShardConfig v2 with coalesce_window_us, snapshot_interval_steps, batched_atomicity fields",
+      "THE SYSTEM SHALL define the canonical Runtime::new_with_journal signature that P2-14a, P2-14b, P2-17r, P2-18r all use"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN P2-14a, P2-14b, P2-17r, or P2-18r is claimed",
+        "shall": "THE SYSTEM SHALL have the ShardConfig v2 schema and Runtime::new_with_journal signature already defined; no churn"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF P2-14a, P2-14b, P2-17r, or P2-18r land before this coordination bead",
+        "shall_not": "THE SYSTEM SHALL NOT allow P2-14a, P2-14b, P2-17r, or P2-18r to land before this coordination bead",
+        "because": "Coordination is the purpose of the P0 priority; landing later defeats the purpose"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "P2-14a, P2-14b, P2-17r, P2-18r are all blocked on this bead (added via bd dep)",
+      "Master §D-24 (the dead-code amendment) is the source of truth for the v2 schema"
+    ],
+    "postconditions": [
+      "ShardConfig v2 is defined with 3 new fields: coalesce_window_us (default 100), snapshot_interval_steps (default 50), batched_atomicity (default false)",
+      "Runtime::new_with_journal signature is canonical: `pub fn new_with_journal(journal: Arc<FjallJournal>, config: ShardConfig) -> Self`",
+      "No production behavior change: existing v1 call sites continue to compile and run identically",
+      "The 4 dependent beads (P2-14a, P2-14b, P2-17r, P2-18r) can be claimed in parallel without type churn"
+    ],
+    "invariants": [
+      "v2 default values for the 3 new fields are stable across runs (deterministic; no SystemTime::now() in defaults)",
+      "v1 fields are unchanged (no semantic regression for existing call sites)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "shard_config_v2_has_3_new_fields: ShardConfig v2 has coalesce_window_us, snapshot_interval_steps, batched_atomicity",
+      "runtime_new_with_journal_accepts_v2_config: Runtime::new_with_journal(journal, ShardConfig::v2_default()) compiles and returns a Runtime"
+    ],
+    "error": [
+      "v1_call_sites_still_compile: existing code that uses ShardConfig::v1_default() or Runtime::new_with_journal_v1 still compiles (backward-compatible shim)",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "proptest_shard_config_v2_produces_valid_runtime: 100 random ShardConfig v2 instances; assert Runtime::new_with_journal succeeds",
+      "kani_shard_config_v2_default_consistency: bounded model check with 4 v1 field combinations; assert v2 default is consistent with v1 default for v1 fields"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — currently v1; we define v2)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::new_with_journal — the canonical signature)",
+      "master doc §D-24 (the v2 schema spec)"
+    ],
+    "patterns": [
+      "Pattern: existing ShardConfig::default() is the v1 default; we add ShardConfig::v2_default() that initializes the 3 new fields"
+    ],
+    "questions": [
+      "Should the v1 default be deprecated, or kept as a backward-compatible shim? Recommend: kept as a shim for one release; deprecated in the next; this minimizes churn"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "P2-14a lands first and adds coalesce_window_us to v1; then P2-14b tries to add snapshot_interval_steps; the two definitions conflict and the second commit breaks the build",
+        "prevention": "P0-COORD lands FIRST and defines v2 with all 3 fields; subsequent beads fill in the v2 fields",
+        "test_for_it": "p2-14a_p2-14b_p2-17r_p2-18r_can_land_in_any_order: integration test that checks out this bead's commit and then claims the 4 dependent beads in random order; all 4 must succeed"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "An attacker exploits a missing field in v2 (e.g., coalesce_window_us is uninitialized) to cause unbounded memory growth",
+        "prevention": "v2_default() initializes all 3 new fields to safe values; ShardConfig validation rejects unsafe values at construction",
+        "test_for_it": "shard_config_v2_validation_rejects_unsafe_values: coalesce_window_us = u64::MAX; assert Err(ConfigOutOfBounds)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/shard/config.rs to confirm the v1 schema",
+      "Read crates/vb_runtime/src/runtime/mod.rs to find Runtime::new_with_journal",
+      "Read master doc §D-24 to confirm the v2 schema spec"
+    ],
+    "phase_1": [
+      "Write test test_shard_config_v2_has_3_new_fields (REGRESSION SHIELD)",
+      "Write proptest proptest_shard_config_v2_produces_valid_runtime (100 random instances)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/shard/config.rs: add ShardConfig v2 with 3 new fields; add v2_default() that initializes the 3 new fields to safe values; keep v1 as a backward-compatible shim",
+      "In vb_runtime/src/runtime/mod.rs: define the canonical Runtime::new_with_journal signature: `pub fn new_with_journal(journal: Arc<FjallJournal>, config: ShardConfig) -> Self`",
+      "Update master doc §D-24 to reflect the v2 schema"
+    ],
+    "phase_3": [
+      "Add Kani harness at vb_runtime/src/kani/shard_config_v2.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_runtime`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ],
+    "phase_4": [
+      "Use bd dep add to make P2-14a, P2-14b, P2-17r, P2-18r depend on this bead (P0-COORD is a parent)"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig v2 lives here)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::new_with_journal signature lives here)",
+      "master doc §D-24 (the v2 schema spec)"
+    ],
+    "similar_implementations": [
+      "Existing ShardConfig::default() is the v1 default; we add ShardConfig::v2_default()"
+    ],
+    "external_references": [
+      "Master §D-24 Dead Code Amendment (v2 schema spec)",
+      "Master §44.15 Direct API operational affordances (Runtime constructor signature)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/shard/config.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "ShardConfig v1 schema — we define v2 alongside (not replacing) v1"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ShardConfig v1 exists; we add v2 alongside",
+      "Runtime::new_with_journal exists; we canonicalize its signature"
+    ],
+    "apis_that_do_not_exist": [
+      "ShardConfig v2 does NOT exist yet — it is what this bead adds",
+      "The 3 new fields (coalesce_window_us, snapshot_interval_steps, batched_atomicity) do NOT exist yet"
+    ],
+    "no_placeholder_values": [
+      "Do NOT remove v1 (keep as a shim for backward compatibility)",
+      "Do NOT change production behavior (the v1 fields are unchanged)"
+    ]
+  }
+}

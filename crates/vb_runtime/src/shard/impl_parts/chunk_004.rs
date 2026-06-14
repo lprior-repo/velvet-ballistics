@@ -4,8 +4,8 @@ use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::workflow::CompiledWorkflow;
+#[cfg(not(kani))]
 use vb_storage::EventSeq;
-
 use crate::counters::ShardCounters;
 use crate::engine::{EvidenceCollector, EvidenceEvent};
 use crate::frame_pool::FramePool;

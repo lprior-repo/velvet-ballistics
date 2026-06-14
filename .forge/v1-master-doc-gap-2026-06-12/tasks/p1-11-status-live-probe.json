@@ -1,0 +1,183 @@
+{
+  "id": "p1-11-status-live-probe",
+  "title": "status-live-probe: status and system-status must probe live runtime/storage, not return hardcoded defaults",
+  "type": "feature",
+  "priority": 1,
+  "effort": "2hr",
+  "description": "Feature P1-11. Master §33.3 Lifecycle Command Surface requires status and system-status to be operational tools, not stubs. Today vb_cli/src/commands/status.rs:29 build_status constructs Shard::new(ShardConfig::default()) and reads the defaults, returning hardcoded '0' counters. The test at status.rs:176-188 confirms this. vb_cli/src/commands/system_status.rs:7 has a const NO_BACKEND_REASON and emits connected: false, health: degraded, ... always. The status command is the operator's first stop when diagnosing issues; hardcoded output is worse than no output. This bead: (1) adds Runtime::storage_health() -> StorageHealth returning Healthy | Degraded { reason } | Unreachable; (2) changes cmd_status to try opening an IPC client to --server; on success send IpcCommand::Health; on failure fall back to transient-shard view; (3) same for cmd_system_status; (4) adds --server <path> flag to status.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL report live runtime and storage health from a real probe, not from hardcoded defaults",
+      "THE SYSTEM SHALL fall back to a transient-shard view with a `fallback_reason` field when the live server is unreachable, never silently returning defaults"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb status --server <socket>` and the server is reachable",
+        "shall": "THE SYSTEM SHALL connect, send IpcCommand::Health, and return the live StorageHealth and counters"
+      },
+      {
+        "trigger": "WHEN the user runs `vb status` with no --server",
+        "shall": "THE SYSTEM SHALL open a transient shard, return a snapshot view, and include fallback_reason: 'no --server specified; transient shard view'"
+      },
+      {
+        "trigger": "WHEN the user runs `vb status --server <socket>` and the server is unreachable",
+        "shall": "THE SYSTEM SHALL exit 3 with `ServerUnreachable` and include the socket path and last error"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the Fjall journal is locked by another process (single-server model per master §68.2)",
+        "shall_not": "THE SYSTEM SHALL NOT silently return StorageHealth::Healthy; it must return Unreachable with reason 'journal locked by another process'",
+        "because": "Operators must know the server is not actually serving traffic"
+      },
+      {
+        "condition": "IF the runtime is in a degraded state (e.g., shard queue > 80% full)",
+        "shall_not": "THE SYSTEM SHALL NOT return Healthy; it must return Degraded with a specific reason",
+        "because": "Operators need to know to scale up or back off"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Either a --server <socket> is provided and the IPC server is running, OR no --server is provided and the transient-shard fallback is acceptable"
+    ],
+    "postconditions": [
+      "StatusReport.connected is true if the server responded, false otherwise",
+      "StatusReport.health is one of: Healthy | Degraded { reason } | Unreachable { reason }",
+      "StatusReport.counters reflect the live runtime (not zero) when connected"
+    ],
+    "invariants": [
+      "No status call returns hardcoded '0' counters when the server is reachable",
+      "fallback_reason is always present when connected: false, never silently omitted"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "status_with_running_server_returns_live_counters: start ipc-serve, run `vb status --server <socket>`; counters are non-zero for a workload that has been processed",
+      "status_without_server_returns_transient_view_with_fallback_reason: `vb status` (no --server) returns a snapshot with fallback_reason: 'no --server specified'",
+      "system_status_probes_fjall_health: `vb system-status --db /tmp/db` opens the Fjall journal, runs a probe (read of /ready keyspace), returns Healthy or Unreachable"
+    ],
+    "error": [
+      "status_with_unreachable_server_returns_server_unreachable: `vb status --server /tmp/nonexistent.sock` exits 3 with ServerUnreachable",
+      "status_with_locked_journal_returns_unreachable: two processes try to open the same Fjall path; the second gets Unreachable with reason 'journal locked'"
+    ],
+    "edge": [
+      "status_health_proptest: proptest over 100 random shard states, assert health classification is correct"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands/status.rs:29 (build_status: the hardcoded Shard::new(ShardConfig::default()))",
+      "crates/vb_cli/src/commands/status.rs:176-188 (the test that confirms the bug)",
+      "crates/vb_cli/src/commands/system_status.rs:7 (const NO_BACKEND_REASON)",
+      "crates/vb_runtime/src/runtime/mod.rs (where Runtime::storage_health goes)",
+      "crates/vb_ipc/src/commands.rs (IpcCommand::Health variant; check it exists)",
+      "crates/vb_storage/src/fjall.rs (FjallJournal health probe; check if /ready keyspace exists)"
+    ],
+    "patterns": [
+      "Pattern: existing IPC client construction in other commands (e.g., cmd_inspect opens an IPC client to --server)",
+      "Pattern: StorageHealth enum: Healthy | Degraded { reason: String } | Unreachable { reason: String }"
+    ],
+    "questions": [
+      "Is IpcCommand::Health already implemented? (Spec: yes, per master §21.16.)",
+      "Does FjallJournal expose a /ready keyspace for the probe? (Spec: not yet; this bead adds it.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker masks a degraded runtime by spoofing the --server socket, returning Healthy when the real server is Degraded",
+        "prevention": "Use a Unix domain socket with filesystem permissions; reject connections from other UIDs",
+        "test_for_it": "status_with_spoofed_socket_returns_permission_denied"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator runs `vb status` expecting live data, gets hardcoded zeros, and concludes the system is fine when it's actually broken",
+        "prevention": "Always include fallback_reason when not connected; never return zeros silently",
+        "test_for_it": "status_without_server_includes_fallback_reason (assert field is non-null)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "The transient-shard view reads a fresh empty shard, returning '0 active runs' when there are actually 100 active runs in the persistent journal",
+        "prevention": "When falling back to transient, emit a clear warning in stderr: 'WARNING: transient view; live server unreachable'",
+        "test_for_it": "status_transient_view_emits_stderr_warning"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "StatusReport schema changes and breaks an external monitoring tool",
+        "prevention": "Schema is versioned; new fields are additive only",
+        "test_for_it": "status_schema_version_field_present (assert 'velvet-ballistics/cli-output/v1')"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands/status.rs:29-188 in full",
+      "Read crates/vb_cli/src/commands/system_status.rs:7 in full",
+      "Read crates/vb_ipc/src/commands.rs to confirm IpcCommand::Health exists",
+      "Read crates/vb_storage/src/fjall.rs to find the Fjall journal handle"
+    ],
+    "phase_1": [
+      "Write test test_status_with_running_server_returns_live_counters",
+      "Write test test_status_without_server_returns_transient_view_with_fallback_reason",
+      "Write test test_status_with_unreachable_server_returns_server_unreachable",
+      "Write proptest test_status_health_proptest (100 random shard states)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/runtime/mod.rs: add `pub fn storage_health(&self) -> StorageHealth` that probes Fjall (try opening the /ready keyspace) and returns the enum",
+      "In vb_storage/src/fjall.rs: add a /ready keyspace that is written on open and read by the probe",
+      "In vb_cli/src/commands/status.rs: replace build_status with a new build_live_status that opens an IPC client to --server; on success, send IpcCommand::Health and populate from the response; on failure, populate from a transient shard with fallback_reason",
+      "In vb_cli/src/commands/system_status.rs: replace the const NO_BACKEND_REASON with the same live probe pattern",
+      "In args: add --server <path> flag to status (default: no server; transient view)"
+    ],
+    "phase_3": [
+      "Add StorageHealth enum to vb_runtime::runtime (Healthy | Degraded | Unreachable)"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli -p vb_runtime -p vb_storage` and verify all new tests pass",
+      "Manual: `vb ipc-serve --db /tmp/db & vb submit foo.yaml --db /tmp/db && vb status --server <socket>` should show non-zero counters"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands/status.rs (build_status to fix)",
+      "crates/vb_cli/src/commands/system_status.rs (NO_BACKEND_REASON to fix)",
+      "crates/vb_runtime/src/runtime/mod.rs (storage_health to add)",
+      "crates/vb_ipc/src/commands.rs (IpcCommand::Health, confirmed existing)",
+      "crates/vb_storage/src/fjall.rs (/ready keyspace to add)"
+    ],
+    "similar_implementations": [
+      "cmd_inspect opens an IPC client to --server; pattern to copy"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface (status, system-status)",
+      "Master §21.16 Binary IPC `Health` command",
+      "Master §68.2 Single-server contract"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands/status.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "build_status function (line 29)",
+          "The test at line 176-188 that confirms the bug"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "IpcCommand::Health in vb_ipc/src/commands.rs (per master §21.16)",
+      "Shard::new(ShardConfig::default()) in vb_runtime::shard (used for transient view)"
+    ],
+    "apis_that_do_not_exist": [
+      "Runtime::storage_health() does not exist; this bead adds it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use 0 as a 'no data' placeholder; use Option<u64> or a typed Unreachable"
+    ]
+  }
+}

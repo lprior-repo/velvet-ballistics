@@ -17,7 +17,7 @@ blake3.workspace = true
 chrono.workspace = true
 crossbeam-queue.workspace = true
 indexmap.workspace = true
-loom = "0.7"
+loom = { version = "0.7", optional = true }
 rtrb.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
@@ -34,10 +34,12 @@ vb_core = { path = "../vb_core", features = ["test-util"] }
 [features]
 default = []
 test-util = ["vb_core/test-util"]
-loom = []
+loom = ["dep:loom"]
 kani-admission-store = []
 kani-capability-harnesses = []
+kani-collect-pagination = []
 kani-engine-yaml-admission = []
+kani-reentry-proofs = []
 kani-shard-command-queue = []
 kani-trace-ring = []
 kani-vt2f-runtime-facade = []
@@ -48,6 +50,7 @@ vb-y9d3v-flux-refinements = []
 vb-mrwe6-flux-refinements = ["dep:flux-rs", "vb_storage/vb-mrwe6-flux-refinements"]
 vb-egysa-flux-refinements = ["dep:flux-rs"]
 vb-mrwe6-flux-negative-probes = []
+vb-rxru0-flux-refinements = []
 
 [lints]
 workspace = true

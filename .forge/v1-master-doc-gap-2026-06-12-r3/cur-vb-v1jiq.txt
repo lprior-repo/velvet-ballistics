@@ -1,0 +1,237 @@
+○ vb-v1jiq · P0-5b recover-pending-actions: Reattach pending_actions to action queue after Runtime::recover   [● P0 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-h2aabes3.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-h2aabes3.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-h2aabes3"
+  title: "P0-5b recover-pending-actions: Reattach pending_actions to action queue after Runtime::recover"
+  type: "feature"
+  priority: 0
+  effort_estimate: "2hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL rehydrate pending_actions (action tickets scheduled but not yet completed) from the journal during recovery\",
+      \"THE SYSTEM SHALL preserve the order of pending_actions during recovery (FIFO by ticket seq)\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN Runtime::recover is called on a non-terminal run with N pending actions in the journal\", shall: \"THE SYSTEM SHALL re-attach N tickets to the shard's action queue, ordered by ticket.seq, and mark them as 'recovered' in the journal\"}
+    ]
+    unwanted: [
+      {condition: \"IF a pending action's idempotency_key was already completed before the crash\", shall_not: \"THE SYSTEM SHALL NOT re-issue the action; it must mark the ticket as 'idempotent_skip' and emit an audit event\", because: \"Master §68 invariant 3: replay is bit-identical; re-issuing a completed action would violate idempotency\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"P0-5a (recover-frame-seed-wire) is complete and the runtime frame is rehydrated\",
+        \"P2-15 (index-status-workflow) is complete and index_status / index_workflow are wired\",
+        \"vb_storage::recovery::recover_pending_actions is the new API this bead adds\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"Runtime::recover attaches all pending_actions to the shard's action queue\",
+        \"Idempotency: tickets with completed idempotency_keys are not re-issued\",
+        \"An audit event (JournalEvent::PendingActionsRecovered { count, idempotent_skips }) is written to the journal\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"Recovery is deterministic: same journal → same pending_actions queue (master §68 invariant 4)\",
+      \"The order of pending_actions is preserved by ticket.seq\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed — reference for the new method)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs — must be extended to also return pending_actions)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/shard/mod.rs (Shard::pending_actions — the target queue)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_core/src/actions/idempotency.rs (idempotency_key handling)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should pending_actions be stored in the same Fjall keyspace as the journal, or a separate pending_actions keyspace? (Recommend: same keyspace, scoped by run_id, to avoid an extra round-trip)\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Attacker crashes the runtime between action scheduling and completion; the action is re-issued but the idempotency_key was forged to bypass the check\", prevention: \"Idempotency keys are derived from the action contract hash, not user input\", test_for_it: \"idempotency_key_is_derived_from_contract_not_user_input: assert key = blake3(contract_id || input)\"},\n      {failure: \"Restart re-issues a completed action, double-spending the side effect (e.g., charging a credit card twice)\", prevention: \"Idempotency check via idempotency_key; completed actions are marked idempotent_skip\", test_for_it: \"recover_does_not_reissue_completed_actions: proptest with 1000 (action, completed_before_crash) pairs\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_recover_pending_actions_returns_tickets_in_seq_order_100_random_journals_with_0-\", given: \"Feature P0-5b (revision of black-hat-flagged vb-pi2zl; paired with new P0-5a). Black-hat review round 1 found that the original bead cited non-existent file:line references (recover.rs:484 doesn't exist; the file is 296 lines). It also flagged a priority inversion: P0-5 depended on P2-15, but P0 is a higher priority than P2 — work on a P0 bug should not block on a P2 feature. The black-hat recommended splitting P0-5: (a) P0-5a (new bead) does the frame-seed wire-up with no P2-15 dependency; (b) this bead (P0-5b) handles the pending_actions coordination and depends on P2-15. Real source: vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed is fully implemented but orphaned); vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs returns Summary only, drops frame data); vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover is gated behind #[cfg(feature = 'test-util')] and only rehydrates a Summary, not the full RunFrame). This bead's specific scope: (1) add a method `recover_pending_actions` to vb_storage that returns the action tickets and idempotency keys that were scheduled but not yet completed; (2) wire Runtime::recover to call this method and re-attach the tickets to the shard's action queue (Shard::pending_actions); (3) ensure the index_status / index_workflow coordination is complete (depends on P2-15 closing vb-yrtka). Master §68 invariants 1-5 apply; Kani harness proves bit-identical rehydration of pending_actions.\", when: \"recover_pending_actions_returns_tickets_in_seq_order: 100 random journals with 0-10 pending tickets; assert the recovered queue is ordered by ticket.seq\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_runtime_recover_attaches_pending_actions_to_shard_queue_kill_a_non-terminal_run_\", given: \"Feature P0-5b (revision of black-hat-flagged vb-pi2zl; paired with new P0-5a). Black-hat review round 1 found that the original bead cited non-existent file:line references (recover.rs:484 doesn't exist; the file is 296 lines). It also flagged a priority inversion: P0-5 depended on P2-15, but P0 is a higher priority than P2 — work on a P0 bug should not block on a P2 feature. The black-hat recommended splitting P0-5: (a) P0-5a (new bead) does the frame-seed wire-up with no P2-15 dependency; (b) this bead (P0-5b) handles the pending_actions coordination and depends on P2-15. Real source: vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed is fully implemented but orphaned); vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs returns Summary only, drops frame data); vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover is gated behind #[cfg(feature = 'test-util')] and only rehydrates a Summary, not the full RunFrame). This bead's specific scope: (1) add a method `recover_pending_actions` to vb_storage that returns the action tickets and idempotency keys that were scheduled but not yet completed; (2) wire Runtime::recover to call this method and re-attach the tickets to the shard's action queue (Shard::pending_actions); (3) ensure the index_status / index_workflow coordination is complete (depends on P2-15 closing vb-yrtka). Master §68 invariants 1-5 apply; Kani harness proves bit-identical rehydration of pending_actions.\", when: \"runtime_recover_attaches_pending_actions_to_shard_queue: kill a non-terminal run with 3 pending actions; restart; assert Shard::pending_actions.len() == 3\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_recover_with_idempotent_skip_does_not_reissue_completed_actions_journal_has_5_ac\", given: \"Error precondition\", when: \"recover_with_idempotent_skip_does_not_reissue_completed_actions: journal has 5 actions, 2 completed; recover; assert 3 are queued, 2 marked idempotent_skip\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_recover_with_empty_pending_actions_succeeds_journal_with_zero_pending_actions;_r\", given: \"Error precondition\", when: \"recover_with_empty_pending_actions_succeeds: journal with zero pending actions; recover; assert Shard::pending_actions is empty\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P0-5b recover-pending-actions: Reattach pending_actions to action queue after Runtime::recover"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/vb_storage/src/recovery/recover.rs:251-296 to understand the existing recovery framework\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_runtime/src/runtime/mod.rs:343-365 to find Runtime::recover's call site\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_runtime/src/shard/mod.rs Shard::pending_actions to find the target queue\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Add tests test_recover_pending_actions_returns_tickets_in_seq_order and test_idempotent_skip_does_not_reissue\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Write proptest proptest_recovery_is_deterministic\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"In vb_storage/src/recovery/recover.rs: add `pub fn recover_pending_actions(events: &[JournalEvent]) -> Vec<ActionTicket>` after line 296\", done_when: \"Tests pass\"},
+        {task: \"In vb_runtime/src/runtime/mod.rs:343-365 Runtime::recover: after the P0-5a frame-seed wire-up, call recover_pending_actions and push tickets to Shard::pending_actions\", done_when: \"Tests pass\"},
+        {task: \"Emit JournalEvent::PendingActionsRecovered with count + idempotent_skips\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_storage/src/recovery/recover.rs:251-296 (the file we're extending)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/shard/mod.rs (Shard::pending_actions — the target queue)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_core/src/actions/idempotency.rs (idempotency key handling)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-h2aabes3/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_storage/src/recovery/recover.rs:251-296 (the file we're extending)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/shard/mod.rs (Shard::pending_actions — the target queue)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_core/src/actions/idempotency.rs (idempotency key handling)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+DEPENDS ON
+  → ○ vb-wyosk: P2-15r index-status-workflow: Wire index_status and index_workflow as Runtime methods (or remove dead code) ● P2
+

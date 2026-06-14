@@ -1,0 +1,232 @@
+○ vb-cuqg8 · P1-9r verify-15-gates: Expand verify to enumerate master §63's 15 named verification gates   [● P1 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-wc3xfjxl.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-wc3xfjxl.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-wc3xfjxl"
+  title: "P1-9r verify-15-gates: Expand verify to enumerate master §63's 15 named verification gates"
+  type: "feature"
+  priority: 1
+  effort_estimate: "4hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL enumerate all 15 verification gates from master §63 in the verify subcommand output\",
+      \"THE SYSTEM SHALL use distinct 4-hex-digit gate codes (0x0E01..0x0F0F) that do not collide with the 0x0E01..0x0F01 range used by other section codes\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN the user runs `vb verify <workflow.yaml> --profile full`\", shall: \"THE SYSTEM SHALL output a VerifyOk with a `checks` array of length 15, each entry being the gate name and a 4-hex-digit code\"}
+    ]
+    unwanted: [
+      {condition: \"IF a gate is not applicable to the workflow (e.g., digest_stability on a 0-node workflow)\", shall_not: \"THE SYSTEM SHALL NOT silently drop the gate; it must report it as 'not_applicable' with a reason\", because: \"Master §63 requires the full 15-gate enumeration, not a dynamic subset\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"Master §63 is the authoritative spec for the 15 gate names and codes\",
+        \"verify at commands_verify.rs:73-122 already produces a 5-6 entry checks list; we extend it to 15\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"verify produces a checks array of length 15 for any workflow (full profile)\",
+        \"Each gate has a 4-hex-digit code in 0x0E01..0x0F0F (not 0x0E01..0x0F01 to avoid collision)\",
+        \"kani::Arbitrary impl for VerifyOk is added (or a wrapper struct) so Kani can prove gate attribution\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"The 15 gate codes are stable across runs (deterministic; no SystemTime::now() in code attribution)\",
+      \"The 15 gate codes are distinct from each other and from the 0x0E01..0x0F01 range used by other sections\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_cli/src/commands_verify.rs:73-122 (the existing check list — the fix site)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §63 (the 15-gate spec — read for gate names, codes, and applicability rules)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §16.7 (section code ranges — verify the 0x0E01..0x0F0F range is free)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Are there any workflows in the test corpus that fail gate 11 (input_purity) or gate 14 (determinism_seed)? If yes, this bead may surface existing bugs (file follow-up beads)\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Attacker submits a workflow with a Secret in a Finish slot; gate 10 (taint_boundary) is missing from verify, so the leak is not caught\", prevention: \"All 15 gates are enumerated; gate 10 is enforced\", test_for_it: \"verify_fails_on_secret_in_finish: workflow with Finish reading a Secret slot; verify returns VerifyError with gate_code 0x0E0A\"},\n      {failure: \"Verify passes a workflow that fails gate 9 (error_handler_completeness); the workflow is later deployed and crashes on a missing error handler\", prevention: \"All 15 gates are enumerated; gate 9 is enforced at compile time\", test_for_it: \"verify_fails_on_missing_error_handler: workflow with a Do step and no on_error; verify --profile full returns VerifyError with gate_code 0x0E09\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_verify_outputs_15_gates_for_full_profile_`vb_verify_foo.yaml_--profile_full`;_as\", given: \"Feature P1-9r (revision of black-hat-revised vb-sqmov). Black-hat review round 1 found that the original 'no gate attribution' framing was inaccurate. The verify subcommand at crates/vb_cli/src/commands_verify.rs:73-122 already produces a `checks: Vec<&'static str>` with 5-6 named checks (yaml_parse, compilation, ir_validation, budget_computation, boundedness_policy, boundedness_policy_check). The real gap is that master §63 specifies 15 named verification gates and verify only covers 6 of them. The fix is to expand the check set to all 15 §63 gates, ensuring no collision with the section codes used elsewhere (avoid the `0x0E01..0x0F01` collision). Real source: commands_verify.rs:73-122 (the check list), master doc §63 (the 15-gate spec). The 9 missing gates (gates 7-15) are: (7) digest_stability (workflow digest is deterministic), (8) resource_contract_validation (ResourceContract::DEFAULT vs explicit), (9) error_handler_completeness (every error-prone node has an on_error), (10) taint_boundary (no Secret in Finish, no Secret in Save), (11) input_purity (no mutation of input slots), (12) expression_complexity (ExprOp count within bound), (13) cycle_detection (no cycles in dependency graph), (14) determinism_seed (no SystemTime::now() in user code), (15) replay_round_trip (compile→snapshot→recover→snapshot is bit-identical). Also: add an explicit `#[derive(kani::Arbitrary)]` impl for `VerifyOk` (or its result struct) so Kani can prove the gate attribution. Master §63 is authoritative; the 15-gate numbering is the spec.\", when: \"verify_outputs_15_gates_for_full_profile: `vb verify foo.yaml --profile full`; assert checks.len() == 15\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_verify_gate_codes_are_distinct_assert_all_15_4-hex_codes_are_pairwise_distinct\", given: \"Feature P1-9r (revision of black-hat-revised vb-sqmov). Black-hat review round 1 found that the original 'no gate attribution' framing was inaccurate. The verify subcommand at crates/vb_cli/src/commands_verify.rs:73-122 already produces a `checks: Vec<&'static str>` with 5-6 named checks (yaml_parse, compilation, ir_validation, budget_computation, boundedness_policy, boundedness_policy_check). The real gap is that master §63 specifies 15 named verification gates and verify only covers 6 of them. The fix is to expand the check set to all 15 §63 gates, ensuring no collision with the section codes used elsewhere (avoid the `0x0E01..0x0F01` collision). Real source: commands_verify.rs:73-122 (the check list), master doc §63 (the 15-gate spec). The 9 missing gates (gates 7-15) are: (7) digest_stability (workflow digest is deterministic), (8) resource_contract_validation (ResourceContract::DEFAULT vs explicit), (9) error_handler_completeness (every error-prone node has an on_error), (10) taint_boundary (no Secret in Finish, no Secret in Save), (11) input_purity (no mutation of input slots), (12) expression_complexity (ExprOp count within bound), (13) cycle_detection (no cycles in dependency graph), (14) determinism_seed (no SystemTime::now() in user code), (15) replay_round_trip (compile→snapshot→recover→snapshot is bit-identical). Also: add an explicit `#[derive(kani::Arbitrary)]` impl for `VerifyOk` (or its result struct) so Kani can prove the gate attribution. Master §63 is authoritative; the 15-gate numbering is the spec.\", when: \"verify_gate_codes_are_distinct: assert all 15 4-hex codes are pairwise distinct\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_verify_with_failing_gate_returns_typed_error_workflow_fails_gate_9_error_handler\", given: \"Error precondition\", when: \"verify_with_failing_gate_returns_typed_error: workflow fails gate 9 (error_handler_completeness); assert VerifyError with gate_code and gate_name\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_negative_test_compile_failure_path_returns_typed_error_a_malformed_input_is_reje\", given: \"Error precondition\", when: \"negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P1-9r verify-15-gates: Expand verify to enumerate master §63's 15 named verification gates"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/vb_cli/src/commands_verify.rs:73-122 to confirm the existing check structure\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read master doc §63 to confirm the 15 gate names and 4-hex codes\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Verify the 0x0E01..0x0F0F range is free (not used by other sections)\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Write test test_verify_outputs_15_gates_for_full_profile\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Write proptest proptest_verify_gate_attribution (100 random workflows)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Add #[derive(kani::Arbitrary)] impl for VerifyOk (or a wrapper struct)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"In commands_verify.rs: extend the checks list to 15 entries; add the 9 new gates (digest_stability through replay_round_trip) with their 4-hex codes\", done_when: \"Tests pass\"},
+        {task: \"Handle 'not_applicable' cases for each gate (e.g., 0-node workflow for digest_stability)\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_cli/src/commands_verify.rs:73-122 (the fix site)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"master doc §63 (the 15-gate spec)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"master doc §16.7 (section code ranges)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-wc3xfjxl/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_cli/src/commands_verify.rs:73-122 (the fix site)\", relevance: \"Related implementation\"},
+      {path: \"master doc §63 (the 15-gate spec)\", relevance: \"Related implementation\"},
+      {path: \"master doc §16.7 (section code ranges)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+

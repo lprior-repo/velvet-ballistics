@@ -1,0 +1,173 @@
+{
+  "id": "p1-12-simulate-structured",
+  "title": "simulate-structured: simulate must walk the IR with structured per-step output (no real execution)",
+  "type": "feature",
+  "priority": 1,
+  "effort": "1hr",
+  "description": "Feature P1-12. Master §75 example shows simulate emitting a structured simulation_report with steps: [{index, kind, action_id, mock_output, suspension_reason}]. Today vb_cli/src/commands/workflow/mod.rs:95-125 simulate_workflow is a structural dry-run with no state, no mocks, no execution. The output is unstructured (free-text summary). AI agents using simulate for planning need structured output. This bead walks the IR with a for_each_node iterator and emits a JSON simulation_report. For Do nodes, mock_output is null. For Wait/Ask, suspension_reason is the timeout_ms. No Runtime, no Shard, no journal. Note: no P0-4 dep — this is purely structural; no real execution.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL walk the compiled IR and emit one entry per step with {index, kind, action_id, mock_output, suspension_reason}",
+      "THE SYSTEM SHALL NOT execute any action, allocate any resource, or write to the journal during simulate"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb simulate workflow.yaml --emit yaml`",
+        "shall": "THE SYSTEM SHALL emit a simulation_report with steps: [...] and a top-level summary {total_steps, max_suspension_ms, mock_action_count}"
+      },
+      {
+        "trigger": "WHEN a step in the IR is a Do node",
+        "shall": "THE SYSTEM SHALL emit mock_output: null (no real execution)"
+      },
+      {
+        "trigger": "WHEN a step in the IR is a WaitUntil or WaitEvent node with timeout_ms = N",
+        "shall": "THE SYSTEM SHALL emit suspension_reason: 'timeout_ms: N'"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF simulate is called on a workflow that references a missing action",
+        "shall_not": "THE SYSTEM SHALL NOT execute the action to 'find' it; it must emit mock_output: null and a top-level note 'action lookup deferred to runtime'",
+        "because": "Simulate is a planning tool; runtime concerns are out of scope"
+      },
+      {
+        "condition": "IF simulate is called on a workflow with 10,000 steps",
+        "shall_not": "THE SYSTEM SHALL NOT block on per-step evaluation; it must emit all 10,000 entries in O(n)",
+        "because": "Simulate is for AI planning; latency scales linearly"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Workflow YAML compiles to a CompiledWorkflow (passes gate 2 = shape)"
+    ],
+    "postconditions": [
+      "simulation_report.steps.len() == compiled.nodes.len()",
+      "Each entry has: index (u32), kind (string), action_id (Option<ActionId>), mock_output (Option<SlotValue>), suspension_reason (Option<String>)",
+      "Top-level summary has: total_steps, max_suspension_ms, mock_action_count"
+    ],
+    "invariants": [
+      "No Runtime, Shard, FjallJournal, or ActionExecutor is constructed during simulate",
+      "The output is deterministic: same input workflow produces the same simulation_report"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "simulate_emits_one_entry_per_compiled_node: a 5-step workflow produces 5 entries in steps",
+      "simulate_do_node_has_null_mock_output: a workflow with 2 Do steps produces 2 entries with mock_output: null",
+      "simulate_wait_node_has_timeout_ms_suspension_reason: a workflow with WaitUntil { timeout_ms: 5000 } produces suspension_reason: 'timeout_ms: 5000'"
+    ],
+    "error": [
+      "simulate_with_invalid_workflow_returns_validation_error: a malformed YAML fails at parse, not at simulate",
+      "simulate_with_zero_steps_returns_empty_array: a no-op workflow produces steps: [] and total_steps: 0"
+    ],
+    "edge": [
+      "simulate_proptest_output_shape_locks_down_schema: 5 fixtures, all produce the same shape"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands/workflow/mod.rs:95-125 (simulate_workflow)",
+      "crates/vb_compile/src/compiled.rs (CompiledWorkflow.nodes; the iterator source)",
+      "crates/vb_core/src/workflow/types.rs (CompiledNodeKind enum: SetConst, Do, WaitUntil, WaitEvent, Ask, ...)"
+    ],
+    "patterns": [
+      "Pattern: walking compiled.nodes with for_each_node (used by P1-10 explain-fields)"
+    ],
+    "questions": [
+      "Should simulate respect the resource contract (max_steps) and emit a 'truncated' marker if exceeded? (Spec: yes; emit total_steps and a 'would_exceed_budget' boolean.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "Simulate accidentally executes a malicious action (e.g., a shell-out), exposing the host",
+        "prevention": "Strict separation: simulate is purely structural, never instantiates ActionExecutor",
+        "test_for_it": "simulate_does_not_construct_action_executor (compile-time test: grep for ActionExecutor in the simulate code path)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "AI agent reads simulate output but can't tell which steps would suspend (blocking)",
+        "prevention": "Suspension reason is explicit per Wait/Ask step",
+        "test_for_it": "simulate_marks_wait_ask_steps_as_suspending"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Simulate output is non-deterministic (e.g., uses HashMap iteration order)",
+        "prevention": "Steps are emitted in compiled.nodes order (a Vec), so iteration is deterministic",
+        "test_for_it": "simulate_output_is_deterministic (assert two runs of the same workflow produce byte-equal output)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "External tool expects simulate output to be free-text, breaks on JSON",
+        "prevention": "Default output is YAML/JSON; free-text is the legacy fallback and is deprecated",
+        "test_for_it": "simulate_default_output_is_yaml"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands/workflow/mod.rs:95-125 in full",
+      "Read crates/vb_core/src/workflow/types.rs to enumerate CompiledNodeKind variants"
+    ],
+    "phase_1": [
+      "Write test test_simulate_emits_one_entry_per_compiled_node",
+      "Write test test_simulate_do_node_has_null_mock_output",
+      "Write test test_simulate_wait_node_has_timeout_ms_suspension_reason",
+      "Write proptest test_simulate_proptest_output_shape_locks_down_schema (5 fixtures)"
+    ],
+    "phase_2": [
+      "In simulate_workflow: walk compiled.nodes with a for_each_node iterator",
+      "Emit JSON simulation_report with steps: [{index, kind, action_id, mock_output, suspension_reason}]",
+      "For Do nodes: action_id = Some(...), mock_output = null",
+      "For WaitUntil/WaitEvent/Ask: suspension_reason = 'timeout_ms: N' (or 'no timeout' for WaitEvent without timeout)",
+      "For other nodes: action_id = null, mock_output = null, suspension_reason = null"
+    ],
+    "phase_3": [
+      "Emit top-level summary: {total_steps, max_suspension_ms, mock_action_count, would_exceed_budget}"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli` and verify all new tests pass",
+      "Manual: `vb simulate fixtures/issue_triage.yaml --emit yaml | jq .steps[0]` returns the first step"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands/workflow/mod.rs:95-125 (simulate_workflow)",
+      "crates/vb_compile/src/compiled.rs (CompiledWorkflow.nodes)",
+      "crates/vb_core/src/workflow/types.rs (CompiledNodeKind enum)"
+    ],
+    "similar_implementations": [
+      "explain (P1-10) walks the same compiled.nodes; share the iterator"
+    ],
+    "external_references": [
+      "Master §75 simulate Command (structural dry-run)",
+      "Master §13 ResourceContract (max_steps budget)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands/workflow/mod.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Current simulate_workflow (lines 95-125)",
+          "How it accesses compiled.nodes"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "CompiledWorkflow.nodes: Vec<CompiledNode> in vb_compile/src/compiled.rs",
+      "CompiledNodeKind enum in vb_core/src/workflow/types.rs"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no simulation_report struct today; this bead defines it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use 'TBD' for mock_output; use null explicitly"
+    ]
+  }
+}

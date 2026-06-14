@@ -1,0 +1,146 @@
+{
+  "id": "p1-12r-simulate-structured",
+  "title": "P1-12r simulate-structured: Add kind, action_id, mock_output, suspension_reason fields to SimulationStep (per master §75)",
+  "type": "feature",
+  "priority": 1,
+  "effort": "1hr",
+  "description": "Feature P1-12r (revision of black-hat-revised vb-upqq9). Black-hat review round 1 found that the original bead cited 'simulate_workflow is unstructured' as the framing, but the function is ALREADY structured. Real source: crates/vb_cli/src/commands_workflow/mod.rs:30-60 (simulate_workflow returns SimulationResult { steps: Vec<SimulationStep>, total_steps, action_count, branch_count }; the function is implemented and tested). The black-hat also flagged that the cited line range 95-125 was wrong; the actual implementation is at lines 30-60. The real gap, per master §75, is that SimulationStep lacks four required fields: (1) `kind: StepKind` (the type of step: Set, Do, Wait, etc.), (2) `action_id: Option<ActionId>` (the action for Do steps; None for non-Do steps), (3) `mock_output: Option<Vec<u8>>` (the mock action's output, for Do steps using mock actions; None otherwise), (4) `suspension_reason: Option<SuspensionReason>` (why the step suspended, for Wait/Ask/Do; None otherwise). Real source: commands_workflow/mod.rs:17-26 (SimulationStep struct definition — currently has 4 fields; missing the 4 above). This bead adds the 4 fields, populates them in the existing simulation logic, and ensures the JSON output schema matches master §75. Kani harness: prove SimulationStep::json_serialize never panics on any step kind. proptest: 100 random workflows produce 100% valid JSON output.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL include kind, action_id, mock_output, suspension_reason fields in every SimulationStep (per master §75)",
+      "THE SYSTEM SHALL serialize SimulationStep to JSON with the 4 fields present (even if None)"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN simulate_workflow is called and a step is a Do step with action_id=42 and mock=EchoAction",
+        "shall": "THE SYSTEM SHALL emit SimulationStep { kind: Do, action_id: Some(42), mock_output: Some(input_bytes), suspension_reason: None, .. }"
+      },
+      {
+        "trigger": "WHEN simulate_workflow is called and a step is a Wait step that suspends on deadline=1000ms",
+        "shall": "THE SYSTEM SHALL emit SimulationStep { kind: Wait, action_id: None, mock_output: None, suspension_reason: Some(AwaitingDeadline(1000)), .. }"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a step is a Set or Finish (no action, no suspension)",
+        "shall_not": "THE SYSTEM SHALL NOT emit a non-None action_id, mock_output, or suspension_reason; they must be None",
+        "because": "Master §75: only Do has action_id+mock_output; only Wait/Ask/Do have suspension_reason"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "SimulationResult at commands_workflow/mod.rs:23-26 is already structured (steps, total_steps, action_count, branch_count)",
+      "simulate_workflow at commands_workflow/mod.rs:30-60 is already implemented"
+    ],
+    "postconditions": [
+      "SimulationStep has 8 fields (was 4): id, name, kind, action_id, mock_output, suspension_reason, duration_estimate, notes",
+      "JSON output includes all 8 fields, with the 4 new fields as Option types that serialize as null when None",
+      "No regression: existing fields (id, name, duration_estimate, notes) are preserved"
+    ],
+    "invariants": [
+      "action_id is Some iff kind == Do",
+      "mock_output is Some iff kind == Do AND the action has a mock registered",
+      "suspension_reason is Some iff kind is Wait/Ask/Do (i.e., the step suspended)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "simulate_set_step_has_none_action_id: workflow with `set: { output: x, value: 42 }`; simulate; assert step.kind == Set, step.action_id is None",
+      "simulate_do_step_with_mock_has_action_id_and_mock_output: workflow with `do: { action: 42, input: x }` and EchoAction mock; simulate; assert step.kind == Do, step.action_id == Some(42), step.mock_output == Some(input_bytes)"
+    ],
+    "error": [
+      "simulate_wait_step_has_suspension_reason: workflow with `wait: { event: x, timeout: y }`; simulate; assert step.suspension_reason == Some(AwaitingDeadline(timeout))",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "proptest_simulate_json_round_trip: 100 random workflows; assert the JSON output has all 8 fields and parses back to SimulationStep",
+      "kani_simulate_step_serialize_does_not_panic: bounded model check with 8 step kinds and 3 action types (24 combinations)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands_workflow/mod.rs:17-26 (SimulationStep struct — the fix site)",
+      "crates/vb_cli/src/commands_workflow/mod.rs:30-60 (simulate_workflow function — populate the 4 new fields)",
+      "master doc §75 (the simulation output schema — the authoritative spec)"
+    ],
+    "patterns": [
+      "Pattern: existing SimulationStep fields are all Option types; the 4 new fields follow the same pattern (Option<T>)"
+    ],
+    "questions": [
+      "Should SuspensionReason be a flat enum (AwaitingDeadline, AwaitingEvent, AwaitingAsk) or a structured variant (AwaitingDeadline { ms: u64 })? Recommend: structured variant to allow more fields in the future (e.g., AwaitingAsk { prompt: String, timeout_ms: Option<u64> })"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "User runs `vb simulate` and gets a JSON without the action_id field; downstream tooling that expects action_id crashes on missing field",
+        "prevention": "All 8 fields are always present in the JSON output (with null for None)",
+        "test_for_it": "simulate_json_always_includes_all_8_fields: proptest with 100 random workflows; assert all 8 fields are present in the JSON"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "mock_output leaks sensitive data (e.g., a hashed password) into the JSON output; the user expects None but gets Some(bytes)",
+        "prevention": "mock_output is only populated for explicit mock actions (Echo, ComputeHash, Delay); user-defined actions get None",
+        "test_for_it": "simulate_user_defined_action_has_none_mock_output: workflow with a non-mock action; simulate; assert step.mock_output is None"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands_workflow/mod.rs:17-60 to confirm the existing structure",
+      "Read master doc §75 to confirm the 4 required fields and their semantics"
+    ],
+    "phase_1": [
+      "Write test test_simulate_set_step_has_none_action_id (REGRESSION SHIELD)",
+      "Write proptest proptest_simulate_json_round_trip (100 random workflows)"
+    ],
+    "phase_2": [
+      "In commands_workflow/mod.rs:17-26: add 4 new fields to SimulationStep: kind, action_id, mock_output, suspension_reason",
+      "In commands_workflow/mod.rs:30-60 simulate_workflow: populate the 4 new fields per the truth table (action_id Some iff kind==Do, etc.)",
+      "Update the JSON serializer to emit all 8 fields (use #[derive(Serialize)] with skip_serializing_if = false)"
+    ],
+    "phase_3": [
+      "Add Kani harness at crates/vb_cli/src/kani/simulate_step_serialize.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_cli`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands_workflow/mod.rs:17-60 (the fix site)",
+      "master doc §75 (the simulation output schema)"
+    ],
+    "similar_implementations": [
+      "Existing SimulationStep fields follow the Option<T> pattern; the 4 new fields follow the same pattern"
+    ],
+    "external_references": [
+      "Master §75 Simulation Output Schema",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands_workflow/mod.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "SimulationStep struct (lines 17-26) — currently 4 fields; we add 4 more",
+          "simulate_workflow (lines 30-60) — currently implemented; we extend it"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "SimulationResult at lines 23-26 (structured)",
+      "simulate_workflow at lines 30-60 (implemented)"
+    ],
+    "apis_that_do_not_exist": [
+      "The 4 new fields (kind, action_id, mock_output, suspension_reason) are not in SimulationStep yet — they are what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT cite 'simulate_workflow is unstructured' as the framing (it's already structured)",
+      "Do NOT use 'TBD' for the new fields; use the master §75 names"
+    ]
+  }
+}

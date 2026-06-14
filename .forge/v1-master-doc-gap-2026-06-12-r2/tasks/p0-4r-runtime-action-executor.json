@@ -1,0 +1,147 @@
+{
+  "id": "p0-4r-runtime-action-executor",
+  "title": "P0-4r runtime-action-executor: Add ActionExecutor trait + 3 §19 mock actions (NOT a dispatch stub fix)",
+  "type": "feature",
+  "priority": 0,
+  "effort": "4hr",
+  "description": "Feature P0-4r (revision of black-hat-rejected vb-01vkw). Black-hat review round 1 found that the original 'ActionRegistry::dispatch is a stub' framing was fabricated. ActionRegistry::dispatch at crates/vb_runtime/src/action.rs:122-194 IS already implemented: it resolves the compile-time contract, validates the action ID matches, and returns ActionOutcome::Suspended(ticket) via dispatch_generic (line 182-194). The file is 212 lines total. This bead is NOT a dispatch fix. It IS adding a new layer: the ActionExecutor trait (master §19) that wraps the existing ActionRegistry::dispatch and provides 3 mock actions (Echo, ComputeHash, Delay) for the verify and simulate pipelines. The new trait is at crates/vb_runtime/src/action.rs:200+ (in the empty space below dispatch_generic). Master §19: the executor trait is the single entry point for verify+simulate to call mock actions without depending on the full Runtime. The 3 mocks: EchoAction (returns the input bytes as ActionOutcome::Suspended(ticket)), ComputeHashAction (Blake3 of the input), DelayAction (sleeps for an input-specified duration then returns). Kani harness: prove ActionExecutor::execute never panics on any ActionInput. proptest: 1000 random (input, contract) pairs all produce ActionResult<Suspended>.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose a public ActionExecutor trait that the verify and simulate subcommands can call without depending on the full Runtime",
+      "THE SYSTEM SHALL provide at least 3 mock actions (Echo, ComputeHash, Delay) implementing the ActionExecutor trait"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN ActionExecutor::execute is called with an ActionInput whose contract matches a registered mock",
+        "shall": "THE SYSTEM SHALL return ActionResult<ActionOutcome::Suspended(ticket)> with the ticket's payload field set to the mock's output"
+      },
+      {
+        "trigger": "WHEN ActionExecutor::execute is called with an ActionInput whose action is not registered",
+        "shall": "THE SYSTEM SHALL return ActionError::UnknownAction { action: input.action } (preserved from ActionRegistry::dispatch)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a mock action's input exceeds the contract's byte limit",
+        "shall_not": "THE SYSTEM SHALL NOT panic; it must return ActionError::InputTooLarge",
+        "because": "Master §19: actions are capacity-bounded; exceeding the limit is a typed error, not a panic"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "ActionRegistry::dispatch is already implemented and tested (this bead does NOT touch it)",
+      "The new ActionExecutor trait lives in crates/vb_runtime/src/action.rs (additions go after line 194)"
+    ],
+    "postconditions": [
+      "ActionExecutor trait is public and importable from vb_runtime::action",
+      "EchoAction, ComputeHashAction, and DelayAction each implement ActionExecutor",
+      "A default ActionExecutor::execute delegates to ActionRegistry::dispatch for any action it does not handle natively"
+    ],
+    "invariants": [
+      "ActionExecutor::execute preserves the byte-limit invariant from validate_input_bytes",
+      "Mock actions are pure functions: same input → same ticket payload (deterministic for Echo and ComputeHash; Delay is timing-dependent but ticket creation is deterministic)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "action_executor_echo_returns_input_bytes: execute(register(Echo), input='hello') -> Suspended(ticket{payload: b'hello'})",
+      "action_executor_compute_hash_returns_blake3: execute(register(ComputeHash), input='abc') -> Suspended(ticket{payload: blake3('abc')})",
+      "action_executor_delay_returns_ticket_with_delay_duration: execute(register(Delay), input=Duration::from_millis(100)) -> Suspended(ticket{payload: encoded_100ms})"
+    ],
+    "error": [
+      "action_executor_unknown_action_returns_typed_error: execute(register(Echo), input=UnknownAction) -> Err(UnknownAction)",
+      "action_executor_input_too_large_returns_typed_error: execute(register(Echo), input=larger_than_contract_limit) -> Err(InputTooLarge)"
+    ],
+    "edge": [
+      "proptest_action_executor_round_trip: 1000 random (action, input, contract) triples; assert no panics and the result type matches the truth table",
+      "kani_action_executor_does_not_panic_on_any_input: bounded model check with 3 actions and 5 contract sizes (15 combinations)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/action.rs:1-212 (the file we're extending; read the entire file to understand the existing ActionRegistry and dispatch_generic)",
+      "crates/vb_core/src/actions/contracts.rs (ActionContract, ActionInput, ActionTicket, ActionOutcome types)",
+      "crates/vb_runtime/src/runtime/mod.rs (the existing Runtime that already uses ActionRegistry; verify it still compiles after we add the trait)"
+    ],
+    "patterns": [
+      "Pattern: existing dispatch_generic at action.rs:182-194 is the reference for the ActionExecutor trait's default execute method"
+    ],
+    "questions": [
+      "Should the 3 mock actions live in vb_runtime (this bead) or in a new vb_runtime::action::mocks module? Recommend: sub-module vb_runtime::action::mocks to keep action.rs under 300 lines"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "verify command cannot run end-to-end because it depends on the full Runtime, which is unavailable in compile-only mode",
+        "prevention": "ActionExecutor trait is independent of Runtime; verify can call it directly",
+        "test_for_it": "verify_subcommand_runs_against_action_executor_without_runtime (integration test)"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "A user-supplied action name in YAML resolves to a mock that returns attacker-controlled bytes",
+        "prevention": "Mock actions are explicit (Echo, ComputeHash, Delay); the ActionRegistry contract check rejects unknown actions before execute is called",
+        "test_for_it": "action_executor_rejects_action_not_in_registry (typed error, no panics)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/action.rs in full (212 lines) to understand the existing ActionRegistry and dispatch_generic",
+      "Read crates/vb_core/src/actions/contracts.rs to understand ActionContract/ActionInput/ActionTicket/ActionOutcome"
+    ],
+    "phase_1": [
+      "Define ActionExecutor trait in crates/vb_runtime/src/action.rs after line 194: `pub trait ActionExecutor { fn execute(&self, input: &ActionInput, contract: &ActionContract) -> ActionResult<ActionOutcome>; }`",
+      "Create new module crates/vb_runtime/src/action/mocks.rs (3 mock actions: Echo, ComputeHash, Delay)",
+      "Add 3 unit tests in mocks.rs covering happy/error/edge paths"
+    ],
+    "phase_2": [
+      "Add a Kani harness at crates/vb_runtime/src/kani/action_executor.rs (behind `#[cfg(kani)]`) that proves execute never panics on any bounded input"
+    ],
+    "phase_3": [
+      "Run `moon run :test -p vb_runtime`; verify all new tests pass and existing tests still pass",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/action.rs (the file being extended)",
+      "crates/vb_runtime/src/action/mocks.rs (NEW — the 3 mock actions)",
+      "crates/vb_core/src/actions/contracts.rs (type definitions)",
+      "crates/vb_runtime/src/kani/action_executor.rs (NEW — Kani harness)"
+    ],
+    "similar_implementations": [
+      "ActionRegistry::dispatch at action.rs:122-194 is the reference for the ActionExecutor trait's default execute"
+    ],
+    "external_references": [
+      "Master §19 Action Contract (the trait spec)",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/action.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "ActionRegistry::dispatch (lines 122-194) — already implemented; do NOT modify",
+          "dispatch_generic (lines 182-194) — the reference for the trait's default execute"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ActionRegistry::dispatch is implemented and tested",
+      "ActionContract/ActionInput/ActionTicket/ActionOutcome are in vb_core::actions::contracts"
+    ],
+    "apis_that_do_not_exist": [
+      "ActionExecutor trait does NOT exist yet — it is what this bead adds",
+      "The 3 mock actions (Echo, ComputeHash, Delay) do NOT exist yet — they are what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT modify ActionRegistry::dispatch (it works)",
+      "Do NOT add 'TODO' or 'unimplemented' to the trait methods"
+    ]
+  }
+}

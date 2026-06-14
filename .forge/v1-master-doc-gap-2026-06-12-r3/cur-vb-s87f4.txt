@@ -1,0 +1,239 @@
+○ vb-s87f4 · P2-17r submit-artifact: Add submit_artifact as a public Runtime method (master §66); caller is run_compiled_runtime.rs:256   [● P2 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-fi5brf5q.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-fi5brf5q.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-fi5brf5q"
+  title: "P2-17r submit-artifact: Add submit_artifact as a public Runtime method (master §66); caller is run_compiled_runtime.rs:256"
+  type: "feature"
+  priority: 2
+  effort_estimate: "2hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL expose submit_artifact as a public method on vb_runtime::Runtime\",
+      \"THE SYSTEM SHALL make submit_artifact callable from both the CLI layer (run_compiled_runtime.rs) and the IPC layer (vb_ipc)\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN the CLI layer calls Runtime::submit_artifact(workflow, artifact) via run_compiled_runtime.rs:256\", shall: \"THE SYSTEM SHALL write the artifact to the journal and return a SubmissionReceipt with the assigned RunId\"},
+      {trigger: \"WHEN the IPC layer calls Runtime::submit_artifact via vb_ipc::IpcCommand::SubmitArtifact\", shall: \"THE SYSTEM SHALL write the artifact to the journal and return a SubmissionReceipt\"}
+    ]
+    unwanted: [
+      {condition: \"IF submit_artifact is called with an artifact whose digest does not match the workflow digest\", shall_not: \"THE SYSTEM SHALL NOT silently accept it; it must return a typed DigestMismatch error\", because: \"Master §66 invariant: artifact and workflow must be digest-consistent; mismatch is a hard failure\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"submit_artifact is currently an internal helper in vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact)\",
+        \"Master §66 is the authoritative spec for the public Runtime::submit_artifact API\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"Runtime::submit_artifact is a public method on vb_runtime::Runtime\",
+        \"Both vb_cli and vb_ipc call sites go through Runtime::submit_artifact (no duplication)\",
+        \"SubmissionReceipt is a public type in vb_runtime::api (so both layers can return it)\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"submit_artifact is idempotent: same (workflow, artifact) pair returns the same SubmissionReceipt (master §66 invariant)\",
+      \"The artifact's digest matches the workflow's digest (master §66 invariant)\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact — the current caller)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/commands/submit.rs:92,126 (put_workflow_source, put_run_header — the direct writers used by the submit path; they DO NOT use submit_artifact)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/ (search for submit_artifact — find the internal helper)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_ipc/src/ (search for SubmitArtifact — find the IPC layer call site)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §66 (the public Runtime::submit_artifact spec)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should the direct writers (put_workflow_source, put_run_header in submit.rs:92,126) also be routed through Runtime::submit_artifact, or kept as direct writers? Recommend: keep them as direct writers for now; this bead is scoped to the artifact submission only\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Attacker submits an artifact whose digest does not match the workflow; the silent accept pollutes the journal with a mismatched entry\", prevention: \"Runtime::submit_artifact returns DigestMismatch on digest mismatch (preserved invariant)\", test_for_it: \"submit_artifact_rejects_digest_mismatch (regression shield)\"},\n      {failure: \"CLI layer uses an internal submit_artifact helper; IPC layer uses a different helper; the two diverge and produce inconsistent submission results\", prevention: \"Both layers call Runtime::submit_artifact (single source of truth)\", test_for_it: \"cli_and_ipc_submit_artifact_produce_same_receipt: proptest with 100 (workflow, artifact) pairs; assert CLI receipt == IPC receipt\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_runtime_submit_artifact_returns_receipt_runtimesubmit_artifactworkflow,_artifact\", given: \"Feature P2-17r (revision of black-hat-revised vb-9i6wg). Black-hat review round 1 found that the original bead cited submit.rs as the caller of submit_artifact, but the actual caller is crates/vb_cli/src/run_compiled_runtime.rs:256 inside store_compiled_artifact. The submit path uses put_workflow_source (line 92) and put_run_header (line 126) directly, NOT submit_artifact. Real source: crates/vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact calls submit_artifact), vb_runtime/src/ (submit_artifact is not currently a public Runtime method — it's an internal helper). Master §66 requires submit_artifact to be a public Runtime method so that the IPC layer (vb_ipc) and the CLI layer can both call it through the same code path. This bead: (1) moves submit_artifact from vb_cli's internal helper to vb_runtime::Runtime::submit_artifact (public method), (2) updates run_compiled_runtime.rs:256 to call Runtime::submit_artifact, (3) ensures the IPC layer can also call it. Kani harness: prove Runtime::submit_artifact is idempotent (same artifact → same result). proptest: 100 random (workflow, artifact) pairs produce consistent submissions.\", when: \"runtime_submit_artifact_returns_receipt: Runtime::submit_artifact(workflow, artifact) -> SubmissionReceipt { run_id, accepted_at }\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_cli_store_compiled_artifact_calls_runtime_submit_artifact_run_compiled_runtime.r\", given: \"Feature P2-17r (revision of black-hat-revised vb-9i6wg). Black-hat review round 1 found that the original bead cited submit.rs as the caller of submit_artifact, but the actual caller is crates/vb_cli/src/run_compiled_runtime.rs:256 inside store_compiled_artifact. The submit path uses put_workflow_source (line 92) and put_run_header (line 126) directly, NOT submit_artifact. Real source: crates/vb_cli/src/run_compiled_runtime.rs:256 (store_compiled_artifact calls submit_artifact), vb_runtime/src/ (submit_artifact is not currently a public Runtime method — it's an internal helper). Master §66 requires submit_artifact to be a public Runtime method so that the IPC layer (vb_ipc) and the CLI layer can both call it through the same code path. This bead: (1) moves submit_artifact from vb_cli's internal helper to vb_runtime::Runtime::submit_artifact (public method), (2) updates run_compiled_runtime.rs:256 to call Runtime::submit_artifact, (3) ensures the IPC layer can also call it. Kani harness: prove Runtime::submit_artifact is idempotent (same artifact → same result). proptest: 100 random (workflow, artifact) pairs produce consistent submissions.\", when: \"cli_store_compiled_artifact_calls_runtime_submit_artifact: run_compiled_runtime.rs:256 calls Runtime::submit_artifact (not the internal helper)\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_submit_artifact_with_digest_mismatch_returns_typed_error_artifact_digest_!=_work\", given: \"Error precondition\", when: \"submit_artifact_with_digest_mismatch_returns_typed_error: artifact digest != workflow digest; assert Err(DigestMismatch)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_submit_artifact_with_already_submitted_run_returns_idempotent_receipt_same_run_i\", given: \"Error precondition\", when: \"submit_artifact_with_already_submitted_run_returns_idempotent_receipt: same run_id submitted twice; assert same receipt (idempotent)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P2-17r submit-artifact: Add submit_artifact as a public Runtime method (master §66); caller is run_compiled_runtime.rs:256"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/vb_cli/src/run_compiled_runtime.rs:256 to confirm the caller\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_cli/src/commands/submit.rs:92,126 to confirm the submit path does NOT use submit_artifact\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Search vb_runtime for the existing internal submit_artifact helper\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Write test test_runtime_submit_artifact_returns_receipt (REGRESSION SHIELD)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Write proptest proptest_submit_artifact_idempotency (100 random pairs)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"In vb_runtime/src/runtime/mod.rs: add `pub fn submit_artifact(&self, workflow: &CompiledWorkflow, artifact: &CompiledArtifact) -> RuntimeResult<SubmissionReceipt>`\", done_when: \"Tests pass\"},
+        {task: \"Move the body from the internal helper in vb_cli/src/run_compiled_runtime.rs:256 to the new public method\", done_when: \"Tests pass\"},
+        {task: \"Update run_compiled_runtime.rs:256 to call Runtime::submit_artifact\", done_when: \"Tests pass\"},
+        {task: \"Add SubmissionReceipt to vb_runtime::api (public type)\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_cli/src/run_compiled_runtime.rs:256 (the current caller)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_cli/src/commands/submit.rs:92,126 (the direct writers — NOT submit_artifact callers)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/runtime/mod.rs (the new public method lives here)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_ipc/src/ (the IPC layer call site)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-fi5brf5q/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_cli/src/run_compiled_runtime.rs:256 (the current caller)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_cli/src/commands/submit.rs:92,126 (the direct writers — NOT submit_artifact callers)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/runtime/mod.rs (the new public method lives here)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_ipc/src/ (the IPC layer call site)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+DEPENDS ON
+  → ○ vb-77fib: P0-COORD shard-config-coord: Define ShardConfig v2 and Runtime::new_with_journal signature before P2-14a/P2-17/P2-18 land ● P0
+  → ○ vb-a6j2m: P0-4r runtime-action-executor: Add ActionExecutor trait + 3 §19 mock actions (NOT a dispatch stub fix) ● P0
+

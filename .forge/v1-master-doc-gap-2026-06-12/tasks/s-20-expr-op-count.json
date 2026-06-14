@@ -1,0 +1,151 @@
+{
+  "id": "s-20-expr-op-count",
+  "title": "expr-op-count: Verify 30th ExprOp variant or document 29 as canonical",
+  "type": "chore",
+  "priority": 3,
+  "effort": "30min",
+  "description": "Chore S-20. Master §14 requires 30 ExprOp variants. vb_core::workflow::types::ExprOp has 29. The compiler mirror in vb_compile/src/expression_bytecode.rs:552-568 also has 29. compile_to_generated_rust is removed per master §68 (target contract: IR interpreter is the only execution mode) but still exists in vb_compile/src/compile/mod.rs:724-730. The drift between code (29) and master (30) is a documentation/code mismatch. This bead: (1) confirm with the master doc owner which 30th variant was intended; (2) if confirmed, add the variant to ExprOp, helper_op in vb_expr/bytecode/mod.rs:251-267, and the compiler mirror; (3) if not, update master §14 to say 29; (4) handle the compile_to_generated_rust removal: either remove the function or update master to clarify the codegen path is test-only.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL have a consistent count of ExprOp variants between vb_core, vb_expr, vb_compile, and master §14",
+      "THE SYSTEM SHALL NOT have compile_to_generated_rust in production code if master §68 removes codegen"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a workflow uses an expression with the 30th ExprOp variant (if it exists)",
+        "shall": "THE SYSTEM SHALL compile and execute it correctly"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the count drifts again in the future",
+        "shall_not": "THE SYSTEM SHALL NOT silently disagree with master; a proptest must lock down the count",
+        "because": "Master §14: 30 variants is the contract; drift is a doc lie"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Decision is documented in the bead's evidence: 30 (add the variant) or 29 (update master)"
+    ],
+    "postconditions": [
+      "ExprOp, helper_op, and the compiler mirror all have the same count",
+      "Master §14 matches the count",
+      "compile_to_generated_rust is either removed or documented as test-only"
+    ],
+    "invariants": [
+      "ExprOp variant count is consistent across vb_core, vb_expr, vb_compile, and master §14"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "expr_op_count_matches_master: a proptest asserts that len(ExprOp::VARIANTS) == master_count (29 or 30, depending on the decision)",
+      "compile_to_generated_rust_is_removed_or_documented: a grep test asserts compile_to_generated_rust is either absent or has a #[cfg(test)] / #[doc = '...test-only...'] marker"
+    ],
+    "error": [
+      "expr_op_count_mismatch_test_fails: if the count drifts, the proptest fails",
+      "compile_to_generated_rust_called_in_production_fails: a CI check asserts compile_to_generated_rust is not called from any non-test module (after the cleanup)",
+      "decision_not_documented_fails_gate: if .evidence/s-20-decision.md is missing, the bead fails the gate"
+    ],
+    "edge": [
+      "evidence_documents_the_decision: .evidence/s-20-decision.md records 30 (add) or 29 (update master) with rationale"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_core/src/workflow/types.rs (ExprOp enum, 29 variants)",
+      "crates/vb_expr/src/bytecode/mod.rs:251-267 (helper_op, 29 arms)",
+      "crates/vb_compile/src/expression_bytecode.rs:552-568 (the compiler mirror, 29 arms)",
+      "crates/vb_compile/src/compile/mod.rs:724-730 (compile_to_generated_rust, the dead code to remove or document)",
+      "velvet-ballistics-MASTER.md §14 (the doc that says 30)"
+    ],
+    "patterns": [
+      "Pattern: existing per-variant exhaustiveness in helper_op (the 29 arms)"
+    ],
+    "questions": [
+      "Which 30th variant was intended? (The answer requires master doc owner input; this bead records the decision.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [],
+    "usability_failures": [
+      {
+        "failure": "Workflow author writes an expression that uses the (assumed) 30th variant, gets an 'unknown op' error",
+        "prevention": "If the 30th variant exists, it must be in all three places; if not, master must say 29",
+        "test_for_it": "expr_op_count_matches_master"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "compile_to_generated_rust is called in production, producing generated Rust that master §68 forbids",
+        "prevention": "Remove the function or gate it to #[cfg(test)]",
+        "test_for_it": "compile_to_generated_rust_is_removed_or_documented"
+      }
+    ],
+    "integration_failures": []
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_core/src/workflow/types.rs to enumerate the 29 ExprOp variants",
+      "Read crates/vb_expr/src/bytecode/mod.rs:251-267 to confirm helper_op has 29 arms",
+      "Read crates/vb_compile/src/expression_bytecode.rs:552-568 to confirm the compiler mirror has 29 arms",
+      "Read crates/vb_compile/src/compile/mod.rs:724-730 to see compile_to_generated_rust",
+      "Read master §14 for the documented count"
+    ],
+    "phase_1": [
+      "Write the decision document .evidence/s-20-decision.md",
+      "Write the proptest test_expr_op_count_matches_master",
+      "Write the grep test test_compile_to_generated_rust_is_removed_or_documented"
+    ],
+    "phase_2": [
+      "Decision: 30 or 29",
+      "If 30: add the variant to ExprOp, helper_op, and the compiler mirror",
+      "If 29: update master §14 to say 29",
+      "For compile_to_generated_rust: either remove it or add #[cfg(test)] gate and a doc comment 'TEST-ONLY; master §68 removes codegen from production'"
+    ],
+    "phase_3": [
+      "Coordinate: if the 30th variant is added, helper_op and the compiler mirror must add the new arm in the same commit"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_core -p vb_expr -p vb_compile` and verify all new tests pass",
+      "Manual: count the variants by hand and confirm the decision document"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_core/src/workflow/types.rs (ExprOp enum)",
+      "crates/vb_expr/src/bytecode/mod.rs:251-267 (helper_op)",
+      "crates/vb_compile/src/expression_bytecode.rs:552-568 (compiler mirror)",
+      "crates/vb_compile/src/compile/mod.rs:724-730 (compile_to_generated_rust)",
+      "velvet-ballistics-MASTER.md §14 (the doc)",
+      ".evidence/s-20-decision.md (new decision document)"
+    ],
+    "similar_implementations": [],
+    "external_references": [
+      "Master §14 Core Rust Types (ExprOp count)",
+      "Master §68.5 Removed Rust Codegen"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_core/src/workflow/types.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The ExprOp enum definition (29 variants today)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ExprOp enum with 29 variants in vb_core::workflow::types",
+      "helper_op(op: ExprOp) -> OpCode in vb_expr::bytecode",
+      "compile_to_generated_rust in vb_compile::compile (dead code per §68)"
+    ],
+    "apis_that_do_not_exist": [
+      "The 30th variant is not known; the deliverable is the decision"
+    ],
+    "no_placeholder_values": [
+      "Do NOT invent a 30th variant without owner confirmation"
+    ]
+  }
+}

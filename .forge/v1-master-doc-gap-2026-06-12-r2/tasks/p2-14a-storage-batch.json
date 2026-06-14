@@ -1,0 +1,150 @@
+{
+  "id": "p2-14a-storage-batch",
+  "title": "P2-14a storage-batch: Extend RuntimeJournal::append_sequenced to accept &[RuntimeJournalEvent] and use JournalWriteBatch::commit",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-14a (split from black-hat-revised vb-8fbja). Black-hat review round 1 found that the original P2-14 had 4 sub-phases in one bead, violating Farley's 'smallest change' rule. This bead (P2-14a) handles sub-phase (14a) only: extend the RuntimeJournal::append_sequenced trait method to accept a slice of events, and use JournalWriteBatch::commit for atomicity. Real source: crates/vb_runtime/src/journal/chunk_001.rs:222, chunk_002.rs:294-315, chunk_003.rs:8 — three implementations of append_sequenced, each taking a single RuntimeJournalEvent and calling self.append_storage_event. The new signature: `fn append_sequenced(&self, events: &[RuntimeJournalEvent], seq: &[EventSeq]) -> RuntimeResult<()>`. The new body constructs a JournalWriteBatch from vb_storage::batch.rs:46-62 and commits it once. No coalescing (that's P2-14b); no A/B benchmark (that's P2-14c). Master §61 atomicity invariant: all events in the slice are persisted atomically or none are. Kani harness: prove append_sequenced on a slice of N events results in either 0 or N persisted events, never partial. proptest: 100 random (slice, seq) pairs assert atomicity.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose append_sequenced that accepts &[RuntimeJournalEvent] for batched commits",
+      "THE SYSTEM SHALL use JournalWriteBatch::commit for atomicity when the slice is non-empty"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN append_sequenced is called with a slice of 100 events and 100 sequence numbers",
+        "shall": "THE SYSTEM SHALL construct a JournalWriteBatch and commit it in a single Fjall transaction; either all 100 events persist or none do"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the slice and seq slices have different lengths",
+        "shall_not": "THE SYSTEM SHALL NOT panic; it must return Err(LengthMismatch)",
+        "because": "Pre-condition violation is a typed error, not a panic"
+      },
+      {
+        "condition": "IF JournalWriteBatch::commit fails midway",
+        "shall_not": "THE SYSTEM SHALL NOT partially apply the batch; it must roll back and return BatchCommitFailed",
+        "because": "Master §61: atomicity is non-negotiable; partial application violates the contract"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "JournalWriteBatch is fully implemented at vb_storage::batch.rs:46-62",
+      "The 3 existing append_sequenced implementations (chunk_001.rs:222, chunk_002.rs:294, chunk_003.rs:8) are the only callers"
+    ],
+    "postconditions": [
+      "RuntimeJournal::append_sequenced has a new signature accepting &[RuntimeJournalEvent] and &[EventSeq]",
+      "All 3 implementations use JournalWriteBatch::commit instead of per-event append_storage_event",
+      "No regression: existing call sites that pass a single event via a 1-element slice still work"
+    ],
+    "invariants": [
+      "Atomicity: N events in the slice produce 0 or N persisted events, never partial (master §61)",
+      "Sequence numbers remain monotonic per run (master §68.5)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "append_sequenced_with_100_events_commits_atomically: 100 events in 1 call; assert 1 Fjall commit (not 100)",
+      "append_sequenced_with_1_event_works: a 1-element slice still works (regression for single-event call sites)"
+    ],
+    "error": [
+      "append_sequenced_with_length_mismatch_returns_typed_error: events.len() != seqs.len(); assert Err(LengthMismatch)",
+      "append_sequenced_with_commit_failure_rolls_back: force a commit failure; assert 0 events persisted (not partial)"
+    ],
+    "edge": [
+      "append_sequenced_with_empty_slice_is_noop: events.len() == 0; assert Ok(()) and no Fjall write",
+      "proptest_append_sequenced_atomicity: 100 random (slice, seq) pairs; assert either 0 or all events persist",
+      "kani_append_sequenced_atomicity: bounded model check with 4 event types and 4 commit failure scenarios"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/journal/chunk_001.rs:222 (VolatileJournal::append_sequenced — the first impl)",
+      "crates/vb_runtime/src/journal/chunk_002.rs:294-315 (StorageRuntimeJournal::append_sequenced — the second impl; the one with action_index_update)",
+      "crates/vb_runtime/src/journal/chunk_003.rs:8 (NoopJournal::append_sequenced — the third impl)",
+      "crates/vb_storage/src/batch.rs:46-62 (JournalWriteBatch — the existing batch API)",
+      "master doc §61 (the atomicity contract)"
+    ],
+    "patterns": [
+      "Pattern: existing per-event call sites use the single-event signature; the new slice-based signature is additive (the old one is removed only after all callers migrate)"
+    ],
+    "questions": [
+      "Should the old single-event signature be kept as a wrapper, or removed after migration? Recommend: keep as a wrapper that constructs a 1-element slice and calls the new method; this minimizes churn"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "A commit failure mid-batch leaves half the events persisted and half not; recovery reads a partial journal and rebuilds a wrong frame",
+        "prevention": "JournalWriteBatch::commit is atomic; on failure, the entire batch rolls back",
+        "test_for_it": "append_sequenced_rolls_back_on_commit_failure (regression shield for master §61)"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker exploits a length mismatch between events and seqs to bypass the sequence-number invariant",
+        "prevention": "Length mismatch returns a typed LengthMismatch error before any commit is attempted",
+        "test_for_it": "length_mismatch_returns_typed_error (regression shield)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/journal/chunk_001.rs:222, chunk_002.rs:294, chunk_003.rs:8 to confirm the 3 implementations",
+      "Read crates/vb_storage/src/batch.rs:46-62 to confirm the JournalWriteBatch API"
+    ],
+    "phase_1": [
+      "Write test test_append_sequenced_with_100_events_commits_atomically (REGRESSION SHIELD)",
+      "Write proptest proptest_append_sequenced_atomicity (100 random pairs)"
+    ],
+    "phase_2": [
+      "In RuntimeJournal trait: add new method `fn append_sequenced_batch(&self, events: &[RuntimeJournalEvent], seqs: &[EventSeq]) -> RuntimeResult<()>`",
+      "In chunk_001.rs:222, chunk_002.rs:294, chunk_003.rs:8: implement the new method using JournalWriteBatch::commit",
+      "Keep the old single-event append_sequenced as a wrapper that constructs a 1-element slice"
+    ],
+    "phase_3": [
+      "Add Kani harness at vb_runtime/src/kani/append_sequenced_batch.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_runtime -p vb_storage`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/journal/chunk_001.rs:222 (the first impl)",
+      "crates/vb_runtime/src/journal/chunk_002.rs:294-315 (the second impl)",
+      "crates/vb_runtime/src/journal/chunk_003.rs:8 (the third impl)",
+      "crates/vb_storage/src/batch.rs:46-62 (the existing batch API)"
+    ],
+    "similar_implementations": [
+      "Existing per-event call sites use the single-event signature; the new slice-based signature is additive"
+    ],
+    "external_references": [
+      "Master §61 Fjall Storage Contract (atomicity invariant)",
+      "Master §68.5 (sequence-number monotonicity)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/journal/chunk_002.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "append_sequenced (lines 294-315) — the StorageRuntimeJournal impl that has the action_index_update logic"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "JournalWriteBatch is fully implemented at vb_storage::batch.rs:46-62",
+      "3 implementations of append_sequenced exist (chunk_001, chunk_002, chunk_003)"
+    ],
+    "apis_that_do_not_exist": [
+      "The slice-based append_sequenced_batch does NOT exist yet — it is what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT add coalesce logic (that's P2-14b)",
+      "Do NOT add the feature flag (that's P2-14c)"
+    ]
+  }
+}

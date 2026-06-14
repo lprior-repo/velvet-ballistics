@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use super::args;
+use crate::args::run_ops::CANCEL_REASON_MAX_CHARS;
 use crate::args::{Command, OutputFormat, ParseError, parse_args};
 
 #[test]
@@ -151,8 +152,8 @@ fn parse_cancel_rejects_unknown_flag() {
 }
 
 #[test]
-fn parse_cancel_rejects_reason_longer_than_256_bytes() {
-    let long_reason = "a".repeat(257);
+fn parse_cancel_rejects_reason_longer_than_256_chars() {
+    let long_reason = "a".repeat(CANCEL_REASON_MAX_CHARS.saturating_add(1));
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "cancel",
@@ -169,8 +170,8 @@ fn parse_cancel_rejects_reason_longer_than_256_bytes() {
 }
 
 #[test]
-fn parse_cancel_accepts_reason_exactly_256_bytes() {
-    let reason = "a".repeat(256);
+fn parse_cancel_accepts_reason_exactly_256_chars() {
+    let reason = "a".repeat(CANCEL_REASON_MAX_CHARS);
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
         "cancel",
@@ -184,4 +185,38 @@ fn parse_cancel_accepts_reason_exactly_256_bytes() {
     } else {
         assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
+}
+
+#[test]
+fn parse_cancel_accepts_multibyte_reason_at_char_limit() {
+    let reason = "é".repeat(CANCEL_REASON_MAX_CHARS);
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "cancel",
+        "42",
+        "--db",
+        "journal-db",
+        "--reason",
+        &reason,
+    ]));
+    if let Ok(Command::Cancel { reason: parsed_reason, .. }) = parsed {
+        assert_eq!(parsed_reason, Some(reason));
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
+}
+
+#[test]
+fn parse_cancel_rejects_multibyte_reason_over_char_limit() {
+    let reason = "é".repeat(CANCEL_REASON_MAX_CHARS.saturating_add(1));
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "cancel",
+        "42",
+        "--db",
+        "journal-db",
+        "--reason",
+        &reason,
+    ]));
+    assert!(matches!(parsed, Err(ParseError::ReasonTooLong)));
 }

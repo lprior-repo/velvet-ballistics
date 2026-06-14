@@ -1,0 +1,84 @@
+## 0. Prime Directive
+## 1. Naming Contract
+## 2. Non-Negotiable Rust Rules
+## 3. Holzmann Compliance Matrix
+## 4. Mandatory Rust Tooling
+## 5. Library Choices
+## 6. Current Performance Rules — IR Interpreter Scope
+## 7. Nightly Governance
+## 8. Language Specification
+## 9. Trigger Contract
+## 10. Step Primitive Contract
+## 11. Hot/Cold Data Layout
+## 12. Forbidden Hot-Path APIs
+## 13. Resource Contracts
+## 14. Core Rust Types
+## 15. Final IR Contract
+## 16. Validation Error Codes
+## 17. Runtime Error Codes
+## 18. Fjall Persistence Behavior
+## 19. Action ABI
+## 20. Runtime and Shard Design
+## 21. Binary IPC Protocol
+## 22. Removed Rust Codegen and Maxperf
+## 23. Workspace Structure
+## 24. Mandatory Function Surface: `vb_core`
+## 25. Mandatory Function Surface: `vb_yaml`
+## 26. Mandatory Function Surface: `vb_validate`
+## 27. Mandatory Function Surface: `vb_expr`
+## 28. Mandatory Function Surface: `vb_compile`
+## 29. Mandatory Function Surface: `vb_storage`
+## 30. Mandatory Function Surface: `vb_runtime`
+## 31. Mandatory Function Surface: `vb_ipc`
+## 32. Removed Function Surface: `vb_codegen`
+## 33. CLI Commands
+## 34. Workspace Cargo Contract
+## 35. Implementation Phases
+## 36. Mandatory Test Coverage
+## 37. Fuzz Targets
+## 38. Property Tests
+## 39. Mandatory Benchmarks
+## 40. CI Gate
+## 41. Removed PGO and Maxperf Build
+## 42. Bead Work Breakdown
+## 43. AI Agent Acceptance Contract
+## 44. Backend / IR Interpreter Definition of Done
+## 45. Normative Runtime Semantics
+## 46. Expression Grammar, Type System, and Helper Signatures
+## 47. Taint Lattice and Propagation Rules
+## 48. Value Arena, Handle Lifetime, and Blob Contract
+## 49. Journal Event Payload Schemas and Crash-Consistency Ordering
+## 50. IPC Transport, Backpressure, and Error Codes
+## 51. Digest Canonicalization and Schema Versioning
+## 52. Fallible Allocation and No-Panic Enforcement
+## 53. Hot/Cold Module Classification
+## 54. Single-Server Ownership and Database Locking
+## 55. Action Worker Model and Shard Non-Blocking Contract
+## 56. Runtime Profile Defaults
+## 57. Feature Flag Policy
+## 58. Platform Support
+## 59. Security and Threat Model
+## 60. Evidence Artifact Format
+## 61. Fjall Storage Contract
+## 62. No-Async Rule
+## 63. Plan Verifier and Accepted Artifacts
+## 64. Whole-Workflow Boundedness Analysis
+## 65. Idempotency Verification Gate
+## 66. Runtime Admission Gate
+## 67. Architectural Drift Register
+## 68. Durable Execution Architecture Contract
+## 69. Operator CLI Contract
+## 70. Phase Extension: Operator Features
+## 71. Competitive Performance Targets
+## 72. Execution Attempt Tracking
+## 73. Journal Trimming
+## 74. Converged Binary Design
+## 75. AI-Native CLI Control Plane
+## 76. Workflow Command-Center Front-End
+## 77. AI-Safe Quality Infrastructure
+## 78. Makepad UI Implementation Contract
+## 79. UI Design System Tokens
+## 80. UI Motion and Interaction Contract
+## 81. UI Artifact and Schema Contract
+## 82. UI Implementation Phases
+## 83. UI Testing, Benchmarking, and Acceptance Gates

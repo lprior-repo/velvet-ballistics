@@ -24,6 +24,7 @@ impl Shard {
         Ok(())
     }
 
+    #[cfg(not(kani))]
     fn journal_sequence_for(&self, run: RunId) -> EventSeq {
         self.journal_sequences
             .get(&run)
@@ -31,6 +32,7 @@ impl Shard {
             .unwrap_or(EventSeq::ZERO)
     }
 
+    #[cfg(not(kani))]
     fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
         let next = seq
             .get()

@@ -30,6 +30,7 @@ pub use self::mrwe6_kernel::{
 };
 
 #[cfg(kani)]
+#[allow(unused_imports)]
 pub(crate) use self::decision::{
     VerificationDuplicateRetryDecision, VerificationRecoveryOutcome,
     VerificationResolutionCommitDecision, verification_duplicate_retry_decision,
@@ -37,6 +38,7 @@ pub(crate) use self::decision::{
     verification_resolution_marker_present_after_commit,
 };
 #[cfg(kani)]
+#[allow(unused_imports)]
 pub(crate) use self::intent::{
     VerificationActionIndexIntent, verification_action_index_intent,
     verification_event_and_index_keys_exist,

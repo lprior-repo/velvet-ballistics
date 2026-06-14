@@ -54,4 +54,17 @@ pub mod verus {
 #[cfg(kani)]
 pub(crate) mod kani {
     pub(crate) mod kani_attempt_fence_harnesses;
+    pub(crate) mod kani_rxru0_action_harnesses;
+}
+
+// Flux refinement modules for vb-rxru0 (action enum invariants & dispatch_generic)
+#[cfg(all(flux, feature = "vb-rxru0-flux-refinements"))]
+pub mod rxru0_flux {
+    pub mod vb_rxru0_dispatch_generic;
+}
+
+// Verus proof modules for vb-rxru0
+#[cfg(verus)]
+pub mod verus {
+    pub mod vb_rxru0_action_verus;
 }

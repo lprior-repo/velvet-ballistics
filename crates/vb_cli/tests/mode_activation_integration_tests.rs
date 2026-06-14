@@ -223,8 +223,13 @@ fn verify_succeeds_on_passing_workflow() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.trim().ends_with("verified"),
-        "verify output must end with 'verified', got: {}",
+        stdout.contains("gate statuses:"),
+        "verify output must include gate statuses, got: {}",
+        stdout
+    );
+    assert!(
+        stdout.contains("Deferred gates remain:"),
+        "verify output must disclose deferred gates, got: {}",
         stdout
     );
 }
@@ -253,6 +258,10 @@ fn verify_succeeds_with_json_output() {
     assert!(
         stdout.contains("profile: quick"),
         "YAML must have profile: quick: {stdout}"
+    );
+    assert!(
+        stdout.contains("all_gates_closed: false"),
+        "YAML must disclose deferred verification closure: {stdout}"
     );
 }
 

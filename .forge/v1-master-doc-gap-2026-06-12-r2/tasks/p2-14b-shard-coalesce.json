@@ -1,0 +1,150 @@
+{
+  "id": "p2-14b-shard-coalesce",
+  "title": "P2-14b shard-coalesce: Add coalesce_window_us: u64 to ShardConfig (default 100µs) and coalescing layer in Shard::tick",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-14b (split from black-hat-revised vb-8fbja). Black-hat review round 1 split the original P2-14 into 3 sub-beads; this is the second. This bead (P2-14b) handles sub-phase (14b) only: add coalesce_window_us to ShardConfig and a coalescing layer in Shard::tick. Depends on P2-14a (the storage batch is needed for the coalesced commands to commit in one transaction). Real source: crates/vb_runtime/src/shard/config.rs (ShardConfig — does not currently have coalesce_window_us; this bead adds it; the field is part of ShardConfig v2 from P0-COORD), crates/vb_runtime/src/shard/tick.rs (Shard::tick — does not currently coalesce commands; this bead adds a coalescing layer). The new logic: Shard::tick collects commands arriving within a 100µs window, batches them into a single slice, and calls append_sequenced_batch (from P2-14a) once. Master §61: coalesce window is a positive u64; 0 is treated as 'no batching' (not a default). Kani harness: prove Shard::tick within the coalesce window produces exactly 1 batch commit. proptest: 100 random (command_burst, window_us) pairs assert batching behavior.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose coalesce_window_us: u64 in ShardConfig (default 100µs)",
+      "THE SYSTEM SHALL coalesce Shard::tick commands arriving within the window into a single batch commit"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN Shard::tick processes 100 commands within a 100µs window",
+        "shall": "THE SYSTEM SHALL emit 1 batch commit (via P2-14a's append_sequenced_batch) and the next 100 commands after the window expires"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF coalesce_window_us is set to 0",
+        "shall_not": "THE SYSTEM SHALL NOT treat coalesce_window_us=0 as the default; the default is 100us and 0 is a valid explicit opt-out",
+        "because": "Operators must explicitly opt in to the no-batching path for benchmarking"
+      },
+      {
+        "condition": "IF a command arrives exactly at the window boundary",
+        "shall_not": "THE SYSTEM SHALL NOT lose or double-count a command at the window boundary; the boundary semantics are inclusive-of-start, exclusive-of-end",
+        "because": "Master §61: window boundary semantics must be deterministic for replay"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "P2-14a (storage-batch) has landed and append_sequenced_batch is the new batch commit API",
+      "P0-COORD has defined ShardConfig v2 (this bead adds coalesce_window_us to it)",
+      "ShardConfig::default() returns the canonical 100µs window"
+    ],
+    "postconditions": [
+      "ShardConfig has coalesce_window_us: u64 (default 100µs)",
+      "Shard::tick coalesces commands within the window and calls append_sequenced_batch once per window",
+      "Setting coalesce_window_us = 0 disables coalescing (each command is committed individually)"
+    ],
+    "invariants": [
+      "100 commands within the window produce 1 batch commit, not 100 (master §61 throughput invariant)",
+      "Window boundary is inclusive-of-start, exclusive-of-end (deterministic for replay)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "shard_tick_coalesces_within_window: 100 commands in 100µs; assert 1 batch commit",
+      "shard_config_default_window_is_100us: ShardConfig::default().coalesce_window_us == 100"
+    ],
+    "error": [
+      "shard_tick_with_window_zero_does_not_batch: coalesce_window_us = 0; assert 100 commits for 100 commands (no batching)",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "shard_tick_at_window_boundary_is_deterministic: 1 command at t=0, 1 command at t=100µs (boundary); assert the boundary command is in the next batch",
+      "proptest_shard_tick_batching: 100 random (command_burst, window_us) pairs; assert the batch count matches expectations",
+      "kani_shard_tick_window_semantics: bounded model check with 4 command patterns and 4 window sizes"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — the field we add; the v2 schema is from P0-COORD)",
+      "crates/vb_runtime/src/shard/tick.rs (Shard::tick — the coalescing layer we add)",
+      "crates/vb_runtime/src/shard/command.rs (ShardCommand — the command type that gets coalesced)",
+      "master doc §61 (the coalesce-window spec)"
+    ],
+    "patterns": [
+      "Pattern: existing Shard::tick processes commands one at a time; we add a coalescing buffer in front of it"
+    ],
+    "questions": [
+      "Should the coalesce window be measured in monotonic clock time (SystemTime::now()) or tick count? Recommend: monotonic clock time (SystemTime) for replay determinism; monotonic clock is required by master §68.4"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Coalescing loses a command at the window boundary; the command is silently dropped, and the run state diverges",
+        "prevention": "Boundary semantics are inclusive-of-start, exclusive-of-end, and tested in proptest_shard_tick_batching",
+        "test_for_it": "boundary_command_is_in_next_batch (regression shield for replay determinism)"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker sets coalesce_window_us to u64::MAX, causing unbounded memory growth in the coalescing buffer",
+        "prevention": "ShardConfig validates coalesce_window_us in [0, 1_000_000] (max 1 second); values outside return ConfigOutOfBounds",
+        "test_for_it": "coalesce_window_us_out_of_bounds_returns_config_error"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Wait for P0-COORD to land ShardConfig v2 (this bead depends on it)",
+      "Wait for P2-14a to land append_sequenced_batch (this bead depends on it)",
+      "Read crates/vb_runtime/src/shard/tick.rs to find Shard::tick"
+    ],
+    "phase_1": [
+      "Write test test_shard_tick_coalesces_within_window (REGRESSION SHIELD)",
+      "Write proptest proptest_shard_tick_batching (100 random pairs)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/shard/config.rs: add `pub coalesce_window_us: u64` to ShardConfig v2 (from P0-COORD); default 100",
+      "In vb_runtime/src/shard/tick.rs: add a coalescing buffer; collect commands within the window; call append_sequenced_batch (from P2-14a) once",
+      "Add validation: coalesce_window_us in [0, 1_000_000]"
+    ],
+    "phase_3": [
+      "Add Kani harness at vb_runtime/src/kani/shard_tick_coalesce.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_runtime`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig — the new field)",
+      "crates/vb_runtime/src/shard/tick.rs (Shard::tick — the new coalescing layer)",
+      "crates/vb_runtime/src/shard/command.rs (ShardCommand — the command type)"
+    ],
+    "similar_implementations": [
+      "Existing Shard::tick processes commands one at a time; we add a coalescing buffer in front of it"
+    ],
+    "external_references": [
+      "Master §61 Fjall Storage Contract (coalesce-window spec)",
+      "Master §68.4 (replay determinism requires monotonic clock)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/shard/tick.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Shard::tick — the existing command-processing loop we extend with a coalescing buffer"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ShardConfig exists but does NOT have coalesce_window_us (that's P0-COORD's contribution)",
+      "Shard::tick exists but does NOT coalesce commands"
+    ],
+    "apis_that_do_not_exist": [
+      "The coalescing layer in Shard::tick does NOT exist yet — it is what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT add the storage batch (that's P2-14a)",
+      "Do NOT add the feature flag (that's P2-14c)"
+    ]
+  }
+}

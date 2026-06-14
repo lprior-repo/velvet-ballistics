@@ -48,6 +48,7 @@ proptest! {
             .and_then(serde_json::Value::as_object)
             .expect("commands must be an object");
         prop_assert!(commands.contains_key("agent-context"));
+        prop_assert!(commands.contains_key("cancel"));
         prop_assert!(commands.contains_key("validate"));
         prop_assert!(commands.contains_key("compile"));
         prop_assert!(commands.contains_key("run"));
@@ -206,13 +207,13 @@ proptest! {
     }
 
     #[test]
-    fn prop_build_commands_count_is_29(version in "\\PC*") {
+    fn prop_build_commands_count_is_30(version in "\\PC*") {
         let result = build(&version);
         let commands = result
             .get("commands")
             .and_then(serde_json::Value::as_object)
             .expect("commands must be an object");
-        prop_assert_eq!(commands.len(), 29);
+        prop_assert_eq!(commands.len(), 30);
     }
 
     #[test]

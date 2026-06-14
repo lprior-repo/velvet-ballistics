@@ -1,0 +1,150 @@
+{
+  "id": "p1-7r-compiler-aliases",
+  "title": "P1-7r compiler-aliases: Add Save + Set match arm in part_02.rs canonical lowering (digest identity)",
+  "type": "feature",
+  "priority": 1,
+  "effort": "1hr",
+  "description": "Feature P1-7r (revision of black-hat-revised vb-ljxig). Black-hat review round 1 scoped this work to the Save match arm in the canonical lowering path, since 'save' and 'set' are both parsed in crates/vb_compile/src/ast/parse.rs:271-274 but the canonical lowering match in crates/vb_compile/src/mod_compile_lowering/part_02.rs:28-130 only handles Set (line 29) — the Save arm is missing and falls to the `other =>` arm (line 131) returning UnsupportedStepPrimitive. The black-hat verified that the Do arm IS present at part_02.rs:95-130 and the Set arm is at part_02.rs:29, so we only need to add Save. Real source: part_02.rs:18-140 (lower_canonical_step), part_05.rs:374 (StepPrimitive::Save { value } — the reference handling), part_08.rs:210 (StepPrimitive::Set | StepPrimitive::Save => compile_save — the non-canonical path). The fix: (1) add `StepPrimitive::Save { output, value } =>` arm in part_02.rs:29 that calls lower_canonical_set (since Save and Set have identical semantics, just different YAML keywords); (2) ensure the digest computation treats Save and Set identically (the digest code is in part_05.rs:101: StepPrimitive::Save { .. } => 'save' — and the corresponding code in part_05.rs:374 reads the value). Master §16.4 alias convention: save and set are aliases for the same Set primitive; do and run are aliases for the same Do primitive. Kani harness: prove save_and_set_produce_identical_digests on the same value. proptest: 100 random (save, set) pairs produce identical workflows.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL accept both 'save' and 'set' YAML keywords in the canonical lowering path",
+      "THE SYSTEM SHALL produce identical digests for `save: { output: x, value: 42 }` and `set: { output: x, value: 42 }`"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a workflow YAML contains `save: { output: x, value: 42 }`",
+        "shall": "THE SYSTEM SHALL lower it to a Set node, identical to `set: { output: x, value: 42 }`"
+      },
+      {
+        "trigger": "WHEN a workflow YAML contains `set: { output: x, value: 42 }` (existing path)",
+        "shall": "THE SYSTEM SHALL lower it to a Set node (preserved behavior)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the user provides both `save` and `set` in the same step (impossible in YAML by design)",
+        "shall_not": "THE SYSTEM SHALL NOT emit a non-None action_id, mock_output, or suspension_reason for Set or Finish steps",
+        "because": "Each step has exactly one primitive key"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "parse.rs:271-274 already maps both 'set' and 'save' to StepPrimitiveAst::Set and StepPrimitiveAst::Save respectively",
+      "part_05.rs:374 already handles StepPrimitive::Save in the non-canonical path",
+      "part_08.rs:210 already collapses Set | Save in the non-canonical lowering"
+    ],
+    "postconditions": [
+      "part_02.rs:29+ has a new match arm: StepPrimitive::Save { output, value } => lower_canonical_set(id, slot, output, value, next, outputs, builder)",
+      "The canonical digest for a `save:` step equals the canonical digest for the equivalent `set:` step",
+      "No regression: existing `set:` workflows still compile (the Set match arm is preserved)"
+    ],
+    "invariants": [
+      "save and set are aliases: same output, same value, same digest (master §16.4)",
+      "do and run are aliases (already implemented in parse.rs:272-273 and part_02.rs:95)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "save_keyword_lowers_to_set_node: yaml with `save: { output: x, value: 42 }`; compile; assert the first node is CompiledNodeKind::Set with output=x, value=42",
+      "save_and_set_produce_identical_digests: yaml1 = `set: { output: x, value: 42 }`, yaml2 = `save: { output: x, value: 42 }`; assert compiled.digest() == compiled2.digest()"
+    ],
+    "error": [
+      "save_keyword_with_invalid_value_returns_step_field_shape: yaml with `save: { output: x, value: notanumber }`; compile; assert CompileError::StepFieldShape { field: 'save.value', expected: 'integer string' }",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "proptest_save_set_digest_identity: 100 random (output, value) pairs; assert save and set produce identical digests",
+      "kani_save_set_alias_invariant: bounded model check with 4 (output, value) pairs; assert canonical lowering is invariant to the keyword"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_compile/src/ast/parse.rs:271-274 (the parser mapping — already correct)",
+      "crates/vb_compile/src/mod_compile_lowering/part_02.rs:28-130 (the canonical lowering — MISSING Save arm)",
+      "crates/vb_compile/src/mod_compile_lowering/part_05.rs:374 (the non-canonical Save value handler — reference)",
+      "crates/vb_compile/src/mod_compile_lowering/part_08.rs:210 (the non-canonical Set | Save collapse — reference)",
+      "crates/vb_compile/src/tests/save_digest_unit_tests.rs (existing tests for Save digest identity)"
+    ],
+    "patterns": [
+      "Pattern: part_05.rs:374 has `vb_yaml::ast::StepPrimitive::Save { value } => { ... }` — the canonical value-extraction logic to reuse",
+      "Pattern: part_08.rs:210 collapses Set | Save with `StepPrimitive::Set | StepPrimitive::Save => compile_save(...)` — the alias-collapse pattern"
+    ],
+    "questions": [
+      "Should we also add a Run arm to part_02.rs (currently Do is there but Run is not)? (Spec: Run and Do are aliases; only Do is in part_02.rs; Run falls to `other`. Recommend: scope to Save only for this bead; file a separate bead for Run.)"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "User writes `save: { output: x, value: 42 }` expecting it to work; compile fails with UnsupportedStepPrimitive",
+        "prevention": "Add Save match arm to part_02.rs:28-130",
+        "test_for_it": "save_keyword_compiles_successfully: end-to-end compile of a workflow with `save:`; assert exit 0"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Digest divergence: `save:` and `set:` produce different digests, allowing a workflow to be replayed under a different digest depending on the keyword used",
+        "prevention": "save and set are lowered to the same Set node, producing the same digest",
+        "test_for_it": "save_and_set_digest_identity (regression shield for master §16.4)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_compile/src/mod_compile_lowering/part_02.rs:18-140 to confirm the missing Save arm",
+      "Read crates/vb_compile/src/mod_compile_lowering/part_05.rs:374 to confirm the Save value-handling pattern",
+      "Read crates/vb_compile/src/tests/save_digest_unit_tests.rs to confirm existing digest tests"
+    ],
+    "phase_1": [
+      "Write test test_save_keyword_lowers_to_set_node (REGRESSION SHIELD)",
+      "Write proptest proptest_save_set_digest_identity (100 random pairs)"
+    ],
+    "phase_2": [
+      "In part_02.rs after the Set match arm (line 32, just before Finish at line 33): add `StepPrimitive::Save { output, value } => { let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?; lower_canonical_set(id, slot, output, value, next, outputs, builder) }`",
+      "Verify the digest code in part_05.rs:101 ('save' name) and part_05.rs:374 (value extraction) are consistent"
+    ],
+    "phase_3": [
+      "Add Kani harness at crates/vb_compile/src/kani/save_set_alias.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_compile`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_compile/src/ast/parse.rs:271-274 (the parser mapping — already correct)",
+      "crates/vb_compile/src/mod_compile_lowering/part_02.rs:28-130 (the canonical lowering — the fix site)",
+      "crates/vb_compile/src/mod_compile_lowering/part_05.rs:374 (the Save value-handling reference)",
+      "crates/vb_compile/src/tests/save_digest_unit_tests.rs (existing tests)"
+    ],
+    "similar_implementations": [
+      "part_08.rs:210 collapses Set | Save with `StepPrimitive::Set | StepPrimitive::Save => compile_save(...)` — the alias-collapse pattern to mirror"
+    ],
+    "external_references": [
+      "Master §16.4 Alias Convention (save=set, do=run)",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_compile/src/mod_compile_lowering/part_02.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "lower_canonical_step (lines 18-140) — the match arms at lines 29, 33, 36, 42, 45, 63, 69, 72, 80, 83, 95 (Set, Finish, ForEach, Together, Collect, Reduce, Repeat, Wait, Ask, Choose, Do); Save is MISSING"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "StepPrimitive::Save { output, value } is a valid variant in ast/types.rs:106,139",
+      "part_05.rs:374 already handles StepPrimitive::Save in the non-canonical path"
+    ],
+    "apis_that_do_not_exist": [
+      "The Save match arm in part_02.rs:28-130 does NOT exist — it is what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT add a Run match arm in this bead (scope is Save only per black-hat revision)",
+      "Do NOT modify the Set match arm (it's correct)"
+    ]
+  }
+}

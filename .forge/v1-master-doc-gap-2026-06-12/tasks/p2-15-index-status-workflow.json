@@ -1,0 +1,173 @@
+{
+  "id": "p2-15-index-status-workflow",
+  "title": "index-status-workflow: Wire or remove index_status, index_workflow, and pending_actions gate",
+  "type": "task",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Task P2-15. Three dead-code sub-issues. (1) index_status and index_workflow write APIs exist in vb_storage/src/indexes.rs:15-35 but no production caller. (2) UnsupportedRecoveryState::pending_actions is tracked in summary.rs:381 but never set (per the comment) and never read (the runtime gate at runtime/recovery.rs:73-82 omits it). seed.pending_actions: Vec<RecoveredPendingAction> is built and dropped. (3) RunSnapshot write API exists in vb_storage/src/snapshots.rs:33-45 but no production caller. Dead code in a high-assurance system is a hazard: the code says one thing, the system does another. Master §30 and §29 require these APIs; if they're orphaned, the answer is to wire them or remove them. This bead: 3 sub-fixes (chose per path): (15.1) wire index_status/index_workflow in the runtime to write when status changes, OR remove the keyspaces and reader methods; (15.2) set pending_actions: true when there are pending actions that cannot be resumed, OR remove the field; (15.3) wire RunSnapshot in the runtime to write snapshots (P2-18), OR remove the type. The deliverable is the decision (wired in or removed) for each of the 3. Must be resolved before P0-5 lands (P0-5 depends on P2-15).",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL NOT have orphaned write APIs in production code; every write API must be called by the runtime OR be removed",
+      "THE SYSTEM SHALL resolve the 3 dead-code sub-issues (index_status/index_workflow, pending_actions gate, RunSnapshot) by either wiring or removing"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a run's status changes (e.g., from Running to Failed)",
+        "shall": "THE SYSTEM SHALL write to the index_status keyspace with the new status and run_id (if wired) OR not have the keyspace at all (if removed)"
+      },
+      {
+        "trigger": "WHEN recovery detects a non-resumable pending action",
+        "shall": "THE SYSTEM SHALL set UnsupportedRecoveryState::pending_actions = true (if wired) OR not have the field (if removed)"
+      },
+      {
+        "trigger": "WHEN a run completes a snapshot_interval_steps (P2-18)",
+        "shall": "THE SYSTEM SHALL write a RunSnapshot to the journal (if wired) OR not have the type (if removed)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF an API exists in code but is never called",
+        "shall_not": "THE SYSTEM SHALL NOT silently keep it; the deliverable is to wire it OR remove it",
+        "because": "Master §30 and §29 require these APIs; orphan code is a documentation lie"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Decision is documented in the bead's evidence: WIRED or REMOVED for each of the 3 sub-issues"
+    ],
+    "postconditions": [
+      "Each of the 3 APIs is either (a) called by production code, OR (b) removed from the codebase with no callers and no reader methods",
+      "No API is left in a half-wired state (some callers, some not)"
+    ],
+    "invariants": [
+      "Public API surface matches production code paths; no orphans"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "index_status_wired_or_removed_test: either test_index_status_is_written_on_status_change, or test_index_status_does_not_exist (depending on the decision)",
+      "pending_actions_gate_set_or_removed_test: either test_pending_actions_flag_is_set_on_unresumable, or test_pending_actions_field_does_not_exist",
+      "run_snapshot_wired_or_removed_test: either test_run_snapshot_is_written_after_n_steps (depends on P2-18), or test_run_snapshot_type_does_not_exist"
+    ],
+    "error": [
+      "grep_test_no_orphaned_write_apis: a grep-based test asserts that every `pub fn put_*` in vb_storage is called by some production module",
+      "decision_must_be_documented: if neither WIRED nor REMOVED is chosen for a sub-issue, the bead fails the gate (binary decision required)",
+      "removal_breaks_callers_test: if REMOVED is chosen, the grep test for the removed API's caller returns 0 callers; if WIRED, returns ≥1 caller"
+    ],
+    "edge": [
+      "evidence_documents_the_decision: a markdown file in .evidence/p2-15-decision.md records WIRED or REMOVED for each of the 3 sub-issues with rationale"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_storage/src/indexes.rs:15-35 (index_status, index_workflow write APIs; no callers)",
+      "crates/vb_storage/src/snapshots.rs:33-45 (RunSnapshot write API; no callers)",
+      "crates/vb_storage/src/summary.rs:381 (UnsupportedRecoveryState::pending_actions; tracked but never set per the comment)",
+      "crates/vb_runtime/src/recovery.rs:73-82 (the gate that omits pending_actions)",
+      "crates/vb_runtime/src/runtime/mod.rs (where the index writers would be called from)"
+    ],
+    "patterns": [
+      "Pattern: existing index reader methods (if removed, the readers go too)",
+      "Pattern: P2-18 will wire RunSnapshot via Runtime; this bead decides the wire path or removal"
+    ],
+    "questions": [
+      "Which decision is correct for each of the 3 sub-issues? The answer is a deliverable, not a foregone conclusion. The implementer must review the master doc, the test coverage, and the call sites, then choose."
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An orphan API is enabled by a future change and silently writes to an unused keyspace, growing the journal unbounded",
+        "prevention": "Either wire it (so growth is bounded) or remove it (so the keyspace doesn't exist)",
+        "test_for_it": "grep_test_no_orphaned_write_apis"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator reads the master doc, sees index_status is a thing, queries it, gets stale data because nothing writes to it",
+        "prevention": "If the doc says it exists, it must be wired",
+        "test_for_it": "master_doc_and_implementation_agree (assert every API in §29/§30 is either wired or removed)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "A reader method returns empty data because nothing writes, leading the operator to conclude the index is broken",
+        "prevention": "Either wire the writer or remove the reader",
+        "test_for_it": "every_reader_has_a_writer (grep test)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "P0-5 (Runtime::recover) lands and tries to use RecoveredRunAdmission, but the pending_actions field has been removed",
+        "prevention": "Coordinate: this bead decides; P0-5 follows. If removal is chosen, P0-5 must not reference the removed field",
+        "test_for_it": "p2-15_decision_aligns_with_p0_5 (assertion in P0-5's tests)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_storage/src/indexes.rs:15-35 to find the API signatures",
+      "Read crates/vb_storage/src/snapshots.rs:33-45 to find the RunSnapshot API",
+      "Read crates/vb_storage/src/summary.rs:381 to confirm the pending_actions field is tracked but never set",
+      "Read crates/vb_runtime/src/recovery.rs:73-82 to confirm the gate omits pending_actions",
+      "Grep for callers of put_index_status, put_index_workflow, put_snapshot, RecoveredRunAdmission::pending_actions"
+    ],
+    "phase_1": [
+      "Write the decision document .evidence/p2-15-decision.md",
+      "Write the grep test test_no_orphaned_write_apis"
+    ],
+    "phase_2": [
+      "For each of the 3 sub-issues: WIRE or REMOVE",
+      "If WIRE: add the call sites in the runtime (e.g., Runtime::submit_direct writes to index_status; Runtime::recover sets pending_actions; Shard::tick writes a RunSnapshot every N steps — depends on P2-18)",
+      "If REMOVE: delete the API, the keyspace, and any reader methods; update master §29/§30 to remove the references"
+    ],
+    "phase_3": [
+      "Coordinate with P0-5 and P2-18: if removal is chosen, those beads must not reference the removed APIs"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_storage -p vb_runtime` and verify all new tests pass",
+      "Manual: grep test must pass; decision document must be committed"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_storage/src/indexes.rs:15-35 (index_status, index_workflow)",
+      "crates/vb_storage/src/snapshots.rs:33-45 (RunSnapshot)",
+      "crates/vb_storage/src/summary.rs:381 (pending_actions field)",
+      "crates/vb_runtime/src/recovery.rs:73-82 (the gate)",
+      ".evidence/p2-15-decision.md (the new decision document)",
+      "velvet-ballistics-MASTER.md §29, §30 (doc updates if REMOVEd)"
+    ],
+    "similar_implementations": [
+      "No prior precedent; this bead sets the policy"
+    ],
+    "external_references": [
+      "Master §29 Mandatory Function Surface: vb_storage",
+      "Master §30 Mandatory Function Surface: vb_runtime"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_storage/src/indexes.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The put_index_status and put_index_workflow function signatures",
+          "The reader methods (if any)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "put_index_status, put_index_workflow in vb_storage::indexes",
+      "put_snapshot, get_snapshot in vb_storage::snapshots",
+      "UnsupportedRecoveryState { pending_actions: bool, action_payloads: bool, ... } in vb_storage::summary"
+    ],
+    "apis_that_do_not_exist": [
+      "No production callers for any of the 3; this bead creates the callers or removes the APIs"
+    ],
+    "no_placeholder_values": [
+      "Do NOT leave the APIs in a half-wired state; the decision is binary"
+    ]
+  }
+}

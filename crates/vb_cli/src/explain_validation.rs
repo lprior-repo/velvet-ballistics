@@ -94,6 +94,18 @@ pub(crate) fn explain_verification_failure(err: &crate::commands_verify::VerifyE
                 ],
             );
         }
+        VerifyError::DeferredGates(result) => {
+            crate::outln!("Deferred Verification Gates:");
+            crate::outln!("  {}", result.checks.join(", "));
+            crate::outln!("");
+            explain_repair_hint(
+                "deferred_gates",
+                &[
+                    "Close every deferred master §63 gate before using full verification as acceptance evidence",
+                    "Standard and quick profiles remain advisory while deferred gates exist",
+                ],
+            );
+        }
     }
 }
 

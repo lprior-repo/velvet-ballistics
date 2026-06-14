@@ -1,0 +1,141 @@
+{
+  "id": "p0-3r-cli-resume-analysis",
+  "title": "P0-3r cli-resume-analysis: Add suspended_at_step.is_some() guard to analyze_resume",
+  "type": "bug",
+  "priority": 0,
+  "effort": "30min",
+  "description": "Bug P0-3r (revision of black-hat-rejected vb-nkfta). Black-hat review round 1 found that cmd_resume IS already wired at run_ops.rs:150 (the original 'no-op' framing was fabricated). The real bug is in crates/vb_cli/src/commands_journal.rs analyze_resume (lines 386+). When the journal contains NO WaitScheduledEvent or AskScheduledEvent, suspended_at_step is left as None, but can_resume: true is still returned. This means a fresh run with no suspension events reports 'can resume' even though there is nothing to resume from. The fix: add a guard `if suspended_at_step.is_none()` BEFORE the terminal check; if no suspension indicator was found, return can_resume: false with reason 'run has no suspension events; nothing to resume'. Master §33.3 lifecycle: resume is for suspended runs, not runs that have just started. Kani harness: prove analyze_resume on a journal with zero WaitScheduled/AskScheduled events returns can_resume == false. proptest: 100 random journal sequences assert can_resume is true iff (suspended_at_step.is_some() AND !is_terminal).",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL return can_resume=false from analyze_resume when no WaitScheduledEvent or AskScheduledEvent exists in the journal",
+      "THE SYSTEM SHALL preserve existing analyze_resume behavior when the journal contains a WaitScheduledEvent or AskScheduledEvent"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN analyze_resume is called with a journal containing zero suspension events and a non-terminal terminal event",
+        "shall": "THE SYSTEM SHALL return ResumeAnalysis { suspended_at_step: None, can_resume: false, reason: 'run has no suspension events; nothing to resume' }"
+      },
+      {
+        "trigger": "WHEN analyze_resume is called with a journal containing WaitScheduledEvent { step: 5 } and no terminal event",
+        "shall": "THE SYSTEM SHALL return ResumeAnalysis { suspended_at_step: Some(5), can_resume: true, .. } (preserved behavior)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the journal is terminal (RunFinished/RunFailed/RunCancelled)",
+        "shall_not": "THE SYSTEM SHALL NOT return can_resume: true regardless of suspension events",
+        "because": "Terminal runs cannot be resumed; the existing terminal check is correct and must be preserved"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "analyze_resume is the single source of truth for resume decisions (run_ops.rs:150 calls it)",
+      "JournalEvent::WaitScheduledEvent and JournalEvent::AskScheduledEvent are the two suspension indicators"
+    ],
+    "postconditions": [
+      "analyze_resume on a journal with zero suspension events returns can_resume=false with explicit reason string",
+      "analyze_resume on a journal with WaitScheduled/AskScheduled events still returns can_resume=true (regression-protected)",
+      "analyze_resume on a terminal journal still returns can_resume=false (regression-protected)"
+    ],
+    "invariants": [
+      "For any journal, can_resume is true iff (suspended_at_step.is_some() AND !is_terminal)",
+      "The truth table {no_suspension, terminal, no_suspension_and_terminal, suspension_and_non_terminal} is exhaustively tested"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "analyze_resume_on_suspended_run_returns_can_resume_true: journal = [StepSucceeded, WaitScheduledEvent{step:5}] -> can_resume: true (regression)",
+      "analyze_resume_on_ask_suspended_run_returns_can_resume_true: journal = [StepSucceeded, AskScheduledEvent{step:3}] -> can_resume: true (regression)"
+    ],
+    "error": [
+      "analyze_resume_on_run_with_no_suspension_events_returns_can_resume_false: journal = [StepSucceeded, StepSucceeded] -> can_resume: false with 'no suspension events' (NEW FIX)",
+      "analyze_resume_on_empty_journal_returns_can_resume_false: empty journal -> can_resume: false with 'no suspension events' (NEW FIX)"
+    ],
+    "edge": [
+      "analyze_resume_on_terminal_run_returns_can_resume_false: journal = [WaitScheduled, RunFinished] -> can_resume: false (regression)",
+      "proptest_analyze_resume_truth_table: 100 random journal sequences; assert can_resume iff (suspended_at_step.is_some() AND !is_terminal)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands_journal.rs:386-430 (analyze_resume function — the fix lives here)",
+      "crates/vb_cli/src/run_ops.rs:150 (cmd_resume entry; calls analyze_resume; no change needed)"
+    ],
+    "patterns": [
+      "Pattern: existing suspension scan in analyze_resume that updates suspended_at_step — the fix is to use the final value of suspended_at_step as a precondition for can_resume"
+    ],
+    "questions": [
+      "If the journal contains both WaitScheduledEvent and AskScheduledEvent, which step wins? (Current code: last one wins. Spec: last one wins. Keep.)"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Operator resumes a fresh run with no suspension; resume silently treats the run as suspended and the IPC channel fails with a confusing 'no pending action' error",
+        "prevention": "analyze_resume returns can_resume=false when no suspension events exist; cmd_resume surfaces a typed CLI error",
+        "test_for_it": "cli_resume_on_fresh_run_returns_validation_failed: `vb resume <fresh-run-id>` exits with code 3 and message 'no suspension events'"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker resumes a completed run, replaying the action and bypassing the audit trail",
+        "prevention": "analyze_resume rejects both terminal events AND missing suspension events",
+        "test_for_it": "completed_run_cannot_be_resumed_via_analyze_resume: proptest with 1000 random terminal+resume sequences; assert can_resume=false on all terminals"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands_journal.rs:386-430 to confirm the bug location and the exact structure of the function",
+      "Read crates/vb_cli/src/run_ops.rs:150 cmd_resume to confirm it surfaces analyze_resume's reason field"
+    ],
+    "phase_1": [
+      "Write test test_analyze_resume_on_run_with_no_suspension_events_returns_can_resume_false (REGRESSION SHIELD for the fix)",
+      "Write proptest proptest_analyze_resume_truth_table covering all 4 combinations of (has_suspension × is_terminal)"
+    ],
+    "phase_2": [
+      "In commands_journal.rs analyze_resume: AFTER the suspension scan loop, BEFORE the terminal check, add a guard: if suspended_at_step.is_none() { return ResumeAnalysis { suspended_at_step: None, can_resume: false, reason: 'run has no suspension events; nothing to resume'.into() }; }"
+    ],
+    "phase_3": [
+      "Run `moon run :test -p vb_cli`; verify all analyze_resume tests pass",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands_journal.rs:386-430 (analyze_resume — the fix site)",
+      "crates/vb_cli/src/run_ops.rs:150 (cmd_resume — already correctly wired)",
+      "crates/vb_cli/src/lifecycle.rs (resume function — verify the call site)"
+    ],
+    "similar_implementations": [
+      "analyze_retry (commands_journal.rs:329+) has a similar structure but the inverse logic — analyze_retry returns true on failure, analyze_resume returns true on suspension. The fix to analyze_retry (P0-2r) is a structural twin."
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface (resume semantics)",
+      "Master §44.15 Direct API operational affordances"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_cli/src/commands_journal.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "analyze_resume (lines 386-430) — exact function structure and existing terminal check"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "JournalEvent::WaitScheduledEvent and JournalEvent::AskScheduledEvent are distinct variants and the only suspension indicators",
+      "analyze_resume is called by run_ops.rs:150 cmd_resume and surfaced to the user"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no `ResumePolicy` enum that could disambiguate at a higher level; the fix is in analyze_resume itself"
+    ],
+    "no_placeholder_values": [
+      "Do NOT change cmd_resume's wiring (it's correct)",
+      "Do NOT change analyze_resume's terminal check (preserve behavior)"
+    ]
+  }
+}

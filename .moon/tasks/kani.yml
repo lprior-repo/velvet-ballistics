@@ -4,6 +4,11 @@
 fileGroups:
   kani_core_sources:
     - 'crates/vb_core/src/**/*'
+  kani_runtime_shard_command_queue_sources:
+    - 'crates/vb_runtime/src/kani_shard_command_queue.rs'
+    - 'crates/vb_runtime/src/lib.rs'
+    - 'crates/vb_runtime/src/shard/**/*'
+    - 'crates/vb_runtime/src/error/**/*'
   kani_validate_sources:
     - 'crates/vb_validate/src/**/*'
     - 'crates/vb_core/src/ids/**/*'
@@ -57,6 +62,32 @@ tasks:
     inputs:
       - '@globs(kani_validate_sources)'
       - 'crates/vb_validate/src/kani_gate_08_structural.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      runInCI: true
+
+  verify-kani-runtime-shard-command-queue:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      run_runtime_shard_queue_harness() {
+        local harness="$1"
+        printf 'verify-kani-runtime-shard-command-queue: running %s\n' "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-runtime-shard-command-queue RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_runtime --features kani-shard-command-queue --harness "$harness"
+      }
+      run_runtime_shard_queue_harness kani_shard_command_queue_bounded_invariant
+      run_runtime_shard_queue_harness kani_shard_command_queue_push
+      run_runtime_shard_queue_harness kani_shard_command_queue_drain
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_core_sources)'
+      - '@globs(kani_runtime_shard_command_queue_sources)'
+      - 'crates/vb_runtime/Cargo.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'

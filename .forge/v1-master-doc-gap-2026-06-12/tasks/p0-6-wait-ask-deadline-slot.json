@@ -1,0 +1,171 @@
+{
+  "id": "p0-6-wait-ask-deadline-slot",
+  "title": "wait-ask-deadline-slot: Fix wait_ask to carry real deadline_slot (was vb-r4fix-001)",
+  "type": "bug",
+  "priority": 0,
+  "effort": "15min",
+  "description": "Bug P0-6 (regression fix; was previously filed as vb-r4fix-001). vb_runtime/src/primitives/wait_ask.rs:14-24 (wait_until) and :31-46 (wait_event) emit `AwaitingWait { deadline_slot: SlotIdx::new(0) }` instead of the actual deadline_slot from the WaitUntil/WaitEvent IR node. The chain is: engine/execute.rs:176 → engine/handlers.rs:329-336 → wait_ask::wait_until(run, deadline_slot) → AwaitingWait { deadline_slot: SlotIdx::new(0) } → engine/signal.rs:34 → shard/lifecycle/chunk_002.rs:219-224 → shard/transitions.rs:161 → compute_deadline_ms_from_slot (line 215-240) reads slot 0 (which is wrong; it should read the slot the user passed). The bug means every WaitUntil schedules its timer at the deadline stored in slot 0, not the deadline the workflow author specified. Master §45 WaitUntil semantics require: Inputs read = `deadline_slot` (must be I64 or F64); Suspension = Returns `AwaitingWait`. Master §68 invariant 4: Recovery is deterministic — wrong deadline breaks the deterministic guarantee. This bead changes the two `SlotIdx::new(0)` literals to the actual `deadline_slot` parameter.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL preserve the WaitUntil node's deadline_slot value in the AwaitingWait signal, not coerce it to SlotIdx::new(0)",
+      "THE SYSTEM SHALL preserve the WaitEvent node's timeout_slot value in the AwaitingWait signal, not coerce it to SlotIdx::new(0)"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a WaitUntil node is executed with deadline_slot = SlotIdx(5)",
+        "shall": "THE SYSTEM SHALL emit AwaitingWait { deadline_slot: SlotIdx(5) }"
+      },
+      {
+        "trigger": "WHEN a WaitEvent node is executed with timeout_slot = Some(SlotIdx(7))",
+        "shall": "THE SYSTEM SHALL emit AwaitingWait { deadline_slot: SlotIdx(7) }"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a WaitUntil node's deadline_slot is unbound (slot was never written)",
+        "shall_not": "THE SYSTEM SHALL NOT silently default to slot 0; it must return SlotOutOfBounds before emitting AwaitingWait",
+        "because": "Master §45: Inputs read = deadline_slot (must be I64 or F64); an unbound slot is a typed error, not a default-to-zero"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "WaitUntil node's deadline_slot is a valid SlotIdx (in range [0, slot_count))",
+      "Slot at deadline_slot has been written and contains a numeric value (I64 or F64) per master §45"
+    ],
+    "postconditions": [
+      "AwaitingWait signal carries the original deadline_slot value, not SlotIdx::new(0)",
+      "compute_deadline_ms_from_slot reads the same slot the workflow author wrote"
+    ],
+    "invariants": [
+      "Two workflows with different deadline_slot values produce two distinct AwaitingWait signals with distinct deadline_slot fields",
+      "Replay reconstructs the same AwaitingWait with the same deadline_slot (master §68.4 deterministic recovery)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "wait_until_carries_real_deadline_slot: run a workflow with WaitUntil { deadline_slot: SlotIdx(5) } where slot 5 = 1000ms; the AwaitingWait signal has deadline_slot = SlotIdx(5), not SlotIdx(0)",
+      "wait_event_carries_real_timeout_slot: run a workflow with WaitEvent { timeout_slot: Some(SlotIdx(7)) } where slot 7 = 5000ms; the AwaitingWait signal has deadline_slot = SlotIdx(7)"
+    ],
+    "error": [
+      "wait_until_with_unbound_deadline_slot_returns_slot_out_of_bounds: a workflow where deadline_slot points to an unwritten slot returns SlotOutOfBounds, not a silent AwaitingWait with deadline_slot=0",
+      "wait_event_with_unbound_timeout_slot_returns_slot_out_of_bounds: a WaitEvent node whose timeout_slot points to an unwritten slot returns SlotOutOfBounds",
+      "wait_until_with_non_numeric_deadline_returns_type_mismatch: a WaitUntil node whose deadline_slot holds a Symbol value returns TypeMismatch { expected: 'deadline' }"
+    ],
+    "edge": [
+      "kani_harness_proves_deadline_slot_preserved: 100 random WaitUntil nodes, assert AwaitingWait.deadline_slot matches the input"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/primitives/wait_ask.rs:14-24 (wait_until; the bug is on the Ok(...) arm)",
+      "crates/vb_runtime/src/primitives/wait_ask.rs:31-46 (wait_event; the same bug)",
+      "crates/vb_runtime/src/engine/execute.rs:176 (the call site that passes deadline_slot)",
+      "crates/vb_runtime/src/engine/handlers.rs:329-336 (the handler that invokes wait_ask::wait_until)",
+      "crates/vb_runtime/src/engine/signal.rs:34 (where AwaitingWait is materialized into the signal)",
+      "crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:219-224 (shard drains the AwaitingWait signal)",
+      "crates/vb_runtime/src/shard/transitions.rs:161 (where the state transitions on Wait)",
+      "crates/vb_runtime/src/shard/transitions.rs:215-240 (compute_deadline_ms_from_slot; reads slot 0 = the bug)"
+    ],
+    "patterns": [
+      "Pattern: existing primitives (Copy, EvalExpr) carry the slot index forward correctly; this is an isolated bug in wait_ask.rs only"
+    ],
+    "questions": [
+      "Was there a previous fix attempt (vb-r4fix-001) that introduced the SlotIdx::new(0) placeholder? (Spec: yes, but the placeholder was never replaced with the parameter.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "Attacker writes a workflow that exploits the SlotIdx::new(0) bug to time-of-check vs time-of-use, evading rate limits",
+        "prevention": "Fix the bug; deadline_slot is honored, so rate-limit checks use the real deadline",
+        "test_for_it": "wait_until_rate_limit_uses_real_deadline (assert timer fires at the slot value, not slot 0)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Workflow author writes a 30-second WaitUntil but it actually waits for the value in slot 0 (often 0ms = immediate)",
+        "prevention": "Fix the bug; the real deadline_slot is honored",
+        "test_for_it": "wait_until_with_30s_deadline_waits_30s (proptest with deadlines 100ms, 1s, 30s, 24h)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Recovery reads a journal entry with AwaitingWait { deadline_slot: 5 } and rebuilds the timer for slot 0 (wrong)",
+        "prevention": "Fix the bug; the deadline_slot field is correct in the journal, so recovery reads the right slot",
+        "test_for_it": "recovery_preserves_waituntil_deadline (proptest with 1000 wait/recover cycles)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "Timer scheduler in shard subscribes to slot 0 changes but the actual deadline lives in slot 5",
+        "prevention": "Fix the bug; shard/scheduler uses the correct slot",
+        "test_for_it": "scheduler_subscribes_to_real_deadline_slot (assert timer fires when slot N changes, not slot 0)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/primitives/wait_ask.rs:14-46 in full",
+      "Read crates/vb_runtime/src/engine/execute.rs:176 to confirm deadline_slot is passed as a parameter",
+      "Read crates/vb_runtime/src/engine/handlers.rs:329-336 to confirm the parameter is forwarded"
+    ],
+    "phase_1": [
+      "Write test test_wait_until_carries_real_deadline_slot (assert signal.deadline_slot == SlotIdx(5))",
+      "Write test test_wait_event_carries_real_timeout_slot",
+      "Write test test_wait_until_with_unbound_deadline_slot_returns_slot_out_of_bounds",
+      "Write Kani harness test_wait_until_deadline_slot_preserved (100 unwind, Arbitrary SlotIdx)"
+    ],
+    "phase_2": [
+      "In wait_ask.rs:14-24 wait_until: change `Ok(vb_core::EngineSignal::AwaitingWait { deadline_slot: vb_core::ids::SlotIdx::new(0) })` to `Ok(vb_core::EngineSignal::AwaitingWait { deadline_slot })`",
+      "In wait_ask.rs:31-46 wait_event: same change with timeout_slot.unwrap_or(deadline_slot_fallback) — but the function signature already has a deadline_slot parameter; just forward it"
+    ],
+    "phase_3": [
+      "Verify compute_deadline_ms_from_slot (shard/transitions.rs:215-240) now reads the correct slot"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_runtime` and verify all new tests pass",
+      "Run `cargo kani -p vb_runtime --harness wait_until_deadline_slot_preserved` and verify the proof",
+      "Manual: a workflow with `wait_until: { deadline: $future_at_unix_ms_plus_30s }` should wait 30s, not 0s"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/primitives/wait_ask.rs:14-46 (the two-line fix)",
+      "crates/vb_runtime/src/engine/execute.rs:176 (caller)",
+      "crates/vb_runtime/src/engine/handlers.rs:329-336 (forwarder)",
+      "crates/vb_runtime/src/engine/signal.rs:34 (signal materialization)",
+      "crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:219-224 (shard drain)",
+      "crates/vb_runtime/src/shard/transitions.rs:161,215-240 (transition + compute_deadline)"
+    ],
+    "similar_implementations": [
+      "Other primitives (Copy, EvalExpr, BuildObject) carry the slot index correctly; pattern to copy"
+    ],
+    "external_references": [
+      "Master §45 WaitUntil / WaitEvent semantics",
+      "Master §68.4 Recovery is deterministic"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/primitives/wait_ask.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The function signature of wait_until and wait_event",
+          "The two `Ok(EngineSignal::AwaitingWait { deadline_slot: SlotIdx::new(0) })` lines"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "SlotIdx::new(usize) in vb_core/src/ids.rs",
+      "EngineSignal::AwaitingWait { deadline_slot: SlotIdx } in vb_core/src/engine.rs"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no `deadline_slot_or_default()` helper; just use the parameter directly"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use SlotIdx::new(0) as a default for any deadline; the deadline is always the parameter"
+    ]
+  }
+}

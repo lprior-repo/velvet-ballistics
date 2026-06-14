@@ -201,6 +201,21 @@ fn commands() -> Value {
         ),
         command("resume", run_id_db_command("Resume a suspended run.")),
         command(
+            "cancel",
+            serde_json::json!({
+                "summary": "Cancel a durable run.",
+                "positionals": ["run_id"],
+                "flags": {
+                    "--db": {"type": "path", "required": true},
+                    "--reason": {
+                        "type": "string",
+                        "max_length": crate::args::run_ops::CANCEL_REASON_MAX_CHARS
+                    },
+                    "--emit": output_emit_flag()
+                }
+            }),
+        ),
+        command(
             "bench-run",
             serde_json::json!({
                 "summary": "Benchmark a workflow fixture.",

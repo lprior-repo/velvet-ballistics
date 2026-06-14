@@ -1,0 +1,168 @@
+{
+  "id": "p2-17-submit-artifact",
+  "title": "submit-artifact: Add submit_artifact as a public Runtime method (master §66)",
+  "type": "feature",
+  "priority": 2,
+  "effort": "2hr",
+  "description": "Feature P2-17. Master §66 (Runtime Admission Gate) requires Runtime::submit_artifact as a public method. Today, Runtime::submit_direct and submit_compiled call preflight_direct_admission which calls admit_artifact_run, but the runtime never WRITES an artifact to the journal. vb_storage::admission::submit_artifact exists but is called by submit.rs (CLI) outside the runtime façade. The artifact write path is split between CLI and runtime, which is wrong: the runtime should be the single source of truth for admission. This bead: (1) adds `pub fn submit_artifact(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<WorkflowDigest>` to vb_runtime/src/runtime/mod.rs; (2) internally pulls Arc<FjallJournal>, calls vb_storage::admission::submit_artifact(&fj, &workflow, current_policy), returns the digest, enqueues ShardCommand::Submit; (3) adds a Kani harness.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose submit_artifact as a public Runtime method, not a CLI-only path",
+      "THE SYSTEM SHALL record a WorkflowSourceRecord in the journal before admitting the run"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a caller invokes Runtime::submit_artifact(run, workflow)",
+        "shall": "THE SYSTEM SHALL call vb_storage::admission::submit_artifact, return Ok(WorkflowDigest), and enqueue ShardCommand::Submit"
+      },
+      {
+        "trigger": "WHEN a caller invokes Runtime::submit_direct(workflow) with the same workflow digest as a prior submit_artifact",
+        "shall": "THE SYSTEM SHALL be a no-op (the artifact is already in the journal)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF submit_artifact is called with a workflow that fails the admission gate (e.g., digest mismatch)",
+        "shall_not": "THE SYSTEM SHALL NOT enqueue ShardCommand::Submit; it must return AdmissionRejected",
+        "because": "Master §66: admission is the gate; failed admission must not reach the shard"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Runtime is constructed with a valid Arc<FjallJournal> (via new_with_journal)",
+      "Workflow is a valid CompiledWorkflow (passes gate 2 = shape)"
+    ],
+    "postconditions": [
+      "WorkflowSourceRecord is in the journal with the workflow_digest as the key",
+      "Returns Ok(WorkflowDigest) on success",
+      "ShardCommand::Submit is enqueued for the run's owning shard"
+    ],
+    "invariants": [
+      "submit_artifact is idempotent: same workflow_digest submitted twice produces one journal entry, not two",
+      "The runtime façade is the single source of truth for admission; the CLI no longer calls vb_storage::admission::submit_artifact directly"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "submit_artifact_writes_source_record: Runtime::submit_artifact(run, workflow) writes a WorkflowSourceRecord to the journal",
+      "submit_artifact_returns_workflow_digest: the return value matches the BLAKE3 digest of the workflow source",
+      "submit_artifact_idempotent_for_same_digest: two calls with the same workflow produce one journal entry"
+    ],
+    "error": [
+      "submit_artifact_with_invalid_workflow_returns_admission_rejected: a workflow that fails gate 9 (contracts) returns AdmissionRejected",
+      "submit_artifact_with_closed_runtime_returns_runtime_shutdown: a Runtime after shutdown returns RuntimeShutdown"
+    ],
+    "edge": [
+      "kani_harness_proves_submit_artifact_idempotence: 100 random workflows, submit twice, assert journal has exactly one entry per digest"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::submit_direct, submit_compiled; the new method goes here)",
+      "crates/vb_storage/src/admission.rs (submit_artifact: the function Runtime will call)",
+      "crates/vb_cli/src/commands/submit.rs (the CLI path that currently calls submit_artifact directly; this bead moves it to the runtime)",
+      "crates/vb_runtime/src/shard/command.rs (ShardCommand::Submit variant)"
+    ],
+    "patterns": [
+      "Pattern: existing Runtime methods (submit_direct, submit_compiled) return RuntimeResult<RunId>; the new method returns RuntimeResult<WorkflowDigest>",
+      "Pattern: existing Arc<FjallJournal> access via self.journal in Runtime"
+    ],
+    "questions": [
+      "Should submit_artifact also accept a pre-computed workflow_digest, or compute it itself? (Spec: compute it; canonical form.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "submit_artifact writes a Secret-tainted workflow to the journal, exposing the secret in the source record",
+        "prevention": "The WorkflowSourceRecord stores the YAML source (tainted) plus a digest; taint is recorded separately in the slot array, not in the source",
+        "test_for_it": "submit_artifact_does_not_emit_secret_in_source_record (proptest with 100 Secret-tainted workflows)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Runtime::submit_artifact is not callable from external code (it's pub(crate) or private)",
+        "prevention": "Use `pub fn` so the IPC server and CLI can both call it",
+        "test_for_it": "submit_artifact_is_public (compile-time test)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Two calls to submit_artifact with the same workflow produce two journal entries (not idempotent)",
+        "prevention": "Use `put_workflow_source` which is keyed by digest; second call is a no-op",
+        "test_for_it": "submit_artifact_idempotent_for_same_digest"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "CLI's submit.rs still calls vb_storage::admission::submit_artifact directly, bypassing the Runtime façade",
+        "prevention": "Update CLI to call Runtime::submit_artifact; remove the direct vb_storage call",
+        "test_for_it": "cli_submit_uses_runtime_submit_artifact (grep test)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/runtime/mod.rs to find the existing submit_direct and submit_compiled methods",
+      "Read crates/vb_storage/src/admission.rs to find submit_artifact",
+      "Read crates/vb_cli/src/commands/submit.rs to find the current direct call site"
+    ],
+    "phase_1": [
+      "Write test test_submit_artifact_writes_source_record",
+      "Write test test_submit_artifact_returns_workflow_digest",
+      "Write test test_submit_artifact_idempotent_for_same_digest",
+      "Write Kani harness test_submit_artifact_idempotence (100 unwind, Arbitrary workflow)"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/runtime/mod.rs: add `pub fn submit_artifact(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<WorkflowDigest>`",
+      "Internally: pull Arc<FjallJournal>, call vb_storage::admission::submit_artifact(&fj, &workflow, current_policy), return the digest, enqueue ShardCommand::Submit",
+      "In vb_cli/src/commands/submit.rs: replace the direct call to vb_storage::admission::submit_artifact with a call to Runtime::submit_artifact"
+    ],
+    "phase_3": [
+      "Verify Runtime::submit_direct still works after the refactor"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_runtime -p vb_cli` and verify all new tests pass",
+      "Run `cargo kani -p vb_runtime --harness submit_artifact_idempotence` and verify the proof",
+      "Manual: `vb submit issue_triage --db /tmp/db` should still work; the journal should have one source record per workflow digest"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::submit_artifact to add)",
+      "crates/vb_storage/src/admission.rs (submit_artifact: called by Runtime)",
+      "crates/vb_cli/src/commands/submit.rs (CLI path to refactor)",
+      "crates/vb_runtime/src/shard/command.rs (ShardCommand::Submit)"
+    ],
+    "similar_implementations": [
+      "Runtime::submit_direct and submit_compiled: pattern to copy"
+    ],
+    "external_references": [
+      "Master §66 Runtime Admission Gate"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/runtime/mod.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "submit_direct and submit_compiled (the existing public methods)",
+          "How self.journal (Arc<FjallJournal>) is accessed"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "vb_storage::admission::submit_artifact(journal, workflow, policy) -> Result<WorkflowDigest, AdmissionError>",
+      "RuntimeResult<T> error type in vb_runtime",
+      "WorkflowDigest newtype around [u8; 32]"
+    ],
+    "apis_that_do_not_exist": [
+      "Runtime::submit_artifact does not exist today; this bead adds it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use a fake digest; compute BLAKE3 over the actual workflow source"
+    ]
+  }
+}

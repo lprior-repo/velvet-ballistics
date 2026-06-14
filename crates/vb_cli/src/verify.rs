@@ -61,14 +61,23 @@ pub(crate) fn cmd_verify_with_durability(
 
     match run_verification(text, &bytes, profile, durability) {
         Ok(result) => {
+            let passed_checks = result.passed_gates();
+            let deferred_checks = result.deferred_gates();
             if output == OutputFormat::Text {
                 crate::outln!(
                     "verified ({} nodes, profile={})",
                     result.node_count,
                     profile.as_str()
                 );
-                crate::outln!("passed gates: {}", result.checks.join(", "));
-                crate::outln!("verified");
+                crate::outln!("gate statuses: {}", result.checks.join(", "));
+                crate::outln!("passed gates: {}", passed_checks.join(", "));
+                if !deferred_checks.is_empty() {
+                    crate::outln!("deferred gates: {}", deferred_checks.join(", "));
+                }
+                if !result.warnings.is_empty() {
+                    crate::outln!("warnings: {}", result.warnings.join(" | "));
+                }
+                crate::outln!("{}", verification_completion_message(&result));
             } else {
                 crate::emit_json_or_return!(&verify_success_report(&result, profile), output);
             }
@@ -77,10 +86,29 @@ pub(crate) fn cmd_verify_with_durability(
         Err(err) => {
             let code = exit_code_for_error(&err);
             if output != OutputFormat::Text {
+                if let VerifyError::DeferredGates(result) = &err {
+                    crate::emit_json_or_return!(
+                        &verify_deferred_report(result, profile, code),
+                        output,
+                    );
+                    return code.into();
+                }
                 write_failure_message(&verify_error_message(&err), output, code);
                 return code.into();
             }
             match &err {
+                VerifyError::DeferredGates(result) => {
+                    crate::errln!("{}", deferred_gate_message(result));
+                    crate::errln!("gate statuses: {}", result.checks.join(", "));
+                    crate::errln!("passed gates: {}", result.passed_gates().join(", "));
+                    let deferred_checks = result.deferred_gates();
+                    if !deferred_checks.is_empty() {
+                        crate::errln!("deferred gates: {}", deferred_checks.join(", "));
+                    }
+                    if !result.warnings.is_empty() {
+                        crate::errln!("warnings: {}", result.warnings.join(" | "));
+                    }
+                }
                 VerifyError::YamlParse(msg) => {
                     if output != OutputFormat::Text {
                         json_error(
@@ -180,10 +208,37 @@ pub(crate) fn cmd_verify_with_durability(
     }
 }
 
+fn deferred_gate_message(result: &VerifyOk) -> String {
+    let deferred_checks = result.deferred_gates();
+    if deferred_checks.is_empty() {
+        "full verification blocked: deferred gates remain".to_string()
+    } else {
+        format!(
+            "full verification blocked: deferred gates remain: {}",
+            deferred_checks.join(", ")
+        )
+    }
+}
+
+fn verification_completion_message(result: &VerifyOk) -> String {
+    let deferred_checks = result.deferred_gates();
+    if deferred_checks.is_empty() {
+        "All verification gates closed.".to_string()
+    } else {
+        format!(
+            "Deferred gates remain: {}. This report does not close all master §63 gates.",
+            deferred_checks.join(", ")
+        )
+    }
+}
+
 pub(crate) fn verify_success_report(
     result: &VerifyOk,
     profile: VerifyProfile,
 ) -> serde_json::Value {
+    let passed_checks = result.passed_gates();
+    let deferred_checks = result.deferred_gates();
+    let all_gates_closed = result.all_gates_closed();
     serde_json::json!({
         "schema_version": crate::cli_envelope::SCHEMA_VERSION,
         "kind": "verify_report",
@@ -192,6 +247,9 @@ pub(crate) fn verify_success_report(
         "digest": result.digest_hex.as_str(),
         "node_count": result.node_count,
         "checks": &result.checks,
+        "passed_checks": &passed_checks,
+        "deferred_checks": &deferred_checks,
+        "all_gates_closed": all_gates_closed,
         "warnings": &result.warnings,
         "artifact": {
             "source_digest_hex": result.digest_hex.as_str(),
@@ -199,14 +257,40 @@ pub(crate) fn verify_success_report(
             "node_count": result.node_count
         },
         "replay": {
-            "gates_passed": &result.checks,
+            "gates_passed": &passed_checks,
             "gate_sequence": &result.checks,
-            "replay_safe": true
+            "replay_safe": all_gates_closed
         },
         "durability": durability_block(result.durability_mode),
         "repair_hints": [],
         "exit_code": cli_exit_code_number(CliExitCode::Success)
     })
+}
+
+fn verify_deferred_report(
+    result: &VerifyOk,
+    profile: VerifyProfile,
+    code: CliExitCode,
+) -> serde_json::Value {
+    let mut report = verify_success_report(result, profile);
+    if let Some(object) = report.as_object_mut() {
+        object.insert("success".to_string(), serde_json::Value::Bool(false));
+        object.insert(
+            "error".to_string(),
+            serde_json::Value::String(deferred_gate_message(result)),
+        );
+        object.insert(
+            "repair_hints".to_string(),
+            serde_json::json!([
+                "Close every deferred master §63 gate before treating --profile full as acceptance evidence"
+            ]),
+        );
+        object.insert(
+            "exit_code".to_string(),
+            serde_json::json!(cli_exit_code_number(code)),
+        );
+    }
+    report
 }
 
 /// Build the `durability` block of the verify report from the durability
@@ -238,9 +322,134 @@ pub(crate) fn verify_error_message(err: &VerifyError) -> String {
         VerifyError::BudgetPolicy(msg) => format!("budget policy violation: {msg}"),
         VerifyError::StorageError(msg) => format!("storage error: {msg}"),
         VerifyError::ReplayDivergence(msg) => format!("replay divergence: {msg}"),
+        VerifyError::DeferredGates(result) => deferred_gate_message(result),
     }
 }
 
 pub(crate) fn cli_exit_code_number(code: CliExitCode) -> u8 {
     code.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_result(checks: Vec<&'static str>) -> VerifyOk {
+        VerifyOk {
+            digest_hex: "0123456789abcdef".repeat(4),
+            node_count: 2,
+            checks,
+            warnings: vec!["taint warning: not implemented".to_string()],
+            durability_mode: DurabilityMode::Journaled,
+        }
+    }
+
+    fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
+        match value.pointer(pointer).and_then(serde_json::Value::as_array) {
+            Some(items) => items
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(std::string::ToString::to_string)
+                .collect(),
+            None => panic!("missing string array at {pointer}"),
+        }
+    }
+
+    #[test]
+    fn success_report_keeps_statuses_and_splits_deferred_gates() {
+        let result = sample_result(vec![
+            "profile",
+            "shape",
+            "bounded",
+            "contracts:deferred",
+            "results",
+            "evidence:deferred",
+        ]);
+        let report = verify_success_report(&result, VerifyProfile::Standard);
+
+        assert_eq!(
+            json_string_vec(&report, "/checks"),
+            vec![
+                "profile",
+                "shape",
+                "bounded",
+                "contracts:deferred",
+                "results",
+                "evidence:deferred",
+            ]
+        );
+        assert_eq!(
+            json_string_vec(&report, "/passed_checks"),
+            vec!["profile", "shape", "bounded", "results"]
+        );
+        assert_eq!(
+            json_string_vec(&report, "/deferred_checks"),
+            vec!["contracts", "evidence"]
+        );
+        assert_eq!(
+            report
+                .pointer("/all_gates_closed")
+                .and_then(serde_json::Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            json_string_vec(&report, "/replay/gates_passed"),
+            vec!["profile", "shape", "bounded", "results"]
+        );
+        assert_eq!(
+            report
+                .pointer("/replay/replay_safe")
+                .and_then(serde_json::Value::as_bool),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn deferred_report_returns_failure_without_losing_gate_statuses() {
+        let result = sample_result(vec![
+            "profile",
+            "shape",
+            "bounded",
+            "contracts:deferred",
+            "results",
+            "evidence:deferred",
+        ]);
+        let report = verify_deferred_report(
+            &result,
+            VerifyProfile::Full,
+            CliExitCode::VerificationFailed,
+        );
+
+        assert_eq!(
+            report
+                .pointer("/success")
+                .and_then(serde_json::Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            json_string_vec(&report, "/checks"),
+            vec![
+                "profile",
+                "shape",
+                "bounded",
+                "contracts:deferred",
+                "results",
+                "evidence:deferred",
+            ]
+        );
+        assert_eq!(
+            report.pointer("/error").and_then(serde_json::Value::as_str),
+            Some("full verification blocked: deferred gates remain: contracts, evidence")
+        );
+    }
+
+    #[test]
+    fn verification_completion_message_mentions_deferred_gates() {
+        let result = sample_result(vec!["profile", "results", "evidence:deferred"]);
+
+        assert_eq!(
+            verification_completion_message(&result),
+            "Deferred gates remain: evidence. This report does not close all master §63 gates."
+        );
+    }
 }

@@ -1,0 +1,148 @@
+{
+  "id": "s-20r-expr-op-count",
+  "title": "S-20r expr-op-count: Add Coalesce as the 30th ExprOp variant (per master doc amendment; current count is 29)",
+  "type": "chore",
+  "priority": 3,
+  "effort": "30min",
+  "description": "Chore S-20r (revision of black-hat-revised vb-yi78f). Black-hat review round 1 found that the original bead left the master doc owner a blank decision. The actual ExprOp enum is at crates/vb_core/src/workflow/types.rs:456-515 with 29 variants (LoadSlot, LoadConst, LoadAccessor, Eq, NotEq, Gt, Gte, Lt, Lte, And, Or, Not, Add, Sub, Mul, Div, Contains, StartsWith, EndsWith, Has, Exists, Length, Empty, Append, AppendIf, Merge, Sum, Count, Unique). Master doc claims 30. Black-hat proposed 2 candidate 30th variants: RegexMatch (useful for label/ID validation) and Coalesce (returns first non-null — common in idempotency lookups). Decision: add **Coalesce** because (1) it is a primitive operation that has no natural composition from the existing 29 (cannot be expressed as a sequence of `Or`/`If`-style ops), (2) it is a common pattern in idempotency lookups (return the first non-null cached value), (3) it has a clean stack effect: pop two values, push the first if non-null else the second. Real source: vb_core/src/workflow/types.rs:456-515 (the enum), vb_core/src/expr/stack.rs (the stack-effect validator). This bead: (1) add `Coalesce` to ExprOp; (2) add stack-effect handling in check_expr_stack_bound and apply_expr_stack_effect; (3) add 1 test for Coalesce behavior; (4) update master doc §D-24 (or whichever section) to reflect 30 variants. Kani harness: prove Coalesce never underflows the stack. proptest: 100 random (a, b) pairs assert Coalesce(a, b) == a if a is Some else b.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL expose Coalesce as a 30th ExprOp variant",
+      "THE SYSTEM SHALL have a stack effect of (pop2, push1) for Coalesce: pop two values, push the first if non-null else the second"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN Coalesce is evaluated with a stack [Some(x), None]",
+        "shall": "THE SYSTEM SHALL pop both, push x (the first non-null)"
+      },
+      {
+        "trigger": "WHEN Coalesce is evaluated with a stack [None, y]",
+        "shall": "THE SYSTEM SHALL pop both, push y (the fallback)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF Coalesce is evaluated with fewer than 2 values on the stack",
+        "shall_not": "THE SYSTEM SHALL NOT panic on Coalesce stack underflow; it must return ExprStackUnderflow",
+        "because": "Master §45: stack underflow is a typed error, not a panic"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "ExprOp has 29 variants at vb_core/src/workflow/types.rs:456-515",
+      "check_expr_stack_bound at vb_core/src/workflow/types.rs:518-529 validates the stack effect of every op"
+    ],
+    "postconditions": [
+      "ExprOp has 30 variants (the 29 existing + Coalesce)",
+      "check_expr_stack_bound handles Coalesce with stack effect (pop2, push1)",
+      "apply_expr_stack_effect handles Coalesce",
+      "Master doc is amended to reflect 30 variants"
+    ],
+    "invariants": [
+      "Coalesce preserves null-ness: Coalesce(Some(x), y) == Some(x); Coalesce(None, y) == Some(y) (modulo null representation)",
+      "Coalesce never panics on stack underflow (typed error)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "coalesce_with_first_non_null_returns_first: stack = [Some(5), Some(10)] -> Coalesce -> stack = [Some(5)]",
+      "coalesce_with_first_null_returns_second: stack = [None, Some(10)] -> Coalesce -> stack = [Some(10)]"
+    ],
+    "error": [
+      "coalesce_with_underflow_returns_typed_error: stack = [Some(5)] -> Coalesce -> Err(ExprStackUnderflow)",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "proptest_coalesce_correctness: 100 random (a, b) pairs; assert Coalesce matches the truth table",
+      "kani_coalesce_never_underflows: bounded model check with 4 stack depths and 4 value combinations; assert no underflow panic"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_core/src/workflow/types.rs:456-515 (ExprOp enum — the fix site)",
+      "crates/vb_core/src/workflow/types.rs:518-529 (check_expr_stack_bound — the validator we extend)",
+      "crates/vb_expr/src/eval/ (the evaluator — must handle Coalesce)",
+      "master doc §D-24 or whichever section specifies the 30-variant count"
+    ],
+    "patterns": [
+      "Pattern: existing binary ops in ExprOp (Eq, Add, etc.) have stack effect (pop2, push1) — Coalesce follows the same pattern"
+    ],
+    "questions": [
+      "Is Coalesce the right choice over RegexMatch? Decision rationale: Coalesce is a primitive (cannot be composed); RegexMatch is a helper (can be composed from Contains/StartsWith/EndsWith). Coalesce is more general."
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "User writes an expression with Coalesce, but the evaluator doesn't handle it; the expression silently returns the wrong value",
+        "prevention": "The evaluator handles Coalesce explicitly; the test test_coalesce_correctness is a regression shield",
+        "test_for_it": "coalesce_in_workflow_evaluates_correctly: end-to-end compile + evaluate a workflow with `eval: { ... Coalesce ... }`; assert the result matches the truth table"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Coalesce on a stack with 1 value panics, leaking stack contents in the panic message",
+        "prevention": "Coalesce returns ExprStackUnderflow (typed error) on stack underflow",
+        "test_for_it": "coalesce_underflow_returns_typed_error_not_panic (regression shield for master §45)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_core/src/workflow/types.rs:456-529 to confirm the ExprOp enum and the stack validator",
+      "Read the evaluator in crates/vb_expr/src/eval/ to find where the existing binary ops are handled"
+    ],
+    "phase_1": [
+      "Write test test_coalesce_with_first_non_null_returns_first (REGRESSION SHIELD)",
+      "Write proptest proptest_coalesce_correctness (100 random pairs)"
+    ],
+    "phase_2": [
+      "In vb_core/src/workflow/types.rs:515: add `Coalesce,` as the 30th variant",
+      "In check_expr_stack_bound (line 518-529): add the stack-effect case for Coalesce: pop 2, push 1, so net depth is -1",
+      "In vb_expr/src/eval/: add the Coalesce evaluation case: pop two values, push the first if non-null else the second",
+      "Update master doc §D-24 (or whichever section) to reflect 30 variants"
+    ],
+    "phase_3": [
+      "Add Kani harness at vb_core/src/kani/coalesce_stack.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_core -p vb_expr`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_core/src/workflow/types.rs:456-529 (ExprOp enum + check_expr_stack_bound — the fix site)",
+      "crates/vb_expr/src/eval/ (the evaluator — the new Coalesce case)",
+      "master doc §D-24 (or whichever section specifies the 30-variant count)"
+    ],
+    "similar_implementations": [
+      "Existing binary ops (Eq, Add, etc.) have stack effect (pop2, push1) — Coalesce follows the same pattern"
+    ],
+    "external_references": [
+      "Master §45 Expression Stack Semantics",
+      "Master §D-24 Dead Code Amendment (or whichever section specifies the variant count)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_core/src/workflow/types.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "ExprOp enum (lines 456-515) — currently 29 variants; we add Coalesce as the 30th"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ExprOp has 29 variants; check_expr_stack_bound validates stack effects",
+      "The evaluator handles existing binary ops (Eq, Add, etc.)"
+    ],
+    "apis_that_do_not_exist": [
+      "Coalesce is NOT in ExprOp yet — it is what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT leave the master doc owner a blank decision (per black-hat); we propose Coalesce with rationale",
+      "Do NOT add both RegexMatch and Coalesce (scope is one new variant; we pick Coalesce)"
+    ]
+  }
+}

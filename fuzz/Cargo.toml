@@ -714,3 +714,19 @@ path = "tests/proptest/yaml_events_panic.rs"
 test = true
 doc = false
 bench = false
+
+// === vb-rxru0 Action Module Fuzz Targets ===
+
+[[bin]]
+name = "fuzz_mock_marker_serialization"
+path = "fuzz_targets/fuzz_mock_marker_serialization.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_action_ticket_roundtrip"
+path = "fuzz_targets/fuzz_action_ticket_roundtrip.rs"
+test = false
+doc = false
+bench = false

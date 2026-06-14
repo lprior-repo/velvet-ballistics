@@ -1,0 +1,170 @@
+{
+  "id": "p1-9-verify-15-gates",
+  "title": "verify-15-gates: Expand verify to enumerate all 15 verification gates",
+  "type": "feature",
+  "priority": 1,
+  "effort": "4hr",
+  "description": "Feature P1-9. Master §63 (Plan Verifier and Accepted Artifacts) defines 15 verification gates: profile, shape, names, references, expressions, control-flow, bounded, budgets, contracts, taint, idempotency, durability, capabilities, results, observability. Today vb_cli/src/commands/verify.rs:45-134 run_verification runs only 4-5 named checks. VerifyError has 6 variants, no per-gate attribution. The verify command is the master §75 'hero command' — its output must enumerate every gate. This bead: (1) extends VerifyError to include a Gate { gate: u8, name: &'static str, code: u32, message: String } variant; (2) walks all 15 gates in run_verification; (3) gates 1-8 are in place; 9-13 exist as validators; 14-15 need new validate_gate_14_result_output and validate_gate_15_observability in vb_validate/src/gates.rs. Depends on P0-4 (the action contract gate needs the contract to be well-defined).",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL enumerate all 15 verification gates in every `vb verify` invocation, with per-gate pass/fail status",
+      "THE SYSTEM SHALL attach a stable gate code (u32) to every diagnostic so AI agents can match on the code"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb verify workflow.yaml --profile strict`",
+        "shall": "THE SYSTEM SHALL emit a VerificationReport with 15 entries in `checks`, one per gate, each with status (pass/fail), code, and message"
+      },
+      {
+        "trigger": "WHEN a workflow fails gate 10 (taint)",
+        "shall": "THE SYSTEM SHALL emit Gate { gate: 10, code: 0x0406, name: 'taint', message: '...' }"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a verification gate exists in code but is not enumerated in run_verification",
+        "shall_not": "THE SYSTEM SHALL NOT silently skip it; the proptest must fail",
+        "because": "Master §63: 'A workflow must pass every gate to produce an accepted artifact' — skipping a gate defeats the contract"
+      },
+      {
+        "condition": "IF a workflow has no action contracts but verify reports 'all 15 gates pass'",
+        "shall_not": "THE SYSTEM SHALL NOT mark the workflow as accepted; gate 9 (contracts) must fail",
+        "because": "Master §63: gate 9 (action contract) is required; missing contracts is a hard failure"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "YAML parses under the strict profile",
+      "Master §63 enumerates 15 gates: 1=profile, 2=shape, 3=names, 4=references, 5=expressions, 6=control-flow, 7=bounded, 8=budgets, 9=contracts, 10=taint, 11=idempotency, 12=durability, 13=capabilities, 14=results, 15=observability"
+    ],
+    "postconditions": [
+      "VerificationReport.checks.len() == 15 (exactly)",
+      "Each check has: gate: u8, name: &'static str, code: u32, status: Pass | Fail { reason: String }, evidence: Option<String>"
+    ],
+    "invariants": [
+      "The 15 gate codes are stable: 0x0101..=0x010F (one per gate, low byte = gate number)",
+      "No gate is reported as 'not evaluated'; every gate gets an explicit Pass or Fail"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "verify_emits_15_checks_for_valid_workflow: a valid minimal workflow returns 15 entries in checks, all Pass",
+      "verify_failing_gate_10_emits_typed_error: a workflow with a Secret-tainted Finish result fails gate 10 with Gate { gate: 10, code: 0x0406 }",
+      "verify_failing_gate_9_emits_action_contract_error: a workflow with a Do node but no contract fails gate 9 (depends on P0-4)"
+    ],
+    "error": [
+      "verify_with_no_yaml_file_returns_io_error: a missing file returns IoError, not a 15-gate report",
+      "verify_with_malformed_yaml_returns_profile_error: gate 1 (profile) fails with a profile error"
+    ],
+    "edge": [
+      "verify_gate_coverage_proptest: proptest over 100 random workflows, assert checks.len() == 15"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands/verify.rs:45-134 (run_verification: the 4-5 named checks)",
+      "crates/vb_cli/src/commands/verify.rs (VerifyError enum: 6 variants, no per-gate attribution)",
+      "crates/vb_validate/src/gates.rs (the gate validators; needs 14-15 added)",
+      "crates/vb_validate/src/lib.rs (the public surface for the 15 validators)",
+      "crates/vb_cli/src/commands/verify.rs (VerificationReport struct)"
+    ],
+    "patterns": [
+      "Pattern: existing gate codes 0x0101..=0x0108 (gates 1-8) are already in VerifyError variants",
+      "Pattern: existing per-gate attribution is a single (gate: u8, code: u32, reason: String) tuple"
+    ],
+    "questions": [
+      "Are gates 14 (result/output validator) and 15 (observability) already partially implemented? (Spec: 14 is Implemented per §63; 15 is Partial. Both need explicit validators in gates.rs.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "A workflow with a `Do` referencing an action with no contract passes verify because gate 9 is not enumerated",
+        "prevention": "Gate 9 is enumerated; P0-4 makes the contract well-defined",
+        "test_for_it": "verify_failing_gate_9_emits_action_contract_error (depends on P0-4)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator runs `vb verify` and gets a generic 'verification failed' with no per-gate info",
+        "prevention": "Each gate has a typed result with stable code; the report shows all 15",
+        "test_for_it": "verify_report_includes_per_gate_code_and_message"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "A gate is reported as Pass but the validator is not actually invoked (silent skip)",
+        "prevention": "Each gate has a mandatory evidence field; the report is a `Vec<GateResult>` not a `HashSet`",
+        "test_for_it": "verify_proptest_ensures_every_gate_has_evidence"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "External CI script breaks because a new gate was added but the report structure changed",
+        "prevention": "Report schema is versioned; AI output is YAML with explicit gate numbers; new gates are additive only",
+        "test_for_it": "verify_report_schema_version_field_present (assert 'velvet-ballistics/cli-output/v1')"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands/verify.rs:45-134 in full",
+      "Read crates/vb_validate/src/gates.rs to find the existing 8 validators",
+      "Read master §63 for the 15-gate enumeration"
+    ],
+    "phase_1": [
+      "Write test test_verify_emits_15_checks_for_valid_workflow",
+      "Write test test_verify_failing_gate_10_emits_typed_error",
+      "Write proptest test_verify_gate_coverage (100 random workflows, assert 15 checks)"
+    ],
+    "phase_2": [
+      "In vb_cli/src/commands/verify.rs: extend VerifyError with a `Gate { gate: u8, name: &'static str, code: u32, message: String }` variant",
+      "In run_verification: walk all 15 gates; emit a VerificationReport with 15 GateResult entries",
+      "In vb_validate/src/gates.rs: add validate_gate_14_result_output and validate_gate_15_observability"
+    ],
+    "phase_3": [
+      "Add a new code range 0x0E01..=0x0F01 for gates 14 and 15"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli -p vb_validate` and verify all new tests pass",
+      "Manual: `vb verify fixtures/strict_workflow.yaml --emit yaml` shows 15 entries"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands/verify.rs:45-134 (run_verification)",
+      "crates/vb_cli/src/commands/verify.rs (VerifyError + VerificationReport)",
+      "crates/vb_validate/src/gates.rs (validators 1-13; add 14-15)",
+      "crates/vb_validate/src/lib.rs (public surface)"
+    ],
+    "similar_implementations": [
+      "Existing per-gate validators in vb_validate/src/gates.rs (copy the pattern for 14-15)"
+    ],
+    "external_references": [
+      "Master §63 Plan Verifier and Accepted Artifacts (15-gate enumeration)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_validate/src/gates.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The existing 8-13 validators' signature and return type"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "validate_gate_1_yaml_profile through validate_gate_13_capability in vb_validate/src/gates.rs",
+      "VerifyError enum (6 variants; needs the Gate variant added)",
+      "VerificationReport struct (currently has checks: Vec<NamedCheck> with 4-5 entries)"
+    ],
+    "apis_that_do_not_exist": [
+      "validate_gate_14_result_output and validate_gate_15_observability (this bead adds them)"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use generic 'verification failed'; use the typed Gate { gate, code, message }"
+    ]
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "id": "s-21-cli-matrix-conformance",
+  "title": "cli-matrix-conformance: Create cli_matrix_conformance proptest locking down 6 sources-of-truth",
+  "type": "feature",
+  "priority": 3,
+  "effort": "1hr",
+  "description": "Feature S-21. Master §33.3 says this proptest exists; it doesn't. The 6 sources (Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, agent_context JSON) all need to stay in lockstep. P1-8 bumps agent-context to 30/30; this bead locks the cross-reference so future drift is caught. Create crates/workspace_tests/tests/cli_matrix_conformance.rs with a proptest that for each token in VALID_COMMANDS: asserts it's a Command variant, asserts parse_args(&['velvet-ballistics', token, '--help']) returns Ok(Command::Help), asserts run_from_env dispatches it, asserts it's in args/constants.rs::HELP, asserts agent_context::commands() contains it. Wire in crates/workspace_tests/Cargo.toml. Depends on P1-8.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL keep Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, and agent_context in lockstep",
+      "THE SYSTEM SHALL fail the proptest on any drift between the 6 sources of truth"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the proptest runs",
+        "shall": "THE SYSTEM SHALL iterate VALID_COMMANDS, assert cross-references for all 6 sources, and pass"
+      },
+      {
+        "trigger": "WHEN any of the 6 sources drifts (e.g., a new command is added to Command enum but not to VALID_COMMANDS)",
+        "shall": "THE SYSTEM SHALL fail the proptest with a clear error message identifying the drift"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a token is in VALID_COMMANDS but not in the Command enum",
+        "shall_not": "THE SYSTEM SHALL NOT silently accept it; the proptest must fail with 'Token X is in VALID_COMMANDS but not in Command enum'",
+        "because": "Master §33.3: the 6 sources are the source of truth; drift is a bug"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "All 6 sources of truth exist: Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, agent_context::commands()",
+      "P1-8 has landed (agent_context has 30 entries)"
+    ],
+    "postconditions": [
+      "The proptest exists in crates/workspace_tests/tests/cli_matrix_conformance.rs",
+      "It's wired in crates/workspace_tests/Cargo.toml",
+      "It passes on the current code"
+    ],
+    "invariants": [
+      "The 6 sources are mutually consistent; any future drift fails the proptest"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "cli_matrix_conformance_proptest_passes: the proptest iterates 30 tokens from VALID_COMMANDS and asserts all 6 cross-references for each",
+      "cli_matrix_conformance_locked_down: a property of the proptest is that it locks down 30 tokens (not 22, not 31)"
+    ],
+    "error": [
+      "cli_matrix_conformance_fails_on_drift: a deliberate test that adds a token to VALID_COMMANDS without adding it to Command enum should fail the proptest (manual; verify by hand)",
+      "valid_commands_subset_of_command_enum: a CI check asserts that every token in VALID_COMMANDS corresponds to a Command variant",
+      "parse_args_unknown_token_returns_error: a CI check asserts that parse_args with a token not in VALID_COMMANDS returns Err, not Ok"
+    ],
+    "edge": [
+      "cli_matrix_conformance_handles_30_tokens: the proptest must handle 30 tokens in <1 second (it's a unit test, not an integration test)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/workspace_tests/Cargo.toml (where the proptest is wired)",
+      "crates/workspace_tests/tests/cli_matrix_conformance.rs (new proptest file)",
+      "crates/vb_cli/src/lib.rs::Command (the Command enum)",
+      "crates/vb_cli/src/args/constants.rs::VALID_COMMANDS, HELP",
+      "crates/vb_cli/src/args/parse.rs::parse_args",
+      "crates/vb_cli/src/lib.rs::run_from_env",
+      "crates/vb_cli/src/agent_context/mod.rs::commands"
+    ],
+    "patterns": [
+      "Pattern: existing proptests in crates/workspace_tests/ (use as a template)"
+    ],
+    "questions": [
+      "Should the proptest use the proptest crate or a simple loop? (Spec: proptest, for fuzz-style coverage; if proptest isn't available, a simple for loop is fine.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker adds a malicious command to VALID_COMMANDS that bypasses the Command enum's validation",
+        "prevention": "The proptest asserts VALID_COMMANDS is a subset of Command variants",
+        "test_for_it": "valid_commands_is_subset_of_command_enum"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Agent-context JSON lists 30 commands but the binary only implements 22",
+        "prevention": "The proptest asserts agent_context::commands() ⊆ VALID_COMMANDS",
+        "test_for_it": "agent_context_is_subset_of_valid_commands"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "parse_args returns Ok(Command::Help) for a token that isn't actually a Help command (false positive)",
+        "prevention": "The proptest asserts parse_args(token) returns the matching Command variant, not just Ok",
+        "test_for_it": "parse_args_returns_matching_command_variant"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "The proptest is added but not wired in Cargo.toml, so it never runs",
+        "prevention": "Wire it in crates/workspace_tests/Cargo.toml; verify with `cargo test --test cli_matrix_conformance`",
+        "test_for_it": "cli_matrix_conformance_test_runs (compile-time test)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/workspace_tests/Cargo.toml to find the test wiring",
+      "Read crates/vb_cli/src/args/constants.rs to find VALID_COMMANDS and HELP",
+      "Read crates/vb_cli/src/args/parse.rs to find parse_args",
+      "Read crates/vb_cli/src/lib.rs to find Command enum and run_from_env"
+    ],
+    "phase_1": [
+      "Write the proptest test_cli_matrix_conformance_proptest_passes"
+    ],
+    "phase_2": [
+      "Create crates/workspace_tests/tests/cli_matrix_conformance.rs with a proptest that iterates VALID_COMMANDS and asserts the 6 cross-references for each",
+      "Wire the test in crates/workspace_tests/Cargo.toml (add `[[test]] name = 'cli_matrix_conformance'` or include via path)"
+    ],
+    "phase_3": [
+      "Verify the proptest fails on deliberate drift (manual)"
+    ],
+    "phase_4": [
+      "Run `cargo test --test cli_matrix_conformance -p workspace_tests` and verify the proptest passes",
+      "Run `moon run :test` and verify the proptest is part of the suite"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/workspace_tests/tests/cli_matrix_conformance.rs (new file)",
+      "crates/workspace_tests/Cargo.toml (wiring)",
+      "crates/vb_cli/src/lib.rs (Command, run_from_env)",
+      "crates/vb_cli/src/args/constants.rs (VALID_COMMANDS, HELP)",
+      "crates/vb_cli/src/args/parse.rs (parse_args)",
+      "crates/vb_cli/src/agent_context/mod.rs (commands())"
+    ],
+    "similar_implementations": [
+      "Other proptests in crates/workspace_tests/ (template)"
+    ],
+    "external_references": [
+      "Master §33.3 Lifecycle Command Surface",
+      "Master §33.6 Command surface (HELP text)",
+      "P1-8 agent-context-30 (the 30-entry bump)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/workspace_tests/Cargo.toml",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "How existing tests are wired (path-based or name-based)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "VALID_COMMANDS, HELP constants in vb_cli::args::constants",
+      "parse_args in vb_cli::args::parse",
+      "Command enum, run_from_env in vb_cli"
+    ],
+    "apis_that_do_not_exist": [],
+    "no_placeholder_values": [
+      "Do NOT use a hardcoded 30; iterate VALID_COMMANDS"
+    ]
+  }
+}

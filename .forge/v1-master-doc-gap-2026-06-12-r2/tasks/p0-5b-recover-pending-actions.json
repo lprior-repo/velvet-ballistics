@@ -1,0 +1,148 @@
+{
+  "id": "p0-5b-recover-pending-actions",
+  "title": "P0-5b recover-pending-actions: Reattach pending_actions to action queue after Runtime::recover",
+  "type": "feature",
+  "priority": 0,
+  "effort": "2hr",
+  "description": "Feature P0-5b (revision of black-hat-flagged vb-pi2zl; paired with new P0-5a). Black-hat review round 1 found that the original bead cited non-existent file:line references (recover.rs:484 doesn't exist; the file is 296 lines). It also flagged a priority inversion: P0-5 depended on P2-15, but P0 is a higher priority than P2 — work on a P0 bug should not block on a P2 feature. The black-hat recommended splitting P0-5: (a) P0-5a (new bead) does the frame-seed wire-up with no P2-15 dependency; (b) this bead (P0-5b) handles the pending_actions coordination and depends on P2-15. Real source: vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed is fully implemented but orphaned); vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs returns Summary only, drops frame data); vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover is gated behind #[cfg(feature = 'test-util')] and only rehydrates a Summary, not the full RunFrame). This bead's specific scope: (1) add a method `recover_pending_actions` to vb_storage that returns the action tickets and idempotency keys that were scheduled but not yet completed; (2) wire Runtime::recover to call this method and re-attach the tickets to the shard's action queue (Shard::pending_actions); (3) ensure the index_status / index_workflow coordination is complete (depends on P2-15 closing vb-yrtka). Master §68 invariants 1-5 apply; Kani harness proves bit-identical rehydration of pending_actions.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL rehydrate pending_actions (action tickets scheduled but not yet completed) from the journal during recovery",
+      "THE SYSTEM SHALL preserve the order of pending_actions during recovery (FIFO by ticket seq)"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN Runtime::recover is called on a non-terminal run with N pending actions in the journal",
+        "shall": "THE SYSTEM SHALL re-attach N tickets to the shard's action queue, ordered by ticket.seq, and mark them as 'recovered' in the journal"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a pending action's idempotency_key was already completed before the crash",
+        "shall_not": "THE SYSTEM SHALL NOT re-issue the action; it must mark the ticket as 'idempotent_skip' and emit an audit event",
+        "because": "Master §68 invariant 3: replay is bit-identical; re-issuing a completed action would violate idempotency"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "P0-5a (recover-frame-seed-wire) is complete and the runtime frame is rehydrated",
+      "P2-15 (index-status-workflow) is complete and index_status / index_workflow are wired",
+      "vb_storage::recovery::recover_pending_actions is the new API this bead adds"
+    ],
+    "postconditions": [
+      "Runtime::recover attaches all pending_actions to the shard's action queue",
+      "Idempotency: tickets with completed idempotency_keys are not re-issued",
+      "An audit event (JournalEvent::PendingActionsRecovered { count, idempotent_skips }) is written to the journal"
+    ],
+    "invariants": [
+      "Recovery is deterministic: same journal → same pending_actions queue (master §68 invariant 4)",
+      "The order of pending_actions is preserved by ticket.seq"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "recover_pending_actions_returns_tickets_in_seq_order: 100 random journals with 0-10 pending tickets; assert the recovered queue is ordered by ticket.seq",
+      "runtime_recover_attaches_pending_actions_to_shard_queue: kill a non-terminal run with 3 pending actions; restart; assert Shard::pending_actions.len() == 3"
+    ],
+    "error": [
+      "recover_with_idempotent_skip_does_not_reissue_completed_actions: journal has 5 actions, 2 completed; recover; assert 3 are queued, 2 marked idempotent_skip",
+      "recover_with_empty_pending_actions_succeeds: journal with zero pending actions; recover; assert Shard::pending_actions is empty"
+    ],
+    "edge": [
+      "proptest_recovery_is_deterministic: 1000 random (journal, restart_cycle) pairs; assert recovered state == previously recovered state",
+      "kani_recover_pending_actions_preserves_order: bounded model check with 4 tickets in 4! permutations; assert all 4 orderings produce the same output queue"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_storage/src/recovery/recover.rs:251-260 (recover_runtime_frame_seed — reference for the new method)",
+      "crates/vb_storage/src/recovery/recover.rs:277-296 (recover_all_incomplete_runs — must be extended to also return pending_actions)",
+      "crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)",
+      "crates/vb_runtime/src/shard/mod.rs (Shard::pending_actions — the target queue)",
+      "crates/vb_core/src/actions/idempotency.rs (idempotency_key handling)"
+    ],
+    "patterns": [
+      "Pattern: existing recover_runtime_frame_seed returns a RecoveryFrameSeed that includes pending_actions. The fix is to add a sibling method recover_pending_actions that returns only the tickets (for the case where the frame is already rehydrated by P0-5a)"
+    ],
+    "questions": [
+      "Should pending_actions be stored in the same Fjall keyspace as the journal, or a separate pending_actions keyspace? (Recommend: same keyspace, scoped by run_id, to avoid an extra round-trip)"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Restart re-issues a completed action, double-spending the side effect (e.g., charging a credit card twice)",
+        "prevention": "Idempotency check via idempotency_key; completed actions are marked idempotent_skip",
+        "test_for_it": "recover_does_not_reissue_completed_actions: proptest with 1000 (action, completed_before_crash) pairs"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker crashes the runtime between action scheduling and completion; the action is re-issued but the idempotency_key was forged to bypass the check",
+        "prevention": "Idempotency keys are derived from the action contract hash, not user input",
+        "test_for_it": "idempotency_key_is_derived_from_contract_not_user_input: assert key = blake3(contract_id || input)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_storage/src/recovery/recover.rs:251-296 to understand the existing recovery framework",
+      "Read crates/vb_runtime/src/runtime/mod.rs:343-365 to find Runtime::recover's call site",
+      "Read crates/vb_runtime/src/shard/mod.rs Shard::pending_actions to find the target queue"
+    ],
+    "phase_1": [
+      "Add tests test_recover_pending_actions_returns_tickets_in_seq_order and test_idempotent_skip_does_not_reissue",
+      "Write proptest proptest_recovery_is_deterministic"
+    ],
+    "phase_2": [
+      "In vb_storage/src/recovery/recover.rs: add `pub fn recover_pending_actions(events: &[JournalEvent]) -> Vec<ActionTicket>` after line 296",
+      "In vb_runtime/src/runtime/mod.rs:343-365 Runtime::recover: after the P0-5a frame-seed wire-up, call recover_pending_actions and push tickets to Shard::pending_actions",
+      "Emit JournalEvent::PendingActionsRecovered with count + idempotent_skips"
+    ],
+    "phase_3": [
+      "Add Kani harness at crates/vb_runtime/src/kani/recover_pending_actions.rs (behind #[cfg(kani)])",
+      "Run `moon run :test -p vb_runtime -p vb_storage`",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_storage/src/recovery/recover.rs:251-296 (the file we're extending)",
+      "crates/vb_runtime/src/runtime/mod.rs:343-365 (Runtime::recover — the wire-up site)",
+      "crates/vb_runtime/src/shard/mod.rs (Shard::pending_actions — the target queue)",
+      "crates/vb_core/src/actions/idempotency.rs (idempotency key handling)"
+    ],
+    "similar_implementations": [
+      "recover_runtime_frame_seed at recover.rs:251-260 is the structural reference for the new recover_pending_actions method"
+    ],
+    "external_references": [
+      "Master §68 Durable Execution Architecture Contract (invariants 1-5)",
+      "Master §44.15 Direct API operational affordances (pending_actions)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_storage/src/recovery/recover.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "recover_runtime_frame_seed (lines 251-260) — the structural reference",
+          "recover_all_incomplete_runs (lines 277-296) — returns Summary; we extend it"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "recover_runtime_frame_seed is fully implemented and tested",
+      "Runtime::recover exists at runtime/mod.rs:343 (gated behind #[cfg(test-util)]); we drop the gate"
+    ],
+    "apis_that_do_not_exist": [
+      "recover_pending_actions does NOT exist yet — it is what this bead adds",
+      "Shard::pending_actions is named here; verify the actual field name before writing code"
+    ],
+    "no_placeholder_values": [
+      "Do NOT cite recover.rs:484 — the file is 296 lines",
+      "Do NOT add 'TODO' or 'unimplemented' to the new method"
+    ]
+  }
+}

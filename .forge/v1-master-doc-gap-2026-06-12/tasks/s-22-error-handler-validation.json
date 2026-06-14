@@ -1,0 +1,135 @@
+{
+  "id": "s-22-error-handler-validation",
+  "title": "error-handler-validation: validate_node_kind must check ErrorHandler.error_slot against slot_count",
+  "type": "bug",
+  "priority": 3,
+  "effort": "15min",
+  "description": "Bug S-22. vb_core::workflow/validation.rs:355-357 validate_node_kind does not check node.error_slot.is_some() => Some(slot) < slot_count for ErrorHandler nodes. The other 5 fields of CompiledNode are bounds-checked; error_slot is the only one not checked. The result: a workflow with ErrorHandler { error_slot: 99999 } and slot_count: 16 compiles successfully and crashes at runtime with a confusing SlotOutOfBounds. This bead adds a match arm for ErrorHandler in validate_node_kind that bounds-checks error_slot against slot_count.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL bounds-check every field of CompiledNode, including error_slot on ErrorHandler nodes",
+      "THE SYSTEM SHALL emit SlotOutOfBounds at compile time for an out-of-bounds error_slot, not at runtime"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a workflow has ErrorHandler { error_slot: 99999 } and slot_count: 16",
+        "shall": "THE SYSTEM SHALL fail to compile with SlotOutOfBounds, identifying the error_slot field"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF error_slot is None (no error slot)",
+        "shall_not": "THE SYSTEM SHALL NOT emit SlotOutOfBounds; it must be a valid configuration",
+        "because": "ErrorHandler is optional; error_slot: None is the default and must be accepted"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Workflow compiles to a CompiledWorkflow with at least one ErrorHandler node"
+    ],
+    "postconditions": [
+      "Every CompiledNode field is bounds-checked at compile time",
+      "Out-of-bounds error_slot produces a typed SlotOutOfBounds error"
+    ],
+    "invariants": [
+      "validate_node_kind covers all 5 CompiledNode fields: input, output, next, error_slot, body"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "error_handler_with_in_bounds_error_slot_compiles: a workflow with ErrorHandler { error_slot: SlotIdx(5) } and slot_count: 16 compiles successfully",
+      "error_handler_with_none_error_slot_compiles: a workflow with ErrorHandler { error_slot: None } compiles successfully"
+    ],
+    "error": [
+      "error_handler_with_out_of_bounds_error_slot_fails_with_slot_out_of_bounds: a workflow with ErrorHandler { error_slot: 99999 } and slot_count: 16 fails to compile with SlotOutOfBounds",
+      "error_handler_with_error_slot_equal_to_slot_count_fails: a workflow with ErrorHandler { error_slot: SlotIdx(16) } and slot_count: 16 fails (slot_count is exclusive upper bound)"
+    ],
+    "edge": [
+      "all_5_compiled_node_fields_are_bounds_checked: a proptest over 100 random CompiledNode configurations asserts all 5 fields are checked"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_core/src/workflow/validation.rs:355-357 (validate_node_kind)",
+      "crates/vb_core/src/workflow/types.rs (CompiledNode struct; 5 fields: input, output, next, error_slot, body)"
+    ],
+    "patterns": [
+      "Pattern: existing match arms for the other 5 fields (input, output, next, body) — copy the pattern for error_slot"
+    ],
+    "questions": []
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An out-of-bounds error_slot causes a runtime panic, leaking memory contents in the panic message",
+        "prevention": "Bounds-check at compile time; emit typed SlotOutOfBounds, not a panic",
+        "test_for_it": "error_handler_with_out_of_bounds_error_slot_fails_with_slot_out_of_bounds"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Workflow author gets a confusing runtime SlotOutOfBounds when the slot was statically wrong",
+        "prevention": "Compile-time check; the error message includes the field name (error_slot) and the value (99999)",
+        "test_for_it": "error_message_identifies_error_slot_field"
+      }
+    ],
+    "data_integrity_failures": [],
+    "integration_failures": []
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_core/src/workflow/validation.rs:355-357 in full",
+      "Read crates/vb_core/src/workflow/types.rs to find the CompiledNode struct (5 fields)"
+    ],
+    "phase_1": [
+      "Write test test_error_handler_with_in_bounds_error_slot_compiles",
+      "Write test test_error_handler_with_none_error_slot_compiles",
+      "Write test test_error_handler_with_out_of_bounds_error_slot_fails_with_slot_out_of_bounds",
+      "Write proptest test_all_5_compiled_node_fields_are_bounds_checked (100 random configurations)"
+    ],
+    "phase_2": [
+      "In validation.rs:355-357 validate_node_kind: add a match arm for ErrorHandler that bounds-checks error_slot against slot_count (if Some)"
+    ],
+    "phase_3": [
+      "Verify the other 4 fields are still bounds-checked (no regression)"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_core` and verify all new tests pass",
+      "Manual: `vb validate fixtures/error_handler_oob.yaml` should fail with SlotOutOfBounds naming error_slot"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_core/src/workflow/validation.rs:355-357 (the match arm to add)",
+      "crates/vb_core/src/workflow/types.rs (CompiledNode struct)",
+      "fixtures/error_handler_oob.yaml (new test fixture)"
+    ],
+    "similar_implementations": [
+      "Existing match arms for input, output, next, body (copy the pattern)"
+    ],
+    "external_references": [
+      "Master §45 Normative Runtime Semantics (ErrorHandler)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_core/src/workflow/validation.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The existing match arms for the other 4 fields",
+          "The slot_count parameter and how it's used"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "SlotIdx::get() returns the underlying usize",
+      "ValidationError::SlotOutOfBounds { field: &'static str, slot: SlotIdx, slot_count: u16 }"
+    ],
+    "apis_that_do_not_exist": [],
+    "no_placeholder_values": [
+      "Do NOT default error_slot to SlotIdx(0); it must remain Option<SlotIdx>"
+    ]
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "id": "d-24-master-drift-velvet-ballistics",
+  "title": "master-drift-velvet-ballistics: Amend master doc to drop `crates/velvet_ballistics` workspace member reference",
+  "type": "chore",
+  "priority": 3,
+  "effort": "15min",
+  "description": "Chore D-24. Master §23 (Workspace Structure) lists `crates/velvet_ballistics` as a workspace member. The directory does not exist on disk. The actual binary lives in `crates/vb_cli` with `[[bin]] name = 'velvet-ballistics'`. A stale `velvet_ballistics/.dolt/` directory exists at the workspace root. Master doc and code are out of sync. This bead: (1) edits master §23/§34 to remove the `crates/velvet_ballistics` line and add a one-line clarification that the binary lives in vb_cli; (2) removes the empty `velvet_ballistics/.dolt/` directory (or .gitkeeps it with a comment); (3) updates `crates/vb_cli/Cargo.toml:28-30` `[[bin]] name = 'velvet-ballistics'` reference to add a comment pointing at master §33.6.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL keep the master doc workspace member list in sync with Cargo.toml",
+      "THE SYSTEM SHALL NOT have stale directories at the workspace root that confuse tools or readers"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN a reader consults master §23 for the workspace structure",
+        "shall": "THE SYSTEM SHALL list the actual workspace members (vb_core, vb_yaml, vb_validate, vb_expr, vb_compile, vb_storage, vb_runtime, vb_ipc, vb_cli, velvet_ballistics-bin-stays-in-vb-cli) — no orphan `crates/velvet_ballistics`"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a reader follows master §23's list and tries to enter `crates/velvet_ballistics`",
+        "shall_not": "THE SYSTEM SHALL NOT have a 404; the doc must match reality",
+        "because": "Master §23 is the source of truth for workspace structure; an orphan reference breaks trust"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Master §23/§34 and Cargo.toml are the sources of truth"
+    ],
+    "postconditions": [
+      "Master §23/§34 lists only real workspace members",
+      "velvet_ballistics/.dolt/ is removed (or .gitkeep'd with a comment)",
+      "crates/vb_cli/Cargo.toml:28-30 has a comment pointing at master §33.6"
+    ],
+    "invariants": [
+      "Master doc workspace member list == Cargo.toml [workspace] members list"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "master_doc_workspace_members_match_cargo_toml: a CI check asserts that master §23's member list equals Cargo.toml [workspace] members",
+      "stale_velvet_ballistics_dolt_dir_removed: a check asserts that velvet_ballistics/.dolt/ does not exist (or is .gitkeep'd)"
+    ],
+    "error": [
+      "no_orphan_crates_velvet_ballistics_dir: a check asserts that crates/velvet_ballistics/ does not exist (or is .gitkeep'd)",
+      "master_doc_and_cargo_toml_disagree_fails_check: a CI check fails if master §23's member list doesn't equal Cargo.toml [workspace] members",
+      "gitignore_does_not_cover_stale_dolt: a check asserts that velvet_ballistics/.dolt/ is removed or explicitly .gitignore'd"
+    ],
+    "edge": [
+      "vb_cli_cargo_toml_has_master_section_comment: a grep test asserts the comment is present in crates/vb_cli/Cargo.toml:28-30"
+    ]
+  },
+  "research": {
+    "files": [
+      "velvet-ballistics-MASTER.md §23 (Workspace Structure; the orphan reference)",
+      "velvet-ballistics-MASTER.md §34 (Workspace Cargo Contract; possibly the same orphan reference)",
+      "Cargo.toml [workspace] members (the real list)",
+      "crates/velvet_ballistics/ (the orphan directory; does not exist as a crate, but the .dolt/ subdir may exist)",
+      "velvet_ballistics/.dolt/ (the stale Dolt directory at workspace root)",
+      "crates/vb_cli/Cargo.toml:28-30 (the [[bin]] name = 'velvet-ballistics' reference)"
+    ],
+    "patterns": [
+      "Pattern: existing one-line clarifications in master §23 (e.g., 'Removed crates: vb_codegen, vb_ui_model, vb_ui_makepad...')"
+    ],
+    "questions": [
+      "Should the velvet_ballistics/.dolt/ directory be removed or .gitkeep'd? (Spec: either is fine; choose based on git history. If it's tracked, .gitkeep it; if not, rm it.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [],
+    "usability_failures": [
+      {
+        "failure": "New contributor follows master §23 and tries to add code to crates/velvet_ballistics, which doesn't exist",
+        "prevention": "Master §23 matches Cargo.toml; the orphan reference is gone",
+        "test_for_it": "master_doc_workspace_members_match_cargo_toml"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "A stale .dolt/ directory at the workspace root confuses tooling (Dolt tries to open it)",
+        "prevention": "Remove it (or .gitkeep it with a comment explaining why it's empty)",
+        "test_for_it": "stale_velvet_ballistics_dolt_dir_removed"
+      }
+    ],
+    "integration_failures": []
+  },
+  "implementation": {
+    "phase_0": [
+      "Read velvet-ballistics-MASTER.md §23 to find the orphan reference",
+      "Read Cargo.toml [workspace] members to confirm the real list",
+      "Read crates/vb_cli/Cargo.toml:28-30 to find the [[bin]] name = 'velvet-ballistics'"
+    ],
+    "phase_1": [
+      "Write test test_master_doc_workspace_members_match_cargo_toml (CI check)",
+      "Write test test_stale_velvet_ballistics_dolt_dir_removed",
+      "Write grep test test_vb_cli_cargo_toml_has_master_section_comment"
+    ],
+    "phase_2": [
+      "In velvet-ballistics-MASTER.md §23: remove the `crates/velvet_ballistics` line from the workspace members list; add a one-line clarification (e.g., 'The velvet-ballistics binary lives in crates/vb_cli with name = \"velvet-ballistics\" (see §33.6)')",
+      "In velvet-ballistics-MASTER.md §34: same change if the orphan reference appears there",
+      "rm -rf velvet_ballistics/.dolt/ (or .gitkeep it with a comment)",
+      "In crates/vb_cli/Cargo.toml:28-30: add a comment `# Binary name per master §33.6; velvet-ballistics`"
+    ],
+    "phase_3": [
+      "Verify Cargo.toml [workspace] members still matches master §23"
+    ],
+    "phase_4": [
+      "Run `moon run :test` and verify all new tests pass",
+      "Manual: `git grep 'velvet_ballistics'` should only find the canonical references (master §33.6, Cargo.toml bin name)"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "velvet-ballistics-MASTER.md §23, §34 (the doc to update)",
+      "Cargo.toml [workspace] members (the real list)",
+      "velvet_ballistics/.dolt/ (the stale directory to remove or .gitkeep)",
+      "crates/vb_cli/Cargo.toml:28-30 (the [[bin]] name reference)"
+    ],
+    "similar_implementations": [
+      "Existing one-line clarifications in master §23 (e.g., 'Removed crates: vb_codegen, vb_ui_model, vb_ui_makepad...')"
+    ],
+    "external_references": [
+      "Master §23 Workspace Structure",
+      "Master §33.6 Command surface (binary name source of truth)",
+      "Master §34 Workspace Cargo Contract"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "velvet-ballistics-MASTER.md",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "§23 Workspace Structure (the orphan reference)",
+          "§34 Workspace Cargo Contract (possibly the same orphan reference)"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "Cargo.toml [workspace] members array (the real list)",
+      "crates/vb_cli/Cargo.toml [[bin]] name = 'velvet-ballistics' (the actual binary)"
+    ],
+    "apis_that_do_not_exist": [
+      "crates/velvet_ballistics/ directory does not exist as a crate"
+    ],
+    "no_placeholder_values": [
+      "Do NOT leave the orphan reference; remove or replace with a clarification"
+    ]
+  }
+}

@@ -1,0 +1,240 @@
+○ vb-v0rv1 · P2-14b shard-coalesce: Add coalesce_window_us: u64 to ShardConfig (default 100µs) and coalescing layer in Shard::tick   [● P2 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-j5voabeo.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-j5voabeo.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-j5voabeo"
+  title: "P2-14b shard-coalesce: Add coalesce_window_us: u64 to ShardConfig (default 100µs) and coalescing layer in Shard::tick"
+  type: "feature"
+  priority: 2
+  effort_estimate: "2hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL expose coalesce_window_us: u64 in ShardConfig (default 100µs)\",
+      \"THE SYSTEM SHALL coalesce Shard::tick commands arriving within the window into a single batch commit\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN Shard::tick processes 100 commands within a 100µs window\", shall: \"THE SYSTEM SHALL emit 1 batch commit (via P2-14a's append_sequenced_batch) and the next 100 commands after the window expires\"}
+    ]
+    unwanted: [
+      {condition: \"IF coalesce_window_us is set to 0\", shall_not: \"THE SYSTEM SHALL NOT treat coalesce_window_us=0 as the default; the default is 100us and 0 is a valid explicit opt-out\", because: \"Operators must explicitly opt in to the no-batching path for benchmarking\"},
+      {condition: \"IF a command arrives exactly at the window boundary\", shall_not: \"THE SYSTEM SHALL NOT lose or double-count a command at the window boundary; the boundary semantics are inclusive-of-start, exclusive-of-end\", because: \"Master §61: window boundary semantics must be deterministic for replay\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"P2-14a (storage-batch) has landed and append_sequenced_batch is the new batch commit API\",
+        \"P0-COORD has defined ShardConfig v2 (this bead adds coalesce_window_us to it)\",
+        \"ShardConfig::default() returns the canonical 100µs window\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"ShardConfig has coalesce_window_us: u64 (default 100µs)\",
+        \"Shard::tick coalesces commands within the window and calls append_sequenced_batch once per window\",
+        \"Setting coalesce_window_us = 0 disables coalescing (each command is committed individually)\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"100 commands within the window produce 1 batch commit, not 100 (master §61 throughput invariant)\",
+      \"Window boundary is inclusive-of-start, exclusive-of-end (deterministic for replay)\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_runtime/src/shard/config.rs (ShardConfig — the field we add; the v2 schema is from P0-COORD)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/shard/tick.rs (Shard::tick — the coalescing layer we add)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_runtime/src/shard/command.rs (ShardCommand — the command type that gets coalesced)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §61 (the coalesce-window spec)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should the coalesce window be measured in monotonic clock time (SystemTime::now()) or tick count? Recommend: monotonic clock time (SystemTime) for replay determinism; monotonic clock is required by master §68.4\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Attacker sets coalesce_window_us to u64::MAX, causing unbounded memory growth in the coalescing buffer\", prevention: \"ShardConfig validates coalesce_window_us in [0, 1_000_000] (max 1 second); values outside return ConfigOutOfBounds\", test_for_it: \"coalesce_window_us_out_of_bounds_returns_config_error\"},\n      {failure: \"Coalescing loses a command at the window boundary; the command is silently dropped, and the run state diverges\", prevention: \"Boundary semantics are inclusive-of-start, exclusive-of-end, and tested in proptest_shard_tick_batching\", test_for_it: \"boundary_command_is_in_next_batch (regression shield for replay determinism)\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_shard_tick_coalesces_within_window_100_commands_in_100µs;_assert_1_batch_commit\", given: \"Feature P2-14b (split from black-hat-revised vb-8fbja). Black-hat review round 1 split the original P2-14 into 3 sub-beads; this is the second. This bead (P2-14b) handles sub-phase (14b) only: add coalesce_window_us to ShardConfig and a coalescing layer in Shard::tick. Depends on P2-14a (the storage batch is needed for the coalesced commands to commit in one transaction). Real source: crates/vb_runtime/src/shard/config.rs (ShardConfig — does not currently have coalesce_window_us; this bead adds it; the field is part of ShardConfig v2 from P0-COORD), crates/vb_runtime/src/shard/tick.rs (Shard::tick — does not currently coalesce commands; this bead adds a coalescing layer). The new logic: Shard::tick collects commands arriving within a 100µs window, batches them into a single slice, and calls append_sequenced_batch (from P2-14a) once. Master §61: coalesce window is a positive u64; 0 is treated as 'no batching' (not a default). Kani harness: prove Shard::tick within the coalesce window produces exactly 1 batch commit. proptest: 100 random (command_burst, window_us) pairs assert batching behavior.\", when: \"shard_tick_coalesces_within_window: 100 commands in 100µs; assert 1 batch commit\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_shard_config_default_window_is_100us_shardconfigdefault.coalesce_window_us_==_10\", given: \"Feature P2-14b (split from black-hat-revised vb-8fbja). Black-hat review round 1 split the original P2-14 into 3 sub-beads; this is the second. This bead (P2-14b) handles sub-phase (14b) only: add coalesce_window_us to ShardConfig and a coalescing layer in Shard::tick. Depends on P2-14a (the storage batch is needed for the coalesced commands to commit in one transaction). Real source: crates/vb_runtime/src/shard/config.rs (ShardConfig — does not currently have coalesce_window_us; this bead adds it; the field is part of ShardConfig v2 from P0-COORD), crates/vb_runtime/src/shard/tick.rs (Shard::tick — does not currently coalesce commands; this bead adds a coalescing layer). The new logic: Shard::tick collects commands arriving within a 100µs window, batches them into a single slice, and calls append_sequenced_batch (from P2-14a) once. Master §61: coalesce window is a positive u64; 0 is treated as 'no batching' (not a default). Kani harness: prove Shard::tick within the coalesce window produces exactly 1 batch commit. proptest: 100 random (command_burst, window_us) pairs assert batching behavior.\", when: \"shard_config_default_window_is_100us: ShardConfig::default().coalesce_window_us == 100\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_shard_tick_with_window_zero_does_not_batch_coalesce_window_us_=_0;_assert_100_co\", given: \"Error precondition\", when: \"shard_tick_with_window_zero_does_not_batch: coalesce_window_us = 0; assert 100 commits for 100 commands (no batching)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_negative_test_compile_failure_path_returns_typed_error_a_malformed_input_is_reje\", given: \"Error precondition\", when: \"negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of P2-14b shard-coalesce: Add coalesce_window_us: u64 to ShardConfig (default 100µs) and coalescing layer in Shard::tick"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Wait for P0-COORD to land ShardConfig v2 (this bead depends on it)\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Wait for P2-14a to land append_sequenced_batch (this bead depends on it)\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_runtime/src/shard/tick.rs to find Shard::tick\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Write test test_shard_tick_coalesces_within_window (REGRESSION SHIELD)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"},
+        {task: \"Write proptest proptest_shard_tick_batching (100 random pairs)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"In vb_runtime/src/shard/config.rs: add `pub coalesce_window_us: u64` to ShardConfig v2 (from P0-COORD); default 100\", done_when: \"Tests pass\"},
+        {task: \"In vb_runtime/src/shard/tick.rs: add a coalescing buffer; collect commands within the window; call append_sequenced_batch (from P2-14a) once\", done_when: \"Tests pass\"},
+        {task: \"Add validation: coalesce_window_us in [0, 1_000_000]\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_runtime/src/shard/config.rs (ShardConfig — the new field)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/shard/tick.rs (Shard::tick — the new coalescing layer)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_runtime/src/shard/command.rs (ShardCommand — the command type)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-j5voabeo/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_runtime/src/shard/config.rs (ShardConfig — the new field)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/shard/tick.rs (Shard::tick — the new coalescing layer)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_runtime/src/shard/command.rs (ShardCommand — the command type)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+DEPENDS ON
+  → ○ vb-7e64r: P2-14a storage-batch: Extend RuntimeJournal::append_sequenced to accept &[RuntimeJournalEvent] and use JournalWriteBatch::commit ● P2
+
+BLOCKS
+  ← ○ vb-n7yyz: P2-14c batched-atomicity-bench: A/B benchmark on `submit + 100 actions`; flip batched_atomicity default after ≥3× throughput ● P2
+

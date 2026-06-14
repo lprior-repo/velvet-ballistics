@@ -32,7 +32,7 @@ pub fn cmd_loom(model: &str) -> anyhow::Result<()> {
     eprintln!("Running loom model: {}", model);
     eprintln!("Model path: {}", model_path.display());
     eprintln!(
-        "Command: RUSTFLAGS=\"--cfg loom\" cargo test -p vb_runtime {}",
+        "Command: RUSTFLAGS=\"--cfg loom\" cargo test -p vb_runtime --features loom {}",
         model
     );
 
@@ -40,6 +40,8 @@ pub fn cmd_loom(model: &str) -> anyhow::Result<()> {
     cmd.arg("test")
         .arg("-p")
         .arg("vb_runtime")
+        .arg("--features")
+        .arg("loom")
         .env("RUSTFLAGS", "--cfg loom")
         .arg(model);
 

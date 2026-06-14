@@ -15,7 +15,7 @@ pub mod wait_ask;
 pub mod wait_ask_tests;
 pub use vb_core::frame::RunFrame;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-reentry-proofs"))]
 pub mod reentry_proofs;
 
 #[cfg(test)]

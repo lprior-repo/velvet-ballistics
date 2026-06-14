@@ -1,0 +1,203 @@
+{
+  "id": "p0-4-runtime-action-executor",
+  "title": "runtime-action-executor: Add ActionExecutor trait + 3 §19 mock actions",
+  "type": "feature",
+  "priority": 0,
+  "effort": "4hr",
+  "description": "Feature P0-4. Master §19 (Action ABI) defines the ActionContract (idempotency, side_effect, retry_safety) and ActionId numeric dispatch. vb_runtime/src/action.rs:122-194 has ActionRegistry::dispatch as a stub. The 3 hardcoded CLI specs in vb_cli/src/cli_action_specs.rs:161-191 (validate, write, run) are placeholder names that don't match §19's named action set. engine/action.rs:99-104 errors with CapabilityDenied('__contract_required__') for any contract-less Do. Master §75 (AI-Native CLI Control Plane) requires named actions like github.issue.create in the explain output. This bead: (1) adds `pub trait ActionExecutor: Send + Sync` in vb_runtime/src/action.rs:200+; (2) adds 3 concrete impls in vb_cli/src/cli_action_executors.rs (GithubIssueCreateAction, AiClassifyTicketAction, HttpRequestAction) with their §19 contracts; (3) updates cli_action_specs() to use the §19 names with correct contracts; (4) wires cmd_ipc_serve to construct Arc<MockActionExecutorSet> and pass to Runtime::new_with_journal; (5) adds Kani harness + Verus proof (output taint >= input taint for all 3); (6) adds --executor mock|real flag to cmd_ipc_serve (default mock).",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL execute every ActionId::do_ action through the ActionExecutor trait, not through a hardcoded switch",
+      "THE SYSTEM SHALL apply the action's contract (idempotency, side_effect, retry_safety) before, during, and after dispatch"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the runtime dispatches a Do node with action: github.issue.create",
+        "shall": "THE SYSTEM SHALL call GithubIssueCreateAction::execute and return a SlotValue::Object with {id, url, created_at}"
+      },
+      {
+        "trigger": "WHEN the user passes --executor mock on `vb ipc-serve`",
+        "shall": "THE SYSTEM SHALL construct an Arc<MockActionExecutorSet> with all 3 mock impls and register them in the ActionRegistry"
+      },
+      {
+        "trigger": "WHEN the user passes --executor real on `vb ipc-serve`",
+        "shall": "THE SYSTEM SHALL construct an Arc<RealActionExecutorSet> and emit a clear error if no real impl is registered for the action (no silent stub fallback)"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a Do node references an ActionId that has no registered executor",
+        "shall_not": "THE SYSTEM SHALL NOT silently return a default SlotValue::Null; it must return UnknownAction with a clear message",
+        "because": "Master §19 requires explicit action contracts; silent null dispatch hides broken workflows"
+      },
+      {
+        "condition": "IF a DeterministicPure action receives a non-Clean input taint",
+        "shall_not": "THE SYSTEM SHALL NOT execute the action; it must return TaintViolation",
+        "because": "Master §65 idempotency gate requires pure actions to never process tainted data"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "ActionExecutor implementation is registered in the ActionRegistry for the requested ActionId",
+      "ActionInput.taint satisfies the action's idempotency contract (DeterministicPure requires Clean; others permit all)"
+    ],
+    "postconditions": [
+      "ActionOutcome is returned with output SlotValue, output taint, and elapsed time",
+      "If action declares side_effect: ExternalWrite, a journal ActionCompleted event is appended BEFORE the SlotValue is materialized to the run frame"
+    ],
+    "invariants": [
+      "Output taint >= input taint (output is at least as restrictive as input)",
+      "AtLeastOnceExternal actions upgrade Secret input taint to DerivedFromSecret output taint",
+      "Every action's contract matches the §19 matrix; mismatches fail the verify-15-gates check (P1-9 depends on this)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "github_issue_create_action_returns_object_with_id_url_created_at: execute with input 'fix login bug' returns {id: 1234, url: 'https://api.github.com/repos/foo/bar/issues/1234', created_at: <now>}",
+      "ai_classify_ticket_action_is_deterministic: execute with same input twice returns same label (bug/feature/question)",
+      "http_request_action_echoes_url_method_headers: execute with {url, method, headers} returns the same as a SlotValue::List",
+      "mock_executor_set_registers_all_three_actions: Arc<MockActionExecutorSet>::new() registers exactly 3 ActionIds"
+    ],
+    "error": [
+      "do_node_with_unknown_action_returns_unknown_action: a workflow using action: nonexistent.action fails with UnknownAction at runtime",
+      "deterministic_pure_with_secret_taint_returns_taint_violation: ai.classify_ticket with Secret-tainted input returns TaintViolation before execute() is called"
+    ],
+    "edge": [
+      "kani_harness_proves_output_taint_ge_input_taint: 100 random inputs across all 3 actions, output taint >= input taint",
+      "verus_proof_output_taint_ge_input_taint: spec fn taint_ge covers all 3 actions"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_runtime/src/action.rs:122-194 (ActionRegistry::dispatch stub)",
+      "crates/vb_runtime/src/action.rs:200+ (where the new ActionExecutor trait goes)",
+      "crates/vb_cli/src/cli_action_specs.rs:161-191 (3 hardcoded placeholder names: validate, write, run)",
+      "crates/vb_runtime/src/engine/action.rs:99-104 (CapabilityDenied('__contract_required__') bug)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::new_with_journal signature, where the executor is plumbed in)",
+      "crates/vb_cli/src/commands/serve.rs (cmd_ipc_serve; where the --executor flag goes)"
+    ],
+    "patterns": [
+      "Pattern: existing trait Send + Sync in vb_runtime (e.g., ShardCommandSink, ActionTicketSink)",
+      "Pattern: cli_action_specs() is called at startup; rebuild it with the §19 names",
+      "Pattern: Arc<T> for shared executors across shards"
+    ],
+    "questions": [
+      "Should the real executor set be a no-op for now (returning NotImplemented), or completely absent (--executor real is rejected with a clear error)? (Spec: absent; real set is a future-bead scope.)",
+      "Is the Kani harness for `execute()` with a fuzzer-generated input, or for the contract-check function? (Spec: harness covers contract check; see kani section.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "A mock executor leaks the input secret into the output SlotValue, violating output taint >= input taint",
+        "prevention": "Kani harness + Verus proof on the contract check; mock impls must propagate taint, not strip it",
+        "test_for_it": "kani_harness_proves_output_taint_ge_input_taint (master §68 invariant 3)"
+      },
+      {
+        "failure": "ActionExecutor::execute is called with a Secret-tainted input on a DeterministicPure action, leaking the secret to the action's external side effect",
+        "prevention": "Contract check is upstream of execute(); TaintViolation is returned before any IO",
+        "test_for_it": "deterministic_pure_with_secret_taint_returns_taint_violation"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator can't tell which executor (mock or real) is currently registered for each action",
+        "prevention": "vb action list and vb action inspect commands show the executor set and contract per ActionId",
+        "test_for_it": "vb_action_list_includes_mock_executor_marker (assert 'mock' appears in the output)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "A mock executor returns the same hardcoded id (1234) for every invocation, breaking idempotency_key uniqueness",
+        "prevention": "GithubIssueCreateAction::execute derives the id from a hash of the input + idempotency_key, not from a constant",
+        "test_for_it": "github_issue_create_idempotent_for_same_key (same idempotency_key -> same id; different key -> different id)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "Runtime::new_with_journal requires an executor set, but tests forget to construct one, causing a runtime panic",
+        "prevention": "Provide a MockActionExecutorSet::default() that registers all 3 mocks; tests can use this without ceremony",
+        "test_for_it": "MockActionExecutorSet::default_registers_three_mocks (unit test)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_runtime/src/action.rs:122-194 (the stub dispatch)",
+      "Read crates/vb_cli/src/cli_action_specs.rs:161-191 (the 3 placeholder names)",
+      "Read crates/vb_runtime/src/engine/action.rs:99-104 (the CapabilityDenied bug)",
+      "Read crates/vb_runtime/src/runtime/mod.rs (Runtime::new_with_journal signature)"
+    ],
+    "phase_1": [
+      "Write test test_github_issue_create_action_returns_object_with_id_url_created_at",
+      "Write test test_ai_classify_ticket_action_is_deterministic (proptest with 100 random inputs)",
+      "Write test test_http_request_action_echoes_url_method_headers",
+      "Write Kani harness test_action_executor_output_taint_ge_input_taint (100 unwind, 3 actions, Arbitrary inputs)",
+      "Write Verus proof `proof fn action_executor_taint_ge(...)` in verification/verus/runtime/"
+    ],
+    "phase_2": [
+      "In vb_runtime/src/action.rs:200+, add `pub trait ActionExecutor: Send + Sync { fn execute(&self, input: &ActionInput, contract: &ActionContract) -> Result<ActionOutcome, ActionError>; }`",
+      "Create crates/vb_cli/src/cli_action_executors.rs with GithubIssueCreateAction, AiClassifyTicketAction, HttpRequestAction",
+      "In cli_action_specs.rs, replace the 3 placeholder names with the §19 names: github.issue.create, ai.classify_ticket, http.request",
+      "In vb_runtime/src/engine/action.rs:99-104, replace the CapabilityDenied stub with a real call to the registered executor",
+      "In Runtime::new_with_journal, accept an `executor: Arc<dyn ActionExecutorSet>` parameter",
+      "In cmd_ipc_serve, add --executor flag (default mock); construct Arc<MockActionExecutorSet> when mock"
+    ],
+    "phase_3": [
+      "Wire Runtime::new() to default to MockActionExecutorSet when no executor is passed (back-compat for existing tests)"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_cli -p vb_runtime` and verify all new tests pass",
+      "Run `cargo kani -p vb_runtime --harness action_executor_output_taint_ge` and verify the proof",
+      "Run `verus --crate-type=lib verification/verus/runtime/action_executor.rs` and verify the proof",
+      "Manual: `vb run workflow_with_github_issue.yaml --durability none` should print the mocked {id, url, created_at} object"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_runtime/src/action.rs (new trait at line 200+)",
+      "crates/vb_cli/src/cli_action_executors.rs (new file, 3 impls)",
+      "crates/vb_cli/src/cli_action_specs.rs (replace 3 placeholder names)",
+      "crates/vb_runtime/src/engine/action.rs:99-104 (fix CapabilityDenied bug)",
+      "crates/vb_runtime/src/runtime/mod.rs (Runtime::new_with_journal signature)",
+      "crates/vb_cli/src/commands/serve.rs (cmd_ipc_serve, --executor flag)",
+      "verification/verus/runtime/action_executor.rs (new Verus proof file)",
+      "crates/vb_runtime/kani/src/action_executor.rs (new Kani harness file)"
+    ],
+    "similar_implementations": [
+      "See existing ActionContract in vb_core/src/action.rs for the contract enum definitions"
+    ],
+    "external_references": [
+      "Master §19 Action ABI (full contract enum + matrix)",
+      "Master §44.15 Direct API operational affordances",
+      "Master §65 Idempotency Verification Gate",
+      "Master §75 AI-Native CLI Control Plane (github.issue.create in explain output)"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_runtime/src/action.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "ActionRegistry::dispatch (line 122-194) — the stub to replace",
+          "ActionContract, ActionInput, ActionOutcome enum definitions"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "ActionContract { idempotency: Idempotency, side_effect: SideEffect, retry_safety: RetrySafety } in vb_core/src/action.rs",
+      "ActionInput { value: SlotValue, taint: Taint, idempotency_key: Option<u128> }",
+      "ActionOutcome { output: SlotValue, output_taint: Taint, elapsed: Duration }"
+    ],
+    "apis_that_do_not_exist": [
+      "There is no ActionExecutor trait today; this bead adds it",
+      "There is no MockActionExecutorSet; this bead adds it"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use a hardcoded `1234` as the github issue id; derive from a hash of the idempotency_key",
+      "Do NOT use 'bug'/'feature'/'question' as random; derive deterministically from a hash of the input text"
+    ]
+  }
+}

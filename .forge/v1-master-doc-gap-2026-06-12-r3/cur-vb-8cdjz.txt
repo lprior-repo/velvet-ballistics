@@ -1,0 +1,228 @@
+○ vb-8cdjz · S-19r vb-benchmark-cleanup: Replace 11 STUB: markers in benchmark_tests.rs with real assertions; convert aggregate_resource_budget.rs to real Criterion bench   [● P3 · OPEN]
+Owner: Lewis · Type: chore
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-s9r2pvme.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613004139-s9r2pvme.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613004139-s9r2pvme"
+  title: "S-19r vb-benchmark-cleanup: Replace 11 STUB: markers in benchmark_tests.rs with real assertions; convert aggregate_resource_budget.rs to real Criterion bench"
+  type: "chore"
+  priority: 3
+  effort_estimate: "1hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL have 0 STUB: markers in crates/vb_benchmark/tests/benchmark_tests.rs after this bead\",
+      \"THE SYSTEM SHALL convert aggregate_resource_budget.rs to a real Criterion bench with a real aggregation loop\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN a test in benchmark_tests.rs is run\", shall: \"THE SYSTEM SHALL execute the corrected (non-STUB) function body and assert the correct behavior\"}
+    ]
+    unwanted: [
+      {condition: \"IF a STUB: marker is reintroduced in the future (regression)\", shall_not: \"THE SYSTEM SHALL NOT allow STUB marker reintroduction to go undetected; the regression-shield test must fail\", because: \"Master §15.6: STUB markers in test code are forbidden; they hide broken behavior\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"11 STUB: markers exist in benchmark_tests.rs (verified by grep: lines 10, 20, 31, 41, 51, 58, 68, 79, 90, 107, 127)\",
+        \"aggregate_resource_budget.rs is a placeholder, not a real Criterion bench\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"0 STUB: markers remain in benchmark_tests.rs after the fix\",
+        \"aggregate_resource_budget.rs is a real Criterion bench (uses criterion::Bencher)\",
+        \"A regression-shield test asserts the STUB: count in production code is 0\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"Production code (src/) and test code (tests/) never contain STUB: markers (master §15.6)\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/vb_benchmark/tests/benchmark_tests.rs:10,20,31,41,51,58,68,79,90,107,127 (the 11 STUB: markers)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_benchmark/src/aggregate_resource_budget.rs (the placeholder file to convert)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"master doc §15.6 (the no-STUB-markers rule)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should the regression-shield test be a unit test (in tests/) or a script in scripts/? Recommend: unit test, so it runs in `moon run :test`\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"An attacker introduces a STUB: marker to bypass a test (e.g., check_evidence_gate always returns Ok), allowing evidence gates to be skipped\", prevention: \"Regression-shield test asserts STUB: count is 0 in production code; CI fails on any STUB: marker\", test_for_it: \"stub_marker_in_check_evidence_gate_fails_regression_shield (negative test)\"},\n      {failure: \"A benchmark test always returns false (e.g., baseline_within_budget always returns false), so the benchmark report shows 'baseline not within budget' for every run, hiding real regressions\", prevention: \"Replace the STUB body with the correct implementation; the test now actually checks the baseline against the budget\", test_for_it: \"baseline_within_budget_actually_compares: a baseline of 5s against a budget of 10s returns true; a baseline of 15s returns false\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_regression_shield_zero_stub_markers_in_benchmark_tests_grep_-rn_'stub'_crates/vb\", given: \"Chore S-19r (revision of black-hat-revised vb-wmq9z). Black-hat review round 1 found: (1) the original bead cited 12 STUB: markers but the actual count in crates/vb_benchmark/tests/benchmark_tests.rs is 11; (2) the exact string `// STUB: This test will FAIL` appears 0 times — the actual text is `// STUB: <function_name> <description>`. Real source: crates/vb_benchmark/tests/benchmark_tests.rs lines 10, 20, 31, 41, 51, 58, 68, 79, 90, 107, 127 (11 STUB: markers, each naming a function that always returns the wrong value: `baseline_within_budget`, `budget_utilization_percent`, `latency_within_budget`, `result_exceeds_threshold`, `check_evidence_gate`). The grep test in the original bead was wrong. Real source for the second part: crates/vb_benchmark/src/aggregate_resource_budget.rs is a placeholder (not a real Criterion bench — it's a stub that returns a hardcoded number). The fix: (1) replace each STUB: function body with the correct implementation (e.g., `baseline_within_budget` should compare the actual baseline to the budget, not always return false); (2) convert aggregate_resource_budget.rs to a real Criterion bench that aggregates the resource budget across 10-100 runs; (3) the regression-shield test asserts STUB: count is 0 in production code (not the wrong text from the original bead).\", when: \"regression_shield_zero_stub_markers_in_benchmark_tests: grep -rn 'STUB:' crates/vb_benchmark/tests/ | wc -l == 0\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_aggregate_resource_budget_is_a_real_criterion_bench_aggregate_resource_budget.rs\", given: \"Chore S-19r (revision of black-hat-revised vb-wmq9z). Black-hat review round 1 found: (1) the original bead cited 12 STUB: markers but the actual count in crates/vb_benchmark/tests/benchmark_tests.rs is 11; (2) the exact string `// STUB: This test will FAIL` appears 0 times — the actual text is `// STUB: <function_name> <description>`. Real source: crates/vb_benchmark/tests/benchmark_tests.rs lines 10, 20, 31, 41, 51, 58, 68, 79, 90, 107, 127 (11 STUB: markers, each naming a function that always returns the wrong value: `baseline_within_budget`, `budget_utilization_percent`, `latency_within_budget`, `result_exceeds_threshold`, `check_evidence_gate`). The grep test in the original bead was wrong. Real source for the second part: crates/vb_benchmark/src/aggregate_resource_budget.rs is a placeholder (not a real Criterion bench — it's a stub that returns a hardcoded number). The fix: (1) replace each STUB: function body with the correct implementation (e.g., `baseline_within_budget` should compare the actual baseline to the budget, not always return false); (2) convert aggregate_resource_budget.rs to a real Criterion bench that aggregates the resource budget across 10-100 runs; (3) the regression-shield test asserts STUB: count is 0 in production code (not the wrong text from the original bead).\", when: \"aggregate_resource_budget_is_a_real_criterion_bench: aggregate_resource_budget.rs uses criterion::Bencher and runs a real aggregation loop over 10-100 runs\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_stub_marker_reintroduction_fails_test_introduce_a_stub_marker;_assert_regression\", given: \"Error precondition\", when: \"stub_marker_reintroduction_fails_test: introduce a STUB: marker; assert regression_shield test fails (negative test)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_negative_test_compile_failure_path_returns_typed_error_a_malformed_input_is_reje\", given: \"Error precondition\", when: \"negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of S-19r vb-benchmark-cleanup: Replace 11 STUB: markers in benchmark_tests.rs with real assertions; convert aggregate_resource_budget.rs to real Criterion bench"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Verify the 11 STUB: marker locations: lines 10, 20, 31, 41, 51, 58, 68, 79, 90, 107, 127 of benchmark_tests.rs\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read aggregate_resource_budget.rs to understand the placeholder structure\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Add regression-shield test test_regression_shield_zero_stub_markers (asserts grep -rn 'STUB:' crates/vb_benchmark/tests/ | wc -l == 0)\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"Replace each of the 11 STUB: function bodies with the correct implementation: baseline_within_budget compares actual baseline to budget; budget_utilization_percent computes (used/budget)*100; latency_within_budget asserts elapsed <= budget; result_exceeds_threshold asserts result > threshold; check_evidence_gate checks the evidence file exists and is non-empty\", done_when: \"Tests pass\"},
+        {task: \"Convert aggregate_resource_budget.rs to a real Criterion bench that runs the aggregation loop over 10-100 runs and reports the median\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/vb_benchmark/tests/benchmark_tests.rs:10,20,31,41,51,58,68,79,90,107,127 (the 11 STUB: markers)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_benchmark/src/aggregate_resource_budget.rs (the placeholder file)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"master doc §15.6 (the no-STUB-markers rule)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613004139-s9r2pvme/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/vb_benchmark/tests/benchmark_tests.rs:10,20,31,41,51,58,68,79,90,107,127 (the 11 STUB: markers)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_benchmark/src/aggregate_resource_budget.rs (the placeholder file)\", relevance: \"Related implementation\"},
+      {path: \"master doc §15.6 (the no-STUB-markers rule)\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+

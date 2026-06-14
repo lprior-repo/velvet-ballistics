@@ -7,12 +7,16 @@ pub use super::mrwe6_kernel::{
 };
 use crate::{error::JournalError, events::JournalEvent, keys::index_action_key};
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) type VerificationDuplicateRetryDecision = Mrwe6DuplicateRetryDecision;
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) type VerificationResolutionCommitDecision = Mrwe6ResolutionCommitDecision;
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) type VerificationRecoveryOutcome = Mrwe6RecoveryOutcome;
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) fn verification_duplicate_retry_decision(
     existing: &JournalEvent,
     retry: &JournalEvent,
@@ -62,6 +66,7 @@ pub fn mrwe6_idempotent_duplicate_retry_from_facts(
 }
 
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) fn verification_resolution_marker_present_after_commit(
     event: &JournalEvent,
     existing_marker_matches_resolution: bool,
@@ -78,6 +83,7 @@ pub(crate) fn verification_resolution_marker_present_after_commit(
 }
 
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) fn verification_resolution_commit_decision(
     event: &JournalEvent,
     pending_action: vb_core::ActionId,
@@ -148,6 +154,7 @@ pub fn mrwe6_committed_resolution_from_facts(
 }
 
 #[cfg(kani)]
+#[allow(dead_code)]
 pub(crate) fn verification_recovery_outcome(
     scheduled: &JournalEvent,
     resolution: Option<&JournalEvent>,

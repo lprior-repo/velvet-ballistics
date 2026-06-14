@@ -1,0 +1,178 @@
+{
+  "id": "p2-14-journal-batched-atomicity",
+  "title": "journal-batched-atomicity: Use JournalWriteBatch for cross-event atomicity (true group commit)",
+  "type": "feature",
+  "priority": 2,
+  "effort": "4hr",
+  "description": "Feature P2-14. Master §61 Fjall Storage Contract defines the durability model; today, journaled events are written one at a time even when many events are ready. JournalWriteBatch (batch.rs:46-62) supports cross-keyspace atomicity. The runtime journals never use it. StorageRuntimeJournal::append_sequenced (shard/lifecycle/chunk_002.rs:294-315) constructs per-event Fjall batches. QueuedStorageRuntimeJournal::flush_batch (queue/writer.rs:144-150,169-176) calls append_queued_indexed_unpersisted per item in a loop. The result: 1000 events produce 1000 Fjall commits, not 1. This bead has 4 sub-phases: (14a) extend RuntimeJournal::append_sequenced to accept &[RuntimeJournalEvent] and use JournalWriteBatch::commit per call; (14b) add coalesce_window_us: u64 to ShardConfig (default 100µs) and a coalescing layer in Shard::tick that batches commands within the window; (14c) feature-flag batched_atomicity = false default; flip to true after A/B benchmark shows ≥3× throughput; (14d) update master §61 from 'Atomic Cross-Keyspace Writes' to 'Atomic Cross-Keyspace Batched Writes (per coalesce window)'.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL batch journal events within a coalesce window into a single Fjall commit",
+      "THE SYSTEM SHALL use JournalWriteBatch for cross-keyspace atomicity when batched_atomicity is enabled"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN Shard::tick processes 100 commands within a 100µs window and batched_atomicity is true",
+        "shall": "THE SYSTEM SHALL emit a single Fjall commit containing all 100 commands' journal events"
+      },
+      {
+        "trigger": "WHEN the user passes --batched-atomicity on `vb ipc-serve`",
+        "shall": "THE SYSTEM SHALL set the feature flag at runtime; default is false"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF the coalesce window is set to 0",
+        "shall_not": "THE SYSTEM SHALL NOT default to 'no batching' silently; it must return InvalidCoalesceWindow",
+        "because": "Operators must explicitly opt in to the no-batching path for benchmarking"
+      },
+      {
+        "condition": "IF a batch commit fails",
+        "shall_not": "THE SYSTEM SHALL NOT partially apply the batch; it must roll back and return a typed BatchCommitFailed",
+        "because": "Master §61: 'Atomic Cross-Keyspace Writes' — partial application violates the contract"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "batched_atomicity feature is enabled in ShardConfig (or via --batched-atomicity flag)",
+      "Coalesce window is a positive u64 (default 100µs)"
+    ],
+    "postconditions": [
+      "N events within the window produce 1 Fjall commit, not N",
+      "On commit failure, no events are partially applied (atomicity preserved)"
+    ],
+    "invariants": [
+      "Per-event durability: each event is either fully persisted or not at all",
+      "Sequence numbers remain monotonic per run (master §68.5)"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "batched_atomicity_1000_events_produces_1_fjall_commit: with batched_atomicity = true and coalesce_window_us = 100, 1000 events in a workload produce exactly 1 Fjall commit (instrumented counter)",
+      "batched_atomicity_disabled_reverts_to_per_event_commits: with batched_atomicity = false, 1000 events produce 1000 commits (no regression)",
+      "batched_atomicity_ab_benchmark_shows_3x_throughput: the A/B benchmark (batched_atomicity on/off, same workload) shows ≥3× throughput on the batched path"
+    ],
+    "error": [
+      "batched_atomicity_with_coalesce_window_zero_returns_invalid: --coalesce-window-us 0 returns InvalidCoalesceWindow",
+      "batched_atomicity_with_commit_failure_rolls_back: a Fjall commit failure rolls back the entire batch, no partial events"
+    ],
+    "edge": [
+      "batched_atomicity_with_empty_batch_skips_commit: a tick with 0 commands produces 0 Fjall commits (no spurious commit)"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_storage/src/batch.rs:46-62 (JournalWriteBatch; the cross-keyspace batch primitive)",
+      "crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:294-315 (StorageRuntimeJournal::append_sequenced; the per-event path)",
+      "crates/vb_runtime/src/queue/writer.rs:144-150,169-176 (QueuedStorageRuntimeJournal::flush_batch; the per-item loop)",
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig; where coalesce_window_us goes)",
+      "crates/vb_runtime/src/shard/tick.rs (Shard::tick; where the coalescing layer goes)"
+    ],
+    "patterns": [
+      "Pattern: existing Fjall write batch primitives in vb_storage (JournalWriteBatch::commit, WriteBatch::commit)",
+      "Pattern: existing feature flags in ShardConfig (e.g., batched_writes is partial; this bead completes it)"
+    ],
+    "questions": [
+      "What is the default coalesce window? (Spec: 100µs, configurable.)",
+      "Should the A/B benchmark be a separate bead or part of this one? (Spec: part of this one, with evidence.)"
+    ]
+  },
+  "inversions": {
+    "security_failures": [
+      {
+        "failure": "An attacker exploits the batch to hide a malicious event among many benign events, batching a side-effect with no journal entry",
+        "prevention": "Each event in the batch is journaled in order; the journal entry is created before the side effect (master §68.1)",
+        "test_for_it": "batched_atomicity_journal_entry_persisted_before_side_effect (proptest with 1000 batches)"
+      }
+    ],
+    "usability_failures": [
+      {
+        "failure": "Operator can't tell whether batched_atomicity is enabled at runtime",
+        "prevention": "vb status shows the active coalesce_window_us and batched_atomicity flag",
+        "test_for_it": "status_includes_batched_atomicity_flag (depends on P1-11)"
+      }
+    ],
+    "data_integrity_failures": [
+      {
+        "failure": "Batch commit succeeds but a single event in the batch is corrupted on disk",
+        "prevention": "BLAKE3 + CRC32C envelope on every record; corrupt records are detected on read",
+        "test_for_it": "batched_atomicity_corrupted_event_detected_on_read (proptest with 100 random bit flips)"
+      }
+    ],
+    "integration_failures": [
+      {
+        "failure": "The A/B benchmark shows no improvement, leaving the operator wondering if the feature is broken",
+        "prevention": "Run the A/B benchmark as part of this bead's evidence; commit the numbers",
+        "test_for_it": "ab_benchmark_artifact_in_evidence_dir (assert .evidence/batched_atomicity_ab.json exists)"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_storage/src/batch.rs:46-62",
+      "Read crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:294-315",
+      "Read crates/vb_runtime/src/queue/writer.rs:144-150,169-176",
+      "Read crates/vb_runtime/src/shard/config.rs (ShardConfig)"
+    ],
+    "phase_1": [
+      "Write test test_batched_atomicity_1000_events_produces_1_fjall_commit (instrumented counter on Fjall commits)",
+      "Write test test_batched_atomicity_disabled_reverts_to_per_event_commits",
+      "Run the A/B benchmark and record the result in .evidence/batched_atomicity_ab.json"
+    ],
+    "phase_2": [
+      "Phase 14a: Extend RuntimeJournal::append_sequenced to accept &[RuntimeJournalEvent] and use JournalWriteBatch::commit per call",
+      "Phase 14b: Add coalesce_window_us: u64 to ShardConfig (default 100µs); add a coalescing layer in Shard::tick that batches commands within the window",
+      "Phase 14c: Add batched_atomicity feature flag (default false); plumb it through ShardConfig and cmd_ipc_serve"
+    ],
+    "phase_3": [
+      "Phase 14d: Update master §61 from 'Atomic Cross-Keyspace Writes' to 'Atomic Cross-Keyspace Batched Writes (per coalesce window)'"
+    ],
+    "phase_4": [
+      "Run `moon run :test -p vb_runtime -p vb_storage` and verify all new tests pass",
+      "Run the A/B benchmark with batched_atomicity on and off; assert ≥3× throughput improvement",
+      "Commit .evidence/batched_atomicity_ab.json as the A/B evidence"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_storage/src/batch.rs:46-62 (JournalWriteBatch)",
+      "crates/vb_runtime/src/shard/lifecycle/chunk_002.rs:294-315 (append_sequenced)",
+      "crates/vb_runtime/src/queue/writer.rs:144-150,169-176 (flush_batch)",
+      "crates/vb_runtime/src/shard/config.rs (ShardConfig + coalesce_window_us)",
+      "crates/vb_runtime/src/shard/tick.rs (Shard::tick coalescing layer)",
+      ".evidence/batched_atomicity_ab.json (new A/B evidence file)",
+      "velvet-ballistics-MASTER.md §61 (the doc update)"
+    ],
+    "similar_implementations": [
+      "AWS Step Functions journal batching; same model"
+    ],
+    "external_references": [
+      "Master §61 Fjall Storage Contract",
+      "Master §68.1 Log-First Invariant 1",
+      "Master §68.5 Journal sequence numbers are monotonic per run"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "crates/vb_storage/src/batch.rs",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "JournalWriteBatch::commit signature and return type",
+          "Cross-keyspace atomicity guarantees"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "JournalWriteBatch::commit(journal: &FjallJournal) -> Result<(), BatchError> in vb_storage::batch",
+      "WriteBatch (Fjall primitive) for cross-keyspace atomicity"
+    ],
+    "apis_that_do_not_exist": [
+      "RuntimeJournal::append_sequenced(&[RuntimeJournalEvent]) does not exist; this bead adds the slice variant"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use coalesce_window_us = 0 as a default; it must be 100µs minimum"
+    ]
+  }
+}

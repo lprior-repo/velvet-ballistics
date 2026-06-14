@@ -1,4 +1,5 @@
 use crate::agent_context::build;
+use crate::args::run_ops::CANCEL_REASON_MAX_CHARS;
 use serde_json::Value;
 
 #[test]
@@ -568,6 +569,7 @@ fn commands_includes_all_expected_names() {
         "ai-context",
         "answer",
         "bench-run",
+        "cancel",
         "compile",
         "diff",
         "doctor",
@@ -608,7 +610,7 @@ fn command_count_is_stable() {
         .get("commands")
         .and_then(Value::as_object)
         .expect("commands must be an object");
-    assert_eq!(commands.len(), 29);
+    assert_eq!(commands.len(), 30);
 }
 
 #[test]
@@ -693,6 +695,63 @@ fn command_replay_has_run_id_positional() {
     assert_eq!(
         pos.iter().filter_map(Value::as_str).collect::<Vec<_>>(),
         vec!["run_id"]
+    );
+}
+
+#[test]
+fn command_cancel_matches_cli_shape() {
+    let context = build("0.1.0");
+    let positionals = context
+        .pointer("/commands/cancel/positionals")
+        .and_then(Value::as_array)
+        .expect("cancel positionals must be an array");
+    let flags = context
+        .pointer("/commands/cancel/flags")
+        .and_then(Value::as_object)
+        .expect("cancel flags must be an object");
+    let db = flags
+        .get("--db")
+        .and_then(Value::as_object)
+        .expect("cancel --db must be an object");
+    let emit = flags
+        .get("--emit")
+        .and_then(Value::as_object)
+        .expect("cancel --emit must be an object");
+    let reason = flags
+        .get("--reason")
+        .and_then(Value::as_object)
+        .expect("cancel --reason must be an object");
+
+    assert_eq!(
+        positionals
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["run_id"]
+    );
+    assert_eq!(db.get("type").and_then(Value::as_str), Some("path"));
+    assert_eq!(db.get("required").and_then(Value::as_bool), Some(true));
+    assert_eq!(reason.get("type").and_then(Value::as_str), Some("string"));
+    assert_eq!(
+        reason.get("max_length").and_then(Value::as_u64),
+        Some(CANCEL_REASON_MAX_CHARS as u64)
+    );
+    assert_eq!(emit.get("type").and_then(Value::as_str), Some("enum"));
+    assert_eq!(emit.get("default").and_then(Value::as_str), Some("text"));
+}
+
+#[test]
+fn command_cancel_exposes_parser_reason_bound() {
+    let context = build("0.1.0");
+    let reason = context
+        .pointer("/commands/cancel/flags/--reason")
+        .and_then(Value::as_object)
+        .expect("cancel --reason must be an object");
+
+    assert_eq!(reason.get("type").and_then(Value::as_str), Some("string"));
+    assert_eq!(
+        reason.get("max_length").and_then(Value::as_u64),
+        Some(CANCEL_REASON_MAX_CHARS as u64)
     );
 }
 

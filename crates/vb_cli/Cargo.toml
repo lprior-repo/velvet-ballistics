@@ -26,6 +26,7 @@ name = "vb_cli"
 path = "src/lib.rs"
 
 [[bin]]
+# Binary name contract: see velvet-ballistics-MASTER.md §33.6.
 name = "velvet-ballistics"
 path = "src/main.rs"
 

@@ -49,6 +49,9 @@ pub(crate) fn success_report(
     compiled: &CompiledWorkflow,
     ast: Option<&WorkflowAst>,
 ) -> Value {
+    let passed_gates = result.passed_gates();
+    let deferred_gates = result.deferred_gates();
+    let all_gates_closed = result.all_gates_closed();
     serde_json::json!({
         "schema_version": crate::cli_envelope::SCHEMA_VERSION,
         "kind": "explain_report",
@@ -59,7 +62,10 @@ pub(crate) fn success_report(
             "node_count": result.node_count
         },
         "execution_plan": plan_value(compiled, ast),
-        "passed_gates": &result.checks,
+        "gate_statuses": &result.checks,
+        "passed_gates": &passed_gates,
+        "deferred_gates": &deferred_gates,
+        "all_gates_closed": all_gates_closed,
         "warnings": &result.warnings,
         "failure_modes": failure_modes_value(compiled),
         "durability": durability_value(result),
@@ -200,4 +206,74 @@ fn digest_hex(compiled: &CompiledWorkflow) -> String {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::args::DurabilityMode;
+    use crate::commands_verify::VerifyOk;
+
+    const MINIMAL_WORKFLOW_YAML: &str =
+        include_str!("../../workspace_tests/tests/fixtures/valid/minimal.yaml");
+
+    fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
+        match value.pointer(pointer).and_then(serde_json::Value::as_array) {
+            Some(items) => items
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(std::string::ToString::to_string)
+                .collect(),
+            None => panic!("missing string array at {pointer}"),
+        }
+    }
+
+    #[test]
+    fn success_report_preserves_statuses_and_exposes_deferred_gates() {
+        let compiled = match vb_compile::compile_workflow(MINIMAL_WORKFLOW_YAML.as_bytes()) {
+            Ok(compiled) => compiled,
+            Err(err) => panic!("expected fixture to compile, got {err:?}"),
+        };
+        let result = VerifyOk {
+            digest_hex: "0123456789abcdef".repeat(4),
+            node_count: compiled.node_count(),
+            checks: vec![
+                "profile",
+                "shape",
+                "bounded",
+                "contracts:deferred",
+                "results",
+                "evidence:deferred",
+            ],
+            warnings: vec!["taint warning: not implemented".to_string()],
+            durability_mode: DurabilityMode::None,
+        };
+        let report = success_report(&result, &compiled, None);
+
+        assert_eq!(
+            json_string_vec(&report, "/gate_statuses"),
+            vec![
+                "profile",
+                "shape",
+                "bounded",
+                "contracts:deferred",
+                "results",
+                "evidence:deferred",
+            ]
+        );
+        assert_eq!(
+            json_string_vec(&report, "/passed_gates"),
+            vec!["profile", "shape", "bounded", "results"]
+        );
+        assert_eq!(
+            json_string_vec(&report, "/deferred_gates"),
+            vec!["contracts", "evidence"]
+        );
+        assert_eq!(
+            report
+                .pointer("/all_gates_closed")
+                .and_then(serde_json::Value::as_bool),
+            Some(false)
+        );
+    }
 }

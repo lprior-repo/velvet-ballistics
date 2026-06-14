@@ -1,0 +1,149 @@
+{
+  "id": "p1-9r-verify-15-gates",
+  "title": "P1-9r verify-15-gates: Expand verify to enumerate master §63's 15 named verification gates",
+  "type": "feature",
+  "priority": 1,
+  "effort": "4hr",
+  "description": "Feature P1-9r (revision of black-hat-revised vb-sqmov). Black-hat review round 1 found that the original 'no gate attribution' framing was inaccurate. The verify subcommand at crates/vb_cli/src/commands_verify.rs:73-122 already produces a `checks: Vec<&'static str>` with 5-6 named checks (yaml_parse, compilation, ir_validation, budget_computation, boundedness_policy, boundedness_policy_check). The real gap is that master §63 specifies 15 named verification gates and verify only covers 6 of them. The fix is to expand the check set to all 15 §63 gates, ensuring no collision with the section codes used elsewhere (avoid the `0x0E01..0x0F01` collision). Real source: commands_verify.rs:73-122 (the check list), master doc §63 (the 15-gate spec). The 9 missing gates (gates 7-15) are: (7) digest_stability (workflow digest is deterministic), (8) resource_contract_validation (ResourceContract::DEFAULT vs explicit), (9) error_handler_completeness (every error-prone node has an on_error), (10) taint_boundary (no Secret in Finish, no Secret in Save), (11) input_purity (no mutation of input slots), (12) expression_complexity (ExprOp count within bound), (13) cycle_detection (no cycles in dependency graph), (14) determinism_seed (no SystemTime::now() in user code), (15) replay_round_trip (compile→snapshot→recover→snapshot is bit-identical). Also: add an explicit `#[derive(kani::Arbitrary)]` impl for `VerifyOk` (or its result struct) so Kani can prove the gate attribution. Master §63 is authoritative; the 15-gate numbering is the spec.",
+  "ears": {
+    "ubiquitous": [
+      "THE SYSTEM SHALL enumerate all 15 verification gates from master §63 in the verify subcommand output",
+      "THE SYSTEM SHALL use distinct 4-hex-digit gate codes (0x0E01..0x0F0F) that do not collide with the 0x0E01..0x0F01 range used by other section codes"
+    ],
+    "event_driven": [
+      {
+        "trigger": "WHEN the user runs `vb verify <workflow.yaml> --profile full`",
+        "shall": "THE SYSTEM SHALL output a VerifyOk with a `checks` array of length 15, each entry being the gate name and a 4-hex-digit code"
+      }
+    ],
+    "unwanted": [
+      {
+        "condition": "IF a gate is not applicable to the workflow (e.g., digest_stability on a 0-node workflow)",
+        "shall_not": "THE SYSTEM SHALL NOT silently drop the gate; it must report it as 'not_applicable' with a reason",
+        "because": "Master §63 requires the full 15-gate enumeration, not a dynamic subset"
+      }
+    ]
+  },
+  "contracts": {
+    "preconditions": [
+      "Master §63 is the authoritative spec for the 15 gate names and codes",
+      "verify at commands_verify.rs:73-122 already produces a 5-6 entry checks list; we extend it to 15"
+    ],
+    "postconditions": [
+      "verify produces a checks array of length 15 for any workflow (full profile)",
+      "Each gate has a 4-hex-digit code in 0x0E01..0x0F0F (not 0x0E01..0x0F01 to avoid collision)",
+      "kani::Arbitrary impl for VerifyOk is added (or a wrapper struct) so Kani can prove gate attribution"
+    ],
+    "invariants": [
+      "The 15 gate codes are stable across runs (deterministic; no SystemTime::now() in code attribution)",
+      "The 15 gate codes are distinct from each other and from the 0x0E01..0x0F01 range used by other sections"
+    ]
+  },
+  "tests": {
+    "happy": [
+      "verify_outputs_15_gates_for_full_profile: `vb verify foo.yaml --profile full`; assert checks.len() == 15",
+      "verify_gate_codes_are_distinct: assert all 15 4-hex codes are pairwise distinct"
+    ],
+    "error": [
+      "verify_with_failing_gate_returns_typed_error: workflow fails gate 9 (error_handler_completeness); assert VerifyError with gate_code and gate_name",
+      "negative_test_compile_failure_path_returns_typed_error: a malformed input is rejected with the correct typed error code (per schema contract)"
+    ],
+    "edge": [
+      "verify_with_not_applicable_gate_reports_reason: 0-node workflow; assert gate 7 (digest_stability) is reported as 'not_applicable' with reason",
+      "proptest_verify_gate_attribution: 100 random workflows; assert the check list always has exactly 15 entries (full profile)",
+      "kani_verify_ok_has_arbitrary: bounded model check with arbitrary VerifyOk; assert no panic on output formatting"
+    ]
+  },
+  "research": {
+    "files": [
+      "crates/vb_cli/src/commands_verify.rs:73-122 (the existing check list — the fix site)",
+      "master doc §63 (the 15-gate spec — read for gate names, codes, and applicability rules)",
+      "master doc §16.7 (section code ranges — verify the 0x0E01..0x0F0F range is free)"
+    ],
+    "patterns": [
+      "Pattern: existing checks.push('yaml_parse') at commands_verify.rs:73 — the per-gate string-push pattern to mirror for all 15"
+    ],
+    "questions": [
+      "Are there any workflows in the test corpus that fail gate 11 (input_purity) or gate 14 (determinism_seed)? If yes, this bead may surface existing bugs (file follow-up beads)"
+    ]
+  },
+  "inversions": {
+    "data_integrity_failures": [
+      {
+        "failure": "Verify passes a workflow that fails gate 9 (error_handler_completeness); the workflow is later deployed and crashes on a missing error handler",
+        "prevention": "All 15 gates are enumerated; gate 9 is enforced at compile time",
+        "test_for_it": "verify_fails_on_missing_error_handler: workflow with a Do step and no on_error; verify --profile full returns VerifyError with gate_code 0x0E09"
+      }
+    ],
+    "security_failures": [
+      {
+        "failure": "Attacker submits a workflow with a Secret in a Finish slot; gate 10 (taint_boundary) is missing from verify, so the leak is not caught",
+        "prevention": "All 15 gates are enumerated; gate 10 is enforced",
+        "test_for_it": "verify_fails_on_secret_in_finish: workflow with Finish reading a Secret slot; verify returns VerifyError with gate_code 0x0E0A"
+      }
+    ]
+  },
+  "implementation": {
+    "phase_0": [
+      "Read crates/vb_cli/src/commands_verify.rs:73-122 to confirm the existing check structure",
+      "Read master doc §63 to confirm the 15 gate names and 4-hex codes",
+      "Verify the 0x0E01..0x0F0F range is free (not used by other sections)"
+    ],
+    "phase_1": [
+      "Write test test_verify_outputs_15_gates_for_full_profile",
+      "Write proptest proptest_verify_gate_attribution (100 random workflows)",
+      "Add #[derive(kani::Arbitrary)] impl for VerifyOk (or a wrapper struct)"
+    ],
+    "phase_2": [
+      "In commands_verify.rs: extend the checks list to 15 entries; add the 9 new gates (digest_stability through replay_round_trip) with their 4-hex codes",
+      "Handle 'not_applicable' cases for each gate (e.g., 0-node workflow for digest_stability)"
+    ],
+    "phase_3": [
+      "Run `moon run :test -p vb_cli`; verify all verify tests pass",
+      "Run `moon run :ci`; verify no clippy warnings"
+    ]
+  },
+  "context": {
+    "related_files": [
+      "crates/vb_cli/src/commands_verify.rs:73-122 (the fix site)",
+      "master doc §63 (the 15-gate spec)",
+      "master doc §16.7 (section code ranges)"
+    ],
+    "similar_implementations": [
+      "Existing checks.push('yaml_parse') at commands_verify.rs:73 is the per-gate string-push pattern to mirror"
+    ],
+    "external_references": [
+      "Master §63 Verification Gates",
+      "Master §16.7 Section Code Ranges"
+    ]
+  },
+  "anti_hallucination": {
+    "read_before_write": [
+      {
+        "file": "master doc §63",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "The 15 gate names and 4-hex codes — these are the authoritative spec"
+        ]
+      },
+      {
+        "file": "master doc §16.7",
+        "must_read_first": true,
+        "key_sections_to_understand": [
+          "Section code ranges — verify the 0x0E01..0x0F0F range is free"
+        ]
+      }
+    ],
+    "apis_that_exist": [
+      "verify at commands_verify.rs:73-122 produces a checks: Vec<&'static str>",
+      "The 5-6 existing checks (yaml_parse through boundedness_policy_check)"
+    ],
+    "apis_that_do_not_exist": [
+      "The 9 new gates (digest_stability through replay_round_trip) are not in verify yet — they are what this bead adds"
+    ],
+    "no_placeholder_values": [
+      "Do NOT use placeholder gate names ('gate_7', 'gate_8'); use the master §63 names",
+      "Do NOT skip 'not_applicable' gates; they must be reported with a reason"
+    ]
+  }
+}

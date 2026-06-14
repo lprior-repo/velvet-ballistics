@@ -1,0 +1,242 @@
+○ vb-9li0p · cli-matrix-conformance: Create cli_matrix_conformance proptest locking down 6 sources-of-truth   [● P0 · OPEN]
+Owner: Lewis · Type: feature
+Created: 2026-06-13 · Updated: 2026-06-13
+
+DESCRIPTION
+# CUE Validation Schema
+# Validate implementation: cue vet /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613000556-xnjwrhdh.cue implementation.cue
+# Schema location: /home/lewis/src/velvet-ballistics/.beads/schemas/velvet-ballistics-20260613000556-xnjwrhdh.cue
+
+
+#EnhancedBead: {
+  id: "velvet-ballistics-20260613000556-xnjwrhdh"
+  title: "cli-matrix-conformance: Create cli_matrix_conformance proptest locking down 6 sources-of-truth"
+  type: "feature"
+  priority: 3
+  effort_estimate: "1hr"
+  labels: ["planner-generated"]
+
+  clarifications: {
+    clarification_status: "RESOLVED"
+  }
+
+  ears_requirements: {
+    ubiquitous: [
+      \"THE SYSTEM SHALL keep Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, and agent_context in lockstep\",
+      \"THE SYSTEM SHALL fail the proptest on any drift between the 6 sources of truth\"
+    ]
+    event_driven: [
+      {trigger: \"WHEN the proptest runs\", shall: \"THE SYSTEM SHALL iterate VALID_COMMANDS, assert cross-references for all 6 sources, and pass\"},
+      {trigger: \"WHEN any of the 6 sources drifts (e.g., a new command is added to Command enum but not to VALID_COMMANDS)\", shall: \"THE SYSTEM SHALL fail the proptest with a clear error message identifying the drift\"}
+    ]
+    unwanted: [
+      {condition: \"IF a token is in VALID_COMMANDS but not in the Command enum\", shall_not: \"THE SYSTEM SHALL NOT silently accept it; the proptest must fail with 'Token X is in VALID_COMMANDS but not in Command enum'\", because: \"Master §33.3: the 6 sources are the source of truth; drift is a bug\"}
+    ]
+  }
+
+  contracts: {
+    preconditions: {
+      auth_required: false
+      required_inputs: []
+      system_state: [
+        \"All 6 sources of truth exist: Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, agent_context::commands()\",
+        \"P1-8 has landed (agent_context has 30 entries)\"
+      ]
+    }
+    postconditions: {
+      state_changes: [
+        \"The proptest exists in crates/workspace_tests/tests/cli_matrix_conformance.rs\",
+        \"It's wired in crates/workspace_tests/Cargo.toml\",
+        \"It passes on the current code\"
+      ]
+      return_guarantees: []
+    }
+    invariants: [
+      \"The 6 sources are mutually consistent; any future drift fails the proptest\"
+    ]
+  }
+
+  research_requirements: {
+    files_to_read: [
+      {path: \"crates/workspace_tests/Cargo.toml (where the proptest is wired)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/workspace_tests/tests/cli_matrix_conformance.rs (new proptest file)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/lib.rs::Command (the Command enum)\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/args/constants.rs::VALID_COMMANDS, HELP\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/args/parse.rs::parse_args\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/lib.rs::run_from_env\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"},\n      {path: \"crates/vb_cli/src/agent_context/mod.rs::commands\", what_to_extract: \"All patterns and implementations\", document_in: \"research_notes.md\"}
+    ]
+    research_questions: [
+      {question: \"Should the proptest use the proptest crate or a simple loop? (Spec: proptest, for fuzz-style coverage; if proptest isn't available, a simple for loop is fine.)\", answered: false}
+    ]
+    research_complete_when: [
+      "All research_requirements files have been read"
+    ]
+  }
+
+  inversions: {
+    usability_failures:     [
+      {failure: \"Agent-context JSON lists 30 commands but the binary only implements 22\", prevention: \"The proptest asserts agent_context::commands() ⊆ VALID_COMMANDS\", test_for_it: \"agent_context_is_subset_of_valid_commands\"},\n      {failure: \"An attacker adds a malicious command to VALID_COMMANDS that bypasses the Command enum's validation\", prevention: \"The proptest asserts VALID_COMMANDS is a subset of Command variants\", test_for_it: \"valid_commands_is_subset_of_command_enum\"},\n      {failure: \"parse_args returns Ok(Command::Help) for a token that isn't actually a Help command (false positive)\", prevention: \"The proptest asserts parse_args(token) returns the matching Command variant, not just Ok\", test_for_it: \"parse_args_returns_matching_command_variant\"},\n      {failure: \"The proptest is added but not wired in Cargo.toml, so it never runs\", prevention: \"Wire it in crates/workspace_tests/Cargo.toml; verify with `cargo test --test cli_matrix_conformance`\", test_for_it: \"cli_matrix_conformance_test_runs (compile-time test)\"}
+    ]
+  }
+
+  acceptance_tests: {
+    happy_paths:     [
+      {name: \"test_cli_matrix_conformance_proptest_passes_the_proptest_iterates_30_tokens_from_vali\", given: \"Feature S-21. Master §33.3 says this proptest exists; it doesn't. The 6 sources (Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, agent_context JSON) all need to stay in lockstep. P1-8 bumps agent-context to 30/30; this bead locks the cross-reference so future drift is caught. Create crates/workspace_tests/tests/cli_matrix_conformance.rs with a proptest that for each token in VALID_COMMANDS: asserts it's a Command variant, asserts parse_args(&['velvet-ballistics', token, '--help']) returns Ok(Command::Help), asserts run_from_env dispatches it, asserts it's in args/constants.rs::HELP, asserts agent_context::commands() contains it. Wire in crates/workspace_tests/Cargo.toml. Depends on P1-8.\", when: \"cli_matrix_conformance_proptest_passes: the proptest iterates 30 tokens from VALID_COMMANDS and asserts all 6 cross-references for each\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"},\n      {name: \"test_cli_matrix_conformance_locked_down_a_property_of_the_proptest_is_that_it_locks_d\", given: \"Feature S-21. Master §33.3 says this proptest exists; it doesn't. The 6 sources (Command enum, VALID_COMMANDS, parse_args, run_from_env, HELP, agent_context JSON) all need to stay in lockstep. P1-8 bumps agent-context to 30/30; this bead locks the cross-reference so future drift is caught. Create crates/workspace_tests/tests/cli_matrix_conformance.rs with a proptest that for each token in VALID_COMMANDS: asserts it's a Command variant, asserts parse_args(&['velvet-ballistics', token, '--help']) returns Ok(Command::Help), asserts run_from_env dispatches it, asserts it's in args/constants.rs::HELP, asserts agent_context::commands() contains it. Wire in crates/workspace_tests/Cargo.toml. Depends on P1-8.\", when: \"cli_matrix_conformance_locked_down: a property of the proptest is that it locks down 30 tokens (not 22, not 31)\", then: [\"Behavior verified\"], real_input: \"See task specification\", expected_output: \"See task specification\"}
+    ]
+    error_paths:     [
+      {name: \"test_cli_matrix_conformance_fails_on_drift_a_deliberate_test_that_adds_a_token_to_val\", given: \"Error precondition\", when: \"cli_matrix_conformance_fails_on_drift: a deliberate test that adds a token to VALID_COMMANDS without adding it to Command enum should fail the proptest (manual; verify by hand)\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_valid_commands_subset_of_command_enum_a_ci_check_asserts_that_every_token_in_val\", given: \"Error precondition\", when: \"valid_commands_subset_of_command_enum: a CI check asserts that every token in VALID_COMMANDS corresponds to a Command variant\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"},\n      {name: \"test_parse_args_unknown_token_returns_error_a_ci_check_asserts_that_parse_args_with_a\", given: \"Error precondition\", when: \"parse_args_unknown_token_returns_error: a CI check asserts that parse_args with a token not in VALID_COMMANDS returns Err, not Ok\", then: [\"Appropriate error response\"], real_input: \"See task specification\", expected_error: \"See task specification\"}
+    ]
+  }
+
+  e2e_tests: {
+      pipeline_test: {{
+      name: "test_full_pipeline"
+      description: "End-to-end test of cli-matrix-conformance: Create cli_matrix_conformance proptest locking down 6 sources-of-truth"
+      setup: {{}}
+      execute: {{
+        command: "See implementation_tasks phase_4"
+      }}
+      verify: {{
+        exit_code: 0
+      }}
+    }}
+  }
+
+  verification_checkpoints: {
+    gate_0_research: {
+      name: "Research Gate"
+      must_pass_before: "Writing code"
+      checks: ["All research_requirements files have been read"]
+      evidence_required: ["Research notes documented"]
+    }
+    gate_1_tests: {
+      name: "Test Gate"
+      must_pass_before: "Implementation"
+      checks: ["All tests written and failing"]
+      evidence_required: ["Test files exist"]
+    }
+    gate_2_implementation: {
+      name: "Implementation Gate"
+      must_pass_before: "Completion"
+      checks: ["All tests pass"]
+      evidence_required: ["CI green"]
+    }
+    gate_3_integration: {
+      name: "Integration Gate"
+      must_pass_before: "Closing bead"
+      checks: ["E2E tests pass"]
+      evidence_required: ["Manual verification complete"]
+    }
+  }
+
+  implementation_tasks: {
+    phase_0_research: {
+      parallelizable: true
+      tasks: [
+        {task: \"Read crates/workspace_tests/Cargo.toml to find the test wiring\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_cli/src/args/constants.rs to find VALID_COMMANDS and HELP\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_cli/src/args/parse.rs to find parse_args\", done_when: \"Documented\", parallel_group: \"research\"},
+        {task: \"Read crates/vb_cli/src/lib.rs to find Command enum and run_from_env\", done_when: \"Documented\", parallel_group: \"research\"}
+      ]
+    }
+    phase_1_tests_first: {
+      parallelizable: true
+      gate_required: "gate_0_research"
+      tasks: [
+        {task: \"Write the proptest test_cli_matrix_conformance_proptest_passes\", done_when: \"Test exists and fails\", parallel_group: \"tests\"}
+      ]
+    }
+    phase_2_implementation: {
+      parallelizable: false
+      gate_required: "gate_1_tests"
+      tasks: [
+        {task: \"Create crates/workspace_tests/tests/cli_matrix_conformance.rs with a proptest that iterates VALID_COMMANDS and asserts the 6 cross-references for each\", done_when: \"Tests pass\"},
+        {task: \"Wire the test in crates/workspace_tests/Cargo.toml (add `[[test]] name = 'cli_matrix_conformance'` or include via path)\", done_when: \"Tests pass\"}
+      ]
+    }
+    phase_4_verification: {
+      parallelizable: true
+      gate_required: "gate_2_implementation"
+      tasks: [
+        {task: "Run moon run :ci", done_when: "CI passes", parallel_group: "verification"}
+      ]
+    }
+  }
+
+  failure_modes: {
+      failure_modes: [
+      {symptom: "Tests fail", likely_cause: "Implementation does not match specification", where_to_look: [{{file: "See related_files", what_to_check: "Compare with contracts postconditions"}}], fix_pattern: "Re-read task specification and implement to match"}
+    ]
+  }
+
+  anti_hallucination: {
+    read_before_write: [
+      {file: \"crates/workspace_tests/tests/cli_matrix_conformance.rs (new file)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/workspace_tests/Cargo.toml (wiring)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_cli/src/lib.rs (Command, run_from_env)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_cli/src/args/constants.rs (VALID_COMMANDS, HELP)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_cli/src/args/parse.rs (parse_args)\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]},\n      {file: \"crates/vb_cli/src/agent_context/mod.rs (commands())\", must_read_first: true, key_sections_to_understand: [\"All existing implementations\"]}
+    ]
+    apis_that_exist: []
+    no_placeholder_values: ["Use real data from codebase"]
+    git_verification: {
+      before_claiming_done: "git status && git diff && moon run :test"
+    }
+  }
+
+  context_survival: {
+    progress_file: {
+      path: ".bead-progress/velvet-ballistics-20260613000556-xnjwrhdh/progress.txt"
+      format: "Markdown checklist"
+    }
+    recovery_instructions: "Read progress.txt and continue from current task"
+  }
+
+  completion_checklist: {
+    tests: [
+      "[ ] All acceptance tests written and passing",
+      "[ ] All error path tests written and passing",
+      "[ ] E2E pipeline test passing with real data",
+      "[ ] No mocks or fake data in any test"
+    ]
+    code: [
+      "[ ] Implementation uses Result<T, Error> throughout",
+      "[ ] Zero unwrap or expect calls"
+    ]
+    ci: [
+      "[ ] moon run :ci passes"
+    ]
+  }
+
+  context: {
+    related_files: [
+      {path: \"crates/workspace_tests/tests/cli_matrix_conformance.rs (new file)\", relevance: \"Related implementation\"},
+      {path: \"crates/workspace_tests/Cargo.toml (wiring)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_cli/src/lib.rs (Command, run_from_env)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_cli/src/args/constants.rs (VALID_COMMANDS, HELP)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_cli/src/args/parse.rs (parse_args)\", relevance: \"Related implementation\"},
+      {path: \"crates/vb_cli/src/agent_context/mod.rs (commands())\", relevance: \"Related implementation\"}
+    ]
+    similar_implementations: [
+      
+    ]
+  }
+
+  ai_hints: {
+    do: [
+      "Use functional patterns: map, and_then, ?",
+      "Return Result<T, Error> from all fallible functions",
+      "READ files before modifying them"
+    ]
+    do_not: [
+      "Do NOT use unwrap or expect",
+      "Do NOT use panic!, todo!, or unimplemented!",
+      "Do NOT modify clippy configuration"
+    ]
+    constitution: [
+      "Zero unwrap law: NEVER use .unwrap or .expect",
+      "Test first: Tests MUST exist before implementation"
+    ]
+  }
+}
+
+
+DEPENDS ON
+  → ○ vb-p7wck: agent-context-30: Extend agent-context JSON to 30/30 entries ● P1
+
+BLOCKS
+  ← ○ vb-ujho9: (BUG) P0-3r cli-resume-analysis: Add suspended_at_step.is_some() guard to analyze_resume ● P0
+  ← ○ vb-riz9e: (BUG) P0-2r cli-retry-analysis: Fix analyze_retry to return can_retry=false for RunCancelled runs ● P0
+  ← ○ vb-qwsyi: (BUG) cli-filters-locks-records: Fix events --status/--limit filters, locked read surface, run writes source/header records ● P1
+
