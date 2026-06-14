@@ -1965,6 +1965,287 @@ fn verify_digests_full_level_without_policy_config_fails_closed() {
     };
 }
 
+// =============================================================================
+// vb-v7l1d: four-digest-replay-mismatch-test — verify_digests perturbation tests
+// =============================================================================
+
+/// vb-v7l1d: verify_digests at WorkflowSourceOnly level with mismatched workflow
+/// source digest returns WorkflowSourceDigestMismatch and never continues.
+#[test]
+fn verify_digests_workflow_source_only_mismatch() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(300);
+    let stored_digest = sample_digest(50);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: stored_digest,
+        })
+        .expect("setup: append event");
+
+    let wrong_digest = sample_digest(51);
+    let ir_digest = sample_digest(8);
+    let result = verify_digests(
+        &journal,
+        run,
+        wrong_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::WorkflowSourceOnly,
+        None,
+    );
+
+    let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
+        panic!("expected WorkflowSourceDigestMismatch, got {result:?}");
+    };
+    assert_eq!(expected, wrong_digest);
+    assert_eq!(found, stored_digest);
+}
+
+/// vb-v7l1d: verify_digests at WorkflowAndIr level with mismatched workflow source
+/// digest returns WorkflowSourceDigestMismatch before IR check is reached.
+#[test]
+fn verify_digests_workflow_and_ir_mismatch_source_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(301);
+    let stored_digest = sample_digest(52);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: stored_digest,
+        })
+        .expect("setup: append event");
+
+    let wrong_digest = sample_digest(53);
+    let ir_digest = sample_digest(8);
+    let result = verify_digests(
+        &journal,
+        run,
+        wrong_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::WorkflowAndIr,
+        None,
+    );
+
+    let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
+        panic!("expected WorkflowSourceDigestMismatch, got {result:?}");
+    };
+    assert_eq!(expected, wrong_digest);
+    assert_eq!(found, stored_digest);
+}
+
+/// vb-v7l1d: verify_digests at Full level with mismatched workflow source digest
+/// returns WorkflowSourceDigestMismatch even when IR and config are correct.
+#[test]
+fn verify_digests_full_mismatch_source_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(302);
+    let stored_digest = sample_digest(54);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: stored_digest,
+        })
+        .expect("setup: append event");
+
+    let wrong_digest = sample_digest(55);
+    let ir_digest = sample_digest(8);
+    let action_id = ActionId::new(1);
+    let matching_digest = sample_digest(60);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        wrong_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[(action_id, matching_digest, matching_digest)]),
+            policy_entries: Some(&[]),
+        }),
+    );
+
+    let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
+        panic!("expected WorkflowSourceDigestMismatch, got {result:?}");
+    };
+    assert_eq!(expected, wrong_digest);
+    assert_eq!(found, stored_digest);
+}
+
+/// vb-v7l1d: verify_digests at Full level with mismatched action ABI digest
+/// returns ActionAbiMismatch. This independently perturbs the action ABI digest.
+#[test]
+fn verify_digests_full_mismatch_action_abi_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(303);
+    let workflow_digest = sample_digest(56);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        })
+        .expect("setup: append event");
+
+    let action_id = ActionId::new(2);
+    let matching_digest = sample_digest(70);
+    let mismatching_digest = sample_digest(71);
+    let ir_digest = sample_digest(8);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[(action_id, matching_digest, mismatching_digest)]),
+            policy_entries: Some(&[]),
+        }),
+    );
+
+    let Err(RecoveryError::ActionAbiMismatch {
+        action_id: found_action_id,
+        expected,
+        found,
+    }) = result
+    else {
+        panic!("expected ActionAbiMismatch, got {result:?}");
+    };
+    assert_eq!(found_action_id, action_id);
+    assert_eq!(expected, matching_digest);
+    assert_eq!(found, mismatching_digest);
+}
+
+/// vb-v7l1d: verify_digests at Full level with mismatched policy digest
+/// returns PolicyDigestMismatch. This independently perturbs the policy digest.
+#[test]
+fn verify_digests_full_mismatch_policy_digest() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(304);
+    let workflow_digest = sample_digest(57);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        })
+        .expect("setup: append event");
+
+    let step = StepIdx::new(3);
+    let matching_digest = sample_digest(72);
+    let mismatching_digest = sample_digest(73);
+    let ir_digest = sample_digest(8);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[]),
+            policy_entries: Some(&[(step, matching_digest, mismatching_digest)]),
+        }),
+    );
+
+    let Err(RecoveryError::PolicyDigestMismatch {
+        step: found_step,
+        expected: found_expected,
+        found,
+    }) = result
+    else {
+        panic!("expected PolicyDigestMismatch, got {result:?}");
+    };
+    assert_eq!(found_step, step);
+    assert_eq!(found_expected, matching_digest);
+    assert_eq!(found, mismatching_digest);
+}
+
+/// vb-v7l1d: verify_digests at Full level with all four digests matching succeeds.
+#[test]
+fn verify_digests_full_all_four_digests_match() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(305);
+    let workflow_digest = sample_digest(58);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        })
+        .expect("setup: append event");
+
+    let action_id = ActionId::new(3);
+    let step = StepIdx::new(4);
+    let matching_digest = sample_digest(80);
+    let ir_digest = sample_digest(8);
+
+    let result = verify_digests(
+        &journal,
+        run,
+        workflow_digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::Full,
+        Some(DigestCheckConfig {
+            action_abi_entries: Some(&[(action_id, matching_digest, matching_digest)]),
+            policy_entries: Some(&[(step, matching_digest, matching_digest)]),
+        }),
+    );
+
+    result.expect("all four digests matching at Full level should succeed");
+}
+
+/// vb-v7l1d: verify_digests at WorkflowSourceOnly level with matching digest succeeds.
+#[test]
+fn verify_digests_workflow_source_only_match() {
+    let temp_dir = tempfile::tempdir().expect("setup: tempdir");
+    let journal = crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
+
+    let run = RunId::new(306);
+    let digest = sample_digest(59);
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        })
+        .expect("setup: append event");
+
+    let ir_digest = sample_digest(8);
+    let result = verify_digests(
+        &journal,
+        run,
+        digest,
+        ir_digest,
+        ir_digest,
+        DigestCheck::WorkflowSourceOnly,
+        None,
+    );
+
+    result.expect("matching workflow source digest at WorkflowSourceOnly should succeed");
+}
+
 #[test]
 fn recover_full_journal_returns_no_recovery_data_when_empty() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
