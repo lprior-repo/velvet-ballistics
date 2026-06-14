@@ -53,7 +53,7 @@ tasks:
       run_validate_harness() {
         local harness="$1"
         printf 'verify-kani-vb-validate: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness "$harness"
       }
       run_validate_harness kani_gate_08_valid_zero_accessors_pass
       run_validate_harness kani_gate_08_valid_bounded_parts_pass
