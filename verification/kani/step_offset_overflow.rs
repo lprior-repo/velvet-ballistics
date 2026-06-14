@@ -97,7 +97,7 @@ fn kani_step_offset_offset3() {
 
 /// PO-016 H4: Boundary case id = u16::MAX with offset=3 overflows (not panic).
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_step_offset_boundary_max() {
     let id = u16::MAX;
     let offset: u8 = 3;
@@ -117,7 +117,7 @@ fn kani_step_offset_boundary_max() {
 
 /// PO-016 H5: Boundary case id = u16::MAX - 2 with offset=3 equals u16::MAX (valid).
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_step_offset_boundary_valid() {
     let id = u16::MAX - 2;
     let offset: u8 = 3;

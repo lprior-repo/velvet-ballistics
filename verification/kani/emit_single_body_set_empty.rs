@@ -50,7 +50,7 @@ fn kani_emit_single_body_set_empty() {
 
 /// PO-007 H2: body.first() on empty Vec returns None, not panic.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_empty_vec_first() {
     let empty_vec: Vec<StepAst> = Vec::new();
 

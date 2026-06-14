@@ -21,7 +21,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, SlotBranch};
 
 /// ps-05 H1: Empty branches without otherwise returns EmptyBranchTable error.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn choose_empty_no_otherwise_error() {
     let branches: Vec<SlotBranch> = vec![];
 
@@ -43,7 +43,7 @@ fn choose_empty_no_otherwise_error() {
 
 /// ps-06 H1: Empty branches with otherwise produces valid ChooseSlot.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn choose_empty_with_otherwise_valid() {
     let branches: Vec<SlotBranch> = vec![];
     let otherwise = StepIdx::new(kani::any_where(|i| *i > 0 && *i < 100));

@@ -20,7 +20,7 @@ use vb_core::workflow::{
 
 /// PO-006 H1: Empty nodes array returns EmptyNodes error.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_try_from_parts_empty_nodes() {
     let parts = WorkflowParts {
         name: Box::from("empty"),

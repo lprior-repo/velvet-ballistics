@@ -60,7 +60,7 @@ fn kani_emit_single_body_set_all() {
 
 /// PO-019 H2: emit_single_body_set with empty body does not panic.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_emit_single_body_set_all_empty() {
     let empty_body: Vec<StepAst> = vec![];
 

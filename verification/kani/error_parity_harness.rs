@@ -22,7 +22,7 @@ use vb_yaml::ast::{StepAst, StepPrimitive};
 
 /// PO-031 H1: Error parity - empty body returns StepFieldShape (not panic).
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_error_parity() {
     // Generate empty body
     let body: Vec<StepAst> = kani::any();
