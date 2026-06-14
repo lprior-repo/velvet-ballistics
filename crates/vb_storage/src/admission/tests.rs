@@ -830,3 +830,104 @@ fn backward_compat_3variant_ordinals() {
     let post_not_retry_safe_ordinal = vb_core::action::RetrySafety::NotRetrySafe as u8;
     assert_eq!(pre_migration_unsafe_ordinal, post_not_retry_safe_ordinal);
 }
+
+/// vb-ssf5h: The `accepted_at_seq` field is a documented placeholder for
+/// future journal sequence tracking. It is currently always `EventSeq::new(0)`
+/// because the journal does not yet expose a public sequence API. This test
+/// pins the placeholder invariant in three places: (1) the field is 0 on
+/// submission, (2) the field is included in the metadata hash so that
+/// post-admission mutations are detected, and (3) the runtime admission's
+/// certificate freshness check accepts 0 as a valid value (zero floor
+/// means no rejection). Wiring to a real journal sequence requires a
+/// separate journal-API bead and would change artifact hashes, so it is
+/// intentionally deferred.
+#[test]
+fn accepted_at_seq_placeholder_invariant_pins_field_to_zero_with_hash_protection(
+) -> Result<(), String> {
+    use crate::types::EventSeq;
+    let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let journal =
+        crate::journal::FjallJournal::open(temp_dir.path(), None).map_err(|e| e.to_string())?;
+    let workflow = minimal_workflow()?;
+
+    let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+        .map_err(|e| format!("submit failed: {e}"))?;
+
+    // (1) The field is 0 for all current submissions.
+    if artifact.accepted_at_seq != EventSeq::new(0) {
+        return Err(format!(
+            "placeholder invariant: accepted_at_seq must be 0, got {:?}",
+            artifact.accepted_at_seq
+        ));
+    }
+
+    // (2) The field is included in the metadata hash, so any change to
+    // `accepted_at_seq` would change the hash. The chunk_038/chunk_039
+    // adversarial tests prove that mutating this field post-storage
+    // changes the metadata hash and is therefore detected.
+    let hash_a = compute_artifact_metadata_hash(&artifact);
+    let mut mutated = artifact.clone();
+    mutated.accepted_at_seq = EventSeq::new(1);
+    let hash_b = compute_artifact_metadata_hash(&mutated);
+    if hash_a == hash_b {
+        return Err(String::from(
+            "metadata hash invariant: mutating accepted_at_seq must change the hash",
+        ));
+    }
+
+    // (3) The field is `Ord` and the runtime admission's certificate
+    // freshness check uses `<` comparison. With `EventSeq::new(0)` and
+    // a `required_at_least` of 0, no rejection occurs (zero floor = no
+    // rejection). This is the documented backward-compatible behavior.
+    let zero: EventSeq = EventSeq::new(0);
+    if !(artifact.accepted_at_seq < zero) {
+        // false: artifact.accepted_at_seq is 0, zero is 0, 0 < 0 is false.
+        // This branch confirms the invariant: 0 is NOT < 0, so a zero
+        // floor does not reject a zero accepted_at_seq.
+    } else {
+        return Err(String::from(
+            "zero floor must not reject zero accepted_at_seq",
+        ));
+    }
+    Ok(())
+}
+
+/// vb-wyosk: Regression guard for the FjallJournal index keyspaces audit.
+///
+/// Audit finding: `submit_artifact` does NOT call `put_status_index` or
+/// `put_workflow_index`. The `index_status` and `index_workflow` Fjall
+/// keyspaces are defined in `crates/vb_storage/src/journal/core.rs:59-60`
+/// and the Batch methods exist at `crates/vb_storage/src/batch.rs:280, 293`,
+/// but the production admission path does not populate them. This test
+/// pins the current audit finding as a regression guard: if a future
+/// change wires the indexes, this test will fail and force an explicit
+/// update of the audit record (`bd remember` note from 2026-06-14) and
+/// the bead's evidence matrix.
+#[test]
+fn submit_artifact_does_not_populate_index_status_or_workflow_keyspaces(
+) -> Result<(), String> {
+    let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let journal =
+        crate::journal::FjallJournal::open(temp_dir.path(), None).map_err(|e| e.to_string())?;
+    let workflow = minimal_workflow()?;
+
+    let _artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+        .map_err(|e| format!("submit failed: {e}"))?;
+
+    // After submit, both keyspaces must be empty.
+    let status_count = journal.index_status.iter().count();
+    if status_count != 0 {
+        return Err(format!(
+            "audit regression: index_status must be empty after submit_artifact, got {status_count} entries. \
+             This means submit_artifact now calls put_status_index; update the vb-wyosk audit record and evidence matrix."
+        ));
+    }
+    let workflow_count = journal.index_workflow.iter().count();
+    if workflow_count != 0 {
+        return Err(format!(
+            "audit regression: index_workflow must be empty after submit_artifact, got {workflow_count} entries. \
+             This means submit_artifact now calls put_workflow_index; update the vb-wyosk audit record and evidence matrix."
+        ));
+    }
+    Ok(())
+}

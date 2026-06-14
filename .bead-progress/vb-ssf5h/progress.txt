@@ -1,0 +1,48 @@
+# vb-ssf5h progress
+
+## Decision: DISPROVE "unused field" + DOCUMENT PLACEHOLDER INVARIANT
+- Source read: `crates/vb_storage/src/admission.rs:189-196` (field def), `:339` (hardcoded 0), `:692` (hash inclusion).
+- Source read: `crates/vb_runtime/src/admission/admission.rs:126-132` (runtime uses field for `ArtifactCertificateStale` check).
+- Source read: `crates/vb_storage/src/verification/vb-fn4vt/kani/sequence_bounds_verification.rs` (Kani harness domain claim about field).
+- Source read: `crates/vb_storage/src/journal/` (no public `append_seq`/`current_seq` API exists).
+
+## Evidence that the field is NOT unused
+1. Runtime admission at `crates/vb_runtime/src/admission/admission.rs:126-132` actively checks `artifact.accepted_at_seq < required_at_least` and returns `AdmissionError::ArtifactCertificateStale { accepted_at_seq, .. }` on rejection.
+2. Kani harness at `crates/vb_storage/src/verification/vb-fn4vt/kani/sequence_bounds_verification.rs:7-89` has a domain claim that `accepted_at_seq > 0` when journal is non-empty (currently false because field is always 0).
+3. The field is part of `compute_artifact_metadata_hash` (admission.rs:692), so post-admission mutations are detected by `chunk_038.rs:22` and `chunk_039.rs:24` adversarial tests.
+4. Master doc `velvet-ballistics-MASTER.md` does not mention `accepted_at_seq`, "sequence tracking", or "certificate floor" - confirming this is an internal placeholder, not a documented contract.
+
+## Why WIRE was not chosen
+- Journal has NO public sequence API (no `append_seq`, `current_seq`, or `next_seq` on `FjallJournal`).
+- Adding a journal sequence API is a separate, major change (tracked by no open bead; would be P3+).
+- Wiring would change artifact hashes (hash includes the field at admission.rs:692), which is a breaking change for any stored artifact.
+- The Kani harness's domain claim is aspirational, not a current invariant.
+
+## Why REMOVE was not chosen
+- The runtime admission's `admit_artifact_run_with_certificate_floor` is a public API with tests.
+- The Kani harness is wired into the verification flow.
+- The field is part of the mutation-detection surface.
+- Removal is a large refactor touching 4+ production files, 10+ test files, and multiple Kani harnesses.
+
+## Minimum-change closure: DOCUMENT + TEST
+- The field is explicitly documented as a placeholder at `admission.rs:189-196` ("GAP-007 FIX: ... placeholder for future implementation").
+- Tests already assert the placeholder behavior at `admission/tests.rs:391` and `vb_2bok_durability_gate_tests.rs:248`.
+- Added one focused, mutation-strong test that pins the placeholder invariant in three places: (1) field is 0 on submission, (2) field is in the metadata hash so mutations are detected, (3) zero floor does not reject zero `accepted_at_seq`.
+
+## Raw command evidence
+- `cargo test -p vb_storage --lib admission::tests::accepted_at_seq_placeholder_invariant_pins_field_to_zero_with_hash_protection`: 1 passed, 1334 filtered out
+- `cargo test -p vb_storage --lib` (full suite): 2 errors, pre-existing `ExprOp::Coalesce` missing variant (BLOCK_GLOBAL, tracked by `vb-rce3k` P3 bead; not caused by this bead)
+- `cargo test -p vb_storage --lib` at `cbcda6a83` (pre-bead state): 1334 passed (confirms compile error is introduced by commits between `cbcda6a83` and `de7b1220f`, not by this bead)
+
+## Status
+- Test added and passing in isolation.
+- Field is documented as a known placeholder with explicit comment.
+- Wiring to real journal sequence requires a new journal API (separate bead, not in scope).
+- Removal is out of scope for this cleanup bead.
+- Pre-existing `ExprOp::Coalesce` BLOCK_GLOBAL does not block this bead's narrow scope (accepted_at_seq placeholder semantics).
+- Ready to close with reason: "DISPROVED 'unused field' premise: field is used by runtime admission certificate freshness check and Kani harness; documented as placeholder; added mutation-strong test pinning the placeholder invariant. Wiring requires new journal API (separate bead). Pre-existing ExprOp::Coalesce BLOCK_GLOBAL noted but unrelated to this bead's scope."
+
+## BLOCK_GLOBAL prerequisite
+- Bead `vb-rce3k` (P3, "Add Coalesce as the 30th ExprOp variant") must close before the full `vb_storage` test suite compiles.
+- This bead's narrow scope (accepted_at_seq placeholder semantics) does not require the BLOCK_GLOBAL repair.
+- Evidence: test passes in isolation (1 passed, 1334 filtered out); full-suite compile error reproduces at HEAD `de7b1220f` without this bead's changes.

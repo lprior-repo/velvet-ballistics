@@ -1,0 +1,47 @@
+# vb-wyosk progress
+
+## Decision: AUDIT + REGRESSION GUARD
+- Bead scope is AUDIT (not "wire vs remove" binary decision).
+- Primary deliverable: audit result recorded in `bd remember` note.
+- Secondary deliverable: regression-guard test that pins the audit finding.
+
+## Audit finding
+**The `index_status` and `index_workflow` Fjall keyspaces are NOT populated by `submit_artifact`.**
+
+Evidence:
+1. `put_status_index` defined at `crates/vb_storage/src/batch.rs:280` on `Batch`.
+2. `put_workflow_index` defined at `crates/vb_storage/src/batch.rs:293` on `Batch`.
+3. `submit_artifact` at `crates/vb_storage/src/admission.rs:230-236` (and its internal helpers) has ZERO references to either method (verified via `rg`).
+4. Keyspaces defined at `crates/vb_storage/src/journal/core.rs:59-60` as `fjall::Keyspace`.
+5. Keyspaces are only populated in test code: `batch/tests.rs:106, 118, 405, 408, 516, 518, 840, 843, 954, 956, 2084, 2087`, `journal/tests.rs:934, 937, 940, 962-964, 1050, 1053`, `index_tests.rs:27`.
+6. Recovery (`recover_runtime_frame_seed_from_events`) reads events, not index keyspaces.
+7. Master doc `velvet-ballistics-MASTER.md` does not mention these keyspaces.
+8. No `pending_actions` API or gate exists (only `UnsupportedRecoveryState::pending_actions: bool` flag, which is unrelated).
+9. No `master §44.15` exists; §44 has 24 numbered points (no "operational affordances" framing).
+
+## `bd remember` note
+- Key: `vb-wyosk-audit-2026-06-14-fjalljournal-keyspaces`
+- Content: full audit finding with file:line evidence and follow-up recommendation.
+
+## Regression-guard test
+- Added `submit_artifact_does_not_populate_index_status_or_workflow_keyspaces` at end of `crates/vb_storage/src/admission/tests.rs`.
+- Asserts: after `submit_artifact`, both `index_status` and `index_workflow` keyspaces are empty.
+- Purpose: if a future change wires the indexes, this test fails and forces an explicit update of the audit record and evidence matrix.
+
+## Wiring is out of scope
+- Wiring requires plumbing `RunId` and `WorkflowId` through `submit_artifact` (currently it only has `&CompiledWorkflow`).
+- The `CompiledWorkflow` does carry a `WorkflowId` (verified at `vb_core::CompiledWorkflow`), but `RunId` is a per-admission concept that `submit_artifact` does not currently take.
+- Wiring is a follow-up bead, not part of this audit.
+
+## Raw command evidence
+- `cargo test -p vb_storage --lib admission::tests::submit_artifact_does_not_populate_index_status_or_workflow_keyspaces`: 1 passed
+- `rg 'put_status_index|put_workflow_index' crates/vb_storage/src/admission.rs`: 0 matches (confirms submit_artifact does not call them)
+- `rg 'put_status_index|put_workflow_index' crates/vb_storage/src/`: only test files and batch.rs definitions
+- `rg 'recover_runtime_frame_seed_from_events' crates/vb_storage/src/`: only in recovery module, reads events not keyspaces
+
+## Status
+- Audit finding recorded in `bd remember` note.
+- Regression-guard test added and passing.
+- Wiring to `submit_artifact` is a follow-up bead (requires API change to accept RunId).
+- Master doc does not mention the keyspaces (no spec to violate).
+- Ready to close with reason: "AUDIT COMPLETE: index_status and index_workflow keyspaces are NOT populated by submit_artifact (0 references in admission.rs). Defined in journal/core.rs:59-60, methods in batch.rs:280,293, but only test code calls them. Recovery does not rebuild them. Audit recorded in bd remember note vb-wyosk-audit-2026-06-14-fjalljournal-keyspaces. Regression-guard test submit_artifact_does_not_populate_index_status_or_workflow_keyspaces added to admission/tests.rs. Wiring is a follow-up bead (requires RunId plumbing)."

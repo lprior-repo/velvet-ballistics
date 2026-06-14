@@ -1,0 +1,33 @@
+# vb-k9nqx progress
+
+## Decision: ADD NEW MUTATION-STRONG TESTS
+- Source read: `crates/vb_core/src/value_store.rs` uses `IndexMap` (lines 12, 52, 54) and `Vec<Box<[ObjectField]>>` (line 50).
+- Existing tests cover duplicate-key first-wins (`value_store_object_field_returns_first_duplicate_key` line 365, `value_store_exact_max_object_preserves_duplicate_first_wins_index` line 915, `value_store_object_field_linear_scan_respects_insertion_order` line 658).
+- Gap: NO test explicitly proves slice iteration order matches caller-supplied order with a non-sorted fixture, which is a behavioral contract for `IndexMap` parity.
+
+## New tests added in `crates/vb_core/src/value_store/tests.rs`
+1. `value_store_object_slice_iteration_matches_caller_insertion_order` — non-sorted fixture, asserts both key and value at each index.
+2. `value_store_object_indexmap_secondary_index_matches_insertion_order` — IndexMap lookups align with slice position.
+3. `value_store_object_reversed_field_order_is_preserved_not_sorted` — reverse-sorted fixture, detects auto-sort mutations.
+4. `value_store_multiple_objects_each_preserve_independent_order` — three objects with distinct orders, verifies independence and cross-object duplicate-key isolation.
+
+## Mutation coverage
+- HashMap swap in `objects`: caught by test 1 (iteration order would drift).
+- HashMap swap in IndexMap secondary index: caught by test 2 (positions and lookups would drift).
+- Auto-sort mutation: caught by test 3 (reverse order must persist).
+- Cross-object state leak: caught by test 4 (object b's key=3 lookup returns 300, not 30 from object a).
+
+## Raw command evidence
+- `cargo test -p vb_core --lib value_store::tests::value_store_object_slice_iteration_matches_caller_insertion_order`: 1 passed
+- `cargo test -p vb_core --lib value_store::tests::value_store_object_indexmap_secondary_index_matches_insertion_order`: 1 passed
+- `cargo test -p vb_core --lib value_store::tests::value_store_object_reversed_field_order_is_preserved_not_sorted`: 1 passed
+- `cargo test -p vb_core --lib value_store::tests::value_store_multiple_objects_each_preserve_independent_order`: 1 passed
+- `cargo test -p vb_core --lib`: 2006 passed (was 2002, +4 new tests)
+- `cargo clippy -p vb_core --lib`: no warnings on value_store/tests.rs
+
+## Status
+- Tests written and passing.
+- Implementation untouched (ValueStore already correct per IndexMap contract).
+- Mutation coverage: HashMap swap, sort mutation, cross-object leak all detected.
+- No clippy warnings introduced.
+- Ready to close with reason: "ADDED 4 mutation-strong tests proving IndexMap insertion order parity; existing duplicate-key tests are correct but order-preservation was untested."
