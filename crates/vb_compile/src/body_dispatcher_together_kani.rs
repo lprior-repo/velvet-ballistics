@@ -119,7 +119,10 @@ fn body_dispatcher_together_acceptance_kani() {
             }
 
             if !builder.nodes.is_empty() {
-                let last = builder.nodes.last().unwrap();
+                let last = match builder.nodes.last() {
+                    Some(v) => v,
+                    None => { kani::assume(false, "unwrap failed"); return; }
+                };
                 if let Some(nxt) = last.next {
                     kani::assert(nxt.as_usize() == 100, "last node must point to next");
                 }

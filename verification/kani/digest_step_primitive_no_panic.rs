@@ -33,8 +33,13 @@ fn check_digest_step_primitive_no_panic() {
     for i in 0..prompt_len {
         prompt_bytes[i] = kani::any();
     }
-    let prompt = String::from_utf8(prompt_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let prompt = match String::from_utf8(prompt_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     let has_timeout: bool = kani::any();
     let timeout: Option<String> = if has_timeout {
@@ -45,8 +50,13 @@ fn check_digest_step_primitive_no_panic() {
             timeout_bytes[i] = kani::any();
         }
         Some(
-            String::from_utf8(timeout_bytes)
-                .expect("valid UTF-8 timeout within bounded domain"),
+            match String::from_utf8(timeout_bytes) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "valid UTF-8 timeout within bounded domain");
+                    return;
+                }
+            },
         )
     } else {
         None
@@ -70,8 +80,13 @@ fn check_canonical_digest_no_panic() {
     for i in 0..prompt_len {
         prompt_bytes[i] = kani::any();
     }
-    let prompt = String::from_utf8(prompt_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let prompt = match String::from_utf8(prompt_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     let has_timeout: bool = kani::any();
     let timeout: Option<String> = if has_timeout {
@@ -82,8 +97,13 @@ fn check_canonical_digest_no_panic() {
             timeout_bytes[i] = kani::any();
         }
         Some(
-            String::from_utf8(timeout_bytes)
-                .expect("valid UTF-8 timeout within bounded domain"),
+            match String::from_utf8(timeout_bytes) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false, "valid UTF-8 timeout within bounded domain");
+                    return;
+                }
+            },
         )
     } else {
         None

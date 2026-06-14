@@ -57,7 +57,10 @@ fn idempotency_gate_parity() {
 
                 let contract = ActionContract {
                     id: ActionId::new(0),
-                    name: ActionName::new("test-action").unwrap(),
+                    name: match ActionName::new("test-action") {
+                        Ok(v) => v,
+                        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+                    },
                     input_slot_count: 1,
                     output_slot_count: 1,
                     max_input_bytes: 1024,

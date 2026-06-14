@@ -60,8 +60,13 @@ fn check_ask_prompt_sensitivity() {
     for i in 0..prompt_a_len {
         prompt_a_bytes[i] = kani::any();
     }
-    let prompt_a = String::from_utf8(prompt_a_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let prompt_a = match String::from_utf8(prompt_a_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
     kani::cover!(!prompt_a.is_empty(), "non-empty prompt A");
     kani::cover!(prompt_a.is_empty(), "empty prompt A");
 
@@ -72,8 +77,13 @@ fn check_ask_prompt_sensitivity() {
     for i in 0..prompt_b_len {
         prompt_b_bytes[i] = kani::any();
     }
-    let prompt_b = String::from_utf8(prompt_b_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let prompt_b = match String::from_utf8(prompt_b_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     // Require that prompts differ
     kani::assume(prompt_a != prompt_b);

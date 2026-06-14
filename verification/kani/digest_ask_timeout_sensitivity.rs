@@ -59,8 +59,13 @@ fn check_ask_timeout_sensitivity() {
     for i in 0..timeout_len {
         timeout_bytes[i] = kani::any();
     }
-    let timeout_str = String::from_utf8(timeout_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let timeout_str = match String::from_utf8(timeout_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     let source_none = source_with_ask_timeout(None);
     let source_some = source_with_ask_timeout(Some(timeout_str));
@@ -84,8 +89,13 @@ fn check_ask_timeout_sensitivity_different_values() {
     for i in 0..timeout1_len {
         timeout1_bytes[i] = kani::any();
     }
-    let timeout1 = String::from_utf8(timeout1_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let timeout1 = match String::from_utf8(timeout1_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     let timeout2_len: usize = kani::any();
     kani::assume(timeout2_len <= MAX_TIMEOUT_LEN);
@@ -93,8 +103,13 @@ fn check_ask_timeout_sensitivity_different_values() {
     for i in 0..timeout2_len {
         timeout2_bytes[i] = kani::any();
     }
-    let timeout2 = String::from_utf8(timeout2_bytes)
-        .expect("valid UTF-8 from byte generation within bounded domain");
+    let timeout2 = match String::from_utf8(timeout2_bytes) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "valid UTF-8 from byte generation within bounded domain");
+            return;
+        }
+    };
 
     kani::assume(timeout1 != timeout2);
 

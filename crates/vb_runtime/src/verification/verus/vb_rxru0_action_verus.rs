@@ -26,7 +26,7 @@ verus! {
     // ============================================================================
 
     /// Abstract ActionTicket matching vb_core::action::ActionTicket fields.
-    pub struct AbstractTicket {
+    struct AbstractTicket {
         run: u64,
         step: u64,
         seq: u64,
@@ -37,17 +37,17 @@ verus! {
     }
 
     impl AbstractTicket {
-        pub open spec fn run(&self) -> u64 { self.run }
-        pub open spec fn step(&self) -> u64 { self.step }
-        pub open spec fn seq(&self) -> u64 { self.seq }
-        pub open spec fn action(&self) -> u64 { self.action }
-        pub open spec fn attempt(&self) -> u16 { self.attempt }
-        pub open spec fn idempotency_key(&self) -> u128 { self.idempotency_key }
-        pub open spec fn capacity(&self) -> u16 { self.capacity }
+        pub closed spec fn run(&self) -> u64 { self.run }
+        pub closed spec fn step(&self) -> u64 { self.step }
+        pub closed spec fn seq(&self) -> u64 { self.seq }
+        pub closed spec fn action(&self) -> u64 { self.action }
+        pub closed spec fn attempt(&self) -> u16 { self.attempt }
+        pub closed spec fn idempotency_key(&self) -> u128 { self.idempotency_key }
+        pub closed spec fn capacity(&self) -> u16 { self.capacity }
     }
 
     /// Abstract ActionOutcome matching vb_core::action::ActionOutcome variants.
-    pub enum AbstractOutcome {
+    enum AbstractOutcome {
         Ok(AbstractTicket),
         Err,
     }
@@ -128,37 +128,37 @@ verus! {
         ensures
             // The output ticket's run comes from the input's run field.
             match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.run == input_run,
+                AbstractOutcome::Ok(t) => t.run() == input_run,
                 AbstractOutcome::Err => false,
             }
             // The output ticket's step comes from the input's step field.
             && match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.step == input_step,
+                AbstractOutcome::Ok(t) => t.step() == input_step,
                 AbstractOutcome::Err => false,
             }
             // The output ticket's seq comes from input.ticket.seq.
             && match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.seq == input_seq,
+                AbstractOutcome::Ok(t) => t.seq() == input_seq,
                 AbstractOutcome::Err => false,
             }
             // The output ticket's action comes from the input's action field.
             && match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.action == input_action,
+                AbstractOutcome::Ok(t) => t.action() == input_action,
                 AbstractOutcome::Err => false,
             }
             // The output ticket's attempt comes from input.ticket.attempt.
             && match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.attempt == input_attempt,
+                AbstractOutcome::Ok(t) => t.attempt() == input_attempt,
                 AbstractOutcome::Err => false,
             }
             // The output ticket's idempotency_key comes from input.ticket.idempotency_key.
             && match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.idempotency_key == input_idempotency_key,
+                AbstractOutcome::Ok(t) => t.idempotency_key() == input_idempotency_key,
                 AbstractOutcome::Err => false,
             }
             // The output ticket's capacity is always 1 (constant bound from retry policy).
             && match dispatch_generic_spec(input_run, input_step, input_seq, input_action, input_attempt, input_idempotency_key) {
-                AbstractOutcome::Ok(t) => t.capacity == 1,
+                AbstractOutcome::Ok(t) => t.capacity() == 1,
                 AbstractOutcome::Err => false,
             }
     {

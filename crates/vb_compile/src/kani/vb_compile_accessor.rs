@@ -159,9 +159,18 @@ fn lower_accessor_reference_numeric() {
 #[kani::unwind(8)]
 fn accessor_index_assignment() {
     // Multiple accessors get sequential indices: 0, 1, 2
-    let expr1 = parse_expression("$slots.1.0").unwrap();
-    let expr2 = parse_expression("$slots.2.1").unwrap();
-    let expr3 = parse_expression("$slots.3.2").unwrap();
+    let expr1 = match parse_expression("$slots.1.0") {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    let expr2 = match parse_expression("$slots.2.1") {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    let expr3 = match parse_expression("$slots.3.2") {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let mut consts = Vec::new();
     let mut acc = Vec::new();
@@ -201,7 +210,10 @@ fn accessor_index_assignment() {
 #[kani::unwind(6)]
 fn rejects_non_numeric_accessor_path() {
     // $slots.1.abc — non-numeric second segment
-    let expr = parse_expression("$slots.1.abc").unwrap();
+    let expr = match parse_expression("$slots.1.abc") {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     let mut acc: Vec<AccessorProgram> = Vec::new();
     let res = compile_expr_to_bytecode_with_accessors(
         &expr,

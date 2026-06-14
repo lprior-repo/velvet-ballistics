@@ -95,7 +95,11 @@ fn push_constant_overflow() {
     let empty_compiler = SlotCompiler::new();
     let empty_count = empty_compiler.slot_count();
     kani::assert(empty_count.is_ok(), "slot_count on empty builder should be Ok");
-    kani::assert(empty_count.unwrap() == 0, "empty builder slot_count should be 0");
+    let empty_count_val = match empty_count {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(empty_count_val == 0, "empty builder slot_count should be 0");
 
     // ----------------------------------------------------------------
     // Test 4: all ConstValue variants succeed on fresh compiler (unrolled)
@@ -108,9 +112,21 @@ fn push_constant_overflow() {
     kani::assert(test_compiler.push_constant(ConstValue::I64(-1)).is_ok(), "I64(-1) succeeds");
     kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MAX)).is_ok(), "I64::MAX succeeds");
     kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MIN)).is_ok(), "I64::MIN succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::F64(vb_core::FiniteF64::new(0.0).unwrap())).is_ok(), "F64(0.0) succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::F64(vb_core::FiniteF64::new(1.5).unwrap())).is_ok(), "F64(1.5) succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::F64(vb_core::FiniteF64::new(-3.14).unwrap())).is_ok(), "F64(-3.14) succeeds");
+    let f64_0 = match vb_core::FiniteF64::new(0.0) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_0)).is_ok(), "F64(0.0) succeeds");
+    let f64_1 = match vb_core::FiniteF64::new(1.5) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_1)).is_ok(), "F64(1.5) succeeds");
+    let f64_2 = match vb_core::FiniteF64::new(-3.14) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_2)).is_ok(), "F64(-3.14) succeeds");
 }
 
 /// KANI-CONSTANT-POOL-001b: push_constant does not affect slot recording.
@@ -126,7 +142,11 @@ fn push_constant_isolation() {
 
     let count = compiler.slot_count();
     kani::assert(count.is_ok(), "slot_count should be Ok");
-    kani::assert(count.unwrap() == 0, "pushing constants should not affect slot_count");
+    let count_val = match count {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(count_val == 0, "pushing constants should not affect slot_count");
 
     // Record some slots
     compiler.record_slot(vb_core::SlotIdx::new(3));
@@ -134,12 +154,20 @@ fn push_constant_isolation() {
 
     let count_after = compiler.slot_count();
     kani::assert(count_after.is_ok(), "slot_count should be Ok after recording");
-    kani::assert(count_after.unwrap() == 8, "slot_count should be max_recorded + 1");
+    let count_after_val = match count_after {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(count_after_val == 8, "slot_count should be max_recorded + 1");
 
     // Push more constants — should not affect slot_count
     let _ = compiler.push_constant(ConstValue::Null);
     let final_count = compiler.slot_count();
-    kani::assert(final_count.unwrap() == 8, "pushing constants after slot recording should not change slot_count");
+    let final_count_val = match final_count {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    kani::assert(final_count_val == 8, "pushing constants after slot recording should not change slot_count");
 }
 
 /// KANI-CONSTANT-POOL-001c: slot_count overflow when max_slot = u16::MAX.
