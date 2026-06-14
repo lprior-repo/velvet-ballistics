@@ -81,9 +81,12 @@ fn verify_replay_deterministic_for_same_input() {
     {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false);
+            kani::assume(false, "write slot a failed");
             return;
         }
+    };
+
+    let mut store_a = ValueStore::new();
     }
     let mut store_a = ValueStore::new();
     let result_a = replay_step(node, &mut run_a, &mut store_a, &plan);
