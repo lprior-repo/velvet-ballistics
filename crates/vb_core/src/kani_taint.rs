@@ -77,7 +77,10 @@ fn read_taint_no_panic() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let mut frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let init_result = frame.write_slot(slot, SlotValue::Null);
     kani::assume(init_result.is_ok());
@@ -100,7 +103,10 @@ fn write_taint_no_panic() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let mut frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let init_result = frame.write_slot(slot, SlotValue::Null);
     kani::assume(init_result.is_ok());

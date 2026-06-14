@@ -75,7 +75,10 @@ fn kani_write_slot_out_of_bounds() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let mut frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = frame.write_slot(slot, SlotValue::Null);
     kani::assert(result.is_err(), "write_slot with OOB idx returns Err");
@@ -94,7 +97,10 @@ fn kani_read_slot_out_of_bounds() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let frame = frame.unwrap();
+    let frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = frame.read_slot(slot);
     kani::assert(result.is_err(), "read_slot with OOB idx returns Err");
@@ -110,7 +116,10 @@ fn kani_multiple_slots_sequential() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let mut frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     for i in 0..slot_count {
         let slot = SlotIdx::new(i);

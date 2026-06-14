@@ -10,7 +10,7 @@ use vstd::prelude::*;
 
 verus! {
 
-    use vstd::{prelude::*, set::Set, map::Map};
+    use vstd::prelude::*;
 
     // ============================================================================
     // Spec: propagate_action_taint — mathematical model of taint propagation

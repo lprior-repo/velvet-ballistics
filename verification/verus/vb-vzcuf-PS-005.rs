@@ -23,6 +23,29 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file's spec models are bound to production via:
+//
+//   (a) `encoded_length_exec` — a Verus-verified exec fn that computes
+//       `RECORD_HEADER_LEN + payload_len` and proves via `ensures` that
+//       the result matches `encoded_length`.  The constants values are
+//       hardcoded to match production (RECORD_HEADER_LEN = 60,
+//       MAX_JOURNAL_EVENT_PAYLOAD_BYTES = 1_048_576 from constants.rs).
+//
+//   (b) Kani POB-vb-vzcuf-018 (`kani_vb_vzcuf_ps005.rs`) — tests the
+//       actual production `encode_record` function's output length and
+//       verifies it matches the header+payload structure.
+//
+// TRUSTED BOUNDARY:
+//   Production constants (RECORD_HEADER_LEN, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)
+//   are duplicated here and in constants.rs.  The Kani proof tests the
+//   actual production constants directly.  A CI gate (not yet implemented)
+//   should assert Verus-spec constant == production constant.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps005.rs
+
 /// Production constant: RECORD_HEADER_LEN from crates/vb_storage/src/constants.rs:46
 pub open spec fn record_header_len() -> u64 {
     60u64
@@ -105,6 +128,29 @@ pub proof fn lemma_encoded_monotonic(a: u32, b: u32)
     assert(record_header_len() as int + a as int <= record_header_len() as int + b as int)
         by (nonlinear_arith)
         requires a <= b;
+}
+
+// =============================================================================
+// Exec bridge — Verus-verified implementation matching the spec.
+// =============================================================================
+
+/// Exec bridge: computes `RECORD_HEADER_LEN + payload_len` using safe u64 addition.
+///
+/// PRODUCTION BINDING:
+///   Matches `encode_record`'s `Vec<u8>.len()` which always equals
+///   `RECORD_HEADER_LEN + postcard::to_allocvec(&payload).len()`.
+///   The exec fn uses `u64::checked_add` to match production's overflow-safe
+///   accounting; at max payload (1_048_576) the result (1_048_636) fits
+///   comfortably in u64.
+pub exec fn encoded_length_exec(payload_len: u32) -> (result: u64)
+    ensures
+        result == encoded_length(payload_len) as u64,
+{
+    match (record_header_len() as u64).checked_add(payload_len as u64) {
+        Some(v) => v,
+        // Overflow cannot happen: max payload 1_048_576 + 60 << u64::MAX
+        None => u64::MAX,
+    }
 }
 
 } // verus!

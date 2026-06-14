@@ -175,16 +175,22 @@ fn prove_canonical_policy_digest_agree_on_identity() {
 }
 
 /// PO-K14 H2: Verify that the encoding function distinguishes DEFAULT from
-/// a contract with a single extreme-value field change.
+/// a contract with bounded nondeterministic field changes.
 #[kani::proof]
 #[kani::unwind(10)]
 fn prove_encoding_differentiates_default_from_modified() {
     let contract_a = ResourceContract::DEFAULT;
 
     let mut contract_b = ResourceContract::DEFAULT;
-    contract_b.max_steps = 50;
+    let max_steps: u16 = kani::any();
+    kani::assume(max_steps > 0 && max_steps < 10_000);
+    kani::assume(max_steps != contract_a.max_steps);
+    contract_b.max_steps = max_steps;
     contract_b.allows_secret_results = true;
-    contract_b.max_step_budget_per_tick = 1;
+    let budget: u64 = kani::any();
+    kani::assume(budget > 0 && budget <= 16);
+    kani::assume(budget != contract_a.max_step_budget_per_tick);
+    contract_b.max_step_budget_per_tick = budget;
 
     assert_ne!(contract_a, contract_b, "Contracts must differ");
 

@@ -18,6 +18,12 @@
 use vb_core::contract_encoding::encode_contract_bytes;
 use vb_core::workflow::ResourceContract;
 
+// YAML source can't be symbolic (kani::any) because the YAML parser
+// (saphyr/vb_yaml) requires concrete string inputs. Coverage beyond the
+// representative single-step Set workflow is provided by:
+// - proptest: proptest_finish_digest, proptest_choose_lowering,
+//   proptest_together_errors
+// - fuzz: fuzz/fuzz_targets/compile_source.rs
 fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: entry_point_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {
@@ -30,30 +36,14 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 ///
 /// This harness calls the actual production compile_source with a non-DEFAULT
 /// contract and verifies the resulting CompiledWorkflow carries the correct contract.
+///
+/// Uses kani::any::<ResourceContract>() for bounded nondeterministic input
+/// and constrains it to be different from DEFAULT (the proof requires inequality).
 #[kani::proof]
 #[kani::unwind(3)]
 fn prove_contract_survives_compilation() {
-    // Create a non-DEFAULT contract that is clearly distinguishable
-    let contract = ResourceContract {
-        max_steps: 50,
-        max_slots: 32,
-        max_constants: 16,
-        max_accessors: 16,
-        max_expressions: 16,
-        max_expr_stack: 8,
-        max_step_budget_per_tick: 16,
-        max_transitions_per_tick: 16,
-        max_input_bytes: 256,
-        max_output_bytes: 256,
-        max_blob_bytes: 16,
-        max_ipc_payload_bytes: 256,
-        max_retry_attempts: 3,
-        max_fanout: 8,
-        max_collect_items: 32,
-        max_queue_depth: 32,
-        max_journal_batch_bytes: 256,
-        allows_secret_results: true,
-    };
+    let contract: ResourceContract = kani::any();
+    kani::assume(contract != ResourceContract::DEFAULT);
 
     // Verify it's actually different from DEFAULT
     let default = ResourceContract::DEFAULT;

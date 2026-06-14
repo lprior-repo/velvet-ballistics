@@ -50,9 +50,16 @@ fn check_action_registry_panic_free() {
     assert!(reg_result.is_ok(), "First registration must succeed");
 
     // Register duplicate ID — must return error, not panic.
+    let different_name = match ActionName::new("different_action") {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
     let contract2 = ActionContract {
         id: ActionId::new(id),
-        name: ActionName::new("different_action").unwrap(),
+        name: different_name,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 4096,
@@ -91,9 +98,16 @@ fn check_action_registry_resolve_by_name_panic_free() {
     let id: u64 = kani::any();
     kani::assume(id < 65535u64);
 
+    let resolve_name = match ActionName::new("resolve_test") {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
     let contract = ActionContract {
         id: ActionId::new(id),
-        name: ActionName::new("resolve_test").unwrap(),
+        name: resolve_name.clone(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 4096,
@@ -108,10 +122,17 @@ fn check_action_registry_resolve_by_name_panic_free() {
     registry.register(contract).ok();
 
     // Resolve by the registered name — must not panic.
-    let _resolved = registry.resolve_by_name(&ActionName::new("resolve_test").unwrap());
+    let _resolved = registry.resolve_by_name(&resolve_name);
 
     // Resolve by unregistered name — must not panic (returns error).
-    let _unresolved = registry.resolve_by_name(&ActionName::new("nonexistent").unwrap());
+    let nonexistent_name = match ActionName::new("nonexistent") {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
+    let _unresolved = registry.resolve_by_name(&nonexistent_name);
 }
 
 // ─── OBL-013: Serialization round-trip (7 fields, pre-MockMarker) ───────────────
