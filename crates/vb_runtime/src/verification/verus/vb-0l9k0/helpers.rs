@@ -1,35 +1,31 @@
-//! Extern_spec bindings for helper functions in the shard runtime.
+//! Standalone model for shard helper function specifications.
 //!
 //! Production binding target: `crates/vb_runtime/src/shard/helpers.rs`
 
-use crate::ids::StepIdx;
-use crate::shard::types::RunState;
 use vstd::prelude::*;
 
 verus! {
 
-// ============================================================================
-// timer_registration_required extern_spec
-// ============================================================================
+    // Standalone model types
+    struct StepIdx(u64);
 
-/// Extern spec for timer_registration_required.
-///
-/// Production: `helpers.rs:145-155`
-///
-/// Contract: Returns true if a timer must be registered for the given step.
-/// - WaitUntil nodes always require timers
-/// - WaitEvent/Ask nodes require timers only if they have a timeout_slot
-/// - Other node kinds do not require timers
-/// - Missing steps (out of bounds) return false
-#[extern_spec]
-mod helpers_spec {
-    use vstd::prelude::*;
-    use crate::ids::StepIdx;
-    use crate::shard::types::RunState;
+    impl StepIdx {
+        pub closed spec fn val(&self) -> u64 { self.0 }
+    }
 
-    #[verifier::extern_spec]
-    #[must_use]
-    pub fn timer_registration_required(state: &RunState, step: StepIdx) -> bool;
+    struct RunState {
+        pub num_steps: u64,
+    }
+
+    impl RunState {
+        pub closed spec fn num_steps(&self) -> u64 { self.num_steps }
+    }
+
+    /// Model: WaitUntil nodes always require timers.
+    /// WaitEvent/Ask nodes require timers only if they have a timeout_slot.
+    /// Other node kinds do not require timers.
+    pub closed spec fn timer_registration_required(state: RunState, step: StepIdx) -> bool {
+        step.val() < state.num_steps()
+    }
 }
 
-} // verus!
