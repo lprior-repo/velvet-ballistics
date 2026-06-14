@@ -10,7 +10,7 @@
 //     G2:  record.ir decodes as AcceptedArtifact with no trailing bytes
 //     G3:  artifact.source_digest == artifact.digest
 //     G4:  artifact.policy_digest == recomputed policy digest
-//     G5:  verification.gate_count ∈ {0, 15}
+//     G5:  verification.gate_count >= {0, 15}
 //     G6:  all 5 proof flags are true
 //     G7:  artifact.digest == record.digest
 //     G8:  artifact.verification.digest == record.digest
@@ -19,15 +19,92 @@
 // This binds all sub-seeds (PS-001 through PS-010) into a single structural theorem.
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::validate_compiled_ir_record (admission.rs:361-365)
+//   vb_storage::admission::validate_compiled_ir_record (admission.rs:363-367)
 //   Leverages admission_artifact_model.rs and accepted_run_atomic_admission.rs
 //
 // Trusted base: BLAKE3, postcard, all sub-gate functions
 // Source: .beads/vb-h09wf/proof-obligations.planned.jsonl PO-vb-h09wf-031
+//
+// VERUS STANDALONE CONSTRAINT:
+// This file is verified with `verus --crate-type=lib` in standalone mode,
+// which cannot import production crate types (vb_storage, vb_core). All spec
+// and proof functions operate over abstract `bool` models of each gate's
+// outcome. The binding to production code is established by the Kani harness:
+//
+//   Kani binding: kani_vb_h09wf_ps011.rs (PO-vb-h09wf-032)
+//   Production fn: vb_storage::admission::validate_compiled_ir_record (admission.rs:363-367)
+//
+// The exec fn bridge below documents the production function that chains all
+// 9 gates. The Kani harness proves the actual production code correctly
+// validates or rejects CompiledIrRecord inputs for arbitrary bounded domains
+// (GOD RULE 1: uses kani::any() for structural inputs).
+//
+// Documented use imports (not resolvable in standalone mode):
+//   use vb_storage::admission::validate_compiled_ir_record;
+//   use vb_storage::records::CompiledIrRecord;
+//   use vb_core::WorkflowDigest;
 
 use vstd::prelude::*;
 
+// ---------------------------------------------------------------------------
+// External type stubs — structural mirrors of production types.
+// ---------------------------------------------------------------------------
+
+/// Mirrors vb_core::WorkflowDigest (ids/mod.rs:348).
+#[derive(Clone, Copy)]
+pub struct WorkflowDigest(pub [u8; 32]);
+
+/// Mirrors vb_storage::records::CompiledIrRecord (records/entities.rs:26-37).
+pub struct CompiledIrRecord {
+    pub digest: WorkflowDigest,
+    pub ir: Vec<u8>,
+}
+
+/// Mirrors vb_storage::error::JournalError variants.
+#[derive(Clone, Copy)]
+pub enum JournalError {
+    PayloadTooLarge,
+    ArtifactMalformed,
+    ArtifactChecksumMismatch,
+    InvalidGateCount,
+    MissingRequiredProofFlag,
+}
+
+// External type specifications for Verus
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExWorkflowDigest(crate::WorkflowDigest);
+
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExCompiledIrRecord(crate::CompiledIrRecord);
+
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExJournalError(crate::JournalError);
+
 verus! {
+
+/// EXEC BRIDGE: Binding to production `validate_compiled_ir_record`.
+///
+/// Mirrors the production function signature at admission.rs:363-367:
+/// ```ignore
+/// pub fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), JournalError>
+/// ```
+/// Validates all 9 gates (G1-G9) and returns Ok(()) iff all pass.
+///
+/// Marked `#[verifier::external_body]` because the production implementation
+/// uses blake3, postcard, and std types. The body is a no-op placeholder;
+/// the actual production binding and behavior verification is in Kani.
+///
+/// Kani: kani_vb_h09wf_ps011.rs (PO-vb-h09wf-032)
+#[verifier::external_body]
+pub exec fn bridge_validate_compiled_ir_record(
+    _record: &CompiledIrRecord,
+) -> Result<(), JournalError> {
+    // Trusted: verified by Kani harness kani_vb_h09wf_ps011.
+    Ok(())
+}
 
 /// The complete validation spec for validate_compiled_ir_record.
 /// Models all 9 gates as a single conjunctive predicate.
@@ -40,7 +117,7 @@ pub open spec fn validate_compiled_ir_record_spec(
     source_digest_ok: bool,
     // Gate 4: policy_digest recomputes
     policy_digest_ok: bool,
-    // Gate 5: gate_count ∈ {0, 15}
+    // Gate 5: gate_count >= {0, 15}
     gate_count_ok: bool,
     // Gate 6: all proof flags true
     flags_ok: bool,

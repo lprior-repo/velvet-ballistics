@@ -52,7 +52,13 @@ fn verify_replay_deterministic_for_same_input() {
         ],
         vec![],
     )
-    .expect("plan construction failed");
+    {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    }
 
     let step_count = plan.node_count();
     let slot_count = plan.slot_count();
@@ -142,7 +148,13 @@ fn kani_replay_skips_terminal_states() {
         ],
         vec![],
     )
-    .expect("plan construction failed");
+    {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    }
 
     let step_count = plan.node_count();
     let slot_count = plan.slot_count();

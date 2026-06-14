@@ -47,7 +47,7 @@ verus! {
     ///
     /// Binding: the production `propagate_action_taint` satisfies this
     /// because each arm is either identity or a join operation.
-    pub proof fn proof_propagate_action_taint_idempotent(
+    proof fn proof_propagate_action_taint_idempotent(
         idempotency: u8, input_taint: u8
     )
         ensures spec_propagate_action_taint(idempotency, spec_propagate_action_taint(idempotency, input_taint)) == spec_propagate_action_taint(idempotency, input_taint)
@@ -61,7 +61,7 @@ verus! {
 
     /// OBL-009 (part 2): For DeterministicPure/idempotent-external,
     /// taint passes through unchanged (identity behavior).
-    pub proof fn proof_propagate_action_taint_identity_pure(
+    proof fn proof_propagate_action_taint_identity_pure(
         input_taint: u8
     )
         ensures spec_propagate_action_taint(0, input_taint) == input_taint             && spec_propagate_action_taint(1, input_taint) == input_taint
@@ -73,7 +73,7 @@ verus! {
 
     /// OBL-009 (part 3): AtLeastOnceExternal escalates Secret
     /// to DerivedFromSecret but leaves Clean unchanged.
-    pub proof fn proof_propagate_action_taint_at_least_once(
+    proof fn proof_propagate_action_taint_at_least_once(
         input_taint: u8
     )
         && spec_propagate_action_taint(2, 1) == 2
@@ -87,7 +87,7 @@ verus! {
 
     /// OBL-009 (part 4): propagation never produces an unknown taint
     /// when given known inputs (Clean=0, Secret=1, DerivedFromSecret=2).
-    pub proof fn proof_propagate_action_taint_known_inputs(
+    proof fn proof_propagate_action_taint_known_inputs(
         idempotency: u8, input_taint: u8
     )
         ensures input_taint <= 2 ==> spec_propagate_action_taint(idempotency, input_taint) <= 2
@@ -135,7 +135,7 @@ verus! {
     ///
     /// This ensures the polynomial has meaningful mixing — not identity
     /// or zero multiplication, which would produce degenerate keys.
-    pub proof fn proof_hash_constants_non_trivial()
+    proof fn proof_hash_constants_non_trivial()
         && 0x3b4f1a5b6c2d8e7f_u128 > 1
         ensures 0x6c62272e07bb0143_u128 > 1 && 0x5bd1e9956c7b4d3a_u128 > 1
     {
@@ -146,7 +146,7 @@ verus! {
 
     /// OBL-010 (part 2): The spec function is a well-defined mapping from
     /// (u128, u128, u128) to u128 — same inputs always produce the same output.
-    pub proof fn proof_key_function_well_defined(
+    proof fn proof_key_function_well_defined(
         run: u128, seq: u128, action: u128
     )
         ensures spec_compute_action_idempotency_key(run, seq, action) == spec_compute_action_idempotency_key(run, seq, action)
@@ -160,7 +160,7 @@ verus! {
     /// OBL-010 (part 3): If two different (run, seq, action) tuples produce
     /// the same key, the key is still valid — the hash is not required to be
     /// injective, only deterministic.
-    pub proof fn proof_key_uniqueness_not_required(
+    proof fn proof_key_uniqueness_not_required(
         run1: u128, seq1: u128, action1: u128,
         run2: u128, seq2: u128, action2: u128
     )
@@ -179,7 +179,7 @@ verus! {
 
     /// OBL-010 (part 4): The key is always a valid u128 (no overflow panics
     /// since wrapping arithmetic is used).
-    pub proof fn proof_key_always_valid_u128(
+    proof fn proof_key_always_valid_u128(
         run: u128, seq: u128, action: u128
     )
         && spec_compute_action_idempotency_key(run, seq, action) <= u128::MAX
@@ -223,7 +223,7 @@ verus! {
     ///
     /// Each field of the constructed ticket equals its corresponding argument.
     /// This is verified for every field individually.
-    pub proof fn proof_issue_action_ticket_field_preservation(
+    proof fn proof_issue_action_ticket_field_preservation(
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     )
@@ -263,7 +263,7 @@ verus! {
 
     /// Proof: The key computed from (run, seq, action) matches the key
     /// that issue_action_ticket would store, so the ticket is always valid.
-    pub proof fn proof_ticket_key_consistency(
+    proof fn proof_ticket_key_consistency(
         run: u64, seq: u64, action: u64,
     )
             run, seq, action,
@@ -287,7 +287,7 @@ verus! {
     ///
     /// The theorem proves that steps 1 and 2 are consistent: a ticket
     /// constructed with the computed key will always pass validation.
-    pub proof fn theorem_cross_crate_derivation_soundness(
+    proof fn theorem_cross_crate_derivation_soundness(
         run: u64, seq: u64, action: u64,
     )
             // The key computed by the hash function matches what the ticket stores.

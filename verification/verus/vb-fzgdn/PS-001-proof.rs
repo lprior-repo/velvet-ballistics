@@ -14,8 +14,7 @@
 //!
 //! Trusted boundary: `#[verifier::external_body]` defers to the production
 //! implementation via the ensures contract. Kani cross-reference at
-//! `verification/kani/vb-fzgdn/PS-001-harness.rs` for bounded model-checking
-//! of the same code path.
+//! `verification/kani/vb-fzgdn/PS-001-harness.rs`.
 
 use vstd::prelude::*;
 
@@ -72,8 +71,8 @@ pub closed spec fn checked_increment_spec_inline(gen: u64) -> Option<u64> {
 /// This exactly matches `checked_increment_spec_inline`.
 ///
 /// Trust boundary: `#[verifier::external_body]` — Verus trusts the ensures
-/// clause. Cross-reference Kani harness at
-/// `verification/kani/vb-fzgdn/PS-001-harness.rs` for bounded model-checking.
+/// clause. Kani cross-reference at
+/// `verification/kani/vb-fzgdn/PS-001-harness.rs`.
 #[verifier::external_body]
 pub exec fn checked_increment_exec(gen: u64) -> (result: Option<u64>)
     ensures
@@ -116,13 +115,14 @@ proof fn test_checked_add_at_max()
 proof fn test_increment_monotonic()
     ensures
         forall |g: TimerGeneration|
-            if g.checked_increment_spec().is_Some() {
-                g.checked_increment_spec().get_Some_0().value > g.value
-            },
+            g.checked_increment_spec().is_Some() ==>
+                g.checked_increment_spec().get_Some_0().value > g.value,
 {
     assert forall |g: TimerGeneration|
         if g.checked_increment_spec().is_Some() {
             g.checked_increment_spec().get_Some_0().value > g.value
+        } else {
+            true
         } by {
         if g.checked_increment_spec().is_Some() {
             let next = g.checked_increment_spec().get_Some_0();
@@ -133,7 +133,7 @@ proof fn test_increment_monotonic()
 }
 
 /// Theorem: production-bound exec fn contract matches spec for all inputs.
-pub proof fn theorem_checked_increment_exec_matches_spec()
+pub proof fn theorem_production_contract_holds()
     ensures
         forall |gen: u64|
             checked_increment_spec_inline(gen) ==
