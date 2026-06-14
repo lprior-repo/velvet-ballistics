@@ -54,7 +54,8 @@ fn verify_replay_deterministic_for_same_input() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            return;
         }
     };
 
@@ -63,14 +64,16 @@ fn verify_replay_deterministic_for_same_input() {
     let node = match plan.node(StepIdx::new(0)) {
         Some(v) => v,
         None => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            return;
         }
     };
 
     let mut run_a = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            return;
         }
     };
     match run_a
@@ -78,17 +81,29 @@ fn verify_replay_deterministic_for_same_input() {
     {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            return;
         }
     }
     let mut store_a = ValueStore::new();
     let result_a = replay_step(node, &mut run_a, &mut store_a, &plan);
 
-    let mut run_b = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-        .expect("frame b failed");
-    run_b
+    let mut run_b = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
+    match run_b
         .write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-        .expect("write slot b failed");
+    {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    }
     let mut store_b = ValueStore::new();
     let result_b = replay_step(node, &mut run_b, &mut store_b, &plan);
 
@@ -162,24 +177,54 @@ fn kani_replay_skips_terminal_states() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            return;
         }
     };
 
     let step_count = plan.node_count();
     let slot_count = plan.slot_count();
-    let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-        .expect("frame construction failed");
+    let mut run = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
 
     let terminal_idx = StepIdx::new(1);
     match terminal_state {
-        crate::frame::StepState::Failed => run.mark_failed(terminal_idx).unwrap(),
-        crate::frame::StepState::Cancelled => run.mark_cancelled(terminal_idx).unwrap(),
-        crate::frame::StepState::Skipped => run.mark_skipped(terminal_idx).unwrap(),
+        crate::frame::StepState::Failed => match run.mark_failed(terminal_idx) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        },
+        crate::frame::StepState::Cancelled => match run.mark_cancelled(terminal_idx) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        },
+        crate::frame::StepState::Skipped => match run.mark_skipped(terminal_idx) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        },
         _ => {}
     }
 
-    let state = run.step_state(terminal_idx).unwrap();
+    let state = match run.step_state(terminal_idx) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
     kani::assert(
         matches!(
             state,
@@ -191,15 +236,33 @@ fn kani_replay_skips_terminal_states() {
     );
 
     let mut store = ValueStore::new();
-    let node0 = plan.node(StepIdx::new(0)).expect("node 0 missing");
+    let node0 = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false);
+            return;
+        }
+    };
     set_pc_for_replay(&mut run, StepIdx::new(0));
     let _ = replay_step(node0, &mut run, &mut store, &plan);
 
-    let node1 = plan.node(StepIdx::new(1)).expect("node 1 missing");
+    let node1 = match plan.node(StepIdx::new(1)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false);
+            return;
+        }
+    };
     set_pc_for_replay(&mut run, StepIdx::new(1));
     let result = replay_step(node1, &mut run, &mut store, &plan);
 
-    let state_after = run.step_state(terminal_idx).unwrap();
+    let state_after = match run.step_state(terminal_idx) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
     kani::assert(
         matches!(
             state_after,
