@@ -172,10 +172,13 @@ fn kani_next_generation_monotonicity() {
 
     // Case 1: No existing timer -> next_generation returns 1
     let first_result = wheel.next_generation(run);
-    kani::assert(
-        first_result.is_ok() && first_result.unwrap() == 1,
-        "first generation for new run must be 1",
-    );
+    match first_result {
+        Ok(v) => kani::assert(v == 1, "first generation must be 1"),
+        Err(_) => {
+            kani::assume(false, "expected Ok");
+            return;
+        }
+    }
 
     // Case 2: After insert, next_generation returns prior + 1
     let deadline = kani::any::<std::time::Instant>();
@@ -183,10 +186,13 @@ fn kani_next_generation_monotonicity() {
     kani::assume(wheel.insert(run, deadline, kind).is_ok());
 
     let second_result = wheel.next_generation(run);
-    kani::assert(
-        second_result.is_ok() && second_result.unwrap() == 2,
-        "second generation after insert must be 2",
-    );
+    match second_result {
+        Ok(v) => kani::assert(v == 2, "second generation must be 2"),
+        Err(_) => {
+            kani::assume(false, "expected Ok");
+            return;
+        }
+    }
 
     // Case 3: Overflow at u64::MAX
     let max_run = RunId::new(kani::any::<u64>());

@@ -142,4 +142,23 @@ pub proof fn lemma_default_bridge_valid()
 {
 }
 
+// =============================================================================
+// Exec bridge — Verus-verified implementation matching the spec.
+// =============================================================================
+
+/// Exec bridge: compares core policy and storage default values.
+///
+/// PRODUCTION BINDING:
+///   Both `DEFAULT_JOURNAL_BATCH_BYTE_LIMIT` (batch.rs:35) and
+///   `core_max_journal_batch_bytes()` share the same default 1_048_576.
+///   This exec fn verifies that the bridge alignment check is decidable
+///   via simple u64 comparison.  Production must ensure both values stay
+///   in sync (C8).
+pub exec fn bridge_check_exec() -> (aligned: bool)
+    ensures
+        aligned == bridge_aligned(),
+{
+    core_max_journal_batch_bytes() == storage_default_limit()
+}
+
 } // verus!

@@ -26,6 +26,30 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file models the guard ordering in `JournalWriteBatch::append_event`.
+// The actual production function lives in vb_storage (non-Verus crate).
+//
+// Binding is via:
+//
+//   (a) `verify_guard_order` — a `#[verifier::external_body]` exec fn
+//       that documents the guard precedence contract the production
+//       `append_event` must satisfy.
+//
+//   (b) Kani POB-vb-vzcuf-030 (`kani_vb_vzcuf_ps008.rs`) — tests the
+//       actual production guard ordering by calling `append_event` with
+//       inputs designed to trigger specific guards and verifying which
+//       error variant is returned.
+//
+// TRUSTED BOUNDARY:
+//   The guard order is an implementation invariant of append_event in
+//   non-Verus code.  Verus models the abstract order; Kani verifies the
+//   production code enforces it.  Cross-verifier belt for C6.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps008.rs
+
 /// Guard stages in append_event execution order.
 /// PRODUCTION BINDING: matches the guard order at batch.rs:210-228.
 pub enum Guard {
