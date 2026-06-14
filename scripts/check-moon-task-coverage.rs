@@ -142,6 +142,20 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ("fuzz minimization", &["fuzz-minimization"]),
 ];
 
+const PRODUCTION_BOUND_KANI_TOOLS: &[(&str, &[&str])] = &[
+    ("Kani verify (production-bound, vb_core)", &["verify-kani"]),
+    (
+        "Kani verify (production-bound, vb_validate)",
+        &["verify-kani-vb-validate"],
+    ),
+    (
+        "Kani verify (production-bound, vb_compile)",
+        &["verify-kani-vb-compile"],
+    ),
+];
+
+const MODEL_ONLY_KANI_TASK: &str = "kani-model-smoke-shard-command-queue-standin";
+
 struct AuditSummary {
     defined: BTreeSet<String>,
     yml_file_count: usize,
@@ -213,9 +227,12 @@ fn task_name(line: &str) -> Option<&str> {
     Some(name)
 }
 
-fn collect_gaps(defined: &BTreeSet<String>) -> Vec<String> {
+fn collect_gaps_for_tools(
+    defined: &BTreeSet<String>,
+    required_tools: &[(&str, &[&str])],
+) -> Vec<String> {
     let mut gaps: Vec<String> = Vec::new();
-    for (tool, candidates) in MANDATORY_TOOLS {
+    for (tool, candidates) in required_tools {
         if !candidates
             .iter()
             .any(|candidate| defined.contains(*candidate))
@@ -224,6 +241,10 @@ fn collect_gaps(defined: &BTreeSet<String>) -> Vec<String> {
         }
     }
     gaps
+}
+
+fn collect_gaps(defined: &BTreeSet<String>) -> Vec<String> {
+    collect_gaps_for_tools(defined, MANDATORY_TOOLS)
 }
 
 fn audit_moon_dir(moon_dir: &Path) -> Result<AuditSummary, String> {
@@ -296,15 +317,44 @@ fn write_fixture_tasks(moon_tasks_dir: &Path, task_names: &BTreeSet<String>) -> 
     fs::write(moon_tasks_dir.join("all.yml"), content).map_err(|e| format!("write all.yml: {e}"))
 }
 
-fn required_task_names() -> Result<BTreeSet<String>, String> {
+fn required_task_names_for_tools(
+    required_tools: &[(&str, &[&str])],
+) -> Result<BTreeSet<String>, String> {
     let mut task_names = BTreeSet::new();
-    for (tool, candidates) in MANDATORY_TOOLS {
+    for (tool, candidates) in required_tools {
         let Some(candidate) = candidates.first() else {
             return Err(format!("tool {tool} is missing candidate task IDs"));
         };
         task_names.insert((*candidate).to_string());
     }
     Ok(task_names)
+}
+
+fn required_task_names() -> Result<BTreeSet<String>, String> {
+    required_task_names_for_tools(MANDATORY_TOOLS)
+}
+
+fn assert_required_tool_candidates_present(
+    actual_tools: &[(&str, &[&str])],
+    expected_tools: &[(&str, &[&str])],
+) -> Result<(), String> {
+    for (expected_tool, expected_candidates) in expected_tools {
+        let Some((_, actual_candidates)) = actual_tools
+            .iter()
+            .find(|(actual_tool, _)| actual_tool == expected_tool)
+        else {
+            return Err(format!(
+                "missing mandatory tool entry: {expected_tool}"
+            ));
+        };
+        if actual_candidates != expected_candidates {
+            return Err(format!(
+                "mandatory tool entry drifted for {expected_tool}: expected {:?}, got {:?}",
+                expected_candidates, actual_candidates
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn run_self_test() -> Result<u8, String> {
@@ -316,6 +366,8 @@ fn run_self_test() -> Result<u8, String> {
     let cleanup = || {
         let _ = fs::remove_dir_all(&temp);
     };
+
+    assert_required_tool_candidates_present(MANDATORY_TOOLS, PRODUCTION_BOUND_KANI_TOOLS)?;
 
     let expected = required_task_names()?;
     write_fixture_tasks(&moon_tasks_dir, &expected)?;
@@ -355,6 +407,48 @@ fn run_self_test() -> Result<u8, String> {
         );
         cleanup();
         return Ok(1);
+    }
+
+    let expected_production_kani = required_task_names_for_tools(PRODUCTION_BOUND_KANI_TOOLS)?;
+    write_fixture_tasks(&moon_tasks_dir, &expected_production_kani)?;
+
+    let production_kani_defined = collect_defined_tasks(&temp.join(".moon"))?;
+    let production_kani_gaps =
+        collect_gaps_for_tools(&production_kani_defined, PRODUCTION_BOUND_KANI_TOOLS);
+    if !production_kani_gaps.is_empty() {
+        println!(
+            "KaniFixtureFail: unexpected production-bound Kani gaps {:?}",
+            production_kani_gaps
+        );
+        cleanup();
+        return Ok(1);
+    }
+
+    let mut model_only_tasks = BTreeSet::new();
+    model_only_tasks.insert(MODEL_ONLY_KANI_TASK.to_string());
+    write_fixture_tasks(&moon_tasks_dir, &model_only_tasks)?;
+
+    let model_only_defined = collect_defined_tasks(&temp.join(".moon"))?;
+    let model_only_gaps = collect_gaps_for_tools(&model_only_defined, PRODUCTION_BOUND_KANI_TOOLS);
+    if model_only_gaps.len() != PRODUCTION_BOUND_KANI_TOOLS.len() {
+        println!(
+            "KaniModelOnlyFail: expected {} production-bound Kani gaps, got {} -> {:?}",
+            PRODUCTION_BOUND_KANI_TOOLS.len(),
+            model_only_gaps.len(),
+            model_only_gaps
+        );
+        cleanup();
+        return Ok(1);
+    }
+    for (tool, _) in PRODUCTION_BOUND_KANI_TOOLS {
+        if !model_only_gaps.iter().any(|gap| gap.contains(tool)) {
+            println!(
+                "KaniModelOnlyFail: missing required production-bound gap for {tool}: {:?}",
+                model_only_gaps
+            );
+            cleanup();
+            return Ok(1);
+        }
     }
 
     cleanup();
