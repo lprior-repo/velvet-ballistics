@@ -14,7 +14,7 @@ use crate::journal::append::{
     verification_event_and_index_keys_exist,
 };
 use crate::types::EventSeq;
-use vb_core::{ActionId, ActionTicket, RunId, SeqNo, SlotIdx, StepIdx};
+use vb_core::{ActionId, ActionTicket, MockMarker, RunId, SeqNo, SlotIdx, StepIdx};
 
 #[path = "vb_mrwe6_architecture_binding.rs"]
 mod vb_mrwe6_architecture_binding;
@@ -48,6 +48,7 @@ fn generated_ticket(run: RunId, step: StepIdx, action: ActionId) -> ActionTicket
         attempt: kani::any::<u16>(),
         idempotency_key: kani::any::<u128>(),
         capacity: kani::any::<u16>(),
+        mock: MockMarker::default(),
     }
 }
 

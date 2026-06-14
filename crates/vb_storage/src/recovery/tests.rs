@@ -10,7 +10,7 @@ use crate::recovery::{
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
 use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
-use vb_core::action::{ActionTicket, compute_action_idempotency_key};
+use vb_core::action::{ActionTicket, MockMarker, compute_action_idempotency_key};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
@@ -132,6 +132,7 @@ fn recovery_action_ticket(run: RunId, step: StepIdx, action: ActionId) -> Action
         attempt: 1,
         idempotency_key: compute_action_idempotency_key(run, seq, action),
         capacity: 1,
+        mock: MockMarker::default(),
     }
 }
 
@@ -747,7 +748,10 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
         entry.step == StepIdx::ZERO && entry.state == RecoveredStepState::Succeeded
     }));
     assert!(!seed.unsupported.slot_values);
-    assert!(!seed.unsupported.action_payloads);
+    // Envelope-style events (ActionScheduledTicket, ActionCompletedEnvelope) carry
+    // action payload bodies that the runtime boundary cannot re-attach to a live
+    // frame, so the seed must explicitly flag them as unsupported.
+    assert!(seed.unsupported.action_payloads);
     Ok(())
 }
 
@@ -2805,7 +2809,7 @@ mod hydrate_run_frame_tests {
         hydrate_run_frame_from_events,
     };
     use crate::{DurableActionOutcome, EventSeq, JournalEvent};
-    use vb_core::action::{ActionTicket, compute_action_idempotency_key};
+    use vb_core::action::{ActionTicket, MockMarker, compute_action_idempotency_key};
     use vb_core::value::{SlotValue, Taint};
     use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, StepState, WorkflowDigest};
 
@@ -2839,6 +2843,7 @@ mod hydrate_run_frame_tests {
             attempt: 1,
             idempotency_key: compute_action_idempotency_key(run, seq, action),
             capacity: 1,
+            mock: MockMarker::default(),
         }
     }
 
