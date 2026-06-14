@@ -76,8 +76,7 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "plan construction failed");
-            return;
+            kani::assume(false); loop {}
         }
     };
 
@@ -89,22 +88,19 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "frame construction failed");
-            return;
+            kani::assume(false); loop {}
         }
     };
     match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false, "write slot a failed");
-            return;
+            kani::assume(false); loop {}
         }
     }
     match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false, "write slot b failed");
-            return;
+            kani::assume(false); loop {}
         }
     }
 
@@ -112,8 +108,7 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     let node = match plan.node(StepIdx::new(0)) {
         Some(v) => v,
         None => {
-            kani::assume(false, "node 0 missing");
-            return;
+            kani::assume(false); loop {}
         }
     };
     let _result = replay_step(node, &mut run, &mut store, &plan);
@@ -185,8 +180,7 @@ fn verify_choose_slot_output_in_input_set() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "plan construction failed");
-            return;
+            kani::assume(false); loop {}
         }
     };
 
@@ -198,22 +192,19 @@ fn verify_choose_slot_output_in_input_set() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "frame construction failed");
-            return;
+            kani::assume(false); loop {}
         }
     };
     match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false, "write slot a failed");
-            return;
+            kani::assume(false); loop {}
         }
     }
     match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false, "write slot b failed");
-            return;
+            kani::assume(false); loop {}
         }
     }
 
@@ -221,8 +212,7 @@ fn verify_choose_slot_output_in_input_set() {
     let node = match plan.node(StepIdx::new(0)) {
         Some(v) => v,
         None => {
-            kani::assume(false, "node 0 missing");
-            return;
+            kani::assume(false); loop {}
         }
     };
     let result = replay_step(node, &mut run, &mut store, &plan);
@@ -234,12 +224,10 @@ fn verify_choose_slot_output_in_input_set() {
             assert!(valid);
         }
         Ok(_) => {
-            kani::assume(false, "unexpected action variant");
-            return;
+            kani::assume(false); loop {}
         }
         Err(_) => {
-            kani::assume(false, "unexpected error for input with otherwise");
-            return;
+            kani::assume(false); loop {}
         }
     }
 }
