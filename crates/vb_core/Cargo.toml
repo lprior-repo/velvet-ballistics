@@ -33,6 +33,7 @@ kani-vb-ajc40 = []
 test-util = []
 volatile = []
 vb-rxru0-flux-refinements = []
+vb-rxru0-mock-marker = []
 
 [lints]
 workspace = true

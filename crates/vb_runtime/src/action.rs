@@ -179,7 +179,10 @@ impl Default for ActionRegistry {
 }
 
 /// Generic table-driven dispatch that produces a suspended ticket outcome.
-fn dispatch_generic(input: &ActionInput, contract: &ActionContract) -> ActionResult<ActionOutcome> {
+pub fn dispatch_generic(
+    input: &ActionInput,
+    contract: &ActionContract,
+) -> ActionResult<ActionOutcome> {
     validate_input_bytes(input, contract)?;
     let ticket = ActionTicket {
         run: input.run,

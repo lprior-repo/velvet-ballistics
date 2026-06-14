@@ -51,6 +51,7 @@ vb-mrwe6-flux-refinements = ["dep:flux-rs", "vb_storage/vb-mrwe6-flux-refinement
 vb-egysa-flux-refinements = ["dep:flux-rs"]
 vb-mrwe6-flux-negative-probes = []
 vb-rxru0-flux-refinements = []
+vb-rxru0-mock-marker = []
 
 [lints]
 workspace = true
