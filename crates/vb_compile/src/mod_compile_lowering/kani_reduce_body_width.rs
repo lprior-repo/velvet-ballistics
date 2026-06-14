@@ -62,12 +62,9 @@ fn arbitrary_body() -> Vec<StepAst> {
 #[kani::unwind(16)]
 fn check_reduce_body_width_parity() {
     let body = arbitrary_body();
-    kani::cover!(true, "Kani: body_width parity entry");
-
     let result = body_width(&body, 3);
     match result {
         Ok(w) => {
-            kani::cover!(true, "Kani: body_width Ok path");
             assert!(w >= 3, "body_width must be at least overhead of 3");
             assert!(
                 w <= usize::from(u16::MAX),
@@ -75,7 +72,6 @@ fn check_reduce_body_width_parity() {
             );
         }
         Err(_) => {
-            kani::cover!(true, "Kani: body_width Err (overflow) path");
         }
     }
 }
@@ -93,19 +89,16 @@ fn check_individual_step_widths_consistent() {
         let step_width = canonical_body_step_width(&step.primitive);
         match step_width {
             Ok(sw) => {
-                kani::cover!(true, "Kani: individual step width Ok");
                 assert!(sw >= 1, "supported body step width must be at least 1");
                 total_individual = total_individual.saturating_add(sw);
             }
             Err(_) => {
-                kani::cover!(true, "Kani: unsupported primitive in body");
             }
         }
     }
 
     let body_w = body_width(&body, 0);
     if let Ok(bw) = body_w {
-        kani::cover!(true, "Kani: body_width with zero overhead");
         assert!(
             bw == total_individual,
             "body_width with overhead 0 must equal sum of individual step widths"

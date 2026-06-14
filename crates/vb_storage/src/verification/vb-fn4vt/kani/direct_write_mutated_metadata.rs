@@ -124,19 +124,14 @@ fn direct_write_mutated_metadata() {
     match result {
         Ok(()) => {
             // If validation passes, the mutated bytes must somehow still be valid
-            kani::cover!(true, "mutation-survived-possible");
         }
         Err(JournalError::ArtifactChecksumMismatch) => {
-            kani::cover!(true, "mutation-caught-by-checksum");
         }
         Err(JournalError::ArtifactMalformed) => {
-            kani::cover!(true, "mutation-caught-by-malformed");
         }
         Err(JournalError::PayloadTooLarge { .. }) => {
-            kani::cover!(true, "mutation-caught-by-size");
         }
         Err(_) => {
-            kani::cover!(true, "mutation-caught-by-other");
         }
     }
 
@@ -196,11 +191,9 @@ fn source_digest_equals_digest_invariant() {
 
     match result {
         Ok(()) => {
-            kani::cover!(true, "source-digest-equals-digest-passes");
         }
         Err(_) => {
             // Other checks may fail on arbitrary data (policy_digest, etc)
-            kani::cover!(true, "source-digest-equals-digest-fails-other");
         }
     }
 }

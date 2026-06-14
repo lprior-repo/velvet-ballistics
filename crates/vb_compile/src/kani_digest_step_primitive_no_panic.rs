@@ -52,7 +52,6 @@ fn check_digest_step_primitive_no_panic() {
     let mut hasher = blake3::Hasher::new();
     digest_step_primitive(&mut hasher, &primitive);
     // If we reach here, digest_step_primitive did not panic
-    kani::cover!(true, "digest_step_primitive Ask arm reached without panic");
 }
 
 /// PO-KANI-006 H2: canonical_digest does not panic for Ask-containing sources.

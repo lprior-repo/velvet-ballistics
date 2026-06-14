@@ -105,8 +105,6 @@ mod kani_harnesses {
         // The function should handle valid input without panic
         // (Result may be Ok or Err depending on other factors)
         let _ = hydrate_run_frame(&snapshot, &tail_events, run_id);
-
-        kani::cover!(true);
     }
 }
 

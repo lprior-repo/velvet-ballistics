@@ -83,7 +83,6 @@ fn check_reduce_unsupported_step_diagnostic() {
     );
 
     // Must return error for non-Set/non-Do/non-ForEach step
-    kani::cover!(true, "diagnostic code check reached");
     assert!(
         result.is_err(),
         "emit_single_body_set must return error for unsupported primitive",

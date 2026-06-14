@@ -42,7 +42,6 @@ fn kani_harness_ipc_decode_order() {
         match result {
             Err(IpcError::InvalidMagic { actual }) => {
                 kani::assert(actual == magic, "InvalidMagic contains wrong magic");
-                kani::cover!(true, "InvalidMagic returned for wrong magic");
             }
             Ok(_) => {
                 kani::assert(false, "wrong magic should never return Ok");
@@ -106,7 +105,6 @@ fn kani_harness_ipc_reserved_nonzero_before_payload_len() {
     match result {
         Err(IpcError::ReservedNonZero { actual }) => {
             kani::assert(actual == reserved, "ReservedNonZero contains wrong value");
-            kani::cover!(true, "ReservedNonZero returned");
         }
         Err(IpcError::InvalidMagic { .. }) => {
             // Magic check happens first - both are valid
@@ -149,7 +147,6 @@ fn kani_harness_ipc_magic_before_version() {
     if arbitrary_magic != IPC_MAGIC {
         match result {
             Err(IpcError::InvalidMagic { .. }) => {
-                kani::cover!(true, "InvalidMagic path");
             }
             Ok(_) => {
                 kani::assert(false, "wrong magic should not return Ok");

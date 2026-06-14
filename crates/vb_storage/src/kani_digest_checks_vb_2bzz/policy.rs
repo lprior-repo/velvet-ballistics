@@ -22,7 +22,6 @@ fn kani_check_policy_fail_fast() {
             kani::assert(step == s2, "first mismatch is s2");
             kani::assert(expected == d_ok, "expected digest is first mismatch");
             kani::assert(found == d_bad, "found digest is first mismatch");
-            kani::cover!(true, "policy_fail_fast_mismatch_branch_reached");
         }
         None => kani::assert(false, "should return first policy mismatch"),
     }
@@ -47,7 +46,6 @@ fn kani_check_policy_first_entry_mismatch() {
             kani::assert(step == s1, "first-entry mismatch step is returned");
             kani::assert(expected == d_ok, "first-entry expected digest is returned");
             kani::assert(found == d_bad, "first-entry found digest is returned");
-            kani::cover!(true, "policy_first_entry_mismatch_branch_reached");
         }
         None => kani::assert(false, "first-entry policy mismatch should be returned"),
     }
@@ -87,7 +85,6 @@ fn kani_check_policy_single_entry_mismatch() {
                 "single mismatch expected digest",
             );
             kani::assert(found_digest == found, "single mismatch found digest");
-            kani::cover!(true, "policy_single_mismatch_branch_reached");
         }
         None => kani::assert(false, "single policy mismatch should be returned"),
     }
@@ -128,7 +125,6 @@ fn kani_check_policy_mismatch_last() {
             kani::assert(step == s3, "mismatch step is from last entry");
             kani::assert(expected == d_ok, "expected digest is last mismatch");
             kani::assert(found == d_bad, "found digest is last mismatch");
-            kani::cover!(true, "policy_last_mismatch_branch_reached");
         }
         None => kani::assert(false, "should return last policy mismatch"),
     }

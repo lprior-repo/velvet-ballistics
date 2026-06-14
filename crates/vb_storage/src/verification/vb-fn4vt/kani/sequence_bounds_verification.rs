@@ -140,30 +140,25 @@ fn sequence_bounds_verification() {
     if future_violation {
         // Future sequence must be rejected
         assert!(result.is_err(), "Future accepted_at_seq must be rejected");
-        kani::cover!(true, "future-sequence-rejected");
     } else if window_violation {
         // Too old must be rejected
         assert!(
             result.is_err(),
             "Sequence outside replay window must be rejected"
         );
-        kani::cover!(true, "window-exceeded-rejected");
     } else if zero_violation {
         // Zero seq when current_seq > 0 must be rejected
         assert!(
             result.is_err(),
             "Zero accepted_at_seq with non-empty journal must be rejected"
         );
-        kani::cover!(true, "zero-seq-rejected");
     } else {
         // Within bounds - should pass (but other checks may fail on arbitrary data)
         match result {
             Ok(()) => {
-                kani::cover!(true, "valid-sequence-accepted");
             }
             Err(_) => {
                 // Other validation errors may occur (not sequence-related)
-                kani::cover!(true, "rejected-other-reason");
             }
         }
     }
@@ -209,7 +204,6 @@ fn sequence_bounds_no_panic() {
 
     // Must not panic on any sequence values
     let _result = validate_sequence_bounds(&artifact, current_seq);
-    kani::cover!(true, "no-panic-sequence-bounds");
 }
 
 /// PO-009c: Verify boundary cases for MAX_REPLAY_WINDOW.
@@ -286,11 +280,9 @@ fn sequence_bounds_window_boundary() {
     // Over boundary should fail with window error if other checks pass
     match (result_at.is_ok(), result_over.is_err()) {
         (true, true) => {
-            kani::cover!(true, "boundary-correctly-enforced");
         }
         _ => {
             // May fail for other reasons (arbitrary data)
-            kani::cover!(true, "boundary-other-reason");
         }
     }
 }

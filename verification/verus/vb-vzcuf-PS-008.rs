@@ -143,4 +143,34 @@ pub proof fn lemma_guard_positions_contract()
 {
 }
 
+// =============================================================================
+// Exec bridge — documents production guard ordering via external_body.
+// =============================================================================
+
+/// Exec bridge: documents the production `append_event` guard precedence.
+///
+/// PRODUCTION BINDING:
+///   `JournalWriteBatch::append_event` (batch.rs:346-393) must execute
+///   guards in this order:
+///     1. Key validation (run_event_key)
+///     2. Durable duplicate check (events.contains_key)
+///     3. Batch count (inner.len() >= MAX_BATCH_COUNT → QueueFull)
+///     4. Per-record encoding (encode_record → PayloadTooLarge)
+///     5. Accumulated byte admission (checked_add + limit check)
+///     6. Mutation (inner.insert)
+///
+///   The body is `external_body` because `append_event` lives in the
+///   non-Verus crate `vb_storage`.  Kani POB-vb-vzcuf-030 verifies the
+///   actual production guard order.
+#[verifier::external_body]
+pub exec fn verify_guard_order() -> (valid: bool)
+    ensures
+        valid == guard_order_valid(),
+{
+    // Body is external: the production guard ordering at
+    // crates/vb_storage/src/batch.rs:346-393 is verified by
+    // Kani POB-vb-vzcuf-030 (kani_vb_vzcuf_ps008.rs).
+    true
+}
+
 } // verus!

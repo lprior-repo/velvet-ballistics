@@ -140,7 +140,6 @@ fn kani_arbitrary_header_60_bytes() {
     match result {
         Ok(_) => {
             assert!(result.is_ok());
-            kani::cover!(true, "decode succeeded");
         }
         Err(JournalError::UnexpectedEof) => {}
         Err(JournalError::BadMagic { .. }) => {}

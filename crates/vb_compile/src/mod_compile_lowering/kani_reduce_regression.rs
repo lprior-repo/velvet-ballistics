@@ -78,7 +78,6 @@ fn check_single_step_reference_behavior() {
 
     match result {
         Ok(()) => {
-            kani::cover!(true, "single-step body compiled OK (reference dispatcher)");
             assert!(
                 builder.nodes.len() == 1,
                 "single-step body must emit exactly 1 node"
@@ -95,7 +94,6 @@ fn check_single_step_reference_behavior() {
             }
         }
         Err(_) => {
-            kani::cover!(true, "single-step body rejected (invalid input)");
         }
     }
 }
@@ -110,12 +108,10 @@ fn check_single_step_body_width_contract() {
 
     match result {
         Ok(w) => {
-            kani::cover!(true, "single-step body width computed OK");
             assert!(w >= 4, "reduce width with single body step >= 4");
             assert!(w <= usize::from(u16::MAX), "width within u16::MAX");
         }
         Err(_) => {
-            kani::cover!(true, "body width overflow for single-step");
         }
     }
 }
@@ -138,12 +134,10 @@ fn check_single_step_equivalence_contract() {
     let width_result = body_width(&body, 3);
     match width_result {
         Ok(w) => {
-            kani::cover!(true, "equivalence contract width check");
             assert!(w >= 4, "single-step body width >= 4");
             assert!(w <= usize::from(u16::MAX), "width within bounds");
         }
         Err(_) => {
-            kani::cover!(true, "width overflow — equivalence not applicable");
         }
     }
 
@@ -170,8 +164,6 @@ fn check_single_step_equivalence_contract() {
 
     match (&result_a, &result_b) {
         (Ok(()), Ok(())) => {
-            kani::cover!(true, "both dispatchers succeeded — checking equivalence");
-
             // Node count must match
             assert!(
                 builder_a.nodes.len() == builder_b.nodes.len(),

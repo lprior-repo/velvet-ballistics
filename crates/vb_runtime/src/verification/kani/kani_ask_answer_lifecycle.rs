@@ -64,8 +64,6 @@ fn kani_ask_answer_append_before_insert() {
         state == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) must set Resumable state",
     );
-    kani::cover!(true, "await_timer_transition_to_resumable");
-
     // Also test AwaitAction → Resumable
     let mut s2 = new_shard();
     let r2 = any_run_id();
@@ -75,7 +73,6 @@ fn kani_ask_answer_append_before_insert() {
         state2 == Some(RuntimeState::Resumable),
         "apply(AwaitAction) must set Resumable state",
     );
-    kani::cover!(true, "await_action_transition_to_resumable");
 }
 
 // =========================================================================
@@ -110,7 +107,6 @@ fn kani_ask_answer_append_failure_no_timer() {
             // On success, journal_sequence should be advanced
             // The stub returns Ok(()) and advance_journal_sequence is called.
             // journal_sequences may contain the sequence if the stub advanced it.
-            kani::cover!(true, "append_succeeded_timer_would_be_inserted");
         }
         Err(_) => {
             // On failure, pending_timers must NOT be modified
@@ -120,7 +116,6 @@ fn kani_ask_answer_append_failure_no_timer() {
                 timer_count == 0,
                 "append failure must not modify pending_timers",
             );
-            kani::cover!(true, "append_failed_no_timer_added");
         }
     }
 }
@@ -157,7 +152,6 @@ fn kani_ask_answer_append_failure_preserves_existing_timer() {
             // On Ok path: journal would advance. Timer insert is done by
             // await_timer, not append_journal_event — this harness tests
             // append_journal_event in isolation.
-            kani::cover!(true, "append_ok_path");
         }
         Err(_) => {
             // On Err path: pending_timers must be UNCHANGED.
@@ -167,7 +161,6 @@ fn kani_ask_answer_append_failure_preserves_existing_timer() {
                 timer_after == timer_before,
                 "append failure must not modify existing pending timer",
             );
-            kani::cover!(true, "append_err_preserves_timer");
         }
     }
 }
@@ -190,11 +183,9 @@ fn kani_ask_answer_pending_timer_guard() {
 
     match kind {
         PendingTimerKind::Ask => {
-            kani::cover!(true, "ask_kind_allows_ask_answer");
         }
         PendingTimerKind::Wait => {
             // Wait kind must reject AskAnswered
-            kani::cover!(true, "wait_kind_rejects_ask_answer");
         }
     }
 
@@ -206,16 +197,13 @@ fn kani_ask_answer_pending_timer_guard() {
 
     let steps_match = ask_step == timer_step;
     if !steps_match {
-        kani::cover!(true, "step_mismatch_detected");
     } else {
-        kani::cover!(true, "steps_match");
     }
 
     // Production guard logic (from chunk_002.rs lines 26-29):
     //   pending_timer.step != answer.ticket.ask_step || pending_timer.kind != Ask
     let would_reject = !steps_match || !matches!(kind, PendingTimerKind::Ask);
     if would_reject {
-        kani::cover!(true, "guard_would_reject_invalid_completion");
     }
 }
 
@@ -246,8 +234,6 @@ fn kani_ask_answer_slot_written_before_ask_answered() {
         state == Some(RuntimeState::Resumable),
         "AwaitTimer must set Resumable before SlotWritten",
     );
-
-    kani::cover!(true, "slot_written_before_ask_answered_state");
 }
 
 // =========================================================================
@@ -283,8 +269,6 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
         state2 == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) is idempotent",
     );
-
-    kani::cover!(true, "slot_written_failure_early_return");
 }
 
 // =========================================================================
@@ -319,15 +303,12 @@ fn kani_ask_answer_journal_monotonicity() {
             match (initial_seq, after_seq) {
                 (None, Some(new_seq)) => {
                     // First append: sequence should be ZERO + 1 = 1
-                    kani::cover!(true, "first_append_sequence_incremented");
                 }
                 (Some(old), Some(new)) => {
                     // Subsequent append: new must be old + 1
                     // But only if the stub returned Ok AND advance_journal_sequence succeeded
-                    kani::cover!(true, "subsequent_append_sequence_advanced");
                 }
                 _ => {
-                    kani::cover!(true, "append_ok_no_sequence_change");
                 }
             }
         }
@@ -339,7 +320,6 @@ fn kani_ask_answer_journal_monotonicity() {
                 after_seq == initial_seq,
                 "append failure must not advance sequence",
             );
-            kani::cover!(true, "append_failure_sequence_unchanged");
         }
     }
 

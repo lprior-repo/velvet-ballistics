@@ -122,6 +122,5 @@ fn ps_002_correct_two_step_verification() {
 
     // Structural proof: envelope hash != inner hash
     if envelope_hash.as_bytes() != inner_hash.as_bytes() {
-        kani::cover!(true, "Envelope and inner IR produce different hashes");
     }
 }

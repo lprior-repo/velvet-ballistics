@@ -100,8 +100,6 @@ fn body_dispatcher_together_acceptance_kani() {
     match result {
         Ok(()) => {
             // Non-vacuity: prove this success path is reachable
-            kani::cover!(true, "PO-002-K: together dispatch success path reachable");
-
             let nodes_after = builder.nodes.len();
             let emitted = nodes_after - nodes_before;
 

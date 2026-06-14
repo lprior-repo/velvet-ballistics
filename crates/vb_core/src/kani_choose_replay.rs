@@ -102,10 +102,8 @@ fn kani_choose_replay_true_branch() {
             );
         }
         Ok(action) => {
-            kani::cover!(true, "unexpected_replay_action");
         }
         Err(e) => {
-            kani::cover!(true, "true_branch_error_path");
         }
     }
     kani::cover!(result.is_ok(), "true_branch_ok");
@@ -152,7 +150,6 @@ fn kani_choose_replay_otherwise_fallback() {
         }
         Ok(_) => {}
         Err(_) => {
-            kani::cover!(true, "otherwise_fallback_error");
         }
     }
     kani::cover!(result.is_ok(), "otherwise_fallback_ok");
@@ -195,7 +192,6 @@ fn kani_choose_replay_no_match() {
             );
         }
         Err(_) => {
-            kani::cover!(true, "unexpected_error_kind");
         }
     }
     kani::cover!(result.is_err(), "no_match_err");
@@ -239,7 +235,6 @@ fn kani_choose_replay_non_bool_condition() {
             );
         }
         Err(_) => {
-            kani::cover!(true, "unexpected_err_kind");
         }
     }
     kani::cover!(result.is_err(), "non_bool_condition_err");
@@ -281,7 +276,6 @@ fn kani_choose_replay_slot_not_available() {
         // Out of bounds
         match &result {
             Err(ReplayError::SlotNotAvailable { .. }) => {
-                kani::cover!(true, "oob_slot_not_available");
             }
             _ => {}
         }
@@ -325,10 +319,8 @@ fn kani_choose_replay_index_safety() {
     // Should never panic regardless of result
     match &result {
         Ok(_) => {
-            kani::cover!(true, "index_safety_ok");
         }
         Err(_) => {
-            kani::cover!(true, "index_safety_err");
         }
     }
     // Key assertion: no panic occurred (implicit — Kani checks panic freedom)

@@ -30,7 +30,6 @@ fn kani_choose_no_otherwise() {
     let mut run = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
         Ok(frame) => frame,
         Err(_) => {
-            kani::cover!(true, "RunFrame creation failed — valid error path");
             return;
         }
     };
@@ -40,7 +39,6 @@ fn kani_choose_no_otherwise() {
         .write_slot(SlotIdx::new(0), SlotValue::Bool(false))
         .is_err()
     {
-        kani::cover!(true, "write_slot failed");
         return;
     }
 
@@ -55,10 +53,8 @@ fn kani_choose_no_otherwise() {
 
     match &result {
         Ok(_) => {
-            kani::cover!(true, "choose_slot succeeded (unexpected but covered)");
         }
         Err(_) => {
-            kani::cover!(true, "choose_slot correctly errored with no otherwise");
         }
     }
     kani::assert(

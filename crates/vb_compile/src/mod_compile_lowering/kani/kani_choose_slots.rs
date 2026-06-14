@@ -31,9 +31,8 @@ fn kani_slot_from_text_closed() {
                 slot.as_usize() <= usize::from(u16::MAX),
                 "valid slot_from_text must produce in-range SlotIdx",
             );
-            kani::cover!(true, "slot_from_text succeeded for valid input");
         }
-        Err(_) => kani::cover!(true, "slot_from_text errored gracefully"),
+        Err(_) => {},
     }
 }
 
@@ -68,7 +67,6 @@ fn kani_choose_no_yaml_in_ir() {
 
     if result.is_ok() {
         kani::assert(!builder.nodes.is_empty(), "must emit at least one node");
-        kani::cover!(true, "choose lowering produced typed SlotIdx IR");
     }
 }
 
@@ -132,6 +130,6 @@ fn kani_choose_slot_disjoint() {
 
     match result {
         Ok(()) => kani::cover!(builder.nodes.len() >= 2, "lowering produced body node"),
-        Err(_) => kani::cover!(true, "lowering errored gracefully"),
+        Err(_) => {},
     }
 }

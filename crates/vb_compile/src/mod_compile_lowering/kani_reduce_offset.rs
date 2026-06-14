@@ -44,7 +44,6 @@ fn check_offset_distinctness() {
         let result = checked_step_offset(id, offset, "reduce", "body");
         match result {
             Ok(step_idx) => {
-                kani::cover!(true, "valid offset computed");
                 assert!(
                     step_idx.get() >= base_id.saturating_add(offset),
                     "step index must be >= id + offset",
@@ -52,7 +51,6 @@ fn check_offset_distinctness() {
                 offsets.push(step_idx.get());
             }
             Err(_) => {
-                kani::cover!(true, "offset overflow detected");
                 return;
             }
         }
@@ -83,14 +81,12 @@ fn check_offset_overflow_detected() {
     let result = checked_step_offset(id, large_offset, "reduce", "body");
     match result {
         Ok(step_idx) => {
-            kani::cover!(true, "border case: Ok returned near u16::MAX");
             assert!(
                 step_idx.get() <= u16::MAX,
                 "production never returns step index > u16::MAX",
             );
         }
         Err(_) => {
-            kani::cover!(true, "overflow correctly rejected at u16 boundary");
         }
     }
 }

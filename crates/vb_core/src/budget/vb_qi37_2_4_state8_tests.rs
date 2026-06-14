@@ -70,11 +70,10 @@ mod kani_overflow_harnesses {
         match product {
             Some(_) => {
                 // FAIL: overflow should have been detected
-                kani::cover!(false, "overflow not detected");
+                kani::assert(false, "overflow not detected");
             }
             None => {
                 // PASS: overflow correctly detected
-                kani::cover!(true, "overflow correctly detected");
             }
         }
     }
@@ -90,10 +89,9 @@ mod kani_overflow_harnesses {
         let product = body_count.checked_mul(iter_count);
         match product {
             Some(_) => {
-                kani::cover!(false, "u64::MAX * 2 should overflow");
+                kani::assert(false, "u64::MAX * 2 should overflow");
             }
             None => {
-                kani::cover!(true, "u64::MAX * 2 correctly overflows");
             }
         }
     }
@@ -110,10 +108,9 @@ mod kani_overflow_harnesses {
         let sum = total.checked_add(product);
         match sum {
             Some(_) => {
-                kani::cover!(false, "total + product should overflow");
+                kani::assert(false, "total + product should overflow");
             }
             None => {
-                kani::cover!(true, "total + product correctly overflows");
             }
         }
     }
@@ -132,7 +129,7 @@ mod kani_overflow_harnesses {
                 kani::cover!(p == 100_000, "1000 * 100 = 100000");
             }
             None => {
-                kani::cover!(false, "1000 * 100 should not overflow");
+                kani::assert(false, "1000 * 100 should not overflow");
             }
         }
     }
@@ -216,7 +213,7 @@ mod kani_overflow_harnesses {
                 );
             }
             _ => {
-                kani::cover!(false, "adding to u64::MAX should overflow");
+                kani::assert(false, "adding to u64::MAX should overflow");
             }
         }
     }
@@ -280,7 +277,7 @@ mod kani_overflow_harnesses {
                 kani::cover!(resource == "max_steps_executable", "underflow detected");
             }
             _ => {
-                kani::cover!(false, "subtracting 10 from 5 should underflow");
+                kani::assert(false, "subtracting 10 from 5 should underflow");
             }
         }
     }

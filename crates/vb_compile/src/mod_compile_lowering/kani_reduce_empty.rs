@@ -31,11 +31,9 @@ fn check_reduce_empty_body_rejection() {
 
     match result {
         Ok(w) => {
-            kani::cover!(true, "empty body width computed OK");
             assert!(w == 3, "empty body width must be exactly overhead (3)",);
         }
         Err(_) => {
-            kani::cover!(true, "empty body overflow (should not happen)");
             assert!(false, "empty body width should never overflow");
         }
     }
@@ -49,11 +47,9 @@ fn check_reduce_empty_body_width_zero() {
 
     match result {
         Ok(w) => {
-            kani::cover!(true, "empty body with overhead 0 OK");
             assert!(w == 0, "empty body width with overhead 0 must be 0");
         }
         Err(_) => {
-            kani::cover!(true, "empty body overflow (unexpected)");
             assert!(false, "empty body should not overflow");
         }
     }

@@ -74,7 +74,6 @@ fn kani_validate_frame_bounds_rejects_oversize() {
         // On 32-bit targets, u32 may fail conversion.
         // This branch is structually reachable on 32-bit only.
         // The 64-bit waiver WVR-001 covers this.
-        kani::cover!(true, "PayloadLengthOutOfRange path (32-bit only)");
         return;
     };
 
@@ -90,7 +89,6 @@ fn kani_validate_frame_bounds_rejects_oversize() {
                     limit == max_val,
                     "PayloadTooLarge.limit must match max_payload",
                 );
-                kani::cover!(true, "oversized payload rejected before allocation");
             }
             Ok(()) => {
                 kani::assert(
@@ -101,14 +99,12 @@ fn kani_validate_frame_bounds_rejects_oversize() {
             Err(_) => {
                 // Only PayloadTooLarge is expected for oversize.
                 // Other errors (PayloadLengthOutOfRange) handled above for 32-bit.
-                kani::cover!(true, "unexpected error variant for oversize");
             }
         }
     } else {
         // payload_len is within bounds — must succeed
         match result {
             Ok(()) => {
-                kani::cover!(true, "in-bounds payload passes bounds check");
             }
             Err(_) => {
                 kani::assert(
@@ -223,14 +219,12 @@ fn kani_read_frame_payload_bounded_accepts_within_bound() {
                 payload == cursor_data.to_vec(),
                 "read payload must match cursor data",
             );
-            kani::cover!(true, "within-bounds payload allocated and read successfully");
         }
         Err(IpcError::PayloadDecodeFailed) => {
             // read_frame_payload calls read_exact — if the cursor has data
             // it succeeds, but Kani may explore both paths since cursor data
             // is symbolic and cursor behavior might explore errors.
             // This is acceptable: the key property is no panic, not success.
-            kani::cover!(true, "cursor read failed for within-bounds (benign)");
         }
         Err(IpcError::PayloadTooLarge { .. }) => {
             kani::assert(

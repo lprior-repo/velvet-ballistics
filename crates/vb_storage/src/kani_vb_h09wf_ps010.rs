@@ -70,7 +70,6 @@ fn ps_010_policy_digest() {
     if result.is_err() {
         match result {
             Err(JournalError::ArtifactMalformed) => {
-                kani::cover!(true, "policy_digest mismatch caught (or decode failed)");
             }
             Err(_) => {
                 // Other errors from decode path

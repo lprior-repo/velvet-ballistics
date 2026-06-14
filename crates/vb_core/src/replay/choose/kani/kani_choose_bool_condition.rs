@@ -52,14 +52,12 @@ fn kani_choose_bool_condition() {
     let mut run = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
         Ok(frame) => frame,
         Err(_) => {
-            kani::cover!(true, "RunFrame creation failed — valid error path");
             return;
         }
     };
 
     // Write the symbolic value to condition slot 0
     if run.write_slot(SlotIdx::new(0), slot_value).is_err() {
-        kani::cover!(true, "write_slot failed");
         return;
     }
 
@@ -74,15 +72,12 @@ fn kani_choose_bool_condition() {
     match slot_value {
         SlotValue::Bool(true) => {
             kani::assert(result.is_ok(), "Bool(true) must produce Ok result");
-            kani::cover!(true, "Bool(true) matched branch successfully");
         }
         SlotValue::Bool(false) => {
             kani::assert(result.is_ok(), "Bool(false) must produce Ok with otherwise");
-            kani::cover!(true, "Bool(false) fell through to otherwise");
         }
         _ => {
             kani::assert(result.is_err(), "non-Bool condition must produce Err");
-            kani::cover!(true, "non-Bool condition correctly rejected");
         }
     }
 }

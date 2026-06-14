@@ -69,7 +69,6 @@ fn kani_submit_frame_release_error_path() {
         Ok(p) => p,
         Err(_) => {
             // Pool creation failed - pool unavailable error path
-            kani::cover!(true, "pool_creation_failed_unavailable");
             return;
         }
     };
@@ -94,7 +93,6 @@ fn kani_submit_frame_release_error_path() {
         Ok(f) => f,
         Err(_) => {
             // Pool exhausted - allocation failed
-            kani::cover!(true, "pool_exhausted_allocation_failed");
             return;
         }
     };
@@ -104,8 +102,6 @@ fn kani_submit_frame_release_error_path() {
         available_after_take < capacity,
         "After take, pool has fewer frames available"
     );
-    kani::cover!(true, "frame_taken_from_pool");
-
     // release_frame returns frame to pool (pool size restored)
     pool.release(frame1);
     let available_after_release = pool.available();
@@ -114,8 +110,6 @@ fn kani_submit_frame_release_error_path() {
         available_after_release == initial_available,
         "After release, pool availability restored to initial state"
     );
-    kani::cover!(true, "frame_released_to_pool");
-
     // Test Case 2: Frame is NOT leaked on error
     //
     // Error scenarios after take_frame (before run_state_insert):
@@ -129,7 +123,6 @@ fn kani_submit_frame_release_error_path() {
     let frame2 = match pool.take(run2, first_step) {
         Ok(f) => f,
         Err(_) => {
-            kani::cover!(true, "second_take_failed");
             return;
         }
     };
@@ -140,7 +133,6 @@ fn kani_submit_frame_release_error_path() {
     let error_occurred = kani::any::<bool>();
     if error_occurred {
         pool.release(frame2);
-        kani::cover!(true, "error_path_releases_frame");
     }
 
     // Test Case 3: Frame NOT released on success path
@@ -152,7 +144,6 @@ fn kani_submit_frame_release_error_path() {
     let frame3 = match pool.take(run3, first_step) {
         Ok(f) => f,
         Err(_) => {
-            kani::cover!(true, "third_take_failed");
             return;
         }
     };
@@ -163,8 +154,6 @@ fn kani_submit_frame_release_error_path() {
         pool_during_success < capacity,
         "Frame in run_state, pool size remains reduced"
     );
-    kani::cover!(true, "success_path_keeps_frame");
-
     // Return frame when run completes
     pool.release(frame3);
     let pool_after_completion = pool.available();
@@ -182,7 +171,6 @@ fn kani_submit_frame_release_error_path() {
     let frame4 = match pool.take(run4, first_step) {
         Ok(f) => f,
         Err(_) => {
-            kani::cover!(true, "fourth_take_failed");
             return;
         }
     };
@@ -195,8 +183,6 @@ fn kani_submit_frame_release_error_path() {
         available_after_completion > available_before_completion,
         "Frame released back to pool on completion"
     );
-    kani::cover!(true, "completion_releases_frame");
-
     // Test Case 5: Pool respects capacity limit
     //
     // Pool at capacity should drop frames on release
@@ -220,7 +206,6 @@ fn kani_submit_frame_release_error_path() {
         Ok(f) => f,
         Err(_) => {
             // Pool exhausted - this is expected for capacity=1
-            kani::cover!(true, "small_pool_exhausted");
             return;
         }
     };
@@ -237,8 +222,6 @@ fn kani_submit_frame_release_error_path() {
         after_second_release <= capacity_one,
         "Pool never exceeds capacity"
     );
-    kani::cover!(true, "pool_at_capacity_drops_frame");
-
     // Test Case 6: Run existence check semantics
     //
     // handle_cancel at chunk_002.rs:122-124:

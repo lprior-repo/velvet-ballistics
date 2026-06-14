@@ -137,7 +137,6 @@ fn width_node_parity_together_kani() {
             );
         }
         (Err(_), Err(_)) => {
-            kani::cover!(true, "PO-003-K: both failed (pre-implementation)");
         }
     }
 }

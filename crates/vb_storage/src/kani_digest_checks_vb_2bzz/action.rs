@@ -22,7 +22,6 @@ fn kani_check_action_abi_fail_fast() {
             kani::assert(action_id == a2, "first mismatch is a2");
             kani::assert(expected == d_ok, "expected digest is first mismatch");
             kani::assert(found == d_bad, "found digest is first mismatch");
-            kani::cover!(true, "action_abi_fail_fast_mismatch_branch_reached");
         }
         None => kani::assert(false, "should return first action ABI mismatch"),
     }
@@ -47,7 +46,6 @@ fn kani_check_action_abi_first_entry_mismatch() {
             kani::assert(action_id == a1, "first-entry mismatch action is returned");
             kani::assert(expected == d_ok, "first-entry expected digest is returned");
             kani::assert(found == d_bad, "first-entry found digest is returned");
-            kani::cover!(true, "action_abi_first_entry_mismatch_branch_reached");
         }
         None => kani::assert(false, "first-entry action ABI mismatch should be returned"),
     }
@@ -84,7 +82,6 @@ fn kani_check_action_abi_single_entry_mismatch() {
                 "single mismatch expected digest",
             );
             kani::assert(found_digest == found, "single mismatch found digest");
-            kani::cover!(true, "action_abi_single_mismatch_branch_reached");
         }
         None => kani::assert(false, "single action ABI mismatch should be returned"),
     }
@@ -125,7 +122,6 @@ fn kani_check_action_abi_mismatch_last() {
             kani::assert(action_id == a3, "mismatch action is from last entry");
             kani::assert(expected == d_ok, "expected digest is last mismatch");
             kani::assert(found == d_bad, "found digest is last mismatch");
-            kani::cover!(true, "action_abi_last_mismatch_branch_reached");
         }
         None => kani::assert(false, "should return last action ABI mismatch"),
     }

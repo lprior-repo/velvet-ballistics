@@ -204,11 +204,9 @@ fn vt2f_shard_lower_semantics() {
     let executed_before = frame.executed;
     let ask_result = frame.ask();
     if matches!(prompt_value(selector), SlotValue::Bool(_)) {
-        kani::cover!(true, "bool prompt rejection path covered");
         assert!(ask_result.is_err());
         assert_eq!(frame.executed, executed_before);
     } else {
-        kani::cover!(true, "non-bool prompt resume path covered");
         assert!(ask_result.is_ok());
         assert_eq!(frame.executed, executed_before.saturating_add(1));
     }

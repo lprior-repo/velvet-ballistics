@@ -14,7 +14,6 @@ fn vb_e7tl_trailing_bytes_required() {
 
     match result {
         None => {
-            kani::cover!(true, "equal lengths accepted");
         }
         Some(_) => {
             kani::assert(

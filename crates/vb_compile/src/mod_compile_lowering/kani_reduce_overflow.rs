@@ -58,11 +58,8 @@ fn check_reduce_body_width_overflow() {
 
     let body: Vec<StepAst> = (0..step_count).map(arbitrary_body_step).collect();
     let result = body_width(&body, 3);
-
-    kani::cover!(true, "Kani: overflow check entry");
     match result {
         Ok(w) => {
-            kani::cover!(true, "Kani: body_width Ok within bounds");
             assert!(
                 w <= usize::from(u16::MAX),
                 "body_width Ok implies width <= u16::MAX"
@@ -70,7 +67,6 @@ fn check_reduce_body_width_overflow() {
             assert!(w >= 3, "width must be >= overhead");
         }
         Err(_) => {
-            kani::cover!(true, "Kani: body_width overflow triggered");
         }
     }
 }
@@ -83,16 +79,12 @@ fn check_reduce_checked_step_offset_boundary() {
 
     let id = StepIdx::new(id_val);
     let result = checked_step_offset(id, offset, "reduce", "body");
-
-    kani::cover!(true, "Kani: overflow boundary test entry");
     match result {
         Ok(step) => {
-            kani::cover!(true, "Kani: checked_step_offset Ok");
             assert!(step.get() >= id_val, "Ok result must be >= input id");
             assert!(step.get() <= u16::MAX, "Ok result must be <= u16::MAX");
         }
         Err(_) => {
-            kani::cover!(true, "Kani: checked_step_offset overflow rejected");
         }
     }
 }
@@ -117,8 +109,6 @@ fn check_reduce_step_width_no_panic() {
             result: vb_yaml::ast::ScalarValue::Integer(0),
         },
     };
-
-    kani::cover!(true, "Kani: step width no-panic entry");
     let _ = canonical_body_step_width(&primitive);
     // Must not panic — verifies panic-freedom
 }

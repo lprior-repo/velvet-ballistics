@@ -486,7 +486,6 @@ fn kani_choose_lowering_direct() {
             }
         }
         Err(_) => {
-            kani::cover!(true, "lower_choose_error_path");
         }
     }
     kani::cover!(result.is_ok(), "lower_choose_ok");

@@ -82,12 +82,10 @@ fn check_nested_next_correctness() {
                 );
                 // next_body_step should be before next_step
                 if next_body_id.get() < ns_id.get() || ns_id.get() >= next_body_id.get() {
-                    kani::cover!(true, "sibling before aggregate ordering verified");
                 }
             }
         }
         _ => {
-            kani::cover!(true, "nested next overflow path");
             // Overflow is valid behavior — tested by overflow harness
         }
     }

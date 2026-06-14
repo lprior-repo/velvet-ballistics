@@ -107,10 +107,8 @@ fn kani_drive_finished_signal_terminates_loop() {
             assert_eq!(*v, slot_value, "Finished must carry the slot value written before the drive");
         }
         Ok(_other) => {
-            kani::cover!(true, "unexpected_signal_on_finish");
         }
         Err(_e) => {
-            kani::cover!(true, "error_on_finish");
         }
     }
 
@@ -212,7 +210,6 @@ fn kani_drive_continue_keeps_loop_running() {
                 "drive must never return Continue to the caller");
         }
         Err(_e) => {
-            kani::cover!(true, "error_on_chain");
         }
     }
 

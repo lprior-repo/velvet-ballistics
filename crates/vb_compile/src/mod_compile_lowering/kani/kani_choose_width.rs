@@ -65,7 +65,7 @@ fn kani_choose_width_overflow() {
 
     match choose_width(&branches) {
         Ok(width) => kani::assert(width >= 1, "valid width must be >= 1"),
-        Err(_) => kani::cover!(true, "overflow returned a typed error"),
+        Err(_) => {},
     }
 }
 

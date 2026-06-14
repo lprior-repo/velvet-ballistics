@@ -116,15 +116,12 @@ fn kani_resume_non_resumable_guard() {
             run_id: _,
             current_state: _,
         }) => {
-            kani::cover!(true, "non_resumable_rejected");
         }
         Err(ResumeError::RunIdNotFound { run_id: _ }) => {
             // Can happen if run not in runs — but we inserted it
-            kani::cover!(true, "unexpected_not_found");
         }
         _ => {
             // Should not reach here for non-Resumable, non-Running states
-            kani::cover!(true, "other_outcome");
         }
     }
 }
@@ -154,10 +151,8 @@ fn kani_resume_already_running() {
                 matches!(resume_result.status, ResumeStatus::AlreadyRunning),
                 "Running state must return AlreadyRunning",
             );
-            kani::cover!(true, "already_running_path");
         }
         Err(_) => {
-            kani::cover!(true, "unexpected_error_for_running");
         }
     }
 }
@@ -186,8 +181,6 @@ fn kani_resume_append_before_drive() {
         matches!(state_after, Some(RuntimeState::Resuming)),
         "apply(Resume) must transition to Resuming",
     );
-
-    kani::cover!(true, "resume_transition_to_resuming");
 }
 
 // =========================================================================
@@ -213,8 +206,6 @@ fn kani_resume_append_failure_rollback() {
         matches!(state_after, Some(RuntimeState::Resumable)),
         "apply(ResumeRollback) must restore to Resumable",
     );
-
-    kani::cover!(true, "rollback_to_resumable");
 }
 
 // =========================================================================
@@ -242,8 +233,6 @@ fn kani_resume_drive_failure_preserves_journal() {
         matches!(state_after, Some(RuntimeState::Resumable)),
         "drive failure rollback must restore Resumable",
     );
-
-    kani::cover!(true, "drive_failure_journal_preserved");
 }
 
 // =========================================================================
@@ -271,9 +260,6 @@ fn kani_resume_rollback_consistency() {
         matches!(state_after, Some(RuntimeState::Resumable)),
         "apply(ResumeRollback) must always result in Resumable",
     );
-
-    kani::cover!(true, "rollback_consistency_verified");
-
     // Verify all transitions produce correct states
     // Test each event individually
     let test_events: [(RuntimeEvent, RuntimeState, &str); 6] = [
@@ -314,7 +300,6 @@ fn kani_resume_rollback_consistency() {
             got == Some(*expected),
             &format!("{} transition must produce correct state", label),
         );
-        kani::cover!(true, &format!("transition_{}", label));
     }
 }
 
@@ -336,8 +321,6 @@ fn kani_resume_apply_state_transitions() {
         state == Some(RuntimeState::Initial),
         "Submit must set Initial state",
     );
-    kani::cover!(true, "transition_Submit_to_Initial");
-
     // Test Resume → Resuming
     let mut s2 = new_shard();
     let r2 = any_run_id();
@@ -347,8 +330,6 @@ fn kani_resume_apply_state_transitions() {
         state2 == Some(RuntimeState::Resuming),
         "Resume must set Resuming state",
     );
-    kani::cover!(true, "transition_Resume_to_Resuming");
-
     // Test ResumeRollback → Resumable
     let mut s3 = new_shard();
     let r3 = any_run_id();
@@ -358,8 +339,6 @@ fn kani_resume_apply_state_transitions() {
         state3 == Some(RuntimeState::Resumable),
         "ResumeRollback must set Resumable state",
     );
-    kani::cover!(true, "transition_ResumeRollback_to_Resumable");
-
     // Test DriveContinue → Running
     let mut s4 = new_shard();
     let r4 = any_run_id();
@@ -369,8 +348,6 @@ fn kani_resume_apply_state_transitions() {
         state4 == Some(RuntimeState::Running),
         "DriveContinue must set Running state",
     );
-    kani::cover!(true, "transition_DriveContinue_to_Running");
-
     // Test AwaitAction → Resumable
     let mut s5 = new_shard();
     let r5 = any_run_id();
@@ -380,8 +357,6 @@ fn kani_resume_apply_state_transitions() {
         state5 == Some(RuntimeState::Resumable),
         "AwaitAction must set Resumable state",
     );
-    kani::cover!(true, "transition_AwaitAction_to_Resumable");
-
     // Test AwaitTimer → Resumable
     let mut s6 = new_shard();
     let r6 = any_run_id();
@@ -391,8 +366,6 @@ fn kani_resume_apply_state_transitions() {
         state6 == Some(RuntimeState::Resumable),
         "AwaitTimer must set Resumable state",
     );
-    kani::cover!(true, "transition_AwaitTimer_to_Resumable");
-
     // Test Fail → Failed
     let mut s7 = new_shard();
     let r7 = any_run_id();
@@ -402,8 +375,6 @@ fn kani_resume_apply_state_transitions() {
         state7 == Some(RuntimeState::Failed),
         "Fail must set Failed state",
     );
-    kani::cover!(true, "transition_Fail_to_Failed");
-
     // Test TerminalRemove → swap_remove (state is removed)
     let mut s8 = new_shard();
     let r8 = any_run_id();
@@ -414,8 +385,6 @@ fn kani_resume_apply_state_transitions() {
         state8.is_none(),
         "TerminalRemove must remove state from runtime_states",
     );
-    kani::cover!(true, "transition_TerminalRemove_removes_state");
-
     // Test DriveFinished → swap_remove (state is removed)
     let mut s9 = new_shard();
     let r9 = any_run_id();
@@ -426,5 +395,4 @@ fn kani_resume_apply_state_transitions() {
         state9.is_none(),
         "DriveFinished must remove state from runtime_states",
     );
-    kani::cover!(true, "transition_DriveFinished_removes_state");
 }

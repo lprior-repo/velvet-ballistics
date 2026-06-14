@@ -44,8 +44,6 @@ fn check_chain_integrity() {
         match result {
             Ok(step_idx) => {
                 let current_id = step_idx.get();
-                kani::cover!(true, "valid step offset computed");
-
                 if let Some(prev) = prev_step_id {
                     assert!(
                         prev < current_id,
@@ -55,7 +53,6 @@ fn check_chain_integrity() {
                 prev_step_id = Some(current_id);
             }
             Err(_) => {
-                kani::cover!(true, "overflow detected by checked_step_offset");
                 return; // Overflow is valid behavior
             }
         }
@@ -66,7 +63,6 @@ fn check_chain_integrity() {
     let next_result = checked_step_offset(id, cumulative_offset, "reduce", "next");
     match next_result {
         Ok(next_idx) => {
-            kani::cover!(true, "next_step computed");
             if let Some(last_id) = prev_step_id {
                 assert!(
                     last_id < next_idx.get(),
@@ -75,7 +71,6 @@ fn check_chain_integrity() {
             }
         }
         Err(_) => {
-            kani::cover!(true, "next_step overflow");
             // Overflow on next_step is valid boundary behavior
         }
     }
@@ -122,12 +117,10 @@ fn check_body_step_width_chain() {
         let result = canonical_body_step_width(&_step.primitive);
         match result {
             Ok(w) => {
-                kani::cover!(true, "body step width computed OK");
                 assert!(w >= 1, "body step width must be at least 1");
                 total_width = total_width.saturating_add(w);
             }
             Err(_) => {
-                kani::cover!(true, "unsupported primitive in body");
                 // Canonical body step width rejects unsupported primitives
             }
         }

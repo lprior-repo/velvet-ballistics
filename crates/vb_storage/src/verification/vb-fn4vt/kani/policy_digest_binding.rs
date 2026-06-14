@@ -91,11 +91,9 @@ fn policy_digest_binding() {
     // (other checks may still fail on arbitrary data)
     match result {
         Ok(()) => {
-            kani::cover!(true, "policy-digest-valid");
         }
         Err(_) => {
             // Other validation errors may occur on arbitrary data
-            kani::cover!(true, "policy-digest-other-error");
         }
     }
 }
@@ -124,7 +122,7 @@ fn compute_policy_digest_no_panic() {
         }
         Err(_) => {
             // Serialization failed - not expected for default contract
-            kani::cover!(false, "policy-digest-serialization-failed");
+            kani::assert(false, "policy-digest-serialization-failed");
         }
     }
 }

@@ -79,7 +79,6 @@ fn kani_admission_error_conversion() {
     match result {
         RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
             // Source is preserved as Arc<JournalError>
-            kani::cover!(true, "error_conversion_preserves_source");
             // The source is an Arc-wrapped JournalError
             kani::assert(
                 Arc::strong_count(&source) >= 1,
@@ -87,7 +86,6 @@ fn kani_admission_error_conversion() {
             );
         }
         _ => {
-            kani::cover!(true, "unexpected_error_variant");
         }
     }
 
@@ -104,7 +102,6 @@ fn kani_admission_error_conversion() {
         ),
         "admission_header_persistence_failed is idempotent on already-wrapped errors",
     );
-    kani::cover!(true, "idempotent_wrapping");
 }
 
 // =========================================================================
@@ -127,7 +124,6 @@ fn kani_admission_run_submitted_before_insert() {
         state == Some(RuntimeState::Initial),
         "apply(Submit) must set Initial state",
     );
-    kani::cover!(true, "submit_transition_to_initial");
 }
 
 // =========================================================================
@@ -150,7 +146,6 @@ fn kani_admission_run_admission_before_insert() {
         state == Some(RuntimeState::Initial),
         "apply(Submit) produces Initial state",
     );
-    kani::cover!(true, "submit_produces_initial");
 }
 
 // =========================================================================
@@ -177,8 +172,6 @@ fn kani_admission_run_submitted_failure() {
         ),
         "append failure must be converted to AdmissionHeaderPersistenceFailed",
     );
-    kani::cover!(true, "append_fail_conversion");
-
     // Test 2: discard_journal_sequence removes the journal sequence entry
     let mut shard = new_shard();
     let seq = StorageEventSeq(42);
@@ -195,7 +188,6 @@ fn kani_admission_run_submitted_failure() {
         !shard.journal_seq_contains(run),
         "discard_journal_sequence must remove the sequence entry",
     );
-    kani::cover!(true, "discard_journal_sequence_cleanup");
 }
 
 // =========================================================================
@@ -235,8 +227,6 @@ fn kani_admission_run_admission_failure() {
         state.is_none(),
         "on RunAdmission failure, no runtime state must exist",
     );
-
-    kani::cover!(true, "admission_failure_discard_clean");
 }
 
 // =========================================================================
@@ -284,9 +274,6 @@ fn kani_admission_no_live_state_on_failure() {
         !shard.run_state_contains(run),
         "apply does not insert into runs",
     );
-
-    kani::cover!(true, "no_live_state_on_failure");
-    kani::cover!(true, "runtime_states_only");
 }
 
 // =========================================================================

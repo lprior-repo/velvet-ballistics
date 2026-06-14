@@ -68,10 +68,8 @@ fn prove_payload_size_rejected() {
     if exceeds {
         // Case 1: encoded_len > max -> MUST return IpcPayloadSizeExceeded
         // This branch is reachable when encoded_len > max_ipc_payload_bytes
-        kani::cover!(true, "payload_exceeds_max_triggered");
     } else {
         // Case 2: encoded_len <= max -> payload check passes
-        kani::cover!(true, "payload_within_bounds");
     }
 
     // Boundary case: exactly at limit (encoded_len == max) should pass

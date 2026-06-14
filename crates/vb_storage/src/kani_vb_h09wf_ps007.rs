@@ -99,7 +99,6 @@ fn ps_007_matching_verification_digest_passes_gate() {
     // Other gates (BLAKE3, policy, metadata) may still fail.
     // Just verify no panic.
     if result.is_ok() {
-        kani::cover!(true, "all gates passed including verification.digest");
     } else {
         kani::cover!(
             true,

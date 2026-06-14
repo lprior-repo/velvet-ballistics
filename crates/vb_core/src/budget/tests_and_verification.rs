@@ -309,7 +309,6 @@ mod kani_harnesses {
                 requested,
                 available,
             }) => {
-                kani::cover!(true, "CapacityExceeded path reachable");
                 kani::assert(
                     same_static_str(resource, "max_steps_executable"),
                     "capacity resource identifies max_steps_executable",

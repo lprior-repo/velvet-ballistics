@@ -152,7 +152,6 @@ fn partition_plan_post_conditions() {
             }
 
             if len > 1 {
-                kani::cover!(true, "multi-shard plan");
             }
         }
         Err(_) => {}

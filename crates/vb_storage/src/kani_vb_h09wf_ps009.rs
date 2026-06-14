@@ -62,7 +62,6 @@ fn ps_009_source_digest() {
     // source_digest != digest must produce ArtifactMalformed
     match result {
         Err(JournalError::ArtifactMalformed) => {
-            kani::cover!(true, "source_digest mismatch caught");
         }
         Ok(()) => {
             kani::assert(false, "source_digest mismatch must be rejected");

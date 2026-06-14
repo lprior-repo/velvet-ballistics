@@ -176,7 +176,6 @@ fn proof_stale_attempt_rejected() {
 
     // The real stale rejection is tested via the action completion path.
     // We assert that the production function exists and handles stale attempts.
-    kani::cover!(true, "validate_ticket_attempt rejects stale attempts");
 }
 
 // =========================================================================
@@ -213,7 +212,6 @@ fn proof_future_attempt_rejected_or_normalized() {
     let result2 = normalize_scheduled_ticket(&state, future_ticket);
     match result2 {
         Err(RuntimeError::AttemptBeyondMax { .. }) => {
-            kani::cover!(true, "future attempt beyond capacity rejected");
         }
         _ => {}
     }
@@ -337,7 +335,6 @@ fn proof_typed_missing_run_error() {
     let error = RuntimeError::RunNotFound;
     match error {
         RuntimeError::RunNotFound => {
-            kani::cover!(true, "RunNotFound variant exists as typed error");
         }
         _ => {}
     }
@@ -346,7 +343,6 @@ fn proof_typed_missing_run_error() {
     let error2 = RuntimeError::InvalidActionCompletion;
     match error2 {
         RuntimeError::InvalidActionCompletion => {
-            kani::cover!(true, "InvalidActionCompletion is distinct from RunNotFound");
         }
         _ => {}
     }
@@ -401,7 +397,6 @@ fn proof_attempt_comparison_panic_free() {
             // Error is expected for some inputs but must not panic
         }
     }
-    kani::cover!(true, "attempt comparison is panic-free for all u16");
 }
 
 // =========================================================================
@@ -443,7 +438,6 @@ fn proof_retry_fence_no_overflow() {
             }
         }
         Err(RuntimeError::UnsupportedOperation { .. }) => {
-            kani::cover!(true, "checked_add overflow correctly rejected");
         }
         _ => {}
     }
@@ -548,7 +542,6 @@ fn proof_all_attempt_combinations_handled() {
         after >= current || after >= attempt,
         "scheduled attempt recording must be monotonic",
     );
-    kani::cover!(true, "all attempt combinations handled without panic");
 }
 
 // =========================================================================
@@ -598,7 +591,6 @@ fn proof_zero_capacity_rejected() {
         }
         _ => {
             // normalize_scheduled_ticket checks `ticket.capacity == 0` before dividing
-            kani::cover!(true, "zero capacity handling");
         }
     }
 }
@@ -628,7 +620,6 @@ fn proof_zero_policy_max_rejected() {
         Ok(_) => {
             // If ticket.attempt is 0, validate_retry_attempt also rejects due to attempt==0
             // and record_retry_attempt's validate_retry_attempt catches it before
-            kani::cover!(true, "zero policy max correctly handled");
         }
         _ => {}
     }

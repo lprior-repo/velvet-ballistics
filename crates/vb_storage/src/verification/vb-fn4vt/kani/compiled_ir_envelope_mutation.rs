@@ -80,23 +80,18 @@ fn arbitrary_envelope_mutation() {
         Ok(()) => {
             // If validation passes, the mutated bytes must somehow still be valid
             // This should be extremely rare (collision) but Kani will explore it
-            kani::cover!(true, "mutation-survived-possible");
         }
         Err(JournalError::ArtifactChecksumMismatch) => {
             // Expected: digest mismatch due to mutation
-            kani::cover!(true, "mutation-caught-by-checksum");
         }
         Err(JournalError::ArtifactMalformed) => {
             // Expected: decode failed due to mutation corrupting structure
-            kani::cover!(true, "mutation-caught-by-malformed");
         }
         Err(JournalError::PayloadTooLarge { .. }) => {
             // Size check caught the mutation (rare)
-            kani::cover!(true, "mutation-caught-by-size");
         }
         Err(_) => {
             // Other errors also mean validation failed
-            kani::cover!(true, "mutation-caught-by-other");
         }
     }
 
@@ -133,15 +128,12 @@ fn no_mutation_validates() {
     // The decode and digest checks depend on arbitrary data validity
     match result {
         Ok(()) => {
-            kani::cover!(true, "valid-record-passes");
         }
         Err(JournalError::PayloadTooLarge { .. }) => {
             // Size check failed - can happen with arbitrary data
-            kani::cover!(true, "valid-record-fails-size");
         }
         Err(_) => {
             // Other errors can happen with arbitrary data
-            kani::cover!(true, "valid-record-fails-other");
         }
     }
 }

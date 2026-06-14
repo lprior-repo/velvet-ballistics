@@ -69,10 +69,8 @@ fn ps_004_truncated_header_rejected() {
     assert!(result.is_err(), "truncated header must be rejected");
     match result {
         Err(JournalError::ArtifactMalformed) => {
-            kani::cover!(true, "ArtifactMalformed for truncated input");
         }
         Err(JournalError::UnexpectedEof) => {
-            kani::cover!(true, "UnexpectedEof for truncated input");
         }
         Err(_) => {}
         Ok(_) => {

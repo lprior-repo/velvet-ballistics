@@ -355,13 +355,10 @@ fn flag_roundtrip_small_masks() {
             // Encode success/failure paths
             match header.encode() {
                 Ok(bytes) => {
-                    kani::cover!(true, "encode succeeded for valid header");
-
                     let decoded = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
 
                     match decoded {
                         Ok(decoded_header) => {
-                            kani::cover!(true, "decode succeeded: roundtrip Ok path");
                             // Roundtrip property: all fields preserved
                             kani::assert(
                                 decoded_header.command == cmd,
@@ -397,14 +394,12 @@ fn flag_roundtrip_small_masks() {
                     }
                 }
                 Err(_) => {
-                    kani::cover!(true, "encode failed (unexpected for in-memory buffer)");
                     // F-005: encode failure is a property violation for in-memory buffer
                     kani::assert(false, "encode failed unexpectedly for in-memory header");
                 }
             }
         }
         Err(_) => {
-            kani::cover!(true, "roundtrip: invalid command ID path (skipped)");
             // Invalid command ID — not in test scope
         }
     }
@@ -440,7 +435,6 @@ fn flag_validate_zero_mask() {
 
             // --- Classification-specific assertions ---
             if raw_flags == 0 {
-                kani::cover!(true, "zero_mask: flags=0 path (expected Valid)");
                 kani::assert(
                     model.is_valid(),
                     "zero-mask command with flags=0 must validate",
@@ -450,7 +444,6 @@ fn flag_validate_zero_mask() {
                     "zero-mask production: flags=0 must be Ok",
                 );
             } else if (raw_flags & RESERVED_GLOBAL_MASK) != 0 {
-                kani::cover!(true, "zero_mask: reserved bits set path → ReservedBitsSet");
                 kani::assert(
                     model.is_reserved_bits_set(),
                     "zero-mask: flags with reserved bits → ReservedBitsSet",
@@ -505,7 +498,6 @@ fn flag_validate_zero_mask() {
             }
         }
         Err(_) => {
-            kani::cover!(true, "zero_mask: invalid command ID path (skipped)");
         }
     }
 }
@@ -543,7 +535,6 @@ fn flag_validate_small_mask() {
             let has_invalid = (raw_flags & !mask) != 0;
 
             if has_reserved {
-                kani::cover!(true, "small_mask: reserved bits set path → ReservedBitsSet");
                 kani::assert(
                     model.is_reserved_bits_set(),
                     "small-mask: reserved bits → ReservedBitsSet",
@@ -569,7 +560,6 @@ fn flag_validate_small_mask() {
                     _ => {}
                 }
             } else if has_invalid {
-                kani::cover!(true, "small_mask: invalid flags path → InvalidFlags");
                 kani::assert(
                     model.is_invalid_flags(),
                     "small-mask: invalid bits → InvalidFlags",
@@ -590,13 +580,11 @@ fn flag_validate_small_mask() {
                     _ => {}
                 }
             } else {
-                kani::cover!(true, "small_mask: valid flags path → Valid");
                 kani::assert(model.is_valid(), "small-mask: valid flags → Valid");
                 kani::assert(is_prod_valid(prod), "small-mask production: valid → Ok");
             }
         }
         Err(_) => {
-            kani::cover!(true, "small_mask: invalid command ID path (skipped)");
         }
     }
 }
@@ -635,9 +623,6 @@ fn reserved_bits_all_commands() {
                 is_prod_reserved(prod),
                 "production: reserved bits → Err(reserved_bits_set)",
             );
-
-            kani::cover!(true, "reserved_bits: ReservedBitsSet path reached");
-
             // Verify error fields in model
             match model {
                 FlagCheckResult::ReservedBitsSet {
@@ -678,7 +663,6 @@ fn reserved_bits_all_commands() {
             }
         }
         Err(_) => {
-            kani::cover!(true, "reserved_bits: invalid command ID path (skipped)");
         }
     }
 }
@@ -718,11 +702,9 @@ fn decode_roundtrip_valid_flags() {
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
     let encoded = match header.encode() {
         Ok(bytes) => {
-            kani::cover!(true, "decode_valid: encode succeeded path");
             bytes
         }
         Err(_) => {
-            kani::cover!(true, "decode_valid: encode failed (should not happen)");
             // F-005: encode failure is a property violation
             kani::assert(false, "encode failed unexpectedly for valid-flag header");
             return;
@@ -832,8 +814,6 @@ fn decode_rejects_invalid_flags() {
     match decoded {
         Ok(decoded_header) => {
             // Production decode returned Ok
-            kani::cover!(true, "decode_reject: decode returned Ok path");
-
             // Verify roundtrip: decode preserves flags faithfully
             kani::assert(
                 decoded_header.flags == flags,
@@ -885,8 +865,6 @@ fn decode_rejects_invalid_flags() {
         }
         Err(e) => {
             // Production decode returned Err
-            kani::cover!(true, "decode_reject: decode returned Err path");
-
             // PRE-INTEGRATION: decode's Err could be from structural validation
             // (magic, version, reserved, payload size) — not from flag validation.
             // We can't distinguish flag-rejection from other rejections yet.
@@ -933,10 +911,8 @@ fn model_invariant_disjoint_masks() {
                 (mask & RESERVED_GLOBAL_MASK) == 0,
                 "INV-6: valid_mask and reserved_global_mask are disjoint",
             );
-            kani::cover!(true, "INV-6: mask disjointness verified for this command");
         }
         Err(_) => {
-            kani::cover!(true, "INV-6: invalid command ID path (skipped)");
         }
     }
 }
@@ -955,10 +931,8 @@ fn model_zero_flags_always_valid() {
                 result.is_valid(),
                 "flags=0 must always be valid for any command",
             );
-            kani::cover!(true, "zero-flags: valid for this command");
         }
         Err(_) => {
-            kani::cover!(true, "zero-flags: invalid command ID path (skipped)");
         }
     }
 }
@@ -974,10 +948,8 @@ fn model_flag_validation_no_panic() {
     match command {
         Ok(cmd) => {
             let _result = validate_flags_model(cmd, raw_flags);
-            kani::cover!(true, "no_panic: full input space exercised without panic");
         }
         Err(_) => {
-            kani::cover!(true, "no_panic: invalid command ID path (skipped)");
         }
     }
 }
@@ -999,7 +971,6 @@ fn production_impl_no_panic() {
             );
         }
         Err(_) => {
-            kani::cover!(true, "production_impl: invalid command ID path (skipped)");
         }
     }
 }

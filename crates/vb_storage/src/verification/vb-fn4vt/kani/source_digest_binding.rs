@@ -81,11 +81,10 @@ fn source_digest_equals_digest() {
                 decoded.source_digest, decoded.digest,
                 "source_digest == digest invariant must hold after roundtrip"
             );
-            kani::cover!(true, "source-digest-equals-digest-roundtrip");
         }
         Err(_) => {
             // Serialization failed - not expected for valid artifact
-            kani::cover!(false, "serialization-failed");
+            kani::assert(false, "serialization-failed");
         }
     }
 }
@@ -154,19 +153,16 @@ fn source_digest_differs_rejected() {
     match result {
         Err(JournalError::ArtifactMalformed) => {
             // Expected: source_digest mismatch detected
-            kani::cover!(true, "source-digest-mismatch-detected");
         }
         Err(JournalError::ArtifactChecksumMismatch) => {
             // Also expected: digest mismatch due to source_digest check
-            kani::cover!(true, "source-digest-mismatch-caught");
         }
         Ok(()) => {
             // This would be unexpected
-            kani::cover!(false, "source-digest-mismatch-missed");
+            kani::assert(false, "source-digest-mismatch-missed");
         }
         Err(_) => {
             // Other error also means validation failed
-            kani::cover!(true, "validation-failed-other");
         }
     }
 }
@@ -221,5 +217,4 @@ fn accepted_artifact_sets_source_correctly() {
         artifact.source_digest, artifact.digest,
         "source_digest must equal digest for direct compilation artifacts"
     );
-    kani::cover!(true, "source-digest-equals-digest-invariant");
 }

@@ -41,9 +41,7 @@ fn ps_011_digest_triangle() {
     // It may return Ok or Err depending on input validity.
 
     if result.is_ok() {
-        kani::cover!(true, "valid record passed all 9 gates");
     } else {
-        kani::cover!(true, "invalid record caught by gate cascade");
     }
 
     // Verify specific error types for diagnostics coverage

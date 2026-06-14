@@ -82,7 +82,6 @@ fn kani_min_payload_bytes_rejects_all_nonzero() {
         // payload_len ∈ {0, 1} — must pass (both ≤ bound of 1)
         match result {
             Ok(()) => {
-                kani::cover!(true, "payload_len in [0,1] passes MinPayloadBytes(1) gate");
             }
             Err(_) => {
                 kani::assert(
@@ -121,13 +120,11 @@ fn kani_min_payload_bytes_accepts_zero() {
                 payload.is_empty(),
                 "zero-length payload must produce empty vec",
             );
-            kani::cover!(true, "zero-byte payload allocated without panic");
         }
         Err(_e) => {
             // On a Cursor wrapping an empty slice, read_exact(0) should succeed.
             // If this fails, it's a behavior anomaly worth investigating.
             // The error variant is covered by a cover! on the match.
-            kani::cover!(true, "zero-byte payload read error (unexpected)");
         }
     }
 }

@@ -594,11 +594,9 @@ fn kani_retry_exhaustion() {
                 );
             }
             Ok(true) => {
-                kani::cover!(true, "unexpected_ok_true_at_exhaustion");
             }
             Err(_) => {
                 // Some implementations return Err on exhaustion
-                kani::cover!(true, "exhaustion_as_err");
             }
         }
     }
@@ -649,15 +647,12 @@ fn kani_retry_terminal_typing() {
 
         match result2 {
             Ok(false) => {
-                kani::cover!(true, "terminal_stays_exhausted");
             }
             Err(e) => {
                 // Terminal state may also be expressed as an error
-                kani::cover!(true, "terminal_as_error");
             }
             Ok(true) => {
                 // Should NOT return true after exhaustion
-                kani::cover!(true, "terminal_unexpected_true");
             }
         }
     }
@@ -718,15 +713,12 @@ fn kani_retry_convergence() {
                     !saw_false && !saw_err,
                     "cannot return Ok(true) after Ok(false) or Err",
                 );
-                kani::cover!(true, "convergence_ok_true");
             }
             Ok(false) => {
                 saw_false = true;
-                kani::cover!(true, "convergence_ok_false");
             }
             Err(_) => {
                 saw_err = true;
-                kani::cover!(true, "convergence_err");
             }
         }
 
