@@ -54,8 +54,7 @@ fn verify_replay_deterministic_for_same_input() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false);
-            return;
+            kani::assume(false); loop {}
         }
     };
 
@@ -64,16 +63,14 @@ fn verify_replay_deterministic_for_same_input() {
     let node = match plan.node(StepIdx::new(0)) {
         Some(v) => v,
         None => {
-            kani::assume(false);
-            return;
+            kani::assume(false); loop {}
         }
     };
 
     let mut run_a = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false);
-            return;
+            kani::assume(false); loop {}
         }
     };
     match run_a
@@ -81,12 +78,8 @@ fn verify_replay_deterministic_for_same_input() {
     {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false, "write slot a failed");
-            return;
+            kani::assume(false); loop {}
         }
-    };
-
-    let mut store_a = ValueStore::new();
     }
     let mut store_a = ValueStore::new();
     let result_a = replay_step(node, &mut run_a, &mut store_a, &plan);
@@ -169,8 +162,7 @@ fn kani_replay_skips_terminal_states() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false);
-            return;
+            kani::assume(false); loop {}
         }
     };
 
