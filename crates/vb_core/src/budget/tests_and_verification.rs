@@ -159,7 +159,10 @@ mod kani_harnesses {
         kani::assume(b <= u64::MAX / 2);
         let result = add_dim(a, b, "mem");
         kani::assert(result.is_ok(), "bounded add must return Ok");
-        kani::assert(result.unwrap() == a + b, "add result must equal a + b");
+        match result {
+            Ok(v) => kani::assert(v == a + b, "add result must equal a + b"),
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        }
     }
 
     /// K-B9: sub_dim non-underflow with symbolic inputs.
@@ -171,10 +174,10 @@ mod kani_harnesses {
         kani::assume(current >= requested);
         let result = sub_dim(current, requested, "net");
         kani::assert(result.is_ok(), "bounded sub must return Ok");
-        kani::assert(
-            result.unwrap() == current - requested,
-            "sub result must equal current - requested",
-        );
+        match result {
+            Ok(v) => kani::assert(v == current - requested, "sub result must equal current - requested"),
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        }
     }
 
     /// PO-010a: aggregate usage addition succeeds with bounded symbolic inputs.
@@ -211,7 +214,10 @@ mod kani_harnesses {
         let result = usage.try_add_budget(&budget);
         kani::assert(result.is_ok(), "bounded try_add_budget returns Ok");
 
-        let next = result.unwrap();
+        let next = match result {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        };
         kani::assert(
             next.max_steps_executable
                 == usage.max_steps_executable + u64::from(budget.max_steps_executable),
