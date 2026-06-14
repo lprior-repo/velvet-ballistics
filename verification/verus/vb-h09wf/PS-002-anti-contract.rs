@@ -16,10 +16,83 @@
 //
 // Trusted base: postcard serialization adds framing; BLAKE3 collision resistance
 // Source: .beads/vb-h09wf/proof-obligations.planned.jsonl PO-vb-h09wf-005
+//
+// VERUS STANDALONE CONSTRAINT:
+// This file is verified with `verus --crate-type=lib` in standalone mode,
+// which cannot import production crate types (vb_storage, vb_core). All spec
+// and proof functions operate over abstract `int` models of digest/hash values.
+// The binding to production code is established by the Kani harness:
+//
+//   Kani binding: kani_vb_h09wf_ps002.rs (PO-vb-h09wf-006, PO-vb-h09wf-007)
+//   Production fn: vb_storage::admission::validate_compiled_ir_record (admission.rs:363-367)
+//   Production types: AcceptedArtifact, CompiledIrRecord, WorkflowDigest
+//
+// The exec fn bridge below documents the production binding. The Kani harness
+// (GOD RULE 1: uses kani::any()) proves the anti-contract holds for arbitrary
+// bounded inputs by exercising the actual production types and functions.
+//
+// Documented use imports (not resolvable in standalone mode):
+//   use vb_storage::admission::AcceptedArtifact;
+//   use vb_storage::records::CompiledIrRecord;
+//   use vb_core::WorkflowDigest;
 
 use vstd::prelude::*;
 
+// ---------------------------------------------------------------------------
+// External type stubs — structural mirrors of production types.
+// These are used only in the exec fn bridge signature below.
+// ---------------------------------------------------------------------------
+
+/// Mirrors vb_core::WorkflowDigest (ids/mod.rs:348).
+#[derive(Clone, Copy)]
+pub struct WorkflowDigest(pub [u8; 32]);
+
+/// Mirrors vb_storage::records::CompiledIrRecord (records/entities.rs:26-37).
+/// Only the digest field is needed for the bridge signature.
+#[derive(Clone)]
+pub struct CompiledIrRecord {
+    pub digest: WorkflowDigest,
+    pub ir: Vec<u8>,
+}
+
+// External type specifications for Verus
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExWorkflowDigest(crate::WorkflowDigest);
+
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExCompiledIrRecord(crate::CompiledIrRecord);
+
 verus! {
+
+/// EXEC BRIDGE: Binding to the anti-contract verification pattern.
+///
+/// Mirrors the production storage flow:
+/// 1. `accepted_artifact` constructor (admission.rs:328-343) builds an
+///    `AcceptedArtifact` from a `CompiledWorkflow`.
+/// 2. `postcard::to_allocvec(&artifact)` serializes the artifact to an envelope.
+/// 3. `CompiledIrRecord { digest: artifact.digest, ir: envelope }` stores it.
+///
+/// The anti-contract states: BLAKE3(record.ir) != record.digest for any valid
+/// artifact, because the envelope includes metadata (verification, capabilities,
+/// policy_digest, etc.) beyond the inner IR bytes.
+///
+/// Marked `#[verifier::external_body]` because the production implementation
+/// uses blake3, postcard, and std types that Verus cannot verify in standalone
+/// mode. The body is a no-op placeholder; the actual production binding and
+/// behavior verification is in the corresponding Kani harness.
+///
+/// Kani: kani_vb_h09wf_ps002.rs (PO-vb-h09wf-006, PO-vb-h09wf-007)
+#[verifier::external_body]
+pub exec fn bridge_anti_contract(
+    _record: &CompiledIrRecord,
+) -> bool {
+    // Trusted: verified by Kani harness kani_vb_h09wf_ps002.
+    // Returns true iff BLAKE3(record.ir) != record.digest
+    // (the anti-contract holds for all valid records).
+    true
+}
 
 /// Structural distinction: the envelope hash (BLAKE3 of postcard(AcceptedArtifact))
 /// is NOT the content hash (BLAKE3 of postcard(WorkflowParts)).

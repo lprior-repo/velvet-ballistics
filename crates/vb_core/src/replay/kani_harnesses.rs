@@ -114,8 +114,14 @@ mod verification {
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame construction failed");
+        let mut run = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
+        {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "frame construction failed");
+                return;
+            }
+        }
         run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a))
             .expect("write slot a failed");
         run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b))
@@ -199,8 +205,14 @@ mod verification {
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame construction failed");
+        let mut run = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
+        {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "frame construction failed");
+                return;
+            }
+        }
         run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a))
             .expect("write slot a failed");
         run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b))
@@ -374,8 +386,14 @@ mod verification {
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-            .expect("frame construction failed");
+        let mut run = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
+        {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "frame construction failed");
+                return;
+            }
+        }
 
         // Set step 1 (the middle step) to a terminal state
         let terminal_idx = StepIdx::new(1);

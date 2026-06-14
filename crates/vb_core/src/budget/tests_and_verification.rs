@@ -91,7 +91,10 @@ mod kani_harnesses {
         kani::assume(b <= u64::MAX / 2);
         let result = add_dim(a, b, "cpu");
         kani::assert(result.is_ok(), "bounded add must return Ok");
-        kani::assert(result.unwrap() == a + b, "add result must equal a + b");
+        match result {
+            Ok(v) => kani::assert(v == a + b, "add result must equal a + b"),
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        }
     }
 
     /// K-B5: add_dim overflow with edge-case symbolic inputs.
@@ -140,10 +143,10 @@ mod kani_harnesses {
         kani::assume(current >= requested);
         let result = sub_dim(current, requested, "disk");
         kani::assert(result.is_ok(), "bounded sub must return Ok");
-        kani::assert(
-            result.unwrap() == current - requested,
-            "sub result must equal current - requested",
-        );
+        match result {
+            Ok(v) => kani::assert(v == current - requested, "sub result must equal current - requested"),
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        }
     }
 
     /// K-B8: add_dim non-overflow with symbolic inputs.

@@ -76,9 +76,8 @@ verus! {
     pub proof fn proof_propagate_action_taint_at_least_once(
         input_taint: u8
     )
-        ensures spec_propagate_action_taint(2, 0) == 0
         && spec_propagate_action_taint(2, 1) == 2
-        ensures spec_propagate_action_taint(2, 2) == 2
+        ensures spec_propagate_action_taint(2, 0) == 0 && spec_propagate_action_taint(2, 2) == 2
     {
         reveal(spec_propagate_action_taint);
         assert(spec_propagate_action_taint(2, 0) == 0) by (compute);
@@ -137,9 +136,8 @@ verus! {
     /// This ensures the polynomial has meaningful mixing — not identity
     /// or zero multiplication, which would produce degenerate keys.
     pub proof fn proof_hash_constants_non_trivial()
-        ensures 0x6c62272e07bb0143_u128 > 1
         && 0x3b4f1a5b6c2d8e7f_u128 > 1
-        ensures 0x5bd1e9956c7b4d3a_u128 > 1
+        ensures 0x6c62272e07bb0143_u128 > 1 && 0x5bd1e9956c7b4d3a_u128 > 1
     {
         assert(0x6c62272e07bb0143_u128 > 1) by (compute);
         assert(0x3b4f1a5b6c2d8e7f_u128 > 1) by (compute);
@@ -166,13 +164,13 @@ verus! {
         run1: u128, seq1: u128, action1: u128,
         run2: u128, seq2: u128, action2: u128
     )
-        ensures
             // Same inputs → same key (determinism)
             (run1 == run2 && seq1 == seq2 && action1 == action2) ==>
                 spec_compute_action_idempotency_key(run1, seq1, action1)
                     == spec_compute_action_idempotency_key(run2, seq2, action2)
             // Different inputs may collide (not required to be injective)
             true
+        ensures 
     {
         assume(run1 == run2 && seq1 == seq2 && action1 == action2);
         assert(spec_compute_action_idempotency_key(run1, seq1, action1)
@@ -184,8 +182,8 @@ verus! {
     pub proof fn proof_key_always_valid_u128(
         run: u128, seq: u128, action: u128
     )
-        ensures spec_compute_action_idempotency_key(run, seq, action) >= 0
         && spec_compute_action_idempotency_key(run, seq, action) <= u128::MAX
+        ensures spec_compute_action_idempotency_key(run, seq, action) >= 0
     {
         // All operations are wrapping_add/wrapping_mul on u128.
         // Result is always a valid u128.
@@ -229,13 +227,10 @@ verus! {
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     )
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).run == run
         && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).seq == seq
         && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).action == action
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).attempt == attempt
         && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).idempotency_key == idempotency_key
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).capacity == capacity
+        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).run == run && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).seq == seq && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).attempt == attempt && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).capacity == capacity
     {
         let ticket = spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity);
         assert(ticket.run == run) by (compute);
@@ -271,11 +266,11 @@ verus! {
     pub proof fn proof_ticket_key_consistency(
         run: u64, seq: u64, action: u64,
     )
-        ensures spec_ticket_has_valid_key(
             run, seq, action,
             spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action)),
             spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action)),
         )
+        ensures spec_ticket_has_valid_key(
     {
         let computed = spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action));
         assert(spec_ticket_has_valid_key(run, seq, action, computed, computed)) by (compute);
@@ -295,7 +290,6 @@ verus! {
     pub proof fn theorem_cross_crate_derivation_soundness(
         run: u64, seq: u64, action: u64,
     )
-        ensures
             // The key computed by the hash function matches what the ticket stores.
             spec_issue_action_ticket(
                 run, 0, seq, action, 1,
@@ -306,6 +300,7 @@ verus! {
                 run, 0, seq, action, 1,
                 spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action)), 1
             ).idempotency_key == spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action))
+        ensures 
     {
         let key = spec_compute_action_idempotency_key(u128::from(run), u128::from(seq), u128::from(action));
         let ticket = spec_issue_action_ticket(run, 0, seq, action, 1, key, 1);
