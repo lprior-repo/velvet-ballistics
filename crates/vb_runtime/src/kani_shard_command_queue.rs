@@ -5,17 +5,19 @@
 
 use crate::{
     RuntimeError,
-    shard::types::{MAX_COMMAND_QUEUE_CAPACITY, ShardCommand, ShardCommandQueue},
+    shard::{
+        queue::KaniShardCommandToken,
+        types::{MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue},
+    },
 };
-use vb_core::ids::RunId;
 
-fn arbitrary_queue_command() -> ShardCommand {
+fn arbitrary_queue_token() -> KaniShardCommandToken {
     let use_shutdown: bool = kani::any();
     if use_shutdown {
-        ShardCommand::Shutdown
+        KaniShardCommandToken::Shutdown
     } else {
-        ShardCommand::Inspect {
-            run: RunId::new(kani::any()),
+        KaniShardCommandToken::Inspect {
+            run: kani::any(),
             correlation: kani::any(),
         }
     }
@@ -89,7 +91,7 @@ fn kani_shard_command_queue_push() {
 
     match ShardCommandQueue::new(capacity) {
         Ok(queue) => {
-            let first_result = queue.enqueue(arbitrary_queue_command());
+            let first_result = queue.enqueue_kani_token(arbitrary_queue_token());
             match first_result {
                 Ok(()) => {}
                 Err(error) => {
@@ -108,7 +110,7 @@ fn kani_shard_command_queue_push() {
                     !queue.is_full(),
                     "queue is not full before reaching capacity",
                 );
-                match queue.enqueue(arbitrary_queue_command()) {
+                match queue.enqueue_kani_token(arbitrary_queue_token()) {
                     Ok(()) => {}
                     Err(error) => {
                         std::mem::forget(error);
@@ -124,7 +126,7 @@ fn kani_shard_command_queue_push() {
                 "remaining capacity reaches zero at capacity",
             );
 
-            match queue.enqueue(arbitrary_queue_command()) {
+            match queue.enqueue_kani_token(arbitrary_queue_token()) {
                 Err(RuntimeError::QueueFull) => {}
                 Err(error) => {
                     std::mem::forget(error);
@@ -160,10 +162,10 @@ fn kani_shard_command_queue_drain() {
 
     match ShardCommandQueue::new(capacity) {
         Ok(queue) => {
-            let first = arbitrary_queue_command();
-            let second = arbitrary_queue_command();
+            let first = arbitrary_queue_token();
+            let second = arbitrary_queue_token();
 
-            let first_enqueue = queue.enqueue(first.clone());
+            let first_enqueue = queue.enqueue_kani_token(first);
             match first_enqueue {
                 Ok(()) => {}
                 Err(error) => {
@@ -173,7 +175,7 @@ fn kani_shard_command_queue_drain() {
             }
 
             if capacity > 1 {
-                let second_enqueue = queue.enqueue(second.clone());
+                let second_enqueue = queue.enqueue_kani_token(second);
                 match second_enqueue {
                     Ok(()) => {}
                     Err(error) => {
@@ -183,18 +185,17 @@ fn kani_shard_command_queue_drain() {
                 }
             }
 
-            let first_pop = queue.pop();
+            let first_pop = queue.pop_kani_token();
             kani::assert(
                 first_pop.is_some(),
                 "first pop must return the first command",
             );
             if let Some(command) = first_pop {
                 kani::assert(command == first, "queue pop preserves FIFO for first item");
-                std::mem::forget(command);
             }
 
             if capacity > 1 {
-                let second_pop = queue.pop();
+                let second_pop = queue.pop_kani_token();
                 kani::assert(
                     second_pop.is_some(),
                     "second pop must return the second command",
@@ -204,19 +205,19 @@ fn kani_shard_command_queue_drain() {
                         command == second,
                         "queue pop preserves FIFO for second item",
                     );
-                    std::mem::forget(command);
                 }
             }
 
-            kani::assert(queue.pop().is_none(), "queue pop returns None once drained");
+            kani::assert(
+                queue.pop_kani_token().is_none(),
+                "queue pop returns None once drained",
+            );
             kani::assert(queue.is_empty(), "queue is empty after draining all items");
             kani::assert(!queue.is_full(), "drained queue is not full");
             kani::assert(
                 queue.remaining_capacity() == capacity,
                 "drained queue restores full remaining capacity",
             );
-            std::mem::forget(first);
-            std::mem::forget(second);
             std::mem::forget(queue);
         }
         Err(error) => {

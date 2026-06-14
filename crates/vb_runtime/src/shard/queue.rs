@@ -59,8 +59,8 @@ pub struct ShardCommandQueue {
 const KANI_COMMAND_QUEUE_MODEL_SLOTS: usize = 2;
 
 #[cfg(kani)]
-#[derive(Clone, Copy)]
-enum KaniShardCommandToken {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum KaniShardCommandToken {
     Inspect { run: u64, correlation: u64 },
     Shutdown,
     Other,
@@ -148,6 +148,12 @@ impl ShardCommandQueue {
     /// Enqueues a command into the Kani sequential model.
     #[cfg(kani)]
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+        self.enqueue_kani_token(KaniShardCommandToken::from_command(cmd))
+    }
+
+    /// Enqueues a compact command token into the Kani sequential model.
+    #[cfg(kani)]
+    pub(crate) fn enqueue_kani_token(&self, token: KaniShardCommandToken) -> RuntimeResult<()> {
         let len = self.len.get();
         if len >= self.capacity {
             return Err(crate::RuntimeError::QueueFull);
@@ -168,7 +174,7 @@ impl ShardCommandQueue {
             return Err(crate::RuntimeError::QueueFull);
         }
 
-        *slot = Some(KaniShardCommandToken::from_command(cmd));
+        *slot = Some(token);
         self.len.set(next_len);
         Ok(())
     }
@@ -184,6 +190,13 @@ impl ShardCommandQueue {
     /// Dequeues the frontmost command from the Kani sequential model.
     #[cfg(kani)]
     pub fn pop(&self) -> Option<ShardCommand> {
+        self.pop_kani_token()
+            .map(KaniShardCommandToken::into_command)
+    }
+
+    /// Dequeues the frontmost compact command token from the Kani model.
+    #[cfg(kani)]
+    pub(crate) fn pop_kani_token(&self) -> Option<KaniShardCommandToken> {
         let len = self.len.get();
         if len == 0 {
             return None;
@@ -206,7 +219,7 @@ impl ShardCommandQueue {
             }
         }
 
-        command.map(KaniShardCommandToken::into_command)
+        command
     }
 
     /// Returns the number of commands currently in the queue.
