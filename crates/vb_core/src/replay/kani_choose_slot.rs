@@ -156,10 +156,10 @@ fn verify_choose_slot_output_in_input_set() {
             assert!(valid);
         }
         Ok(_) => {
-            kani::assume(false); return;
+            kani::assume(false); loop crates/vb_core/src/replay/kani_choose_slot.rs
         }
         Err(_) => {
-            kani::assume(false); return;
+            kani::assume(false); loop crates/vb_core/src/replay/kani_choose_slot.rs
         }
     }
 }
@@ -203,7 +203,7 @@ fn verify_replay_deterministic_for_same_input() {
         }
         (Err(_), Err(_)) => {}
         _ => {
-            kani::assume(false); return;
+            kani::assume(false); loop crates/vb_core/src/replay/kani_choose_slot.rs
         }
     }
 }

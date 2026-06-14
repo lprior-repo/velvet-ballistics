@@ -79,7 +79,7 @@ fn read_taint_no_panic() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_taint.rs }
     };
 
     let init_result = frame.write_slot(slot, SlotValue::Null);
@@ -105,7 +105,7 @@ fn write_taint_no_panic() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_taint.rs }
     };
 
     let init_result = frame.write_slot(slot, SlotValue::Null);

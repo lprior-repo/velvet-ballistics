@@ -76,8 +76,9 @@ verus! {
     proof fn proof_propagate_action_taint_at_least_once(
         input_taint: u8
     )
-        && spec_propagate_action_taint(2, 1) == 2
-        ensures spec_propagate_action_taint(2, 0) == 0 && spec_propagate_action_taint(2, 2) == 2
+        ensures spec_propagate_action_taint(2, 0) == 0
+            && spec_propagate_action_taint(2, 1) == 2
+            && spec_propagate_action_taint(2, 2) == 2
     {
         reveal(spec_propagate_action_taint);
         assert(spec_propagate_action_taint(2, 0) == 0) by (compute);

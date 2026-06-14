@@ -48,7 +48,7 @@ fn proof_check_evidence_validation() {
     if evidence.baseline_us.is_some() && evidence.budget_us > 0 {
         let baseline = match evidence.baseline_us {
             Some(v) => v,
-            None => { kani::assume(false); return; }
+            None => { kani::assume(false); loop crates/vb_core/src/kani/vb_5iebh_check_scope.rs }
         };
         let threshold_delta = baseline * evidence.threshold_pct / 100;
         let max_allowed = baseline + threshold_delta;

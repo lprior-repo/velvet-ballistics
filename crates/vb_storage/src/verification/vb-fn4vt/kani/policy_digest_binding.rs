@@ -78,7 +78,7 @@ fn policy_digest_binding() {
     // Serialize and validate through the public API
     let envelope = match postcard::to_allocvec(&artifact) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_storage/src/verification/vb-fn4vt/kani/policy_digest_binding.rs }
     };
     let record = CompiledIrRecord {
         digest,
@@ -137,11 +137,11 @@ fn policy_digest_deterministic() {
 
     let bytes1 = match postcard::to_allocvec(&contract) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_storage/src/verification/vb-fn4vt/kani/policy_digest_binding.rs }
     };
     let bytes2 = match postcard::to_allocvec(&contract) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_storage/src/verification/vb-fn4vt/kani/policy_digest_binding.rs }
     };
 
     let hash1 = blake3::hash(&bytes1);

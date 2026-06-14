@@ -97,7 +97,7 @@ fn push_constant_overflow() {
     kani::assert(empty_count.is_ok(), "slot_count on empty builder should be Ok");
     let empty_count_val = match empty_count {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(empty_count_val == 0, "empty builder slot_count should be 0");
 
@@ -114,17 +114,17 @@ fn push_constant_overflow() {
     kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MIN)).is_ok(), "I64::MIN succeeds");
     let f64_0 = match vb_core::FiniteF64::new(0.0) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(test_compiler.push_constant(ConstValue::F64(f64_0)).is_ok(), "F64(0.0) succeeds");
     let f64_1 = match vb_core::FiniteF64::new(1.5) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(test_compiler.push_constant(ConstValue::F64(f64_1)).is_ok(), "F64(1.5) succeeds");
     let f64_2 = match vb_core::FiniteF64::new(-3.14) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(test_compiler.push_constant(ConstValue::F64(f64_2)).is_ok(), "F64(-3.14) succeeds");
 }
@@ -144,7 +144,7 @@ fn push_constant_isolation() {
     kani::assert(count.is_ok(), "slot_count should be Ok");
     let count_val = match count {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(count_val == 0, "pushing constants should not affect slot_count");
 
@@ -156,7 +156,7 @@ fn push_constant_isolation() {
     kani::assert(count_after.is_ok(), "slot_count should be Ok after recording");
     let count_after_val = match count_after {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(count_after_val == 8, "slot_count should be max_recorded + 1");
 
@@ -165,7 +165,7 @@ fn push_constant_isolation() {
     let final_count = compiler.slot_count();
     let final_count_val = match final_count {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); return; }
+        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani/vb_compile_constant.rs }
     };
     kani::assert(final_count_val == 8, "pushing constants after slot recording should not change slot_count");
 }
