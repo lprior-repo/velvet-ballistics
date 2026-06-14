@@ -184,7 +184,9 @@ fn matrix_parse_args_round_trip_for_all_30_commands() {
             // `parse_args` layer (only the first token dispatches).
             // Verify reachability through agent_context instead.
             assert!(
-                source_agent_context_json::commands_names().iter().any(|n| n == token),
+                source_agent_context_json::commands_names()
+                    .iter()
+                    .any(|n| n == token),
                 "round-trip: multi-word form '{token}' missing from agent_context"
             );
             assert!(
@@ -206,7 +208,9 @@ fn matrix_parse_args_round_trip_for_all_30_commands() {
             "round-trip: HELP missing single-token form '{token}'"
         );
         assert!(
-            source_agent_context_json::commands_names().iter().any(|n| n == token),
+            source_agent_context_json::commands_names()
+                .iter()
+                .any(|n| n == token),
             "round-trip: agent_context missing single-token form '{token}'"
         );
     }

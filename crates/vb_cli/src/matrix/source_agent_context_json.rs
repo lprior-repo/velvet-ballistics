@@ -51,7 +51,10 @@ mod tests {
     #[test]
     fn commands_count_is_thirty() {
         let count = commands_count();
-        assert_eq!(count, 30, "agent_context::commands() must have 30 entries, got {count}");
+        assert_eq!(
+            count, 30,
+            "agent_context::commands() must have 30 entries, got {count}"
+        );
     }
 
     #[test]

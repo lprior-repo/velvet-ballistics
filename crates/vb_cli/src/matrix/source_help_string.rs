@@ -62,4 +62,20 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn help_string_documents_agent_context_and_filter_shapes() {
+        for token in [
+            "agent-context [--deliver stdout|file:<absolute-path>|webhook:<url>]",
+            "events     <run_id> --db <path> [--status <status>] [--limit <N>] [--emit text|yaml|postcard]",
+            "trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>]",
+            "retry      <run_id> --db <path> [--step <N>] [--emit text|yaml|postcard]",
+            "doctor     [--db <path>] [--emit text|yaml|postcard]",
+        ] {
+            assert!(
+                help_string_contains(token),
+                "HELP string must document CLI shape '{token}'"
+            );
+        }
+    }
 }

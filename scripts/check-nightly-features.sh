@@ -108,4 +108,31 @@ done < <(
     -g '!**/build-output/**'
 )
 
+# RUSTC_BOOTSTRAP enforcement (master §4 "RUSTC_BOOTSTRAP is rejected in developer
+# shells, CI, scripts, and docs"). Scan all tracked file types for the env var.
+while IFS= read -r -d '' file; do
+  # Skip our own audit script (it MUST mention RUSTC_BOOTSTRAP to detect it).
+  if [[ "$file" == "scripts/check-nightly-features.sh" ]]; then
+    continue
+  fi
+  # Skip the master contract and governance docs that document the prohibition.
+  case "$file" in
+    velvet-ballistics-MASTER.md|docs/rust-governance.md|docs/xtask-prd.md) continue ;;
+  esac
+  if rg --quiet -e 'RUSTC_BOOTSTRAP' "$file"; then
+    printf 'RUSTC_BOOTSTRAP is rejected by master §4 in %s\n' "$file" >&2
+    status=1
+  fi
+done < <(
+  rg --files -0 \
+    -g '*.sh' -g '*.bash' -g '*.zsh' \
+    -g '*.yml' -g '*.yaml' -g '*.toml' \
+    -g '*.rs' -g '*.py' \
+    -g '!target/**' -g '!.git/**' -g '!.beads/**' \
+    -g '!vb-*/**' -g '!arch-drift-*/**' \
+    -g '!**/target/**' \
+    -g '!**/generated-build/**' \
+    -g '!**/build-output/**'
+)
+
 exit "$status"

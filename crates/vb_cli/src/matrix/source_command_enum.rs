@@ -103,8 +103,7 @@ mod tests {
                 registry: ActionRegistryMode::Registered,
             },
             Command::ActionInspect {
-                action_name: vb_core::action::ActionName::new("test")
-                    .expect("valid action name"),
+                action_name: vb_core::action::ActionName::new("test").expect("valid action name"),
                 output: OutputFormat::Text,
                 registry: ActionRegistryMode::Registered,
             },
