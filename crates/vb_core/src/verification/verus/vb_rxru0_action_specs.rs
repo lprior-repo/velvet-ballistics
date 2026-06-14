@@ -137,8 +137,9 @@ verus! {
     /// This ensures the polynomial has meaningful mixing — not identity
     /// or zero multiplication, which would produce degenerate keys.
     proof fn proof_hash_constants_non_trivial()
-        && 0x3b4f1a5b6c2d8e7f_u128 > 1
-        ensures 0x6c62272e07bb0143_u128 > 1 && 0x5bd1e9956c7b4d3a_u128 > 1
+        ensures 0x6c62272e07bb0143_u128 > 1
+            && 0x3b4f1a5b6c2d8e7f_u128 > 1
+            && 0x5bd1e9956c7b4d3a_u128 > 1
     {
         assert(0x6c62272e07bb0143_u128 > 1) by (compute);
         assert(0x3b4f1a5b6c2d8e7f_u128 > 1) by (compute);

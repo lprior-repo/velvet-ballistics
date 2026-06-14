@@ -93,7 +93,7 @@ mod kani_harnesses {
         kani::assert(result.is_ok(), "bounded add must return Ok");
         match result {
             Ok(v) => kani::assert(v == a + b, "add result must equal a + b"),
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/budget/tests_and_verification.rs }
+            Err(_) => { kani::assume(false); loop {}}
         }
     }
 
@@ -145,7 +145,7 @@ mod kani_harnesses {
         kani::assert(result.is_ok(), "bounded sub must return Ok");
         match result {
             Ok(v) => kani::assert(v == current - requested, "sub result must equal current - requested"),
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/budget/tests_and_verification.rs }
+            Err(_) => { kani::assume(false); loop {}}
         }
     }
 
@@ -161,7 +161,7 @@ mod kani_harnesses {
         kani::assert(result.is_ok(), "bounded add must return Ok");
         match result {
             Ok(v) => kani::assert(v == a + b, "add result must equal a + b"),
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/budget/tests_and_verification.rs }
+            Err(_) => { kani::assume(false); loop {}}
         }
     }
 
@@ -176,7 +176,7 @@ mod kani_harnesses {
         kani::assert(result.is_ok(), "bounded sub must return Ok");
         match result {
             Ok(v) => kani::assert(v == current - requested, "sub result must equal current - requested"),
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/budget/tests_and_verification.rs }
+            Err(_) => { kani::assume(false); loop {}}
         }
     }
 
@@ -216,7 +216,7 @@ mod kani_harnesses {
 
         let next = match result {
             Ok(v) => v,
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/budget/tests_and_verification.rs }
+            Err(_) => { kani::assume(false); loop {}}
         };
         kani::assert(
             next.max_steps_executable

@@ -62,7 +62,7 @@ fn arbitrary_accepted_artifact() -> (
     // Serialize to postcard envelope bytes
     let envelope = match postcard::to_allocvec(&artifact) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_storage/src/kani_vb_h09wf_ps002.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     (artifact, envelope)
 }

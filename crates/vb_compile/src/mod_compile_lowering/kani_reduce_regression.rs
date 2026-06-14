@@ -220,14 +220,14 @@ fn check_single_step_equivalence_contract() {
                 true,
                 "single-step succeeded but multi-step failed — CONTRACT VIOLATION"
             );
-            kani::assume(false); loop crates/vb_compile/src/mod_compile_lowering/kani_reduce_regression.rs
+            kani::assume(false); loop {}
         }
         (Err(_), Ok(())) => {
             kani::cover!(
                 true,
                 "single-step failed but multi-step succeeded — CONTRACT VIOLATION"
             );
-            kani::assume(false); loop crates/vb_compile/src/mod_compile_lowering/kani_reduce_regression.rs
+            kani::assume(false); loop {}
         }
     }
 }

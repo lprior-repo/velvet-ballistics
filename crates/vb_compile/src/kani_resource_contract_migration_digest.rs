@@ -22,7 +22,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: migration_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani_resource_contract_migration_digest.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 }
 

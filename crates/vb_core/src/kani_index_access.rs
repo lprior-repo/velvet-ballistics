@@ -25,7 +25,7 @@ fn kani_write_slot_in_bounds() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_index_access.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = frame.write_slot(slot, SlotValue::Null);
@@ -46,7 +46,7 @@ fn kani_read_slot_in_bounds() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_index_access.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let write_result = frame.write_slot(slot, SlotValue::I64(42));
@@ -77,7 +77,7 @@ fn kani_write_slot_out_of_bounds() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_index_access.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = frame.write_slot(slot, SlotValue::Null);
@@ -99,7 +99,7 @@ fn kani_read_slot_out_of_bounds() {
     kani::assume(frame.is_ok());
     let frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_index_access.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = frame.read_slot(slot);
@@ -118,7 +118,7 @@ fn kani_multiple_slots_sequential() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/kani_index_access.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     for i in 0..slot_count {

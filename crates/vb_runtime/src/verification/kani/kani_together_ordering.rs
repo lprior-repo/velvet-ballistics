@@ -150,12 +150,12 @@ fn kani_together_join_pif_reduction() {
     let acc_list = vec![SlotValue::I64(1), SlotValue::I64(2)];
     let acc_list_id = match store.insert_list(acc_list.into_boxed_slice()) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_together_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let accumulator = SlotIdx::new(3);
     match run.write_slot(accumulator, SlotValue::List(acc_list_id)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_together_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 
     let output_slot = SlotIdx::new(4);
@@ -165,7 +165,7 @@ fn kani_together_join_pif_reduction() {
     // Write a non-list value to output slot (simulating last branch result)
     match run.write_slot(output_slot, SlotValue::I64(99)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_together_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 
     let branch_count: u16 = kani::any();

@@ -17,7 +17,7 @@ fn harness_new_valid_capacity() {
 
     let stack = match result {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     assert_eq!(stack.len(), 0);
 }
@@ -48,7 +48,7 @@ fn harness_push_with_room() {
 
     let mut stack = match ExprStack::new(capacity) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = stack.push(SlotValue::Null);
@@ -61,11 +61,11 @@ fn harness_push_with_room() {
 fn harness_push_overflow_returns_error() {
     let mut stack = match ExprStack::new(1) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     match stack.push(SlotValue::Null) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     assert_eq!(stack.len(), 1);
 
@@ -89,12 +89,12 @@ fn harness_pop_with_items() {
 
     let mut stack = match ExprStack::new(4) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     for _ in 0..initial_len {
         match stack.push(SlotValue::Null) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+            Err(_) => { kani::assume(false); loop {}}
         };
     }
 
@@ -108,7 +108,7 @@ fn harness_pop_with_items() {
 fn harness_pop_empty_returns_underflow() {
     let stack = match ExprStack::new(4) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     assert_eq!(stack.len(), 0);
     let mut stack = stack;
@@ -131,16 +131,16 @@ fn harness_push_pop_roundtrip() {
 
     let mut stack = match ExprStack::new(capacity) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     match push_value(&mut stack, SlotValue::Null) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let popped = match pop_value(&mut stack) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     assert_eq!(popped, SlotValue::Null);
 }
@@ -150,11 +150,11 @@ fn harness_push_pop_roundtrip() {
 fn harness_pop_pair_underflow() {
     let mut stack = match ExprStack::new(4) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     match stack.push(SlotValue::I64(42)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     assert_eq!(stack.len(), 1);
 
@@ -179,23 +179,23 @@ fn harness_push_to_capacity_then_overflow() {
 
     let mut stack = match ExprStack::new(capacity) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     match stack.push(SlotValue::I64(1)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     if capacity >= 2 {
         match stack.push(SlotValue::I64(2)) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+            Err(_) => { kani::assume(false); loop {}}
         };
     }
     if capacity >= 3 {
         match stack.push(SlotValue::I64(3)) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_stack.rs }
+            Err(_) => { kani::assume(false); loop {}}
         };
     }
 

@@ -28,7 +28,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: entry_point_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani_resource_contract_entry_point.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 }
 
@@ -56,7 +56,7 @@ fn prove_contract_survives_compilation() {
     let source = representative_source();
     let workflow = match crate::mod_compile_lowering::compile_source(&source, contract) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani_resource_contract_entry_point.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     // Verify contract identity survived compilation
@@ -69,7 +69,7 @@ fn prove_contract_survives_compilation() {
     // Verify digest changed (contract is part of digest)
     let workflow_default = match crate::mod_compile_lowering::compile_source(&source, default) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/kani_resource_contract_entry_point.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     assert_ne!(

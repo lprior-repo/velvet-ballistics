@@ -98,7 +98,7 @@ fn together_digest_sub_step_recursion_bounded_kani() {
     let mut hasher = blake3::Hasher::new();
     match crate::mod_compile_lowering::digest_step_primitive(&mut hasher, &tree.primitive) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/together_digest_kani.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     // Verify the hasher is in a valid state after the call
@@ -183,14 +183,14 @@ fn together_digest_step_deterministic_kani() {
     let mut hasher1 = blake3::Hasher::new();
     match crate::mod_compile_lowering::digest_step_primitive(&mut hasher1, &primitive) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/together_digest_kani.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let digest1 = hasher1.finalize();
 
     let mut hasher2 = blake3::Hasher::new();
     match crate::mod_compile_lowering::digest_step_primitive(&mut hasher2, &primitive) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/together_digest_kani.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let digest2 = hasher2.finalize();
 
@@ -268,14 +268,14 @@ fn together_branch_count_produces_different_digest_kani() {
     let mut hasher1 = blake3::Hasher::new();
     match crate::mod_compile_lowering::digest_step_primitive(&mut hasher1, &primitive_a) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/together_digest_kani.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let digest1 = hasher1.finalize();
 
     let mut hasher2 = blake3::Hasher::new();
     match crate::mod_compile_lowering::digest_step_primitive(&mut hasher2, &primitive_b) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_compile/src/together_digest_kani.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let digest2 = hasher2.finalize();
 

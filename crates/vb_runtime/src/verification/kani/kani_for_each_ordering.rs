@@ -66,7 +66,7 @@ fn kani_for_each_ordering() {
     let input_slot = SlotIdx::new(0);
     match run.write_slot(input_slot, input_value) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 
     let item_slot = SlotIdx::new(1);
@@ -101,7 +101,7 @@ fn kani_for_each_ordering() {
                     // First item should be bound to item_slot
                     let bound = match run.read_slot(item_slot) {
                         Ok(v) => v,
-                        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+                        Err(_) => { kani::assume(false); loop {}}
                     };
                     assert_eq!(
                         *bound,
@@ -152,7 +152,7 @@ fn kani_for_each_next_progression() {
     let input_slot = SlotIdx::new(0);
     match run.write_slot(input_slot, input_value) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 
     let item_slot = SlotIdx::new(1);
@@ -194,7 +194,7 @@ fn kani_for_each_next_progression() {
                         // Should still have items
                         let bound = match run.read_slot(item_slot) {
                             Ok(v) => v,
-                            Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+                            Err(_) => { kani::assume(false); loop {}}
                         };
                         assert_eq!(
                             *bound,
@@ -232,12 +232,12 @@ fn kani_for_each_join_passthrough() {
     let result_list = vec![SlotValue::I64(42), SlotValue::I64(7)];
     let output_value = match insert_test_list(&mut store, &result_list) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let materialized_slot = SlotIdx::new(3);
     match run.write_slot(materialized_slot, output_value) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+        Err(_) => { kani::assume(false); loop {}}
     }
 
     let output_slot = SlotIdx::new(4);
@@ -260,7 +260,7 @@ fn kani_for_each_join_passthrough() {
                 // The output slot should hold the materialized value
                 let output = match run.read_slot(output_slot) {
                     Ok(v) => v,
-                    Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs }
+                    Err(_) => { kani::assume(false); loop {}}
                 };
                 assert_eq!(
                     *output, output_value,

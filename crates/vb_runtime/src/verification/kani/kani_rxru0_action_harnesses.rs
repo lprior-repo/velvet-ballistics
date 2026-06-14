@@ -163,13 +163,13 @@ fn check_action_ticket_serialization() {
     // Serialize (7-field format).
     let serialized = match postcard::to_allocvec(&ticket) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_rxru0_action_harnesses.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     // Deserialize back.
     let deserialized: ActionTicket = match postcard::from_bytes(&serialized) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_rxru0_action_harnesses.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     // Verify all 7 fields round-trip correctly.
@@ -210,11 +210,11 @@ fn check_action_ticket_serialization_edge_cases() {
     // Round-trip through postcard.
     let serialized = match postcard::to_allocvec(&ticket) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_rxru0_action_harnesses.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let deserialized: ActionTicket = match postcard::from_bytes(&serialized) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_rxru0_action_harnesses.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     assert_eq!(deserialized, ticket, "All fields must round-trip correctly");

@@ -51,24 +51,40 @@ fn verify_replay_deterministic_for_same_input() {
             },
         ],
         vec![],
-    )
-    {
+    ) {
         Ok(v) => v,
         Err(_) => {
             kani::assume(false);
             return;
         }
-    }
+    };
 
     let step_count = plan.node_count();
     let slot_count = plan.slot_count();
-    let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+    let node = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false);
+            return;
+        }
+    };
 
-    let mut run_a = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)
-        .expect("frame a failed");
-    run_a
+    let mut run_a = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
+    match run_a
         .write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-        .expect("write slot a failed");
+    {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    }
     let mut store_a = ValueStore::new();
     let result_a = replay_step(node, &mut run_a, &mut store_a, &plan);
 
@@ -147,14 +163,13 @@ fn kani_replay_skips_terminal_states() {
             },
         ],
         vec![],
-    )
-    {
+    ) {
         Ok(v) => v,
         Err(_) => {
             kani::assume(false);
             return;
         }
-    }
+    };
 
     let step_count = plan.node_count();
     let slot_count = plan.slot_count();

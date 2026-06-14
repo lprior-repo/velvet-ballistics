@@ -36,7 +36,7 @@ mod kani_errors_ps003 {
         let qf = JournalError::QueueFull;
         match qf {
             JournalError::QueueFull => {} // OK
-            _ => { kani::assume(false); loop crates/vb_storage/src/kani_vb_vzcuf_ps003.rs }
+            _ => { kani::assume(false); loop {}}
         }
 
         // PayloadTooLarge has payload fields
@@ -46,7 +46,7 @@ mod kani_errors_ps003 {
                 assert_eq!(len, 100);
                 assert_eq!(max, 50);
             }
-            _ => { kani::assume(false); loop crates/vb_storage/src/kani_vb_vzcuf_ps003.rs }
+            _ => { kani::assume(false); loop {}}
         }
 
         // DuplicateEvent has run and seq fields
@@ -58,7 +58,7 @@ mod kani_errors_ps003 {
                 assert_eq!(r, run);
                 assert_eq!(s, seq);
             }
-            _ => { kani::assume(false); loop crates/vb_storage/src/kani_vb_vzcuf_ps003.rs }
+            _ => { kani::assume(false); loop {}}
         }
     }
 
@@ -87,10 +87,10 @@ mod kani_errors_ps003 {
                 // Expected: per-record encoding guard fires
             }
             Err(_e) => {
-                kani::assume(false); loop crates/vb_storage/src/kani_vb_vzcuf_ps003.rs
+                kani::assume(false); loop {}
             }
             Ok(_) => {
-                kani::assume(false); loop crates/vb_storage/src/kani_vb_vzcuf_ps003.rs
+                kani::assume(false); loop {}
             }
         }
     }

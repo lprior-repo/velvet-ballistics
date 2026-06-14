@@ -17,7 +17,7 @@ use crate::workflow::ExprOp;
 fn kani_div_by_zero_returns_error() {
     let mut stack = match ExprStack::new(MAX_EXPRESSION_STACK) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let mut store = ValueStore::new();
 
@@ -27,11 +27,11 @@ fn kani_div_by_zero_returns_error() {
 
     match stack.push(SlotValue::I64(left)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     match stack.push(SlotValue::I64(right)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
@@ -45,7 +45,7 @@ fn kani_div_by_zero_returns_error() {
 fn kani_div_by_nonzero_succeeds() {
     let mut stack = match ExprStack::new(MAX_EXPRESSION_STACK) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let mut store = ValueStore::new();
 
@@ -56,11 +56,11 @@ fn kani_div_by_nonzero_succeeds() {
 
     match stack.push(SlotValue::I64(left)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     match stack.push(SlotValue::I64(right)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
@@ -73,17 +73,17 @@ fn kani_div_by_nonzero_succeeds() {
 fn kani_div_i64_min_neg_one() {
     let mut stack = match ExprStack::new(MAX_EXPRESSION_STACK) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let mut store = ValueStore::new();
 
     match stack.push(SlotValue::I64(i64::MIN)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     match stack.push(SlotValue::I64(-1)) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_core/src/engine/expr_eval/kani_div_zero.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);

@@ -66,7 +66,7 @@ fn proof_tracker_completion_idempotent() {
     let ticket = any_bounded_ticket();
 
     let first = tracker.mark_completed(&ticket);
-    kani::assume(first.is_ok(), "first completion must succeed");
+    kani::assume(first.is_ok());
 
     let second = tracker.mark_completed(&ticket);
     kani::assert(
@@ -141,7 +141,7 @@ fn proof_replay_divergence_same_key_different_ticket() {
     );
 
     let r1 = tracker.mark_completed(&ticket_a);
-    kani::assume(r1.is_ok(), "first completion must succeed");
+    kani::assume(r1.is_ok());
 
     let r2 = tracker.mark_completed(&ticket_b);
     kani::assert(
@@ -299,7 +299,7 @@ fn proof_mark_completed_for_policy_monotonic() {
     let key = kani::any::<u128>();
 
     let first = tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key);
-    kani::assume(first.is_ok(), "first mark must succeed");
+    kani::assume(first.is_ok());
 
     let second = tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key);
     kani::assert(

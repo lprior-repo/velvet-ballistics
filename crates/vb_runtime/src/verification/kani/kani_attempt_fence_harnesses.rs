@@ -85,11 +85,11 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
     let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop crates/vb_runtime/src/verification/kani/kani_attempt_fence_harnesses.rs }
+        Err(_) => { kani::assume(false); loop {}}
     };
 
     let mut state = RunState {
