@@ -23,7 +23,7 @@ fn kani_replay_skips_terminal_states() {
     let plan = match terminal_plan() {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "plan construction failed");
+            kani::assume(false);
             return;
         }
     };
@@ -35,7 +35,7 @@ fn kani_replay_skips_terminal_states() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "frame construction failed");
+            kani::assume(false);
             return;
         }
     };
@@ -58,7 +58,7 @@ fn kani_replay_skips_terminal_states() {
     mark_terminal(&mut run, terminal_idx, terminal_state);
     let state = match run.step_state(terminal_idx) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     kani::assert(is_terminal(state), "selected step is in a terminal state");
 
@@ -76,7 +76,7 @@ fn kani_replay_skips_terminal_states() {
 
     let state_after = match run.step_state(terminal_idx) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     kani::assert(
         is_terminal(state_after),
@@ -117,19 +117,19 @@ fn mark_terminal(run: &mut RunFrame, step: StepIdx, state: crate::frame::StepSta
     match state {
         crate::frame::StepState::Succeeded => match run.mark_succeeded(step) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            Err(_) => { kani::assume(false); return; }
         },
         crate::frame::StepState::Failed => match run.mark_failed(step) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            Err(_) => { kani::assume(false); return; }
         },
         crate::frame::StepState::Cancelled => match run.mark_cancelled(step) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            Err(_) => { kani::assume(false); return; }
         },
         crate::frame::StepState::Skipped => match run.mark_skipped(step) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+            Err(_) => { kani::assume(false); return; }
         },
         _ => {}
     }

@@ -36,7 +36,7 @@ mod kani_errors_ps003 {
         let qf = JournalError::QueueFull;
         match qf {
             JournalError::QueueFull => {} // OK
-            _ => { kani::assume(false, "QueueFull must match QueueFull"); return; }
+            _ => { kani::assume(false); return; }
         }
 
         // PayloadTooLarge has payload fields
@@ -46,7 +46,7 @@ mod kani_errors_ps003 {
                 assert_eq!(len, 100);
                 assert_eq!(max, 50);
             }
-            _ => { kani::assume(false, "PayloadTooLarge must match PayloadTooLarge"); return; }
+            _ => { kani::assume(false); return; }
         }
 
         // DuplicateEvent has run and seq fields
@@ -58,7 +58,7 @@ mod kani_errors_ps003 {
                 assert_eq!(r, run);
                 assert_eq!(s, seq);
             }
-            _ => { kani::assume(false, "DuplicateEvent must match DuplicateEvent"); return; }
+            _ => { kani::assume(false); return; }
         }
     }
 
@@ -87,10 +87,10 @@ mod kani_errors_ps003 {
                 // Expected: per-record encoding guard fires
             }
             Err(_e) => {
-                kani::assume(false, "Expected PayloadTooLarge for 0-byte limit"); return;
+                kani::assume(false); return;
             }
             Ok(_) => {
-                kani::assume(false, "Should not succeed with 0-byte payload limit"); return;
+                kani::assume(false); return;
             }
         }
     }

@@ -62,7 +62,7 @@ fn kani_unknown_command_returns_bad_request() {
     let command = match command {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     };

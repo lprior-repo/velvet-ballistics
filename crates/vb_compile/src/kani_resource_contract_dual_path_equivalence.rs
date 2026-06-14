@@ -27,7 +27,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: dual_path_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "valid representative YAML source for Kani"); return; }
+        Err(_) => { kani::assume(false); return; }
     }
 }
 
@@ -45,7 +45,7 @@ fn prove_dual_path_digest_equivalence() {
     // Digest from compilation
     let workflow = match crate::mod_compile_lowering::compile_source(&source, contract) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "valid source must compile"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     let digest_compiled = workflow.digest();
 
@@ -68,7 +68,7 @@ fn prove_dual_path_digest_equivalence_non_default() {
     let digest_direct = crate::mod_compile_lowering::canonical_digest(&source, contract);
     let workflow = match crate::mod_compile_lowering::compile_source(&source, contract) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "valid source must compile"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
 
     assert_eq!(

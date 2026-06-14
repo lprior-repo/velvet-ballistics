@@ -32,7 +32,7 @@ fn kani_from_u16_exhaustive() {
     let command = match result {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     };
@@ -257,7 +257,7 @@ fn kani_roundtrip_identity() {
         match roundtripped {
             Ok(v) => kani::assert(v == *cmd, "expected roundtripped command"),
             Err(_) => {
-                kani::assume(false, "expected Ok");
+                kani::assume(false);
                 return;
             }
         }

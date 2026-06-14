@@ -65,7 +65,7 @@ fn minimal_valid_workflow() -> CompiledWorkflow {
     let hash_bytes = match postcard::to_allocvec(&parts) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     };
@@ -75,7 +75,7 @@ fn minimal_valid_workflow() -> CompiledWorkflow {
     match CompiledWorkflow::try_from_parts(parts) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }

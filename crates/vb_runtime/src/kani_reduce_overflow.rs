@@ -66,14 +66,14 @@ fn reduce_accumulator_overflow_harness() {
     let list_id = match store.insert_list(list_items.into_boxed_slice()) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     };
     match run.write_slot(input, SlotValue::List(list_id)) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }
@@ -86,7 +86,7 @@ fn reduce_accumulator_overflow_harness() {
     match result {
         Ok(v) => kani::assert(v == vb_core::EngineSignal::Continue, "expected Continue"),
         Err(_) => {
-            kani::assume(false, "expected Ok");
+            kani::assume(false);
             return;
         }
     }

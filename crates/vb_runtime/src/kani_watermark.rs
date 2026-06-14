@@ -97,7 +97,7 @@ fn kani_watermark_monotonic() {
     match watermark.complete(run, 3) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }
@@ -106,7 +106,7 @@ fn kani_watermark_monotonic() {
     match watermark.complete(run, 4) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }

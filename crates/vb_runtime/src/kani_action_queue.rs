@@ -100,7 +100,7 @@ fn kani_action_queue_full() {
     let queue = match queue {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     };
@@ -143,7 +143,7 @@ fn kani_action_queue_fifo() {
     let queue = match queue {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     };
@@ -156,21 +156,21 @@ fn kani_action_queue_fifo() {
     match queue.enqueue(ticket0) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }
     match queue.enqueue(ticket1) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }
     match queue.enqueue(ticket2) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }

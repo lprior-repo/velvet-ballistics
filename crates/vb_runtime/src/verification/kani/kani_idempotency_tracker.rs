@@ -169,7 +169,7 @@ fn proof_eviction_safety() {
     match tracker.mark_completed(&first_ticket) {
         Ok(v) => { let _ = v; },
         Err(_) => {
-            kani::assume(false, "unwrap failed");
+            kani::assume(false);
             return;
         }
     }

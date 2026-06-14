@@ -25,7 +25,7 @@ mod kani_capability_harnesses {
         let name = match s.split('\0').next() {
             Some(v) => v,
             None => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };

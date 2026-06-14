@@ -79,7 +79,7 @@ mod kani_admission_ps001 {
         match result {
             Some(v) => kani::assert(v == current, "expected current"),
             None => {
-                kani::assume(false, "expected Some");
+                kani::assume(false);
                 return;
             }
         }

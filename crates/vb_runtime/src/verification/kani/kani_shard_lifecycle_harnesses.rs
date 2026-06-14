@@ -175,7 +175,7 @@ fn kani_next_generation_monotonicity() {
     match first_result {
         Ok(v) => kani::assert(v == 1, "first generation must be 1"),
         Err(_) => {
-            kani::assume(false, "expected Ok");
+            kani::assume(false);
             return;
         }
     }
@@ -189,7 +189,7 @@ fn kani_next_generation_monotonicity() {
     match second_result {
         Ok(v) => kani::assert(v == 2, "second generation must be 2"),
         Err(_) => {
-            kani::assume(false, "expected Ok");
+            kani::assume(false);
             return;
         }
     }

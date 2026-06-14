@@ -161,15 +161,15 @@ fn accessor_index_assignment() {
     // Multiple accessors get sequential indices: 0, 1, 2
     let expr1 = match parse_expression("$slots.1.0") {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     let expr2 = match parse_expression("$slots.2.1") {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     let expr3 = match parse_expression("$slots.3.2") {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
 
     let mut consts = Vec::new();
@@ -212,7 +212,7 @@ fn rejects_non_numeric_accessor_path() {
     // $slots.1.abc — non-numeric second segment
     let expr = match parse_expression("$slots.1.abc") {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     let mut acc: Vec<AccessorProgram> = Vec::new();
     let res = compile_expr_to_bytecode_with_accessors(

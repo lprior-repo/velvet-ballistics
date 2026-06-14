@@ -59,7 +59,7 @@ fn idempotency_gate_parity() {
                     id: ActionId::new(0),
                     name: match ActionName::new("test-action") {
                         Ok(v) => v,
-                        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+                        Err(_) => { kani::assume(false); return; }
                     },
                     input_slot_count: 1,
                     output_slot_count: 1,

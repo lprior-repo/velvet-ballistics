@@ -73,7 +73,7 @@ fn source_digest_equals_digest() {
             let map_result = postcard::take_from_bytes(&bytes).map(|(a, _)| a);
             let decoded: crate::admission::AcceptedArtifact = match map_result {
                 Ok(v) => v,
-                Err(_) => { kani::assume(false, "Should decode"); return; }
+                Err(_) => { kani::assume(false); return; }
             };
 
             // source_digest must equal digest after roundtrip
@@ -140,7 +140,7 @@ fn source_digest_differs_rejected() {
     // Serialize and validate through the public API
     let envelope = match postcard::to_allocvec(&artifact) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "Should serialize"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     let record = CompiledIrRecord {
         digest, // The digest stored in the record

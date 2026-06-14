@@ -1138,7 +1138,7 @@ mod frame_kani_harnesses {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };
@@ -1159,7 +1159,7 @@ mod frame_kani_harnesses {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };
@@ -1183,7 +1183,7 @@ mod frame_kani_harnesses {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };
@@ -1210,7 +1210,7 @@ mod frame_kani_harnesses {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };
@@ -1240,7 +1240,7 @@ mod frame_kani_harnesses {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };
@@ -1264,7 +1264,7 @@ mod parallel_in_flight_kani {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };
@@ -1286,7 +1286,7 @@ mod parallel_in_flight_kani {
         let mut frame = match frame {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "Kani assume: frame construction always Ok per prior assume");
+                kani::assume(false);
                 return;
             }
         };

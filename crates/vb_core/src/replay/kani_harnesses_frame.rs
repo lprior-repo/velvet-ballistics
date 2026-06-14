@@ -16,7 +16,7 @@ use super::kani_harnesses_plan::make_minimal_plan;
 fn verify_replay_deterministic_for_same_input() {
     let slot_val: bool = kani::any();
 
-    let plan = make_minimal_plan(
+    let plan = match make_minimal_plan(
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -55,7 +55,7 @@ fn verify_replay_deterministic_for_same_input() {
     {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "plan construction failed");
+            kani::assume(false);
             return;
         }
     }
@@ -111,7 +111,7 @@ fn kani_replay_skips_terminal_states() {
         _ => crate::frame::StepState::Skipped,
     };
 
-    let plan = make_minimal_plan(
+    let plan = match make_minimal_plan(
         vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -151,7 +151,7 @@ fn kani_replay_skips_terminal_states() {
     {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "plan construction failed");
+            kani::assume(false);
             return;
         }
     }

@@ -46,7 +46,7 @@ mod stub_journal {
         let journal = match FjallJournal::open(&unique_path, None) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "temp journal must open for kani harness");
+                kani::assume(false);
                 loop {}
             }
         };

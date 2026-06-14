@@ -613,7 +613,7 @@ impl kani::Arbitrary for ActionContract {
         let name = match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 loop {}
             }
         };

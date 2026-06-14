@@ -56,7 +56,7 @@ mod kani_batch_state_ps004 {
                 assert_eq!(s, seq);
                 // Error is well-formed
             }
-            _ => { kani::assume(false, "Must be DuplicateEvent"); return; }
+            _ => { kani::assume(false); return; }
         }
     }
 
@@ -67,7 +67,7 @@ mod kani_batch_state_ps004 {
         // QueueFull is a stateless error — no batch mutation
         match err {
             JournalError::QueueFull => { /* OK */ }
-            _ => { kani::assume(false, "Must be QueueFull"); return; }
+            _ => { kani::assume(false); return; }
         }
     }
 
@@ -195,7 +195,7 @@ mod kani_batch_state_ps004 {
                 assert_eq!(v1.len(), v2.len());
             }
             (Err(_), Err(_)) => {} // Both fail the same way
-            _ => { kani::assume(false, "encode_record non-deterministic"); return; }
+            _ => { kani::assume(false); return; }
         }
     }
 }

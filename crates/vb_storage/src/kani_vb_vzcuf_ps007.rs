@@ -65,7 +65,7 @@ mod kani_bridge_ps007 {
         match result {
             Some(v) => kani::assert(v <= limit, "result exceeds limit"),
             None => {
-                kani::assume(false, "expected Some");
+                kani::assume(false);
                 return;
             }
         }

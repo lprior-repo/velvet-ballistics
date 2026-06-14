@@ -119,7 +119,7 @@ fn check_action_ticket_serialization_size() {
     let serialized = match postcard::to_allocvec(&action_ticket) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "Serialization must succeed");
+            kani::assume(false);
             return;
         }
     };

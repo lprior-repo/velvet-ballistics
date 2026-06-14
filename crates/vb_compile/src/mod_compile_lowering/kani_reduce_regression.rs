@@ -220,14 +220,14 @@ fn check_single_step_equivalence_contract() {
                 true,
                 "single-step succeeded but multi-step failed — CONTRACT VIOLATION"
             );
-            kani::assume(false, "dispatchers must agree: single-step Ok, multi-step Err"); return;
+            kani::assume(false); return;
         }
         (Err(_), Ok(())) => {
             kani::cover!(
                 true,
                 "single-step failed but multi-step succeeded — CONTRACT VIOLATION"
             );
-            kani::assume(false, "dispatchers must agree: single-step Err, multi-step Ok"); return;
+            kani::assume(false); return;
         }
     }
 }

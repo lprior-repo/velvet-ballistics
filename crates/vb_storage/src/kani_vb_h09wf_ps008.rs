@@ -80,7 +80,7 @@ fn ps_008_proof_flags_exhaustive() {
         let flag = match missing {
             Some(v) => v,
             None => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };

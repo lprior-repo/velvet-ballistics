@@ -44,7 +44,7 @@ mod harnesses {
         match entry {
             Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
             None => {
-                kani::assume(false, "expected Some");
+                kani::assume(false);
                 return;
             }
         }
@@ -64,7 +64,7 @@ mod harnesses {
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
             None => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -74,7 +74,7 @@ mod harnesses {
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 2, "expected generation 2"),
             None => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -228,7 +228,7 @@ mod harnesses {
         match next {
             Some(v) => kani::assert(v == gen + 1, "expected gen + 1"),
             None => {
-                kani::assume(false, "expected Some");
+                kani::assume(false);
                 return;
             }
         }
@@ -327,14 +327,14 @@ mod harnesses {
         let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };
         let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };
@@ -383,14 +383,14 @@ mod harnesses {
         let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };
         let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };
@@ -439,14 +439,14 @@ mod harnesses {
         let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };
         let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };
@@ -628,7 +628,7 @@ mod harnesses {
         let e = match entry {
             Some(v) => v,
             None => {
-                kani::assume(false, "unwrap failed");
+                kani::assume(false);
                 return;
             }
         };

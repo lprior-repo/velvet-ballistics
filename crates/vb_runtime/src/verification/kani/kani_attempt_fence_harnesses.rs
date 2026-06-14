@@ -85,11 +85,11 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "kani harness: valid workflow parts"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
     let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "kani harness: valid frame"); return; }
+        Err(_) => { kani::assume(false); return; }
     };
 
     let mut state = RunState {

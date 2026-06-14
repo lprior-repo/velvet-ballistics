@@ -79,13 +79,14 @@ proof fn test_advance_max()
 proof fn test_advance_monotonic()
     ensures
         forall |g: u64|
-            if generation_advance(g).is_Some() {
-                generation_advance(g).get_Some_0() > g
-            },
+            generation_advance(g).is_Some() ==>
+                generation_advance(g).get_Some_0() > g,
 {
     assert forall |g: u64|
         if generation_advance(g).is_Some() {
             generation_advance(g).get_Some_0() > g
+        } else {
+            true
         } by {
         if generation_advance(g).is_Some() {
             let next = generation_advance(g).get_Some_0();
