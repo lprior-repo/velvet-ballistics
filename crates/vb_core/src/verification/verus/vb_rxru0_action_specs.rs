@@ -166,13 +166,10 @@ verus! {
         run1: u128, seq1: u128, action1: u128,
         run2: u128, seq2: u128, action2: u128
     )
-            // Same inputs → same key (determinism)
+        ensures
             (run1 == run2 && seq1 == seq2 && action1 == action2) ==>
                 spec_compute_action_idempotency_key(run1, seq1, action1)
                     == spec_compute_action_idempotency_key(run2, seq2, action2)
-            // Different inputs may collide (not required to be injective)
-            true
-        ensures 
     {
         assume(run1 == run2 && seq1 == seq2 && action1 == action2);
         assert(spec_compute_action_idempotency_key(run1, seq1, action1)
@@ -184,8 +181,8 @@ verus! {
     proof fn proof_key_always_valid_u128(
         run: u128, seq: u128, action: u128
     )
-        && spec_compute_action_idempotency_key(run, seq, action) <= u128::MAX
         ensures spec_compute_action_idempotency_key(run, seq, action) >= 0
+            && spec_compute_action_idempotency_key(run, seq, action) <= u128::MAX
     {
         // All operations are wrapping_add/wrapping_mul on u128.
         // Result is always a valid u128.
@@ -229,9 +226,9 @@ verus! {
         run: u64, step: u64, seq: u64, action: u64,
         attempt: u16, idempotency_key: u128, capacity: u16,
     )
-        && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
-        && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).action == action
-        && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).idempotency_key == idempotency_key
+        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
+            && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).action == action
+            && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).idempotency_key == idempotency_key
         ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).run == run && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).seq == seq && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).attempt == attempt && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).capacity == capacity
     {
         let ticket = spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity);
