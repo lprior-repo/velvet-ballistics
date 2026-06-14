@@ -31,8 +31,7 @@ fn symbolic_contract_no_caps() -> ActionContract {
         name: match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false);
-                return;
+                kani::assume(false); loop {}
             }
         },
         input_slot_count: kani::any(),
@@ -192,8 +191,7 @@ fn concrete_key_required_contract() -> ActionContract {
         name: match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false);
-                return;
+                kani::assume(false); loop {}
             }
         },
         input_slot_count: 1,
@@ -711,8 +709,7 @@ fn kani_verify_idempotency_missing_key() {
         name: match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false);
-                return;
+                kani::assume(false); loop {}
             }
         },
         input_slot_count: 1,
