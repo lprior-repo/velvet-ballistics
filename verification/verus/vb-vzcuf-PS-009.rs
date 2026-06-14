@@ -180,6 +180,11 @@ pub proof fn lemma_byte_limit_safe(
 ///   In the conservative policy, every `append_event` increments
 ///   `staged_bytes += encoded_len` regardless of whether the key is
 ///   a same-batch duplicate.  This matches unchecked counting.
+///
+/// NOTE: external_body because `StagedKeySet = Set<u64>` is a ghost spec type
+/// and `Set::contains` is not available in exec mode.  The production
+/// `staged_event_keys` is a `HashSet<[u8; 17]>` (non-Verus).
+#[verifier::external_body]
 pub exec fn conservative_accounting_exec(
     _key: u64,
     encoded_len: u64,
@@ -200,6 +205,9 @@ pub exec fn conservative_accounting_exec(
 /// PRODUCTION BINDING:
 ///   In the precise policy, same-batch duplicate keys do not increment
 ///   `staged_bytes`.  Only distinct keys consume byte budget.
+///
+/// NOTE: external_body because `StagedKeySet = Set<u64>` is a ghost spec type.
+#[verifier::external_body]
 pub exec fn precise_accounting_exec(
     key: u64,
     encoded_len: u64,

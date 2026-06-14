@@ -74,14 +74,6 @@ fn zero_gaps_after_fix() {
         "Post-fix configuration must produce zero master contract gaps",
     );
 
-    // Provide detailed diagnostics on any gap
-    if !master_gaps.is_empty() {
-        for gap in &master_gaps {
-            // Kani will report the specific gap in a counterexample
-            kani::cover!(gap != gap, "Gap found"); // vacuous but documents the branch
-        }
-    }
-
     // ----- Governance validation -----
     let governance_gaps = validate_against_governance(&ws);
 

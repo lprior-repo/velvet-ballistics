@@ -55,10 +55,10 @@ verus! {
     pub exec fn timer_slot_insert_exec(
         present: bool,
         generation: u64,
-    ) -> (result_present: bool, result_generation: u64)
+    ) -> (slot: (bool, u64))
         ensures
-            result_present == true,
-            result_generation == (if present { (generation + 1u64) as u64 } else { 1u64 }),
+            slot.0 == true,
+            slot.1 == (if present { (generation + 1u64) as u64 } else { 1u64 }),
     {
         // Production implementation: TimerWheel::insert
         //   - Replaces entry with incremented generation
@@ -74,13 +74,13 @@ verus! {
     pub exec fn timer_slot_cancel_exec(
         present: bool,
         generation: u64,
-    ) -> (result_present: bool, result_generation: u64, did_remove: bool)
+    ) -> (slot: (bool, u64, bool))
         ensures
-            did_remove == present,
+            slot.2 == present,
             if present {
-                result_present == false && result_generation == 0u64
+                slot.0 == false && slot.1 == 0u64
             } else {
-                result_present == present && result_generation == generation
+                slot.0 == present && slot.1 == generation
             },
     {
         // Production implementation: TimerWheel::cancel
