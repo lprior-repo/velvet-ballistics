@@ -41,7 +41,7 @@ mod kani_admission_ps001 {
 
     /// C3: Exact fit — u64::checked_add produces correct sum within limit.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn check_admission_boundary() {
         let current: u64 = kani::any();
         let candidate: u64 = kani::any();

@@ -288,14 +288,13 @@ fn classify_boundary_id_stability() {
 
 #[test]
 fn classify_boundary_id_path_normalization() {
-    // Paths with /, ., _ should normalize to same ID
+    // Slashes and dots normalize to the same ID — path separator is stripped
     let candidate1 = BoundaryCandidate::new("crates/test.src/lib.rs", "extern-c-boundary");
     let candidate2 = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
     let classified1 = classify_boundary(candidate1).unwrap();
     let classified2 = classify_boundary(candidate2).unwrap();
-    // IDs may differ due to different paths
-    assert!(!classified1.id.is_empty());
-    assert!(!classified2.id.is_empty());
+    // Both paths normalize to "crates-test-src-lib-rs" in the ID
+    assert_eq!(classified1.id, classified2.id);
 }
 
 #[test]
@@ -366,7 +365,10 @@ fn required_evidence_generated_code_risky() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -378,7 +380,10 @@ fn required_evidence_unsafe_adjacent_risky() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 // =============================================================================
@@ -563,7 +568,10 @@ fn required_evidence_process_limit_boundary() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ProcessLimit),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -575,7 +583,10 @@ fn required_evidence_language_limit_boundary() {
         exposure: BoundaryExposure::risky(BoundaryRisk::LanguageLimit),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -587,7 +598,10 @@ fn required_evidence_external_bytes_boundary() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -602,7 +616,7 @@ fn validate_inventory_empty_records_valid() {
 }
 
 #[test]
-fn inventory_completion_status_all_safe_boundaries() {
+fn inventory_completion_status_multiple_caabi_boundaries() {
     let record1 = make_valid_record("test-id-1");
     let record2 = make_valid_record("test-id-2");
     let validated = ValidatedBoundaryInventory::from_records(vec![record1, record2]);
@@ -764,6 +778,11 @@ fn inventory_completion_status_third_party_unsafe_allowed() {
 
     let result = inventory_completion_status(validated);
     assert!(result.is_ok());
+    match result.unwrap() {
+        UnsafeIsolationStatus::Complete { boundary_count } => {
+            assert_eq!(boundary_count, 1);
+        }
+    }
 }
 
 // =============================================================================
@@ -1017,7 +1036,10 @@ fn required_evidence_safe_class_but_risky_exposure() {
         exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -1029,7 +1051,10 @@ fn required_evidence_risky_class_but_none_risk() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 // =============================================================================
@@ -1214,7 +1239,9 @@ fn validate_inventory_approved_with_sha256_external_evidence_ok() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let validated = result.unwrap();
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.schema_version, 1);
 }
 
 // =============================================================================
@@ -1254,6 +1281,11 @@ fn inventory_completion_status_third_party_unsafe_adjacent_in_fuzz_allowed() {
     validated.records.push(record);
     let result = inventory_completion_status(validated);
     assert!(result.is_ok());
+    match result.unwrap() {
+        UnsafeIsolationStatus::Complete { boundary_count } => {
+            assert_eq!(boundary_count, 1);
+        }
+    }
 }
 
 #[test]
@@ -1264,6 +1296,11 @@ fn inventory_completion_status_third_party_unsafe_adjacent_in_scripts_allowed() 
     validated.records.push(record);
     let result = inventory_completion_status(validated);
     assert!(result.is_ok());
+    match result.unwrap() {
+        UnsafeIsolationStatus::Complete { boundary_count } => {
+            assert_eq!(boundary_count, 1);
+        }
+    }
 }
 
 // =============================================================================
@@ -1293,7 +1330,8 @@ fn discover_boundaries_with_surfaces_file_containing_decoder_entry() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    assert!(result.is_ok());
+    let candidates = result.unwrap();
+    assert!(!candidates.is_empty());
 }
 
 #[test]

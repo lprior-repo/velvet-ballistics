@@ -23,11 +23,12 @@
 // cases the result before matching.
 //
 // Block disclaimer: a "<!-- position-disclaimer -->" line opens a block; the
-// matching "<!-- /position-disclaimer -->" line closes it. Only lines inside
-// the block that also contain an explicit negation marker such as
-// "is not", "isn't", "must not be", "is not a", "isn't a", "not a",
-// or "not the" are disclaimered. Any banned phrase on a non-negated line is
-// ACTIVE. Unbalanced blocks are hard scan errors.
+// matching "<!-- /position-disclaimer -->" line closes it. The block is
+// structural; explicit negation markers such as "is not", "isn't",
+// "must not be", "is not a", "isn't a", "not a", and "not the" are what
+// suppress banned phrases, and each banned phrase occurrence must be negated
+// independently (or fall outside the negation clause). Unbalanced blocks are
+// hard scan errors.
 //
 // Self-skip basenames (any directory): velvet-ballistics-MASTER.md,
 // CHANGELOG.md, HISTORY.md, MIGRATION.md.
@@ -90,6 +91,24 @@ const NEGATION_MARKERS: &[&str] = &[
     "not the",
 ];
 
+const CLAUSE_BREAK_MARKERS: &[&str] = &[
+    " but ",
+    " however ",
+    " though ",
+    " yet ",
+    " instead ",
+    " whereas ",
+    " while ",
+    " nevertheless ",
+    " nonetheless ",
+    " although ",
+    ".",
+    ";",
+    ":",
+    "!",
+    "?",
+];
+
 const SKIP_BASENAMES: &[&str] = &[
     "velvet-ballistics-MASTER.md",
     "CHANGELOG.md",
@@ -131,6 +150,7 @@ struct Finding {
 enum ScanError {
     UnmatchedDisclaimerEnd { line_no: usize },
     UnclosedDisclaimerBlock { line_no: usize },
+    NoScannableExplicitTargets,
 }
 
 impl fmt::Display for ScanError {
@@ -145,6 +165,90 @@ impl fmt::Display for ScanError {
                     "unclosed position-disclaimer block opened at line {line_no}"
                 )
             }
+            Self::NoScannableExplicitTargets => {
+                write!(f, "no explicit scan targets were scanned")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct ScanSummary {
+    active_total: usize,
+    allowlisted_total: usize,
+    disclaimered_total: usize,
+    files_scanned: usize,
+}
+
+impl ScanSummary {
+    fn record_finding(&mut self, kind: FindingKind) {
+        match kind {
+            FindingKind::Active => {
+                self.active_total = self.active_total.saturating_add(1);
+            }
+            FindingKind::Disclaimered => {
+                self.disclaimered_total = self.disclaimered_total.saturating_add(1);
+            }
+        }
+    }
+
+    fn note_scanned_file(&mut self) {
+        self.files_scanned = self.files_scanned.saturating_add(1);
+    }
+
+    fn has_scanned(&self) -> bool {
+        self.files_scanned != 0
+    }
+
+    fn emit(&self) {
+        eprintln!(
+            "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
+            self.active_total, self.allowlisted_total, self.disclaimered_total, self.files_scanned
+        );
+    }
+
+    fn exit_code(&self) -> ExitCode {
+        if self.active_total == 0 {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::from(1)
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct DisclaimerState {
+    depth: usize,
+    open_line: Option<usize>,
+}
+
+impl DisclaimerState {
+    fn apply_markers(&mut self, line_no: usize, starts: bool, ends: bool) -> Result<(), ScanError> {
+        if starts {
+            if self.depth == 0 {
+                self.open_line = Some(line_no);
+            }
+            self.depth = self.depth.saturating_add(1);
+        }
+        if ends {
+            if self.depth == 0 {
+                return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
+            }
+            self.depth -= 1;
+            if self.depth == 0 {
+                self.open_line = None;
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(&self) -> Result<(), ScanError> {
+        if self.depth == 0 {
+            Ok(())
+        } else {
+            Err(ScanError::UnclosedDisclaimerBlock {
+                line_no: self.open_line.unwrap_or_default(),
+            })
         }
     }
 }
@@ -205,149 +309,206 @@ fn is_separator(ch: char) -> bool {
     ch.is_whitespace() || ch == '-' || ch == '_'
 }
 
+fn push_lowercase(target: &mut String, ch: char) {
+    for lower in ch.to_lowercase() {
+        target.push(lower);
+    }
+}
+
 fn canonicalize_text(text: &str) -> String {
     let mut canonical = String::with_capacity(text.len());
-    let mut needs_space = false;
-
+    let mut pending_space = false;
     for ch in text.nfkc() {
         if is_zero_width(ch) {
             continue;
         }
         if is_separator(ch) {
-            needs_space = !canonical.is_empty();
+            pending_space = !canonical.is_empty();
             continue;
         }
-        if needs_space && !canonical.ends_with(' ') {
+        if pending_space && !canonical.ends_with(' ') {
             canonical.push(' ');
         }
-        needs_space = false;
-        for lower in ch.to_lowercase() {
-            canonical.push(lower);
-        }
+        pending_space = false;
+        push_lowercase(&mut canonical, ch);
     }
-
     if canonical.ends_with(' ') {
         canonical.pop();
     }
-
     canonical
 }
 
 fn normalize_marker_text(text: &str) -> String {
     let mut normalized = String::with_capacity(text.len());
-
     for ch in text.nfkc() {
         if is_zero_width(ch) {
             continue;
         }
-        for lower in ch.to_lowercase() {
-            normalized.push(lower);
-        }
+        push_lowercase(&mut normalized, ch);
     }
-
     normalized
 }
 
-fn contains_negation_marker(line: &str) -> bool {
+fn line_has_negation_marker(line: &str) -> bool {
     NEGATION_MARKERS.iter().any(|marker| line.contains(marker))
 }
 
-fn find_banned_phrases(normalized_line: &str) -> Vec<&'static str> {
-    BANNED_PHRASES
-        .iter()
-        .copied()
-        .filter(|phrase| normalized_line.contains(&canonicalize_text(phrase)))
-        .collect()
+fn latest_negation_scope(line: &str, phrase_start: usize) -> Option<(usize, usize)> {
+    let prefix = &line[..phrase_start];
+    let mut latest: Option<(usize, usize)> = None;
+
+    for marker in NEGATION_MARKERS {
+        if let Some(start) = prefix.rfind(marker) {
+            let end = start + marker.len();
+            if latest.map_or(true, |(_, latest_end)| end > latest_end) {
+                latest = Some((start, end));
+            }
+        }
+    }
+
+    latest
 }
 
-fn scan_text(text: &str) -> Result<Vec<Finding>, ScanError> {
-    let mut findings: Vec<Finding> = Vec::new();
-    let mut disclaimer_depth: usize = 0;
-    let mut disclaimer_open_line: Option<usize> = None;
+fn clause_scope_broken(segment: &str) -> bool {
+    CLAUSE_BREAK_MARKERS.iter().any(|marker| segment.contains(marker))
+}
 
-    for (idx, raw_line) in text.lines().enumerate() {
-        let line_no = idx + 1;
-        let marker_line = normalize_marker_text(raw_line);
-        let normalized_line = canonicalize_text(raw_line);
-        let starts = marker_line.contains(DISCLAIMER_START);
-        let ends = marker_line.contains(DISCLAIMER_END);
-        let line_in_disclaimer = disclaimer_depth > 0 || starts;
+fn phrase_is_disclaimered(line: &str, phrase_start: usize) -> bool {
+    let Some((_, marker_end)) = latest_negation_scope(line, phrase_start) else {
+        return false;
+    };
+    let segment = &line[marker_end..phrase_start];
+    !clause_scope_broken(segment)
+}
 
-        if ends && !line_in_disclaimer {
-            return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
-        }
+fn finding_kind(line: &str, phrase_start: usize, line_has_negation: bool) -> FindingKind {
+    if line_has_negation && phrase_is_disclaimered(line, phrase_start) {
+        FindingKind::Disclaimered
+    } else {
+        FindingKind::Active
+    }
+}
 
-        let phrases = find_banned_phrases(&normalized_line);
-        if phrases.is_empty() {
-            if starts {
-                if disclaimer_depth == 0 {
-                    disclaimer_open_line = Some(line_no);
-                }
-                if disclaimer_depth == usize::MAX {
-                    return Err(ScanError::UnclosedDisclaimerBlock { line_no });
-                }
-                disclaimer_depth += 1;
-            }
-            if ends {
-                if disclaimer_depth == 0 {
-                    return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
-                }
-                disclaimer_depth -= 1;
-                if disclaimer_depth == 0 {
-                    disclaimer_open_line = None;
-                }
-            }
-            continue;
-        }
-
-        let disclaimered = line_in_disclaimer && contains_negation_marker(&normalized_line);
-        let kind = if disclaimered {
-            FindingKind::Disclaimered
-        } else {
-            FindingKind::Active
-        };
-
-        for phrase in phrases {
+fn emit_phrase_findings(
+    line_no: usize,
+    raw_line: &str,
+    normalized_line: &str,
+    line_has_negation: bool,
+    findings: &mut Vec<Finding>,
+) {
+    for phrase in BANNED_PHRASES {
+        let pattern = canonicalize_text(phrase);
+        for (phrase_start, _) in normalized_line.match_indices(&pattern) {
             findings.push(Finding {
                 line_no,
                 text: raw_line.to_owned(),
                 phrase,
-                kind,
+                kind: finding_kind(normalized_line, phrase_start, line_has_negation),
             });
         }
+    }
+}
 
-        if starts {
-            if disclaimer_depth == 0 {
-                disclaimer_open_line = Some(line_no);
-            }
-            if disclaimer_depth == usize::MAX {
-                return Err(ScanError::UnclosedDisclaimerBlock { line_no });
-            }
-            disclaimer_depth += 1;
-        }
-        if ends {
-            if disclaimer_depth == 0 {
-                return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
-            }
-            disclaimer_depth -= 1;
-            if disclaimer_depth == 0 {
-                disclaimer_open_line = None;
-            }
-        }
+fn scan_line(
+    line_no: usize,
+    raw_line: &str,
+    state: &mut DisclaimerState,
+    findings: &mut Vec<Finding>,
+) -> Result<(), ScanError> {
+    let marker_line = normalize_marker_text(raw_line);
+    let normalized_line = canonicalize_text(raw_line);
+    let starts = marker_line.contains(DISCLAIMER_START);
+    let ends = marker_line.contains(DISCLAIMER_END);
+    let block_context = state.depth > 0 || starts;
+
+    if ends && !block_context {
+        return Err(ScanError::UnmatchedDisclaimerEnd { line_no });
     }
 
-    if disclaimer_depth != 0 {
-        return Err(ScanError::UnclosedDisclaimerBlock {
-            line_no: disclaimer_open_line.unwrap_or_default(),
-        });
+    let line_has_negation = line_has_negation_marker(&normalized_line);
+    emit_phrase_findings(
+        line_no,
+        raw_line,
+        &normalized_line,
+        line_has_negation,
+        findings,
+    );
+    state.apply_markers(line_no, starts, ends)
+}
+
+fn scan_text(text: &str) -> Result<Vec<Finding>, ScanError> {
+    let mut state = DisclaimerState::default();
+    let mut findings = Vec::new();
+
+    for (idx, raw_line) in text.lines().enumerate() {
+        scan_line(idx + 1, raw_line, &mut state, &mut findings)?;
     }
 
+    state.finish()?;
     Ok(findings)
 }
 
 fn scan_file(path: &Path) -> io::Result<Result<Vec<Finding>, ScanError>> {
     let text = fs::read_to_string(path)?;
     Ok(scan_text(&text))
+}
+
+fn emit_finding(rel: &str, finding: &Finding) {
+    match finding.kind {
+        FindingKind::Active => {
+            eprintln!(
+                "{}:{}: POSITIONING: {}: {}",
+                rel, finding.line_no, finding.phrase, finding.text
+            );
+        }
+        FindingKind::Disclaimered => {
+            eprintln!(
+                "{}:{}: disclaimered: {}: {}",
+                rel, finding.line_no, finding.phrase, finding.text
+            );
+        }
+    }
+}
+
+fn emit_findings(root: &Path, file: &Path, findings: Vec<Finding>, summary: &mut ScanSummary) {
+    let rel = relative_label(root, file);
+    for finding in findings {
+        summary.record_finding(finding.kind);
+        emit_finding(&rel, &finding);
+    }
+}
+
+fn scan_target(root: &Path, file: &Path, summary: &mut ScanSummary) -> Result<(), ScanError> {
+    if path_under_skip_dir(file) {
+        return Ok(());
+    }
+
+    match scan_file(file) {
+        Ok(Ok(findings)) => {
+            summary.note_scanned_file();
+            emit_findings(root, file, findings, summary);
+            Ok(())
+        }
+        Ok(Err(error)) => Err(error),
+        Err(error) => {
+            eprintln!("check-product-positioning: unreadable: {}: {error}", file.display());
+            Ok(())
+        }
+    }
+}
+
+fn scan_files(root: &Path, files: &[PathBuf], explicit_inputs: bool) -> Result<ScanSummary, ScanError> {
+    let mut summary = ScanSummary::default();
+
+    for file in files {
+        scan_target(root, file, &mut summary)?;
+    }
+
+    if explicit_inputs && !summary.has_scanned() {
+        return Err(ScanError::NoScannableExplicitTargets);
+    }
+
+    Ok(summary)
 }
 
 fn should_scan_file(root: &Path, path: &Path, enforce_surface: bool) -> bool {
@@ -417,64 +578,37 @@ fn collect_arg_files(root: &Path, arg: &Path, out: &mut Vec<PathBuf>) -> io::Res
     walk(root, arg, out, false)
 }
 
-fn process(root: &Path, files: Vec<PathBuf>) -> ExitCode {
-    let mut active_total: usize = 0;
-    let allowlisted_total: usize = 0;
-    let mut disclaimered_total: usize = 0;
-    let mut files_scanned: usize = 0;
+fn collect_explicit_files(root: &Path, args: &[String], out: &mut Vec<PathBuf>) -> io::Result<()> {
+    for raw in args {
+        collect_arg_files(root, Path::new(raw), out)?;
+    }
+    Ok(())
+}
 
-    for file in &files {
-        if path_under_skip_dir(file) {
-            continue;
-        }
-        match scan_file(file) {
-            Ok(Ok(findings)) => {
-                files_scanned = files_scanned.saturating_add(1);
-                let rel = relative_label(root, file);
-                for finding in findings {
-                    match &finding.kind {
-                        FindingKind::Active => {
-                            active_total = active_total.saturating_add(1);
-                            eprintln!(
-                                "{}:{}: POSITIONING: {}: {}",
-                                rel, finding.line_no, finding.phrase, finding.text
-                            );
-                        }
-                        FindingKind::Disclaimered => {
-                            disclaimered_total = disclaimered_total.saturating_add(1);
-                            eprintln!(
-                                "{}:{}: disclaimered: {}: {}",
-                                rel, finding.line_no, finding.phrase, finding.text
-                            );
-                        }
-                    }
-                }
-            }
-            Ok(Err(error)) => {
-                eprintln!(
-                    "check-product-positioning: scan error: {}: {error}",
-                    file.display()
-                );
-                return ExitCode::from(2);
-            }
-            Err(error) => {
-                eprintln!(
-                    "check-product-positioning: unreadable: {}: {error}",
-                    file.display()
-                );
-            }
-        }
+fn collect_scan_targets(root: &Path, args: &[String], using_defaults: bool) -> io::Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+
+    if using_defaults {
+        collect_default_files(root, &mut files)?;
+    } else {
+        collect_explicit_files(root, args, &mut files)?;
     }
 
-    eprintln!(
-        "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
-        active_total, allowlisted_total, disclaimered_total, files_scanned
-    );
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
 
-    if active_total == 0 {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::from(1)
+fn process(root: &Path, files: &[PathBuf], explicit_inputs: bool) -> ExitCode {
+    match scan_files(root, files, explicit_inputs) {
+        Ok(summary) => {
+            summary.emit();
+            summary.exit_code()
+        }
+        Err(error) => {
+            eprintln!("check-product-positioning: scan error: {error}");
+            ExitCode::from(2)
+        }
     }
 }
 
@@ -490,29 +624,11 @@ pub fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let using_defaults = args.is_empty();
 
-    if using_defaults {
-        let mut files: Vec<PathBuf> = Vec::new();
-        if let Err(error) = collect_default_files(&root, &mut files) {
-            eprintln!("check-product-positioning: collect defaults: {error}");
-            return ExitCode::from(2);
+    match collect_scan_targets(&root, &args, using_defaults) {
+        Ok(files) => process(&root, &files, !using_defaults),
+        Err(error) => {
+            eprintln!("check-product-positioning: collect targets: {error}");
+            ExitCode::from(2)
         }
-        files.sort();
-        files.dedup();
-        process(&root, files)
-    } else {
-        let mut files: Vec<PathBuf> = Vec::new();
-        for raw in &args {
-            let arg = PathBuf::from(raw);
-            if let Err(error) = collect_arg_files(&root, &arg, &mut files) {
-                eprintln!(
-                    "check-product-positioning: collect {}: {error}",
-                    arg.display()
-                );
-                return ExitCode::from(2);
-            }
-        }
-        files.sort();
-        files.dedup();
-        process(&root, files)
     }
 }

@@ -33,7 +33,7 @@ fn ps_012_read_revalidation() {
     let ir_len: u8 = kani::any();
     let ir: Vec<u8> = (0..ir_len).map(|_| kani::any()).collect();
 
-    let record = crate::records::CompiledIrRecord { digest, ir };
+    let record = crate::records::CompiledIrRecord { digest, ir, metadata_hash: None };
 
     let result = validate_compiled_ir_record(&record);
 
@@ -63,7 +63,7 @@ fn ps_012_corrupted_envelope_rejected() {
     let orig_byte = ir[flip_idx as usize];
     ir[flip_idx as usize] = orig_byte ^ 0xFF; // Flip all bits
 
-    let record = crate::records::CompiledIrRecord { digest, ir };
+    let record = crate::records::CompiledIrRecord { digest, ir, metadata_hash: None };
 
     let result = validate_compiled_ir_record(&record);
 
@@ -99,7 +99,7 @@ fn ps_012_oversized_after_corruption_rejected() {
 
     let ir: Vec<u8> = vec![0u8; ir_len as usize];
 
-    let record = crate::records::CompiledIrRecord { digest, ir };
+    let record = crate::records::CompiledIrRecord { digest, ir, metadata_hash: None };
 
     let result = validate_compiled_ir_record(&record);
 

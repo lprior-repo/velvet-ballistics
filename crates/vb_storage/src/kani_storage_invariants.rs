@@ -10,7 +10,7 @@ use crate::{
 // ---------------------------------------------------------------------------
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_next_seq_monotonic_for_all_values() {
     let raw: u64 = kani::any();
     let seq = EventSeq::new(raw);
@@ -31,7 +31,7 @@ fn kani_next_seq_monotonic_for_all_values() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_event_seq_ordering_invariant() {
     let a: u64 = kani::any();
     let b: u64 = kani::any();
@@ -43,7 +43,7 @@ fn kani_event_seq_ordering_invariant() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_event_seq_zones_preserved() {
     let val: u64 = kani::any();
     let seq = EventSeq::new(val);
@@ -58,7 +58,7 @@ fn kani_event_seq_zones_preserved() {
 // ---------------------------------------------------------------------------
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_queue_capacity_must_be_nonzero() {
     let cap: usize = kani::any();
     let batch: usize = kani::any();
@@ -72,7 +72,7 @@ fn kani_queue_capacity_must_be_nonzero() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_queue_capacity_contract_preservation() {
     let cap_raw: usize = kani::any();
     kani::assume(cap_raw > 0);
@@ -100,7 +100,7 @@ fn kani_queue_capacity_contract_preservation() {
 // ---------------------------------------------------------------------------
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_sequence_overflow_boundary() {
     let raw: u64 = kani::any();
     let result = crate::codec::next_seq(EventSeq::new(raw));
@@ -112,7 +112,7 @@ fn kani_sequence_overflow_boundary() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_event_seq_comparison_is_total() {
     let a: u64 = kani::any();
     let b: u64 = kani::any();
@@ -128,7 +128,7 @@ fn kani_event_seq_comparison_is_total() {
 // ---------------------------------------------------------------------------
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_validate_replayed_event_rejects_wrong_run() {
     let run_raw: u64 = kani::any();
     let actual_raw: u64 = kani::any();
@@ -153,7 +153,7 @@ fn kani_validate_replayed_event_rejects_wrong_run() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_validate_replayed_event_rejects_sequence_gap() {
     let run_raw: u64 = kani::any();
     let seq_raw: u64 = kani::any();
@@ -178,7 +178,7 @@ fn kani_validate_replayed_event_rejects_sequence_gap() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_encode_reject_rejects_kind_family_mismatch() {
     let record = crate::WorkflowSourceRecord {
         digest: vb_core::WorkflowDigest::from_bytes([0u8; 32]),
@@ -199,7 +199,7 @@ fn kani_encode_reject_rejects_kind_family_mismatch() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_encode_rejects_kind_family_mismatch_blob() {
     let record = crate::WorkflowSourceRecord {
         digest: vb_core::WorkflowDigest::from_bytes([0u8; 32]),
@@ -220,7 +220,7 @@ fn kani_encode_rejects_kind_family_mismatch_blob() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_next_seq_compares_correctly_with_event_seq_ordering() {
     let raw: u64 = kani::any();
     kani::assume(raw < u64::MAX);
@@ -235,7 +235,7 @@ fn kani_next_seq_compares_correctly_with_event_seq_ordering() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_record_kind_valid_range() {
     let kind_id: u16 = kani::any();
     let result = crate::codec::validation::validate_known_kind(kind_id);
@@ -249,7 +249,7 @@ fn kani_record_kind_valid_range() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_validate_schema_version_all_values() {
     let version: u16 = kani::any();
     let current = crate::constants::CURRENT_SCHEMA_VERSION;

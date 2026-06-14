@@ -3,7 +3,7 @@
 #![forbid(unsafe_code)]
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_009_exact_deadline_fires() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let deadline = std::time::Instant::now();
@@ -17,7 +17,7 @@ fn ps_009_exact_deadline_fires() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_009_future_deadline_not_fired() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let now = std::time::Instant::now();
@@ -32,7 +32,7 @@ fn ps_009_future_deadline_not_fired() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_009_fire_at_exact_preserves_untouched_future() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let now = std::time::Instant::now();

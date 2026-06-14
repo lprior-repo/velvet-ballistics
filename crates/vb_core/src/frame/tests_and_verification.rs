@@ -1643,7 +1643,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let result = frame.set_pc(pc);
@@ -1660,7 +1660,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let _result = frame.increment_executed();
@@ -1682,7 +1682,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let result = frame.set_pc(pc);
@@ -1705,7 +1705,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         let frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let result = frame.read_slot(slot);
@@ -1727,7 +1727,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let value: SlotValue = kani::any();
@@ -1749,7 +1749,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         let frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let result = frame.read_taint(slot);
@@ -1774,7 +1774,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         // First initialize the slot (otherwise this is a different proof obligation)
@@ -1816,7 +1816,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let result = frame.write_slot_with_taint(slot, value, taint);
@@ -1832,7 +1832,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1);
         let frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
         kani::assert(frame.executed() == 0, "executed counter starts at 0");
     }
@@ -1843,7 +1843,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let before = frame.executed();
@@ -1865,7 +1865,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, slot_count);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         // Increment executed a few times
@@ -1894,7 +1894,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         frame.set_max_parallel_in_flight(100);
@@ -1918,7 +1918,7 @@ mod frame_kani_harnesses {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         frame.set_max_parallel_in_flight(100);

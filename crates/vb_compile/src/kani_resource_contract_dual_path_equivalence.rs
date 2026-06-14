@@ -34,7 +34,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 /// PO-K10: Prove that canonical_digest is consistent within the compilation pipeline.
 /// The digest computed by compile_source matches the digest from canonical_digest directly.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn prove_dual_path_digest_equivalence() {
     let source = representative_source();
     let contract: ResourceContract = kani::any();

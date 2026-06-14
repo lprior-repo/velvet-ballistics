@@ -143,3 +143,33 @@ The scanner also self-skips `scripts/check-removed-feature-residue.sh`,
 itself necessarily mentions the banned tokens in its docstring / constants
 (following the precedent of `check-nightly-features.sh` which skips itself
 to mention `RUSTC_BOOTSTRAP`).
+
+## 11. Self-test hardening update
+
+### Files changed
+
+- `scripts/test-check-removed-feature-residue.sh`
+- `fixtures/removed-feature-residue/negative.toml`
+- `fixtures/removed-feature-residue/negative_profile.txt`
+- `fixtures/removed-feature-residue/negative_profile_pgo.txt`
+
+### Token-specific assertions added
+
+- `generated` and `maxperf` must both appear in the TOML fixture output.
+- `target-cpu=native` must appear in the target-cpu profile fixture output.
+- `pgo =`, `cargo pgo`, `RUSTC_PGO`, and `pgo-data` must each appear in the PGO fixture output.
+- The repo scan must report `allowlisted=6` and include `files_scanned=`.
+
+### Verification
+
+- `bash scripts/test-check-removed-feature-residue.sh` — passed.
+- `bash scripts/check-removed-feature-residue.sh fixtures/removed-feature-residue/positive.toml` — passed.
+- `bash scripts/check-removed-feature-residue.sh fixtures/removed-feature-residue/negative.toml` — failed as expected with the generated/maxperf findings.
+- `bash scripts/check-removed-feature-residue.sh fixtures/removed-feature-residue/negative_profile.txt` — failed as expected with the target-cpu finding.
+- `bash scripts/check-removed-feature-residue.sh fixtures/removed-feature-residue/negative_profile_pgo.txt` — failed as expected with the four PGO-context findings.
+- `bash scripts/check-removed-feature-residue.sh` — passed with `allowlisted=6` and scan coverage reported.
+
+### Skipped gates / residual risk
+
+- No cargo fmt/check/clippy gate was needed because this change only hardened the shell self-test and fixtures; scanner behavior was unchanged.
+- `files_scanned=` is asserted by presence rather than exact count to avoid brittle repo-growth coupling.

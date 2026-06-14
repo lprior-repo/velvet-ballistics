@@ -1,15 +1,25 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::fs::{File, OpenOptions, canonicalize, hard_link, remove_file};
+use std::fs::{canonicalize, hard_link, remove_file, File, OpenOptions};
 use std::io::{self, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
 const STDOUT_TARGET: &str = "stdout";
 const FILE_SCHEME: &str = "file";
 const WEBHOOK_SCHEME: &str = "webhook";
-const MAX_PATH_BYTES: usize = 4096;
+// Linux path strings are effectively capped at 4095 bytes because the final
+// NUL terminator consumes the last PATH_MAX byte.
+const MAX_PATH_BYTES: usize = 4095;
+const MAX_TEMP_STAGE_ATTEMPTS: usize = 8;
+const MINIMUM_STAGE_BASE_NAME: &str = ".t";
+
+enum TempStageCreation {
+    Created((PathBuf, File)),
+    Exhausted,
+    NameTooLong,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DeliverTarget {
@@ -27,6 +37,7 @@ pub(crate) enum DeliverSinkError {
     MissingParent,
     Directory,
     BlockedPath,
+    StagingUnavailable,
     ExistingFile,
     OverlongPath,
     Io(io::ErrorKind),
@@ -45,6 +56,9 @@ impl fmt::Display for DeliverSinkError {
             Self::MissingParent => f.write_str("deliver file parent directory is missing"),
             Self::Directory => f.write_str("deliver file target is a directory"),
             Self::BlockedPath => f.write_str("deliver file path uses a blocked system root"),
+            Self::StagingUnavailable => {
+                f.write_str("deliver temporary staging path is unavailable")
+            }
             Self::ExistingFile => f.write_str("deliver file target already exists"),
             Self::OverlongPath => f.write_str("deliver file path is too long"),
             Self::Io(kind) => write!(f, "deliver I/O failed: {kind:?}"),
@@ -82,9 +96,7 @@ fn parse_file_target(value: &str) -> Result<DeliverTarget, DeliverSinkError> {
         return Err(DeliverSinkError::MissingFilePath);
     }
     let requested_path = PathBuf::from(value);
-    validate_requested_file_path(&requested_path)?;
-    let normalized_path = normalize_absolute_path(&requested_path)?;
-    let delivery_path = resolve_new_file_path(&normalized_path)?;
+    let delivery_path = resolve_new_file_path(&requested_path)?;
     Ok(DeliverTarget::NewFile(delivery_path))
 }
 
@@ -98,33 +110,8 @@ fn validate_requested_file_path(path: &Path) -> Result<(), DeliverSinkError> {
     Ok(())
 }
 
-fn normalize_absolute_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
-    if !path.is_absolute() {
-        return Err(DeliverSinkError::RelativePath);
-    }
-
-    let mut normalized = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::RootDir => normalized.push(component.as_os_str()),
-            Component::CurDir => {}
-            Component::Normal(part) => normalized.push(part),
-            Component::ParentDir => {
-                if !normalized.pop() {
-                    normalized.push(component.as_os_str());
-                }
-            }
-            Component::Prefix(prefix) => normalized.push(prefix.as_os_str()),
-        }
-    }
-    Ok(normalized)
-}
-
 fn resolve_new_file_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
     validate_requested_file_path(path)?;
-    if is_blocked_root(path) {
-        return Err(DeliverSinkError::BlockedPath);
-    }
     if path.is_dir() {
         return Err(DeliverSinkError::Directory);
     }
@@ -144,9 +131,27 @@ fn resolve_new_file_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
         return Err(DeliverSinkError::MissingFilePath);
     };
     let resolved_path = resolved_parent.join(file_name);
+    validate_resolved_file_path(&resolved_parent, &resolved_path)?;
+
+    Ok(resolved_path)
+}
+
+fn validate_resolved_file_path(
+    resolved_parent: &Path,
+    resolved_path: &Path,
+) -> Result<(), DeliverSinkError> {
     if resolved_path.as_os_str().as_encoded_bytes().len() > MAX_PATH_BYTES {
         return Err(DeliverSinkError::OverlongPath);
     }
+
+    let minimum_stage_retry_name = temp_stage_name(
+        OsStr::new(MINIMUM_STAGE_BASE_NAME),
+        MAX_TEMP_STAGE_ATTEMPTS - 1,
+    );
+    if path_with_name_len(resolved_parent, &minimum_stage_retry_name)? > MAX_PATH_BYTES {
+        return Err(DeliverSinkError::OverlongPath);
+    }
+
     if resolved_path.is_dir() {
         return Err(DeliverSinkError::Directory);
     }
@@ -154,7 +159,7 @@ fn resolve_new_file_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
         return Err(DeliverSinkError::ExistingFile);
     }
 
-    Ok(resolved_path)
+    Ok(())
 }
 
 fn is_blocked_root(path: &Path) -> bool {
@@ -163,13 +168,16 @@ fn is_blocked_root(path: &Path) -> bool {
 
 fn write_json_line_to_new_file(path: &Path, value: &Value) -> Result<(), DeliverSinkError> {
     let delivery_path = resolve_new_file_path(path)?;
-    let temp_path = temporary_path(&delivery_path)?;
-    write_json_line_to_temp_file(&temp_path, value)?;
+    let (temp_path, temp_file) = create_temp_stage_file(&delivery_path)?;
+    write_json_line_to_temp_file(&temp_path, temp_file, value)?;
     persist_temp_file(&temp_path, &delivery_path)
 }
 
-fn write_json_line_to_temp_file(path: &Path, value: &Value) -> Result<(), DeliverSinkError> {
-    let mut file = create_new_file(path)?;
+fn write_json_line_to_temp_file(
+    path: &Path,
+    mut file: File,
+    value: &Value,
+) -> Result<(), DeliverSinkError> {
     let write_result = write_json_line_to_writer(&mut file, value)
         .and_then(|()| file.sync_all().map_err(to_io_error));
     match write_result {
@@ -206,34 +214,49 @@ fn cleanup_temp_file_best_effort(path: &Path) {
     }
 }
 
-fn temporary_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
+fn create_temp_stage_file(path: &Path) -> Result<(PathBuf, File), DeliverSinkError> {
     let Some(parent) = path.parent() else {
         return Err(DeliverSinkError::MissingParent);
     };
     let Some(file_name) = path.file_name() else {
         return Err(DeliverSinkError::MissingFilePath);
     };
+
+    let mut exhausted_candidates = false;
+
     let preferred = preferred_temp_name(file_name);
-    if path_with_name_len(parent, &preferred)? <= MAX_PATH_BYTES {
-        return Ok(parent.join(preferred));
+    match create_temp_stage_file_from_base_name(parent, &preferred)? {
+        TempStageCreation::Created(stage_file) => return Ok(stage_file),
+        TempStageCreation::Exhausted => exhausted_candidates = true,
+        TempStageCreation::NameTooLong => {}
     }
 
     let hashed = hashed_temp_name(path);
-    if path_with_name_len(parent, &hashed)? <= MAX_PATH_BYTES {
-        return Ok(parent.join(hashed));
+    match create_temp_stage_file_from_base_name(parent, &hashed)? {
+        TempStageCreation::Created(stage_file) => return Ok(stage_file),
+        TempStageCreation::Exhausted => exhausted_candidates = true,
+        TempStageCreation::NameTooLong => {}
     }
 
     let fallback = OsString::from(".tmp");
-    if path_with_name_len(parent, &fallback)? <= MAX_PATH_BYTES {
-        return Ok(parent.join(fallback));
+    match create_temp_stage_file_from_base_name(parent, &fallback)? {
+        TempStageCreation::Created(stage_file) => return Ok(stage_file),
+        TempStageCreation::Exhausted => exhausted_candidates = true,
+        TempStageCreation::NameTooLong => {}
     }
 
-    let minimal = OsString::from(".t");
-    if path_with_name_len(parent, &minimal)? <= MAX_PATH_BYTES {
-        return Ok(parent.join(minimal));
+    let minimal = OsString::from(MINIMUM_STAGE_BASE_NAME);
+    match create_temp_stage_file_from_base_name(parent, &minimal)? {
+        TempStageCreation::Created(stage_file) => return Ok(stage_file),
+        TempStageCreation::Exhausted => exhausted_candidates = true,
+        TempStageCreation::NameTooLong => {}
     }
 
-    Err(DeliverSinkError::OverlongPath)
+    if exhausted_candidates {
+        Err(DeliverSinkError::StagingUnavailable)
+    } else {
+        Err(DeliverSinkError::OverlongPath)
+    }
 }
 
 fn preferred_temp_name(file_name: &OsStr) -> OsString {
@@ -250,6 +273,38 @@ fn hashed_temp_name(path: &Path) -> OsString {
         temp_name.push_str(&format!("{byte:02x}"));
     }
     OsString::from(temp_name)
+}
+
+fn create_temp_stage_file_from_base_name(
+    parent: &Path,
+    base_name: &OsStr,
+) -> Result<TempStageCreation, DeliverSinkError> {
+    for attempt in 0..MAX_TEMP_STAGE_ATTEMPTS {
+        let candidate_name = temp_stage_name(base_name, attempt);
+        if path_with_name_len(parent, &candidate_name)? > MAX_PATH_BYTES {
+            return Ok(TempStageCreation::NameTooLong);
+        }
+
+        let candidate_path = parent.join(&candidate_name);
+        match create_new_file(&candidate_path) {
+            Ok(file) => return Ok(TempStageCreation::Created((candidate_path, file))),
+            Err(DeliverSinkError::ExistingFile) => {}
+            Err(error) => return Err(error),
+        }
+    }
+
+    Ok(TempStageCreation::Exhausted)
+}
+
+fn temp_stage_name(base_name: &OsStr, attempt: usize) -> OsString {
+    if attempt == 0 {
+        return base_name.to_os_string();
+    }
+
+    let mut candidate_name = base_name.to_os_string();
+    candidate_name.push(".");
+    candidate_name.push(attempt.to_string());
+    candidate_name
 }
 
 fn path_with_name_len(parent: &Path, file_name: &OsStr) -> Result<usize, DeliverSinkError> {
@@ -298,12 +353,12 @@ fn to_io_error(error: io::Error) -> DeliverSinkError {
 
 #[cfg(test)]
 mod tests {
-    use super::{DeliverTarget, parse_deliver_target};
+    use super::{parse_deliver_target, DeliverTarget};
 
     #[cfg(unix)]
     #[test]
-    fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path()
-    -> Result<(), String> {
+    fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path(
+    ) -> Result<(), String> {
         let temp_dir = tempfile::tempdir().map_err(|error| error.to_string())?;
         let real_parent = temp_dir.path().join("real-parent");
         std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;

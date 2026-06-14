@@ -75,7 +75,7 @@ fn canonical_layout_no_overflow() {
 // ===========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn validate_depth_bounds() {
     let limits = YamlLimits {
         max_source_bytes: 1_048_576,
@@ -108,7 +108,7 @@ fn validate_depth_bounds() {
 // ===========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn next_visited_count_bounds() {
     // Construct YamlLimits explicitly to avoid default() field expansion
     // which increases verification complexity

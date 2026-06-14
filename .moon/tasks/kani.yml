@@ -13,10 +13,11 @@ fileGroups:
     - 'crates/vb_storage/src/**/*'
   kani_runtime_shard_command_queue_model_sources:
     - 'crates/vb_runtime/src/**/*'
+  kani_yaml_sources:
+    - 'crates/vb_yaml/src/**/*'
   kani_validate_sources:
     - 'crates/vb_validate/src/**/*'
-    - 'crates/vb_core/src/ids/**/*'
-    - 'crates/vb_core/src/workflow/**/*'
+    - 'crates/vb_core/src/**/*'
   kani_compile_sources:
     - 'crates/vb_compile/src/**/*'
 
@@ -29,7 +30,7 @@ tasks:
       run_core_harness() {
         local harness="$1"
         printf 'verify-kani: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-core RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features --harness "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-core RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features --harness "$harness"
       }
       run_core_harness kani_budget_add_dim_zero
       run_core_harness kani_budget_sub_dim_zero
@@ -39,11 +40,13 @@ tasks:
       - rust
     inputs:
       - '@globs(kani_core_sources)'
+      - 'crates/vb_core/Cargo.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
       - '.moon/tasks/kani.yml'
     options:
+      cache: false
       runInCI: true
 
   verify-kani-vb-validate:
@@ -54,7 +57,7 @@ tasks:
       run_validate_harness() {
         local harness="$1"
         printf 'verify-kani-vb-validate: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness "$harness"
       }
       run_validate_harness kani_gate_08_valid_zero_accessors_pass
       run_validate_harness kani_gate_08_valid_bounded_parts_pass
@@ -79,11 +82,14 @@ tasks:
     inputs:
       - '@globs(kani_validate_sources)'
       - 'crates/vb_validate/src/kani_gate_08_structural.rs'
+      - 'crates/vb_core/Cargo.toml'
+      - 'crates/vb_validate/Cargo.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
       - '.moon/tasks/kani.yml'
     options:
+      cache: false
       runInCI: true
 
   kani-model-smoke-shard-command-queue-standin:
@@ -96,7 +102,7 @@ tasks:
       run_runtime_shard_queue_harness() {
         local harness="$1"
         printf 'kani-model-smoke-shard-command-queue-standin: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-runtime-shard-command-queue RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_runtime --features kani-shard-command-queue --harness "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-runtime-shard-command-queue RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_runtime --features kani-shard-command-queue --harness "$harness"
       }
       run_runtime_shard_queue_harness kani_shard_command_queue_bounded_invariant
       run_runtime_shard_queue_harness kani_shard_command_queue_push
@@ -115,6 +121,7 @@ tasks:
       - 'rust-toolchain.toml'
       - '.moon/tasks/kani.yml'
     options:
+      cache: false
       runInCI: true
 
   verify-kani-vb-compile:
@@ -125,7 +132,7 @@ tasks:
       run_compile_harness() {
         local harness="$1"
         printf 'verify-kani-vb-compile: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-compile RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo kani -p vb_compile --all-features --harness "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-compile RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_compile --all-features --harness "$harness"
       }
       # foreach_parity: tests for_each lowering structure (just fixed GOD_RULE compliance)
       run_compile_harness foreach_body_setconst_next_edge
@@ -143,11 +150,18 @@ tasks:
     toolchains:
       - rust
     inputs:
+      - '@globs(kani_core_sources)'
       - '@globs(kani_compile_sources)'
+      - '@globs(kani_validate_sources)'
+      - '@globs(kani_yaml_sources)'
+      - 'crates/vb_compile/Cargo.toml'
       - 'crates/vb_core/Cargo.toml'
+      - 'crates/vb_validate/Cargo.toml'
+      - 'crates/vb_yaml/Cargo.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
       - '.moon/tasks/kani.yml'
     options:
+      cache: false
       runInCI: true

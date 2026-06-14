@@ -102,7 +102,7 @@ fn policy_digest_binding() {
 ///
 /// This harness exercises compute_policy_digest with arbitrary Workflow parts.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn compute_policy_digest_no_panic() {
     // Create a minimal CompiledWorkflow-like structure
     let resource_contract = vb_core::workflow::ResourceContract::DEFAULT;

@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # test-check-product-positioning: self-test for the product-positioning
 # scanner. Verifies that:
-#   [1/7] the positive fixture passes (exit 0, no active findings),
-#   [2/7] the negative fixture exercises every banned phrase category,
-#   [3/7] disclaimer-spam bypasses fail with active findings,
-#   [4/7] inline hyphen/underscore bypasses fail,
-#   [5/7] Unicode lookalikes / zero-width bypasses fail,
-#   [6/7] an unclosed disclaimer block fails hard, and
-#   [7/7] the real repository scan passes (exit 0, no active residue).
+#   [1/9] the positive fixture passes (exit 0, no active findings),
+#   [2/9] the negative fixture exercises every banned phrase category,
+#   [3/9] mixed negation splits active/disclaimered findings,
+#   [4/9] disclaimer-spam bypasses fail with active findings,
+#   [5/9] inline hyphen/underscore bypasses fail,
+#   [6/9] Unicode lookalikes / zero-width bypasses fail,
+#   [7/9] an unclosed disclaimer block fails hard,
+#   [8/9] a missing explicit path fails closed, and
+#   [9/9] the real repository scan passes (exit 0, no active residue).
 #
 # Exits 0 on success, exits 1 on any failed assertion.
 set -euo pipefail
@@ -18,6 +20,7 @@ cd "$ROOT"
 GATE="$ROOT/scripts/check-product-positioning.sh"
 POSITIVE="$ROOT/fixtures/product-positioning/positive.md"
 NEGATIVE="$ROOT/fixtures/product-positioning/negative.md"
+MIXED_NEGATION="$ROOT/fixtures/product-positioning/mixed-negation.md"
 
 ALL_BANNED_PHRASES=(
   "generic dag runner"
@@ -34,7 +37,7 @@ if [[ ! -x "$GATE" ]]; then
   echo "AssertionFailed: gate script is missing or not executable: $GATE" >&2
   exit 1
 fi
-for fixture in "$POSITIVE" "$NEGATIVE"; do
+for fixture in "$POSITIVE" "$NEGATIVE" "$MIXED_NEGATION"; do
   if [[ ! -f "$fixture" ]]; then
     echo "AssertionFailed: fixture missing: $fixture" >&2
     exit 1
@@ -114,14 +117,14 @@ run_expected_failure() {
   assert_output_contains "$label finding" " POSITIONING:" "$GATE_OUTPUT"
 }
 
-printf '[1/7] positive fixture must PASS (exit 0, no active findings)\n'
+printf '[1/9] positive fixture must PASS (exit 0, no active findings)\n'
 run_gate_capture "$POSITIVE"
 assert_exit "positive fixture" "0" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "positive summary" "summary: active=0" "$GATE_OUTPUT"
 echo "  ok: exit 0"
 echo "  ok: summary reports active=0"
 
-printf '[2/7] negative fixture must FAIL and exercise every banned phrase\n'
+printf '[2/9] negative fixture must FAIL and exercise every banned phrase\n'
 run_gate_capture "$NEGATIVE"
 assert_exit "negative fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "negative file:line" \
@@ -130,6 +133,18 @@ assert_output_contains "negative summary" "summary: active=" "$GATE_OUTPUT"
 assert_all_banned_phrases "negative fixture" "$GATE_OUTPUT"
 echo "  ok: exit 1 with file:line findings"
 echo "  ok: every banned phrase category appeared"
+
+printf '[3/9] mixed negation probe must split findings\n'
+run_gate_capture "$MIXED_NEGATION"
+assert_exit "mixed-negation fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
+assert_output_contains "mixed-negation summary" "summary: active=1" "$GATE_OUTPUT"
+assert_output_contains "mixed-negation generic disclaimered" \
+  "disclaimered: generic dag runner" "$GATE_OUTPUT"
+assert_output_contains "mixed-negation low-code active" \
+  "POSITIONING: low-code graph editor" "$GATE_OUTPUT"
+assert_output_omits "mixed-negation blanket" \
+  "disclaimered: low-code graph editor" "$GATE_OUTPUT"
+echo "  ok: exit 1 with mixed active/disclaimered findings"
 
 DISALLOWED_DISCLAIMER="$TMP_DIR/disclaimer-spam.md"
 cat >"$DISALLOWED_DISCLAIMER" <<'EOF'
@@ -145,7 +160,7 @@ velvet-ballistics is a temporal alternative.
 <!-- /position-disclaimer -->
 EOF
 
-printf '[3/7] disclaimer-spam bypass must FAIL with active findings\n'
+printf '[4/9] disclaimer-spam bypass must FAIL with active findings\n'
 run_expected_failure "disclaimer-spam" "$DISALLOWED_DISCLAIMER"
 assert_output_omits "disclaimer-spam disclaimered" "disclaimered:" "$GATE_OUTPUT"
 assert_all_banned_phrases "disclaimer-spam" "$GATE_OUTPUT"
@@ -165,7 +180,7 @@ temporal_clone
 temporal-alternative
 EOF
 
-printf '[4/7] inline hyphen/underscore bypass must FAIL\n'
+printf '[5/9] inline hyphen/underscore bypass must FAIL\n'
 run_expected_failure "inline-variants" "$INLINE_VARIANTS"
 assert_all_banned_phrases "inline-variants" "$GATE_OUTPUT"
 echo "  ok: exit 1 with active findings"
@@ -183,7 +198,7 @@ cat >"$UNICODE_VARIANTS" <<'EOF'
 EOF
 printf '%b' 't\u200bemporal clone\n' >>"$UNICODE_VARIANTS"
 
-printf '[5/7] Unicode lookalike bypass must FAIL\n'
+printf '[6/9] Unicode lookalike bypass must FAIL\n'
 run_expected_failure "unicode-variants" "$UNICODE_VARIANTS"
 assert_all_banned_phrases "unicode-variants" "$GATE_OUTPUT"
 echo "  ok: exit 1 with active findings"
@@ -194,7 +209,7 @@ cat >"$UNCLOSED_DISCLAIMER" <<'EOF'
 velvet-ballistics is a generic dag runner.
 EOF
 
-printf '[6/7] unclosed disclaimer block must FAIL hard\n'
+printf '[7/9] unclosed disclaimer block must FAIL hard\n'
 run_gate_capture "$UNCLOSED_DISCLAIMER"
 assert_exit "unclosed disclaimer block" "2" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "unclosed disclaimer error" "scan error:" "$GATE_OUTPUT"
@@ -202,7 +217,17 @@ assert_output_contains "unclosed disclaimer message" \
   "unclosed position-disclaimer block opened at line" "$GATE_OUTPUT"
 echo "  ok: exit 2 scan error"
 
-printf '[7/7] real repository scan must PASS (exit 0, no active residue)\n'
+MISSING_PATH="$TMP_DIR/does-not-exist.md"
+printf '[8/9] missing explicit path must FAIL closed\n'
+run_gate_capture "$MISSING_PATH"
+assert_exit "missing explicit path" "2" "$GATE_EXIT" "$GATE_OUTPUT"
+assert_output_contains "missing explicit path error" "scan error:" "$GATE_OUTPUT"
+assert_output_contains "missing explicit path message" \
+  "no explicit scan targets were scanned" "$GATE_OUTPUT"
+assert_output_omits "missing explicit path summary" "summary:" "$GATE_OUTPUT"
+echo "  ok: exit 2 scan error"
+
+printf '[9/9] real repository scan must PASS (exit 0, no active residue)\n'
 run_gate_capture
 assert_exit "real repository scan" "0" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "real repository summary" "summary: active=0" "$GATE_OUTPUT"

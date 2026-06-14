@@ -95,10 +95,13 @@ fn check_evidence_gate_rejects_regression() {
         budget_us: 200_000,
     };
     let result = check_evidence_gate(&metadata, 20);
-    assert!(matches!(
-        result,
-        Err(EvidenceError::RegressionDetected { .. })
-    ));
+    match result {
+        Err(EvidenceError::RegressionDetected { benchmark, delta }) => {
+            assert_eq!(benchmark, "yaml_parse");
+            assert_eq!(delta, 30_000);
+        }
+        other => panic!("Expected RegressionDetected, got {:?}", other),
+    }
 }
 
 #[test]
@@ -156,12 +159,17 @@ fn capture_metadata_accepts_valid_inputs() {
         "linux-x86_64",
         200_000,
     );
-    assert!(result.is_ok());
-    let meta = result.unwrap();
+    let meta = match result {
+        Ok(meta) => meta,
+        Err(err) => panic!("expected valid metadata, got {err:?}"),
+    };
     assert_eq!(meta.name, "yaml_parse");
     assert_eq!(meta.baseline_us, Some(100_000));
     assert_eq!(meta.result_us, 105_000);
+    assert_eq!(meta.command, "cargo bench");
     assert_eq!(meta.commit_hash, "abc123def");
+    assert_eq!(meta.environment, "linux-x86_64");
+    assert_eq!(meta.budget_us, 200_000);
 }
 
 #[test]
@@ -579,10 +587,13 @@ fn check_evidence_gate_rejects_one_micro_over_threshold() {
     };
     let result = check_evidence_gate(&metadata, 20);
     // delta = result - baseline = 120001 - 100000 = 20001
-    assert!(matches!(
-        result,
-        Err(EvidenceError::RegressionDetected { delta: 20_001, .. })
-    ));
+    match result {
+        Err(EvidenceError::RegressionDetected { benchmark, delta }) => {
+            assert_eq!(benchmark, "yaml_parse");
+            assert_eq!(delta, 20_001);
+        }
+        other => panic!("Expected RegressionDetected, got {:?}", other),
+    }
 }
 
 // === regression shield: no STUB markers may remain in this test file ===

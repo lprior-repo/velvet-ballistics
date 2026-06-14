@@ -26,7 +26,7 @@
 
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 
 const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
@@ -53,14 +53,16 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ("nightly feature gate", &["nightly-feature-gate"]),
     ("Kani list", &["kani-list"]),
     // Model-only stand-in smoke lanes are intentionally excluded here so they
-    // cannot satisfy production-bound Kani verification accounting.
+    // cannot satisfy production-bound Kani verification accounting. Each
+    // production-bound Kani lane is mandatory on its own.
+    ("Kani verify (production-bound, vb_core)", &["verify-kani"]),
     (
-        "Kani verify (production-bound)",
-        &[
-            "verify-kani",
-            "verify-kani-vb-validate",
-            "verify-kani-vb-compile",
-        ],
+        "Kani verify (production-bound, vb_validate)",
+        &["verify-kani-vb-validate"],
+    ),
+    (
+        "Kani verify (production-bound, vb_compile)",
+        &["verify-kani-vb-compile"],
     ),
     ("Loom smoke", &["loom-run", "loom-list-smoke"]),
     (
@@ -140,6 +142,12 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ("fuzz minimization", &["fuzz-minimization"]),
 ];
 
+struct AuditSummary {
+    defined: BTreeSet<String>,
+    yml_file_count: usize,
+    gaps: Vec<String>,
+}
+
 fn collect_defined_tasks(moon_dir: &Path) -> Result<BTreeSet<String>, String> {
     let tasks_dir = moon_dir.join("tasks");
     if !tasks_dir.is_dir() {
@@ -156,62 +164,112 @@ fn collect_defined_tasks(moon_dir: &Path) -> Result<BTreeSet<String>, String> {
         }
         let content =
             fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
-        // Hand-rolled: scan for lines matching `  <name>:` at exactly 2-space indent (top-level task).
+        let mut active_top_level_key: Option<String> = None;
         for line in content.lines() {
-            if !line.starts_with("  ") || line.starts_with("    ") {
+            if let Some(top_level_key) = top_level_key_name(line) {
+                active_top_level_key = Some(top_level_key.to_owned());
                 continue;
             }
-            // Strip "  " prefix and trailing ":"
-            let trimmed = &line[2..];
-            let Some(colon_pos) = trimmed.find(':') else {
+            if active_top_level_key.as_deref() != Some("tasks") {
+                continue;
+            }
+            let Some(name) = task_name(line) else {
                 continue;
             };
-            let name = &trimmed[..colon_pos];
-            // Skip yaml keys that are clearly not task names: empty, contains space, contains non-id chars
-            if name.is_empty() || name.contains(' ') || name.contains('\t') {
-                continue;
-            }
-            if !name
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-            {
-                continue;
-            }
             defined.insert(name.to_owned());
         }
     }
     Ok(defined)
 }
 
-fn run_audit() -> Result<u8, String> {
-    let moon_dir = PathBuf::from(".moon");
-    let defined = collect_defined_tasks(&moon_dir)?;
-    println!(
-        "moon-task-coverage-audit: parsed {} tasks from {} files",
-        defined.len(),
-        count_yml_files(&moon_dir)?
-    );
-    println!("defined: {:?}", defined);
-    println!();
+fn top_level_key_name(line: &str) -> Option<&str> {
+    if line.starts_with(' ') || line.starts_with('\t') {
+        return None;
+    }
+    let colon_pos = line.find(':')?;
+    let name = &line[..colon_pos];
+    if name.is_empty() || name.contains(' ') || name.contains('\t') {
+        return None;
+    }
+    Some(name)
+}
+
+fn task_name(line: &str) -> Option<&str> {
+    let trimmed = line.strip_prefix("  ")?;
+    if trimmed.starts_with("  ") {
+        return None;
+    }
+    let colon_pos = trimmed.find(':')?;
+    let name = &trimmed[..colon_pos];
+    if name.is_empty() || name.contains(' ') || name.contains('\t') {
+        return None;
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        return None;
+    }
+    Some(name)
+}
+
+fn collect_gaps(defined: &BTreeSet<String>) -> Vec<String> {
     let mut gaps: Vec<String> = Vec::new();
     for (tool, candidates) in MANDATORY_TOOLS {
-        if !candidates.iter().any(|c| defined.contains(*c)) {
+        if !candidates
+            .iter()
+            .any(|candidate| defined.contains(*candidate))
+        {
             gaps.push(format!("GAP: {tool}  expected_one_of={candidates:?}"));
         }
     }
-    if !gaps.is_empty() {
+    gaps
+}
+
+fn audit_moon_dir(moon_dir: &Path) -> Result<AuditSummary, String> {
+    let defined = collect_defined_tasks(moon_dir)?;
+    let yml_file_count = count_yml_files(moon_dir)?;
+    let gaps = collect_gaps(&defined);
+    Ok(AuditSummary {
+        defined,
+        yml_file_count,
+        gaps,
+    })
+}
+
+fn print_audit_summary(summary: &AuditSummary) {
+    println!(
+        "moon-task-coverage-audit: parsed {} tasks from {} files",
+        summary.defined.len(),
+        summary.yml_file_count
+    );
+    println!("defined: {:?}", summary.defined);
+    println!();
+    if !summary.gaps.is_empty() {
         println!("=== GAPS ===");
-        for g in &gaps {
+        for g in &summary.gaps {
             println!("{g}");
         }
-        println!("FAIL: {} mandatory tools have no Moon task", gaps.len());
-        return Ok(1);
+        println!(
+            "FAIL: {} mandatory tools have no Moon task",
+            summary.gaps.len()
+        );
+    } else {
+        println!(
+            "PASS: all {} mandatory tool categories have at least one Moon task",
+            MANDATORY_TOOLS.len()
+        );
     }
-    println!(
-        "PASS: all {} mandatory tool categories have at least one Moon task",
-        MANDATORY_TOOLS.len()
-    );
-    Ok(0)
+}
+
+fn run_audit() -> Result<u8, String> {
+    let summary = audit_moon_dir(Path::new(".moon"))?;
+    print_audit_summary(&summary);
+    if !summary.gaps.is_empty() {
+        Ok(1)
+    } else {
+        Ok(0)
+    }
 }
 
 fn count_yml_files(moon_dir: &Path) -> Result<usize, String> {
@@ -226,36 +284,81 @@ fn count_yml_files(moon_dir: &Path) -> Result<usize, String> {
     Ok(count)
 }
 
+fn write_fixture_tasks(moon_tasks_dir: &Path, task_names: &BTreeSet<String>) -> Result<(), String> {
+    let mut content = String::from(
+        "fileGroups:\n  should-not-count:\n    - 'crates/demo/src/**/*'\notherTopLevel:\n  also-not-a-task:\n    command: 'ignore me'\ntasks:\n",
+    );
+    for task_name in task_names {
+        content.push_str("  ");
+        content.push_str(task_name);
+        content.push_str(":\n    command: 'true'\n");
+    }
+    fs::write(moon_tasks_dir.join("all.yml"), content).map_err(|e| format!("write all.yml: {e}"))
+}
+
+fn required_task_names() -> Result<BTreeSet<String>, String> {
+    let mut task_names = BTreeSet::new();
+    for (tool, candidates) in MANDATORY_TOOLS {
+        let Some(candidate) = candidates.first() else {
+            return Err(format!("tool {tool} is missing candidate task IDs"));
+        };
+        task_names.insert((*candidate).to_string());
+    }
+    Ok(task_names)
+}
+
 fn run_self_test() -> Result<u8, String> {
-    // Self-test: verify the parser extracts task IDs from a known fixture.
-    // Does NOT run the full audit (that happens in the second invocation
-    // against the real `.moon/tasks/` of the repo).
     let temp = std::env::temp_dir().join(format!("moon-coverage-selftest-{}", std::process::id()));
     fs::create_dir_all(&temp).map_err(|e| format!("mkdir: {e}"))?;
     let moon_tasks_dir = temp.join(".moon").join("tasks");
     fs::create_dir_all(&moon_tasks_dir).map_err(|e| format!("mkdir: {e}"))?;
-    fs::write(
-        moon_tasks_dir.join("all.yml"),
-        "tasks:\n  fmt:\n    command: 'cargo fmt'\n  lint-src:\n    command: 'cargo clippy'\n  coverage:\n    command: 'cargo llvm-cov'\n",
-    ).map_err(|e| format!("write: {e}"))?;
-    fs::write(
-        moon_tasks_dir.join("aux.yml"),
-        "tasks:\n  miri:\n    command: 'cargo miri'\n",
-    )
-    .map_err(|e| format!("write: {e}"))?;
+
+    let cleanup = || {
+        let _ = fs::remove_dir_all(&temp);
+    };
+
+    let expected = required_task_names()?;
+    write_fixture_tasks(&moon_tasks_dir, &expected)?;
 
     let defined = collect_defined_tasks(&temp.join(".moon"))?;
-    let expected: BTreeSet<String> = ["fmt", "lint-src", "coverage", "miri"]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
     if defined != expected {
         println!("FixtureFail: parsed {:?}, expected {:?}", defined, expected);
-        let _ = fs::remove_dir_all(&temp);
+        cleanup();
         return Ok(1);
     }
-    let _ = fs::remove_dir_all(&temp);
-    println!("FixturePass: moon-task-coverage scanner");
+
+    let full_audit = audit_moon_dir(&temp.join(".moon"))?;
+    if !full_audit.gaps.is_empty() {
+        println!("AuditHappyPathFail: unexpected gaps {:?}", full_audit.gaps);
+        cleanup();
+        return Ok(1);
+    }
+
+    let mut missing_fmt = expected.clone();
+    missing_fmt.remove("fmt");
+    write_fixture_tasks(&moon_tasks_dir, &missing_fmt)?;
+
+    let missing_audit = audit_moon_dir(&temp.join(".moon"))?;
+    if missing_audit.gaps.len() != 1 {
+        println!(
+            "AuditGapFail: expected 1 gap, got {} -> {:?}",
+            missing_audit.gaps.len(),
+            missing_audit.gaps
+        );
+        cleanup();
+        return Ok(1);
+    }
+    if !missing_audit.gaps[0].contains("GAP: rustfmt") {
+        println!(
+            "AuditGapFail: expected rustfmt gap, got {:?}",
+            missing_audit.gaps
+        );
+        cleanup();
+        return Ok(1);
+    }
+
+    cleanup();
+    println!("FixturePass: moon-task-coverage parser and gap audit");
     println!("Self-test PASSED");
     Ok(0)
 }

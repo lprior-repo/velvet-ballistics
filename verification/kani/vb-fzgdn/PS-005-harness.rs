@@ -3,7 +3,7 @@
 #![forbid(unsafe_code)]
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_005_insert_replace_maintains_one_entry() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let run = vb_core::ids::RunId::new(1);
@@ -18,7 +18,7 @@ fn ps_005_insert_replace_maintains_one_entry() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_005_cancel_removes_and_returns_true() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let run = vb_core::ids::RunId::new(1);

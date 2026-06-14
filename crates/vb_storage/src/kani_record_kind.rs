@@ -42,12 +42,8 @@ fn check_kind_28_journal_family() {
     let result = crate::codec::validation::validate_kind_family(magic, kind);
     match result {
         Ok(()) => {}
-        Err(e) => {
-            kani::assert(
-                false,
-                "kind 28 with MAGIC_JOURNAL_EVENT must return Ok(()) — got {:?}",
-                e
-            );
+        Err(_) => {
+            kani::assert(false, "kind 28 with MAGIC_JOURNAL_EVENT must return Ok(())");
         }
     }
 }
@@ -59,12 +55,8 @@ fn check_kind_28_validate_known_kind() {
     let result = crate::codec::validation::validate_known_kind(kind);
     match result {
         Ok(()) => {}
-        Err(e) => {
-            kani::assert(
-                false,
-                "validate_known_kind(28) must return Ok(()) — got {:?}",
-                e
-            );
+        Err(_) => {
+            kani::assert(false, "validate_known_kind(28) must return Ok(())");
         }
     }
 }
@@ -113,14 +105,14 @@ fn check_all_existing_kinds_known() {
     ];
     for kind in known_kinds {
         let result = crate::codec::validation::is_known_record_kind(kind);
-        kani::assert(result, "kind {} must remain a known record kind", kind);
+        kani::assert(result, "kind must remain a known record kind");
     }
 }
 
 /// PO-KANI-004-H8: Exhaustive: for any arbitrary u16 kind value,
 /// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds 10..=28.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn check_journal_family_exhaustive() {
     let kind: u16 = kani::any();
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
@@ -131,18 +123,10 @@ fn check_journal_family_exhaustive() {
 
     match result {
         Ok(()) => {
-            kani::assert(
-                is_valid_journal_kind,
-                "kind {} returned Ok but is not in valid journal range 10..=28",
-                kind
-            );
+            kani::assert(is_valid_journal_kind, "kind must be in valid journal range");
         }
         Err(_) => {
-            kani::assert(
-                !is_valid_journal_kind,
-                "kind {} returned Err but is in valid journal range 10..=28",
-                kind
-            );
+            kani::assert(!is_valid_journal_kind, "kind must not be in valid journal range");
         }
     }
 }
@@ -162,23 +146,12 @@ fn check_replay_contiguity_with_killed() {
 
     // Verify contiguity property
     for i in 0..seqs.len() - 1 {
-        kani::assert(
-            seqs[i] + 1 == seqs[i + 1],
-            "gap detected between seq[{}]={} and seq[{}]={}",
-            i,
-            seqs[i],
-            i + 1,
-            seqs[i + 1]
-        );
+        kani::assert(seqs[i] + 1 == seqs[i + 1], "gap detected between sequences");
     }
 
     // Verify all sequences are within valid u64 range (not overflow sentinel)
     for seq in seqs {
-        kani::assert(
-            seq != u64::MAX,
-            "seq {} is at overflow sentinel u64::MAX",
-            seq
-        );
+        kani::assert(seq != u64::MAX, "seq must not be at overflow sentinel");
     }
 }
 

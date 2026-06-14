@@ -41,12 +41,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const BOUNDARY_CRATES: &[&str] = &[
-    "vb_core",
-    "vb_runtime",
-    "vb_storage",
-    "vb_ipc",
-];
+const BOUNDARY_CRATES: &[&str] = &["vb_core", "vb_runtime", "vb_storage", "vb_ipc"];
 
 const FORBIDDEN_CRATE_NAMES: &[&str] = &[
     "serde_json",
@@ -273,12 +268,7 @@ fn parse_manifest_dependency_line(line: &str) -> Option<(String, Option<String>)
     }
 
     let (name_part, rest) = semantic.split_once('=')?;
-    let local_name = name_part
-        .trim()
-        .split('.')
-        .next()
-        .unwrap_or("")
-        .trim();
+    let local_name = name_part.trim().split('.').next().unwrap_or("").trim();
     if local_name.is_empty() {
         return None;
     }
@@ -565,7 +555,10 @@ fn scan_rust_source_file(
             return Err(format!("{}: unreadable: {error}", path.display()));
         }
     };
-    Ok(apply_marker_allowlist(&text, scan_rust_text(&text, aliases)))
+    Ok(apply_marker_allowlist(
+        &text,
+        scan_rust_text(&text, aliases),
+    ))
 }
 
 fn resolve_target_path(root: &Path, target: &Path) -> PathBuf {
@@ -594,34 +587,34 @@ fn alias_map_for_source(
     root: &Path,
     source: &Path,
     cache: &mut BTreeMap<PathBuf, CargoScan>,
-) -> BTreeMap<String, String> {
+) -> Result<BTreeMap<String, String>, String> {
     let mut cursor = source.parent();
     while let Some(dir) = cursor {
         if let Some(scan) = cache.get(dir) {
-            return scan.aliases.clone();
+            return Ok(scan.aliases.clone());
         }
         cursor = dir.parent();
     }
 
     let Some(crate_root) = boundary_crate_root(root, source) else {
-        return BTreeMap::new();
+        return Ok(BTreeMap::new());
     };
 
     let manifest_path = crate_root.join("Cargo.toml");
     if !manifest_path.is_file() {
-        return BTreeMap::new();
+        return Err(format!(
+            "missing boundary crate manifest: {}",
+            manifest_path.display()
+        ));
     }
 
     match scan_cargo_file(&manifest_path) {
         Ok(scan) => {
             let aliases = scan.aliases.clone();
             cache.insert(crate_root, scan);
-            aliases
+            Ok(aliases)
         }
-        Err(error) => {
-            eprintln!("{error}");
-            BTreeMap::new()
-        }
+        Err(error) => Err(error),
     }
 }
 
@@ -695,10 +688,7 @@ fn emit_findings(
             *active_total = active_total.saturating_add(1);
             eprintln!(
                 "{rel}:{}: COLD-ADAPTER: {}: {}: {}",
-                finding.line_no,
-                finding.crate_token,
-                finding.context,
-                finding.line_text
+                finding.line_no, finding.crate_token, finding.context, finding.line_text
             );
         }
     }
@@ -765,7 +755,10 @@ fn run_default_scan(root: &Path) -> Result<u8, String> {
     for crate_name in BOUNDARY_CRATES {
         let crate_dir = root.join("crates").join(crate_name);
         if !crate_dir.is_dir() {
-            return Err(format!("missing boundary crate directory: {}", crate_dir.display()));
+            return Err(format!(
+                "missing boundary crate directory: {}",
+                crate_dir.display()
+            ));
         }
 
         let manifest_path = crate_dir.join("Cargo.toml");
@@ -791,7 +784,7 @@ fn run_default_scan(root: &Path) -> Result<u8, String> {
             .map_err(|error| format!("{}: walk error: {error}", crate_dir.display()))?;
         for source_path in sources {
             let rel = relative_label(root, &source_path);
-            let aliases = alias_map_for_source(root, &source_path, &mut manifest_cache);
+            let aliases = alias_map_for_source(root, &source_path, &mut manifest_cache)?;
             let findings = scan_rust_source_file(&source_path, Some(&aliases))?;
             files_scanned = files_scanned.saturating_add(1);
             emit_findings(&rel, &findings, &mut active_total, &mut allowlisted_total);
@@ -802,11 +795,7 @@ fn run_default_scan(root: &Path) -> Result<u8, String> {
         "summary: active={active_total} allowlisted={allowlisted_total} files_scanned={files_scanned}"
     );
 
-    if active_total == 0 {
-        Ok(0)
-    } else {
-        Ok(1)
-    }
+    if active_total == 0 { Ok(0) } else { Ok(1) }
 }
 
 fn run_targeted_scan(root: &Path, targets: &[PathBuf]) -> Result<u8, String> {
@@ -829,7 +818,7 @@ fn run_targeted_scan(root: &Path, targets: &[PathBuf]) -> Result<u8, String> {
             files_scanned = files_scanned.saturating_add(1);
             emit_findings(&rel, &findings, &mut active_total, &mut allowlisted_total);
         } else if is_rust_source_target(&resolved) {
-            let aliases = alias_map_for_source(root, &resolved, &mut manifest_cache);
+            let aliases = alias_map_for_source(root, &resolved, &mut manifest_cache)?;
             let findings = scan_rust_source_file(&resolved, Some(&aliases))?;
             files_scanned = files_scanned.saturating_add(1);
             emit_findings(&rel, &findings, &mut active_total, &mut allowlisted_total);
@@ -844,11 +833,7 @@ fn run_targeted_scan(root: &Path, targets: &[PathBuf]) -> Result<u8, String> {
     eprintln!(
         "summary: active={active_total} allowlisted={allowlisted_total} files_scanned={files_scanned}"
     );
-    if active_total == 0 {
-        Ok(0)
-    } else {
-        Ok(1)
-    }
+    if active_total == 0 { Ok(0) } else { Ok(1) }
 }
 
 fn main() -> ExitCode {

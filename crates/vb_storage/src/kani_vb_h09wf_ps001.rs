@@ -62,7 +62,7 @@ fn arbitrary_artifact() -> crate::admission::AcceptedArtifact {
 
 /// PS-001: Prove that when BLAKE3(artifact.ir) == digest, the function returns Ok(()).
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_001_inner_ir_digest() {
     let artifact = arbitrary_artifact();
 
@@ -102,7 +102,7 @@ fn ps_001_inner_ir_digest() {
 
 /// PS-001b: Prove that when BLAKE3(artifact.ir) != digest (forged), function returns Err.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_001_forged_digest_rejected() {
     let artifact = arbitrary_artifact();
 
@@ -124,7 +124,7 @@ fn ps_001_forged_digest_rejected() {
 
 /// PS-001c: No panic on any input within bounded domain.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_001_no_panic_on_arbitrary_input() {
     let artifact = arbitrary_artifact();
     let digest_bytes: [u8; 32] = kani::any();

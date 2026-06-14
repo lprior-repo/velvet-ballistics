@@ -172,7 +172,7 @@ fn source_digest_differs_rejected() {
 /// This verifies that the accepted_artifact function (which creates the
 /// AcceptedArtifact) correctly sets source_digest to equal digest.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn accepted_artifact_sets_source_correctly() {
     let ir_len: u32 = kani::any();
     kani::assume(ir_len > 0 && ir_len <= 256);

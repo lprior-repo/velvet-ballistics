@@ -39,11 +39,13 @@ fn validate_bead_id_valid() {
 
 #[test]
 fn validate_bead_id_uppercase_rejected() {
-    // Uppercase not allowed in suffix - falls through to repo_local path
+    // Uppercase not allowed in bead ID suffix
     let text = "vb-ABC123";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    // This should error because the path doesn't exist
-    assert!(result.is_err());
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
@@ -229,16 +231,21 @@ fn validate_bead_id_single_digit_suffix() {
 fn validate_bead_id_suffix_with_uppercase_rejected() {
     let text = "vb-AbCd";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    // Uppercase not allowed in suffix -> not a valid bead ID
-    // Falls through to repo_local path -> path doesn't exist -> error
-    assert!(result.is_err());
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
 fn validate_bead_id_suffix_with_special_chars_rejected() {
+    // Special chars (@, #, etc.) not allowed in bead ID suffix
     let text = "vb-ab@cd";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_err());
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 // =============================================================================
@@ -283,8 +290,11 @@ fn validate_external_only_prefix_rejected() {
 fn validate_root_relative_path_rejected() {
     let text = "crates/test/src/lib.rs";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    // File likely doesn't exist relative to manifest dir -> error
-    assert!(result.is_err());
+    // Root-relative path (not workspace-relative) is invalid evidence
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]

@@ -1,10 +1,5 @@
 # negative fixture for check-removed-feature-residue.
-# This is a deliberately contaminated Cargo manifest snippet: it declares the
-# removed `generated` and `maxperf` feature identifiers inside a [features]
-# table. Master §41: "generated and maxperf are removed and must not be current
-# default or release features".
-#
-# The scanner MUST report at least one file:line finding and exit 1.
+# Deliberately contaminated Cargo manifest snippet.
 
 [package]
 name = "fixture-negative"

@@ -123,7 +123,7 @@ fn any_u16_bound(bound: u16) -> u16 {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_stale_attempt_rejected() {
     let current = kani::any::<u16>();
     kani::assume(current >= 2 && current <= 100);
@@ -183,7 +183,7 @@ fn proof_stale_attempt_rejected() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_future_attempt_rejected_or_normalized() {
     let current = kani::any::<u16>();
     kani::assume(current >= 1 && current <= 50);
@@ -266,7 +266,7 @@ fn proof_retry_fence_capacity_enforced() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_stale_authority_no_mutation() {
     let current = kani::any::<u16>();
     kani::assume(current >= 2 && current <= 100);
@@ -300,7 +300,7 @@ fn proof_stale_authority_no_mutation() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_single_terminal_event_invariant() {
     let current = kani::any::<u16>();
     kani::assume(current >= 1 && current <= 50);
@@ -329,7 +329,7 @@ fn proof_single_terminal_event_invariant() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_typed_missing_run_error() {
     // Verify that the error type exists and carries typed information
     let error = RuntimeError::RunNotFound;
@@ -353,7 +353,7 @@ fn proof_typed_missing_run_error() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_attempt_comparison_panic_free() {
     let current = kani::any::<u16>();
     let attempt = kani::any::<u16>();
@@ -448,7 +448,7 @@ fn proof_retry_fence_no_overflow() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_action_ticket_fields_non_overflow() {
     let ticket = any_bounded_ticket();
 
@@ -486,7 +486,7 @@ fn proof_action_ticket_fields_non_overflow() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_all_attempt_combinations_handled() {
     let current = kani::any::<u16>();
     let attempt = kani::any::<u16>();
@@ -549,7 +549,7 @@ fn proof_all_attempt_combinations_handled() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_zero_attempt_rejected() {
     let mut ticket = any_bounded_ticket();
     ticket.attempt = 0;
@@ -576,7 +576,7 @@ fn proof_zero_attempt_rejected() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_zero_capacity_rejected() {
     let mut ticket = any_bounded_ticket();
     ticket.capacity = 0;
@@ -600,7 +600,7 @@ fn proof_zero_capacity_rejected() {
 // =========================================================================
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn proof_zero_policy_max_rejected() {
     let ticket = any_bounded_ticket();
     let step_count: u16 = 1;

@@ -1,15 +1,21 @@
 //! vb-ajc40 PO-039: generated admission kernel proves depth zero is not above any usize limit.
+//!
+//! Mirrors the kernel's `proof_empty_root_path_not_too_deep` lemma:
+//! for any `max_path_segments: usize`, the empty-path depth 0 is always
+//! within bounds because `usize` is non-negative.
+
 use vstd::prelude::*;
+
 verus! {
 
-/// Delegation stub: PO-039 empty-path semantics are proved by the
-/// mechanically generated admission kernel (`vb_ajc40_admission_kernel_scalar.rs`).
-/// The generated `validate_admission_summary` encodes the empty-path (depth=0)
-/// case and Verus verifies all branch conditions directly.
-pub proof fn po_039_scalar_empty_path_delegates_to_generated_kernel()
-    ensures true
+/// Proof that empty-path (depth 0) always satisfies the path-depth bound
+/// for any valid `max_path_segments`.  This mirrors the generated kernel's
+/// `proof_empty_root_path_not_too_deep` and documents the spec-level property
+/// that the post-decode exec function `po_039_empty_path_post_decode` relies on.
+pub proof fn po_039_scalar_empty_path_delegates_to_generated_kernel(max_path_segments: usize)
+    ensures 0usize <= max_path_segments,
 {
-    // Real proof is in the generated admission kernel's `validate_admission_summary`
-    // and `accumulate_yield_cost` functions, which the post-decode exec fns call.
+    assert(0usize <= max_path_segments);
 }
+
 }

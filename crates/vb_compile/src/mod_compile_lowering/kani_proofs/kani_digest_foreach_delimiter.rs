@@ -38,7 +38,7 @@ fn kani_foreach_delimiter_no_collision_possible() {
 ///
 /// Model bounds: variable/input byte arrays up to 4 bytes each.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_foreach_delimiter_prevents_boundary_collision() {
     // Generate arbitrary variable and input byte arrays via kani::any()
     let var_bytes_a: [u8; 4] = kani::any();

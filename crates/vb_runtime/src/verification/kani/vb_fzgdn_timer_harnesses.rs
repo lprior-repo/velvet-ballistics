@@ -22,7 +22,7 @@ mod harnesses {
 
     /// PS-001-H1: next_pending_timer_generation on empty pending_timers returns Ok(1).
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_001_generation_starts_at_one() {
         // We construct a minimal Shard via the public constructor to test
         // next_pending_timer_generation.
@@ -52,7 +52,7 @@ mod harnesses {
 
     /// PS-001-H2: Generation increments on replacement.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_001_generation_increments_on_replacement() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let run = RunId::new(1);
@@ -82,7 +82,7 @@ mod harnesses {
 
     /// PS-001-H3: Generation overflow returns GenerationExhausted error.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_001_generation_overflow_fails_closed() {
         use crate::shard::timer_wheel::{TimerEntry, TimerWheelError};
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
@@ -249,7 +249,7 @@ mod harnesses {
 
     /// PS-005-H1: TimerWheel::insert with existing entry replaces it.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_005_insert_replaces_existing() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let run = RunId::new(1);
@@ -269,7 +269,7 @@ mod harnesses {
 
     /// PS-005-H2: TimerWheel::cancel removes entry and returns true.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_005_cancel_removes_entry() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let run = RunId::new(1);
@@ -506,7 +506,7 @@ mod harnesses {
 
     /// PS-007-H3: TimerWheel::next_deadline returns earliest pending deadline.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_007_next_deadline_returns_earliest() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let now = Instant::now();
@@ -566,7 +566,7 @@ mod harnesses {
 
     /// PS-009-H1: Timer at exact deadline fires when fire_expired called at same Instant.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_009_timer_fires_at_exact_deadline() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let deadline = Instant::now();
@@ -579,7 +579,7 @@ mod harnesses {
 
     /// PS-009-H2: Timer just after Instant::now() does not fire.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_009_timer_not_fired_before_deadline() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let now = Instant::now();
@@ -614,7 +614,7 @@ mod harnesses {
 
     /// PS-010-H2: Replacement preserves correct entry after insert.
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn ps_010_replacement_preserves_correct_entry() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let now = Instant::now();

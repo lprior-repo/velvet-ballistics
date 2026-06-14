@@ -78,7 +78,7 @@ fn kani_foreach_all_fields_hashed() {
 
 /// H2: ForEach arm does not fall through to the catch-all.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_foreach_arm_not_fallthrough() {
     let foreach = StepPrimitive::ForEach {
         variable: "x".to_string(),

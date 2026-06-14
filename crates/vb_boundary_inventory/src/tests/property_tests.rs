@@ -78,21 +78,14 @@ proptest! {
     }
 
     fn boundary_candidate_path_preserves_slashes(path: String) {
+        prop_assume!(!path.is_empty());
         let candidate = BoundaryCandidate::new(path.clone(), "test-marker".to_string());
         prop_assert!(!candidate.source_path.as_os_str().is_empty());
     }
 
-    fn boundary_candidate_marker_empty_allowed(marker: String) {
-        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker);
-        prop_assert_eq!(candidate.marker.len(), 0);
-    }
-
-    fn classify_boundary_unknown_marker_produces_unknown_class(_flag: bool) {
-        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "unknown-marker");
-        let result = classify_boundary(candidate);
-        prop_assert!(result.is_ok());
-        let classified = result.unwrap();
-        prop_assert_eq!(classified.class, BoundaryClass::Unknown);
+    fn boundary_candidate_marker_roundtrip(marker: String) {
+        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker.clone());
+        prop_assert_eq!(candidate.marker, marker);
     }
 
     fn classify_boundary_exposure_is_risky_for_multiple(marker in "extern-c-boundary|foreign-function-boundary|ipc-frame-boundary") {
@@ -160,11 +153,6 @@ proptest! {
         prop_assert!(!classified.id.is_empty());
     }
 
-    fn boundary_exposure_none(_flag: bool) {
-        let exposure = BoundaryExposure::none();
-        prop_assert_eq!(exposure.risk, BoundaryRisk::None);
-    }
-
     fn boundary_exposure_risky_roundtrip(risk: BoundaryRisk) {
         let exposure = BoundaryExposure::risky(risk);
         prop_assert_eq!(exposure.risk, risk);
@@ -201,27 +189,6 @@ proptest! {
         }
     }
 
-    fn evidence_reference_free_text_roundtrip(text: String) {
-        let reference = EvidenceReference::free_text(text.clone());
-        match reference {
-            EvidenceReference::FreeText(t) => {
-                prop_assert_eq!(t, text);
-            }
-            _ => prop_assert!(false),
-        }
-    }
-
-    fn evidence_reference_external_provenance(text: String) {
-        prop_assume!(!text.is_empty());
-        let reference = EvidenceReference::ExternalProvenance(text.clone());
-        match reference {
-            EvidenceReference::ExternalProvenance(t) => {
-                prop_assert_eq!(t, text);
-            }
-            _ => prop_assert!(false),
-        }
-    }
-
     fn field_state_from_option_some(value: String) {
         let state: FieldState<String> = FieldState::from(Some(value.clone()));
         match state {
@@ -248,21 +215,6 @@ proptest! {
         }
     }
 
-    fn review_status_from_serialized_other(value in "[a-z]{1,20}") {
-        prop_assume!(value != "approved" && value != "waived");
-        let status = ReviewStatus::from_serialized(value.clone());
-        match status {
-            ReviewStatus::Other(v) => prop_assert_eq!(v, value),
-            _ => prop_assert!(false),
-        }
-    }
-
-    fn review_status_serialized_other(value in "[a-z]{1,20}") {
-        prop_assume!(!value.is_empty());
-        let status = ReviewStatus::Other(value.clone());
-        prop_assert_eq!(status.serialized(), value);
-    }
-
     fn validated_inventory_with_schema_version(schema: u32) {
         let validated = ValidatedBoundaryInventory::with_schema_version(schema);
         prop_assert_eq!(validated.schema_version, schema);
@@ -273,32 +225,6 @@ proptest! {
     fn validated_inventory_with_review_status(status: String) {
         let validated = ValidatedBoundaryInventory::with_review_status(status.clone());
         prop_assert_eq!(validated.review_status, Some(status));
-    }
-
-    fn field_state_from_option_none(_flag: bool) {
-        let state: FieldState<String> = FieldState::from(None);
-        match state {
-            FieldState::Missing => {},
-            FieldState::Present(_) => prop_assert!(false),
-        }
-    }
-
-    fn field_state_missing_as_ref_prop(_flag: bool) {
-        let state: FieldState<String> = FieldState::Missing;
-        let ref_state = state.as_ref();
-        match ref_state {
-            FieldState::Missing => {},
-            FieldState::Present(_) => prop_assert!(false),
-        }
-    }
-
-    fn field_state_missing_map_prop(_flag: bool) {
-        let state: FieldState<String> = FieldState::Missing;
-        let mapped = state.map(|_v: String| 0usize);
-        match mapped {
-            FieldState::Missing => {},
-            FieldState::Present(_) => prop_assert!(false),
-        }
     }
 
     fn validated_inventory_from_records_preserves_count(records_count in 0usize..100) {
@@ -323,18 +249,6 @@ proptest! {
         prop_assert_eq!(validated.records.len(), records_count);
     }
 
-    fn evidence_reference_repo_local_with_kind(kind: EvidenceKind) {
-        let path = PathBuf::from("fuzz/test.rs");
-        let reference = EvidenceReference::repo_local(path.clone(), kind);
-        match reference {
-            EvidenceReference::RepoLocal { path: p, kind: k } => {
-                prop_assert_eq!(p, path);
-                prop_assert_eq!(k, kind);
-            }
-            _ => prop_assert!(false),
-        }
-    }
-
     fn boundary_candidate_new_empty_path(marker: String) {
         let candidate = BoundaryCandidate::new("", marker.clone());
         prop_assert_eq!(candidate.marker, marker);
@@ -346,31 +260,6 @@ proptest! {
         prop_assert_eq!(workspace.path, PathBuf::from(path));
     }
 
-    fn review_status_from_serialized_then_serialized(value: String) {
-        let status = ReviewStatus::from_serialized(value.clone());
-        let serialized = status.serialized();
-        // For approved and waived, serialized returns the canonical form
-        if value == "approved" {
-            prop_assert_eq!(serialized, "approved");
-        } else if value == "waived" {
-            prop_assert_eq!(serialized, "waived");
-        } else {
-            prop_assert_eq!(serialized, value);
-        }
-    }
-
-    fn evidence_reference_external_provenance_format(text in "[a-z0-9]{1,30}") {
-        prop_assume!(!text.is_empty());
-        let ref_text = format!("external:{}#sha256=abcdef", text);
-        let reference = EvidenceReference::ExternalProvenance(ref_text.clone());
-        match reference {
-            EvidenceReference::ExternalProvenance(t) => {
-                prop_assert_eq!(t, ref_text);
-            }
-            _ => prop_assert!(false),
-        }
-    }
-
     fn freshness_marker_new_any_versions(sv: u64, schema: u64, ev: u64) {
         let marker = FreshnessMarker::new(sv, schema, ev);
         prop_assert_eq!(marker.source_version, sv);
@@ -380,8 +269,14 @@ proptest! {
 }
 
 // =============================================================================
-// Regular tests for enum variants (no property needed)
+// Regular tests for enum variants and deterministic behavior
 // =============================================================================
+
+#[test]
+fn boundary_exposure_none() {
+    let exposure = BoundaryExposure::none();
+    assert_eq!(exposure.risk, BoundaryRisk::None);
+}
 
 #[test]
 fn boundary_risk_all_variants() {

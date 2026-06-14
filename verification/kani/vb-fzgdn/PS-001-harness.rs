@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_001_generation_starts_at_one() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let run = vb_core::ids::RunId::new(kani::any());
@@ -19,7 +19,7 @@ fn ps_001_generation_starts_at_one() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_001_generation_increments_on_replacement() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let run = vb_core::ids::RunId::new(1);

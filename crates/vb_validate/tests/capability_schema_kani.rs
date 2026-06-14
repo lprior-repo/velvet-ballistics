@@ -358,7 +358,7 @@ mod kani_harnesses {
     }
 
     #[kani::proof]
-    #[kani::unwind(3)]
+    #[kani::unwind(8)]
     fn validate_trigger_deterministic() {
         let kind: String = kani::any();
         kani::assume(kind.len() <= 64);

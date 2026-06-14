@@ -25,7 +25,7 @@ fn ps_010_multiple_timers_same_deadline_all_fire() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_010_replacement_preserves_entry_integrity() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let now = std::time::Instant::now();
@@ -48,7 +48,7 @@ fn ps_010_replacement_preserves_entry_integrity() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_010_fire_clears_both_indices() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let deadline = std::time::Instant::now();

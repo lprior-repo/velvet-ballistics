@@ -23,7 +23,7 @@ use crate::error::JournalError;
 
 /// PS-005: Exhaustive test of reject_trailing_bytes for bounded domain.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_005_trailing_bytes() {
     let declared_end: usize = kani::any();
     let actual_len: usize = kani::any();

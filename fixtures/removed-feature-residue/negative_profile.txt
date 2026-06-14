@@ -1,24 +1,4 @@
 # negative profile fixture for check-removed-feature-residue.
-# This fixture models a release-profile / build-config snippet that ACTIVATES
-# the removed master §41 features. Master §41: "PGO, target-cpu=native, maxperf,
-# and generated Rust benchmark workflows are removed... must not be current
-# release gates".
-#
-# The scanner MUST report at least one file:line finding (target-cpu=native or
-# a PGO active context) and exit 1.
-
-[profile.maxperf]
-inherits = "release"
-opt-level = 3
-lto = "fat"
-codegen-units = 1
+# Deliberately contaminated release-profile snippet.
 
 RUSTFLAGS="-C target-cpu=native -Dwarnings"
-export RUSTFLAGS
-
-# RUSTC_PGO=1 must never be set in the current release pipeline.
-RUSTC_PGO=1
-
-cargo build -p velvet-ballistics --bin velvet-ballistics --features maxperf
-cargo build -p velvet-ballistics --bin velvet-ballistics --features generated
-cargo pgo instrument

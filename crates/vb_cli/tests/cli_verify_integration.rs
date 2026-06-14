@@ -25,21 +25,20 @@ steps:
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn forced_assertion_failure() -> bool {
-    false
+fn write_test_file(path: &std::path::Path, contents: &[u8]) {
+    if let Err(error) = std::fs::write(path, contents) {
+        panic!("failed to write {}: {error}", path.display());
+    }
 }
 
-fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
-    match std::fs::write(path, contents) {
-        Ok(()) => true,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "failed to write {}: {err}",
-                path.display()
-            );
-            false
-        }
+fn must_create_temp_yaml_file(prefix: &str) -> tempfile::NamedTempFile {
+    match tempfile::Builder::new()
+        .prefix(prefix)
+        .suffix(".yaml")
+        .tempfile()
+    {
+        Ok(file) => file,
+        Err(error) => panic!("failed to create temp file with prefix {prefix}: {error}"),
     }
 }
 
@@ -72,21 +71,19 @@ fn fixture_os(path: &str) -> std::ffi::OsString {
     }
 }
 
-fn parse_structured_value(stdout: &str) -> Option<serde_json::Value> {
-    serde_json::from_str::<serde_json::Value>(stdout)
-        .ok()
-        .or_else(|| serde_saphyr::from_str::<serde_json::Value>(stdout).ok())
+fn parse_yaml_value(stdout: &str) -> Result<serde_json::Value, String> {
+    serde_saphyr::from_str::<serde_json::Value>(stdout).map_err(|error| error.to_string())
 }
 
-fn must_parse_structured_value(stdout: &str, context: &str) -> serde_json::Value {
-    let parsed = parse_structured_value(stdout);
+fn must_parse_yaml_value(stdout: &str, context: &str) -> serde_json::Value {
+    let parsed = parse_yaml_value(stdout);
     assert!(
-        parsed.is_some(),
-        "{context}. stdout was not parseable structured output:\n{stdout}"
+        parsed.is_ok(),
+        "{context}. stdout was not parseable YAML-compatible structured output:\n{stdout}"
     );
     match parsed {
-        Some(value) => value,
-        None => std::process::abort(),
+        Ok(value) => value,
+        Err(_) => std::process::abort(),
     }
 }
 
@@ -116,8 +113,16 @@ fn must_parse_jsonl_value(bytes: &[u8], context: &str) -> serde_json::Value {
         None => panic!("{context}: JSONL record lost its trailing newline: {text:?}"),
     };
     assert!(
+        !trimmed.is_empty(),
+        "{context}: JSONL payload must contain one JSON value, got {text:?}"
+    );
+    assert!(
         !trimmed.contains('\n'),
         "{context}: expected exactly one JSON line, got {text:?}"
+    );
+    assert!(
+        !trimmed.contains('\r'),
+        "{context}: JSONL record must use LF framing only, got {text:?}"
     );
     match serde_json::from_str::<serde_json::Value>(trimmed) {
         Ok(value) => value,
@@ -130,6 +135,79 @@ fn assert_empty_stream(bytes: &[u8], context: &str) {
         bytes.is_empty(),
         "{context}: expected empty stream, got {:?}",
         String::from_utf8_lossy(bytes)
+    );
+}
+
+fn json_string(value: &serde_json::Value, pointer: &str, context: &str) -> String {
+    match value.pointer(pointer).and_then(serde_json::Value::as_str) {
+        Some(text) => text.to_string(),
+        None => panic!("{context}: expected string at {pointer}, got {value}"),
+    }
+}
+
+fn assert_machine_diagnostic(
+    value: &serde_json::Value,
+    expected_code: &str,
+    expected_exit_code: u64,
+    message_prefix: &str,
+    context: &str,
+) -> String {
+    assert_eq!(
+        value
+            .pointer("/schema_version")
+            .and_then(serde_json::Value::as_str),
+        Some("velvet-ballistics/cli-output/v1"),
+        "{context}: schema_version"
+    );
+    assert_eq!(
+        value.pointer("/kind").and_then(serde_json::Value::as_str),
+        Some("DiagnosticReport"),
+        "{context}: kind"
+    );
+    assert_eq!(
+        value.pointer("/code").and_then(serde_json::Value::as_str),
+        Some(expected_code),
+        "{context}: code"
+    );
+    assert_eq!(
+        value
+            .pointer("/exit_code")
+            .and_then(serde_json::Value::as_u64),
+        Some(expected_exit_code),
+        "{context}: exit_code"
+    );
+    assert!(
+        value.get("success").is_none(),
+        "{context}: diagnostic payload must not expose success field"
+    );
+    assert!(
+        value.get("profile").is_none(),
+        "{context}: diagnostic payload must not expose profile field"
+    );
+    assert!(
+        value.get("error").is_none(),
+        "{context}: diagnostic payload must not expose legacy error field"
+    );
+
+    let message = json_string(value, "/message", context);
+    assert!(
+        message.starts_with(message_prefix),
+        "{context}: message `{message}` did not start with `{message_prefix}`"
+    );
+    message
+}
+
+fn assert_lower_hex_string(value: &str, expected_len: usize, context: &str) {
+    assert_eq!(
+        value.len(),
+        expected_len,
+        "{context}: expected {expected_len} hex characters, got {value}"
+    );
+    assert!(
+        value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "{context}: expected lowercase hex, got {value}"
     );
 }
 
@@ -174,6 +252,27 @@ const QUICK_GATE_STATUSES: [&str; 15] = [
     "evidence:deferred",
 ];
 
+const QUICK_DEFERRED_GATES: [&str; 8] = [
+    "bounded",
+    "budgets",
+    "contracts",
+    "taint",
+    "idempotency",
+    "durability",
+    "capabilities",
+    "evidence",
+];
+
+const QUICK_PASSED_GATES: [&str; 7] = [
+    "profile",
+    "shape",
+    "names",
+    "references",
+    "expressions",
+    "CFG",
+    "results",
+];
+
 const STANDARD_GATE_STATUSES: [&str; 15] = [
     "profile",
     "shape",
@@ -213,6 +312,8 @@ const STANDARD_PASSED_GATES: [&str; 9] = [
     "results",
 ];
 
+const TAINT_WARNING: &str = "taint warning: compiled-form WorkflowParts taint validation is not implemented; AST validation alone does not close this gate";
+
 fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
     value
         .pointer(pointer)
@@ -225,6 +326,54 @@ fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn csv_line(values: &[&str]) -> String {
+    values.join(", ")
+}
+
+fn expected_default_text_success(
+    profile: &str,
+    statuses: &[&str],
+    passed: &[&str],
+    deferred: &[&str],
+    warnings: &[&str],
+) -> String {
+    let mut lines = vec![
+        format!("verified (2 nodes, profile={profile})"),
+        format!("gate statuses: {}", csv_line(statuses)),
+        format!("passed gates: {}", csv_line(passed)),
+        format!("deferred gates: {}", csv_line(deferred)),
+    ];
+    if !warnings.is_empty() {
+        lines.push(format!("warnings: {}", warnings.join(" | ")));
+    }
+    lines.push(format!(
+        "Deferred gates remain: {}. This report does not close all master §63 gates.",
+        csv_line(deferred)
+    ));
+    lines.join("\n") + "\n"
+}
+
+fn expected_default_text_failure(
+    statuses: &[&str],
+    passed: &[&str],
+    deferred: &[&str],
+    warnings: &[&str],
+) -> String {
+    let mut lines = vec![
+        format!(
+            "full verification blocked: deferred gates remain: {}",
+            csv_line(deferred)
+        ),
+        format!("gate statuses: {}", csv_line(statuses)),
+        format!("passed gates: {}", csv_line(passed)),
+        format!("deferred gates: {}", csv_line(deferred)),
+    ];
+    if !warnings.is_empty() {
+        lines.push(format!("warnings: {}", warnings.join(" | ")));
+    }
+    lines.join("\n") + "\n"
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +406,10 @@ fn bdd_happy_quick_profile_returns_ok_with_checks() {
     assert_eq!(status.code(), Some(0), "exit code must be 0 on success");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json = parse_structured_value(&stdout).expect("quick verify must emit structured yaml");
+    let json = must_parse_yaml_value(
+        &stdout,
+        "quick verify must emit YAML-compatible structured output",
+    );
     assert_eq!(
         json_string_vec(&json, "/checks"),
         QUICK_GATE_STATUSES
@@ -347,7 +499,7 @@ fn bdd_format_parity_exit_code_identical_across_formats() {
     assert_empty_stream(&jsonl_output.stderr, "verify --jsonl success stderr");
 
     let yaml_stdout = String::from_utf8_lossy(&yaml_output.stdout);
-    let canonical_report = must_parse_structured_value(
+    let canonical_report = must_parse_yaml_value(
         &yaml_stdout,
         "verify --emit yaml must emit canonical structured report",
     );
@@ -367,6 +519,31 @@ fn bdd_format_parity_exit_code_identical_across_formats() {
             .pointer("/success")
             .and_then(serde_json::Value::as_bool),
         Some(true)
+    );
+}
+
+#[test]
+fn integration_verify_emit_text_success_matches_human_contract() {
+    let output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("text"),
+        &fixture_os("tests/fixtures/valid/minimal.yaml"),
+    ]);
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_empty_stream(&output.stderr, "verify --emit text quick success stderr");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        expected_default_text_success(
+            "quick",
+            &QUICK_GATE_STATUSES,
+            &QUICK_PASSED_GATES,
+            &QUICK_DEFERRED_GATES,
+            &[],
+        )
     );
 }
 
@@ -403,7 +580,7 @@ fn integration_verify_legacy_json_flags_match_canonical_fail_closed_report() {
     assert_empty_stream(&jsonl_output.stderr, "verify --jsonl fail-closed stderr");
 
     let yaml_stdout = String::from_utf8_lossy(&yaml_output.stdout);
-    let canonical_report = must_parse_structured_value(
+    let canonical_report = must_parse_yaml_value(
         &yaml_stdout,
         "verify --emit yaml full-profile fail-closed output must be parseable",
     );
@@ -442,16 +619,14 @@ fn integration_verify_legacy_json_flags_match_canonical_fail_closed_report() {
 /// Then: result is Err(VerifyError::YamlParse(msg)) where msg contains "YAML parse error"
 #[test]
 fn bdd_yaml_parse_error_returns_classified_error() {
-    // Create a temp file with malformed YAML
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("vb_test_malformed.yaml");
-    write_test_file(&temp_file, MALFORMED_YAML.as_bytes());
+    let temp_file = must_create_temp_yaml_file("vb-test-malformed-");
+    write_test_file(temp_file.path(), MALFORMED_YAML.as_bytes());
 
     let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        temp_file.as_os_str(),
+        temp_file.path().as_os_str(),
     ]);
 
     let status = output.status;
@@ -462,13 +637,12 @@ fn bdd_yaml_parse_error_returns_classified_error() {
         "YAML parse error must exit with code 2 (ValidationFailed)"
     );
 
-    // stderr must mention YAML or parse error
+    assert_empty_stream(&output.stdout, "verify malformed default-text stdout");
+
     let stderr = String::from_utf8_lossy(&output.stderr);
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let combined = format!("{}{}", stdout, stderr);
     assert!(
-        combined.to_lowercase().contains("yaml") || combined.to_lowercase().contains("parse"),
-        "error output must mention YAML or parse error"
+        stderr.trim_end().starts_with("YAML parse error: "),
+        "stderr must carry the exact YAML parse classification, got: {stderr}"
     );
 }
 
@@ -476,16 +650,15 @@ fn bdd_yaml_parse_error_returns_classified_error() {
 #[test]
 fn bdd_yaml_parse_exit_code_is_validation_failed() {
     // This is tested via CLI - YAML parse error → exit code 2 (ValidationFailed) per contract
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("vb_test_malformed2.yaml");
+    let temp_file = must_create_temp_yaml_file("vb-test-malformed2-");
 
-    write_test_file(&temp_file, b"invalid: yaml: content: here:");
+    write_test_file(temp_file.path(), b"invalid: yaml: content: here:");
 
     let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        temp_file.as_os_str(),
+        temp_file.path().as_os_str(),
     ]);
 
     assert_eq!(
@@ -495,42 +668,88 @@ fn bdd_yaml_parse_exit_code_is_validation_failed() {
     );
 }
 
+#[test]
+fn integration_verify_emit_text_parse_error_uses_text_diagnostic_contract() {
+    let temp_file = must_create_temp_yaml_file("vb-test-emit-text-parse-");
+    write_test_file(temp_file.path(), MALFORMED_YAML.as_bytes());
+
+    let output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("text"),
+        temp_file.path().as_os_str(),
+    ]);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_empty_stream(&output.stdout, "verify --emit text malformed-yaml stdout");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.trim_end().starts_with("YAML parse error: "),
+        "verify --emit text malformed-yaml stderr must carry the YAML parse classification, got: {stderr}"
+    );
+}
+
 // ---------------------------------------------------------------------------
-// BDD Scenario: Format Parity — Text and JSON Report Same Gates
+// BDD Scenario: Structured Report Completeness — Standard JSON Report
 // ---------------------------------------------------------------------------
 
-/// ### Behavior: failing gates appear in both text and JSON output
-/// Given: an invalid workflow producing IrValidation error
-/// When: cmd_verify is called with Text format and Json format
-/// Then: text output mentions the failing gate name
-/// And: JSON output contains the same gate name in the error field
+/// ### Behavior: standard-profile JSON output carries the full verification report schema
+/// Given: a valid workflow producing a standard-profile verification report
+/// When: cmd_verify is called with Json format
+/// Then: the structured output contains the expected certificate and replay fields
 #[test]
 fn bdd_json_output_contains_all_certificate_fields() {
     let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("standard"),
-        std::ffi::OsStr::new("--emit"),
-        std::ffi::OsStr::new("yaml"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(output.status.code(), Some(0));
+    assert_empty_stream(&output.stderr, "verify --json standard stderr");
 
-    let json = must_parse_structured_value(
-        &stdout,
-        "verify --emit yaml must emit a structured response",
+    let json = must_parse_json_value(
+        &output.stdout,
+        "verify --json standard must emit a structured response",
     );
 
-    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        json.pointer("/schema_version")
+            .and_then(serde_json::Value::as_str),
+        Some("velvet-ballistics/cli-output/v1")
+    );
+    assert_eq!(
+        json.pointer("/kind").and_then(serde_json::Value::as_str),
+        Some("verify_report")
+    );
     assert_eq!(
         json.pointer("/success")
             .and_then(serde_json::Value::as_bool),
         Some(true)
     );
     assert_eq!(
+        json.pointer("/profile").and_then(serde_json::Value::as_str),
+        Some("standard")
+    );
+    assert_eq!(
+        json.pointer("/node_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(2)
+    );
+    assert_eq!(
         json_string_vec(&json, "/checks"),
         STANDARD_GATE_STATUSES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json_string_vec(&json, "/passed_checks"),
+        STANDARD_PASSED_GATES
             .iter()
             .map(|gate| gate.to_string())
             .collect::<Vec<String>>()
@@ -543,76 +762,85 @@ fn bdd_json_output_contains_all_certificate_fields() {
             .collect::<Vec<String>>()
     );
 
-    assert!(
-        json.get("profile").is_some(),
-        "JSON must contain 'profile' field"
+    let digest = json_string(&json, "/digest", "verify report digest");
+    assert_lower_hex_string(&digest, 64, "verify report digest");
+    assert_eq!(
+        json.pointer("/all_gates_closed")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        json_string_vec(&json, "/warnings"),
+        vec![TAINT_WARNING.to_string()]
+    );
+    assert_eq!(
+        json.pointer("/repair_hints")
+            .and_then(serde_json::Value::as_array)
+            .map(std::vec::Vec::len),
+        Some(0)
+    );
+    assert_eq!(
+        json.pointer("/exit_code")
+            .and_then(serde_json::Value::as_u64),
+        Some(0)
     );
     assert!(
-        json.get("artifact").is_some(),
-        "JSON must contain 'artifact' field"
-    );
-    assert!(
-        json.get("replay").is_some(),
-        "JSON must contain 'replay' field"
-    );
-    assert!(
-        json.get("durability").is_some(),
-        "JSON must contain 'durability' field"
-    );
-    assert!(
-        json.get("repair_hints").is_some(),
-        "JSON must contain 'repair_hints' field"
-    );
-    assert!(
-        json.get("exit_code").is_some(),
-        "JSON must contain 'exit_code' field"
-    );
-
-    // Artifact subfields
-    let artifact = json
-        .get("artifact")
-        .map_or(&serde_json::Value::Null, |value| value);
-    assert!(
-        artifact.get("source_digest_hex").is_some(),
-        "artifact must contain source_digest_hex"
-    );
-    assert!(
-        artifact.get("ir_digest_hex").is_some(),
-        "artifact must contain ir_digest_hex"
-    );
-    assert!(
-        artifact.get("node_count").is_some(),
-        "artifact must contain node_count"
+        json.get("error").is_none(),
+        "successful verify report must not contain an error field"
     );
 
-    // Replay subfields
-    let replay = json
-        .get("replay")
-        .map_or(&serde_json::Value::Null, |value| value);
-    assert!(
-        replay.get("gates_passed").is_some(),
-        "replay must contain gates_passed"
+    let artifact_source_digest = json_string(
+        &json,
+        "/artifact/source_digest_hex",
+        "verify report artifact.source_digest_hex",
     );
-    assert!(
-        replay.get("gate_sequence").is_some(),
-        "replay must contain gate_sequence"
+    assert_eq!(artifact_source_digest, digest);
+
+    let artifact_ir_digest = json_string(
+        &json,
+        "/artifact/ir_digest_hex",
+        "verify report artifact.ir_digest_hex",
     );
-    assert!(
-        replay.get("replay_safe").is_some(),
-        "replay must contain replay_safe"
+    assert_lower_hex_string(
+        &artifact_ir_digest,
+        64,
+        "verify report artifact.ir_digest_hex",
+    );
+    assert_eq!(
+        json.pointer("/artifact/node_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(2)
     );
 
-    // Durability subfields
-    let durability = json
-        .get("durability")
-        .map_or(&serde_json::Value::Null, |value| value);
-    assert!(
-        durability.get("profile").is_some(),
-        "durability must contain profile"
+    assert_eq!(
+        json_string_vec(&json, "/replay/gates_passed"),
+        STANDARD_PASSED_GATES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
     );
-    assert!(
-        durability.get("journal_written").is_some(),
-        "durability must contain journal_written"
+    assert_eq!(
+        json_string_vec(&json, "/replay/gate_sequence"),
+        STANDARD_GATE_STATUSES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json.pointer("/replay/replay_safe")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+
+    assert_eq!(
+        json.pointer("/durability/profile")
+            .and_then(serde_json::Value::as_str),
+        Some("none")
+    );
+    assert_eq!(
+        json.pointer("/durability/journal_written")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
     );
 }
 
@@ -636,7 +864,7 @@ fn bdd_json_output_is_valid_utf8_and_parseable() {
         "JSON output must be valid UTF-8"
     );
 
-    let _ = must_parse_structured_value(
+    let _ = must_parse_yaml_value(
         &stdout,
         "verify --emit yaml must emit a structured response",
     );
@@ -660,7 +888,10 @@ fn bdd_full_profile_fails_closed_on_deferred_gates() {
 
     assert_eq!(output.status.code(), Some(4));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json = parse_structured_value(&stdout).expect("full verify must emit structured yaml");
+    let json = must_parse_yaml_value(
+        &stdout,
+        "full verify must emit YAML-compatible structured output",
+    );
     assert_eq!(
         json.pointer("/success")
             .and_then(serde_json::Value::as_bool),
@@ -711,7 +942,10 @@ fn bdd_standard_profile_reports_exact_deferred_gate_set() {
 
     assert_eq!(output.status.code(), Some(0));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json = parse_structured_value(&stdout).expect("standard verify must emit structured yaml");
+    let json = must_parse_yaml_value(
+        &stdout,
+        "standard verify must emit YAML-compatible structured output",
+    );
     assert_eq!(
         json.pointer("/success")
             .and_then(serde_json::Value::as_bool),
@@ -742,9 +976,8 @@ fn bdd_standard_profile_reports_exact_deferred_gate_set() {
 #[test]
 fn bdd_inv001_exit_code_stable_across_formats_on_error() {
     // Use a malformed YAML to trigger an error
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("vb_test_format_parity.yaml");
-    write_test_file(&temp_file, MALFORMED_YAML.as_bytes());
+    let temp_file = must_create_temp_yaml_file("vb-test-format-parity-");
+    write_test_file(temp_file.path(), MALFORMED_YAML.as_bytes());
 
     let text_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
@@ -752,7 +985,7 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--emit"),
         std::ffi::OsStr::new("text"),
-        temp_file.as_os_str(),
+        temp_file.path().as_os_str(),
     ]);
 
     let json_output = must_run_cli(&[
@@ -760,7 +993,7 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--json"),
-        temp_file.as_os_str(),
+        temp_file.path().as_os_str(),
     ]);
 
     let jsonl_output = must_run_cli(&[
@@ -768,7 +1001,7 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--jsonl"),
-        temp_file.as_os_str(),
+        temp_file.path().as_os_str(),
     ]);
 
     assert_eq!(
@@ -793,41 +1026,27 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         "verify --jsonl error path must emit exactly one JSON line on stderr",
     );
     assert_eq!(json_error, jsonl_error);
-    assert_eq!(
-        json_error
-            .pointer("/success")
-            .and_then(serde_json::Value::as_bool),
-        Some(false)
+    let message = assert_machine_diagnostic(
+        &json_error,
+        "ValidationFailed",
+        2,
+        "YAML parse error: ",
+        "verify malformed-yaml legacy JSON diagnostic",
     );
     assert_eq!(
-        json_error
-            .pointer("/profile")
-            .and_then(serde_json::Value::as_str),
-        Some("quick")
+        json_error,
+        serde_json::json!({
+            "schema_version": "velvet-ballistics/cli-output/v1",
+            "kind": "DiagnosticReport",
+            "code": "ValidationFailed",
+            "exit_code": 2,
+            "message": message,
+        })
     );
-    if let Some(message) = json_error
-        .pointer("/error")
-        .and_then(serde_json::Value::as_str)
-    {
-        assert!(
-            message.contains("YAML parse error"),
-            "unexpected stderr payload: {json_error}"
-        );
-        assert_eq!(
-            json_error,
-            serde_json::json!({
-                "success": false,
-                "profile": "quick",
-                "error": message,
-            })
-        );
-    } else {
-        assert!(false, "missing /error in stderr payload: {json_error}");
-    }
 }
 
 #[test]
-fn integration_verify_legacy_json_flags_emit_machine_diagnostics_on_parse_error() {
+fn integration_verify_legacy_json_flags_emit_machine_diagnostics_on_unknown_profile() {
     let json_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
@@ -859,12 +1078,19 @@ fn integration_verify_legacy_json_flags_emit_machine_diagnostics_on_parse_error(
         &jsonl_output.stderr,
         "verify --jsonl parse error must emit exactly one JSON line on stderr",
     );
+    let message = assert_machine_diagnostic(
+        &json_error,
+        "ValidationFailed",
+        2,
+        "unknown verify profile: thorough (expected: quick, standard, full)",
+        "verify unknown-profile legacy JSON diagnostic",
+    );
     let expected = serde_json::json!({
         "schema_version": "velvet-ballistics/cli-output/v1",
         "kind": "DiagnosticReport",
         "code": "ValidationFailed",
         "exit_code": 2,
-        "message": "unknown verify profile: thorough (expected: quick, standard, full)",
+        "message": message,
     });
     assert_eq!(json_error, expected);
     assert_eq!(jsonl_error, expected);
@@ -892,7 +1118,7 @@ fn bdd_inv002_gate_parity_between_text_and_structured_output_on_full_profile_fai
 
     let json_code = output.status.code();
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json = must_parse_structured_value(
+    let json = must_parse_yaml_value(
         &stdout,
         "verify full --emit yaml must emit structured output",
     );
@@ -962,24 +1188,41 @@ fn integration_verify_all_profiles_match_default_text_contract() {
                 &output.stderr,
                 &format!("verify {profile} default text success stderr"),
             );
-            assert!(
-                stdout.contains("verified (") && stdout.contains(&format!("profile={profile}")),
-                "verify {profile} default text success output must identify the verified profile: {stdout}"
-            );
-            assert!(
-                stdout.contains("gate statuses: ") && stdout.contains("passed gates: "),
-                "verify {profile} default text success output must include gate summaries: {stdout}"
+            let expected_stdout = match profile {
+                "quick" => expected_default_text_success(
+                    profile,
+                    &QUICK_GATE_STATUSES,
+                    &QUICK_PASSED_GATES,
+                    &QUICK_DEFERRED_GATES,
+                    &[],
+                ),
+                "standard" => expected_default_text_success(
+                    profile,
+                    &STANDARD_GATE_STATUSES,
+                    &STANDARD_PASSED_GATES,
+                    &FULL_DEFERRED_GATES,
+                    &[TAINT_WARNING],
+                ),
+                _ => String::new(),
+            };
+            assert_eq!(
+                stdout, expected_stdout,
+                "verify {profile} default text success output must match the exact summary contract"
             );
         } else {
             assert_empty_stream(
                 &output.stdout,
                 &format!("verify {profile} default text deferred stdout"),
             );
-            assert!(
-                stderr.contains("full verification blocked: deferred gates remain")
-                    && stderr.contains("gate statuses: ")
-                    && stderr.contains("deferred gates: contracts, taint, idempotency, durability, capabilities, evidence"),
-                "verify {profile} default text deferred output must report the blocked gate contract: {stderr}"
+            assert_eq!(
+                stderr,
+                expected_default_text_failure(
+                    &STANDARD_GATE_STATUSES,
+                    &STANDARD_PASSED_GATES,
+                    &FULL_DEFERRED_GATES,
+                    &[TAINT_WARNING],
+                ),
+                "verify {profile} default text deferred output must match the exact blocked-gate contract"
             );
         }
     }
@@ -1001,7 +1244,7 @@ fn integration_standard_profile_runs_ir_validation_gate() {
     ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json = must_parse_structured_value(
+    let json = must_parse_yaml_value(
         &stdout,
         "verify standard structured output must be parseable",
     );
@@ -1087,8 +1330,7 @@ fn integration_full_profile_runs_budget_gates() {
     assert_eq!(output.status.code(), Some(4));
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json =
-        must_parse_structured_value(&stdout, "verify full structured output must be parseable");
+    let json = must_parse_yaml_value(&stdout, "verify full structured output must be parseable");
 
     let checks = json.get("checks").and_then(|checks| checks.as_array());
     let gates_passed = json
@@ -1186,8 +1428,7 @@ fn integration_quick_profile_skips_expensive_gates() {
     ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json =
-        must_parse_structured_value(&stdout, "verify quick structured output must be parseable");
+    let json = must_parse_yaml_value(&stdout, "verify quick structured output must be parseable");
 
     let gates_passed = json
         .get("replay")

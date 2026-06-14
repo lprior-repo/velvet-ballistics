@@ -2,6 +2,36 @@
 
 Bead: `vb-h3y19` — product-positioning-lint (P2, IN_PROGRESS)
 
+## 2026-06-14 update
+
+Current modified files:
+
+- `scripts/check-product-positioning.rs`
+- `scripts/test-check-product-positioning.sh`
+- `fixtures/product-positioning/mixed-negation.md`
+- `.bead-progress/vb-h3y19/evidence.md`
+
+Current fixes:
+
+- phrase-aware negation scope: one negated phrase no longer blankets sibling phrases on the same line.
+- explicit-path scans fail closed when nothing is resolved or scanned.
+- scanner core split into smaller helpers for canonicalization, negation scope, reporting, and scan orchestration.
+- mixed-negation and missing-path regressions now have focused coverage.
+
+Latest verification highlights:
+
+```text
+mixed-negation probe:
+/tmp/tmp.lUD6mKUsLq/mixed-negation.md:1: disclaimered: generic dag runner: The product is not a generic DAG runner but is a low-code graph editor.
+/tmp/tmp.lUD6mKUsLq/mixed-negation.md:1: POSITIONING: low-code graph editor: The product is not a generic DAG runner but is a low-code graph editor.
+summary: active=1 allowlisted=0 disclaimered=1 files_scanned=1
+
+missing explicit path probe:
+check-product-positioning: scan error: no explicit scan targets were scanned
+```
+
+The historical evidence blocks below were kept for continuity.
+
 ## Modified files
 
 - `scripts/check-product-positioning.rs`

@@ -46,7 +46,7 @@ fn kani_foreach_digest_step_deterministic() {
 
 /// PO-K-FE-05 H2: digest_step_primitive is deterministic for Set.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_set_digest_step_deterministic() {
     let output = bounded_string(16);
     kani::assume(!output.is_empty());

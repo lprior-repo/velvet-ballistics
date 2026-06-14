@@ -25,7 +25,7 @@ use vb_core::workflow::ResourceContract;
 /// deferred to integration tests; this harness proves the contract-checking
 /// logic itself.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn prove_secret_result_not_allowed_enforcement() {
     // Test both boolean values of allows_secret_results
     let allows: bool = kani::any();

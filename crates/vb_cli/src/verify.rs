@@ -5,12 +5,12 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use crate::args::{DurabilityMode, LegacyJsonOutput, OutputFormat, VerifyProfile};
-use crate::commands_verify::{VerifyError, VerifyOk, exit_code_for_error, run_verification};
+use crate::commands_verify::{exit_code_for_error, run_verification, VerifyError, VerifyOk};
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::output::{
-    OutputError, json_error, json_out, output_error_exit, write_failure_message,
-    write_legacy_json_stderr, write_legacy_json_stdout,
+    json_error, json_out, output_error_exit, write_failure_message, write_legacy_json_stderr,
+    write_legacy_json_stdout, OutputError,
 };
 
 /// Default durability profile used by the `verify` command.
@@ -232,8 +232,23 @@ fn emit_verify_error(
     legacy_json: LegacyJsonOutput,
 ) -> ExitCode {
     match err {
-        VerifyError::YamlParse(msg)
-        | VerifyError::IrValidation(msg)
+        VerifyError::YamlParse(msg) => {
+            if legacy_json.is_enabled() {
+                emit_verify_diagnostic(msg, code, output, legacy_json)
+            } else {
+                emit_verify_machine_stderr(
+                    &serde_json::json!({
+                        "success": false,
+                        "profile": profile.as_str(),
+                        "error": msg
+                    }),
+                    code,
+                    output,
+                    legacy_json,
+                )
+            }
+        }
+        VerifyError::IrValidation(msg)
         | VerifyError::BudgetPolicy(msg)
         | VerifyError::StorageError(msg)
         | VerifyError::ReplayDivergence(msg) => emit_verify_machine_stderr(

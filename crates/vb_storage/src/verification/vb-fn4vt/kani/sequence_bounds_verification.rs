@@ -166,7 +166,7 @@ fn sequence_bounds_verification() {
 
 /// PO-009b: Verify no panic on arbitrary sequence values.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn sequence_bounds_no_panic() {
     let accepted_at_seq_raw: u64 = kani::any();
     let accepted_at_seq = EventSeq::new(accepted_at_seq_raw);
@@ -208,7 +208,7 @@ fn sequence_bounds_no_panic() {
 
 /// PO-009c: Verify boundary cases for MAX_REPLAY_WINDOW.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn sequence_bounds_window_boundary() {
     // Test the exact boundary: current_seq - accepted_at_seq == MAX_REPLAY_WINDOW
     // should be accepted, but > MAX_REPLAY_WINDOW should be rejected.

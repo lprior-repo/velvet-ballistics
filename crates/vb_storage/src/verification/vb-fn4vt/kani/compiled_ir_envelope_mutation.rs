@@ -140,7 +140,7 @@ fn no_mutation_validates() {
 
 /// PO-002c: No panic on any arbitrary record within bounds.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn no_panic_on_arbitrary_record() {
     let record = arbitrary_compiled_ir_record();
 

@@ -53,7 +53,7 @@ fn kani_check_action_abi_first_entry_mismatch() {
 
 /// PPI-007: empty ABI entry list has no mismatch.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_check_action_abi_empty() {
     use crate::recovery::digest::first_action_abi_mismatch;
 

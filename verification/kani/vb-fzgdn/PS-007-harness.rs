@@ -44,7 +44,7 @@ fn ps_007_all_expired_drained() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_007_next_deadline_is_earliest() {
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
     let now = std::time::Instant::now();

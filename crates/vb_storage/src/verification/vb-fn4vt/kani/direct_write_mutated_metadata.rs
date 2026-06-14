@@ -144,7 +144,7 @@ fn direct_write_mutated_metadata() {
 
 /// PO-006b: Verify that source_digest = digest invariant holds for valid artifacts.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn source_digest_equals_digest_invariant() {
     let ir_len: u32 = kani::any();
     kani::assume(ir_len > 0 && ir_len <= 256);

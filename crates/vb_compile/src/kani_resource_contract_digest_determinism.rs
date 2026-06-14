@@ -90,7 +90,7 @@ fn bounded_contract() -> ResourceContract {
 // YAML source can't be symbolic (kani::any) — see representative_source() doc
 // in sibling harness files for details and proptest/fuzz cross-refs.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn prove_digest_determinism() {
     let yaml = "version: velvet-ballastics/v1\nname: kani_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     let source = match vb_yaml::parse_workflow_source(yaml) {
@@ -114,7 +114,7 @@ fn prove_digest_determinism() {
 /// PO-K01 H2: Prove that encode_contract_bytes (the underlying encoding function)
 /// is also deterministic for all bounded contracts.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn prove_contract_encoding_determinism() {
     let contract = bounded_contract();
 

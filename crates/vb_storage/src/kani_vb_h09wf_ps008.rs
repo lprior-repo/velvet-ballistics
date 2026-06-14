@@ -23,7 +23,7 @@ use crate::admission::{VerificationProof, is_accepted_gate_count, missing_proof_
 
 /// PS-008a: Exhaustively verify is_accepted_gate_count for all 256 u8 values.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_008_gate_count_exhaustive() {
     let gate_count: u8 = kani::any();
 
@@ -92,10 +92,10 @@ fn ps_008_proof_flags_exhaustive() {
             ),
             "retry_safe" => kani::assert(!retry_safe && bounded && taint_safe, "retry_safe was false"),
             "idempotency_verified" => {
-                kani::assert(!idempotency_verified && bounded && taint_safe && retry_safe);
+                kani::assert(!idempotency_verified && bounded && taint_safe && retry_safe, "idempotency_verified flag check");
             }
             "replayable" => {
-                kani::assert(!replayable && bounded && taint_safe && retry_safe && idempotency_verified);
+                kani::assert(!replayable && bounded && taint_safe && retry_safe && idempotency_verified, "replayable flag check");
             }
             _ => kani::assert(false, "unknown proof flag name"),
         }

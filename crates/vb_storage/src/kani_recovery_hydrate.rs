@@ -110,7 +110,7 @@ fn batch_has_seq_not_after(batch: TailMetadataBatch, snapshot_seq: EventSeq) -> 
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn replay_next_seq_overflow_boundary() {
     let raw: u64 = kani::any();
     let result = crate::codec::next_seq(EventSeq::new(raw));
@@ -133,7 +133,7 @@ fn replay_next_seq_overflow_boundary() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn replay_push_limit_decision_matches_checked_count() {
     let raw_limit: usize = kani::any();
     let current_len: usize = kani::any();
@@ -195,7 +195,7 @@ fn replay_push_limit_decision_matches_checked_count() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn snapshot_metadata_rejects_run_mismatch() {
     let snapshot_run = arbitrary_run_id();
     let run_id = arbitrary_run_id();
@@ -269,7 +269,7 @@ fn tail_seq_scan_matches_any_metadata_batch_len_le_4() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn recovery_data_presence_rejects_only_all_empty() {
     let tail_empty: bool = kani::any();
     let slots_empty: bool = kani::any();
@@ -289,7 +289,7 @@ fn recovery_data_presence_rejects_only_all_empty() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn slot_taint_resolution_fails_closed_on_read_failure() {
     let decision = resolve_slot_taint_read(SlotTaintReadObservation::Failed);
 
@@ -300,7 +300,7 @@ fn slot_taint_resolution_fails_closed_on_read_failure() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn slot_taint_resolution_defaults_clean_only_for_uninitialized() {
     let decision = resolve_slot_taint_read(SlotTaintReadObservation::Uninitialized);
 
@@ -311,7 +311,7 @@ fn slot_taint_resolution_defaults_clean_only_for_uninitialized() {
 }
 
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn slot_taint_resolution_preserves_existing_taint() {
     let taint = arbitrary_taint();
     let decision = resolve_slot_taint_read(SlotTaintReadObservation::Existing(taint));

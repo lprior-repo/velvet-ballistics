@@ -77,6 +77,7 @@ fn ps_002_anti_contract() {
     let record = crate::records::CompiledIrRecord {
         digest: artifact.digest,
         ir: envelope.clone(),
+        metadata_hash: None,
     };
 
     // The vb-6uue check: BLAKE3(record.ir) == record.digest
@@ -112,6 +113,7 @@ fn ps_002_correct_two_step_verification() {
     let record = crate::records::CompiledIrRecord {
         digest: correct_digest,
         ir: envelope,
+        metadata_hash: None,
     };
 
     let envelope_hash = blake3::hash(&record.ir);

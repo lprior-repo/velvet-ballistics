@@ -70,7 +70,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 ///
 /// Kani nondeterministically selects a field index to mutate.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn prove_single_field_changes_digest() {
     let field_idx: u8 = kani::any();
     kani::assume(field_idx < 17);

@@ -53,7 +53,7 @@ fn kani_check_policy_first_entry_mismatch() {
 
 /// PPI-008: empty policy entry list has no mismatch.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_check_policy_empty() {
     use crate::recovery::digest::first_policy_mismatch;
 

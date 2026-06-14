@@ -1,0 +1,7 @@
+# negative profile fixture for check-removed-feature-residue.
+# Deliberately contaminated profile snippet.
+
+pgo = "profile"
+cargo pgo instrument
+RUSTC_PGO=1
+pgo-data = "target/pgo"

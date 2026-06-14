@@ -138,7 +138,7 @@ fn check_kind_28_journal_family_valid() {
 /// PO-KANI-001-H7: validate_kind_family with arbitrary (magic, kind) for all boundaries.
 /// Production: validation.rs full match arms.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn check_validate_kind_family_exhaustive() {
     let kind: u16 = kani::any();
     let magic: u32 = kani::any();

@@ -38,7 +38,7 @@ fn ps_004_zero_length_rejected() {
 
 /// PS-004b: All-zeros input (bounded to 256 bytes) must return error, never panic.
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn ps_004_all_zeros_rejected() {
     let len: u8 = kani::any();
     let bytes: Vec<u8> = vec![0u8; len as usize];

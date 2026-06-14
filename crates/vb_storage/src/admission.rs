@@ -419,7 +419,7 @@ pub mod fuzz_access {
     }
 }
 
-fn validate_accepted_artifact_digest(
+pub(crate) fn validate_accepted_artifact_digest(
     artifact: &AcceptedArtifact,
     digest: vb_core::WorkflowDigest,
 ) -> Result<(), JournalError> {
@@ -430,7 +430,7 @@ fn validate_accepted_artifact_digest(
     Ok(())
 }
 
-fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
+pub(crate) fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
     if artifact.source_digest != artifact.digest {
         return Err(JournalError::ArtifactMalformed);
     }
@@ -438,7 +438,7 @@ fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -> Result<()
     validate_verification_proof(&artifact.verification)
 }
 
-fn validate_artifact_policy_digest(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
+pub(crate) fn validate_artifact_policy_digest(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
     let workflow = workflow_from_artifact_ir(artifact)?;
     if artifact.policy_digest == compute_policy_digest(&workflow)? {
         Ok(())
@@ -480,7 +480,7 @@ fn validate_verification_proof(proof: &VerificationProof) -> Result<(), JournalE
     Ok(())
 }
 
-fn missing_proof_flag(proof: &VerificationProof) -> Option<&'static str> {
+pub(crate) fn missing_proof_flag(proof: &VerificationProof) -> Option<&'static str> {
     if !proof.bounded_claimed {
         Some("bounded")
     } else if !proof.taint_safe_claimed {
@@ -496,7 +496,7 @@ fn missing_proof_flag(proof: &VerificationProof) -> Option<&'static str> {
     }
 }
 
-fn is_accepted_gate_count(gate_count: u8) -> bool {
+pub(crate) fn is_accepted_gate_count(gate_count: u8) -> bool {
     gate_count == 0 || gate_count == ADMISSION_GATE_COUNT
 }
 

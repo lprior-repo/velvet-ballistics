@@ -40,7 +40,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 /// Uses kani::any::<ResourceContract>() for bounded nondeterministic input
 /// and constrains it to be different from DEFAULT (the proof requires inequality).
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn prove_contract_survives_compilation() {
     let contract: ResourceContract = kani::any();
     kani::assume(contract != ResourceContract::DEFAULT);
