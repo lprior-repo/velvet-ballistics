@@ -407,15 +407,22 @@ pub(crate) fn cli_exit_code_number(code: CliExitCode) -> u8 {
 mod tests {
     use super::*;
 
-    fn sample_result(checks: Vec<&'static str>) -> VerifyOk {
+    fn sample_result_with_durability(
+        checks: Vec<&'static str>,
+        durability_mode: DurabilityMode,
+    ) -> VerifyOk {
         VerifyOk {
             digest_hex: "0123456789abcdef".repeat(4),
             ir_digest_hex: "fedcba9876543210".repeat(4),
             node_count: 2,
             checks,
             warnings: vec!["taint warning: not implemented".to_string()],
-            durability_mode: DurabilityMode::Journaled,
+            durability_mode,
         }
+    }
+
+    fn sample_result(checks: Vec<&'static str>) -> VerifyOk {
+        sample_result_with_durability(checks, DurabilityMode::Journaled)
     }
 
     fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
@@ -520,6 +527,48 @@ mod tests {
         assert_eq!(
             report.pointer("/error").and_then(serde_json::Value::as_str),
             Some("full verification blocked: deferred gates remain: contracts, evidence")
+        );
+    }
+
+    #[test]
+    fn success_report_preserves_journaled_durability() {
+        let report = verify_success_report(
+            &sample_result_with_durability(vec!["profile"], DurabilityMode::Journaled),
+            VerifyProfile::Standard,
+        );
+
+        assert_eq!(
+            report
+                .pointer("/durability/profile")
+                .and_then(serde_json::Value::as_str),
+            Some("journaled")
+        );
+        assert_eq!(
+            report
+                .pointer("/durability/journal_written")
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn success_report_preserves_strict_durability() {
+        let report = verify_success_report(
+            &sample_result_with_durability(vec!["profile"], DurabilityMode::Strict),
+            VerifyProfile::Standard,
+        );
+
+        assert_eq!(
+            report
+                .pointer("/durability/profile")
+                .and_then(serde_json::Value::as_str),
+            Some("strict")
+        );
+        assert_eq!(
+            report
+                .pointer("/durability/journal_written")
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
         );
     }
 
