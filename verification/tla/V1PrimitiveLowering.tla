@@ -48,7 +48,7 @@ TypeOK ==
   /\ answer \in BOOLEAN
   /\ timedOut \in BOOLEAN
   /\ finished \in BOOLEAN
-  /\ finishedCount \in Nat
+  /\ finishedCount \in 0..1
 
 InitLoweredPrimitiveGraph ==
   /\ primitive \in Primitives
