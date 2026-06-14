@@ -210,7 +210,8 @@ fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::{replay_failure_outcome, replay_no_recovery_outcome};
+    use super::{replay_failure_outcome, replay_no_recovery_outcome, write_locked_read_surface};
+    use crate::args::OutputFormat;
     use crate::exit_code::CliExitCode;
 
     #[test]
@@ -231,5 +232,38 @@ mod tests {
 
         assert_eq!(outcome.code, CliExitCode::ReplayDivergence);
         assert!(outcome.message.contains("error replaying run 7"));
+    }
+
+    // ---- write_locked_read_surface: single canonical surface for events/inspect/replay (vb-qwsyi) ----
+
+    #[test]
+    fn write_locked_read_surface_text_returns_success_not_failure() {
+        // Bug guard: the local stubs in events.rs and inspect.rs used to print
+        // "locked read surface not implemented" and return FAILURE. The
+        // canonical surface must always return exit 0 with the right shape.
+        let code = write_locked_read_surface("events", "42", OutputFormat::Text);
+        assert_eq!(
+            code,
+            std::process::ExitCode::SUCCESS,
+            "locked-read surface must exit 0 (was a stub returning FAILURE before vb-qwsyi)"
+        );
+    }
+
+    #[test]
+    fn write_locked_read_surface_yaml_returns_success() {
+        let code = write_locked_read_surface("inspect", "7", OutputFormat::Yaml);
+        assert_eq!(code, std::process::ExitCode::SUCCESS);
+    }
+
+    #[test]
+    fn write_locked_read_surface_distinct_commands_share_signature() {
+        // The canonical surface accepts the same parameters for every command
+        // (events, inspect, replay) and the exit code never depends on the
+        // command label.
+        let events = write_locked_read_surface("events", "1", OutputFormat::Text);
+        let inspect = write_locked_read_surface("inspect", "1", OutputFormat::Text);
+        let replay = write_locked_read_surface("replay", "1", OutputFormat::Text);
+        assert_eq!(events, inspect);
+        assert_eq!(events, replay);
     }
 }

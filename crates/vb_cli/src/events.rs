@@ -5,6 +5,7 @@ use crate::args::{
     ActionRegistryMode, Command, DurabilityMode, EventStatus, OutputFormat, ParseError, StepTarget,
 };
 use crate::cli_envelope;
+use crate::commands_journal::filter_events;
 use crate::exit_code::CliExitCode;
 use crate::file_io::{
     ensure_existing_journal_directory, parse_run_id, read_file, read_journal_events,
@@ -29,8 +30,6 @@ pub(crate) fn cmd_events(
     status: Option<EventStatus>,
     limit: Option<i64>,
 ) -> ExitCode {
-    let _status_filter = status.map(|value| value.as_str());
-    let _limit_filter = limit;
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -42,7 +41,7 @@ pub(crate) fn cmd_events(
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
-            return write_locked_read_surface("events", run_id, output);
+            return super::replay::write_locked_read_surface("events", run_id, output);
         }
         Err(error) => {
             report_storage_open_error(&error, db, output);
@@ -71,27 +70,51 @@ pub(crate) fn cmd_events(
                 }
                 return CliExitCode::ValidationFailed.into();
             } else {
+                // Apply the `--status` and `--limit` filters to the raw event
+                // list. Filtering happens AFTER `events_for_run` returns and
+                // BEFORE the limit truncates, so the response's `total` and
+                // `events` fields are always consistent with each other and
+                // with what was actually rendered.
+                let filtered = filter_events(events, status, limit);
+                if filtered.is_empty() {
+                    if output != OutputFormat::Text {
+                        crate::emit_json_or_return!(
+                            &serde_json::json!({
+                                "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+                                "kind": "events_report",
+                                "run_id": run_id,
+                                "events": [],
+                                "total": 0
+                            }),
+                            output,
+                        );
+                    } else {
+                        crate::outln!("run {run_id}: no events matched the requested filter");
+                        write_vb_kyyf_trace("events", run_id, 0);
+                    }
+                    return ExitCode::SUCCESS;
+                }
                 match output {
                     OutputFormat::Yaml | OutputFormat::Postcard => {
                         let event_list: Vec<serde_json::Value> =
-                            events.iter().map(event_to_json).collect();
+                            filtered.iter().map(event_to_json).collect();
                         crate::emit_json_or_return!(
                             &serde_json::json!({
                                 "schema_version": crate::cli_envelope::SCHEMA_VERSION,
                                 "kind": "events_report",
                                 "run_id": run_id,
                                 "events": event_list,
-                                "total": events.len()
+                                "total": filtered.len()
                             }),
                             output,
                         );
                     }
                     OutputFormat::Text => {
-                        for event in &events {
+                        for event in &filtered {
                             print_event(event);
                         }
-                        crate::outln!("{} event(s) total", events.len());
-                        write_vb_kyyf_trace("events", run_id, events.len());
+                        crate::outln!("{} event(s) total", filtered.len());
+                        write_vb_kyyf_trace("events", run_id, filtered.len());
                     }
                 }
             }
@@ -373,15 +396,6 @@ pub(crate) fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Val
         }
         _ => serde_json::json!({"type": "Unknown"}),
     }
-}
-
-fn write_locked_read_surface(
-    _operation: &str,
-    _run_id: &str,
-    _output: crate::args::OutputFormat,
-) -> std::process::ExitCode {
-    crate::errln!("locked read surface not implemented");
-    std::process::ExitCode::FAILURE
 }
 
 fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize) {

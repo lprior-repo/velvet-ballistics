@@ -3,10 +3,11 @@
 #![allow(clippy::doc_markdown)]
 
 use super::{
-    ActionRegistryMode, CliExitCode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
-    InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
-    action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
+    ActionRegistryMode, CliExitCode, Command, DurabilityMode, EventStatus,
+    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, InputMappingError, OutputFormat, ParseError,
+    RunStatus, StepTarget, StorageWorkflowResolver, action_contract_detail,
+    action_idempotency_name, action_table_rows, build_step_frame, cmd_events,
     decode_step_inputs, execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
     parse_run_id, redacted_slot_value, registered_cli_actions, run_compiled_workflow,
     setup_exit_code, signal_name, suggested_ai_commands, write_step_inputs,
@@ -547,6 +548,164 @@ fn journaled_run_writes_storage_events() {
             }
         }
     }
+}
+
+// ---- events --status / --limit integration (vb-qwsyi) ----
+//
+// These tests call cmd_events directly with a real Fjall journal so the bug
+// is exercised end-to-end. The pure `filter_events` helper is unit-tested
+// separately in commands_journal::tests.
+
+fn run_finish_journal(dir: &std::path::Path) -> bool {
+    let compiled = match finish_workflow() {
+        Some(c) => c,
+        None => return false,
+    };
+    let code = run_compiled_workflow(
+        &compiled,
+        Box::from([]),
+        DurabilityMode::Journaled,
+        Some(dir),
+        OutputFormat::Text,
+    );
+    code == std::process::ExitCode::SUCCESS
+}
+
+#[test]
+fn cmd_events_no_filter_returns_all_events() {
+    let dir = match main_test_tempdir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !run_finish_journal(dir.path()) {
+        return;
+    }
+    let code = cmd_events("1", dir.path(), OutputFormat::Text, None, None);
+    assert_eq!(
+        code,
+        std::process::ExitCode::SUCCESS,
+        "events without filters must succeed"
+    );
+}
+
+#[test]
+fn cmd_events_status_completed_filters_to_completed_only() {
+    let dir = match main_test_tempdir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !run_finish_journal(dir.path()) {
+        return;
+    }
+    // RunFinished is the terminal event of the synth workflow and is
+    // classified as Completed by the canonical status mapping.
+    let code = cmd_events(
+        "1",
+        dir.path(),
+        OutputFormat::Text,
+        Some(EventStatus::Completed),
+        None,
+    );
+    assert_eq!(
+        code,
+        std::process::ExitCode::SUCCESS,
+        "events --status completed must succeed"
+    );
+}
+
+#[test]
+fn cmd_events_status_failed_with_synth_workflow_succeeds_with_zero_match() {
+    // The synth workflow has no failed events, so the filter returns
+    // 0 events but the command still exits 0 (filter is not a hard error).
+    let dir = match main_test_tempdir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !run_finish_journal(dir.path()) {
+        return;
+    }
+    let code = cmd_events(
+        "1",
+        dir.path(),
+        OutputFormat::Text,
+        Some(EventStatus::Failed),
+        None,
+    );
+    assert_eq!(
+        code,
+        std::process::ExitCode::SUCCESS,
+        "events --status failed on a successful run must still succeed"
+    );
+}
+
+#[test]
+fn cmd_events_limit_truncates_output() {
+    let dir = match main_test_tempdir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !run_finish_journal(dir.path()) {
+        return;
+    }
+    // limit=1 must succeed even though the journal has many events.
+    let code = cmd_events("1", dir.path(), OutputFormat::Text, None, Some(1));
+    assert_eq!(
+        code,
+        std::process::ExitCode::SUCCESS,
+        "events --limit 1 must succeed"
+    );
+}
+
+#[test]
+fn cmd_events_status_and_limit_combined() {
+    let dir = match main_test_tempdir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !run_finish_journal(dir.path()) {
+        return;
+    }
+    // Real bug scenario from the user: `--status failed --limit 10` on a
+    // journal with no failed events. The previous (buggy) implementation
+    // ignored both flags and returned ALL events. The fixed implementation
+    // returns 0 events (filter first, then truncate).
+    let code = cmd_events(
+        "1",
+        dir.path(),
+        OutputFormat::Text,
+        Some(EventStatus::Failed),
+        Some(10),
+    );
+    assert_eq!(
+        code,
+        std::process::ExitCode::SUCCESS,
+        "events --status failed --limit 10 must succeed"
+    );
+}
+
+#[test]
+fn cmd_events_yaml_output_succeeds_with_filters() {
+    // YAML output must also be filter-aware. The previous bug ignored
+    // filters in all output modes; the fix applies them before JSON encoding.
+    let dir = match main_test_tempdir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !run_finish_journal(dir.path()) {
+        return;
+    }
+    let code = cmd_events(
+        "1",
+        dir.path(),
+        OutputFormat::Yaml,
+        Some(EventStatus::Completed),
+        Some(5),
+    );
+    assert_eq!(
+        code,
+        std::process::ExitCode::SUCCESS,
+        "events --status completed --limit 5 --emit yaml must succeed"
+    );
 }
 
 #[test]

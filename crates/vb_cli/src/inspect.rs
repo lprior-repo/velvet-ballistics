@@ -27,7 +27,7 @@ pub(crate) fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputForm
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
-            return write_locked_read_surface("inspect", run_id, output);
+            return super::replay::write_locked_read_surface("inspect", run_id, output);
         }
         Err(error) => {
             report_storage_open_error(&error, db, output);
@@ -90,13 +90,4 @@ pub(crate) fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize
     crate::outln!(
         "BDD-KYYF-002 command={command} run_id={run_id} evidence=.evidence/vb-kyyf/storage-replay-resume.md digest=normalized-replay events={events_len}"
     );
-}
-
-fn write_locked_read_surface(
-    _operation: &str,
-    _run_id: &str,
-    _output: crate::args::OutputFormat,
-) -> std::process::ExitCode {
-    crate::errln!("locked read surface not implemented");
-    std::process::ExitCode::FAILURE
 }
