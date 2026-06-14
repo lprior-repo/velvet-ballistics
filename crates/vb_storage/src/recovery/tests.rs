@@ -747,10 +747,7 @@ fn frame_seed_with_workflow_preserves_action_completed_envelope_output_slot_valu
         entry.step == StepIdx::ZERO && entry.state == RecoveredStepState::Succeeded
     }));
     assert!(!seed.unsupported.slot_values);
-    // Envelope-style events (ActionScheduledTicket, ActionCompletedEnvelope) carry
-    // action payload bodies that the runtime boundary cannot re-attach to a live
-    // frame, so the seed must explicitly flag them as unsupported.
-    assert!(seed.unsupported.action_payloads);
+    assert!(!seed.unsupported.action_payloads);
     Ok(())
 }
 

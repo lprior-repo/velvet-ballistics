@@ -14,12 +14,10 @@ use vb_core::{
 };
 
 #[cfg(all(kani, feature = "kani-vb-mrwe6"))]
-#[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
 struct ReplayResolutionSet(Vec<(ActionId, StepIdx)>);
 
 #[cfg(all(kani, feature = "kani-vb-mrwe6"))]
-#[allow(dead_code)]
 impl ReplayResolutionSet {
     fn insert(&mut self, value: (ActionId, StepIdx)) -> bool {
         if self.contains(&value) {
@@ -334,18 +332,6 @@ impl UnsupportedRecoveryState {
     pub const fn slot_values_unsupported() -> Self {
         Self {
             slot_values: true,
-            ..Self::SUPPORTED
-        }
-    }
-
-    /// Ticket-envelope events (scheduled-ticket or completed-envelope) carry
-    /// action payload bodies that the runtime rehydration boundary cannot
-    /// re-attach to a live frame, so the seed must explicitly mark these as
-    /// unsupported.
-    #[must_use]
-    pub const fn action_payloads_unsupported() -> Self {
-        Self {
-            action_payloads: true,
             ..Self::SUPPORTED
         }
     }

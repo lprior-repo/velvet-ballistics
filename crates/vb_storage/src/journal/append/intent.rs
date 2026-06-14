@@ -21,7 +21,6 @@ pub enum Mrwe6ActionIndexIntent {
 }
 
 #[cfg(kani)]
-#[allow(dead_code)]
 pub(crate) type VerificationActionIndexIntent = Mrwe6ActionIndexIntent;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,7 +102,6 @@ impl Mrwe6ActionIndexIntent {
     }
 
     #[cfg(kani)]
-    #[allow(dead_code)]
     fn verification_view(self) -> VerificationActionIndexIntent {
         self
     }
@@ -209,7 +207,6 @@ pub fn mrwe6_action_index_key_for_intent(
 }
 
 #[cfg(kani)]
-#[allow(dead_code)]
 pub(crate) fn verification_action_index_intent(
     event: &JournalEvent,
 ) -> VerificationActionIndexIntent {
@@ -217,7 +214,6 @@ pub(crate) fn verification_action_index_intent(
 }
 
 #[cfg(kani)]
-#[allow(dead_code)]
 pub(crate) fn verification_event_and_index_keys_exist(
     event: &JournalEvent,
 ) -> Result<bool, JournalError> {
