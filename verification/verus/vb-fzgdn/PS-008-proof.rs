@@ -19,7 +19,7 @@ impl TimerRegistry {
     /// or same registry if at capacity.
     pub closed spec fn try_insert_spec(self) -> (Self, bool) {
         if self.count < self.max_capacity {
-            (TimerRegistry { count: self.count + 1, max_capacity: self.max_capacity }, true)
+            (TimerRegistry { count: (self.count + 1) as usize, max_capacity: self.max_capacity }, true)
         } else {
             (self, false)
         }
@@ -87,9 +87,9 @@ proof fn test_remove_decrements()
 
 /// Theorem: Remove from empty registry stays empty.
 proof fn test_remove_empty_stays_empty()
-    ensures TimerRegistry { count: 0, max_capacity: 10 }.remove_spec().count == 0,
+    ensures (TimerRegistry { count: 0, max_capacity: 10 }).remove_spec().count == 0,
 {
-    assert(TimerRegistry { count: 0, max_capacity: 10 }.remove_spec().count == 0) by (compute);
+    assert((TimerRegistry { count: 0, max_capacity: 10 }).remove_spec().count == 0) by (compute);
 }
 
 } // verus!

@@ -23,7 +23,7 @@ use crate::{YamlLimits, next_visited_count, validate_depth};
 // that checked_add + try_from cannot panic for any usize cursor/width values.
 
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn canonical_layout_no_overflow() {
     // Prove checked_add invariant: cursor.checked_add(width) never panics
     // for any usize values. It returns Option<usize> — Some on success,

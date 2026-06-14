@@ -1,9 +1,8 @@
 #![forbid(unsafe_code)]
 //! Output formatting and JSON/structured output functions.
 
-use crate::args::OutputFormat;
+use crate::args::{LegacyJsonOutput, OutputFormat};
 use crate::exit_code::CliExitCode;
-use crate::io_helpers;
 use crate::output_utils;
 use std::io::{self, Write};
 use std::process::ExitCode;
@@ -72,6 +71,7 @@ pub(crate) enum OutputError {
     PostcardFrame(crate::cli_postcard::PostcardError),
     PostcardClassify(String),
     Stdout(io::Error),
+    Stderr(io::Error),
 }
 
 impl std::fmt::Display for OutputError {
@@ -93,6 +93,7 @@ impl std::fmt::Display for OutputError {
                 write!(formatter, "postcard payload classify failed: {error}")
             }
             Self::Stdout(error) => write!(formatter, "stdout write failed: {error}"),
+            Self::Stderr(error) => write!(formatter, "stderr write failed: {error}"),
         }
     }
 }
@@ -135,6 +136,49 @@ fn write_stdout_bytes(bytes: &[u8]) -> Result<(), OutputError> {
 pub(crate) fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
     let json_str = serde_json::to_string_pretty(value).map_err(OutputError::JsonSerialize)?;
     write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
+}
+
+fn write_json_line_io<W: Write>(mut writer: W, value: &serde_json::Value) -> Result<(), io::Error> {
+    serde_json::to_writer(&mut writer, value)
+        .map_err(|error| io::Error::other(error.to_string()))?;
+    writer.write_all(b"\n")
+}
+
+fn write_json_pretty_stderr(value: &serde_json::Value) -> Result<(), OutputError> {
+    let json_str = serde_json::to_string_pretty(value).map_err(OutputError::JsonSerialize)?;
+    write_stderr_line_io(format_args!("{json_str}")).map_err(OutputError::Stderr)
+}
+
+fn write_json_line_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
+    let stdout = io::stdout();
+    let handle = stdout.lock();
+    write_json_line_io(handle, value).map_err(OutputError::Stdout)
+}
+
+fn write_json_line_stderr(value: &serde_json::Value) -> Result<(), OutputError> {
+    let stderr = io::stderr();
+    let handle = stderr.lock();
+    write_json_line_io(handle, value).map_err(OutputError::Stderr)
+}
+
+pub(crate) fn write_legacy_json_stdout(
+    value: &serde_json::Value,
+    mode: LegacyJsonOutput,
+) -> Result<(), OutputError> {
+    match mode {
+        LegacyJsonOutput::Disabled | LegacyJsonOutput::Json => write_json_pretty_stdout(value),
+        LegacyJsonOutput::Jsonl => write_json_line_stdout(value),
+    }
+}
+
+pub(crate) fn write_legacy_json_stderr(
+    value: &serde_json::Value,
+    mode: LegacyJsonOutput,
+) -> Result<(), OutputError> {
+    match mode {
+        LegacyJsonOutput::Disabled | LegacyJsonOutput::Json => write_json_pretty_stderr(value),
+        LegacyJsonOutput::Jsonl => write_json_line_stderr(value),
+    }
 }
 
 /// vb-k8ut.5: Encode a JSON envelope as a typed `CliPostcardPayload`.

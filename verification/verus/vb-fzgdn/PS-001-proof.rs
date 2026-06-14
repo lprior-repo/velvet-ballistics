@@ -18,7 +18,7 @@ pub struct TimerGeneration {
 
 impl TimerGeneration {
     /// Creates a new timer generation value, bound by u64::MAX.
-    pub spec fn new_spec(value: u64) -> Self {
+    pub closed spec fn new_spec(value: u64) -> Self {
         TimerGeneration { value }
     }
 
@@ -26,7 +26,7 @@ impl TimerGeneration {
     /// Production code: Shard::next_pending_timer_generation uses checked_add(1).
     pub closed spec fn checked_increment_spec(self) -> Option<Self> {
         if self.value < u64::MAX {
-            Some(TimerGeneration { value: self.value + 1 })
+            Some(TimerGeneration { value: (self.value + 1u64) as u64 })
         } else {
             None
         }
@@ -55,9 +55,9 @@ proof fn test_checked_add_within_bounds()
 /// Verifies that MAX generation + 1 returns None (GenerationExhausted).
 proof fn test_checked_add_at_max()
     ensures
-        TimerGeneration { value: u64::MAX }.checked_increment_spec().is_None(),
+        (TimerGeneration { value: u64::MAX }).checked_increment_spec().is_None(),
 {
-    assert(TimerGeneration { value: u64::MAX }.checked_increment_spec().is_None());
+    assert((TimerGeneration { value: u64::MAX }).checked_increment_spec().is_None());
 }
 
 /// Verifies monotonicity: increment always yields strictly greater value or None.

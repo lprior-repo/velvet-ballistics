@@ -147,6 +147,7 @@ fn harness_all_binary_ops_valid() {
         ExprOp::Has,
         ExprOp::Append,
         ExprOp::Merge,
+        ExprOp::Coalesce,
     ];
     for op in binary_ops {
         let ops = [

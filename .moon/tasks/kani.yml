@@ -50,10 +50,21 @@ tasks:
         TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness "$harness"
       }
       run_validate_harness kani_gate_08_valid_zero_accessors_pass
+      run_validate_harness kani_gate_08_valid_bounded_parts_pass
+      run_validate_harness kani_gate_08_valid_index_without_symbols_pass
+      run_validate_harness kani_gate_08_no_panic_bounded_inputs
+      run_validate_harness kani_gate_08_field_symbol_oob_rejected
+      run_validate_harness kani_gate_08_index_u32_max_rejected
+      run_validate_harness kani_gate_08_root_oob_rejected
+      run_validate_harness kani_gate_08_path_too_deep_rejected
       run_validate_harness kani_gate_08_arbitrary_parts_valid_accessors_pass
       run_validate_harness kani_gate_08_arbitrary_parts_root_oob_rejected
       run_validate_harness kani_gate_08_arbitrary_parts_symbol_oob_rejected
+      run_validate_harness kani_gate_08_arbitrary_parts_index_sentinel_rejected
+      run_validate_harness kani_gate_08_full_structure_no_panic
       run_validate_harness kani_gate_08_expressions_with_accessor_refs
+      run_validate_harness kani_gate_08_mixed_accessor_paths
+      run_validate_harness kani_gate_08_many_accessors_varied_depths
     toolchains:
       - rust
     deps:

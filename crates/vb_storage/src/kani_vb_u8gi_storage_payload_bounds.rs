@@ -8,7 +8,7 @@ use crate::constants::{CURRENT_SCHEMA_VERSION, MAGIC_JOURNAL_EVENT, RECORD_HEADE
 use crate::error::JournalError;
 
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 pub fn vb_u8gi_storage_payload_bounds_arbitrary() {
     let payload_len: u32 = kani::any();
     let max_payload_len: u32 = kani::any();

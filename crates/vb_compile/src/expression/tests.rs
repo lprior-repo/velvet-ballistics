@@ -163,6 +163,18 @@ fn parser_accepts_required_helper_call_surface() -> Result<(), String> {
 }
 
 #[test]
+fn parser_accepts_coalesce_helper_call() -> Result<(), String> {
+    let expr = parse("coalesce($input.value, \"fallback\")")?;
+    let (name, args) = helper(&expr)?;
+
+    ensure(
+        name == ExpressionHelper::Coalesce,
+        "coalesce helper missing",
+    )?;
+    ensure(args.len() == 2, "coalesce arity was not retained")
+}
+
+#[test]
 fn lexer_rejects_expression_token_limit() -> Result<(), String> {
     let source = "1 + ".repeat(MAX_EXPRESSION_TOKENS);
     ensure_limit(parse_err(&source)?, "token count")

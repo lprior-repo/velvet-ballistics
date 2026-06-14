@@ -50,14 +50,14 @@ impl<T> Located<T> {
 /// Alias used when APIs prefer the term spanned.
 pub type Spanned<T> = Located<T>;
 
-/// Placeholder source map until later phases attach workflow sources.
+/// Empty source map used by APIs that do not retain source text.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SourceMap {
     _private: (),
 }
 
 impl SourceMap {
-    /// Creates an empty source map placeholder.
+    /// Creates an empty source map.
     #[must_use]
     pub const fn new() -> Self {
         Self { _private: () }

@@ -48,7 +48,7 @@ fn prove_dual_path_digest_equivalence() {
 
 /// PO-K10 H2: Verify with a non-DEFAULT contract.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn prove_dual_path_digest_equivalence_non_default() {
     let source = representative_source();
     let contract = ResourceContract {

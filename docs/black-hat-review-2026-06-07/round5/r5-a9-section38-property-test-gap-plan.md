@@ -461,6 +461,7 @@ These Round 4 findings are out of scope for this plan and remain in their existi
 - **tick_shard API missing** (Section 30) — separate P0.
 - **ui/evaluate/benchmark CLI commands** (Section 33) — separate P0.
 - **Section 39 benchmarks** (24/40 missing) — separate bulk-fix plan.
+# allow-removed-crate: black-hat review audit references removed UI model crate for the densify sub-plan
 - **densify audit on `vb_ui_model`** (1.9x) — separate, post-merge.
 
 This plan is **only** the Section 38 property-test gap remediation and the coverage-evidence fix surface.

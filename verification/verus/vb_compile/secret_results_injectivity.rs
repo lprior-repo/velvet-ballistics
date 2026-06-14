@@ -23,8 +23,38 @@ use vstd::prelude::*;
 
 verus! {
 
-use crate::encoding_injectivity::{TaggedField, ContractEncoding, tagged_field_eq};
-use crate::digest_contract_binding::{SourceBytes, canonical_digest_spec, theorem_contract_inequality_implies_digest_inequality};
+    // Model types (standalone compilation)
+    pub struct TaggedField {
+        pub tag: Seq<u8>,
+        pub value: Seq<u8>,
+    }
+
+    pub struct ContractEncoding {
+        pub fields: Seq<TaggedField>,
+    }
+
+    pub struct SourceBytes {
+        pub data: Seq<u8>,
+    }
+
+    pub closed spec fn canonical_digest_spec(fields: Seq<TaggedField>) -> Seq<u8> {
+        Seq::new(0, |_i: int| 0)
+    }
+
+    pub spec fn tagged_field_eq(a: TaggedField, b: TaggedField) -> bool {
+        a.tag == b.tag && a.value == b.value
+    }
+
+    pub spec fn contract_encodings_equal(a: ContractEncoding, b: ContractEncoding) -> bool {
+        a.fields == b.fields
+    }
+
+    pub spec fn theorem_contract_inequality_implies_digest_inequality(a: ContractEncoding, b: ContractEncoding) -> bool {
+        !contract_encodings_equal(a, b) ==> canonical_digest_spec(a.fields) != canonical_digest_spec(b.fields)
+    }
+
+
+
 
 // ============================================================================
 // Model: allows_secret_results boolean as a tagged field

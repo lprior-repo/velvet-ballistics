@@ -48,6 +48,7 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
 vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
+# allow-removed-crate: fuzz manifest comments out the removed UI model crate so cargo build does not try to resolve it
 # vb_ui_model = { path = "../crates/vb_ui_model" }  # MISSING
 # vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }  # MISSING
 vb_doc = { path = "../crates/vb_doc" }
@@ -373,7 +374,9 @@ doc = false
 bench = false
 
 # [[bin]]
+# allow-removed-crate: fuzz bin entry for the removed UI model crate is commented out so the target does not resolve
 # name = "vb_ui_model_postcard_decode"
+# allow-removed-crate: fuzz bin path for the removed UI model crate is commented out so the target does not resolve
 # path = "src/bin/vb_ui_model_postcard_decode.rs"
 # test = false
 # doc = false

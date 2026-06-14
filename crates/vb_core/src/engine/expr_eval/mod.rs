@@ -6,6 +6,8 @@ mod core;
 #[cfg(test)]
 mod core_tests;
 mod ops;
+#[cfg(test)]
+mod ops_tests;
 mod ops_text_list;
 #[cfg(test)]
 mod ops_text_list_tests;

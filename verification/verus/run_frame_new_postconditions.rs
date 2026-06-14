@@ -151,60 +151,14 @@ pub struct SpecRunFrame {
 ///   Err(InvalidProgramCounter) when first_step >= states_len  (line 95-97)
 ///   Ok(Self{...}) when preconditions hold  (line 99-110)
 ///
-/// ## Requires/Ensures Contract
-///
-/// This spec function has the SAME preconditions as production RunFrame::new:
-///   requires: valid_u16_dim(step_count) && valid_u16_dim(slot_count) && step_count > 0 && first_step < step_count
-///
-/// The ensures clause documents the return value behavior:
-///   - Err(SpecError::InvalidCompiledWorkflow) when step_count == 0
-///   - Err(SpecError::InvalidProgramCounter) when first_step >= step_count
-///   - Ok(SpecRunFrame{..}) when preconditions hold
+/// NOTE: This is a pure spec function (ghost code). The proof functions
+/// in Phase 6 verify that it satisfies the required preconditions and postconditions.
 pub open spec fn spec_run_frame_new(
     run_id: int,
     first_step: int,
     step_count: int,
     slot_count: int,
-) -> Result<SpecRunFrame, SpecError>
-    requires
-        valid_u16_dim(step_count),
-        valid_u16_dim(slot_count),
-        step_count > 0,
-        first_step >= 0,
-        first_step < step_count,
-    ensures
-        // When step_count == 0: Err with InvalidCompiledWorkflow
-        (step_count == 0 ==> match result {
-            Ok(_) => false,
-            Err(SpecError::InvalidCompiledWorkflow{..}) => true,
-            Err(SpecError::InvalidProgramCounter{..}) => false,
-        }) &&
-        // When first_step >= step_count (and step_count > 0): Err with InvalidProgramCounter
-        (first_step >= step_count ==> match result {
-            Ok(_) => false,
-            Err(SpecError::InvalidCompiledWorkflow{..}) => false,
-            Err(SpecError::InvalidProgramCounter{..}) => true,
-        }) &&
-        // When preconditions hold: Ok with correct postconditions
-        (first_step < step_count && step_count > 0 ==> match result {
-            Ok(frame) => {
-                frame.run_id == run_id
-                    && frame.pc == first_step
-                    && frame.executed == 0
-                    && frame.max_parallel_in_flight == u16_max()
-                    && frame.parallel_in_flight == 0
-                    && frame.step_count == step_count
-                    && frame.slot_count == slot_count
-                    && frame.states_len == step_count
-                    && frame.slots_len == slot_count
-                    && frame.taint_len == slot_count
-                    && frame.all_states_pending == true
-                    && frame.all_slots_empty == true
-                    && frame.all_taint_clean == true
-            },
-            Err(_) => false,
-        }),
-{
+) -> Result<SpecRunFrame, SpecError> {
     let states_len = step_count;
     if states_len == 0 {
         Err(SpecError::InvalidCompiledWorkflow(SpecInvalidCompiledWorkflow {

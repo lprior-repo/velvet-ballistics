@@ -69,11 +69,13 @@ fn parse_verify_defaults_to_standard_profile() {
         workflow,
         profile,
         output,
+        legacy_json,
     }) = parsed
     {
         assert_eq!(workflow, PathBuf::from("workflow.yaml"));
         assert_eq!(profile, VerifyProfile::Standard);
         assert_eq!(output, OutputFormat::Text);
+        assert_eq!(legacy_json, LegacyJsonOutput::Disabled);
     }
 }
 
@@ -116,6 +118,46 @@ fn parse_verify_accepts_full_profile_with_yaml() {
     {
         assert_eq!(profile, VerifyProfile::Full);
         assert_eq!(output, OutputFormat::Yaml);
+    }
+}
+
+#[test]
+fn parse_verify_legacy_json_flag_requests_machine_json() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "verify",
+        "workflow.yaml",
+        "--json",
+    ]));
+    assert!(matches!(parsed, Ok(Command::Verify { .. })));
+    if let Ok(Command::Verify {
+        output,
+        legacy_json,
+        ..
+    }) = parsed
+    {
+        assert_eq!(output, OutputFormat::Text);
+        assert_eq!(legacy_json, LegacyJsonOutput::Json);
+    }
+}
+
+#[test]
+fn parse_verify_legacy_jsonl_flag_requests_machine_jsonl() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "verify",
+        "workflow.yaml",
+        "--jsonl",
+    ]));
+    assert!(matches!(parsed, Ok(Command::Verify { .. })));
+    if let Ok(Command::Verify {
+        output,
+        legacy_json,
+        ..
+    }) = parsed
+    {
+        assert_eq!(output, OutputFormat::Text);
+        assert_eq!(legacy_json, LegacyJsonOutput::Jsonl);
     }
 }
 

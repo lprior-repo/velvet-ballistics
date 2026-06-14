@@ -67,6 +67,8 @@ pub enum ExpressionHelper {
     Count,
     /// `unique(list)`.
     Unique,
+    /// `coalesce(value, fallback)`.
+    Coalesce,
 }
 
 /// Literal value accepted by the expression grammar.
@@ -626,6 +628,7 @@ pub(crate) fn parse_helper(name: &str) -> Option<ExpressionHelper> {
         "sum" => Some(ExpressionHelper::Sum),
         "count" => Some(ExpressionHelper::Count),
         "unique" => Some(ExpressionHelper::Unique),
+        "coalesce" => Some(ExpressionHelper::Coalesce),
         _ => None,
     }
 }

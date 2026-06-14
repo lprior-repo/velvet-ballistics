@@ -37,7 +37,6 @@ pub mod explain_plan;
 pub mod explain_repair;
 pub mod explain_reports;
 pub mod explain_validation;
-pub mod explain_validation2;
 pub mod file_io;
 pub mod graph;
 pub mod incident_diff;

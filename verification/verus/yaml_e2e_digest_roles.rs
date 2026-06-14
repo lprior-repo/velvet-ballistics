@@ -132,6 +132,9 @@ pub proof fn proof_source_digest_mismatch_classifies(
     ensures classify_source_digest(claimed_source, actual_source)
         == Option::Some(ChainError::WorkflowSourceDigestMismatch),
 {
+    assert(!source_digest_valid(claimed_source, actual_source));
+    assert(classify_source_digest(claimed_source, actual_source)
+        == Option::Some(ChainError::WorkflowSourceDigestMismatch));
 }
 
 pub proof fn proof_artifact_digest_mismatch_classifies(
@@ -142,11 +145,15 @@ pub proof fn proof_artifact_digest_mismatch_classifies(
     ensures classify_artifact_digest(claimed_artifact, actual_artifact)
         == Option::Some(ChainError::CompiledIrDigestMismatch),
 {
+    assert(!artifact_digest_valid(claimed_artifact, actual_artifact));
+    assert(classify_artifact_digest(claimed_artifact, actual_artifact)
+        == Option::Some(ChainError::CompiledIrDigestMismatch));
 }
 
 pub proof fn proof_digest_roles_are_not_interchangeable()
     ensures roles_distinct(DigestRole::Source, DigestRole::Artifact),
 {
+    assert(roles_distinct(DigestRole::Source, DigestRole::Artifact));
 }
 
 pub proof fn proof_role_swapped_digest_detected_when_values_differ(
@@ -158,6 +165,8 @@ pub proof fn proof_role_swapped_digest_detected_when_values_differ(
         !source_digest_valid(artifact_actual, source_actual),
         !artifact_digest_valid(source_actual, artifact_actual),
 {
+    assert(!source_digest_valid(artifact_actual, source_actual));
+    assert(!artifact_digest_valid(source_actual, artifact_actual));
 }
 
 pub proof fn proof_invalid_artifact_never_allows_recovery_success(
@@ -186,6 +195,17 @@ pub proof fn proof_invalid_artifact_never_allows_recovery_success(
         replay_ok,
     ),
 {
+    assert(!accepted_artifact_ok(artifact_claim, artifact_actual, gate_ok, proof_ok, capability_ok));
+    assert(!recovery_success_allowed(
+        source_claim,
+        source_actual,
+        artifact_claim,
+        artifact_actual,
+        gate_ok,
+        proof_ok,
+        capability_ok,
+        replay_ok,
+    ));
 }
 
 pub proof fn proof_same_inputs_same_recovery_classification(
@@ -218,6 +238,25 @@ pub proof fn proof_same_inputs_same_recovery_classification(
         replay_ok,
     ),
 {
+    assert(recovery_error(
+        source_claim,
+        source_actual,
+        artifact_claim,
+        artifact_actual,
+        gate_ok,
+        proof_ok,
+        capability_ok,
+        replay_ok,
+    ) == recovery_error(
+        source_claim,
+        source_actual,
+        artifact_claim,
+        artifact_actual,
+        gate_ok,
+        proof_ok,
+        capability_ok,
+        replay_ok,
+    ));
 }
 
 pub proof fn proof_source_digest_targets_map_to_source_classification()
@@ -226,6 +265,9 @@ pub proof fn proof_source_digest_targets_map_to_source_classification()
         source_target_modeled(ShellTarget::VerifyDigests),
         source_target_modeled(ShellTarget::RejectWorkflowDigestMismatch),
 {
+    assert(source_target_modeled(ShellTarget::VerifyContentDigest));
+    assert(source_target_modeled(ShellTarget::VerifyDigests));
+    assert(source_target_modeled(ShellTarget::RejectWorkflowDigestMismatch));
 }
 
 pub proof fn proof_artifact_admission_targets_map_to_artifact_classification()
@@ -233,6 +275,8 @@ pub proof fn proof_artifact_admission_targets_map_to_artifact_classification()
         artifact_target_modeled(ShellTarget::VerifyDigests),
         artifact_target_modeled(ShellTarget::AdmitArtifactRun),
 {
+    assert(artifact_target_modeled(ShellTarget::VerifyDigests));
+    assert(artifact_target_modeled(ShellTarget::AdmitArtifactRun));
 }
 
 } // verus!

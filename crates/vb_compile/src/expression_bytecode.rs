@@ -564,6 +564,7 @@ const fn helper_op(helper: ExpressionHelper) -> ExprOp {
         ExpressionHelper::Sum => ExprOp::Sum,
         ExpressionHelper::Count => ExprOp::Count,
         ExpressionHelper::Unique => ExprOp::Unique,
+        ExpressionHelper::Coalesce => ExprOp::Coalesce,
     }
 }
 
@@ -608,6 +609,7 @@ const fn helper_name(helper: ExpressionHelper) -> &'static str {
         ExpressionHelper::Sum => "sum",
         ExpressionHelper::Count => "count",
         ExpressionHelper::Unique => "unique",
+        ExpressionHelper::Coalesce => "coalesce",
     }
 }
 

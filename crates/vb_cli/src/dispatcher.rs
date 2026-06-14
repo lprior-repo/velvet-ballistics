@@ -70,7 +70,8 @@ pub fn run_from_env() -> ExitCode {
             workflow,
             profile,
             output,
-        }) => cmd_verify(&workflow, profile, output),
+            legacy_json,
+        }) => cmd_verify(&workflow, profile, output, legacy_json),
         Ok(Command::Validate { workflow, output }) => cmd_validate(&workflow, output),
         Ok(Command::Explain { workflow, output }) => cmd_explain(&workflow, output),
         Ok(Command::Compile {
@@ -151,9 +152,27 @@ pub fn run_from_env() -> ExitCode {
             reason,
             output,
         }) => cmd_cancel(&run_id, &db, reason, output),
-        Err(e) => exit_from_io(
-            &write_parse_error_stderr(&e, requested_output),
-            CliExitCode::ValidationFailed.into(),
-        ),
+        Err(e) => {
+            let legacy_json = if args.get(1).and_then(|arg| arg.to_str()) == Some("verify") {
+                crate::args::shared::parse_legacy_json_output(&args)
+            } else {
+                crate::args::LegacyJsonOutput::Disabled
+            };
+            if legacy_json.is_enabled() {
+                let diagnostic = crate::output_utils::diagnostic_value(
+                    &e.to_string(),
+                    CliExitCode::ValidationFailed,
+                );
+                match write_legacy_json_stderr(&diagnostic, legacy_json) {
+                    Ok(()) => CliExitCode::ValidationFailed.into(),
+                    Err(error) => output_error_exit(&error),
+                }
+            } else {
+                exit_from_io(
+                    &write_parse_error_stderr(&e, requested_output),
+                    CliExitCode::ValidationFailed.into(),
+                )
+            }
+        }
     }
 }

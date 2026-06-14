@@ -1906,6 +1906,7 @@ SSE broadcaster
 
 On restart, the runtime must load unfinished runs, replay/materialize journal state, restore timers, restore waits, enqueue runnable steps, and avoid rerunning completed steps.
 
+# allow-removed-feature: master §41 — language-spec narrative notes that nightly may still opt-in to the removed tokens; they remain removed as release gates
 Nightly Rust may be used for LTO, PGO, target-cpu=native local builds, panic=abort release builds, codegen-units=1, allocator benchmarking, portable SIMD experiments, build-std experiments, allocator API experiments, and feature-gated specialization experiments. Nightly features must not leak into the public language.
 
 Recommended discipline:

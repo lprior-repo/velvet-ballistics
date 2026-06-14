@@ -4,11 +4,14 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use crate::args::{DurabilityMode, OutputFormat, VerifyProfile};
+use crate::args::{DurabilityMode, LegacyJsonOutput, OutputFormat, VerifyProfile};
 use crate::commands_verify::{VerifyError, VerifyOk, exit_code_for_error, run_verification};
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
-use crate::output::{json_error, write_failure_message};
+use crate::output::{
+    OutputError, json_error, json_out, output_error_exit, write_failure_message,
+    write_legacy_json_stderr, write_legacy_json_stdout,
+};
 
 /// Default durability profile used by the `verify` command.
 ///
@@ -27,8 +30,15 @@ pub(crate) fn cmd_verify(
     workflow: &Path,
     profile: VerifyProfile,
     output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
 ) -> ExitCode {
-    cmd_verify_with_durability(workflow, profile, VERIFY_DEFAULT_DURABILITY, output)
+    cmd_verify_with_durability(
+        workflow,
+        profile,
+        VERIFY_DEFAULT_DURABILITY,
+        output,
+        legacy_json,
+    )
 }
 
 /// Run the `verify` command with an explicit durability profile.
@@ -41,21 +51,22 @@ pub(crate) fn cmd_verify_with_durability(
     profile: VerifyProfile,
     durability: DurabilityMode,
     output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
 ) -> ExitCode {
-    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
-        Ok(b) => b,
+    let bytes = match read_verify_file(workflow, output, legacy_json) {
+        Ok(bytes) => bytes,
         Err(code) => return code,
     };
 
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
-            write_failure_message(
+            return emit_verify_diagnostic(
                 &format!("file is not valid UTF-8: {e}"),
-                output,
                 CliExitCode::ValidationFailed,
+                output,
+                legacy_json,
             );
-            return CliExitCode::ValidationFailed.into();
         }
     };
 
@@ -63,7 +74,7 @@ pub(crate) fn cmd_verify_with_durability(
         Ok(result) => {
             let passed_checks = result.passed_gates();
             let deferred_checks = result.deferred_gates();
-            if output == OutputFormat::Text {
+            if uses_verify_human_text(output, legacy_json) {
                 crate::outln!(
                     "verified ({} nodes, profile={})",
                     result.node_count,
@@ -79,22 +90,30 @@ pub(crate) fn cmd_verify_with_durability(
                 }
                 crate::outln!("{}", verification_completion_message(&result));
             } else {
-                crate::emit_json_or_return!(&verify_success_report(&result, profile), output);
+                if let Err(error) = emit_verify_machine_stdout(
+                    &verify_success_report(&result, profile),
+                    output,
+                    legacy_json,
+                ) {
+                    return output_error_exit(&error);
+                }
             }
             ExitCode::SUCCESS
         }
         Err(err) => {
             let code = exit_code_for_error(&err);
-            if output != OutputFormat::Text {
+            if !uses_verify_human_text(output, legacy_json) {
                 if let VerifyError::DeferredGates(result) = &err {
-                    crate::emit_json_or_return!(
+                    if let Err(error) = emit_verify_machine_stdout(
                         &verify_deferred_report(result, profile, code),
                         output,
-                    );
+                        legacy_json,
+                    ) {
+                        return output_error_exit(&error);
+                    }
                     return code.into();
                 }
-                write_failure_message(&verify_error_message(&err), output, code);
-                return code.into();
+                return emit_verify_error(&err, profile, code, output, legacy_json);
             }
             match &err {
                 VerifyError::DeferredGates(result) => {
@@ -110,101 +129,140 @@ pub(crate) fn cmd_verify_with_durability(
                     }
                 }
                 VerifyError::YamlParse(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            code,
-                            output,
-                        );
-                    } else {
-                        crate::errln!("{msg}");
-                    }
+                    crate::errln!("{msg}");
                 }
                 VerifyError::Compile(errors) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": "compilation failed",
-                                "errors": errors
-                            }),
-                            code,
-                            output,
-                        );
-                    } else {
-                        for e in errors {
-                            crate::errln!("compile error: {e}");
-                        }
+                    for e in errors {
+                        crate::errln!("compile error: {e}");
                     }
                 }
                 VerifyError::IrValidation(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            code,
-                            output,
-                        );
-                    } else {
-                        crate::errln!("{msg}");
-                    }
+                    crate::errln!("{msg}");
                 }
                 VerifyError::BudgetPolicy(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            code,
-                            output,
-                        );
-                    } else {
-                        crate::errln!("{msg}");
-                    }
+                    crate::errln!("{msg}");
                 }
                 VerifyError::StorageError(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            code,
-                            output,
-                        );
-                    } else {
-                        crate::errln!("{msg}");
-                    }
+                    crate::errln!("{msg}");
                 }
                 VerifyError::ReplayDivergence(msg) => {
-                    if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "profile": profile.as_str(),
-                                "error": msg
-                            }),
-                            code,
-                            output,
-                        );
-                    } else {
-                        crate::errln!("{msg}");
-                    }
+                    crate::errln!("{msg}");
                 }
             }
             code.into()
         }
+    }
+}
+
+fn uses_verify_human_text(output: OutputFormat, legacy_json: LegacyJsonOutput) -> bool {
+    output == OutputFormat::Text && !legacy_json.is_enabled()
+}
+
+fn read_verify_file(
+    workflow: &Path,
+    output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
+) -> Result<Vec<u8>, ExitCode> {
+    if !legacy_json.is_enabled() {
+        return read_file(workflow, output, CliExitCode::ValidationFailed);
+    }
+    match std::fs::read(workflow) {
+        Ok(bytes) => Ok(bytes),
+        Err(error) => Err(emit_verify_diagnostic(
+            &format!("error reading {}: {error}", workflow.display()),
+            CliExitCode::ValidationFailed,
+            output,
+            legacy_json,
+        )),
+    }
+}
+
+fn emit_verify_machine_stdout(
+    value: &serde_json::Value,
+    output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
+) -> Result<(), OutputError> {
+    if legacy_json.is_enabled() {
+        write_legacy_json_stdout(value, legacy_json)
+    } else {
+        json_out(value, output)
+    }
+}
+
+fn emit_verify_machine_stderr(
+    value: &serde_json::Value,
+    code: CliExitCode,
+    output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
+) -> ExitCode {
+    if legacy_json.is_enabled() {
+        match write_legacy_json_stderr(value, legacy_json) {
+            Ok(()) => code.into(),
+            Err(error) => output_error_exit(&error),
+        }
+    } else {
+        json_error(value, code, output);
+        code.into()
+    }
+}
+
+fn emit_verify_diagnostic(
+    message: &str,
+    code: CliExitCode,
+    output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
+) -> ExitCode {
+    if legacy_json.is_enabled() {
+        let diagnostic = crate::output_utils::diagnostic_value(message, code);
+        match write_legacy_json_stderr(&diagnostic, legacy_json) {
+            Ok(()) => code.into(),
+            Err(error) => output_error_exit(&error),
+        }
+    } else {
+        write_failure_message(message, output, code);
+        code.into()
+    }
+}
+
+fn emit_verify_error(
+    err: &VerifyError,
+    profile: VerifyProfile,
+    code: CliExitCode,
+    output: OutputFormat,
+    legacy_json: LegacyJsonOutput,
+) -> ExitCode {
+    match err {
+        VerifyError::YamlParse(msg)
+        | VerifyError::IrValidation(msg)
+        | VerifyError::BudgetPolicy(msg)
+        | VerifyError::StorageError(msg)
+        | VerifyError::ReplayDivergence(msg) => emit_verify_machine_stderr(
+            &serde_json::json!({
+                "success": false,
+                "profile": profile.as_str(),
+                "error": msg
+            }),
+            code,
+            output,
+            legacy_json,
+        ),
+        VerifyError::Compile(errors) => emit_verify_machine_stderr(
+            &serde_json::json!({
+                "success": false,
+                "profile": profile.as_str(),
+                "error": "compilation failed",
+                "errors": errors
+            }),
+            code,
+            output,
+            legacy_json,
+        ),
+        VerifyError::DeferredGates(result) => emit_verify_machine_stderr(
+            &verify_deferred_report(result, profile, code),
+            code,
+            output,
+            legacy_json,
+        ),
     }
 }
 

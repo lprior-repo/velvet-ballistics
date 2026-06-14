@@ -5,7 +5,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use super::error::ParseError;
-use super::types::OutputFormat;
+use super::types::{LegacyJsonOutput, OutputFormat};
 
 /// Parse --emit text|yaml|postcard output format flags.
 pub(super) fn parse_output_format(args: &[OsString]) -> OutputFormat {
@@ -16,6 +16,16 @@ pub(super) fn parse_output_format(args: &[OsString]) -> OutputFormat {
         Some("yaml") => OutputFormat::Yaml,
         Some("postcard") => OutputFormat::Postcard,
         Some("text") | Some(_) | None => OutputFormat::Text,
+    }
+}
+
+pub(crate) fn parse_legacy_json_output(args: &[OsString]) -> LegacyJsonOutput {
+    if has_flag(args, "--jsonl") {
+        LegacyJsonOutput::Jsonl
+    } else if has_flag(args, "--json") {
+        LegacyJsonOutput::Json
+    } else {
+        LegacyJsonOutput::Disabled
     }
 }
 

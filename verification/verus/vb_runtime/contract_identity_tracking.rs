@@ -24,7 +24,15 @@ use vstd::prelude::*;
 
 verus! {
 
-use crate::encoding_injectivity::{ContractEncoding, TaggedField};
+// Model types (standalone compilation — encoding_injectivity.rs is a separate artifact)
+pub struct TaggedField {
+    pub tag: Seq<u8>,
+    pub value: Seq<u8>,
+}
+
+pub struct ContractEncoding {
+    pub fields: Seq<TaggedField>,
+}
 
 // ============================================================================
 // Model: Contract identity through the pipeline

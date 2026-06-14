@@ -35,6 +35,7 @@ bytes = { workspace = true }
 proptest = { workspace = true }
 serde = { workspace = true }
 tempfile.workspace = true
+# allow-removed-crate: deferred-scope fence marker, not an active workspace member
 # vb_ui_model is removed from the current workspace scope.
 
 [lints]

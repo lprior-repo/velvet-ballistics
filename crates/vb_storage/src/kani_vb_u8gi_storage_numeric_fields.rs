@@ -16,7 +16,7 @@ fn write_u32(bytes: &mut [u8; 60], offset: usize, value: u32) {
 }
 
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
     let found: u32 = kani::any();
     let version: u16 = kani::any();

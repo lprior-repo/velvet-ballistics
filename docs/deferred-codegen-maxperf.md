@@ -9,12 +9,14 @@ Backend / IR Interpreter Complete milestone.
 - Current CLI compile target: `compile --emit ir` only.
 - Current performance evidence target: IR interpreter, storage, IPC, direct API, scheduler.
 - Current release blocker set excludes generated Rust equivalence, generated compile-fail tests,
+  # allow-removed-feature: master §41 — historical deferred-scope document explicitly enumerates the removed tokens
   generated-vs-IR benchmark ratios, PGO, and `target-cpu=native` maxperf release gates.
 
 ## Deferred Scope
 
 The following remain future work:
 
+# allow-removed-crate: deferred-scope doc enumerates the removed codegen crate
 1. `vb_codegen` as an active workspace crate.
 2. `velvet-ballistics compile <workflow.yaml> --emit rust`.
 3. Generated Rust execution for accepted workflow artifacts.
@@ -33,6 +35,7 @@ The following remain future work:
 5. Generated Rust compile-fail tests forbidding unsafe, unwrap, expect, panic,
    unchecked indexing/slicing/casts/arithmetic, runtime YAML, JSON, HTTP, and runtime string lookup.
 6. `maxperf` profile acceptance.
+   # allow-removed-feature: master §41 — historical deferred-scope document explicitly enumerates the removed tokens
 7. PGO training and `target-cpu=native` benchmark workflows.
 8. Public generated-mode speed claims.
 

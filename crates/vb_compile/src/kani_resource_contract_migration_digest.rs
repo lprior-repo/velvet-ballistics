@@ -30,7 +30,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 /// This is the practical definition of "migration digest relationship":
 /// changing the contract changes the digest.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn prove_migration_digest_relationship() {
     let source = representative_source();
 
@@ -60,7 +60,7 @@ fn prove_migration_digest_relationship() {
 /// PO-K04 H2: Verify that encode_contract_bytes produces the same encoding
 /// regardless of whether it's called during canonical_digest or independently.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn prove_contract_encoding_is_stable() {
     let contract = ResourceContract::DEFAULT;
 

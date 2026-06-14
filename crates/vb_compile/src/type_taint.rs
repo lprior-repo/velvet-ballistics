@@ -459,6 +459,7 @@ fn helper_type(name: ExpressionHelper) -> ValueType {
             ValueType::List
         }
         ExpressionHelper::Merge => ValueType::Object,
+        ExpressionHelper::Coalesce => ValueType::Any,
     }
 }
 

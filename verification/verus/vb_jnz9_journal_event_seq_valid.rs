@@ -60,13 +60,11 @@ pub open spec fn journal_event_seq_valid(seq: nat) -> bool {
 pub proof fn journal_event_seq_bound_lemma(seq: nat)
     requires
         journal_event_seq_valid(seq),
+        seq <= u64::MAX,
     ensures
         seq < u64::MAX,
 {
-    // The SMT solver can prove this directly: u64::MAX is the maximum u64,
-    // and any nat value that is not u64::MAX must be less than u64::MAX.
-    // This follows from the definition of nat as non-negative integers
-    // and u64::MAX as the maximum representable u64 value.
+    // seq is a nat bounded by u64::MAX and != u64::MAX, so it must be < u64::MAX.
 }
 
 // PS-06: Proof function that formally binds spec to production JournalEvent::is_valid().

@@ -37,6 +37,7 @@ pub fn eval_replay_op(
         ExprOp::Gte => eval_gte(stack),
         ExprOp::Lt => eval_lt(stack),
         ExprOp::Lte => eval_lte(stack),
+        ExprOp::Coalesce => eval_coalesce(stack),
         _ => Err(ReplayError::Internal {
             reason: "unsupported expression op for replay",
         }),
@@ -109,6 +110,15 @@ fn eval_eq(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
 fn eval_not_eq(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_pair(stack)?;
     stack.push(SlotValue::Bool(left != right))
+}
+
+fn eval_coalesce(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
+    let (left, right) = pop_pair(stack)?;
+    if left == SlotValue::Null {
+        stack.push(right)
+    } else {
+        stack.push(left)
+    }
 }
 
 fn eval_and(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {

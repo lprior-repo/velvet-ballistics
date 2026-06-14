@@ -2,6 +2,7 @@
 //!
 //! Obligation: POST-002, POST-003, POST-004, INV-005, INV-006
 //! Production-bound: spec types mirror WorkflowGraphView, WorkflowNodeView, WorkflowEdgeView,
+// allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 //!                  RunEventsView, RunEventView from vb_ui_model.
 //! Proof: graph/event references are valid (non-negative indices) and event sequences are ordered.
 //!

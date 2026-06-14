@@ -16,6 +16,7 @@ use super::{
     redacted_slot_value, registered_cli_actions, run_compiled_workflow, setup_exit_code,
     signal_name, suggested_ai_commands, write_step_inputs,
 };
+use crate::args::LegacyJsonOutput;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -1201,6 +1202,7 @@ mod mode_activation {
             workflow: PathBuf::from("workflow.yaml"),
             profile: VerifyProfile::Standard,
             output: OutputFormat::Text,
+            legacy_json: LegacyJsonOutput::Disabled,
         };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }
@@ -1501,6 +1503,7 @@ mod mode_activation {
                 workflow: PathBuf::from("w.yaml"),
                 profile: VerifyProfile::Standard,
                 output: OutputFormat::Text,
+                legacy_json: LegacyJsonOutput::Disabled,
             }),
             CommandMode::Pure
         );
@@ -1722,6 +1725,7 @@ mod mode_activation {
                 workflow: PathBuf::from("w.yaml"),
                 profile: VerifyProfile::Standard,
                 output: OutputFormat::Text,
+                legacy_json: LegacyJsonOutput::Disabled,
             },
             Command::Explain {
                 workflow: PathBuf::from("w.yaml"),

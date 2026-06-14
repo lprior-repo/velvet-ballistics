@@ -9,6 +9,7 @@
 // NOTE: This test is placed in crates/vb_compile/tests/ rather than
 // crates/workspace_tests/tests/ because workspace_tests is excluded from
 // the cargo workspace (commented out in Cargo.toml members list due to
+// allow-removed-crate: comment narrates deferred dependency on removed types
 // dependency on deferred vb_ui/vb_codegen types).
 //
 // GOD RULE 4: No loop oscillations. Pure integration tests.

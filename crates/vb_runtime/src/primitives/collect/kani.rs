@@ -17,7 +17,7 @@ use vb_core::value_store::ValueStore;
 /// - page_size in [1, u32::MAX] returns either Ok(usize) or Err
 /// - usize::try_from overflow is caught as typed error
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn collect_page_pagination_bounds() {
     // Test page_size_from with zero.
     let zero_result = page_size_from(0);

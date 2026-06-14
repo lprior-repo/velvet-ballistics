@@ -11,7 +11,7 @@ verus! {
 /// Spec of checked_add(1) used by next_pending_timer_generation.
 pub closed spec fn generation_advance(gen: u64) -> Option<u64> {
     if gen < u64::MAX {
-        Some(gen + 1)
+        Some(gen.wrapping_add(1) as int)
     } else {
         None
     }

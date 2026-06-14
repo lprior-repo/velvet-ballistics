@@ -10,7 +10,7 @@ use vb_yaml::ast::StepPrimitive;
 
 /// H1: Delimiter byte 0x3A (':') is NOT a valid YAML identifier character.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn kani_foreach_delimiter_byte_not_in_yaml_id() {
     let byte_val: u8 = kani::any();
     let is_yaml_id = byte_val.is_ascii_alphanumeric() || byte_val == b'_' || byte_val == b'-';
@@ -21,7 +21,7 @@ fn kani_foreach_delimiter_byte_not_in_yaml_id() {
 
 /// H2: No byte is both a delimiter and a YAML identifier character.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn kani_foreach_delimiter_no_collision_possible() {
     let byte_val: u8 = kani::any();
     let is_delimiter = byte_val == b':';

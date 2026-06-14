@@ -7,6 +7,7 @@ IR Interpreter Complete milestone.
 
 - Current product interface: CLI, direct Rust API, binary IPC, structured YAML/Postcard outputs.
 - Current backend requirement: every future UI artifact must first exist as a CLI-emittable typed artifact.
+# allow-removed-crate: deferred-scope doc enumerates the removed UI model crate as a release blocker
 - Current release blockers exclude Makepad, `vb_ui_model`, UI screenshots, design tokens,
   overlap gates, UI perf gates, and UI accessibility gates.
 
@@ -14,7 +15,10 @@ IR Interpreter Complete milestone.
 
 The following remain future work:
 
+# allow-removed-crate: deferred-scope doc enumerates the removed UI model + UI app crates
+# allow-removed-crate: deferred-scope doc enumerates the removed UI model + UI app crates
 1. `vb_ui_model` typed artifact crate.
+# allow-removed-crate: deferred-scope doc enumerates the removed UI model + UI app crates
 2. `vb_ui_makepad` native Makepad app crate.
 3. `velvet-ballistics ui --db <path>`.
 4. `velvet-ballistics ui --socket <path>`.

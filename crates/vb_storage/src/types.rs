@@ -349,6 +349,9 @@ pub struct DecodedPreview {
 }
 
 /// Preview payload variant indicating how value bytes are presented.
+///
+/// `Raw` is intentionally the only variant today: preview output keeps the
+/// encoded value bytes and leaves semantic decoding to explicit doctor paths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PreviewPayload {
     /// Raw value bytes (presented as hex in the CLI).

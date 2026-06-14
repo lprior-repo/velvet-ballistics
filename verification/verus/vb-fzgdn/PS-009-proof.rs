@@ -24,11 +24,11 @@ impl ClockModel {
 proof fn test_zero_duration_fires()
     ensures
         forall |tick: u64|
-            ClockModel { tick }.is_deadline_expired_spec(tick),
+            (ClockModel { tick: tick }).is_deadline_expired_spec(tick),
 {
     assert forall |tick: u64|
-        ClockModel { tick }.is_deadline_expired_spec(tick) by {
-        assert(ClockModel { tick }.is_deadline_expired_spec(tick));
+        (ClockModel { tick: tick }).is_deadline_expired_spec(tick) by {
+        assert((ClockModel { tick: tick }).is_deadline_expired_spec(tick));
     };
 }
 
@@ -36,10 +36,10 @@ proof fn test_zero_duration_fires()
 proof fn test_future_deadline_not_expired()
     ensures
         forall |tick: u64, d: u64| d > tick ==>
-            !ClockModel { tick }.is_deadline_expired_spec(d),
+            !(ClockModel { tick: tick }).is_deadline_expired_spec(d),
 {
     assert forall |tick: u64, d: u64| d > tick ==>
-        !ClockModel { tick }.is_deadline_expired_spec(d) by {
+        !(ClockModel { tick: tick }).is_deadline_expired_spec(d) by {
         // From spec: deadline <= tick is false when d > tick.
     };
 }
@@ -48,10 +48,10 @@ proof fn test_future_deadline_not_expired()
 proof fn test_past_deadline_expired()
     ensures
         forall |tick: u64, d: u64| d < tick ==>
-            ClockModel { tick }.is_deadline_expired_spec(d),
+            (ClockModel { tick: tick }).is_deadline_expired_spec(d),
 {
     assert forall |tick: u64, d: u64| d < tick ==>
-        ClockModel { tick }.is_deadline_expired_spec(d) by {
+        (ClockModel { tick: tick }).is_deadline_expired_spec(d) by {
         // d < tick implies d <= tick.
     };
 }
@@ -60,10 +60,10 @@ proof fn test_past_deadline_expired()
 proof fn test_expired_deterministic()
     ensures
         forall |tick: u64, d: u64|
-            ClockModel { tick }.is_deadline_expired_spec(d) == (d <= tick),
+            (ClockModel { tick: tick }).is_deadline_expired_spec(d) == (d <= tick),
 {
     assert forall |tick: u64, d: u64|
-        ClockModel { tick }.is_deadline_expired_spec(d) == (d <= tick) by {
+        (ClockModel { tick: tick }).is_deadline_expired_spec(d) == (d <= tick) by {
         // By spec definition.
     };
 }

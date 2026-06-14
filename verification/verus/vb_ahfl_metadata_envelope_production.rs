@@ -1,6 +1,7 @@
 //! Production-bound Verus harness for VERUS-META-001: metadata completeness and schema/kind agreement.
 //!
 //! Obligation: PRE-002, POST-001, INV-001
+//! allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 //! Production-bound: spec types mirror MetadataEnvelope, EnvelopeKind from vb_ui_model.
 //! Proof: metadata schema_version >= 1 and all required fields present.
 //!
@@ -13,6 +14,7 @@ use vstd::prelude::*;
 
 verus! {
 
+// allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 // Spec mirror of EnvelopeKind from vb_ui_model::envelope::types
 pub enum SpecEnvelopeKind {
     Success,
@@ -37,6 +39,7 @@ impl SpecEnvelopeKind {
 
 }
 
+// allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 // Spec mirror of MetadataEnvelope from vb_ui_model::envelope::types
 // Fields: run_id (u64), command (String), timestamp (i64)
 pub struct SpecMetadataEnvelope {

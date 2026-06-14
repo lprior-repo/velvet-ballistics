@@ -60,7 +60,9 @@ pub proof fn proof_schema_kind_agreement(left: UiArtifactMetadata, right: UiArti
         left.schema_version == right.schema_version,
         left.kind == right.kind,
     ensures spec_schema_kind_agree(left, right),
-{}
+{
+    assert(spec_schema_kind_agree(left, right));
+}
 
 pub struct BoundedCollectionFacts {
     pub len: int,
@@ -85,7 +87,9 @@ pub proof fn proof_bound_collection_preserves_limit(facts: BoundedCollectionFact
         facts.truncated ==> facts.truncation_metadata_present,
         !facts.truncated ==> !facts.truncation_metadata_present,
     ensures spec_bounded_or_truncated(facts),
-{}
+{
+    assert(spec_bounded_or_truncated(facts));
+}
 
 pub struct RedactedValueViewFacts {
     pub raw_secret_present: bool,
@@ -174,7 +178,9 @@ pub proof fn proof_graph_event_refs_preserve_identity(facts: GraphEventFacts)
         facts.seq_strictly_ordered,
         facts.step_identity_stable,
     ensures spec_graph_events_well_formed(facts),
-{}
+{
+    assert(spec_graph_events_well_formed(facts));
+}
 
 } // verus!
 

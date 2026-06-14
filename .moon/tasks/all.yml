@@ -100,6 +100,7 @@ tasks:
       - 'beads-server-mode'
       - 'hot-cold-forbidden-apis'
       - 'check-no-dead-ir-duplicates'
+      - 'nightly-update-template'
     toolchains:
       - rust
     inputs:
@@ -118,6 +119,17 @@ tasks:
       - '@globs(sources)'
       - '@globs(tests)'
       - '@globs(configs)'
+    options:
+      runInCI: true
+
+  nightly-update-template:
+    command: 'bash scripts/check-nightly-update-template.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'docs/nightly-update-bead-template.md'
+      - 'scripts/check-nightly-update-template.sh'
+      - '.moon/tasks/all.yml'
     options:
       runInCI: true
 
@@ -985,6 +997,7 @@ tasks:
       mkdir -p target/moon-locks
       mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf-native
+      # allow-removed-feature: master §41 — maxperf-native is legacy build config, not a current release gate (runInCI: false)
       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
       flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p velvet-ballistics --bin velvet-ballistics --all-features --release
     deps:

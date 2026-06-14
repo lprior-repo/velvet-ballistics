@@ -1147,6 +1147,31 @@ fn unique_with_two_args_rejected() -> Result<(), String> {
 }
 
 #[test]
+fn coalesce_with_two_args_succeeds() -> Result<(), String> {
+    let (ops, _constants, _max_stack) = lower("coalesce(null, 7)")?;
+    adv_ensure(
+        matches!(ops.last(), Some(ExprOp::Coalesce)),
+        "should end with Coalesce op",
+    )
+}
+
+#[test]
+fn coalesce_with_one_arg_rejected() -> Result<(), String> {
+    let error = adv_lower_error("coalesce(1)")?;
+    adv_ensure(
+        matches!(
+            error,
+            CompileError::ExpressionHelperArity {
+                helper: "coalesce",
+                expected: 2,
+                actual: 1
+            }
+        ),
+        "coalesce(1) should fail with arity mismatch",
+    )
+}
+
+#[test]
 fn count_with_one_arg_succeeds() -> Result<(), String> {
     let (ops, _constants, _max_stack) = lower("count(1)")?;
     adv_ensure(

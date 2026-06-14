@@ -239,6 +239,7 @@ fn code_registry_contract_discovery_entries_present() {
 #[test]
 fn code_registry_compilation_specific_entries_present() {
     let required: &[&str] = &[
+        // allow-removed-crate: comment names removed codegen crate as a pending dependency
         // "CANONICAL_YAML_PARSE",  -- not yet registered (pending vb_codegen implementation)
         "UNKNOWN_INPUT_SCHEMA_FIELD",
         "UNSUPPORTED_TOP_LEVEL_DECLARATION",

@@ -14,7 +14,8 @@ Run these checks before landing ADR or master-decomposition changes.
 ## Suggested Mechanical Checks
 
 ```bash
-rg -n "Velvet Ballastics|Velvet-ballastics|velvet-ballastics|vb-core|vb-runtime|vb-storage|vb-ipc|vb-compiler" docs
+rg -n "Velvet Ballastics|Velvet-ballistics|velvet-ballistics|vb-core|vb-runtime|vb-storage|vb-ipc|vb-compiler" docs
+# allow-removed-feature: master §41 — review-gate pattern intentionally enumerates removed tokens to reject them
 rg -n "generated Rust|maxperf|PGO|target-cpu=native|Makepad|UI" docs/adr docs/master-decomposition.md
 rg -n "implementation complete|proved|verified|benchmark proves|crash safe|production ready" docs/adr docs/master-decomposition.md
 rg -n "Status: draft|TODO|placeholder|Future|Upcoming" docs/adr docs/master-decomposition.md

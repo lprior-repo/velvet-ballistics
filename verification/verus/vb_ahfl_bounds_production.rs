@@ -2,6 +2,7 @@
 //!
 //! Obligation: PRE-003, POST-005, INV-003
 //! Production-bound: spec types mirror WorkflowGraphView, RunEventsView, VerificationReportView,
+// allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 //!                  IncidentReportView from vb_ui_model.
 //! Proof: exported collection fields are bounded or have explicit truncation metadata.
 //!

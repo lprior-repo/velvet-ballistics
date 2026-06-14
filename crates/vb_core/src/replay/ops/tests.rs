@@ -260,6 +260,35 @@ fn eval_add_succeeds() -> Result<(), CoreError> {
 }
 
 #[test]
+fn eval_coalesce_uses_fallback_for_null_left() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(4)?;
+    let mut store = ValueStore::new();
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    stack.push(SlotValue::Null).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::I64(7)).map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Coalesce,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
+
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    if result != SlotValue::I64(7) {
+        return Err(CoreError::InternalInvariantViolation {
+            reason: "coalesce should use right fallback for null left",
+        });
+    }
+    Ok(())
+}
+
+#[test]
 fn eval_add_overflow_returns_error() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(4)?;

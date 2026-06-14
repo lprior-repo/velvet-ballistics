@@ -83,6 +83,7 @@ pub const REQUIRED_SECTIONS: &[PlanSection] = &[
     PlanSection {
         id: "ui-model",
         heading: "## UI Model Contract Mutation Targets",
+        // allow-removed-crate: required_terms must name removed UI model crate so the mutation plan knows what to forbid
         required_terms: &["vb_ui_model", "certificate", "incident", "replay"],
     },
     PlanSection {

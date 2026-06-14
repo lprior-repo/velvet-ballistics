@@ -90,6 +90,29 @@ fn must_parse_structured_value(stdout: &str, context: &str) -> serde_json::Value
     }
 }
 
+fn must_parse_json_value(bytes: &[u8], context: &str) -> serde_json::Value {
+    match serde_json::from_slice::<serde_json::Value>(bytes) {
+        Ok(value) => value,
+        Err(error) => panic!(
+            "{context}: {error}; bytes={}",
+            String::from_utf8_lossy(bytes)
+        ),
+    }
+}
+
+fn must_parse_jsonl_value(bytes: &[u8], context: &str) -> serde_json::Value {
+    let text = String::from_utf8_lossy(bytes);
+    let trimmed = text.trim_end_matches('\n');
+    assert!(
+        !trimmed.contains('\n'),
+        "{context}: expected exactly one JSON line, got {text:?}"
+    );
+    match serde_json::from_str::<serde_json::Value>(trimmed) {
+        Ok(value) => value,
+        Err(error) => panic!("{context}: {error}; line={trimmed}"),
+    }
+}
+
 fn parse_text_csv_line(output: &str, prefix: &str) -> Vec<String> {
     let value = output.lines().find_map(|line| line.strip_prefix(prefix));
     assert!(
@@ -284,6 +307,22 @@ fn bdd_format_parity_exit_code_identical_across_formats() {
         "Text and Jsonl formats must produce same exit code"
     );
     assert_eq!(text_code, Some(0), "Valid workflow must exit with code 0");
+
+    let json_value = must_parse_json_value(
+        &json_output.stdout,
+        "verify --json must emit parseable machine JSON",
+    );
+    let jsonl_value = must_parse_jsonl_value(
+        &jsonl_output.stdout,
+        "verify --jsonl must emit exactly one machine JSON line",
+    );
+    assert_eq!(json_value, jsonl_value);
+    assert_eq!(
+        json_value
+            .pointer("/success")
+            .and_then(serde_json::Value::as_bool),
+        Some(true)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -634,6 +673,79 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         text_output.status.code(),
         jsonl_output.status.code(),
         "Text and Jsonl must have same exit code on error"
+    );
+
+    let json_error = must_parse_json_value(
+        &json_output.stderr,
+        "verify --json error path must emit parseable JSON on stderr",
+    );
+    let jsonl_error = must_parse_jsonl_value(
+        &jsonl_output.stderr,
+        "verify --jsonl error path must emit exactly one JSON line on stderr",
+    );
+    assert_eq!(json_error, jsonl_error);
+    assert_eq!(
+        json_error
+            .pointer("/success")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        json_error
+            .pointer("/profile")
+            .and_then(serde_json::Value::as_str),
+        Some("quick")
+    );
+    assert!(
+        json_error
+            .pointer("/error")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("YAML parse error")),
+        "unexpected stderr payload: {json_error}"
+    );
+}
+
+#[test]
+fn integration_verify_legacy_json_flags_emit_machine_diagnostics_on_parse_error() {
+    let json_output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("thorough"),
+        std::ffi::OsStr::new("--json"),
+        &fixture_os("tests/fixtures/valid/minimal.yaml"),
+    ]);
+    let jsonl_output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("thorough"),
+        std::ffi::OsStr::new("--jsonl"),
+        &fixture_os("tests/fixtures/valid/minimal.yaml"),
+    ]);
+
+    assert_eq!(json_output.status.code(), Some(2));
+    assert_eq!(jsonl_output.status.code(), Some(2));
+
+    let json_error = must_parse_json_value(
+        &json_output.stderr,
+        "verify --json parse error must emit parseable JSON on stderr",
+    );
+    let jsonl_error = must_parse_jsonl_value(
+        &jsonl_output.stderr,
+        "verify --jsonl parse error must emit exactly one JSON line on stderr",
+    );
+    assert_eq!(
+        json_error
+            .pointer("/exit_code")
+            .and_then(serde_json::Value::as_u64),
+        Some(2)
+    );
+    assert_eq!(json_error, jsonl_error);
+    assert!(
+        json_error
+            .pointer("/message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("unknown verify profile: thorough")),
+        "unexpected parse diagnostic: {json_error}"
     );
 }
 

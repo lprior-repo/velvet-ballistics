@@ -2,8 +2,8 @@
 //!
 //! Production binding target: `crates/vb_runtime/src/shard/helpers.rs`
 
-use vb_core::ids::StepIdx;
-use vb_runtime::shard::types::RunState;
+use crate::ids::StepIdx;
+use crate::shard::types::RunState;
 use vstd::prelude::*;
 
 verus! {
@@ -24,8 +24,8 @@ verus! {
 #[extern_spec]
 mod helpers_spec {
     use vstd::prelude::*;
-    use vb_core::ids::StepIdx;
-    use vb_runtime::shard::types::RunState;
+    use crate::ids::StepIdx;
+    use crate::shard::types::RunState;
 
     #[verifier::extern_spec]
     #[must_use]

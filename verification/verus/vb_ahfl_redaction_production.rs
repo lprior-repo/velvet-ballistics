@@ -2,6 +2,7 @@
 //!
 //! Obligation: PRE-005, POST-006, INV-004
 //! Production-bound: spec types mirror redact_secret_value, RedactedValueView,
+// allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 //!                  classify_secret_sensitivity from vb_ui_model::redact.
 //! Proof: raw secret values never appear in output; unknown sensitivity is fail-closed.
 //!
@@ -16,6 +17,7 @@ use vstd::prelude::*;
 
 verus! {
 
+// allow-removed-crate: spec-mirror comment names the removed UI model crate that supplies the production types
 // Spec mirror of SecretSensitivity from vb_ui_model::redact
 pub enum SpecSecretSensitivity {
     Sensitive,

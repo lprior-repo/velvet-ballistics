@@ -28,7 +28,7 @@ pub closed spec fn atomic_fire_spec(
     if pending.present && queue.count < queue.capacity {
         (
             PendingTimerState { present: false },
-            CommandQueueModel { count: queue.count + 1, capacity: queue.capacity },
+            CommandQueueModel { count: (queue.count + 1) as usize, capacity: queue.capacity },
             true,
         )
     } else {

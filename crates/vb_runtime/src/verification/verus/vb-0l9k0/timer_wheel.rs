@@ -2,7 +2,7 @@
 //!
 //! Production binding target: `crates/vb_runtime/src/shard/timer_wheel.rs`
 
-use vb_runtime::shard::types::PendingTimerKind;
+use crate::shard::types::PendingTimerKind;
 use vstd::prelude::*;
 
 verus! {
@@ -17,7 +17,7 @@ verus! {
 #[extern_spec]
 mod timer_wheel_spec {
     use vstd::prelude::*;
-    use vb_runtime::shard::types::PendingTimerKind;
+    use crate::shard::types::PendingTimerKind;
     use std::time::Instant;
 
     /// Timer entry keyed by deadline.

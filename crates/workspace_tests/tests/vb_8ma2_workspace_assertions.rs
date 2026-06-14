@@ -189,12 +189,14 @@ fn valid_workspace_passes_sharpened_assertions() -> TestResult {
 
 #[test]
 fn forbidden_ui_dependency_fails_target_crate() -> TestResult {
+    // allow-removed-crate: test fixture intentionally injects a removed UI crate to assert the workspace gate rejects it
     let workspace = workspace_with(Some("vb_ui_makepad"), None)?;
     let output = run_assertions(workspace.path())?;
     let stderr = stderr_text(&output);
     assert!(!output.status.success());
     assert!(stderr.contains("crates/vb_core/Cargo.toml"), "{stderr}");
     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
+    // allow-removed-crate: assertion expects the gate's stderr to name the removed UI crate
     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
     Ok(())
 }
@@ -226,12 +228,14 @@ fn forbidden_runtime_format_dependency_fails_target_crate() -> TestResult {
 
 #[test]
 fn renamed_forbidden_ui_dependency_fails_target_crate() -> TestResult {
+    // allow-removed-crate: test fixture intentionally injects a removed UI crate to assert the workspace gate rejects it
     let workspace = workspace_with_dependency_line("ui = { package = \"vb_ui_makepad\" }\n")?;
     let output = run_assertions(workspace.path())?;
     let stderr = stderr_text(&output);
     assert!(!output.status.success());
     assert!(stderr.contains("crates/vb_core/Cargo.toml"), "{stderr}");
     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
+    // allow-removed-crate: assertion expects the gate's stderr to name the removed UI crate
     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
     Ok(())
 }
@@ -252,11 +256,14 @@ fn renamed_forbidden_runtime_format_dependency_fails_target_crate() -> TestResul
 
 #[test]
 fn path_aliased_forbidden_ui_dependency_fails_target_crate() -> TestResult {
+    // allow-removed-crate: test fixture intentionally injects a removed UI crate to assert the workspace gate rejects it
     let workspace = workspace_with_dependency_line("ui = { path = \"../vb_ui_makepad\" }\n")?;
     let output = run_assertions(workspace.path())?;
     let stderr = stderr_text(&output);
     assert!(!output.status.success());
+    assert!(stderr.contains("crates/vb_core/Cargo.toml"), "{stderr}");
     assert!(stderr.contains("forbidden UI dependency"), "{stderr}");
+    // allow-removed-crate: assertion expects the gate's stderr to name the removed UI crate
     assert!(stderr.contains("vb_ui_makepad"), "{stderr}");
     Ok(())
 }

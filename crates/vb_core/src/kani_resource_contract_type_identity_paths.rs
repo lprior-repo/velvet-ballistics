@@ -27,7 +27,7 @@ use vb_core::workflow::ResourceContract as CompiledWorkflowResourceContract;
 /// must point to the same underlying type. TypeId equality proves this at
 /// the Rust type-system level.
 #[kani::proof]
-#[kani::unwind(1)]
+#[kani::unwind(4)]
 fn prove_type_identity_across_paths() {
     let canonical_type_id = TypeId::of::<CanonicalResourceContract>();
     let compiled_wf_type_id = TypeId::of::<CompiledWorkflowResourceContract>();

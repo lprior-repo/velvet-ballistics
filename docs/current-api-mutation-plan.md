@@ -52,6 +52,7 @@ Cold UI model contracts must not hide release evidence gaps:
 
 | API surface | Mutations to kill | Expected kill evidence | Owner bead |
 |---|---|---|---|
+# allow-removed-crate: API surface table enumerates the removed UI model crate as a mutation target
 | `vb_ui_model` screen taxonomy | drop required certificate, incident, or replay screen state | UI model acceptance tests assert exact screen/state identifiers | `vb-nf2u`/`vb-gmtg` |
 | certificate cards | accept missing verification command/evidence mapping | UI snapshot/model tests reject missing evidence links | `vb-nf2u`/`vb-gmtg` |
 | incident replay | conflate incident timeline and replay timeline state | UI model tests require distinct incident and replay states | `vb-nf2u`/`vb-gmtg` |

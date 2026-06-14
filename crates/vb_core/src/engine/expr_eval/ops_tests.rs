@@ -216,6 +216,36 @@ fn not_false_produces_true() -> Result<(), String> {
     ensure_equal(result, SlotValue::Bool(true))
 }
 
+#[test]
+fn coalesce_keeps_non_null_left_value() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let result = eval_ops(
+        vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Coalesce,
+        ],
+        vec![ConstValue::I64(9), ConstValue::I64(3)],
+        &mut store,
+    )?;
+    ensure_equal(result, SlotValue::I64(9))
+}
+
+#[test]
+fn coalesce_uses_right_value_when_left_is_null() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let result = eval_ops(
+        vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Coalesce,
+        ],
+        vec![ConstValue::Null, ConstValue::I64(3)],
+        &mut store,
+    )?;
+    ensure_equal(result, SlotValue::I64(3))
+}
+
 // ===== Arithmetic =====
 
 #[test]

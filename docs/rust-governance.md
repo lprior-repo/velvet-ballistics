@@ -60,6 +60,7 @@ Holzmann bounds are mandatory:
 
 `release` is optimized for normal release builds. `hardened` inherits release settings but enables debug assertions, overflow checks, and debug info for verification builds.
 
+# allow-removed-feature: master §41 — rust-governance policy statement enumerates the removed tokens
 `maxperf`, PGO, generated Rust execution, and `target-cpu=native` workflows are deferred from the current Backend / IR Interpreter Complete milestone. They must not be current release gates or performance evidence unless a future architecture bead reactivates them.
 
 ## Required Gates

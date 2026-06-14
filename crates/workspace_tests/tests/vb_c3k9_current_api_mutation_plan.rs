@@ -97,6 +97,7 @@ postcard envelope
 Fjall journal
 CLI accepted artifact path
 ## UI Model Contract Mutation Targets
+# allow-removed-crate: removed UI model crate names referenced by the mutation plan fixture
 vb_ui_model
 certificate
 incident
@@ -161,6 +162,7 @@ postcard envelope
 Fjall journal
 CLI accepted artifact path
 ## UI Model Contract Mutation Targets
+# allow-removed-crate: removed UI model crate names referenced by the mutation plan fixture
 vb_ui_model
 certificate
 incident

@@ -19,6 +19,20 @@ pub(crate) enum OutputFormat {
     Postcard,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum LegacyJsonOutput {
+    #[default]
+    Disabled,
+    Json,
+    Jsonl,
+}
+
+impl LegacyJsonOutput {
+    pub(crate) const fn is_enabled(self) -> bool {
+        !matches!(self, Self::Disabled)
+    }
+}
+
 /// Verification profile controlling depth of static analysis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum VerifyProfile {
@@ -99,6 +113,7 @@ pub(crate) enum Command {
         workflow: PathBuf,
         profile: VerifyProfile,
         output: OutputFormat,
+        legacy_json: LegacyJsonOutput,
     },
     Validate {
         workflow: PathBuf,

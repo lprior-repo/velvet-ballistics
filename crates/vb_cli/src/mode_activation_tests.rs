@@ -24,8 +24,9 @@ use std::path::PathBuf;
 
 // Import from the crate — these exist
 use crate::args::{
-    ActionName, ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat,
-    ParseError, StatusOptions, SystemStatusOptions, VerifyProfile,
+    ActionName, ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget,
+    LegacyJsonOutput, OutputFormat, ParseError, StatusOptions, SystemStatusOptions,
+    VerifyProfile,
 };
 use crate::exit_code::CliExitCode;
 use proptest::prelude::*;
@@ -226,6 +227,7 @@ fn command_mode_verify_is_pure() {
         workflow: PathBuf::from("workflow.yaml"),
         profile: VerifyProfile::Standard,
         output: OutputFormat::Text,
+        legacy_json: LegacyJsonOutput::Disabled,
     };
     assert_eq!(command_mode(&cmd), CommandMode::Pure);
 }
@@ -514,6 +516,7 @@ fn command_mode_all_25_command_variants_are_classified() {
             workflow: PathBuf::from("w.yaml"),
             profile: VerifyProfile::Standard,
             output: OutputFormat::Text,
+            legacy_json: LegacyJsonOutput::Disabled,
         }),
         CommandMode::Pure
     );
@@ -735,6 +738,7 @@ fn pure_commands_are_not_storage_nor_runtime_nor_ui() {
             workflow: PathBuf::from("w.yaml"),
             profile: VerifyProfile::Standard,
             output: OutputFormat::Text,
+            legacy_json: LegacyJsonOutput::Disabled,
         },
         Command::Explain {
             workflow: PathBuf::from("w.yaml"),

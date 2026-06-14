@@ -42,8 +42,8 @@ mod pending_timer_kind_spec {
 #[extern_spec]
 mod pending_timer_spec {
     use vstd::prelude::*;
-    use vb_core::ids::StepIdx;
-    use vb_runtime::shard::types::PendingTimerKind;
+    use crate::ids::StepIdx;
+    use crate::shard::types::PendingTimerKind;
     use std::time::Instant;
 
     #[verifier::extern_spec]

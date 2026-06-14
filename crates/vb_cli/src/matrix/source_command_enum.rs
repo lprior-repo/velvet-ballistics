@@ -67,8 +67,8 @@ pub const fn variant_count() -> usize {
 mod tests {
     use super::*;
     use crate::args::types::{
-        ActionRegistryMode, DiffMode, DurabilityMode, EmitTarget, OutputFormat, StatusOptions,
-        SystemStatusOptions, VerifyProfile,
+        ActionRegistryMode, DiffMode, DurabilityMode, EmitTarget, LegacyJsonOutput, OutputFormat,
+        StatusOptions, SystemStatusOptions, VerifyProfile,
     };
     use crate::commands_journal::TraceFilters;
     use std::path::PathBuf;
@@ -111,6 +111,7 @@ mod tests {
                 workflow: PathBuf::new(),
                 profile: VerifyProfile::Standard,
                 output: OutputFormat::Text,
+                legacy_json: LegacyJsonOutput::Disabled,
             },
             Command::Validate {
                 workflow: PathBuf::new(),

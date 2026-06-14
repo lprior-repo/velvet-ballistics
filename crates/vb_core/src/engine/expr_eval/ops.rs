@@ -24,6 +24,15 @@ fn eval_not(stack: &mut ExprStack) -> Result<(), EngineError> {
     push_value(stack, SlotValue::Bool(!value))
 }
 
+fn eval_coalesce(stack: &mut ExprStack) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    if left == SlotValue::Null {
+        push_value(stack, right)
+    } else {
+        push_value(stack, left)
+    }
+}
+
 fn eval_bool_pair(stack: &mut ExprStack, op: fn(bool, bool) -> bool) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
     push_value(
@@ -214,6 +223,7 @@ pub(crate) fn eval_expr_operator(
         ExprOp::Sum => eval_sum(stack, store),
         ExprOp::Count => eval_count(stack, store),
         ExprOp::Unique => eval_unique(stack, store),
+        ExprOp::Coalesce => eval_coalesce(stack),
         ExprOp::LoadSlot(_) | ExprOp::LoadConst(_) | ExprOp::LoadAccessor(_) => {
             Err(EngineError::InternalInvariantViolation {
                 reason: "load ops should be handled in eval_expr_op",

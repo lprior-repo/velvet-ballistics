@@ -1,8 +1,8 @@
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs::{File, OpenOptions, hard_link, remove_file};
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use serde_json::Value;
 
@@ -81,15 +81,46 @@ fn parse_file_target(value: &str) -> Result<DeliverTarget, DeliverSinkError> {
     if value.is_empty() {
         return Err(DeliverSinkError::MissingFilePath);
     }
-    let path = PathBuf::from(value);
-    validate_new_file_path(&path)?;
-    Ok(DeliverTarget::NewFile(path))
+    let requested_path = PathBuf::from(value);
+    validate_requested_file_path(&requested_path)?;
+    let normalized_path = normalize_absolute_path(&requested_path)?;
+    validate_new_file_path(&normalized_path)?;
+    Ok(DeliverTarget::NewFile(normalized_path))
 }
 
-fn validate_new_file_path(path: &Path) -> Result<(), DeliverSinkError> {
+fn validate_requested_file_path(path: &Path) -> Result<(), DeliverSinkError> {
     if path.as_os_str().as_encoded_bytes().len() > MAX_PATH_BYTES {
         return Err(DeliverSinkError::OverlongPath);
     }
+    if !path.is_absolute() {
+        return Err(DeliverSinkError::RelativePath);
+    }
+    Ok(())
+}
+
+fn normalize_absolute_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
+    if !path.is_absolute() {
+        return Err(DeliverSinkError::RelativePath);
+    }
+
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::RootDir => normalized.push(component.as_os_str()),
+            Component::CurDir => {}
+            Component::Normal(part) => normalized.push(part),
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    normalized.push(component.as_os_str());
+                }
+            }
+            Component::Prefix(prefix) => normalized.push(prefix.as_os_str()),
+        }
+    }
+    Ok(normalized)
+}
+
+fn validate_new_file_path(path: &Path) -> Result<(), DeliverSinkError> {
     if !path.is_absolute() {
         return Err(DeliverSinkError::RelativePath);
     }
@@ -139,7 +170,10 @@ fn write_json_line_to_temp_file(path: &Path, value: &Value) -> Result<(), Delive
 
 fn persist_temp_file(temp_path: &Path, path: &Path) -> Result<(), DeliverSinkError> {
     match hard_link(temp_path, path) {
-        Ok(()) => remove_file(temp_path).map_err(to_io_error),
+        Ok(()) => {
+            cleanup_temp_file_best_effort(temp_path);
+            Ok(())
+        }
         Err(error) => {
             let delivery_error = match error.kind() {
                 io::ErrorKind::AlreadyExists => DeliverSinkError::ExistingFile,
@@ -153,6 +187,12 @@ fn persist_temp_file(temp_path: &Path, path: &Path) -> Result<(), DeliverSinkErr
     }
 }
 
+fn cleanup_temp_file_best_effort(path: &Path) {
+    match remove_file(path) {
+        Ok(()) | Err(_) => {}
+    }
+}
+
 fn temporary_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
     let Some(parent) = path.parent() else {
         return Err(DeliverSinkError::MissingParent);
@@ -160,10 +200,58 @@ fn temporary_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
     let Some(file_name) = path.file_name() else {
         return Err(DeliverSinkError::MissingFilePath);
     };
+    let preferred = preferred_temp_name(file_name);
+    if path_with_name_len(parent, &preferred)? <= MAX_PATH_BYTES {
+        return Ok(parent.join(preferred));
+    }
+
+    let hashed = hashed_temp_name(path);
+    if path_with_name_len(parent, &hashed)? <= MAX_PATH_BYTES {
+        return Ok(parent.join(hashed));
+    }
+
+    let fallback = OsString::from(".tmp");
+    if path_with_name_len(parent, &fallback)? <= MAX_PATH_BYTES {
+        return Ok(parent.join(fallback));
+    }
+
+    let minimal = OsString::from(".t");
+    if path_with_name_len(parent, &minimal)? <= MAX_PATH_BYTES {
+        return Ok(parent.join(minimal));
+    }
+
+    Err(DeliverSinkError::OverlongPath)
+}
+
+fn preferred_temp_name(file_name: &OsStr) -> OsString {
     let mut temp_name = OsString::from(".");
     temp_name.push(file_name);
     temp_name.push(".tmp");
-    Ok(parent.join(temp_name))
+    temp_name
+}
+
+fn hashed_temp_name(path: &Path) -> OsString {
+    let digest = blake3::hash(path.as_os_str().as_encoded_bytes());
+    let mut temp_name = String::from(".vb");
+    for byte in &digest.as_bytes()[..8] {
+        temp_name.push_str(&format!("{byte:02x}"));
+    }
+    OsString::from(temp_name)
+}
+
+fn path_with_name_len(parent: &Path, file_name: &OsStr) -> Result<usize, DeliverSinkError> {
+    let separator = if parent == Path::new("/") {
+        0_usize
+    } else {
+        1_usize
+    };
+    parent
+        .as_os_str()
+        .as_encoded_bytes()
+        .len()
+        .checked_add(separator)
+        .and_then(|value| value.checked_add(file_name.as_encoded_bytes().len()))
+        .ok_or(DeliverSinkError::OverlongPath)
 }
 
 fn create_new_file(path: &Path) -> Result<File, DeliverSinkError> {

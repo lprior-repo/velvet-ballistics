@@ -512,6 +512,8 @@ pub enum ExprOp {
     Count,
     /// `unique` helper.
     Unique,
+    /// `coalesce` helper.
+    Coalesce,
 }
 
 /// Validates stack effects and returns the exact required stack depth.

@@ -6,7 +6,8 @@ use std::path::PathBuf;
 
 use super::error::ParseError;
 use super::shared::{
-    find_positional, named_flag, parse_output_format, positional_str, validate_known_flags,
+    find_positional, named_flag, parse_legacy_json_output, parse_output_format,
+    validate_known_flags,
 };
 use super::types::{Command, DurabilityMode, EmitTarget, OutputFormat, StepTarget, VerifyProfile};
 
@@ -23,10 +24,12 @@ pub(super) fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
         None => VerifyProfile::default(),
     };
     let output = parse_output_format(args);
+    let legacy_json = parse_legacy_json_output(args);
     Ok(Command::Verify {
         workflow,
         profile,
         output,
+        legacy_json,
     })
 }
 

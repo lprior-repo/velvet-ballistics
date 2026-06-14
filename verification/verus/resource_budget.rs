@@ -3,6 +3,23 @@
 // Source model: `crates/vb_proof_kernels/src/resource_budget.rs`.
 // Registry obligations: VB-CORE-RESOURCE-001 through VB-CORE-RESOURCE-003.
 // Exact verifier command: `verus verification/verus/resource_budget.rs`.
+//
+// ## DISCONNECTED SPEC MIRROR (GOD RULE 2 VIOLATION)
+// This file defines spec types SpecBudget and SpecPolicy that mirror
+// crates/vb_proof_kernels/src/resource_budget.rs types but does NOT import
+// them or prove structural isomorphism. The proofs hold for the math model
+// only. A production-binding bridge proof is required.
+//
+// ## COMPENSATING EVIDENCE
+// Kani harnesses at crates/vb_core/src/budget/tests_and_verification.rs
+// (see .evidence/kani-list/vb_core.json) verify the production Budget type's
+// saturating-arithmetic bounds directly. Proptest harnesses at
+// verification/proptest/vb_compile/ verify compile-time resource bounds.
+// These independently cover the bound-preservation properties and serve as
+// compensating evidence for the missing production binding.
+//
+// ## TRUSTED-BASE LEDGER
+// See verification/trusted-base-ledger.jsonl for formal gap documentation.
 
 use vstd::prelude::*;
 
@@ -171,6 +188,12 @@ pub proof fn lemma_sat_add_bounded(a: int, b: int)
         sat_add(a, b) >= a,
         sat_add(a, b) >= b,
 {
+    // Case analysis on whether the addition saturates
+    if a + b <= u64_max() {
+        assert(sat_add(a, b) == a + b);
+    } else {
+        assert(sat_add(a, b) == u64_max());
+    }
 }
 
 pub proof fn lemma_max_dim_bounded(a: int, b: int)
@@ -182,6 +205,11 @@ pub proof fn lemma_max_dim_bounded(a: int, b: int)
         max_dim(a, b) >= a,
         max_dim(a, b) >= b,
 {
+    if a >= b {
+        assert(max_dim(a, b) == a);
+    } else {
+        assert(max_dim(a, b) == b);
+    }
 }
 
 pub proof fn lemma_sat_mul_bounded(a: int, b: int)
@@ -191,12 +219,18 @@ pub proof fn lemma_sat_mul_bounded(a: int, b: int)
     ensures
         dim_ok(sat_mul(a, b)),
 {
+    if 0 <= a * b && a * b <= u64_max() {
+        assert(sat_mul(a, b) == a * b);
+    } else {
+        assert(sat_mul(a, b) == u64_max());
+    }
 }
 
 pub proof fn lemma_empty_budget_ok()
     ensures
         budget_ok(empty_budget()),
 {
+    assert(budget_ok(empty_budget()));
 }
 
 pub proof fn lemma_sequential_compose_bounded(a: SpecBudget, b: SpecBudget)
@@ -284,6 +318,13 @@ pub proof fn lemma_policy_check_exact(p: SpecPolicy, b: SpecBudget)
             && b.steps <= p.max_steps
         ),
 {
+    assert(policy_within(p, b) == (
+        b.actions <= p.max_actions
+        && b.parallel <= p.max_parallel
+        && b.run_time_secs <= p.max_run_time
+        && b.result_bytes <= p.max_result_bytes
+        && b.steps <= p.max_steps
+    ));
 }
 
 pub proof fn lemma_policy_preserves_bounded_budget(p: SpecPolicy, b: SpecBudget)
@@ -298,6 +339,7 @@ pub proof fn lemma_policy_preserves_bounded_budget(p: SpecPolicy, b: SpecBudget)
         b.result_bytes <= p.max_result_bytes,
         b.steps <= p.max_steps,
 {
+    assert(policy_within(p, b));
 }
 
 fn main() {}

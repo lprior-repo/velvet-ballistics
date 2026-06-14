@@ -33,11 +33,11 @@ impl ClockTick {
 proof fn test_advance_to_same_tick()
     ensures
         forall |t: u64|
-            ClockTick { value: t }.advance_to_spec(t).is_Some(),
+            (ClockTick { value: t }).advance_to_spec(t).is_Some(),
 {
     assert forall |t: u64|
-        ClockTick { value: t }.advance_to_spec(t).is_Some() by {
-        assert(ClockTick { value: t }.advance_to_spec(t).is_Some());
+        (ClockTick { value: t }).advance_to_spec(t).is_Some() by {
+        assert((ClockTick { value: t }).advance_to_spec(t).is_Some());
     };
 }
 
@@ -45,14 +45,14 @@ proof fn test_advance_to_same_tick()
 proof fn test_advance_forward()
     ensures
         forall |t: u64, f: u64| f > t ==>
-            ClockTick { value: t }.advance_to_spec(f).is_Some()
-            && ClockTick { value: t }.advance_to_spec(f).get_Some_0().value == f,
+            (ClockTick { value: t }).advance_to_spec(f).is_Some()
+            && (ClockTick { value: t }).advance_to_spec(f).get_Some_0().value == f,
 {
     assert forall |t: u64, f: u64| f > t ==>
-        ClockTick { value: t }.advance_to_spec(f).is_Some()
-        && ClockTick { value: t }.advance_to_spec(f).get_Some_0().value == f by {
+        (ClockTick { value: t }).advance_to_spec(f).is_Some()
+        && (ClockTick { value: t }).advance_to_spec(f).get_Some_0().value == f by {
         if f > t {
-            let result = ClockTick { value: t }.advance_to_spec(f);
+            let result = (ClockTick { value: t }).advance_to_spec(f);
             assert(result.is_Some());
             assert(result.get_Some_0().value == f);
         }
@@ -63,12 +63,12 @@ proof fn test_advance_forward()
 proof fn test_advance_backward_rejected()
     ensures
         forall |t: u64, b: u64| b < t ==>
-            ClockTick { value: t }.advance_to_spec(b).is_None(),
+            (ClockTick { value: t }).advance_to_spec(b).is_None(),
 {
     assert forall |t: u64, b: u64| b < t ==>
-        ClockTick { value: t }.advance_to_spec(b).is_None() by {
+        (ClockTick { value: t }).advance_to_spec(b).is_None() by {
         if b < t {
-            assert(ClockTick { value: t }.advance_to_spec(b).is_None());
+            assert((ClockTick { value: t }).advance_to_spec(b).is_None());
         }
     };
 }
@@ -77,10 +77,10 @@ proof fn test_advance_backward_rejected()
 proof fn test_deadline_past_is_expired()
     ensures
         forall |tick: u64, deadline: u64| deadline <= tick ==>
-            ClockTick { value: tick }.is_expired_spec(deadline),
+(            ClockTick { value: tick }).is_expired_spec(deadline),
 {
     assert forall |tick: u64, deadline: u64| deadline <= tick ==>
-        ClockTick { value: tick }.is_expired_spec(deadline) by {
+(        ClockTick { value: tick }).is_expired_spec(deadline) by {
         // Directly from spec definition.
     };
 }
@@ -89,10 +89,10 @@ proof fn test_deadline_past_is_expired()
 proof fn test_deadline_future_not_expired()
     ensures
         forall |tick: u64, deadline: u64| deadline > tick ==>
-            !ClockTick { value: tick }.is_expired_spec(deadline),
+(ClockTick { value: tick }).is_expired_spec(deadline) == false,
 {
     assert forall |tick: u64, deadline: u64| deadline > tick ==>
-        !ClockTick { value: tick }.is_expired_spec(deadline) by {
+(ClockTick { value: tick }).is_expired_spec(deadline) == false by {
         // Directly from spec definition.
     };
 }

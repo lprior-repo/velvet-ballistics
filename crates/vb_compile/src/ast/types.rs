@@ -224,7 +224,7 @@ pub enum AstValue {
     Mapping(Vec<AstMapEntry<AstValue>>),
 }
 
-/// Expression/reference placeholder before bytecode lowering.
+/// Expression/reference node before bytecode lowering.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum AstExpression {

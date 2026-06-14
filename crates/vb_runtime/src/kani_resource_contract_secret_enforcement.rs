@@ -74,7 +74,7 @@ fn prove_secret_result_not_allowed_enforcement() {
 /// PO-K09 H2: Verify that allows_secret_results is a behavior-affecting field.
 /// The enclosing contract MUST be hashed into the canonical digest.
 #[kani::proof]
-#[kani::unwind(1)]
+#[kani::unwind(4)]
 fn prove_secret_results_field_is_behavior_affecting() {
     // If allows_secret_results were NOT behavior-affecting, it could be
     // safely omitted from the digest. Since it IS behavior-affecting

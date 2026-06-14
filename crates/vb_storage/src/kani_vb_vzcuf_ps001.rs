@@ -68,7 +68,7 @@ mod kani_admission_ps001 {
 
     /// C3: Zero-length candidate always fits.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(4)]
     fn check_zero_length_always_fits() {
         let current: u64 = kani::any();
         let limit: u64 = kani::any();

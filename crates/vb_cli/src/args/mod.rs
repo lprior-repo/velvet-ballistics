@@ -18,7 +18,8 @@ mod tests;
 pub(crate) use error::ParseError;
 pub(crate) use shared::parse_args;
 pub(crate) use types::{
-    ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, EventStatus, OutputFormat,
-    StatusOptions, StepTarget, SystemStatusOptions, VALID_COMMANDS, VerifyProfile,
+    ActionRegistryMode, Command, DiffMode, DurabilityMode, EmitTarget, EventStatus,
+    LegacyJsonOutput, OutputFormat, StatusOptions, StepTarget, SystemStatusOptions, VALID_COMMANDS,
+    VerifyProfile,
 };
 pub(crate) use vb_core::action::ActionName;

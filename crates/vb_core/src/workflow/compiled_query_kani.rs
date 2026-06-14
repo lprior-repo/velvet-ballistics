@@ -207,7 +207,7 @@ fn vb_ajc40_query_path_depth_16_17() {
 /// This proof uses the production count helper directly so Kani does not need
 /// to allocate a 65k decoded payload.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(4)]
 fn vb_ajc40_query_count_65535_65536() {
     assert!(validate_compiled_query_count(MAX_QUERIES_PER_WORKFLOW).is_ok());
 

@@ -1,0 +1,19 @@
+# positive fixture for the residue scanner.
+# This is a deliberately clean Cargo manifest snippet: it defines a
+# [features] table with safe feature names and avoids every banned token
+# from the master removal section. The scanner must report zero active
+# findings and exit 0.
+
+[package]
+name = "fixture-positive"
+version = "0.0.0"
+edition = "2024"
+
+[features]
+default = []
+bench = []
+test-util = []
+kani-shape-vacuity = []
+vb-rxru0-mock-marker = []
+
+[dependencies]

@@ -6,6 +6,8 @@
 /// GOD RULE 2: Verus spec fn must mathematically bind to actual Rust
 /// implementations (exec fn) inside vb_core::action.
 
+use vstd::prelude::*;
+
 verus! {
 
     use vstd::{prelude::*, set::Set, map::Map};

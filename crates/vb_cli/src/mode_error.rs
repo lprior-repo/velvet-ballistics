@@ -89,7 +89,10 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::args::{Command, DiffMode, DurabilityMode, EmitTarget, OutputFormat, VerifyProfile};
+    use crate::args::{
+        Command, DiffMode, DurabilityMode, EmitTarget, LegacyJsonOutput, OutputFormat,
+        VerifyProfile,
+    };
     use std::path::PathBuf;
 
     fn dummy_path() -> PathBuf {
@@ -111,6 +114,7 @@ mod tests {
             workflow: dummy_path(),
             profile: VerifyProfile::Quick,
             output: OutputFormat::Text,
+            legacy_json: LegacyJsonOutput::Disabled,
         };
         assert_eq!(command_mode(&cmd), CommandMode::Pure);
     }

@@ -10,9 +10,11 @@
 /// GOD RULE 2: Each spec fn models actual production behavior in
 /// `vb_runtime::action::dispatch_generic` and `vb_core::action::issue_action_ticket`.
 
+use vstd::prelude::*;
+
 verus! {
 
-    use vstd::{prelude::*, set::Set, map::Map};
+    use vstd::prelude::*;
 
     // ============================================================================
     // Model: Abstract ActionTicket and ActionOutcome for Verus reasoning
@@ -325,8 +327,8 @@ verus! {
     // ============================================================================
 
     /// Model of the ActionRegistry's ID uniqueness invariant.
-    pub spec fn registry_ids_unique(slots: seq<Option<u64>>) -> bool {
-        let registered_ids: set<u64> = set![@id in slots.iter() |
+    pub spec fn registry_ids_unique(slots: Seq<Option<u64>>) -> bool {
+        let registered_ids: Set<u64> = set![@id in slots.iter() |
             match *id {
                 Some(v) => v,
                 None => continue,

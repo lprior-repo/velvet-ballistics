@@ -985,7 +985,7 @@ mod kani {
 
     /// Empty set never grants any capability.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(4)]
     fn kani_empty_set_never_grants() {
         let cap = kani::any::<Capability>();
         let set = CapabilitySet::empty();
@@ -995,7 +995,7 @@ mod kani {
 
     /// Different actions don't cross-grant.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(4)]
     fn kani_different_actions_no_cross_grant() {
         let grant = Capability::new("resource".into(), ActionId::new(1));
         let set = CapabilitySet::from_grants(Box::new([grant]));
