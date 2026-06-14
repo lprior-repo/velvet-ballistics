@@ -35,7 +35,9 @@ pub(crate) enum DeliverSinkError {
 impl fmt::Display for DeliverSinkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MissingScheme => f.write_str("deliver target must be stdout or file:<path>"),
+            Self::MissingScheme => {
+                f.write_str("deliver target must be stdout, file:<path>, or webhook:<url>")
+            }
             Self::MissingFilePath => f.write_str("deliver file target is missing a path"),
             Self::UnknownScheme => f.write_str("deliver target scheme is unknown"),
             Self::UnsupportedWebhook => f.write_str("deliver webhook target is not supported yet"),

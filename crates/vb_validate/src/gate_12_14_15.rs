@@ -54,7 +54,9 @@ pub fn validate_gate_12_action_contract_completeness(
 
 pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
-    proptest::prop_assume!(slot_count  != 0 );
+    if slot_count == 0 {
+        return Ok(());
+    }
     let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
     for node in parts.nodes.iter() {
         if let CompiledNodeKind::SetConst { value } = &node.kind {

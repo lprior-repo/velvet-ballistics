@@ -816,21 +816,22 @@ fn cli_reports_are_reopened_replay_evidence(
     expected_event_count: usize,
 ) -> bool {
     let expected_commands = ["replay", "events", "inspect"];
-    first_cli_reports == second_cli_reports
-        && first_cli_reports
-            .iter()
-            .zip(second_cli_reports.iter())
-            .zip(expected_commands)
-            .all(|((first_report, second_report), command_name)| {
-                first_report == second_report
-                    && first_report.command_name == command_name
-                    && second_report.command_name == command_name
-                    && cli_report_has_reopened_replay_facts(
-                        first_report,
-                        run_arg,
-                        expected_event_count,
-                    )
-            })
+    first_cli_reports
+        .iter()
+        .zip(second_cli_reports.iter())
+        .zip(expected_commands)
+        .all(|((first_report, second_report), command_name)| {
+            first_report.command_name == command_name
+                && second_report.command_name == command_name
+                && first_report.status_code == second_report.status_code
+                && first_report.stdout == second_report.stdout
+                && cli_report_has_reopened_replay_facts(first_report, run_arg, expected_event_count)
+                && cli_report_has_reopened_replay_facts(
+                    second_report,
+                    run_arg,
+                    expected_event_count,
+                )
+        })
 }
 
 fn repeated_persisted_replay_error(
@@ -1182,6 +1183,13 @@ fn collect_bdd_kyyf_002() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
         for event in journal_events(run) {
             append_event(&journal, &event)?;
         }
+        journal.persist_strict().map_err(|_| {
+            VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
+                bead_id: BEAD_ID,
+                scenario_id: BDD_KYYF_002,
+                public_surface: "vb_storage::FjallJournal::persist_strict",
+            }
+        })?;
     }
     let reopened = vb_storage::open_store(temp.path()).map_err(|_| {
         VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {

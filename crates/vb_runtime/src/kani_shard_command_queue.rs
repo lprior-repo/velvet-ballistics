@@ -3,9 +3,12 @@
 
 //! Kani harnesses for the `#[cfg(kani)]` shard-command queue model.
 //!
-//! These harnesses prove the shared constructor predicate plus the bounded
-//! FIFO/fullness/error behavior of the two-slot Kani queue model in
-//! `shard::queue`. They do not execute production `crossbeam_queue::ArrayQueue`.
+//! These harnesses prove the shared constructor predicate plus bounded
+//! FIFO/fullness/error behavior of the cfg(kani) sequential queue model in
+//! `shard::queue`. The model itself now represents every accepted capacity
+//! faithfully; the push/drain harnesses still sample only small capacities to
+//! keep the Kani state space tractable. They do not execute production
+//! `crossbeam_queue::ArrayQueue`.
 
 use crate::{
     RuntimeError,
@@ -31,10 +34,11 @@ fn arbitrary_queue_token() -> KaniShardCommandToken {
 #[kani::unwind(8)]
 fn kani_shard_command_queue_bounded_invariant() {
     let capacity: usize = kani::any();
-    kani::assume(capacity == 0 || capacity <= 2 || capacity > MAX_COMMAND_QUEUE_CAPACITY);
+    kani::assume(capacity == 0 || capacity <= 3 || capacity > MAX_COMMAND_QUEUE_CAPACITY);
     kani::cover!(capacity == 0, "zero capacity rejection covered");
     kani::cover!(capacity == 1, "minimum valid capacity covered");
-    kani::cover!(capacity == 2, "maximum Kani model capacity covered");
+    kani::cover!(capacity == 2, "two-slot constructor case covered");
+    kani::cover!(capacity == 3, "three-slot constructor case covered");
     kani::cover!(
         capacity > MAX_COMMAND_QUEUE_CAPACITY,
         "over-maximum capacity rejection covered"

@@ -34,7 +34,7 @@ pub(super) fn parse_agent_context(args: &[OsString]) -> Result<Command, ParseErr
                     .filter(|raw| !raw.starts_with('-'))
                     .ok_or_else(|| {
                         ParseError::InvalidAgentContextArgument(String::from(
-                            "--deliver requires stdout or file:<absolute-path>",
+                            "--deliver requires stdout, file:<absolute-path>, or webhook:<url>",
                         ))
                     })?;
                 deliver = Some(String::from(value));

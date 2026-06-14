@@ -240,7 +240,7 @@ fn kani_build_output_is_object() {
     assert!(result.is_object());
 }
 
-/// OBL-017: enums key is always an object with exactly 3 variants.
+/// OBL-017: enums key is always an object with the documented variants.
 #[kani::proof]
 #[kani::unwind(5)]
 fn kani_enums_has_all_variants() {
@@ -250,7 +250,7 @@ fn kani_enums_has_all_variants() {
     assert!(enums.is_some());
     if let Some(e) = enums {
         assert!(e.is_object());
-        for key in &["emit", "durability", "verify_profile"] {
+        for key in &["emit", "compile_emit", "durability", "verify_profile"] {
             assert!(e.get(*key).is_some());
             assert!(e.get(*key).unwrap().is_array());
         }

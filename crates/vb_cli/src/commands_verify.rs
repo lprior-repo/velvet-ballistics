@@ -8,8 +8,10 @@ use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 /// Structured result of a successful verification.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct VerifyOk {
-    /// Hex-encoded workflow digest.
+    /// Hex-encoded canonical workflow digest.
     pub digest_hex: String,
+    /// Hex-encoded postcard IR artifact digest.
+    pub ir_digest_hex: String,
     /// Number of compiled workflow nodes.
     pub node_count: u16,
     /// Master §63 gate statuses in canonical order.
@@ -203,16 +205,21 @@ pub(crate) fn run_verification(
     };
 
     let digest = compiled.digest();
-    let digest_hex: String = digest
-        .as_bytes()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
+    let digest_hex = workflow_digest_hex(digest);
     let mut gate_outcomes = VerificationGateOutcomes::baseline_success();
     let mut warnings: Vec<String> = Vec::new();
 
     // Phase 3: IR validation gates
     let parts = compiled.to_parts();
+    let ir_bytes = match postcard::to_allocvec(&parts) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            return Err(VerifyError::IrValidation(format!(
+                "compiled artifact serialization failed: {error}"
+            )));
+        }
+    };
+    let ir_digest_hex = bytes_digest_hex(&ir_bytes);
     match vb_validate::shared::validate(&parts) {
         Ok(()) => {}
         Err(e) => {
@@ -284,6 +291,7 @@ pub(crate) fn run_verification(
 
     let result = VerifyOk {
         digest_hex,
+        ir_digest_hex,
         node_count: compiled.node_count(),
         checks,
         warnings,
@@ -295,6 +303,22 @@ pub(crate) fn run_verification(
     }
 
     Ok(result)
+}
+
+fn workflow_digest_hex(digest: vb_core::WorkflowDigest) -> String {
+    digest
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+fn bytes_digest_hex(bytes: &[u8]) -> String {
+    blake3::hash(bytes)
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 /// Run a single local advisory gate.
@@ -538,6 +562,7 @@ steps:
     fn exit_code_for_deferred_gates_is_verification_failed() {
         let err = VerifyError::DeferredGates(VerifyOk {
             digest_hex: "deadbeef".into(),
+            ir_digest_hex: "feedface".into(),
             node_count: 2,
             checks: FULL_PROFILE_EXPECTED_CHECKS.to_vec(),
             warnings: Vec::new(),
@@ -551,12 +576,14 @@ steps:
     fn verify_ok_holds_all_fields() {
         let ok = VerifyOk {
             digest_hex: "abcdef".into(),
+            ir_digest_hex: "123456".into(),
             node_count: 5,
             checks: vec!["profile", "shape"],
             warnings: vec!["note: old format".into()],
             durability_mode: DurabilityMode::None,
         };
         assert_eq!(ok.digest_hex, "abcdef");
+        assert_eq!(ok.ir_digest_hex, "123456");
         assert_eq!(ok.node_count, 5);
         assert_eq!(ok.checks.len(), 2);
         assert_eq!(ok.warnings.len(), 1);
@@ -567,6 +594,7 @@ steps:
     fn verify_ok_empty_checks_and_warnings() {
         let ok = VerifyOk {
             digest_hex: "00".into(),
+            ir_digest_hex: "11".into(),
             node_count: 0,
             checks: vec![],
             warnings: vec![],
@@ -582,6 +610,7 @@ steps:
     fn verify_ok_records_durability_mode() {
         let ok = VerifyOk {
             digest_hex: "deadbeef".into(),
+            ir_digest_hex: "feedface".into(),
             node_count: 3,
             checks: vec!["profile"],
             warnings: vec![],
@@ -661,9 +690,9 @@ steps:
                 "evidence",
             ]
         );
-        assert!(ok.warnings.iter().any(|warning| warning.contains(
-            "compiled-form WorkflowParts taint validation is not implemented"
-        )));
+        assert!(ok.warnings.iter().any(|warning| {
+            warning.contains("compiled-form WorkflowParts taint validation is not implemented")
+        }));
     }
 
     #[test]

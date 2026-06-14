@@ -138,7 +138,7 @@ fn exit_codes_covers_zero_through_eight() {
 }
 
 #[test]
-fn enums_has_emit_durability_verify_profile() {
+fn enums_has_emit_compile_emit_durability_verify_profile() {
     let context = build("0.1.0");
     let enums = context
         .get("enums")
@@ -146,6 +146,7 @@ fn enums_has_emit_durability_verify_profile() {
         .expect("enums must be an object");
 
     assert!(enums.contains_key("emit"));
+    assert!(enums.contains_key("compile_emit"));
     assert!(enums.contains_key("durability"));
     assert!(enums.contains_key("verify_profile"));
 }
@@ -529,6 +530,17 @@ fn enums_emit_has_correct_values() {
         .and_then(Value::as_array)
         .expect("emit must be an array");
     let values: Vec<&str> = emit.iter().filter_map(Value::as_str).collect();
+    assert_eq!(values, vec!["text", "yaml", "postcard"]);
+}
+
+#[test]
+fn enums_compile_emit_has_correct_values() {
+    let context = build("0.1.0");
+    let emit = context
+        .pointer("/enums/compile_emit")
+        .and_then(Value::as_array)
+        .expect("compile_emit must be an array");
+    let values: Vec<&str> = emit.iter().filter_map(Value::as_str).collect();
     assert_eq!(values, vec!["ir", "yaml", "postcard"]);
 }
 
@@ -614,12 +626,20 @@ fn command_count_is_stable() {
 }
 
 #[test]
-fn command_agent_context_has_summary_and_outputs() {
+fn command_agent_context_has_summary_outputs_and_deliver_flag() {
     let context = build("0.1.0");
     let cmd = context
         .pointer("/commands/agent-context")
         .and_then(Value::as_object)
         .expect("agent-context command must be an object");
+    let flags = cmd
+        .get("flags")
+        .and_then(Value::as_object)
+        .expect("agent-context flags must be an object");
+    let deliver = flags
+        .get("--deliver")
+        .and_then(Value::as_object)
+        .expect("agent-context --deliver must be an object");
 
     assert_eq!(
         cmd.get("summary").and_then(Value::as_str),
@@ -632,6 +652,27 @@ fn command_agent_context_has_summary_and_outputs() {
     assert_eq!(
         outputs.iter().filter_map(Value::as_str).collect::<Vec<_>>(),
         vec!["json"]
+    );
+    assert_eq!(deliver.get("type").and_then(Value::as_str), Some("string"));
+    assert_eq!(
+        deliver
+            .get("accepted_forms")
+            .and_then(Value::as_array)
+            .expect("agent-context accepted_forms must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["stdout", "file:<absolute-path>", "webhook:<url>"]
+    );
+    assert_eq!(
+        deliver
+            .get("currently_refused_forms")
+            .and_then(Value::as_array)
+            .expect("agent-context currently_refused_forms must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["webhook:<url>"]
     );
 }
 
@@ -648,6 +689,129 @@ fn command_compile_has_emit_flag_required() {
         .expect("--emit must be an object");
     assert_eq!(emit.get("required").and_then(Value::as_bool), Some(true));
     assert_eq!(emit.get("type").and_then(Value::as_str), Some("enum"));
+}
+
+#[test]
+fn command_events_exposes_status_and_limit_filters() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/events/flags")
+        .and_then(Value::as_object)
+        .expect("events flags must be an object");
+
+    assert_eq!(
+        flags
+            .get("--status")
+            .and_then(Value::as_object)
+            .expect("events --status must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("events --status values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec![
+            "pending",
+            "active",
+            "waiting_answer",
+            "cancelled",
+            "completed",
+            "failed"
+        ]
+    );
+    assert_eq!(
+        flags
+            .get("--limit")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("type"))
+            .and_then(Value::as_str),
+        Some("i64")
+    );
+}
+
+#[test]
+fn command_retry_exposes_optional_step_filter() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/retry/flags")
+        .and_then(Value::as_object)
+        .expect("retry flags must be an object");
+
+    assert_eq!(
+        flags
+            .get("--step")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("type"))
+            .and_then(Value::as_str),
+        Some("u16")
+    );
+    assert_eq!(
+        flags
+            .get("--step")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("required"))
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+}
+
+#[test]
+fn command_trace_exposes_all_parser_filters() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/trace/flags")
+        .and_then(Value::as_object)
+        .expect("trace flags must be an object");
+
+    for (flag_name, expected_type) in [
+        ("--step", "u16"),
+        ("--action", "u16"),
+        ("--since-seq", "u64"),
+        ("--until-seq", "u64"),
+        ("--limit", "usize"),
+    ] {
+        assert_eq!(
+            flags
+                .get(flag_name)
+                .and_then(Value::as_object)
+                .and_then(|flag| flag.get("type"))
+                .and_then(Value::as_str),
+            Some(expected_type),
+            "trace flag {flag_name} must match parser type"
+        );
+    }
+    assert_eq!(
+        flags
+            .get("--status")
+            .and_then(Value::as_object)
+            .expect("trace --status must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("trace --status values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec![
+            "pending",
+            "active",
+            "waiting_answer",
+            "cancelled",
+            "completed",
+            "failed"
+        ]
+    );
+}
+
+#[test]
+fn command_doctor_db_flag_is_optional() {
+    let context = build("0.1.0");
+    let db = context
+        .pointer("/commands/doctor/flags/--db")
+        .and_then(Value::as_object)
+        .expect("doctor --db must be an object");
+
+    assert_eq!(db.get("type").and_then(Value::as_str), Some("path"));
+    assert_eq!(db.get("required").and_then(Value::as_bool), Some(false));
 }
 
 #[test]
@@ -771,7 +935,10 @@ fn agent_context_help_reports_text_only_output_and_real_aliases() {
         .and_then(Value::as_object)
         .expect("help command must be an object");
 
-    assert_eq!(command.get("summary").and_then(Value::as_str), Some("Print this message."));
+    assert_eq!(
+        command.get("summary").and_then(Value::as_str),
+        Some("Print this message.")
+    );
     assert_eq!(
         command
             .get("outputs")
@@ -802,7 +969,10 @@ fn agent_context_version_reports_text_only_output_and_real_aliases() {
         .and_then(Value::as_object)
         .expect("version command must be an object");
 
-    assert_eq!(command.get("summary").and_then(Value::as_str), Some("Print version."));
+    assert_eq!(
+        command.get("summary").and_then(Value::as_str),
+        Some("Print version.")
+    );
     assert_eq!(
         command
             .get("outputs")
@@ -870,9 +1040,7 @@ fn agent_context_status_matches_parser_and_help_contract() {
             .and_then(Value::as_object)
             .and_then(|flag| flag.get("max"))
             .and_then(Value::as_u64),
-        Some(
-            u64::try_from(shard_config.command_queue_capacity).expect("usize fits into u64")
-        )
+        Some(u64::try_from(shard_config.command_queue_capacity).expect("usize fits into u64"))
     );
     assert_eq!(
         flags

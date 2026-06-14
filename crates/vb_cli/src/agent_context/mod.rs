@@ -94,7 +94,8 @@ fn exit_codes() -> Value {
 
 fn enums() -> Value {
     serde_json::json!({
-        "emit": ["ir", "yaml", "postcard"],
+        "emit": ["text", "yaml", "postcard"],
+        "compile_emit": ["ir", "yaml", "postcard"],
         "durability": ["strict", "journaled", "none"],
         "verify_profile": ["quick", "standard", "full"]
     })
@@ -106,6 +107,9 @@ fn commands() -> Value {
             "agent-context",
             serde_json::json!({
                 "summary": "Emit this versioned machine-readable CLI schema.",
+                "flags": {
+                    "--deliver": deliver_flag()
+                },
                 "outputs": ["json"]
             }),
         ),
@@ -142,7 +146,7 @@ fn commands() -> Value {
                 "summary": "Compile a workflow to an artifact.",
                 "positionals": ["workflow.yaml"],
                 "flags": {
-                    "--emit": {"type": "enum", "values": ["ir", "yaml", "postcard"], "required": true},
+                    "--emit": compile_emit_flag(),
                     "--out": {"type": "path", "required": true}
                 }
             }),
@@ -185,7 +189,11 @@ fn commands() -> Value {
         command("inspect", run_id_db_command("Inspect a durable run.")),
         command(
             "events",
-            run_id_db_command("List durable events for a run."),
+            serde_json::json!({
+                "summary": "List durable events for a run.",
+                "positionals": ["run_id"],
+                "flags": events_flags()
+            }),
         ),
         command(
             "replay",
@@ -193,11 +201,19 @@ fn commands() -> Value {
         ),
         command(
             "trace",
-            run_id_db_command("Show step-by-step execution trace."),
+            serde_json::json!({
+                "summary": "Show step-by-step execution trace.",
+                "positionals": ["run_id"],
+                "flags": trace_flags()
+            }),
         ),
         command(
             "retry",
-            run_id_db_command("Retry a failed run from its last successful step."),
+            serde_json::json!({
+                "summary": "Retry a failed run from its last successful step.",
+                "positionals": ["run_id"],
+                "flags": retry_flags()
+            }),
         ),
         command("resume", run_id_db_command("Resume a suspended run.")),
         command(
@@ -228,7 +244,7 @@ fn commands() -> Value {
             "doctor",
             serde_json::json!({
                 "summary": "Run diagnostic checks.",
-                "flags": db_output_flags()
+                "flags": optional_db_output_flags()
             }),
         ),
         command(
@@ -337,6 +353,20 @@ fn output_flags() -> Value {
     serde_json::json!({"--emit": output_emit_flag()})
 }
 
+fn compile_emit_flag() -> Value {
+    serde_json::json!({"type": "enum", "values": ["ir", "yaml", "postcard"], "required": true})
+}
+
+fn deliver_flag() -> Value {
+    serde_json::json!({
+        "type": "string",
+        "required": false,
+        "accepted_forms": ["stdout", "file:<absolute-path>", "webhook:<url>"],
+        "supported_forms": ["stdout", "file:<absolute-path>"],
+        "currently_refused_forms": ["webhook:<url>"]
+    })
+}
+
 fn action_registry_flags() -> Value {
     serde_json::json!({
         "--emit": output_emit_flag(),
@@ -350,6 +380,52 @@ fn action_registry_flags() -> Value {
 
 fn db_output_flags() -> Value {
     serde_json::json!({"--db": {"type": "path", "required": true}, "--emit": output_emit_flag()})
+}
+
+fn optional_db_output_flags() -> Value {
+    serde_json::json!({"--db": {"type": "path", "required": false}, "--emit": output_emit_flag()})
+}
+
+fn events_flags() -> Value {
+    serde_json::json!({
+        "--db": {"type": "path", "required": true},
+        "--status": event_status_flag(),
+        "--limit": {"type": "i64", "required": false},
+        "--emit": output_emit_flag()
+    })
+}
+
+fn retry_flags() -> Value {
+    serde_json::json!({
+        "--db": {"type": "path", "required": true},
+        "--step": {"type": "u16", "required": false},
+        "--emit": output_emit_flag()
+    })
+}
+
+fn trace_flags() -> Value {
+    serde_json::json!({
+        "--db": {"type": "path", "required": true},
+        "--step": {"type": "u16", "required": false},
+        "--action": {"type": "u16", "required": false},
+        "--status": trace_status_flag(),
+        "--since-seq": {"type": "u64", "required": false},
+        "--until-seq": {"type": "u64", "required": false},
+        "--limit": {"type": "usize", "required": false},
+        "--emit": output_emit_flag()
+    })
+}
+
+fn event_status_flag() -> Value {
+    serde_json::json!({
+        "type": "enum",
+        "required": false,
+        "values": ["pending", "active", "waiting_answer", "cancelled", "completed", "failed"]
+    })
+}
+
+fn trace_status_flag() -> Value {
+    event_status_flag()
 }
 
 fn status_flags() -> Value {

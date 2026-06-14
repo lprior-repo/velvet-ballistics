@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use tempfile::TempDir;
@@ -20,8 +20,13 @@ fn xtask_help_lists_required_and_legacy_commands_when_requested() -> Result<(), 
     let output = run_xtask(workspace.path(), &["--help"])?;
 
     // Then
-    assert_eq!(output.status.code(), Some(0));
     let stdout = stdout_text(&output)?;
+    let stderr = stderr_text(&output)?;
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "xtask help failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
     assert_eq!(stdout.contains("Required command families:"), true);
     assert_eq!(stdout.contains("  ai-context"), true);
     assert_eq!(stdout.contains("Legacy commands:"), true);
@@ -38,8 +43,14 @@ fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn E
     let output = run_xtask(workspace.path(), &["--version"])?;
 
     // Then
-    assert_eq!(output.status.code(), Some(0));
-    assert_eq!(stdout_text(&output)?, "xtask 0.1.0\n");
+    let stdout = stdout_text(&output)?;
+    let stderr = stderr_text(&output)?;
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "xtask version failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert_eq!(stdout, "xtask 0.1.0\n");
     Ok(())
 }
 
@@ -228,6 +239,7 @@ fn xtask_ui_snapshot_rejects_invocation_without_all_or_fixture() -> Result<(), B
 }
 
 fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>> {
+    let cargo_target_dir = xtask_target_dir();
     Command::new("cargo")
         .current_dir(current_dir)
         .args([
@@ -239,11 +251,22 @@ fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>
             "--",
         ])
         .args(args)
+        .env("CARGO_TARGET_DIR", cargo_target_dir)
+        .env("TMPDIR", current_dir)
         .env_remove("RUSTFLAGS")
         .env_remove("RUSTDOCFLAGS")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
+        .env_remove("RUSTC_WRAPPER")
+        .env_remove("RUSTC_WORKSPACE_WRAPPER")
+        .env_remove("CARGO_BUILD_RUSTC_WRAPPER")
+        .env_remove("CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER")
+        .env_remove("CARGO_BUILD_TARGET_DIR")
         .output()
         .map_err(Into::into)
+}
+
+fn xtask_target_dir() -> PathBuf {
+    Path::new(WORKSPACE_ROOT).join("target/xtask-command-shell-coverage")
 }
 
 fn stdout_text(output: &Output) -> Result<String, Box<dyn Error>> {

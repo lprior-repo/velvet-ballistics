@@ -10,7 +10,9 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, Wor
 
 pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
-    proptest::prop_assume!(slot_count  != 0 );
+    if slot_count == 0 {
+        return Ok(());
+    }
 
     let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); slot_count];
 

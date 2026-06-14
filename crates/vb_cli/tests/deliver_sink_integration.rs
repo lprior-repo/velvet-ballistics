@@ -62,7 +62,7 @@ fn agent_context_deliver_rejects_missing_target() -> Result<(), String> {
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("--deliver requires stdout or file:<absolute-path>")
+            .contains("--deliver requires stdout, file:<absolute-path>, or webhook:<url>")
     );
     Ok(())
 }

@@ -306,6 +306,35 @@ fn parse_retry_requires_run_id_and_db() {
 }
 
 #[test]
+fn parse_retry_accepts_optional_step_and_emit_yaml() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "retry",
+        "123",
+        "--db",
+        "test-db",
+        "--step",
+        "7",
+        "--emit",
+        "yaml",
+    ]));
+    if let Ok(Command::Retry {
+        run_id,
+        step,
+        db,
+        output,
+    }) = parsed
+    {
+        assert_eq!(run_id, "123");
+        assert_eq!(step, Some(7));
+        assert_eq!(db, PathBuf::from("test-db"));
+        assert_eq!(output, OutputFormat::Yaml);
+    } else {
+        panic!("expected Retry command, got {parsed:?}");
+    }
+}
+
+#[test]
 fn parse_resume_requires_run_id_and_db() {
     let parsed = parse_args(&args(&[
         "velvet-ballistics",

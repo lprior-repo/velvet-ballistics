@@ -10,7 +10,9 @@ use vb_core::workflow::{
 
 pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResult<()> {
     let node_count = parts.nodes.len();
-    proptest::prop_assume!(node_count  != 0 );
+    if node_count == 0 {
+        return Ok(());
+    }
     check_step_in_range(parts.entry, node_count, 0, "entry")?;
     for (index, node) in parts.nodes.iter().enumerate() {
         if let Some(next) = node.next {

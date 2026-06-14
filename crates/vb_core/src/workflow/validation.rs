@@ -673,7 +673,9 @@ fn validate_symbol(symbol: SymbolId, symbols_count: u32) -> Result<(), WorkflowE
 /// following `next` edges and kind-specific targets.
 fn validate_reachability(parts: &WorkflowParts) -> Result<(), WorkflowError> {
     let node_count = parts.nodes.len();
-    proptest::prop_assume!(node_count  != 0 );
+    if node_count == 0 {
+        return Ok(());
+    }
 
     let mut visited: Vec<bool> = vec![false; node_count];
     let mut queue: Vec<usize> = Vec::new();

@@ -158,6 +158,7 @@ proptest! {
             .and_then(serde_json::Value::as_object)
             .expect("enums must be an object");
         prop_assert!(enums.contains_key("emit"));
+        prop_assert!(enums.contains_key("compile_emit"));
         prop_assert!(enums.contains_key("durability"));
         prop_assert!(enums.contains_key("verify_profile"));
     }

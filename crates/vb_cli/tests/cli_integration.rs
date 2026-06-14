@@ -1706,6 +1706,7 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
             return;
         }
     };
+    let admitted_digest = admitted_digest_for_durable_workflow(&compiled);
     let source_digest = WorkflowDigest::from_bytes(blake3::hash(CLI_WORKFLOW.as_bytes()).into());
     let run_id_value = match run_id.parse::<u64>() {
         Ok(value) => value,
@@ -1764,8 +1765,9 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
         return;
     };
     assert_eq!(header_record.run, vb_core::RunId::new(run_id_value));
-    assert_eq!(header_record.compiled_digest, compiled.digest());
+    assert_eq!(header_record.compiled_digest, admitted_digest);
     assert_eq!(header_record.status, 0);
+    drop(journal);
 
     let events_output = match run_cli(&[
         std::ffi::OsStr::new("events"),
@@ -5549,7 +5551,10 @@ fn seed_events_filter_journal(db_path: &std::path::Path) -> bool {
             attempt: 1,
         },
     ];
-    if !events.iter().all(|event| append_journal_event(&journal, event)) {
+    if !events
+        .iter()
+        .all(|event| append_journal_event(&journal, event))
+    {
         return false;
     }
     true
@@ -5582,9 +5587,15 @@ fn cli_events_status_filter_and_limit_apply_after_status_projection() {
     };
     assert_cli_success(&all_events_output, "events --emit yaml");
     let all_packet = parse_yaml_stdout(&all_events_output, "events --emit yaml");
-    assert_eq!(all_packet.get("kind"), Some(&serde_json::json!("events_report")));
+    assert_eq!(
+        all_packet.get("kind"),
+        Some(&serde_json::json!("events_report"))
+    );
     assert_eq!(all_packet.get("total"), Some(&serde_json::json!(5)));
-    let all_entries = match all_packet.get("events").and_then(serde_json::Value::as_array) {
+    let all_entries = match all_packet
+        .get("events")
+        .and_then(serde_json::Value::as_array)
+    {
         Some(entries) => entries,
         None => {
             assert!(
@@ -5611,11 +5622,23 @@ fn cli_events_status_filter_and_limit_apply_after_status_projection() {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&active_output, "events --status active --limit 1 --emit yaml");
-    let active_packet = parse_yaml_stdout(&active_output, "events --status active --limit 1 --emit yaml");
-    assert_eq!(active_packet.get("kind"), Some(&serde_json::json!("events_report")));
+    assert_cli_success(
+        &active_output,
+        "events --status active --limit 1 --emit yaml",
+    );
+    let active_packet = parse_yaml_stdout(
+        &active_output,
+        "events --status active --limit 1 --emit yaml",
+    );
+    assert_eq!(
+        active_packet.get("kind"),
+        Some(&serde_json::json!("events_report"))
+    );
     assert_eq!(active_packet.get("total"), Some(&serde_json::json!(1)));
-    let active_entries = match active_packet.get("events").and_then(serde_json::Value::as_array) {
+    let active_entries = match active_packet
+        .get("events")
+        .and_then(serde_json::Value::as_array)
+    {
         Some(entries) => entries,
         None => {
             assert!(
@@ -5626,7 +5649,10 @@ fn cli_events_status_filter_and_limit_apply_after_status_projection() {
         }
     };
     assert_eq!(active_entries.len(), 1);
-    assert_eq!(active_entries[0].get("type"), Some(&serde_json::json!("StepStarted")));
+    assert_eq!(
+        active_entries[0].get("type"),
+        Some(&serde_json::json!("StepStarted"))
+    );
     assert_eq!(active_entries[0].get("seq"), Some(&serde_json::json!(1)));
 
     let empty_output = match run_cli(&[
@@ -5644,9 +5670,15 @@ fn cli_events_status_filter_and_limit_apply_after_status_projection() {
     };
     assert_cli_success(&empty_output, "events --status failed --emit yaml");
     let empty_packet = parse_yaml_stdout(&empty_output, "events --status failed --emit yaml");
-    assert_eq!(empty_packet.get("kind"), Some(&serde_json::json!("events_report")));
+    assert_eq!(
+        empty_packet.get("kind"),
+        Some(&serde_json::json!("events_report"))
+    );
     assert_eq!(empty_packet.get("total"), Some(&serde_json::json!(0)));
-    let empty_entries = match empty_packet.get("events").and_then(serde_json::Value::as_array) {
+    let empty_entries = match empty_packet
+        .get("events")
+        .and_then(serde_json::Value::as_array)
+    {
         Some(entries) => entries,
         None => {
             assert!(
@@ -5656,7 +5688,10 @@ fn cli_events_status_filter_and_limit_apply_after_status_projection() {
             return;
         }
     };
-    assert!(empty_entries.is_empty(), "failed filter should yield empty events list");
+    assert!(
+        empty_entries.is_empty(),
+        "failed filter should yield empty events list"
+    );
 }
 
 #[test]
@@ -5693,13 +5728,22 @@ fn cli_events_and_inspect_share_locked_read_surface() {
     };
     assert_cli_success(&events_output, "events locked-read surface");
     let events_packet = parse_yaml_stdout(&events_output, "events locked-read surface");
-    assert_eq!(events_packet.get("command"), Some(&serde_json::json!("events")));
+    assert_eq!(
+        events_packet.get("command"),
+        Some(&serde_json::json!("events"))
+    );
     assert_eq!(
         events_packet.get("status"),
         Some(&serde_json::json!("writer_lock_held"))
     );
-    assert_eq!(events_packet.get("surface"), Some(&serde_json::json!("available")));
-    assert!(events_packet.get("run_id").is_some(), "locked surface should include run_id");
+    assert_eq!(
+        events_packet.get("surface"),
+        Some(&serde_json::json!("available"))
+    );
+    assert!(
+        events_packet.get("run_id").is_some(),
+        "locked surface should include run_id"
+    );
 
     let inspect_output = match run_cli(&[
         std::ffi::OsStr::new("inspect"),
@@ -5714,13 +5758,22 @@ fn cli_events_and_inspect_share_locked_read_surface() {
     };
     assert_cli_success(&inspect_output, "inspect locked-read surface");
     let inspect_packet = parse_yaml_stdout(&inspect_output, "inspect locked-read surface");
-    assert_eq!(inspect_packet.get("command"), Some(&serde_json::json!("inspect")));
+    assert_eq!(
+        inspect_packet.get("command"),
+        Some(&serde_json::json!("inspect"))
+    );
     assert_eq!(
         inspect_packet.get("status"),
         Some(&serde_json::json!("writer_lock_held"))
     );
-    assert_eq!(inspect_packet.get("surface"), Some(&serde_json::json!("available")));
-    assert!(inspect_packet.get("run_id").is_some(), "locked surface should include run_id");
+    assert_eq!(
+        inspect_packet.get("surface"),
+        Some(&serde_json::json!("available"))
+    );
+    assert!(
+        inspect_packet.get("run_id").is_some(),
+        "locked surface should include run_id"
+    );
 
     drop(journal);
 }
@@ -5938,4 +5991,14 @@ fn cli_compile_without_out_flag_outputs_digest_only() {
         }
     };
     assert!(!ir_bytes.is_empty(), "compiled IR file should not be empty");
+}
+
+fn admitted_digest_for_durable_workflow(compiled: &vb_core::CompiledWorkflow) -> WorkflowDigest {
+    let mut parts = compiled.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let ir_bytes = match postcard::to_allocvec(&parts) {
+        Ok(bytes) => bytes,
+        Err(error) => panic!("durable digest normalization failed: {error}"),
+    };
+    WorkflowDigest::from_bytes(blake3::hash(&ir_bytes).into())
 }

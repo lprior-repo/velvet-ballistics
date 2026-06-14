@@ -1329,7 +1329,7 @@ Required coverage areas:
 # --- meta (3) ---
 velvet-ballistics help
 velvet-ballistics version
-velvet-ballistics agent-context [--deliver stdout|file:<path>|webhook:<url>]
+velvet-ballistics agent-context [--deliver stdout|file:<absolute-path>|webhook:<url>]
 
 # --- diagnostic (4) ---
 velvet-ballistics status [--active-runs] [--queue-depth] [--trace-dropped] [--emit text|yaml]
@@ -1360,7 +1360,7 @@ velvet-ballistics ipc-serve --socket <path> --db <path>
 velvet-ballistics inspect <run-id> --db <path> [--emit text|yaml|postcard]
 velvet-ballistics events <run-id> --db <path> [--status <s>] [--limit <n>] [--emit text|yaml|postcard]
 velvet-ballistics replay <run-id> --db <path> [--emit text|yaml|postcard]
-velvet-ballistics trace <run-id> --db <path> [--step <id>] [--action <name>] [--status <s>] [--since-seq <n>] [--until-seq <n>] [--limit <n>] [--emit text|yaml|postcard]
+velvet-ballistics trace <run-id> --db <path> [--step <id>] [--action <id>] [--status <s>] [--since-seq <n>] [--until-seq <n>] [--limit <n>] [--emit text|yaml|postcard]
 velvet-ballistics incident <run-id> --db <path> [--emit text|yaml|postcard]
 
 # --- lifecycle: durable (5) ---

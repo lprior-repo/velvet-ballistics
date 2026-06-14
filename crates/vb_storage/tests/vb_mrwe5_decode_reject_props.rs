@@ -31,7 +31,14 @@ proptest! {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         prop_assert!(bytes_result.is_ok(), "valid generated mispayload should encode");
-        let bytes = match bytes_result.unwrap();
+        let bytes = match bytes_result {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "mismatched StepSucceeded record encoding failed: {error}"
+                )));
+            }
+        };
         let decoded = decode_journal_event(
             &bytes,
             MAGIC_JOURNAL_EVENT,
@@ -65,7 +72,14 @@ proptest! {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         prop_assert!(bytes_result.is_ok(), "valid generated mispayload should encode");
-        let bytes = match bytes_result.unwrap();
+        let bytes = match bytes_result {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "mismatched SlotWritten record encoding failed: {error}"
+                )));
+            }
+        };
         let decoded = decode_journal_event(
             &bytes,
             MAGIC_JOURNAL_EVENT,

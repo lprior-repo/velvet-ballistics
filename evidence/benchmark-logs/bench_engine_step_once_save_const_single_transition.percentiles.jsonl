@@ -1,1 +1,1 @@
-{"bench_id":"bench_engine_step_once_save_const_single_transition","sample_count":1,"min_ns":910,"max_ns":910,"total_ns":910,"mean_ns":910,"p50_latency_ns":910,"p95_latency_ns":910,"p99_latency_ns":910}
+{"bench_id":"bench_engine_step_once_save_const_single_transition","sample_count":1,"min_ns":600,"max_ns":600,"total_ns":600,"mean_ns":600,"p50_latency_ns":600,"p95_latency_ns":600,"p99_latency_ns":600}

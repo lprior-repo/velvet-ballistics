@@ -125,7 +125,9 @@ fn sub_tail_parallel_in_flight(
     frame: &mut vb_core::RunFrame,
     step: vb_core::StepIdx,
 ) -> RecoveryResult<()> {
-    proptest::prop_assume!(frame.parallel_in_flight()  != 0 );
+    if frame.parallel_in_flight() == 0 {
+        return Ok(());
+    }
     frame
         .sub_parallel_in_flight(1)
         .map_err(|_e| RecoveryError::ReplayDivergence {

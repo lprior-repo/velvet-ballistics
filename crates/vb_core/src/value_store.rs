@@ -315,7 +315,9 @@ impl ValueStore {
 
     /// Checks whether a new arena entry would exceed the cap.
     fn check_arena_cap(&self) -> CoreResult<()> {
-        proptest::prop_assume!(self.max_arena_entries  != 0 );
+        if self.max_arena_entries == 0 {
+            return Ok(());
+        }
         let current = self.total_arena_count();
         if current >= self.max_arena_entries {
             return Err(CoreError::BudgetExceeded {

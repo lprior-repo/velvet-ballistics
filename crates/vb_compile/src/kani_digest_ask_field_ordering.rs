@@ -63,10 +63,14 @@ fn check_ask_field_ordering_deterministic() {
     let timeout: Option<String> = if has_timeout {
         let timeout_len: usize = kani::any();
         kani::assume(timeout_len <= MAX_TIMEOUT_LEN);
-        let mut timeout = String::new();
+        let mut timeout_str = String::new();
         for _ in 0..timeout_len {
-            timeout.push(kani::any::<char>());
+            timeout_str.push(kani::any::<char>());
         }
+        Some(timeout_str)
+    } else {
+        None
+    };
 
     let source = source_with_ask(prompt.clone(), timeout.clone());
 

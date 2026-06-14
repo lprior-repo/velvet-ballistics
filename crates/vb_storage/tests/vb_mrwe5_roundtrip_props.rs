@@ -125,7 +125,7 @@ proptest! {
         prop_assert_eq!(envelope.record_kind, RecordKind::SlotWritten.id());
 
         // Verify the decoded variant and value
-        decoded_slot {
+        match decoded_slot {
             JournalEvent::SlotWrittenEvent { value: Some(decoded_value), .. } => {
                 prop_assert_eq!(decoded_value, value_bytes, "value must survive roundtrip");
             }
@@ -155,7 +155,14 @@ proptest! {
 
         let slot_bytes_result = encode_journal_event_record(&slot_event);
         prop_assert!(slot_bytes_result.is_ok(), "SlotWrittenEvent with None must encode");
-        let slot_bytes = match slot_bytes_result.unwrap();
+        let slot_bytes = match slot_bytes_result {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "SlotWrittenEvent with None failed to encode: {error}"
+                )));
+            }
+        };
 
         let decoded_slot_result = decode_journal_event(
             &slot_bytes,

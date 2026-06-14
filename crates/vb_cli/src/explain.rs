@@ -518,6 +518,7 @@ mod tests {
     fn explain_completion_message_mentions_deferred_gates() {
         let result = VerifyOk {
             digest_hex: "0123456789abcdef".repeat(4),
+            ir_digest_hex: "fedcba9876543210".repeat(4),
             node_count: 2,
             checks: vec!["profile", "results", "evidence:deferred"],
             warnings: Vec::new(),

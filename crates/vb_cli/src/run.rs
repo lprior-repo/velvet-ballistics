@@ -14,7 +14,9 @@ use crate::run_id::generate_run_id_from_clock;
 use std::path::Path;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
-use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest, WorkflowId, WorkflowParts};
+use vb_core::{
+    CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest, WorkflowId, WorkflowParts,
+};
 use vb_runtime::{InputMappingFailureKind, RuntimeError};
 
 pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str =
@@ -148,16 +150,12 @@ pub(crate) fn cmd_run(
         Err(code) => return code,
     };
 
-    if durability != DurabilityMode::None && let Some(db_path) = db {
-        if let Err(code) = persist_durable_run_records(
-            run_id,
-            &bytes,
-            &admitted_workflow,
-            db_path,
-            output,
-        ) {
-            return code;
-        }
+    if durability != DurabilityMode::None
+        && let Some(db_path) = db
+        && let Err(code) =
+            persist_durable_run_records(run_id, &bytes, &admitted_workflow, db_path, output)
+    {
+        return code;
     }
 
     run_compiled_workflow(run_id, admitted_workflow, inputs, durability, db, output)
@@ -202,12 +200,20 @@ pub(crate) fn cmd_run_compiled(
     };
 
     let run_id = generate_run_id_from_clock();
-    let admitted_workflow = match admitted_workflow_for_durability(&compiled, durability, OutputFormat::Text) {
-        Ok(workflow) => workflow,
-        Err(code) => return code,
-    };
+    let admitted_workflow =
+        match admitted_workflow_for_durability(&compiled, durability, OutputFormat::Text) {
+            Ok(workflow) => workflow,
+            Err(code) => return code,
+        };
 
-    run_compiled_workflow(run_id, admitted_workflow, inputs, durability, db, OutputFormat::Text)
+    run_compiled_workflow(
+        run_id,
+        admitted_workflow,
+        inputs,
+        durability,
+        db,
+        OutputFormat::Text,
+    )
 }
 
 pub(crate) fn map_runtime_inputs(
@@ -276,11 +282,9 @@ fn persist_durable_run_records(
 }
 
 fn sample_accepted_at_ms() -> u64 {
-    match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => match u64::try_from(duration.as_millis()) {
-            Ok(ms) => ms,
-            Err(_) => 0,
-        },
-        Err(_) => 0,
-    }
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+        .map_or(0, |ms| ms)
 }

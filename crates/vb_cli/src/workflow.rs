@@ -32,12 +32,12 @@ impl std::fmt::Display for InputMappingError {
 }
 
 pub(crate) fn run_compiled_workflow(
-    compiled: &CompiledWorkflow,
+    run_id: RunId,
+    compiled: CompiledWorkflow,
     inputs: Box<[(SlotIdx, SlotValue)]>,
     durability: DurabilityMode,
     db: Option<&Path>,
 ) -> ExitCode {
-    let run_id = RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
         crate::errln!("runtime configuration error: shard count must be non-zero");
         return ExitCode::FAILURE;
@@ -49,7 +49,7 @@ pub(crate) fn run_compiled_workflow(
     };
     let mut runtime = Runtime::new_with_journal(shard_count, config, journal);
 
-    if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
+    if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled, inputs) {
         crate::errln!("runtime submit error: {e}");
         return ExitCode::FAILURE;
     }

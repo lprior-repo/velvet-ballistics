@@ -93,7 +93,7 @@ fn symbol_intern_same_string_distinct_inserts_get_distinct_ids() -> Result<(), S
 fn symbol_intern_rejects_over_max_length() -> Result<(), String> {
     let mut store = ValueStore::new();
     let too_long = "x".repeat(MAX_SYMBOL_BYTES_PER_VALUE.saturating_add(1));
-    store.insert_symbol(too_long.into_boxed_str()) {
+    match store.insert_symbol(too_long.into_boxed_str()) {
         Err(CoreError::ResourceLimitExceeded {
             resource: "symbol_bytes",
         }) => Ok(()),
@@ -1181,8 +1181,22 @@ proptest::proptest! {
     ) {
         use proptest::prop_assert_eq;
         let mut store = ValueStore::new();
-        let id = match store.insert_symbol(s.clone().into_boxed_str()).unwrap();
-        let retrieved = store.symbol(id).unwrap();
+        let id = match store.insert_symbol(s.clone().into_boxed_str()) {
+            Ok(id) => id,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "insert_symbol failed: {error}"
+                )));
+            }
+        };
+        let retrieved = match store.symbol(id) {
+            Ok(retrieved) => retrieved,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "symbol lookup failed: {error}"
+                )));
+            }
+        };
         prop_assert_eq!(retrieved, s.as_str());
     }
 
@@ -1193,8 +1207,22 @@ proptest::proptest! {
         use proptest::{prop_assert, prop_assert_eq};
         let mut store = ValueStore::new();
         let bytes = Bytes::from(data.clone());
-        let id = store.insert_blob(bytes).unwrap();
-        let retrieved = store.blob(id).unwrap();
+        let id = match store.insert_blob(bytes) {
+            Ok(id) => id,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "insert_blob failed: {error}"
+                )));
+            }
+        };
+        let retrieved = match store.blob(id) {
+            Ok(retrieved) => retrieved,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "blob lookup failed: {error}"
+                )));
+            }
+        };
         prop_assert_eq!(retrieved.len(), data.len());
         prop_assert!(retrieved == data.as_slice());
     }
@@ -1207,11 +1235,30 @@ proptest::proptest! {
         let mut store = ValueStore::new();
         let values: Vec<SlotValue> = items.iter().map(|i| SlotValue::I64(*i)).collect();
         let boxed_values: Box<[SlotValue]> = values.clone().into_boxed_slice();
-        let id = store.insert_list(boxed_values).unwrap();
-        let retrieved = store.list(id).unwrap();
+        let id = match store.insert_list(boxed_values) {
+            Ok(id) => id,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "insert_list failed: {error}"
+                )));
+            }
+        };
+        let retrieved = match store.list(id) {
+            Ok(retrieved) => retrieved,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "list lookup failed: {error}"
+                )));
+            }
+        };
         prop_assert_eq!(retrieved.len(), values.len());
         for (i, expected) in values.iter().enumerate() {
-            prop_assert_eq!(retrieved[i], *expected);
+            let Some(actual) = retrieved.get(i) else {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "retrieved list missing index {i}"
+                )));
+            };
+            prop_assert_eq!(*actual, *expected);
         }
     }
 }

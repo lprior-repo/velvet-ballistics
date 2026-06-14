@@ -253,7 +253,7 @@ pub(crate) fn verify_success_report(
         "warnings": &result.warnings,
         "artifact": {
             "source_digest_hex": result.digest_hex.as_str(),
-            "ir_digest_hex": result.digest_hex.as_str(),
+            "ir_digest_hex": result.ir_digest_hex.as_str(),
             "node_count": result.node_count
         },
         "replay": {
@@ -337,6 +337,7 @@ mod tests {
     fn sample_result(checks: Vec<&'static str>) -> VerifyOk {
         VerifyOk {
             digest_hex: "0123456789abcdef".repeat(4),
+            ir_digest_hex: "fedcba9876543210".repeat(4),
             node_count: 2,
             checks,
             warnings: vec!["taint warning: not implemented".to_string()],
@@ -395,6 +396,12 @@ mod tests {
         assert_eq!(
             json_string_vec(&report, "/replay/gates_passed"),
             vec!["profile", "shape", "bounded", "results"]
+        );
+        assert_eq!(
+            report
+                .pointer("/artifact/ir_digest_hex")
+                .and_then(serde_json::Value::as_str),
+            Some("fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
         );
         assert_eq!(
             report

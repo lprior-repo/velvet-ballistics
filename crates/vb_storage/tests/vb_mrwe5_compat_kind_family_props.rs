@@ -69,7 +69,14 @@ proptest! {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         prop_assert!(bytes_result.is_ok(), "mismatrix records must be digest-valid");
-        let bytes = match bytes_result.unwrap();
+        let bytes = match bytes_result {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return Err(proptest::test_runner::TestCaseError::fail(format!(
+                    "mismatch record encoding failed: {error}"
+                )));
+            }
+        };
         prop_assert!(matches!(
             decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES),
             Err(JournalError::InvalidEvent)

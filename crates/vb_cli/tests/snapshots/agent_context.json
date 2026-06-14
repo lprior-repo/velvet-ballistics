@@ -88,6 +88,24 @@
       "summary": "List registered action contracts."
     },
     "agent-context": {
+      "flags": {
+        "--deliver": {
+          "accepted_forms": [
+            "stdout",
+            "file:<absolute-path>",
+            "webhook:<url>"
+          ],
+          "currently_refused_forms": [
+            "webhook:<url>"
+          ],
+          "required": false,
+          "supported_forms": [
+            "stdout",
+            "file:<absolute-path>"
+          ],
+          "type": "string"
+        }
+      },
       "outputs": [
         "json"
       ],
@@ -259,7 +277,7 @@
     "doctor": {
       "flags": {
         "--db": {
-          "required": true,
+          "required": false,
           "type": "path"
         },
         "--emit": {
@@ -279,6 +297,22 @@
         "--db": {
           "required": true,
           "type": "path"
+        },
+        "--status": {
+          "required": false,
+          "type": "enum",
+          "values": [
+            "pending",
+            "active",
+            "waiting_answer",
+            "cancelled",
+            "completed",
+            "failed"
+          ]
+        },
+        "--limit": {
+          "required": false,
+          "type": "i64"
         },
         "--emit": {
           "default": "text",
@@ -441,6 +475,10 @@
         "--db": {
           "required": true,
           "type": "path"
+        },
+        "--step": {
+          "required": false,
+          "type": "u16"
         },
         "--emit": {
           "default": "text",
@@ -639,6 +677,38 @@
           "required": true,
           "type": "path"
         },
+        "--step": {
+          "required": false,
+          "type": "u16"
+        },
+        "--action": {
+          "required": false,
+          "type": "u16"
+        },
+        "--status": {
+          "required": false,
+          "type": "enum",
+          "values": [
+            "pending",
+            "active",
+            "waiting_answer",
+            "cancelled",
+            "completed",
+            "failed"
+          ]
+        },
+        "--since-seq": {
+          "required": false,
+          "type": "u64"
+        },
+        "--until-seq": {
+          "required": false,
+          "type": "u64"
+        },
+        "--limit": {
+          "required": false,
+          "type": "usize"
+        },
         "--emit": {
           "default": "text",
           "type": "enum",
@@ -709,13 +779,18 @@
     }
   },
   "enums": {
+    "compile_emit": [
+      "ir",
+      "yaml",
+      "postcard"
+    ],
     "durability": [
       "strict",
       "journaled",
       "none"
     ],
     "emit": [
-      "ir",
+      "text",
       "yaml",
       "postcard"
     ],

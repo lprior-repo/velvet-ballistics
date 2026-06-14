@@ -73,6 +73,7 @@ impl FjallJournal {
     pub fn open(path: impl AsRef<Path>, config: Option<FjallConfig>) -> Result<Self, JournalError> {
         let config = config.unwrap_or_default();
         let path_ref = path.as_ref();
+        let process_lock = ProcessLock::acquire(path_ref)?;
         let database = fjall::Database::builder(path_ref)
             .cache_size(config.cache_size_bytes)
             .open()?;
@@ -107,7 +108,6 @@ impl FjallJournal {
         let recovery_stamp = database.keyspace(KEYSPACE_RECOVERY_STAMP, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
-        let _process_lock = ProcessLock::acquire(path_ref)?;
         Ok(Self {
             database,
             workflow_source,
@@ -123,7 +123,7 @@ impl FjallJournal {
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
             write_lock: Mutex::new(()),
-            _process_lock,
+            _process_lock: process_lock,
         })
     }
 

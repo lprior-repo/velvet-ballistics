@@ -32,6 +32,11 @@ impl ProcessLock {
     pub(crate) fn acquire(db_path: &Path) -> Result<Self, JournalError> {
         let lock_path = db_path.join(LOCK_FILENAME);
 
+        std::fs::create_dir_all(db_path).map_err(|source| JournalError::ProcessLockIo {
+            path: lock_path.clone().into_boxed_path(),
+            source,
+        })?;
+
         let mut file = File::options()
             .read(true)
             .write(true)

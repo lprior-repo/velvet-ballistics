@@ -80,10 +80,23 @@ fn parse_agent_context_deliver_target() {
 }
 
 #[test]
+fn parse_agent_context_accepts_webhook_deliver_target_shape() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballistics",
+        "agent-context",
+        "--deliver",
+        "webhook:https://example.invalid/hook",
+    ]));
+    assert!(
+        matches!(parsed, Ok(Command::AgentContext { deliver: Some(ref target) }) if target == "webhook:https://example.invalid/hook")
+    );
+}
+
+#[test]
 fn parse_agent_context_rejects_missing_deliver_target() {
     let parsed = parse_args(&args(&["velvet-ballistics", "agent-context", "--deliver"]));
     assert!(
-        matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "--deliver requires stdout or file:<absolute-path>")
+        matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "--deliver requires stdout, file:<absolute-path>, or webhook:<url>")
     );
 }
 

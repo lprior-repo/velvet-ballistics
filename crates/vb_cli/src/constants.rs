@@ -38,7 +38,7 @@ commands:
   ai-context <run_id> --db <path> [--emit text|yaml|postcard]  Emit compact AI context packet for a run
   help                                                Print this message
   version                                             Print version
-  agent-context [--deliver stdout|file:<path>]       Emit or deliver versioned AI-agent CLI schema
+  agent-context [--deliver stdout|file:<absolute-path>|webhook:<url>]  Emit or deliver versioned AI-agent CLI schema
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--db <path>] [--emit text|yaml]  Report runtime shard status (with live Fjall probe when --db is supplied)
   system status [--profile <quick|standard|full>] [--server none] [--db <path>] [--emit text|yaml]  Report bounded system health (probes Fjall when --db is supplied)
   action list [--emit text|yaml|postcard]                       List registered action contracts
@@ -48,7 +48,7 @@ options:
   --emit text      Output human-readable text (default)
   --emit yaml      Output structured YAML-compatible text
   --emit postcard  Output binary machine payload where supported
-  --deliver   Deliver supported artifacts to stdout or file:<absolute-path>
+  --deliver   Deliver supported artifacts to stdout, file:<absolute-path>, or webhook:<url> (webhook currently returns structured refusal)
 
 architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
 

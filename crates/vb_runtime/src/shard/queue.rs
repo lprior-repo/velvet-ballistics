@@ -4,7 +4,7 @@
 #[cfg(not(kani))]
 use crossbeam_queue::ArrayQueue;
 #[cfg(kani)]
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 #[cfg(kani)]
 use vb_core::ids::RunId;
 
@@ -41,16 +41,16 @@ pub struct ShardCommandQueue {
 ///
 /// Kani cannot tractably model `crossbeam_queue::ArrayQueue<ShardCommand>` here:
 /// the lock-free internals force CBMC through allocation/drop paths for every
-/// large `ShardCommand` variant before it reaches the wrapper invariants.  The
-/// proof harnesses bound valid capacities to two slots, so this model preserves
-/// the wrapper's capacity, FIFO, fullness, and error taxonomy for that Kani
-/// proof domain without pulling Crossbeam's unsupported concurrent internals
-/// into the state space. This is a queue-model stand-in only: it does not
-/// exercise production `ArrayQueue` enqueue/dequeue behavior. Production builds
-/// always use the Crossbeam-backed struct above.
+/// large `ShardCommand` variant before it reaches the wrapper invariants. This
+/// model keeps the queue sequential and allocation-free with a fixed ring buffer
+/// sized for the bounded harness domain. Constructor proofs still cover the
+/// public capacity predicate; enqueue/dequeue proofs deliberately exercise only
+/// capacities that fit this compact model. This is a queue-model stand-in only:
+/// it does not exercise production `ArrayQueue` enqueue/dequeue behavior.
+/// Production builds always use the Crossbeam-backed struct above.
 #[cfg(kani)]
 pub struct ShardCommandQueue {
-    slots: RefCell<[Option<KaniShardCommandToken>; KANI_COMMAND_QUEUE_MODEL_SLOTS]>,
+    slots: Cell<[Option<KaniShardCommandToken>; KANI_MODEL_SLOT_COUNT]>,
     head: Cell<usize>,
     len: Cell<usize>,
     /// Stored capacity to satisfy POST-001 and INV-001 invariants.
@@ -58,7 +58,7 @@ pub struct ShardCommandQueue {
 }
 
 #[cfg(kani)]
-const KANI_COMMAND_QUEUE_MODEL_SLOTS: usize = 2;
+const KANI_MODEL_SLOT_COUNT: usize = 3;
 
 #[cfg(kani)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -129,7 +129,7 @@ impl ShardCommandQueue {
     #[cfg(kani)]
     fn from_accepted_capacity(capacity: usize) -> Self {
         Self {
-            slots: RefCell::new([None, None]),
+            slots: Cell::new([None; KANI_MODEL_SLOT_COUNT]),
             head: Cell::new(0),
             len: Cell::new(0),
             capacity,
@@ -161,14 +161,14 @@ impl ShardCommandQueue {
             return Err(crate::RuntimeError::QueueFull);
         }
 
-        let Some(slot_index) = self.model_slot_index(len) else {
+        let Some(slot_index) = self.slot_index_for_offset(len) else {
             return Err(crate::RuntimeError::QueueFull);
         };
         let Some(next_len) = len.checked_add(1) else {
             return Err(crate::RuntimeError::QueueFull);
         };
 
-        let mut slots = self.slots.borrow_mut();
+        let mut slots = self.slots.get();
         let Some(slot) = slots.get_mut(slot_index) else {
             return Err(crate::RuntimeError::QueueFull);
         };
@@ -177,6 +177,7 @@ impl ShardCommandQueue {
         }
 
         *slot = Some(token);
+        self.slots.set(slots);
         self.len.set(next_len);
         Ok(())
     }
@@ -206,9 +207,11 @@ impl ShardCommandQueue {
 
         let head = self.head.get();
         let command = {
-            let mut slots = self.slots.borrow_mut();
+            let mut slots = self.slots.get();
             let slot = slots.get_mut(head)?;
-            slot.take()
+            let token = slot.take();
+            self.slots.set(slots);
+            token
         };
 
         if command.is_some() {
@@ -217,7 +220,10 @@ impl ShardCommandQueue {
             if next_len == 0 {
                 self.head.set(0);
             } else {
-                self.head.set(Self::next_model_head(head));
+                let Some(next_head) = self.next_model_head(head) else {
+                    return command;
+                };
+                self.head.set(next_head);
             }
         }
 
@@ -271,19 +277,40 @@ impl ShardCommandQueue {
     }
 
     #[cfg(kani)]
-    fn model_slot_index(&self, offset: usize) -> Option<usize> {
-        match (self.head.get(), offset) {
-            (0, 0) => Some(0),
-            (0, 1) => Some(1),
-            (1, 0) => Some(1),
-            (1, 1) => Some(0),
-            _ => None,
+    fn slot_index_for_offset(&self, offset: usize) -> Option<usize> {
+        if offset >= self.capacity {
+            return None;
         }
+        let span = self.model_slot_span();
+        if span == 0 {
+            return None;
+        }
+        let sum = self.head.get().checked_add(offset)?;
+        let index = if sum < span {
+            Some(sum)
+        } else {
+            sum.checked_sub(span)
+        }?;
+        if index < span { Some(index) } else { None }
     }
 
     #[cfg(kani)]
-    fn next_model_head(head: usize) -> usize {
-        if head == 0 { 1 } else { 0 }
+    fn next_model_head(&self, head: usize) -> Option<usize> {
+        let span = self.model_slot_span();
+        if span == 0 {
+            return None;
+        }
+        let next = head.checked_add(1)?;
+        if next < span { Some(next) } else { Some(0) }
+    }
+
+    #[cfg(kani)]
+    const fn model_slot_span(&self) -> usize {
+        if self.capacity < KANI_MODEL_SLOT_COUNT {
+            self.capacity
+        } else {
+            KANI_MODEL_SLOT_COUNT
+        }
     }
 }
 

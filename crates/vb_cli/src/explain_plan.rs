@@ -58,7 +58,7 @@ pub(crate) fn success_report(
         "success": true,
         "status": "valid",
         "artifact": {
-            "ir_digest_hex": result.digest_hex.as_str(),
+            "ir_digest_hex": result.ir_digest_hex.as_str(),
             "node_count": result.node_count
         },
         "execution_plan": plan_value(compiled, ast),
@@ -236,6 +236,7 @@ mod tests {
         };
         let result = VerifyOk {
             digest_hex: "0123456789abcdef".repeat(4),
+            ir_digest_hex: "fedcba9876543210".repeat(4),
             node_count: compiled.node_count(),
             checks: vec![
                 "profile",

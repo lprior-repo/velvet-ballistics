@@ -172,7 +172,7 @@ proptest! {
         let ticket = make_ticket(StepIdx::ZERO, ticket_attempt, capacity);
         let result = vb_runtime::shard::helpers::validate_action_completion(&state, ticket);
 
-        result {
+        match result {
             Ok(()) => {
                 prop_assert!(
                     ticket_attempt >= current,
@@ -205,13 +205,13 @@ proptest! {
         }
 
         let step_count = 1u16;
-        let mut state = match make_run_state(step_count, &[current]).unwrap();
+        let mut state = make_run_state(step_count, &[current]).unwrap();
         state.frame.mark_running(StepIdx::ZERO).ok();
 
         let ticket = make_ticket(StepIdx::ZERO, ticket_attempt, 10);
         let result = vb_runtime::shard::helpers::validate_action_completion(&state, ticket);
 
-        result {
+        match result {
             Err(RuntimeError::StaleAttempt { incoming, current: curr }) => {
                 prop_assert_eq!(incoming, ticket_attempt);
                 prop_assert_eq!(curr, current);
@@ -242,13 +242,13 @@ proptest! {
         };
 
         let step_count = 1u16;
-        let mut state = match make_run_state(step_count, &[current]).unwrap();
+        let mut state = make_run_state(step_count, &[current]).unwrap();
         state.frame.mark_running(StepIdx::ZERO).ok();
 
         let ticket = make_ticket(StepIdx::ZERO, attempt, capacity);
         let result = vb_runtime::shard::helpers::validate_action_completion(&state, ticket);
 
-        result {
+        match result {
             Ok(()) => {
                 prop_assert!(
                     attempt <= capacity,
@@ -274,12 +274,12 @@ proptest! {
         capacity in 1u16..=5,
     ) {
         let step_count = 1u16;
-        let state = match make_run_state(step_count, &[current]).unwrap();
+        let state = make_run_state(step_count, &[current]).unwrap();
         let ticket = make_ticket(StepIdx::ZERO, ticket_attempt, capacity);
 
         let result = normalize_scheduled_ticket(&state, ticket);
 
-        result {
+        match result {
             Ok(normalized) => {
                 prop_assert!(
                     normalized.attempt <= capacity,
@@ -308,7 +308,7 @@ proptest! {
     ) {
         let step = StepIdx::ZERO;
         let step_count = 1u16;
-        let mut state = match make_run_state(step_count, &[initial]).unwrap();
+        let mut state = make_run_state(step_count, &[initial]).unwrap();
 
         // Simulate first dispatch
         let ticket = make_ticket(step, 1, 3);
