@@ -9,7 +9,7 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
-use std::hash::{Hash, Hasher, DefaultHasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use vb_core::action::MockMarker;
 
@@ -71,9 +71,18 @@ fn test_mock_marker_hash_basic() {
     let h_ai = hash_of(MockMarker::AiClassifyTicket);
     let h_http = hash_of(MockMarker::HttpGet);
 
-    assert_ne!(h_github, h_ai, "GithubIssueCreate and AiClassifyTicket must hash differently");
-    assert_ne!(h_ai, h_http, "AiClassifyTicket and HttpGet must hash differently");
-    assert_ne!(h_github, h_http, "GithubIssueCreate and HttpGet must hash differently");
+    assert_ne!(
+        h_github, h_ai,
+        "GithubIssueCreate and AiClassifyTicket must hash differently"
+    );
+    assert_ne!(
+        h_ai, h_http,
+        "AiClassifyTicket and HttpGet must hash differently"
+    );
+    assert_ne!(
+        h_github, h_http,
+        "GithubIssueCreate and HttpGet must hash differently"
+    );
 }
 
 fn hash_of(m: MockMarker) -> u64 {

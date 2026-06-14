@@ -11,9 +11,9 @@
 use vb_core::action::{
     ActionContract, ActionError, ActionInput, ActionName, ActionOutcome, ActionTicket,
 };
+use vb_core::action::{Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_runtime::action::ActionRegistry;
-use vb_core::action::{Idempotency, RetrySafety, SideEffect};
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
     ActionContract {
@@ -45,6 +45,7 @@ fn make_input(action_id: u16) -> ActionInput {
             attempt: 3,
             idempotency_key: 0xBEEF,
             capacity: 999,
+            ..Default::default()
         },
     }
 }
@@ -57,7 +58,9 @@ fn make_input_with_capacity(action_id: u16, capacity: u16) -> ActionInput {
 
 fn register_action(registry: &mut ActionRegistry, id: u16, name: &str) -> ActionContract {
     let contract = make_contract(id, name);
-    registry.register(contract.clone()).expect("register must succeed");
+    registry
+        .register(contract.clone())
+        .expect("register must succeed");
     contract
 }
 
@@ -98,8 +101,7 @@ fn test_dispatch_preserves_run() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.run,
-                input.run,
+                ticket.run, input.run,
                 "dispatch must preserve run from input"
             );
         }
@@ -117,8 +119,7 @@ fn test_dispatch_preserves_step() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.step,
-                input.step,
+                ticket.step, input.step,
                 "dispatch must preserve step from input"
             );
         }
@@ -136,8 +137,7 @@ fn test_dispatch_preserves_ticket_seq() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.seq,
-                input.ticket.seq,
+                ticket.seq, input.ticket.seq,
                 "dispatch must preserve ticket seq from input"
             );
         }
@@ -155,8 +155,7 @@ fn test_dispatch_preserves_ticket_action() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.action,
-                input.action,
+                ticket.action, input.action,
                 "dispatch must preserve action from input"
             );
         }
@@ -174,8 +173,7 @@ fn test_dispatch_preserves_ticket_attempt() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.attempt,
-                input.ticket.attempt,
+                ticket.attempt, input.ticket.attempt,
                 "dispatch must preserve attempt from input ticket"
             );
         }
@@ -193,8 +191,7 @@ fn test_dispatch_preserves_ticket_idempotency_key() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.idempotency_key,
-                input.ticket.idempotency_key,
+                ticket.idempotency_key, input.ticket.idempotency_key,
                 "dispatch must preserve idempotency_key from input ticket"
             );
         }
@@ -216,8 +213,7 @@ fn test_dispatch_capacity_set_to_one() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.capacity,
-                1,
+                ticket.capacity, 1,
                 "dispatch must set capacity to 1 regardless of input"
             );
         }
@@ -235,8 +231,7 @@ fn test_dispatch_capacity_override_from_high_value() {
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.capacity,
-                1,
+                ticket.capacity, 1,
                 "dispatch must override input capacity to 1"
             );
             assert_ne!(
@@ -294,7 +289,9 @@ fn test_dispatch_zero_max_input_bytes_rejects() {
         required_capabilities: Box::new([]),
     };
 
-    registry.register(contract.clone()).expect("register must succeed");
+    registry
+        .register(contract.clone())
+        .expect("register must succeed");
 
     let result = registry.dispatch(&input, &contract);
     assert_eq!(
@@ -339,6 +336,7 @@ fn test_dispatch_with_different_action_names() {
                 attempt: 1,
                 idempotency_key: 0,
                 capacity: 1,
+                ..Default::default()
             },
         };
 
@@ -351,8 +349,7 @@ fn test_dispatch_with_different_action_names() {
                     "dispatch must work for action name '{name}'"
                 );
                 assert_eq!(
-                    ticket.capacity,
-                    1,
+                    ticket.capacity, 1,
                     "capacity must be 1 for action name '{name}'"
                 );
             }

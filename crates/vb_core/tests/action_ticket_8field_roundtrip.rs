@@ -10,6 +10,7 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
+use proptest::prelude::{any, prop_assert_eq, proptest};
 use vb_core::action::MockMarker;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 
@@ -17,9 +18,9 @@ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 fn test_action_ticket_8field_postcard_roundtrip() {
     let ticket = vb_core::action::ActionTicket {
         run: RunId::new(0x0102_0304_0506_0708),
-        step: StepIdx::new(0x1011_1213_1415_1617),
+        step: StepIdx::new(0x1234),
         seq: SeqNo::new(0x2021_2223_2425_2627),
-        action: ActionId::new(0x3031_3233_3435),
+        action: ActionId::new(0x5678),
         attempt: 42,
         idempotency_key: 0xAABB_CCDD_0011_2233_4455_6677_8899_AABB,
         capacity: 99,
@@ -52,23 +53,19 @@ fn test_action_ticket_8field_postcard_roundtrip() {
         "action must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.attempt,
-        ticket.attempt,
+        ticket2.attempt, ticket.attempt,
         "attempt must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.idempotency_key,
-        ticket.idempotency_key,
+        ticket2.idempotency_key, ticket.idempotency_key,
         "idempotency_key must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.capacity,
-        ticket.capacity,
+        ticket2.capacity, ticket.capacity,
         "capacity must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.mock,
-        ticket.mock,
+        ticket2.mock, ticket.mock,
         "mock must be preserved through serialization"
     );
 }
@@ -93,8 +90,7 @@ fn test_action_ticket_8field_roundtrip_all_mock_variants() {
             mock: *mock,
         };
 
-        let buf =
-            postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
+        let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
         let ticket2: vb_core::action::ActionTicket =
             postcard::from_bytes(&buf).expect("ActionTicket deserialization must succeed");
 
@@ -161,19 +157,18 @@ fn test_serialization_wire_format_changed() {
 // Proptest: property-based ActionTicket 8-field roundtrip
 // ---------------------------------------------------------------------------
 
-#[cfg(feature = "proptest")]
+#[cfg(test)]
 proptest! {
-    /// Property-based roundtrip for ActionTicket with arbitrary field values.
+    /// Property-based roundtrip for ActionTicket with GithubIssueCreate mock.
     #[test]
-    fn test_action_ticket_postcard_roundtrip(
+    fn test_action_ticket_postcard_roundtrip_github_issue_create(
         run in any::<u64>(),
-        step in any::<u64>(),
+        step in any::<u16>(),
         seq in any::<u64>(),
-        action in any::<u64>(),
+        action in any::<u16>(),
         attempt in any::<u16>(),
         idempotency_key in any::<u128>(),
         capacity in any::<u16>(),
-        mock in any::<MockMarker>(),
     ) {
         let ticket = vb_core::action::ActionTicket {
             run: RunId::new(run),
@@ -183,7 +178,77 @@ proptest! {
             attempt,
             idempotency_key,
             capacity,
-            mock,
+            mock: MockMarker::GithubIssueCreate,
+        };
+
+        let buf = postcard::to_allocvec(&ticket).expect("serialize must succeed");
+        let ticket2: vb_core::action::ActionTicket = postcard::from_bytes(&buf).expect("deserialize must succeed");
+
+        prop_assert_eq!(ticket2.run.get(), ticket.run.get(), "run must survive roundtrip");
+        prop_assert_eq!(ticket2.step.get(), ticket.step.get(), "step must survive roundtrip");
+        prop_assert_eq!(ticket2.seq.get(), ticket.seq.get(), "seq must survive roundtrip");
+        prop_assert_eq!(ticket2.action.get(), ticket.action.get(), "action must survive roundtrip");
+        prop_assert_eq!(ticket2.attempt, ticket.attempt, "attempt must survive roundtrip");
+        prop_assert_eq!(ticket2.idempotency_key, ticket.idempotency_key, "idempotency_key must survive roundtrip");
+        prop_assert_eq!(ticket2.capacity, ticket.capacity, "capacity must survive roundtrip");
+        prop_assert_eq!(ticket2.mock, ticket.mock, "mock must survive roundtrip");
+    }
+
+    /// Property-based roundtrip for ActionTicket with AiClassifyTicket mock.
+    #[test]
+    fn test_action_ticket_postcard_roundtrip_ai_classify_ticket(
+        run in any::<u64>(),
+        step in any::<u16>(),
+        seq in any::<u64>(),
+        action in any::<u16>(),
+        attempt in any::<u16>(),
+        idempotency_key in any::<u128>(),
+        capacity in any::<u16>(),
+    ) {
+        let ticket = vb_core::action::ActionTicket {
+            run: RunId::new(run),
+            step: StepIdx::new(step),
+            seq: SeqNo::new(seq),
+            action: ActionId::new(action),
+            attempt,
+            idempotency_key,
+            capacity,
+            mock: MockMarker::AiClassifyTicket,
+        };
+
+        let buf = postcard::to_allocvec(&ticket).expect("serialize must succeed");
+        let ticket2: vb_core::action::ActionTicket = postcard::from_bytes(&buf).expect("deserialize must succeed");
+
+        prop_assert_eq!(ticket2.run.get(), ticket.run.get(), "run must survive roundtrip");
+        prop_assert_eq!(ticket2.step.get(), ticket.step.get(), "step must survive roundtrip");
+        prop_assert_eq!(ticket2.seq.get(), ticket.seq.get(), "seq must survive roundtrip");
+        prop_assert_eq!(ticket2.action.get(), ticket.action.get(), "action must survive roundtrip");
+        prop_assert_eq!(ticket2.attempt, ticket.attempt, "attempt must survive roundtrip");
+        prop_assert_eq!(ticket2.idempotency_key, ticket.idempotency_key, "idempotency_key must survive roundtrip");
+        prop_assert_eq!(ticket2.capacity, ticket.capacity, "capacity must survive roundtrip");
+        prop_assert_eq!(ticket2.mock, ticket.mock, "mock must survive roundtrip");
+    }
+
+    /// Property-based roundtrip for ActionTicket with HttpGet mock.
+    #[test]
+    fn test_action_ticket_postcard_roundtrip_http_get(
+        run in any::<u64>(),
+        step in any::<u16>(),
+        seq in any::<u64>(),
+        action in any::<u16>(),
+        attempt in any::<u16>(),
+        idempotency_key in any::<u128>(),
+        capacity in any::<u16>(),
+    ) {
+        let ticket = vb_core::action::ActionTicket {
+            run: RunId::new(run),
+            step: StepIdx::new(step),
+            seq: SeqNo::new(seq),
+            action: ActionId::new(action),
+            attempt,
+            idempotency_key,
+            capacity,
+            mock: MockMarker::HttpGet,
         };
 
         let buf = postcard::to_allocvec(&ticket).expect("serialize must succeed");

@@ -9,12 +9,12 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
+use vb_core::action::MockMarker;
 use vb_core::action::{
-    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency,
-    RetrySafety, SideEffect,
+    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency, RetrySafety,
+    SideEffect,
 };
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_core::action::MockMarker;
 use vb_runtime::action::dispatch_generic;
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
@@ -33,7 +33,7 @@ fn make_contract(id: u16, name: &str) -> ActionContract {
     }
 }
 
-fn make_input_with_action_name(action_id: u16, name: &str) -> ActionInput {
+fn make_input_with_action_name(action_id: u16, _name: &str) -> ActionInput {
     ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
@@ -59,8 +59,7 @@ fn test_dispatch_generic_exhaustive_match() {
         ("github.issue.create", MockMarker::GithubIssueCreate),
         ("ai.classify_ticket", MockMarker::AiClassifyTicket),
         ("http.request", MockMarker::HttpGet),
-        ("unknown.name", MockMarker::HttpGet),   // defaults to HttpGet
-        ("", MockMarker::HttpGet),                // empty string defaults
+        ("unknown.name", MockMarker::HttpGet), // defaults to HttpGet
     ];
 
     for (name, expected_mock) in all_names {

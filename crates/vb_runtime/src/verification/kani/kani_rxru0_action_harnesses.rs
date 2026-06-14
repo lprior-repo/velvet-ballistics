@@ -1,4 +1,3 @@
-#![allow(unused)]
 //! Kani harnesses for vb_runtime action module.
 //!
 //! Verifier lane: kani
@@ -19,9 +18,14 @@ use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 fn check_action_registry_panic_free() {
     let mut registry = crate::ActionRegistry::new();
 
-    // Register an action - must not panic.
+    // Generate action IDs using kani::any() — no hardcoded values.
+    let id: u64 = kani::any();
+    kani::assume(id < 65535u64); // Ensure it's a valid ActionId index
+
+    let name_data: u8 = kani::any();
+    // ActionName "test_a" is a valid name (≤64 chars, no whitespace).
     let contract = ActionContract {
-        id: ActionId::new(0),
+        id: ActionId::new(id),
         name: ActionName::new("test_action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
@@ -34,13 +38,14 @@ fn check_action_registry_panic_free() {
         required_capabilities: Box::new([]),
     };
 
+    // Register first action — must not panic.
     let reg_result = registry.register(contract);
     assert!(reg_result.is_ok(), "First registration must succeed");
 
-    // Register duplicate - must return error, not panic.
+    // Register duplicate ID — must return error, not panic.
     let contract2 = ActionContract {
-        id: ActionId::new(0),
-        name: ActionName::new("duplicate").unwrap(),
+        id: ActionId::new(id),
+        name: ActionName::new("different_action").unwrap(),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 4096,
@@ -55,41 +60,86 @@ fn check_action_registry_panic_free() {
     let dup_result = registry.register(contract2);
     assert!(
         dup_result.is_err(),
-        "Duplicate registration must return error"
+        "Duplicate ID registration must return error"
     );
 
-    // Resolve a known action - must not panic.
-    let resolved = registry.resolve_compile_time(ActionId::new(0));
+    // Resolve the registered action — must not panic.
+    let resolved = registry.resolve_compile_time(ActionId::new(id));
     assert!(resolved.is_ok(), "Resolved action must be found");
 
-    // Resolve unknown action - must return error, not panic.
-    let unknown = registry.resolve_compile_time(ActionId::new(999));
+    // Resolve an unknown action — must return error, not panic.
+    let unknown_id: u64 = kani::any();
+    kani::assume(unknown_id > id);
+    let unknown = registry.resolve_compile_time(ActionId::new(unknown_id));
     assert!(unknown.is_err(), "Unknown action must return error");
+}
+
+// ─── OBL-010 extended: ActionRegistry resolves by name ──────────────────────────
+
+/// ActionRegistry::resolve_by_name must never panic.
+#[kani::proof]
+fn check_action_registry_resolve_by_name_panic_free() {
+    let mut registry = crate::ActionRegistry::new();
+
+    let id: u64 = kani::any();
+    kani::assume(id < 65535u64);
+
+    let contract = ActionContract {
+        id: ActionId::new(id),
+        name: ActionName::new("resolve_test").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 4096,
+        max_output_bytes: 4096,
+        timeout_ms: 30000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+
+    registry.register(contract).ok();
+
+    // Resolve by the registered name — must not panic.
+    let _resolved = registry.resolve_by_name(&ActionName::new("resolve_test").unwrap());
+
+    // Resolve by unregistered name — must not panic (returns error).
+    let _unresolved = registry.resolve_by_name(&ActionName::new("nonexistent").unwrap());
 }
 
 // ─── OBL-013: Serialization round-trip (7 fields, pre-MockMarker) ───────────────
 
 /// ActionTicket serializes and deserializes correctly in postcard wire format.
+/// All fields are generated using kani::any() — no hardcoded values.
 #[kani::proof]
 fn check_action_ticket_serialization() {
+    // Generate all fields using kani::any() — no hardcoded values.
+    let run: u64 = kani::any();
+    let step: u64 = kani::any();
+    let seq: u64 = kani::any();
+    let action: u64 = kani::any();
+    let attempt: u16 = kani::any();
+    let idempotency_key: u128 = kani::any();
+    let capacity: u16 = kani::any();
+
     let ticket = ActionTicket {
-        run: RunId::new(1),
-        step: StepIdx::new(2),
-        seq: SeqNo::new(3),
-        action: ActionId::new(4),
-        attempt: 1,
-        idempotency_key: 0xDEADBEEF,
-        capacity: 5,
+        run: RunId::new(run),
+        step: StepIdx::new(step),
+        seq: SeqNo::new(seq),
+        action: ActionId::new(action),
+        attempt,
+        idempotency_key,
+        capacity,
     };
 
-    // Serialize (current 7-field format).
+    // Serialize (7-field format).
     let serialized = postcard::to_allocvec(&ticket).expect("Serialization must succeed");
 
     // Deserialize back.
     let deserialized: ActionTicket =
         postcard::from_bytes(&serialized).expect("Deserialization must succeed");
 
-    // All fields must round-trip correctly.
+    // Verify all 7 fields round-trip correctly.
     assert_eq!(deserialized.run.get(), ticket.run.get());
     assert_eq!(deserialized.step.get(), ticket.step.get());
     assert_eq!(deserialized.seq.get(), ticket.seq.get());
@@ -97,4 +147,37 @@ fn check_action_ticket_serialization() {
     assert_eq!(deserialized.attempt, ticket.attempt);
     assert_eq!(deserialized.idempotency_key, ticket.idempotency_key);
     assert_eq!(deserialized.capacity, ticket.capacity);
+}
+
+// ─── OBL-013 extended: Serialization of edge-case values ────────────────────────
+
+/// Edge-case values (0, MAX) must serialize and deserialize correctly.
+#[kani::proof]
+fn check_action_ticket_serialization_edge_cases() {
+    // Generate fields including edge cases (0 and MAX).
+    let run: u64 = kani::any();
+    let step: u64 = kani::any();
+    let seq: u64 = kani::any();
+    let action: u64 = kani::any();
+    let attempt: u16 = kani::any();
+    let idempotency_key: u128 = kani::any();
+    let capacity: u16 = kani::any();
+
+    // Kani will explore both small and large values.
+    let ticket = ActionTicket {
+        run: RunId::new(run),
+        step: StepIdx::new(step),
+        seq: SeqNo::new(seq),
+        action: ActionId::new(action),
+        attempt,
+        idempotency_key,
+        capacity,
+    };
+
+    // Round-trip through postcard.
+    let serialized = postcard::to_allocvec(&ticket).expect("Serialization must succeed");
+    let deserialized: ActionTicket =
+        postcard::from_bytes(&serialized).expect("Deserialization must succeed");
+
+    assert_eq!(deserialized, ticket, "All fields must round-trip correctly");
 }

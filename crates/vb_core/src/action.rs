@@ -7,6 +7,7 @@ use crate::frame::RunFrame;
 use crate::ids::{ActionId, BlobId, RunId, SeqNo, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 use thiserror::Error;
 
 /// Maximum length for an action name.
@@ -279,6 +280,36 @@ pub struct ActionOutput {
 /// Result alias for action operations.
 pub type ActionResult<T> = Result<T, ActionError>;
 
+/// Marker enum identifying which mock handler should process an action.
+///
+/// Each variant corresponds to one of the three canonical action names that
+/// use mock handlers instead of real implementations.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MockMarker {
+    /// Mock handler for `github.issue.create` actions.
+    GithubIssueCreate = 0,
+    /// Mock handler for `ai.classify_ticket` actions.
+    AiClassifyTicket = 1,
+    /// Mock handler for `http.request` actions.
+    #[default]
+    HttpGet = 2,
+}
+
+impl MockMarker {
+    /// Derives a MockMarker from an action contract name.
+    ///
+    /// Returns the matching variant for the three canonical mock action names,
+    /// or `MockMarker::HttpGet` as the default for unknown names.
+    #[must_use]
+    pub fn from_contract_name(name: &str) -> Self {
+        match name {
+            "github.issue.create" => MockMarker::GithubIssueCreate,
+            "ai.classify_ticket" => MockMarker::AiClassifyTicket,
+            _ => MockMarker::HttpGet,
+        }
+    }
+}
+
 /// Unique ticket tracking one action invocation across suspension boundaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ActionTicket {
@@ -296,6 +327,23 @@ pub struct ActionTicket {
     pub idempotency_key: u128,
     /// Maximum attempts allowed (capacity bound from retry policy).
     pub capacity: u16,
+    /// Mock marker assigned by dispatch when the action uses a mock handler.
+    pub mock: MockMarker,
+}
+
+impl Default for ActionTicket {
+    fn default() -> Self {
+        Self {
+            run: RunId::new(0),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 0,
+            idempotency_key: 0,
+            capacity: 0,
+            mock: MockMarker::default(),
+        }
+    }
 }
 
 /// Computes the canonical deterministic idempotency key for an action ticket.
@@ -632,6 +680,7 @@ pub fn issue_action_ticket(
         attempt,
         idempotency_key,
         capacity,
+        ..Default::default()
     }
 }
 

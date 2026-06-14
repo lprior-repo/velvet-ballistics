@@ -5,7 +5,8 @@
 use std::collections::HashMap;
 
 use vb_core::action::{
-    ActionContract, ActionError, ActionInput, ActionName, ActionOutcome, ActionResult, ActionTicket,
+    ActionContract, ActionError, ActionInput, ActionName, ActionOutcome, ActionResult,
+    ActionTicket, MockMarker,
 };
 use vb_core::ids::ActionId;
 
@@ -184,6 +185,10 @@ pub fn dispatch_generic(
     contract: &ActionContract,
 ) -> ActionResult<ActionOutcome> {
     validate_input_bytes(input, contract)?;
+
+    // Determine mock marker from the contract name.
+    let mock = MockMarker::from_contract_name(contract.name.as_str());
+
     let ticket = ActionTicket {
         run: input.run,
         step: input.step,
@@ -192,6 +197,7 @@ pub fn dispatch_generic(
         attempt: input.ticket.attempt,
         idempotency_key: input.ticket.idempotency_key,
         capacity: 1,
+        mock,
     };
     Ok(ActionOutcome::Suspended(ticket))
 }

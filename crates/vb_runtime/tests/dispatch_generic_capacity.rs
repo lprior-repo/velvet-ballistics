@@ -10,12 +10,12 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
+use vb_core::action::MockMarker;
 use vb_core::action::{
-    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency,
-    RetrySafety, SideEffect,
+    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency, RetrySafety,
+    SideEffect,
 };
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_core::action::MockMarker;
 use vb_runtime::action::dispatch_generic;
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
@@ -34,7 +34,7 @@ fn make_contract(id: u16, name: &str) -> ActionContract {
     }
 }
 
-fn make_input_with_action_name(action_id: u16, name: &str) -> ActionInput {
+fn make_input_with_action_name(action_id: u16, _name: &str) -> ActionInput {
     ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
@@ -65,13 +65,11 @@ fn test_dispatch_capacity_bounded() {
     match outcome {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
-                ticket.capacity,
-                1,
+                ticket.capacity, 1,
                 "dispatch_generic must always set capacity to 1, not from input"
             );
             assert_ne!(
-                ticket.capacity,
-                9999,
+                ticket.capacity, 9999,
                 "capacity must NOT be derived from input.ticket.capacity"
             );
         }

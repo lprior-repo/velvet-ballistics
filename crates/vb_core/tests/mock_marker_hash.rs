@@ -9,7 +9,7 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
-use std::hash::{Hash, Hasher, DefaultHasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use vb_core::action::MockMarker;
 
@@ -25,17 +25,29 @@ fn test_mock_marker_hash_consistency() {
     let m1 = MockMarker::GithubIssueCreate;
     let m2 = MockMarker::GithubIssueCreate;
     assert_eq!(m1, m2, "setup: values must be equal");
-    assert_eq!(hash_of(m1), hash_of(m2), "equal values must produce equal hashes");
+    assert_eq!(
+        hash_of(m1),
+        hash_of(m2),
+        "equal values must produce equal hashes"
+    );
 
     let m1 = MockMarker::AiClassifyTicket;
     let m2 = MockMarker::AiClassifyTicket;
     assert_eq!(m1, m2, "setup: values must be equal");
-    assert_eq!(hash_of(m1), hash_of(m2), "equal values must produce equal hashes");
+    assert_eq!(
+        hash_of(m1),
+        hash_of(m2),
+        "equal values must produce equal hashes"
+    );
 
     let m1 = MockMarker::HttpGet;
     let m2 = MockMarker::HttpGet;
     assert_eq!(m1, m2, "setup: values must be equal");
-    assert_eq!(hash_of(m1), hash_of(m2), "equal values must produce equal hashes");
+    assert_eq!(
+        hash_of(m1),
+        hash_of(m2),
+        "equal values must produce equal hashes"
+    );
 }
 
 #[test]

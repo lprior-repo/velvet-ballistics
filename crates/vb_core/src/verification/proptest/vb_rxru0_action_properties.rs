@@ -118,6 +118,7 @@ proptest! {
     ) {
         let ticket = ActionTicket {
             run, step, seq, action, attempt, idempotency_key, capacity,
+            ..Default::default()
         };
         let cloned = ticket.clone();
         prop_assert_eq!(ticket, cloned);
@@ -201,6 +202,7 @@ proptest! {
         let correct_key = action::compute_action_idempotency_key(run, seq, action);
         let ticket = ActionTicket {
             run, step, seq, action, attempt, idempotency_key: correct_key, capacity,
+            ..Default::default()
         };
         prop_assert!(action::action_ticket_has_valid_key(ticket));
     }
@@ -218,6 +220,7 @@ proptest! {
         let wrong_key: u128 = 0xBAD;
         let ticket = ActionTicket {
             run, step, seq, action, attempt, idempotency_key: wrong_key, capacity,
+            ..Default::default()
         };
         prop_assert!(!action::action_ticket_has_valid_key(ticket));
     }

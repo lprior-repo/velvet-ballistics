@@ -10,12 +10,13 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
+use proptest::prelude::{prop_assert_eq, proptest};
+use vb_core::action::MockMarker;
 use vb_core::action::{
-    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency,
-    RetrySafety, SideEffect,
+    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency, RetrySafety,
+    SideEffect,
 };
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_core::action::MockMarker;
 use vb_runtime::action::dispatch_generic;
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
@@ -34,7 +35,7 @@ fn make_contract(id: u16, name: &str) -> ActionContract {
     }
 }
 
-fn make_input_with_action_name(action_id: u16, name: &str) -> ActionInput {
+fn make_input_with_action_name(action_id: u16, _name: &str) -> ActionInput {
     ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
@@ -75,8 +76,7 @@ fn test_dispatch_deterministic() {
         // All 10 executions produce identical outcomes.
         for result in &results[1..] {
             assert_eq!(
-                result,
-                &results[0],
+                result, &results[0],
                 "dispatch_generic must be deterministic for '{name}'"
             );
         }
@@ -87,7 +87,7 @@ fn test_dispatch_deterministic() {
 // Proptest: property-based determinism
 // ---------------------------------------------------------------------------
 
-#[cfg(feature = "proptest")]
+#[cfg(test)]
 proptest! {
     /// Property-based determinism test for dispatch_generic.
     #[test]

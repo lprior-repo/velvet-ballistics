@@ -11,12 +11,12 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
+use vb_core::action::MockMarker;
 use vb_core::action::{
-    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency,
-    RetrySafety, SideEffect,
+    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency, RetrySafety,
+    SideEffect,
 };
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_core::action::MockMarker;
 use vb_runtime::action::dispatch_generic;
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
@@ -35,7 +35,7 @@ fn make_contract(id: u16, name: &str) -> ActionContract {
     }
 }
 
-fn make_input_with_action_name(action_id: u16, name: &str) -> ActionInput {
+fn make_input_with_action_name(action_id: u16, _name: &str) -> ActionInput {
     ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
@@ -62,41 +62,25 @@ fn test_dispatch_preserves_all_fields() {
 
     match outcome {
         ActionOutcome::Suspended(ticket) => {
+            assert_eq!(ticket.run, input.run, "run must be preserved from input");
+            assert_eq!(ticket.step, input.step, "step must be preserved from input");
             assert_eq!(
-                ticket.run,
-                input.run,
-                "run must be preserved from input"
-            );
-            assert_eq!(
-                ticket.step,
-                input.step,
-                "step must be preserved from input"
-            );
-            assert_eq!(
-                ticket.seq,
-                input.ticket.seq,
+                ticket.seq, input.ticket.seq,
                 "seq must be preserved from input ticket"
             );
             assert_eq!(
-                ticket.action,
-                input.action,
+                ticket.action, input.action,
                 "action must be preserved from input"
             );
             assert_eq!(
-                ticket.attempt,
-                input.ticket.attempt,
+                ticket.attempt, input.ticket.attempt,
                 "attempt must be preserved from input ticket"
             );
             assert_eq!(
-                ticket.idempotency_key,
-                input.ticket.idempotency_key,
+                ticket.idempotency_key, input.ticket.idempotency_key,
                 "idempotency_key must be preserved from input ticket"
             );
-            assert_eq!(
-                ticket.capacity,
-                1,
-                "capacity must be set to 1"
-            );
+            assert_eq!(ticket.capacity, 1, "capacity must be set to 1");
             assert_eq!(
                 ticket.mock,
                 MockMarker::GithubIssueCreate,

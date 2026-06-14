@@ -11,13 +11,13 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
+use vb_core::action::MockMarker;
 use vb_core::action::{
-    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency,
-    RetrySafety, SideEffect,
+    ActionContract, ActionInput, ActionName, ActionOutcome, ActionTicket, Idempotency, RetrySafety,
+    SideEffect,
 };
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_core::action::MockMarker;
-use vb_runtime::action::{ActionRegistry, dispatch_generic};
+use vb_runtime::action::dispatch_generic;
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
     ActionContract {
@@ -35,7 +35,7 @@ fn make_contract(id: u16, name: &str) -> ActionContract {
     }
 }
 
-fn make_input_with_action_name(action_id: u16, name: &str) -> ActionInput {
+fn make_input_with_action_name(action_id: u16, _name: &str) -> ActionInput {
     ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
