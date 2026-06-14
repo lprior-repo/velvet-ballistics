@@ -24,7 +24,7 @@ use vb_core::workflow::{
 /// Proves Gate 8 totality over the bounded structural space relevant to
 /// accessor validation without constructing unrelated arbitrary heap shapes.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(8)]
 fn kani_gate_08_arbitrary_parts_valid_accessors_pass() {
     let parts = bounded_parts_with_valid_accessors();
 
@@ -179,7 +179,7 @@ fn bounded_structural_step_names() -> Box<[Box<str>]> {
 ///
 /// Proves rejection totality over structural variants.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(8)]
 fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
     let slot_count: u16 = kani::any();
     kani::assume(slot_count > 0);
@@ -204,7 +204,7 @@ fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
 
 /// Harness 3: Bounded structural WorkflowParts with field symbol out of range is rejected.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(8)]
 fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
     let slot_count: u16 = kani::any();
     let symbols_count: u32 = kani::any();
@@ -243,7 +243,7 @@ fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
 
 /// Harness 4: WorkflowParts with a guaranteed u32::MAX index sentinel is rejected.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(8)]
 fn kani_gate_08_arbitrary_parts_index_sentinel_rejected() {
     let parts = bounded_parts_with_index_sentinel();
 
@@ -333,7 +333,7 @@ fn kani_gate_08_step_names_independent_of_slots() {
 /// GOD RULE fix: replaced hardcoded WorkflowParts with kani::any() + structural constraints.
 /// Tests that valid accessor paths pass Gate 8 regardless of node content.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(8)]
 fn kani_gate_08_empty_nodes_valid_accessors_pass() {
     let parts = bounded_empty_nodes_with_valid_accessors();
 
@@ -349,7 +349,7 @@ fn kani_gate_08_empty_nodes_valid_accessors_pass() {
 ///
 /// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
-#[kani::unwind(3)]
+#[kani::unwind(8)]
 fn kani_gate_08_expressions_with_accessor_refs() {
     // Bounded symbolic inputs. Each input is constrained to a small domain
     // so the solver does not blow up on a full WorkflowParts Arbitrary impl.

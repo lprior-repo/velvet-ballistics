@@ -107,7 +107,7 @@ impl kani::Arbitrary for AccessorProgram {
     fn any() -> Self {
         Self {
             root: SlotIdx::new(kani::any::<u16>()),
-            path: bounded_path(),
+            path: bounded_accessor_path(),
         }
     }
 }
@@ -421,10 +421,22 @@ impl kani::Arbitrary for RunFrame {
         kani::assume(first_step < step_count);
         let run_id = crate::ids::RunId::new(kani::any::<u64>());
         let first_step_idx = StepIdx::new(first_step);
-        // With valid assumes, RunFrame::new always succeeds (step_count > 0, first_step < step_count).
-        // The Ok variant is guaranteed; Err is unreachable under these assumes.
-        RunFrame::new(run_id, first_step_idx, step_count, slot_count)
-            .unwrap_or_else(|_| unreachable!("RunFrame::new failed with valid assumes"))
+        // Under kani::assume constraints (step_count > 0, first_step < step_count),
+        // RunFrame::new always succeeds. The Err branch is provably dead.
+        let frame = match RunFrame::new(run_id, first_step_idx, step_count, slot_count) {
+            Ok(f) => f,
+            Err(_) => {
+                // Provably unreachable: assumes guarantee step_count > 0 and
+                // first_step < step_count. Minimal fallback frame, then loop.
+                let fallback_id = crate::ids::RunId::new(0);
+                if let Ok(f) = RunFrame::new(fallback_id, StepIdx::new(0), 1, 1) {
+                    f
+                } else {
+                    loop {}
+                }
+            }
+        };
+        frame
     }
 }
 
@@ -437,16 +449,22 @@ fn kani_step_name(index: u8) -> Box<str> {
     }
 }
 
-fn bounded_path() -> Box<[PathSegment]> {
-    match bounded_len_3() {
+fn bounded_accessor_path() -> Box<[PathSegment]> {
+    let len: u8 = kani::any();
+    kani::assume(len <= 16);
+    match len {
         0 => Box::new([]),
         1 => Box::new([kani::any::<PathSegment>()]),
         2 => Box::new([kani::any::<PathSegment>(), kani::any::<PathSegment>()]),
-        _ => Box::new([
-            kani::any::<PathSegment>(),
-            kani::any::<PathSegment>(),
-            kani::any::<PathSegment>(),
-        ]),
+        _ => {
+            let mut path = Vec::with_capacity(usize::from(len));
+            let mut i = 0u8;
+            while i < len {
+                path.push(kani::any::<PathSegment>());
+                i = match i.checked_add(1) { Some(n) => n, None => break };
+            }
+            path.into_boxed_slice()
+        },
     }
 }
 

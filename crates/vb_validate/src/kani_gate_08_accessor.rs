@@ -140,6 +140,33 @@ fn kani_gate_08_index_u32_max_rejected() {
 }
 
 #[kani::proof]
+fn kani_gate_08_path_too_deep_rejected() {
+    // Construct an accessor with path length = 17 (exceeds MAX_ACCESSOR_PATH_DEPTH = 16)
+    let mut path: Vec<PathSegment> = Vec::with_capacity(17);
+    let mut i = 0u32;
+    while i < 17 {
+        path.push(PathSegment::Field(SymbolId::new(i % 100)));
+        i = match i.checked_add(1) { Some(n) => n, None => break };
+    }
+
+    let parts = workflow_parts_with_accessors(
+        Box::new([AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: path.into_boxed_slice(),
+        }]),
+        1,
+        100,
+    );
+
+    let result = validate_gate_08_accessor_path_segments(&parts);
+    kani::assert(
+        matches!(result, Err(ValidationError::AccessorPathTooDeep { .. })),
+        "accessor path depth exceeding 16 is rejected",
+    );
+    std::mem::forget(parts);
+}
+
+#[kani::proof]
 fn kani_gate_08_root_oob_rejected() {
     let slot_count: u16 = kani::any();
     let root: u16 = kani::any();
