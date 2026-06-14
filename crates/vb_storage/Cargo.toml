@@ -25,6 +25,7 @@ serde.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 flux-rs = { git = "https://github.com/flux-rs/flux", rev = "4d329f2", package = "flux-rs", optional = true }
+loom = { version = "0.7", optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
@@ -42,6 +43,7 @@ kani-vb-h09wf = []
 kani-vb-mrwe5 = []
 kani-vb-fn4vt = []
 kani-vb-mrwe6 = []
+loom-vb-mrwe-7 = ["dep:loom"]
 vb-mrwe6-flux-refinements = ["dep:flux-rs"]
 vb-mrwe6-flux-negative-probes = []
 test-support = []
