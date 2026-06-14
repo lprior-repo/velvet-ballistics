@@ -64,8 +64,7 @@ verus! {
     pub proof fn proof_propagate_action_taint_identity_pure(
         input_taint: u8
     )
-        ensures spec_propagate_action_taint(0, input_taint) == input_taint
-            && spec_propagate_action_taint(1, input_taint) == input_taint
+        ensures spec_propagate_action_taint(0, input_taint) == input_taint             && spec_propagate_action_taint(1, input_taint) == input_taint
     {
         reveal(spec_propagate_action_taint);
         assert(spec_propagate_action_taint(0, input_taint) == input_taint) by (compute);
@@ -78,7 +77,7 @@ verus! {
         input_taint: u8
     )
         ensures spec_propagate_action_taint(2, 0) == 0
-        ensures spec_propagate_action_taint(2, 1) == 2
+        && spec_propagate_action_taint(2, 1) == 2
         ensures spec_propagate_action_taint(2, 2) == 2
     {
         reveal(spec_propagate_action_taint);
@@ -139,7 +138,7 @@ verus! {
     /// or zero multiplication, which would produce degenerate keys.
     pub proof fn proof_hash_constants_non_trivial()
         ensures 0x6c62272e07bb0143_u128 > 1
-        ensures 0x3b4f1a5b6c2d8e7f_u128 > 1
+        && 0x3b4f1a5b6c2d8e7f_u128 > 1
         ensures 0x5bd1e9956c7b4d3a_u128 > 1
     {
         assert(0x6c62272e07bb0143_u128 > 1) by (compute);
@@ -186,7 +185,7 @@ verus! {
         run: u128, seq: u128, action: u128
     )
         ensures spec_compute_action_idempotency_key(run, seq, action) >= 0
-        ensures spec_compute_action_idempotency_key(run, seq, action) <= u128::MAX
+        && spec_compute_action_idempotency_key(run, seq, action) <= u128::MAX
     {
         // All operations are wrapping_add/wrapping_mul on u128.
         // Result is always a valid u128.
@@ -231,11 +230,11 @@ verus! {
         attempt: u16, idempotency_key: u128, capacity: u16,
     )
         ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).run == run
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
+        && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).step == step
         ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).seq == seq
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).action == action
+        && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).action == action
         ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).attempt == attempt
-        ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).idempotency_key == idempotency_key
+        && spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).idempotency_key == idempotency_key
         ensures spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity).capacity == capacity
     {
         let ticket = spec_issue_action_ticket(run, step, seq, action, attempt, idempotency_key, capacity);

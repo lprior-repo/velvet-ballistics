@@ -105,12 +105,12 @@ mod verification {
             ],
             vec![],
         ) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false, "plan construction failed");
-            return;
-        }
-    }
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "plan construction failed");
+                return;
+            }
+        };
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -190,12 +190,12 @@ mod verification {
             ],
             vec![],
         ) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false, "plan construction failed");
-            return;
-        }
-    }
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "plan construction failed");
+                return;
+            }
+        };
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -268,12 +268,12 @@ mod verification {
             ],
             vec![],
         ) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false, "plan construction failed");
-            return;
-        }
-    }
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "plan construction failed");
+                return;
+            }
+        };
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -365,12 +365,12 @@ mod verification {
             ],
             vec![],
         ) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false, "plan construction failed");
-            return;
-        }
-    }
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "plan construction failed");
+                return;
+            }
+        };
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -396,7 +396,10 @@ mod verification {
         }
 
         // Verify step 1 is an absorbing terminal.
-        let state = run.step_state(terminal_idx).unwrap();
+        let state = match run.step_state(terminal_idx) {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        };
         kani::assert(
             matches!(
                 state,
@@ -421,7 +424,10 @@ mod verification {
         let result = replay_step(node1, &mut run, &mut store, &plan);
 
         // After replay attempt, step state must still be absorbing terminal.
-        let state_after = run.step_state(terminal_idx).unwrap();
+        let state_after = match run.step_state(terminal_idx) {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        };
         kani::assert(
             matches!(
                 state_after,

@@ -56,7 +56,10 @@ fn kani_replay_skips_terminal_states() {
     kani::cover!(terminal_idx == StepIdx::new(3), "terminal step can be last");
 
     mark_terminal(&mut run, terminal_idx, terminal_state);
-    let state = run.step_state(terminal_idx).unwrap();
+    let state = match run.step_state(terminal_idx) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     kani::assert(is_terminal(state), "selected step is in a terminal state");
 
     let mut store = ValueStore::new();

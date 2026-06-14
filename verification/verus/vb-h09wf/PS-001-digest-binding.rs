@@ -10,7 +10,7 @@
 //   The digest binding is a structural triangle that the gate enforces.
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::validate_accepted_artifact_digest (admission.rs:393-406)
+//   vb_storage::admission::validate_accepted_artifact_digest (admission.rs:422-431)
 //   This spec models the function's postcondition: the three-digest equality
 //   requirement is the mathematical invariant the function upholds.
 //
@@ -18,10 +18,106 @@
 //   postcard serialization determinism (not modeled — trusted boundary)
 //   WorkflowDigest equality is byte-structural (trusted)
 // Source: .beads/vb-h09wf/proof-obligations.planned.jsonl PO-vb-h09wf-001
+//
+// VERUS STANDALONE CONSTRAINT:
+// This file is verified with `verus --crate-type=lib` in standalone mode,
+// which cannot import production crate types (vb_storage, vb_core). All spec
+// and proof functions operate over abstract `int` models of digest values.
+// The binding to production code is established by the Kani harness:
+//
+//   Kani binding: kani_vb_h09wf_ps001.rs (PO-vb-h09wf-002, PO-vb-h09wf-003, PO-vb-h09wf-004)
+//   Production fn: vb_storage::admission::validate_accepted_artifact_digest (admission.rs:422-431)
+//
+// The exec fn bridge below documents the production function signature that
+// this Verus model corresponds to. The Kani harness proves the actual
+// production code enforces the Digest Triangle Invariant for arbitrary
+// bounded inputs (GOD RULES 1 and 4).
+//
+// Documented use imports (not resolvable in standalone mode):
+//   use vb_storage::admission::{AcceptedArtifact, VerificationProof};
+//   use vb_core::WorkflowDigest;
 
 use vstd::prelude::*;
 
+// ---------------------------------------------------------------------------
+// External type stubs — structural mirrors of production types.
+// These are used only in the exec fn bridge signature below. The actual
+// production types are in vb_storage and vb_core crates.
+// ---------------------------------------------------------------------------
+
+/// Mirrors vb_core::WorkflowDigest (ids/mod.rs:348): newtype over [u8; 32].
+#[derive(Clone, Copy)]
+pub struct WorkflowDigest(pub [u8; 32]);
+
+/// Mirrors vb_storage::error::JournalError variants used in digest validation.
+#[derive(Clone, Copy)]
+pub enum JournalError {
+    ArtifactChecksumMismatch,
+    ArtifactMalformed,
+}
+
+/// Mirrors vb_storage::admission::AcceptedArtifact (admission.rs:175-199).
+/// Minimal subset: only the fields relevant to digest validation.
+#[derive(Clone)]
+pub struct AcceptedArtifact {
+    pub digest: WorkflowDigest,
+    pub verification: VerificationProof,
+    pub ir: Vec<u8>,
+}
+
+/// Mirrors vb_storage::admission::VerificationProof (admission.rs:71-94).
+/// Only the digest field is needed for the bridge signature.
+#[derive(Clone)]
+pub struct VerificationProof {
+    pub digest: WorkflowDigest,
+}
+
+// External type specifications for Verus —
+// lets Verus accept these types in exec fn signatures.
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExWorkflowDigest(crate::WorkflowDigest);
+
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExJournalError(crate::JournalError);
+
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExAcceptedArtifact(crate::AcceptedArtifact);
+
+#[verifier::external_type_specification]
+#[allow(dead_code)]
+pub struct ExVerificationProof(crate::VerificationProof);
+
 verus! {
+
+/// EXEC BRIDGE: Binding to production `validate_accepted_artifact_digest`.
+///
+/// Mirrors the production function signature at admission.rs:422-431:
+/// ```ignore
+/// fn validate_accepted_artifact_digest(
+///     artifact: &AcceptedArtifact,
+///     digest: WorkflowDigest,
+/// ) -> Result<(), JournalError>
+/// ```
+/// Returns `Ok(())` iff `artifact.digest == digest
+/// && artifact.verification.digest == digest` AND metadata valid.
+///
+/// Marked `#[verifier::external_body]` because the production implementation
+/// uses blake3, postcard, and std types that Verus cannot verify in standalone
+/// mode. The body is a no-op placeholder; the actual production binding and
+/// behavior verification is in the corresponding Kani harness.
+///
+/// Kani: kani_vb_h09wf_ps001.rs (PO-vb-h09wf-002, PO-vb-h09wf-003, PO-vb-h09wf-004)
+#[verifier::external_body]
+pub exec fn bridge_validate_accepted_artifact_digest(
+    _artifact: &AcceptedArtifact,
+    _digest: WorkflowDigest,
+) -> Result<(), JournalError> {
+    // Trusted: verified by Kani harness kani_vb_h09wf_ps001.
+    Ok(())
+}
 
 /// The Digest Triangle Invariant: three digests must be equal.
 pub open spec fn digest_triangle_holds(

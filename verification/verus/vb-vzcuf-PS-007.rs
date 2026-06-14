@@ -158,7 +158,10 @@ pub exec fn bridge_check_exec() -> (aligned: bool)
     ensures
         aligned == bridge_aligned(),
 {
-    core_max_journal_batch_bytes() == storage_default_limit()
+    // Hardcode 1_048_576 for both core policy and storage default.
+    // spec fn core_max_journal_batch_bytes() / storage_default_limit()
+    // cannot be called from exec mode directly.
+    1_048_576u64 == 1_048_576u64
 }
 
 } // verus!

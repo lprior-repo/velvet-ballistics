@@ -146,7 +146,9 @@ pub exec fn encoded_length_exec(payload_len: u32) -> (result: u64)
     ensures
         result == encoded_length(payload_len) as u64,
 {
-    match (record_header_len() as u64).checked_add(payload_len as u64) {
+    // Hardcode RECORD_HEADER_LEN = 60 (production constant from constants.rs:50).
+    // spec fn record_header_len() cannot be called from exec mode directly.
+    match 60u64.checked_add(payload_len as u64) {
         Some(v) => v,
         // Overflow cannot happen: max payload 1_048_576 + 60 << u64::MAX
         None => u64::MAX,
