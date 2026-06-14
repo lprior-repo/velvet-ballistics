@@ -8,6 +8,18 @@ EVIDENCE_DIR="${VERUS_EVIDENCE_DIR:-.evidence/verus}"
 
 cd "$ROOT"
 
+# -----------------------------------------------------------------------------
+# ANTI-LAZINESS SHIELD: Scan for unapproved verifier shortcuts
+# -----------------------------------------------------------------------------
+CHEAT_SCAN=$(rg -n "(^|[^A-Za-z0-9_])(assume\\(|#\\[verifier::external_body\\]|#\\[verifier::external\\]|axiom)" verification/verus/ crates/*/src/ 2>/dev/null || true)
+if [ -n "$CHEAT_SCAN" ]; then
+    echo "❌ CRITICAL: Verification Laundering Detected!" >&2
+    echo "The following files contain trusted-boundary shortcuts (external_body, assume, axiom):" >&2
+    echo "$CHEAT_SCAN" >&2
+    echo "A Verus proof must verify the actual production code body. Stubs are forbidden. YOU MAY NOT USE #[verifier::external_body] TO CHEAT PRODUCTION BINDINGS." >&2
+    exit 1
+fi
+
 if ! command -v verus >/dev/null 2>&1; then
   printf 'Verus is required by registry L4 obligations but is unavailable on PATH.\n' >&2
   exit 1
