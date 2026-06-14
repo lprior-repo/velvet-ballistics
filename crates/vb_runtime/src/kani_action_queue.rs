@@ -40,6 +40,7 @@ fn arbitrary_action_ticket(seq_val: u64) -> ActionTicket {
         attempt: attempt_val,
         idempotency_key: seq_val as u128,
         capacity: 1,
+            ..Default::default()
     }
 }
 

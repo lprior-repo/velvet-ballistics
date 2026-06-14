@@ -450,6 +450,7 @@ fn runtime_tick_shard_continue_increments_step_counter_exactly_two() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let output = ActionOutputReady {
         output_slot: SlotIdx::new(1),
@@ -769,6 +770,7 @@ fn runtime_tick_shard_shutdown_drains_remaining_actions() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let output = ActionOutputReady {
         output_slot: SlotIdx::new(1),

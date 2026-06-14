@@ -27,6 +27,7 @@ mod bdd_idempotency {
             attempt: 1,
             idempotency_key: key,
             capacity: 1,
+            ..Default::default()
         }
     }
 
@@ -39,6 +40,7 @@ mod bdd_idempotency {
             attempt,
             idempotency_key: key,
             capacity: 3,
+            ..Default::default()
         }
     }
 

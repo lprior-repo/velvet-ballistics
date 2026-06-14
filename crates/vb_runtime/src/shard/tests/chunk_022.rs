@@ -74,6 +74,7 @@ fn shard_command_action_failed_equality() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,

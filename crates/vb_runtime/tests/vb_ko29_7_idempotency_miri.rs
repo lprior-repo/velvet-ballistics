@@ -19,6 +19,7 @@ fn ticket(seq: u64, key: u128) -> ActionTicket {
         attempt: 1,
         idempotency_key: key,
         capacity: 1,
+        ..Default::default()
     }
 }
 

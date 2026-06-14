@@ -32,31 +32,46 @@ fn test_8field_roundtrip_preserves_mock() {
             mock,
         };
 
-        let buf =
-            postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
+        let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
         let restored: vb_core::action::ActionTicket =
             postcard::from_bytes(&buf).expect("ActionTicket deserialization must succeed");
 
         assert_eq!(
-            restored.mock,
-            mock,
+            restored.mock, mock,
             "full roundtrip must preserve all 8 fields including mock"
         );
-        assert_eq!(restored.run.get(), ticket.run.get(), "run must be preserved");
-        assert_eq!(restored.step.get(), ticket.step.get(), "step must be preserved");
-        assert_eq!(restored.seq.get(), ticket.seq.get(), "seq must be preserved");
+        assert_eq!(
+            restored.run.get(),
+            ticket.run.get(),
+            "run must be preserved"
+        );
+        assert_eq!(
+            restored.step.get(),
+            ticket.step.get(),
+            "step must be preserved"
+        );
+        assert_eq!(
+            restored.seq.get(),
+            ticket.seq.get(),
+            "seq must be preserved"
+        );
         assert_eq!(
             restored.action.get(),
             ticket.action.get(),
             "action must be preserved"
         );
-        assert_eq!(restored.attempt, ticket.attempt, "attempt must be preserved");
         assert_eq!(
-            restored.idempotency_key,
-            ticket.idempotency_key,
+            restored.attempt, ticket.attempt,
+            "attempt must be preserved"
+        );
+        assert_eq!(
+            restored.idempotency_key, ticket.idempotency_key,
             "idempotency_key must be preserved"
         );
-        assert_eq!(restored.capacity, ticket.capacity, "capacity must be preserved");
+        assert_eq!(
+            restored.capacity, ticket.capacity,
+            "capacity must be preserved"
+        );
     }
 }
 
@@ -73,8 +88,7 @@ fn test_legacy_7field_to_8field_migration_wire_size() {
         capacity: 7,
         mock: MockMarker::GithubIssueCreate,
     };
-    let buf =
-        postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
+    let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
 
     // 8-field serialization must produce non-empty output.
     assert!(

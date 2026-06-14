@@ -64,6 +64,7 @@ pub fn execute_do(
         attempt: 1,
         idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
         capacity: retry_policy.max_attempts,
+        ..Default::default()
     };
 
     if output_taint == Taint::Clean && input_taint != Taint::Clean {
@@ -173,6 +174,7 @@ pub fn resume_action_outcome(
                     attempt: next_attempt,
                     idempotency_key,
                     capacity: original_ticket.capacity,
+                    ..Default::default()
                 }))
             } else if failure.retry_policy == vb_core::action::RetryPolicy::Retryable {
                 Err(RuntimeEngineError::RetryExhausted {

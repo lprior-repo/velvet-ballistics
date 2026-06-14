@@ -715,7 +715,7 @@ test = true
 doc = false
 bench = false
 
-// === vb-rxru0 Action Module Fuzz Targets ===
+# === vb-rxru0 Action Module Fuzz Targets ===
 
 [[bin]]
 name = "fuzz_mock_marker_serialization"

@@ -566,6 +566,7 @@ mod fail_closed_vs_fail_open {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         };
 
         let (signal, _journal) = resume_action_failure(
@@ -1336,6 +1337,7 @@ mod action_resumption {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         };
 
         let (signal, _journal) = resume_action_completion(
@@ -1372,6 +1374,7 @@ mod action_resumption {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         };
 
         resume_action_completion(

@@ -34,7 +34,7 @@ pub(crate) fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> 
             .map(|s| {
                 serde_json::json!({
                     "step": s.index,
-                    "kind": s.kind_label,
+                    "kind": s.kind_label_text,
                     "description": s.description,
                 })
             })

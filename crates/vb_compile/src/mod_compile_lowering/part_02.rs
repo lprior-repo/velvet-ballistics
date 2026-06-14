@@ -30,6 +30,10 @@ pub(super) fn lower_canonical_step(
             let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
             lower_canonical_set(id, slot, output, value, next, outputs, builder)
         }
+        vb_yaml::ast::StepPrimitive::Save { value } => {
+            let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
+            lower_canonical_save(index, id, slot, value, next, builder)
+        }
         vb_yaml::ast::StepPrimitive::Finish { result } => {
             lower_canonical_finish(index, last, id, result, outputs, builder)
         }
@@ -167,6 +171,31 @@ pub(super) fn lower_canonical_set(
     builder.record_slot(slot);
     // set.value must be an integer string - use parse_i64_field for proper StepFieldShape error
     let constant = parse_i64_field(value, usize::from(id.get()), "set.value")?;
+    let value_idx = builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))?;
+    builder.push_node(lower_set(id, slot, value_idx, next));
+    Ok(())
+}
+
+pub(super) fn lower_canonical_save(
+    index: usize,
+    id: StepIdx,
+    slot: SlotIdx,
+    value: &vb_yaml::ast::ScalarValue,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    builder.record_slot(slot);
+    let constant = match value {
+        vb_yaml::ast::ScalarValue::Integer(value) => *value,
+        vb_yaml::ast::ScalarValue::String(value) => parse_i64_field(value, index, "save.value")?,
+        _ => {
+            return Err(CompileErrors(vec![
+                CompileError::UnsupportedConstantValue { step: index },
+            ]));
+        }
+    };
     let value_idx = builder
         .push_constant(ConstValue::I64(constant))
         .map_err(|e| CompileErrors(vec![e]))?;

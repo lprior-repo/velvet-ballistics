@@ -253,6 +253,35 @@ tasks:
       # diagnostic.
       runInCI: true
 
+  primitive-durability-doc:
+    command: 'python3 scripts/check-primitive-durability-doc.py'
+    inputs:
+      - 'scripts/check-primitive-durability-doc.py'
+      - 'crates/vb_core/src/workflow/types.rs'
+      - 'docs/storage-journal.md'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  section36-39-coverage-audit:
+    command: 'python3 scripts/check-section36-39-coverage.py'
+    inputs:
+      - 'scripts/check-section36-39-coverage.py'
+      - 'velvet-ballistics-MASTER.md'
+      - 'crates/**/*.rs'
+      - 'crates/workspace_tests/benches/velvet_ballistics.rs'
+      - 'evidence/section39-metadata.jsonl'
+      - 'evidence/benchmark-evidence.jsonl'
+      - 'evidence/section39-latency.jsonl'
+      - 'evidence/instruction-counts.jsonl'
+      - 'evidence/alloc-evidence.jsonl'
+      - '.moon/tasks/all.yml'
+    options:
+      # Audit-only until child beads close the missing S39 bench and metadata rows.
+      # Use `python3 scripts/check-section36-39-coverage.py --strict-complete`
+      # as the fail-closed release gate after those child beads land.
+      runInCI: false
+
   check-kani-shape-vacuity:
     command: 'bash scripts/check-kani-shape-vacuity.sh'
     inputs:

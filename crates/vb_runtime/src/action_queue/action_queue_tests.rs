@@ -20,6 +20,7 @@ mod action_queue_tests {
             attempt: 1,
             idempotency_key: seq as u128,
             capacity: 1,
+            ..Default::default()
         }
     }
 

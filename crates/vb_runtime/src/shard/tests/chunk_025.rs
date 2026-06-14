@@ -29,6 +29,7 @@ fn vb1u88_action_completion_unknown_run_not_found() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::ZERO,
@@ -55,6 +56,7 @@ fn vb1u88_action_failure_unknown_run_not_found() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,

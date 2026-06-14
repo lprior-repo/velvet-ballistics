@@ -1316,11 +1316,12 @@ Required coverage areas:
 > `crates/vb_cli/src/dispatcher.rs`, parser dispatch in
 > `crates/vb_cli/src/args/shared.rs:208-254`) already matches
 > the 30-row matrix. **No code change is required to land
-> this amendment.** The single-source rule is enforced by the
-> matrix-conformance proptest in
-> `crates/workspace_tests/tests/cli_matrix_conformance.rs`
-> (see `matrix-conformance-test.md` in
-> `.beads/vb-k8ut.4/`).
+> this amendment.** In the current tree, lockstep coverage is
+> provided by the `vb_cli` parser/dispatcher tests plus
+> `crates/vb_cli/tests/agent_context_snapshot.rs` and
+> `crates/vb_cli/src/agent_context/tests/`. The dedicated
+> workspace-level matrix-conformance proptest remains follow-up
+> scope.
 
 ### 33.1 The 30-Command Matrix (authoritative)
 
@@ -1434,11 +1435,13 @@ matrix first; the matrix is the upper bound.
 | `parse_args` dispatch | `crates/vb_cli/src/args/shared.rs:208-254` | 30/30 | Matches matrix exactly. |
 | `run_from_env` dispatcher | `crates/vb_cli/src/dispatcher.rs:49-159` | 30/30 | Matches matrix exactly. |
 | `HELP` string | `crates/vb_cli/src/constants.rs:8-53` | 30/30 (36 lines counting multi-token subshapes) | Matches matrix exactly. |
-| `agent_context::commands()` JSON | `crates/vb_cli/src/agent_context/mod.rs:103-327` | 30/30 | Matches matrix exactly. |
+| `agent_context::commands()` JSON | `crates/vb_cli/src/agent_context/mod.rs:103-330` | 30/30 | Matches matrix exactly. |
 
-The matrix-conformance proptest
-(`crates/workspace_tests/tests/cli_matrix_conformance.rs`)
-asserts that all six sources stay in lockstep with §33.1.
+Current tree coverage is split across `vb_cli` parser/dispatcher
+tests, `crates/vb_cli/tests/agent_context_snapshot.rs`, and
+`crates/vb_cli/src/agent_context/tests/`. A dedicated
+workspace-level matrix-conformance proptest is still follow-up
+scope.
 
 ### 33.4 Agent-context parity
 
@@ -1456,7 +1459,7 @@ entries, including `help`, `version`, `status`, `system-status`,
 | Section 69 (Operator CLI Contract, lines 3448-3585) | The 24-row "Canonical Command Surface" block at lines 3452-3479 is now a **summary pointer** to this matrix. Section 69's Single-Step Testing (lines 3487-3498), Durable Execution Controls table (lines 3502-3512), Explain/Dry-Run contract (lines 3514-3528), Semantic Diff contract (lines 3530-3538), Structured Observability (lines 3540-3553), CLI Design Rules (lines 3555-3561), and Agent-First CLI Principles (lines 3563-3584) remain authoritative for those topics. The binary-name policy (lines 3481-3483) and the `ui` removal (line 3485) remain authoritative. |
 | Section 70 (Phase Extension: Operator Features, lines 3588-3606) | A phase-tracking overlay. Phases 50-54 deliver the matrix rows that were added in this amendment; phases 55-60 are internal or cleanup. The phase table remains a delivery tracker, not a command-surface source. |
 | Section 75 (AI-Native CLI Control Plane, lines 3719-4317) | The 16-row "Lifecycle Command Surface" block at lines 3755-3776 is a **downstream extension** that adds output-schema addenda for `verify` (lines 3808-3872), `explain` (lines 3875-3912), `simulate` (lines 3947-3984), `inspect`/`replay`/`incident` (lines 3987-4103), and `graph` (lines 4107-4180). These addenda are authoritative for those specific commands' output payloads. |
-| Section 34 (Workspace Cargo Contract, lines 1307-1388) | Workspace membership drift on `crates/velvet_ballistics` has been removed; Section 34 remains a historical workspace snapshot for the other listed members. |
+| Section 34 (Workspace Cargo Contract) | Section 34 mirrors the current root `Cargo.toml` workspace contract; `Cargo.toml` remains the authoritative source for future drift checks. |
 
 ### 33.6 Binary-name policy (preserved)
 
@@ -1508,48 +1511,67 @@ license = "MIT OR Apache-2.0"
 version = "0.1.0"
 
 [workspace.dependencies]
-thiserror = "2"
-serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
-postcard = { version = "1", default-features = false, features = ["alloc"] }
-byteorder = "1.5"
-bytes = "1"
 arrayvec = "0.7"
+blake3 = "1"
+byteorder = "1.5"
+bytes = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+crc32c = "0.6"
+crc32fast = "1"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+criterion = "0.8"
+trybuild = "1"
+fjall = { version = "3.1", default-features = false, features = ["lz4"] }
+indoc = "2"
 indexmap = "2"
 logos = "0.15"
-saphyr-parser = "0.0.6"
-fjall = "3.1"
-crossbeam-queue = "0.3"
-rtrb = "0.3"
+libfuzzer-sys = "0.4"
 mio = "1"
-criterion = "0.8"
-iai-callgrind = "0.16"
+postcard = { version = "1", features = ["alloc"] }
 proptest = "1"
+rand = "0.9"
+rtrb = "0.3"
+rustix = { version = "1", features = ["fs"] }
+saphyr = { version = "=0.0.6", default-features = false }
+saphyr-parser = "=0.0.6"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde-saphyr = { version = "=0.0.25", default-features = false, features = ["deserialize", "serialize"] }
+serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
+serde_yaml = "0.9"
+thiserror = "2"
+tempfile = "3"
+toml = "0.9"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
-rust_2018_idioms = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flux)', 'cfg(fuzzing)', 'cfg(kani)', 'cfg(loom)', 'cfg(verus)', 'cfg(verus_keep_ghost)', 'cfg(docsrs,test)'] }
 
 [workspace.lints.clippy]
-correctness = "deny"
-suspicious = "deny"
-perf = "deny"
-complexity = "deny"
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-panic_in_result_fn = "deny"
-todo = "deny"
-unimplemented = "deny"
-dbg_macro = "deny"
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+unwrap_used = "forbid"
+expect_used = "forbid"
+panic = "forbid"
+panic_in_result_fn = "forbid"
+todo = "forbid"
+unimplemented = "forbid"
+dbg_macro = "forbid"
 indexing_slicing = "deny"
-string_slice = "deny"
+string_slice = "forbid"
 get_unwrap = "deny"
 arithmetic_side_effects = "deny"
 as_conversions = "deny"
 let_underscore_must_use = "deny"
 await_holding_lock = "deny"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+result_large_err = "warn"
 
 [profile.release]
 opt-level = 3
@@ -1562,9 +1584,26 @@ inherits = "release"
 debug = true
 lto = "thin"
 codegen-units = 1
+
+[profile.maxperf]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
+[profile.hardened]
+inherits = "release"
+codegen-units = 1
+debug-assertions = true
+debug = "line-tables-only"
+lto = "thin"
+overflow-checks = true
+panic = "abort"
+strip = "symbols"
 ```
 
-Removed workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, generated workflow dependencies, and maxperf-only profile policy) must not be treated as current workspace acceptance requirements.
+Removed workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, and generated workflow dependencies) must not be treated as current workspace acceptance requirements. The extra `maxperf` and `hardened` profile stanzas are repository build configuration, not standalone milestone gates.
 
 ---
 

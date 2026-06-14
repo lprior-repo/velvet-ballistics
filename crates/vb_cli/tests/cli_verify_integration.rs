@@ -78,6 +78,41 @@ fn parse_structured_value(stdout: &str) -> Option<serde_json::Value> {
         .or_else(|| serde_saphyr::from_str::<serde_json::Value>(stdout).ok())
 }
 
+fn must_parse_structured_value(stdout: &str, context: &str) -> serde_json::Value {
+    let parsed = parse_structured_value(stdout);
+    assert!(
+        parsed.is_some(),
+        "{context}. stdout was not parseable structured output:\n{stdout}"
+    );
+    match parsed {
+        Some(value) => value,
+        None => std::process::abort(),
+    }
+}
+
+fn parse_text_csv_line(output: &str, prefix: &str) -> Vec<String> {
+    let value = output.lines().find_map(|line| line.strip_prefix(prefix));
+    assert!(
+        value.is_some(),
+        "missing text line prefix `{prefix}` in output:\n{output}"
+    );
+
+    match value {
+        Some(value) => {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                Vec::new()
+            } else {
+                trimmed
+                    .split(", ")
+                    .map(std::string::ToString::to_string)
+                    .collect()
+            }
+        }
+        None => std::process::abort(),
+    }
+}
+
 const QUICK_GATE_STATUSES: [&str; 15] = [
     "profile",
     "shape",
@@ -120,6 +155,19 @@ const FULL_DEFERRED_GATES: [&str; 5] = [
     "durability",
     "capabilities",
     "evidence",
+];
+
+const STANDARD_PASSED_GATES: [&str; 10] = [
+    "profile",
+    "shape",
+    "names",
+    "references",
+    "expressions",
+    "CFG",
+    "bounded",
+    "budgets",
+    "taint",
+    "results",
 ];
 
 fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
@@ -322,17 +370,15 @@ fn bdd_json_output_contains_all_certificate_fields() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    let Some(json) = parse_structured_value(&stdout) else {
-        assert!(
-            !stdout.is_empty(),
-            "verify --emit yaml must emit a structured response"
-        );
-        return;
-    };
+    let json = must_parse_structured_value(
+        &stdout,
+        "verify --emit yaml must emit a structured response",
+    );
 
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(
-        json.pointer("/success").and_then(serde_json::Value::as_bool),
+        json.pointer("/success")
+            .and_then(serde_json::Value::as_bool),
         Some(true)
     );
     assert_eq!(
@@ -443,12 +489,10 @@ fn bdd_json_output_is_valid_utf8_and_parseable() {
         "JSON output must be valid UTF-8"
     );
 
-    if parse_structured_value(&stdout).is_none() {
-        assert!(
-            !stdout.is_empty(),
-            "verify --emit yaml must emit a structured response"
-        );
-    }
+    let _ = must_parse_structured_value(
+        &stdout,
+        "verify --emit yaml must emit a structured response",
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -471,11 +515,13 @@ fn bdd_full_profile_fails_closed_on_deferred_gates() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let json = parse_structured_value(&stdout).expect("full verify must emit structured yaml");
     assert_eq!(
-        json.pointer("/success").and_then(serde_json::Value::as_bool),
+        json.pointer("/success")
+            .and_then(serde_json::Value::as_bool),
         Some(false)
     );
     assert_eq!(
-        json.pointer("/exit_code").and_then(serde_json::Value::as_u64),
+        json.pointer("/exit_code")
+            .and_then(serde_json::Value::as_u64),
         Some(4)
     );
     assert_eq!(
@@ -520,7 +566,8 @@ fn bdd_standard_profile_reports_exact_deferred_gate_set() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let json = parse_structured_value(&stdout).expect("standard verify must emit structured yaml");
     assert_eq!(
-        json.pointer("/success").and_then(serde_json::Value::as_bool),
+        json.pointer("/success")
+            .and_then(serde_json::Value::as_bool),
         Some(true)
     );
     assert_eq!(
@@ -590,43 +637,64 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
 }
 
 // ---------------------------------------------------------------------------
-// BDD Scenario: INV-002 Gate Parity Between Text and JSON
+// BDD Scenario: INV-002 Gate Parity Between Text and Structured Output
 // ---------------------------------------------------------------------------
 
-/// ### Behavior: INV-002 — human and machine output report identical failing gates
-/// Given: any verify invocation that produces an error
-/// When: the text output is inspected and the JSON output is inspected
-/// Then: the set of failing gate names is identical in both
+/// ### Behavior: INV-002 — human and machine output report identical gate status sets
+/// Given: a valid workflow where Full profile fails closed because deferred gates remain
+/// When: the text output is inspected and the structured output is inspected
+/// Then: the ordered gate-status list is identical in both
+/// And: the deferred-gate list is identical in both
 #[test]
-fn bdd_inv002_gate_parity_between_text_and_json() {
-    // Use invalid workflow that triggers Compile error
+fn bdd_inv002_gate_parity_between_text_and_structured_output_on_full_profile_failure() {
     let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
-        std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--json"),
-        std::ffi::OsStr::new("tests/fixtures/invalid/invalid_invalid_step_type.yaml"),
+        std::ffi::OsStr::new("full"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+        &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
-    // Both should fail with same error
     let json_code = output.status.code();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json = must_parse_structured_value(
+        &stdout,
+        "verify full --emit yaml must emit structured output",
+    );
 
-    // Run again with text format
     let text_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
-        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("full"),
         std::ffi::OsStr::new("--emit"),
         std::ffi::OsStr::new("text"),
-        std::ffi::OsStr::new("tests/fixtures/invalid/invalid_invalid_step_type.yaml"),
+        &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
     let text_code = text_output.status.code();
+    let stderr = String::from_utf8_lossy(&text_output.stderr);
 
-    // Exit codes must match
     assert_eq!(
         json_code, text_code,
-        "Text and JSON must report same exit code for same error"
+        "Text and structured output must report same exit code for the same fail-closed verify"
+    );
+    assert_eq!(
+        json_code,
+        Some(4),
+        "Full profile must fail closed on deferred gates"
+    );
+    assert_eq!(
+        parse_text_csv_line(&stderr, "gate statuses: "),
+        json_string_vec(&json, "/checks")
+    );
+    assert_eq!(
+        parse_text_csv_line(&stderr, "passed gates: "),
+        json_string_vec(&json, "/passed_checks")
+    );
+    assert_eq!(
+        parse_text_csv_line(&stderr, "deferred gates: "),
+        json_string_vec(&json, "/deferred_checks")
     );
 }
 
@@ -675,13 +743,10 @@ fn integration_standard_profile_runs_ir_validation_gate() {
     ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let Some(json) = parse_structured_value(&stdout) else {
-        assert!(
-            !stdout.is_empty(),
-            "verify standard structured output must not be empty"
-        );
-        return;
-    };
+    let json = must_parse_structured_value(
+        &stdout,
+        "verify standard structured output must be parseable",
+    );
 
     let checks = json.get("checks").and_then(|checks| checks.as_array());
     let gates_passed = json
@@ -703,15 +768,46 @@ fn integration_standard_profile_runs_ir_validation_gate() {
     let gates = gates_passed.map_or(&[][..], |gates| gates.as_slice());
     let gate_names: Vec<&str> = gates.iter().filter_map(|gate| gate.as_str()).collect();
 
-    assert!(
-        check_names.contains(&"contracts:deferred"),
-        "Standard profile must report deferred canonical gates. Found: {:?}",
-        check_names
+    assert_eq!(
+        check_names,
+        STANDARD_GATE_STATUSES.to_vec(),
+        "Standard profile must report the exact canonical gate sequence"
     );
-    assert!(
-        gate_names.contains(&"bounded") && gate_names.contains(&"budgets"),
-        "Standard profile must include bounded and budgets in gates_passed. Found: {:?}",
-        gate_names
+    assert_eq!(
+        gate_names,
+        STANDARD_PASSED_GATES.to_vec(),
+        "Standard profile must report the exact locally closed gate set"
+    );
+    assert_eq!(
+        json_string_vec(&json, "/passed_checks"),
+        STANDARD_PASSED_GATES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json_string_vec(&json, "/deferred_checks"),
+        FULL_DEFERRED_GATES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json_string_vec(&json, "/replay/gate_sequence"),
+        STANDARD_GATE_STATUSES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json.pointer("/all_gates_closed")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        json.pointer("/exit_code")
+            .and_then(serde_json::Value::as_u64),
+        Some(0)
     );
 }
 
@@ -733,13 +829,8 @@ fn integration_full_profile_runs_budget_gates() {
     assert_eq!(output.status.code(), Some(4));
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let Some(json) = parse_structured_value(&stdout) else {
-        assert!(
-            !stdout.is_empty(),
-            "verify full structured output must not be empty"
-        );
-        return;
-    };
+    let json =
+        must_parse_structured_value(&stdout, "verify full structured output must be parseable");
 
     let checks = json.get("checks").and_then(|checks| checks.as_array());
     let gates_passed = json
@@ -765,15 +856,59 @@ fn integration_full_profile_runs_budget_gates() {
     let gates = gates_passed.map_or(&[][..], |gates| gates.as_slice());
     let gate_names: Vec<&str> = gates.iter().filter_map(|g| g.as_str()).collect();
 
-    assert!(
-        gate_names.contains(&"bounded") && gate_names.contains(&"budgets"),
-        "Full profile must still report locally closed budget gates. Found: {:?}",
-        gate_names
+    assert_eq!(
+        check_names,
+        STANDARD_GATE_STATUSES.to_vec(),
+        "Full profile must preserve the exact canonical gate sequence in the fail-closed report"
     );
-    assert!(
-        check_names.contains(&"contracts:deferred") && check_names.contains(&"evidence:deferred"),
-        "Full profile must fail closed with deferred canonical gates. Found: {:?}",
-        check_names
+    assert_eq!(
+        gate_names,
+        STANDARD_PASSED_GATES.to_vec(),
+        "Full profile must preserve the exact locally closed gate set in the fail-closed report"
+    );
+    assert_eq!(
+        json_string_vec(&json, "/passed_checks"),
+        STANDARD_PASSED_GATES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json_string_vec(&json, "/deferred_checks"),
+        FULL_DEFERRED_GATES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json_string_vec(&json, "/replay/gate_sequence"),
+        STANDARD_GATE_STATUSES
+            .iter()
+            .map(|gate| gate.to_string())
+            .collect::<Vec<String>>()
+    );
+    assert_eq!(
+        json.pointer("/all_gates_closed")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        json.pointer("/error").and_then(serde_json::Value::as_str),
+        Some(
+            "full verification blocked: deferred gates remain: contracts, idempotency, durability, capabilities, evidence"
+        )
+    );
+    assert_eq!(
+        json.pointer("/repair_hints/0")
+            .and_then(serde_json::Value::as_str),
+        Some(
+            "Close every deferred master §63 gate before treating --profile full as acceptance evidence"
+        )
+    );
+    assert_eq!(
+        json.pointer("/exit_code")
+            .and_then(serde_json::Value::as_u64),
+        Some(4)
     );
 }
 
@@ -793,13 +928,8 @@ fn integration_quick_profile_skips_expensive_gates() {
     ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let Some(json) = parse_structured_value(&stdout) else {
-        assert!(
-            !stdout.is_empty(),
-            "verify quick structured output must not be empty"
-        );
-        return;
-    };
+    let json =
+        must_parse_structured_value(&stdout, "verify quick structured output must be parseable");
 
     let gates_passed = json
         .get("replay")

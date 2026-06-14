@@ -390,6 +390,7 @@ fn resume_retries_when_attempt_below_capacity() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 3,
+        ..Default::default()
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
@@ -422,6 +423,7 @@ fn resume_returns_retry_exhausted_when_capacity_reached() {
         attempt: 3,
         idempotency_key: 0,
         capacity: 3,
+        ..Default::default()
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
@@ -454,6 +456,7 @@ fn resume_capacity_one_never_retries() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,

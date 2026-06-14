@@ -32,6 +32,7 @@ fn input_fixture(action: u16) -> ActionInput {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         },
     }
 }
@@ -83,6 +84,7 @@ fn dispatch_produces_suspended_outcome() {
                 attempt: 1,
                 idempotency_key: 0,
                 capacity: 1,
+                ..Default::default()
             }))
         ),
     }
@@ -330,6 +332,7 @@ fn action_registry_dispatch_with_correct_contract_succeeds() {
                     attempt: 1,
                     idempotency_key: 0,
                     capacity: 1,
+                    ..Default::default()
                 }))
             );
         }
@@ -537,6 +540,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         },
     };
     let contract = match registry.resolve_compile_time(ActionId::new(2)) {
@@ -559,6 +563,7 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
                     attempt: 1,
                     idempotency_key: 0,
                     capacity: 1,
+                    ..Default::default()
                 }))
             );
         }
@@ -625,6 +630,7 @@ fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() {
             attempt: 2,
             idempotency_key: 99,
             capacity: 1,
+            ..Default::default()
         },
     };
     let contract = match registry.resolve_compile_time(ActionId::new(3)) {
@@ -654,6 +660,7 @@ fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() {
                     attempt: 0,
                     idempotency_key: 0,
                     capacity: 1,
+                    ..Default::default()
                 }))
             );
         }
@@ -684,6 +691,7 @@ fn idempotency_tracker_record_completion_succeeds() {
         attempt: 0,
         idempotency_key: 42,
         capacity: 1,
+        ..Default::default()
     };
     assert_eq!(tracker.mark_completed(&ticket), Ok(()));
     assert_eq!(tracker.is_completed(&ticket), true);
@@ -702,6 +710,7 @@ fn idempotency_tracker_duplicate_completion_returns_error() {
         attempt: 0,
         idempotency_key: 99,
         capacity: 1,
+        ..Default::default()
     };
     assert_eq!(tracker.mark_completed(&ticket), Ok(()));
     assert_eq!(
@@ -722,6 +731,7 @@ fn idempotency_tracker_different_keys_are_independent() {
         attempt: 0,
         idempotency_key: 1,
         capacity: 1,
+        ..Default::default()
     };
     let ticket_b = ActionTicket {
         run: RunId::new(0),
@@ -731,6 +741,7 @@ fn idempotency_tracker_different_keys_are_independent() {
         attempt: 0,
         idempotency_key: 2,
         capacity: 1,
+        ..Default::default()
     };
     let ticket_c = ActionTicket {
         run: RunId::new(0),
@@ -740,6 +751,7 @@ fn idempotency_tracker_different_keys_are_independent() {
         attempt: 0,
         idempotency_key: 3,
         capacity: 1,
+        ..Default::default()
     };
     assert_eq!(tracker.mark_completed(&ticket_a), Ok(()));
     assert_eq!(tracker.mark_completed(&ticket_b), Ok(()));

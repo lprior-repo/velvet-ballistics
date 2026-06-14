@@ -55,6 +55,7 @@ fn evidence_chain_after_execution() {
             ActionId::new(7),
         ),
         capacity: 1,
+            ..Default::default()
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),
@@ -290,6 +291,7 @@ fn evidence_chain_captures_action_timeout_and_failure() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let failure = vb_core::action::ActionFailure {
         code: vb_core::action::ActionFailureCode::Timeout,
@@ -384,6 +386,7 @@ fn evidence_chain_preserves_event_ordering_across_restarts() {
             ActionId::new(7),
         ),
         capacity: 1,
+            ..Default::default()
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(1),

@@ -86,6 +86,8 @@ const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
             "kani-vb-ajc40",
             "test-util",
             "volatile",
+            "vb-rxru0-flux-refinements",
+            "vb-rxru0-mock-marker",
         ],
     ),
     ("crates/vb_validate", &["default", "verus"]),

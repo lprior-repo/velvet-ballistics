@@ -1052,6 +1052,7 @@ fn make_ticket(
         attempt,
         idempotency_key: 0,
         capacity: 3,
+        ..Default::default()
     }
 }
 
@@ -1942,6 +1943,7 @@ mod kani_boundedness {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         };
 
         let result = resume_action_completion(

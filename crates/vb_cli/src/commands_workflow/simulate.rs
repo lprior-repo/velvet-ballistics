@@ -5,10 +5,12 @@ use vb_core::ids::StepIdx;
 use vb_core::{CompiledNodeKind, CompiledWorkflow};
 
 use super::helpers::{node_kind_label, saturating_add};
+use super::{node_kind_to_step_kind, StepKind};
 
 pub(crate) struct SimulationStep {
     pub index: usize,
-    pub kind_label: String,
+    pub kind_label_text: String,
+    pub kind: StepKind,
     pub description: String,
 }
 
@@ -32,13 +34,15 @@ pub(crate) fn simulate_workflow(workflow: &CompiledWorkflow) -> SimulationResult
             None => continue,
         };
 
-        let kind_label = node_kind_label(&node.kind).to_string();
+        let kind_label_text = node_kind_label(&node.kind).to_string();
+        let kind = node_kind_to_step_kind(&node.kind);
         let description =
             describe_node_for_simulate(&node.kind, &mut action_count, &mut branch_count);
 
         steps.push(SimulationStep {
             index: i,
-            kind_label,
+            kind_label_text,
+            kind,
             description,
         });
     }

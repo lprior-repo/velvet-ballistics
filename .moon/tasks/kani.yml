@@ -4,11 +4,10 @@
 fileGroups:
   kani_core_sources:
     - 'crates/vb_core/src/**/*'
+  kani_storage_sources:
+    - 'crates/vb_storage/src/**/*'
   kani_runtime_shard_command_queue_sources:
-    - 'crates/vb_runtime/src/kani_shard_command_queue.rs'
-    - 'crates/vb_runtime/src/lib.rs'
-    - 'crates/vb_runtime/src/shard/**/*'
-    - 'crates/vb_runtime/src/error/**/*'
+    - 'crates/vb_runtime/src/**/*'
   kani_validate_sources:
     - 'crates/vb_validate/src/**/*'
     - 'crates/vb_core/src/ids/**/*'
@@ -86,7 +85,10 @@ tasks:
       - rust
     inputs:
       - '@globs(kani_core_sources)'
+      - '@globs(kani_storage_sources)'
       - '@globs(kani_runtime_shard_command_queue_sources)'
+      - 'crates/vb_core/Cargo.toml'
+      - 'crates/vb_storage/Cargo.toml'
       - 'crates/vb_runtime/Cargo.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'

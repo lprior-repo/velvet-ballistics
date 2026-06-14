@@ -98,6 +98,7 @@ fn make_ticket(step: StepIdx, attempt: u16, capacity: u16) -> ActionTicket {
         attempt,
         idempotency_key: 0,
         capacity,
+        ..Default::default()
     }
 }
 

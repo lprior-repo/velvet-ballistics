@@ -733,6 +733,10 @@ fn command_cancel_matches_cli_shape() {
     assert_eq!(db.get("required").and_then(Value::as_bool), Some(true));
     assert_eq!(reason.get("type").and_then(Value::as_str), Some("string"));
     assert_eq!(
+        reason.get("length_unit").and_then(Value::as_str),
+        Some("characters")
+    );
+    assert_eq!(
         reason.get("max_length").and_then(Value::as_u64),
         Some(CANCEL_REASON_MAX_CHARS as u64)
     );
@@ -749,6 +753,10 @@ fn command_cancel_exposes_parser_reason_bound() {
         .expect("cancel --reason must be an object");
 
     assert_eq!(reason.get("type").and_then(Value::as_str), Some("string"));
+    assert_eq!(
+        reason.get("length_unit").and_then(Value::as_str),
+        Some("characters")
+    );
     assert_eq!(
         reason.get("max_length").and_then(Value::as_u64),
         Some(CANCEL_REASON_MAX_CHARS as u64)

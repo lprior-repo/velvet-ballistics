@@ -170,6 +170,7 @@ fn symbolic_ticket() -> ActionTicket {
         attempt: kani::any(),
         idempotency_key: kani::any(),
         capacity: kani::any(),
+        ..ActionTicket::default()
     }
 }
 
@@ -653,6 +654,7 @@ fn kani_action_ticket_has_valid_key() {
         attempt: kani::any(),
         idempotency_key: canonical_key,
         capacity: kani::any(),
+        ..ActionTicket::default()
     };
     let canonical_result = action_ticket_has_valid_key(canonical_ticket);
     kani::assert(canonical_result, "canonical key validates");

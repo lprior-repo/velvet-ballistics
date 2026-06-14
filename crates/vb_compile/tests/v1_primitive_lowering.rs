@@ -32,6 +32,10 @@ const PUBLIC_API_PATHS: &[PublicApiPath] = &[
     PublicApiPath::YamlCompilerCompile,
 ];
 
+const SET_KINDS: &[&str] = &["SetConst", "Finish"];
+const DO_KINDS: &[&str] = &["Do", "Finish"];
+const CHOOSE_KINDS: &[&str] = &["ChooseSlot", "Finish"];
+const FINISH_KINDS: &[&str] = &["Finish"];
 const FOREACH_KINDS: &[&str] = &["ForEachStart", "SetConst", "ForEachNext", "Finish"];
 const TOGETHER_KINDS: &[&str] = &[
     "TogetherStart",
@@ -67,6 +71,42 @@ const WAIT_EVENT_KINDS: &[&str] = &["WaitEvent", "Finish"];
 const ASK_KINDS: &[&str] = &["Ask", "AskResume", "Finish"];
 
 const PRIMITIVE_CASES: &[PrimitiveCase] = &[
+    PrimitiveCase {
+        name: "set",
+        yaml_steps: "  - id: assign\n    set:\n      output: answer\n      value: \"42\"\n  - id: done\n    finish:\n      result: answer\n",
+        expected_kinds: SET_KINDS,
+        expected_slot_count: 1,
+    },
+    PrimitiveCase {
+        name: "save",
+        yaml_steps: "  - id: save_alias\n    save:\n      output: answer\n      value: \"42\"\n  - id: done\n    finish:\n      result: answer\n",
+        expected_kinds: SET_KINDS,
+        expected_slot_count: 1,
+    },
+    PrimitiveCase {
+        name: "do",
+        yaml_steps: "  - id: invoke\n    do:\n      action: \"7\"\n      input: \"0\"\n  - id: done\n    finish:\n      result: 0\n",
+        expected_kinds: DO_KINDS,
+        expected_slot_count: 1,
+    },
+    PrimitiveCase {
+        name: "run_alias",
+        yaml_steps: "  - id: run_alias\n    run:\n      action: \"7\"\n      input: \"0\"\n  - id: done\n    finish:\n      result: 0\n",
+        expected_kinds: DO_KINDS,
+        expected_slot_count: 1,
+    },
+    PrimitiveCase {
+        name: "choose",
+        yaml_steps: "  - id: pick\n    choose:\n      branches:\n        - when: \"0\"\n          steps: []\n      otherwise: done\n  - id: done\n    finish:\n      result: 0\n",
+        expected_kinds: CHOOSE_KINDS,
+        expected_slot_count: 1,
+    },
+    PrimitiveCase {
+        name: "finish",
+        yaml_steps: "  - id: done\n    finish:\n      result: 0\n",
+        expected_kinds: FINISH_KINDS,
+        expected_slot_count: 1,
+    },
     PrimitiveCase {
         name: "for_each",
         yaml_steps: "  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      at_once: 2\n      steps:\n        - id: capture\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
@@ -230,6 +270,68 @@ fn public_compile_apis_preserve_set_and_terminal_finish_regression() -> Result<(
         assert_finish_node(parts.nodes.as_ref(), 1, 0)?;
     }
     Ok(())
+}
+
+#[test]
+fn compile_source_lowers_programmatic_save_ast_to_set_const() -> Result<(), String> {
+    use vb_yaml::ast::{
+        ScalarValue, StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts,
+    };
+
+    let source = WorkflowSource::new(WorkflowSourceParts {
+        version: String::from("velvet-ballistics/v1"),
+        name: String::from("programmatic-save"),
+        trigger: TriggerAst::Manual,
+        inputs: Vec::new(),
+        vars: Vec::new(),
+        secrets: Vec::new(),
+        steps: vec![
+            StepAst {
+                id: String::from("save_direct"),
+                name: None,
+                condition: None,
+                primitive: StepPrimitive::Save {
+                    value: ScalarValue::Integer(42),
+                },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            },
+            StepAst {
+                id: String::from("done"),
+                name: None,
+                condition: None,
+                primitive: StepPrimitive::Finish {
+                    result: ScalarValue::Integer(0),
+                },
+                with: None,
+                retry: None,
+                on_error: None,
+                then: None,
+            },
+        ],
+        result: None,
+        examples: Vec::new(),
+    });
+
+    let workflow = compile_source(&source).map_err(|errors| format_compile_errors(&errors))?;
+    let parts = workflow.to_parts();
+    assert_eq!(
+        node_kind_names(parts.nodes.as_ref()),
+        ["SetConst", "Finish"]
+    );
+    assert_eq!(parts.slot_count, 1);
+    assert_set_const_node(
+        parts.nodes.as_ref(),
+        parts.constants.as_ref(),
+        0,
+        Some(0),
+        Some(1),
+        0,
+        42,
+    )?;
+    assert_finish_node(parts.nodes.as_ref(), 1, 0)
 }
 
 #[test]
@@ -1760,6 +1862,10 @@ fn assert_exact_primitive_shape(
 ) -> Result<(), String> {
     let parts = workflow.to_parts();
     match case_name {
+        "set" | "save" => assert_exact_set_like(parts.nodes.as_ref(), parts.constants.as_ref()),
+        "do" | "run_alias" => assert_exact_do(parts.nodes.as_ref()),
+        "choose" => assert_exact_choose(parts.nodes.as_ref()),
+        "finish" => assert_finish_node(parts.nodes.as_ref(), 0, 0),
         "for_each" => assert_exact_for_each(parts.nodes.as_ref()),
         "together" => assert_exact_together(parts.nodes.as_ref()),
         "collect" => assert_exact_collect(parts.nodes.as_ref()),
@@ -1768,6 +1874,44 @@ fn assert_exact_primitive_shape(
         "wait" => assert_exact_wait_event(parts.nodes.as_ref()),
         "ask" => assert_exact_ask(parts.nodes.as_ref()),
         other => Err(format!("unknown primitive shape case {other}")),
+    }
+}
+
+fn assert_exact_set_like(nodes: &[CompiledNode], constants: &[ConstValue]) -> Result<(), String> {
+    assert_set_const_node(nodes, constants, 0, Some(0), Some(1), 0, 42)?;
+    assert_finish_node(nodes, 1, 0)
+}
+
+fn assert_exact_do(nodes: &[CompiledNode]) -> Result<(), String> {
+    assert_finish_node(nodes, 1, 0)?;
+    let node = node_at(nodes, 0)?;
+    assert_eq!(node.output.map(|slot| slot.get()), Some(0));
+    assert_eq!(node.next.map(|step| step.get()), Some(1));
+    match &node.kind {
+        CompiledNodeKind::Do { action, input } => {
+            assert_eq!((action.get(), input.get()), (7, 0));
+            Ok(())
+        }
+        other => Err(format!("expected Do, got {other:?}")),
+    }
+}
+
+fn assert_exact_choose(nodes: &[CompiledNode]) -> Result<(), String> {
+    assert_finish_node(nodes, 1, 0)?;
+    match &node_at(nodes, 0)?.kind {
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
+            assert_eq!(branches.len(), 1);
+            let branch = branches
+                .first()
+                .ok_or_else(|| String::from("missing choose branch"))?;
+            assert_eq!((branch.condition.get(), branch.target.get()), (0, 1));
+            assert_eq!(otherwise.map(|step| step.get()), Some(1));
+            Ok(())
+        }
+        other => Err(format!("expected ChooseSlot, got {other:?}")),
     }
 }
 

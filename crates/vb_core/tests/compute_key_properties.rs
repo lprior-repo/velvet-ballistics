@@ -5,7 +5,9 @@
 
 #![forbid(unsafe_code)]
 
-use vb_core::action::{action_ticket_has_valid_key, compute_action_idempotency_key, issue_action_ticket};
+use vb_core::action::{
+    action_ticket_has_valid_key, compute_action_idempotency_key, issue_action_ticket,
+};
 use vb_core::ids::{ActionId, RunId, SeqNo};
 
 // ---------------------------------------------------------------------------
@@ -76,31 +78,19 @@ fn test_compute_key_boundary_all_zero() {
 
 #[test]
 fn test_compute_key_boundary_run_max() {
-    let key = compute_action_idempotency_key(
-        RunId::new(u64::MAX),
-        SeqNo::new(1),
-        ActionId::new(1),
-    );
+    let key = compute_action_idempotency_key(RunId::new(u64::MAX), SeqNo::new(1), ActionId::new(1));
     let _ = key;
 }
 
 #[test]
 fn test_compute_key_boundary_seq_max() {
-    let key = compute_action_idempotency_key(
-        RunId::new(1),
-        SeqNo::new(u64::MAX),
-        ActionId::new(1),
-    );
+    let key = compute_action_idempotency_key(RunId::new(1), SeqNo::new(u64::MAX), ActionId::new(1));
     let _ = key;
 }
 
 #[test]
 fn test_compute_key_boundary_action_max() {
-    let key = compute_action_idempotency_key(
-        RunId::new(1),
-        SeqNo::new(1),
-        ActionId::new(u16::MAX),
-    );
+    let key = compute_action_idempotency_key(RunId::new(1), SeqNo::new(1), ActionId::new(u16::MAX));
     let _ = key;
 }
 
@@ -199,8 +189,7 @@ fn test_compute_key_different_inputs_produce_different_keys() {
     let key_b = compute_action_idempotency_key(RunId::new(2), SeqNo::new(1), ActionId::new(1));
 
     assert_ne!(
-        key_a,
-        key_b,
+        key_a, key_b,
         "different run values must produce different keys"
     );
 }
@@ -211,8 +200,7 @@ fn test_compute_key_different_seq_produces_different_key() {
     let key_b = compute_action_idempotency_key(RunId::new(1), SeqNo::new(2), ActionId::new(1));
 
     assert_ne!(
-        key_a,
-        key_b,
+        key_a, key_b,
         "different seq values must produce different keys"
     );
 }
@@ -223,8 +211,7 @@ fn test_compute_key_different_action_produces_different_key() {
     let key_b = compute_action_idempotency_key(RunId::new(1), SeqNo::new(1), ActionId::new(2));
 
     assert_ne!(
-        key_a,
-        key_b,
+        key_a, key_b,
         "different action values must produce different keys"
     );
 }

@@ -700,6 +700,7 @@ fn kani_retry_convergence() {
             attempt,
             idempotency_key: 0,
             capacity: 16,
+                ..Default::default()
         };
 
         let result = record_retry_attempt(&mut state, ticket, policy);

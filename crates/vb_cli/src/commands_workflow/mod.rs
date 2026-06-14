@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Pure workflow analysis logic for graph and simulate commands.
 
+use serde::{Deserialize, Serialize};
 use vb_core::ids::StepIdx;
 use vb_core::{CompiledNodeKind, CompiledWorkflow};
 
@@ -14,9 +15,99 @@ pub(crate) use self::dot::{DotGraph, generate_dot, node_kind_label};
 // Simulation dry-run
 // ---------------------------------------------------------------------------
 
+/// Categorical kind of a simulated step, mirroring `CompiledNodeKind` so
+/// downstream consumers can match on a stable, exhaustive set of variants
+/// (with `Unknown` covering any future `non_exhaustive` additions).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub(crate) enum StepKind {
+    Nop,
+    SetConst,
+    Copy,
+    EvalExpr,
+    BuildObject,
+    BuildList,
+    Do,
+    Choose,
+    ChooseSlot,
+    ForEachStart,
+    ForEachNext,
+    ForEachJoin,
+    TogetherStart,
+    TogetherBranch,
+    TogetherJoin,
+    CollectStart,
+    CollectPage,
+    CollectNext,
+    CollectFinish,
+    ReduceStart,
+    ReduceNext,
+    ReduceFinish,
+    RepeatStart,
+    RepeatAttempt,
+    RepeatCheck,
+    RepeatFinish,
+    WaitUntil,
+    WaitEvent,
+    Ask,
+    AskResume,
+    RetryCheck,
+    ErrorHandler,
+    Jump,
+    Finish,
+    Unknown,
+}
+
+/// Map a `CompiledNodeKind` to its simulation `StepKind` counterpart.
+///
+/// `CompiledNodeKind` is `#[non_exhaustive]`, so any new upstream variant
+/// falls through to `StepKind::Unknown` until the mapping is updated.
+pub(crate) fn node_kind_to_step_kind(kind: &CompiledNodeKind) -> StepKind {
+    match kind {
+        CompiledNodeKind::Nop => StepKind::Nop,
+        CompiledNodeKind::SetConst { .. } => StepKind::SetConst,
+        CompiledNodeKind::Copy { .. } => StepKind::Copy,
+        CompiledNodeKind::EvalExpr { .. } => StepKind::EvalExpr,
+        CompiledNodeKind::BuildObject { .. } => StepKind::BuildObject,
+        CompiledNodeKind::BuildList { .. } => StepKind::BuildList,
+        CompiledNodeKind::Do { .. } => StepKind::Do,
+        CompiledNodeKind::Choose { .. } => StepKind::Choose,
+        CompiledNodeKind::ChooseSlot { .. } => StepKind::ChooseSlot,
+        CompiledNodeKind::ForEachStart { .. } => StepKind::ForEachStart,
+        CompiledNodeKind::ForEachNext { .. } => StepKind::ForEachNext,
+        CompiledNodeKind::ForEachJoin { .. } => StepKind::ForEachJoin,
+        CompiledNodeKind::TogetherStart { .. } => StepKind::TogetherStart,
+        CompiledNodeKind::TogetherBranch { .. } => StepKind::TogetherBranch,
+        CompiledNodeKind::TogetherJoin { .. } => StepKind::TogetherJoin,
+        CompiledNodeKind::CollectStart { .. } => StepKind::CollectStart,
+        CompiledNodeKind::CollectPage { .. } => StepKind::CollectPage,
+        CompiledNodeKind::CollectNext { .. } => StepKind::CollectNext,
+        CompiledNodeKind::CollectFinish { .. } => StepKind::CollectFinish,
+        CompiledNodeKind::ReduceStart { .. } => StepKind::ReduceStart,
+        CompiledNodeKind::ReduceNext { .. } => StepKind::ReduceNext,
+        CompiledNodeKind::ReduceFinish { .. } => StepKind::ReduceFinish,
+        CompiledNodeKind::RepeatStart { .. } => StepKind::RepeatStart,
+        CompiledNodeKind::RepeatAttempt { .. } => StepKind::RepeatAttempt,
+        CompiledNodeKind::RepeatCheck { .. } => StepKind::RepeatCheck,
+        CompiledNodeKind::RepeatFinish { .. } => StepKind::RepeatFinish,
+        CompiledNodeKind::WaitUntil { .. } => StepKind::WaitUntil,
+        CompiledNodeKind::WaitEvent { .. } => StepKind::WaitEvent,
+        CompiledNodeKind::Ask { .. } => StepKind::Ask,
+        CompiledNodeKind::AskResume { .. } => StepKind::AskResume,
+        CompiledNodeKind::RetryCheck { .. } => StepKind::RetryCheck,
+        CompiledNodeKind::ErrorHandler { .. } => StepKind::ErrorHandler,
+        CompiledNodeKind::Jump { .. } => StepKind::Jump,
+        CompiledNodeKind::Finish { .. } => StepKind::Finish,
+        // `CompiledNodeKind` is `#[non_exhaustive]`: any future variant
+        // surfaces as `Unknown` rather than failing the simulation.
+        _ => StepKind::Unknown,
+    }
+}
+
 pub(crate) struct SimulationStep {
     pub index: usize,
-    pub kind_label: String,
+    pub kind_label_text: String,
+    pub kind: StepKind,
     pub description: String,
 }
 
@@ -40,13 +131,15 @@ pub(crate) fn simulate_workflow(workflow: &CompiledWorkflow) -> SimulationResult
             None => continue,
         };
 
-        let kind_label = node_kind_label(&node.kind).to_string();
+        let kind_label_text = node_kind_label(&node.kind).to_string();
+        let kind = node_kind_to_step_kind(&node.kind);
         let description =
             describe_node_for_simulate(&node.kind, &mut action_count, &mut branch_count);
 
         steps.push(SimulationStep {
             index: i,
-            kind_label,
+            kind_label_text,
+            kind,
             description,
         });
     }

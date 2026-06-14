@@ -7,6 +7,7 @@ use vb_core::errors::CoreError;
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 use vb_runtime::admission::{AcceptedArtifactStore, AdmissionError, ArtifactEnvelopeError};
+use vb_storage::recovery::recover_runtime_frame_seed_from_events;
 use vb_storage::{
     ActionReplayTracker, EventSeq, FjallJournal, JournalError, JournalEvent, replay_journal,
 };
@@ -43,6 +44,7 @@ fn ticket(run: u64, step: u16, key: u128) -> ActionTicket {
         attempt: 1,
         idempotency_key: key,
         capacity: 3,
+        ..Default::default()
     }
 }
 
@@ -369,6 +371,54 @@ fn given_completed_action_before_restart_when_replayed_then_no_redispatch_and_ev
         true
     );
     assert_eq!(count_scheduled(&replayed), 1);
+    Ok(())
+}
+
+#[test]
+fn given_scheduled_action_before_crash_when_recovered_then_pending_action_blocks_redispatch()
+-> Result<(), String> {
+    // Given
+    let (_dir, journal) = temp_journal()?;
+    let run = RunId::new(130);
+    append_run_accepted(&journal, run, 0)?;
+    append_run_admission(&journal, run, 1)?;
+    let scheduled = JournalEvent::ActionScheduled {
+        run,
+        seq: EventSeq::new(2),
+        step: StepIdx::new(4),
+        action: ActionId::new(9),
+        attempt: 1,
+    };
+    journal
+        .append_strict(&scheduled)
+        .map_err(|error| error.to_string())?;
+    let before = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?
+        .len();
+
+    // When
+    let events = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?;
+    let seed =
+        recover_runtime_frame_seed_from_events(&events).map_err(|error| error.to_string())?;
+
+    // Then
+    assert_eq!(seed.summary.actions_scheduled, 1);
+    assert_eq!(seed.summary.actions_resolved, 0);
+    assert_eq!(seed.unsupported.pending_actions, false);
+    assert_eq!(
+        seed.pending_actions
+            .iter()
+            .any(|entry| entry.action == ActionId::new(9) && entry.step == StepIdx::new(4)),
+        true
+    );
+    let after = journal
+        .events_for_run(run)
+        .map_err(|error| error.to_string())?
+        .len();
+    assert_eq!(after, before);
     Ok(())
 }
 

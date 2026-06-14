@@ -159,6 +159,7 @@
           ]
         },
         "--reason": {
+          "length_unit": "characters",
           "max_length": 256,
           "type": "string"
         }

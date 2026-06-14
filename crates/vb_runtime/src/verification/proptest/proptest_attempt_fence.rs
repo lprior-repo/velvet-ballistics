@@ -55,6 +55,7 @@ fn arb_ticket() -> impl Strategy<Value = ActionTicket> {
                 attempt,
                 idempotency_key: key,
                 capacity,
+                ..ActionTicket::default()
             },
         )
 }
@@ -79,6 +80,7 @@ fn arb_hostile_ticket() -> impl Strategy<Value = ActionTicket> {
                 attempt,
                 idempotency_key: key,
                 capacity,
+                ..ActionTicket::default()
             },
         )
 }
@@ -150,6 +152,7 @@ proptest! {
             attempt: current.saturating_sub(1),
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         let result = normalize_scheduled_ticket(&state, ticket);
@@ -180,6 +183,7 @@ proptest! {
             attempt: current.saturating_sub(1),
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         record_scheduled_attempt(&mut state, ticket);
@@ -217,6 +221,7 @@ proptest! {
             attempt: incoming,
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         let result = normalize_scheduled_ticket(&state, ticket);
@@ -244,6 +249,7 @@ proptest! {
             attempt: incoming,
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         let result = normalize_scheduled_ticket(&state, ticket);
@@ -273,6 +279,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity: max_attempts,
+            ..ActionTicket::default()
         };
 
         let mut state = make_do_run_state(1);
@@ -323,6 +330,7 @@ proptest! {
                 attempt: *attempt,
                 idempotency_key: 0,
                 capacity: 255,
+                ..ActionTicket::default()
             };
             record_scheduled_attempt(&mut state, ticket);
             let current = state.action_attempts.get(0).copied().unwrap_or(0);
@@ -354,6 +362,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         let state = make_do_run_state(1);
@@ -394,6 +403,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         let mut state = make_do_run_state(1);
@@ -464,6 +474,7 @@ proptest! {
             attempt,
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         // Must not panic for any u16 inputs
@@ -494,6 +505,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity: u16::MAX,
+            ..ActionTicket::default()
         };
 
         let policy = RetryPolicy {
@@ -606,6 +618,7 @@ proptest! {
             attempt: ticket_attempt,
             idempotency_key: 0,
             capacity,
+            ..ActionTicket::default()
         };
 
         let _ = validate_action_completion(&state, ticket);

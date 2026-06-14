@@ -532,6 +532,7 @@ fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
 
     let (signal, _journal) = resume_action_completion(
@@ -596,6 +597,7 @@ fn resume_action_failure_marks_step_failed() -> Result<(), String> {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
 
     let (signal, _journal) = resume_action_failure(
@@ -624,6 +626,7 @@ fn journal_action_suspended_captures_all_fields() -> Result<(), String> {
         attempt: 1,
         idempotency_key: 12345,
         capacity: 1,
+        ..Default::default()
     };
     let event = crate::journal_action_suspended(
         ticket,

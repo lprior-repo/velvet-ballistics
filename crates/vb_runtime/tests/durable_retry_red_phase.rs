@@ -274,6 +274,7 @@ fn make_ticket(run: RunId, step: StepIdx, attempt: u16, capacity: u16) -> Action
         attempt,
         idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity,
+        ..Default::default()
     }
 }
 

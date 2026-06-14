@@ -54,7 +54,10 @@ fn test_action_ticket_equality_includes_mock() {
     let t0_clone = make_ticket(MockMarker::GithubIssueCreate);
 
     // Equal tickets (all fields identical).
-    assert_eq!(t0, t0_clone, "tickets with all identical fields must be equal");
+    assert_eq!(
+        t0, t0_clone,
+        "tickets with all identical fields must be equal"
+    );
 
     // Different mock → not equal.
     assert_ne!(
@@ -96,9 +99,11 @@ fn test_action_ticket_clone_preserved_with_mock() {
     assert_eq!(cloned.action, ticket.action, "cloned action must match");
     assert_eq!(cloned.attempt, ticket.attempt, "cloned attempt must match");
     assert_eq!(
-        cloned.idempotency_key,
-        ticket.idempotency_key,
+        cloned.idempotency_key, ticket.idempotency_key,
         "cloned idempotency_key must match"
     );
-    assert_eq!(cloned.capacity, ticket.capacity, "cloned capacity must match");
+    assert_eq!(
+        cloned.capacity, ticket.capacity,
+        "cloned capacity must match"
+    );
 }

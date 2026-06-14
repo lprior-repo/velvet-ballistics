@@ -301,6 +301,7 @@ fn action_completed_persists_before_ack() {
         attempt: 1,
         idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity: 1,
+        ..Default::default()
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -352,6 +353,7 @@ fn action_failed_persists_before_ack() {
         attempt: 1,
         idempotency_key: vb_core::action::compute_action_idempotency_key(run, seq, action),
         capacity: 1,
+        ..Default::default()
     };
     let failure = vb_core::action::ActionFailure {
         code: vb_core::ActionFailureCode::Timeout,

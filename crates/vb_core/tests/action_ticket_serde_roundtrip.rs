@@ -18,6 +18,7 @@ fn test_action_ticket_postcard_roundtrip_all_fields() {
         attempt: 42,
         idempotency_key: 0xAABB_CCDD_0011_2233_4455_6677_8899_AABB,
         capacity: 99,
+        ..Default::default()
     };
 
     let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
@@ -45,18 +46,15 @@ fn test_action_ticket_postcard_roundtrip_all_fields() {
         "action must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.attempt,
-        ticket.attempt,
+        ticket2.attempt, ticket.attempt,
         "attempt must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.idempotency_key,
-        ticket.idempotency_key,
+        ticket2.idempotency_key, ticket.idempotency_key,
         "idempotency_key must be preserved through serialization"
     );
     assert_eq!(
-        ticket2.capacity,
-        ticket.capacity,
+        ticket2.capacity, ticket.capacity,
         "capacity must be preserved through serialization"
     );
 }
@@ -71,13 +69,17 @@ fn test_action_ticket_postcard_roundtrip_zero_values() {
         attempt: 0,
         idempotency_key: 0,
         capacity: 0,
+        ..Default::default()
     };
 
     let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
     let ticket2: ActionTicket =
         postcard::from_bytes(&buf).expect("ActionTicket deserialization must succeed");
 
-    assert_eq!(ticket2, ticket, "zero-value ticket must roundtrip identically");
+    assert_eq!(
+        ticket2, ticket,
+        "zero-value ticket must roundtrip identically"
+    );
 }
 
 #[test]
@@ -90,6 +92,7 @@ fn test_action_ticket_postcard_roundtrip_max_values() {
         attempt: u16::MAX,
         idempotency_key: u128::MAX,
         capacity: u16::MAX,
+        ..Default::default()
     };
 
     let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
@@ -146,6 +149,7 @@ fn test_action_ticket_postcard_roundtrip_determinism() {
         attempt: 5,
         idempotency_key: 6,
         capacity: 7,
+        ..Default::default()
     };
     let large = ActionTicket {
         run: RunId::new(u64::MAX),
@@ -155,19 +159,21 @@ fn test_action_ticket_postcard_roundtrip_determinism() {
         attempt: u16::MAX,
         idempotency_key: u128::MAX,
         capacity: u16::MAX,
+        ..Default::default()
     };
 
-    let buf_small =
-        postcard::to_allocvec(&small).expect("small ticket serialization must succeed");
-    let buf_large =
-        postcard::to_allocvec(&large).expect("large ticket serialization must succeed");
+    let buf_small = postcard::to_allocvec(&small).expect("small ticket serialization must succeed");
+    let buf_large = postcard::to_allocvec(&large).expect("large ticket serialization must succeed");
 
     // Postcard uses variable-length encoding; small values serialize smaller.
     assert!(
         buf_small.len() <= buf_large.len(),
         "small ticket must serialize to <= bytes as large ticket"
     );
-    assert!(buf_small.len() > 0, "serialization must produce non-empty output");
+    assert!(
+        buf_small.len() > 0,
+        "serialization must produce non-empty output"
+    );
 
     // Both must roundtrip correctly.
     let restored_small: ActionTicket =
@@ -175,8 +181,14 @@ fn test_action_ticket_postcard_roundtrip_determinism() {
     let restored_large: ActionTicket =
         postcard::from_bytes(&buf_large).expect("large roundtrip must succeed");
 
-    assert_eq!(restored_small, small, "small ticket must roundtrip faithfully");
-    assert_eq!(restored_large, large, "large ticket must roundtrip faithfully");
+    assert_eq!(
+        restored_small, small,
+        "small ticket must roundtrip faithfully"
+    );
+    assert_eq!(
+        restored_large, large,
+        "large ticket must roundtrip faithfully"
+    );
 
     // Determinism: same input always produces same output.
     let buf_small_again =
@@ -198,6 +210,7 @@ fn test_action_ticket_postcard_roundtrip_mixed_values() {
         attempt: 1,
         idempotency_key: 0x0000_0000_0000_0000_DEAD_BEEF_DEAD_BEEF,
         capacity: 1,
+        ..Default::default()
     };
 
     let buf = postcard::to_allocvec(&ticket).expect("ActionTicket serialization must succeed");
@@ -207,8 +220,15 @@ fn test_action_ticket_postcard_roundtrip_mixed_values() {
     assert_eq!(ticket2.run.get(), ticket.run.get(), "run must match");
     assert_eq!(ticket2.step.get(), ticket.step.get(), "step must match");
     assert_eq!(ticket2.seq.get(), ticket.seq.get(), "seq must match");
-    assert_eq!(ticket2.action.get(), ticket.action.get(), "action must match");
+    assert_eq!(
+        ticket2.action.get(),
+        ticket.action.get(),
+        "action must match"
+    );
     assert_eq!(ticket2.attempt, ticket.attempt, "attempt must match");
-    assert_eq!(ticket2.idempotency_key, ticket.idempotency_key, "idempotency_key must match");
+    assert_eq!(
+        ticket2.idempotency_key, ticket.idempotency_key,
+        "idempotency_key must match"
+    );
     assert_eq!(ticket2.capacity, ticket.capacity, "capacity must match");
 }

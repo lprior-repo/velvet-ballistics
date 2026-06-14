@@ -936,6 +936,7 @@ fn resume_action_completion_writes_output_value_and_taint_unchanged() -> Result<
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
 
     let (signal, _journal) = resume_action_completion(
@@ -1778,6 +1779,7 @@ fn resume_action_completion_preserves_random_taint() -> Result<(), String> {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
 
     let (signal, _journal) = resume_action_completion(

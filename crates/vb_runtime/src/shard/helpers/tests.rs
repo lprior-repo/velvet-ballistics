@@ -24,6 +24,7 @@ fn ticket(run: RunId, step: StepIdx, attempt: u16) -> ActionTicket {
         attempt,
         idempotency_key: 0,
         capacity: u16::MAX,
+        ..Default::default()
     }
 }
 
@@ -576,6 +577,7 @@ fn validate_action_completion_rejects_wrong_action_id() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let result = validate_action_completion(&state, t);
     assert_eq!(result, Err(RuntimeError::InvalidActionCompletion));
@@ -1727,6 +1729,7 @@ mod proptest_tests {
                 attempt,
                 idempotency_key: 0,
                 capacity,
+                ..Default::default()
             };
             let _result = validate_action_completion(&state, t);
         }
@@ -1752,6 +1755,7 @@ mod proptest_tests {
                 attempt,
                 idempotency_key: 0,
                 capacity,
+                ..Default::default()
             };
             let result = validate_action_completion(&state, t);
             if attempt > capacity {

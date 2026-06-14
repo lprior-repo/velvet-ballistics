@@ -9,7 +9,7 @@
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
 
-use std::hash::{Hash, Hasher, DefaultHasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use vb_core::action::MockMarker;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
@@ -59,8 +59,7 @@ fn test_legacy_7field_deserialize_fallback() {
         mock: MockMarker::GithubIssueCreate, // discriminant 0 — legacy default
     };
 
-    let buf =
-        postcard::to_allocvec(&legacy_ticket).expect("serialization must not panic");
+    let buf = postcard::to_allocvec(&legacy_ticket).expect("serialization must not panic");
 
     // Deserialize back.
     let restored: vb_core::action::ActionTicket =
@@ -87,21 +86,28 @@ fn test_action_ticket_serde_no_panic_boundary() {
         mock: MockMarker::HttpGet,
     };
 
-    let buf =
-        postcard::to_allocvec(&ticket).expect("max-value serialization must not panic");
+    let buf = postcard::to_allocvec(&ticket).expect("max-value serialization must not panic");
     let restored: vb_core::action::ActionTicket =
         postcard::from_bytes(&buf).expect("max-value deserialization must not panic");
 
     assert_eq!(restored.run.get(), u64::MAX, "max run must be preserved");
     assert_eq!(restored.step.get(), u16::MAX, "max step must be preserved");
     assert_eq!(restored.seq.get(), u64::MAX, "max seq must be preserved");
-    assert_eq!(restored.action.get(), u16::MAX, "max action must be preserved");
+    assert_eq!(
+        restored.action.get(),
+        u16::MAX,
+        "max action must be preserved"
+    );
     assert_eq!(restored.attempt, u16::MAX, "max attempt must be preserved");
     assert_eq!(
         restored.idempotency_key,
         u128::MAX,
         "max idempotency_key must be preserved"
     );
-    assert_eq!(restored.capacity, u16::MAX, "max capacity must be preserved");
+    assert_eq!(
+        restored.capacity,
+        u16::MAX,
+        "max capacity must be preserved"
+    );
     assert_eq!(restored.mock, MockMarker::HttpGet, "mock must be preserved");
 }

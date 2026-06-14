@@ -23,11 +23,14 @@ fn test_issue_action_ticket_captures_all_fields() {
     assert_eq!(ticket.run, RunId::new(0x1234), "run must be captured");
     assert_eq!(ticket.step, StepIdx::new(0x5678), "step must be captured");
     assert_eq!(ticket.seq, SeqNo::new(0x9ABC), "seq must be captured");
-    assert_eq!(ticket.action, ActionId::new(0xDEF0), "action must be captured");
+    assert_eq!(
+        ticket.action,
+        ActionId::new(0xDEF0),
+        "action must be captured"
+    );
     assert_eq!(ticket.attempt, 42, "attempt must be captured");
     assert_eq!(
-        ticket.idempotency_key,
-        0xDEAD_BEEF,
+        ticket.idempotency_key, 0xDEAD_BEEF,
         "idempotency_key must be captured"
     );
     assert_eq!(ticket.capacity, 7, "capacity must be captured");
@@ -98,7 +101,10 @@ fn test_issue_action_ticket_zero_values() {
     assert_eq!(ticket.seq.get(), 0, "zero seq must be captured");
     assert_eq!(ticket.action.get(), 0, "zero action must be captured");
     assert_eq!(ticket.attempt, 0, "zero attempt must be captured");
-    assert_eq!(ticket.idempotency_key, 0, "zero idempotency_key must be captured");
+    assert_eq!(
+        ticket.idempotency_key, 0,
+        "zero idempotency_key must be captured"
+    );
     assert_eq!(ticket.capacity, 0, "zero capacity must be captured");
 }
 

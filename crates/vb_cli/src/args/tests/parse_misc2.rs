@@ -310,7 +310,7 @@ fn parse_cancel_rejects_missing_db() {
 }
 
 #[test]
-fn parse_cancel_rejects_reason_longer_than_256_bytes() {
+fn parse_cancel_rejects_reason_longer_than_256_chars() {
     let long_reason = "a".repeat(CANCEL_REASON_MAX_CHARS.saturating_add(1));
     let parsed = parse_args(&args(&[
         "velvet-ballistics",
@@ -328,7 +328,7 @@ fn parse_cancel_rejects_reason_longer_than_256_bytes() {
 }
 
 #[test]
-fn parse_cancel_accepts_reason_exactly_256_bytes() {
+fn parse_cancel_accepts_reason_exactly_256_chars() {
     let reason = "a".repeat(CANCEL_REASON_MAX_CHARS);
     let parsed = parse_args(&args(&[
         "velvet-ballistics",

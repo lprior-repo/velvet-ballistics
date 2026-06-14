@@ -303,6 +303,7 @@ fn runtime_signal_awaiting_action_equality_matches_on_ticket() {
         attempt: 1,
         idempotency_key: 42,
         capacity: 1,
+        ..Default::default()
     };
     let a = RuntimeSignal::AwaitingAction(ticket);
     let b = RuntimeSignal::AwaitingAction(ticket);
@@ -319,6 +320,7 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     });
     let b = RuntimeSignal::AwaitingAction(ActionTicket {
         run: RunId::new(2),
@@ -328,6 +330,7 @@ fn runtime_signal_awaiting_action_differs_for_different_ticket() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     });
     assert_ne!(a, b);
 }
@@ -654,6 +657,7 @@ fn make_original_ticket() -> ActionTicket {
         attempt: 3,
         idempotency_key: compute_idempotency_key(RunId::new(1), SeqNo::new(10), ActionId::new(7)),
         capacity: 5,
+        ..Default::default()
     }
 }
 
@@ -732,6 +736,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
         attempt: 2,
         idempotency_key: 99,
         capacity: 1,
+        ..Default::default()
     };
     let outcome = ActionOutcome::Suspended(ticket);
     let original = make_original_ticket();
@@ -746,6 +751,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
             attempt: 2,
             idempotency_key: 99,
             capacity: 1,
+            ..Default::default()
         }))
     );
 }
@@ -1262,6 +1268,7 @@ fn bh_resume_action_outcome_ready_preserves_secret_taint() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let result = resume_action_outcome(&ticket, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
@@ -1284,6 +1291,7 @@ fn bh_resume_action_outcome_ready_preserves_derived_taint() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let result = resume_action_outcome(&ticket, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
@@ -1306,6 +1314,7 @@ fn bh_resume_action_outcome_ready_clean_taint_preserved() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let result = resume_action_outcome(&ticket, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
@@ -1322,6 +1331,7 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
         attempt: 3,
         idempotency_key: 12345,
         capacity: 1,
+        ..Default::default()
     };
     let outcome = ActionOutcome::Suspended(original_ticket);
     let result = resume_action_outcome(&make_original_ticket(), outcome, &dummy_contract());
@@ -1365,6 +1375,7 @@ fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
         attempt: 2,
         idempotency_key: 100,
         capacity: 4,
+        ..Default::default()
     };
     let result = resume_action_outcome(&original, outcome, &dummy_contract());
     match result {
@@ -2193,6 +2204,7 @@ mod blackhat_engine {
             attempt: 1,
             idempotency_key: 0,
             capacity: 3,
+            ..Default::default()
         };
         let failure = ActionFailure {
             code: ActionFailureCode::Timeout,
@@ -2271,6 +2283,7 @@ mod blackhat_engine {
             attempt: 3,
             idempotency_key: 99999,
             capacity: 1,
+            ..Default::default()
         };
         let original = ActionTicket {
             run: RunId::new(1),
@@ -2280,6 +2293,7 @@ mod blackhat_engine {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         };
         let outcome = ActionOutcome::Suspended(suspended_ticket);
         let result = resume_action_outcome(&original, outcome, &dummy_contract());

@@ -25,6 +25,7 @@ fn make_ticket(seq: u32) -> ActionTicket {
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,
+            ..Default::default()
     }
 }
 
@@ -37,6 +38,7 @@ fn make_ticket_with_action(seq: u32, action: u16) -> ActionTicket {
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,
+            ..Default::default()
     }
 }
 

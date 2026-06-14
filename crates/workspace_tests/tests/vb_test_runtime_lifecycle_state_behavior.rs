@@ -216,6 +216,7 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     }
 }
 

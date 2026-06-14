@@ -2,6 +2,7 @@
 //! Resource contract validation tests (Behaviors E1–E11).
 //! Bead: vb-xi2f.35 — P1: digest covers resource contract semantics.
 
+use proptest::prelude::*;
 use vb_core::ids::ConstIdx;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstValue, ExprOp, ExprProgram,
@@ -68,6 +69,32 @@ fn nop_parts(contract: ResourceContract) -> WorkflowParts {
     }
 }
 
+fn nop_parts_with_node_count(contract: ResourceContract, node_count: u16) -> WorkflowParts {
+    let nodes: Vec<CompiledNode> = (0..node_count)
+        .map(|index| CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        })
+        .collect();
+    WorkflowParts {
+        name: Box::<str>::from("validation_test"),
+        digest: WorkflowDigest::from_bytes([0xAB; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: vec![ConstValue::Null].into_boxed_slice(),
+        slot_count: 0,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: contract,
+        step_names: Box::default(),
+    }
+}
+
 /// Creates parts with a specific slot count and contract.
 fn slot_parts(contract: ResourceContract, slot_count: u16) -> WorkflowParts {
     let mut parts = nop_parts(contract);
@@ -102,6 +129,48 @@ fn accessor_parts(
 /// Creates a load-const ExprOp.
 fn load(index: u16) -> ExprOp {
     ExprOp::LoadConst(ConstIdx::new(index))
+}
+
+proptest! {
+    #[test]
+    fn proptest_validation_rejects_nodes_above_contract_without_truncation(limit in 1u16..128) {
+        let Some(actual) = limit.checked_add(1) else {
+            return Ok(());
+        };
+        let parts = nop_parts_with_node_count(contract(limit, 10, 10, 10, 10, 10), actual);
+        let result = CompiledWorkflow::try_from_parts(parts);
+        prop_assert!(matches!(
+            result,
+            Err(WorkflowError::ResourceContractExceeded { resource: "max_steps" })
+        ), "nodes over max_steps must return ResourceContractExceeded");
+    }
+
+    #[test]
+    fn proptest_validation_rejects_slots_above_contract_without_truncation(limit in 0u16..128) {
+        let Some(actual) = limit.checked_add(1) else {
+            return Ok(());
+        };
+        let parts = slot_parts(contract(10, limit, 10, 10, 10, 10), actual);
+        let result = CompiledWorkflow::try_from_parts(parts);
+        prop_assert!(matches!(
+            result,
+            Err(WorkflowError::ResourceContractExceeded { resource: "max_slots" })
+        ), "slots over max_slots must return ResourceContractExceeded");
+    }
+
+    #[test]
+    fn proptest_validation_rejects_constants_above_contract_without_truncation(limit in 0u16..128) {
+        let Some(actual) = limit.checked_add(1) else {
+            return Ok(());
+        };
+        let constants = vec![ConstValue::Null; usize::from(actual)].into_boxed_slice();
+        let parts = const_parts(contract(10, 10, limit, 10, 10, 10), constants);
+        let result = CompiledWorkflow::try_from_parts(parts);
+        prop_assert!(matches!(
+            result,
+            Err(WorkflowError::ResourceContractExceeded { resource: "max_constants" })
+        ), "constants over max_constants must return ResourceContractExceeded");
+    }
 }
 
 // ---------------------------------------------------------------------------

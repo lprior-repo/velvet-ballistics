@@ -80,6 +80,7 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),

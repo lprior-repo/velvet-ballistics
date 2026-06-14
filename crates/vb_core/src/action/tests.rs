@@ -196,6 +196,7 @@ fn action_ticket_with_idempotency_key_zero_is_a_valid_ticket() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     assert_eq!(ticket.idempotency_key, 0);
     assert_eq!(ticket.run, RunId::new(1));
@@ -249,6 +250,7 @@ fn action_ticket_from_different_run_is_not_equal() {
         attempt: 1,
         idempotency_key: 100,
         capacity: 1,
+        ..Default::default()
     };
     let ticket_b = ActionTicket {
         run: RunId::new(2),
@@ -258,6 +260,7 @@ fn action_ticket_from_different_run_is_not_equal() {
         attempt: 1,
         idempotency_key: 100,
         capacity: 1,
+        ..Default::default()
     };
     assert_ne!(ticket_a, ticket_b);
 }
@@ -377,6 +380,7 @@ fn action_outcome_suspended_carries_ticket_identity() {
         attempt: 1,
         idempotency_key: 999,
         capacity: 1,
+        ..Default::default()
     };
     let outcome = ActionOutcome::Suspended(ticket);
     match outcome {
@@ -1266,6 +1270,7 @@ fn validate_action_outcome_suspended_rejected() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let outcome = ActionOutcome::Suspended(ticket);
     let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
@@ -1470,6 +1475,7 @@ fn journal_event_suspended_roundtrips_fields() {
         attempt: 1,
         idempotency_key: 999,
         capacity: 1,
+        ..Default::default()
     };
     let event = ActionJournalEvent::Suspended {
         ticket,
@@ -1509,6 +1515,7 @@ fn journal_event_completed_roundtrips_fields() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let event = ActionJournalEvent::Completed {
         ticket,
@@ -1542,6 +1549,7 @@ fn journal_event_failed_roundtrips_fields() {
         attempt: 3,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let event = ActionJournalEvent::Failed {
         ticket,
@@ -1575,6 +1583,7 @@ fn journal_event_serialization_roundtrip() {
         attempt: 1,
         idempotency_key: 12345,
         capacity: 1,
+        ..Default::default()
     };
     let event = ActionJournalEvent::Suspended {
         ticket,
@@ -1602,6 +1611,7 @@ fn journal_event_completed_serialization_roundtrip() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let event = ActionJournalEvent::Completed {
         ticket,
@@ -1627,6 +1637,7 @@ fn journal_event_failed_serialization_roundtrip() {
         attempt: 2,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let event = ActionJournalEvent::Failed {
         ticket,
@@ -1657,6 +1668,7 @@ fn action_ticket_construction_all_fields_accessible() {
         attempt: 3,
         idempotency_key: 0xDEADBEEF_u128,
         capacity: 10,
+        ..Default::default()
     };
     assert_eq!(ticket.run, RunId::new(999));
     assert_eq!(ticket.step, StepIdx::new(42));
@@ -1913,6 +1925,7 @@ fn test_canonical_key_validates() {
             attempt: deterministic_rand_u16_bounded(3, iter, 14) + 1,
             idempotency_key: canonical_key,
             capacity: deterministic_rand_u16_bounded(5, iter, 15) + 1,
+            ..Default::default()
         };
         assert!(
             action_ticket_has_valid_key(canonical_ticket),

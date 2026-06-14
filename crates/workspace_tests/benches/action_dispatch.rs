@@ -56,6 +56,7 @@ fn action_input(action: ActionId) -> ActionInput {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         },
     }
 }

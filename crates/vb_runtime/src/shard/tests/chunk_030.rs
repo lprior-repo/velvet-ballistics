@@ -632,6 +632,7 @@ fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: vb_core::ids::SlotIdx::ZERO,

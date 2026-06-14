@@ -47,6 +47,7 @@ fn make_ticket(run: RunId, seq: u64) -> ActionTicket {
         attempt: 1,
         idempotency_key: seq as u128,
         capacity: 1,
+        ..Default::default()
     }
 }
 
@@ -430,6 +431,7 @@ fn ipc_action_completion_enqueues_for_nonexistent_run() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let output = ActionOutputReady {
         output_slot: SlotIdx::new(1),
@@ -463,6 +465,7 @@ fn ipc_terminal_run_reentry_completion_returns_run_not_found_when_processed() ->
         attempt: 1,
         idempotency_key: vb_runtime::engine::compute_idempotency_key(run, seq, action),
         capacity: 1,
+        ..Default::default()
     };
     let second_output = terminal_reentry_output(SlotValue::I64(99))?;
 
@@ -1092,6 +1095,7 @@ fn resource_action_failure_enqueues_for_nonexistent_run() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,
@@ -1122,6 +1126,7 @@ fn resource_action_failure_enqueued_for_nonexistent_run() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+        ..Default::default()
     };
     let failure = ActionFailure {
         code: ActionFailureCode::Rejected,

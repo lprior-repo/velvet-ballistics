@@ -30,6 +30,7 @@ pub fn runtime_from_core(signal: EngineSignal) -> RuntimeSignal {
             attempt: 1,
             idempotency_key: 0,
             capacity: 1,
+            ..Default::default()
         }),
         EngineSignal::AwaitingWait { deadline_slot } => RuntimeSignal::AwaitingWait(deadline_slot),
         EngineSignal::AwaitingAsk { timeout_slot } => RuntimeSignal::AwaitingAsk(timeout_slot),

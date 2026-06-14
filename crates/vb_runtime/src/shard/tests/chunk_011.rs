@@ -75,6 +75,7 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
         attempt: 1,
         idempotency_key: 0,
         capacity: 1,
+            ..Default::default()
     };
     let failure = vb_core::action::ActionFailure {
         code: vb_core::action::ActionFailureCode::Unknown,

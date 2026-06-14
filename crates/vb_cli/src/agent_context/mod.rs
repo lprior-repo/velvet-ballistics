@@ -209,7 +209,8 @@ fn commands() -> Value {
                     "--db": {"type": "path", "required": true},
                     "--reason": {
                         "type": "string",
-                        "max_length": crate::args::run_ops::CANCEL_REASON_MAX_CHARS
+                        "max_length": crate::args::run_ops::CANCEL_REASON_MAX_CHARS,
+                        "length_unit": "characters"
                     },
                     "--emit": output_emit_flag()
                 }
