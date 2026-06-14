@@ -280,14 +280,14 @@ fn replay_bool_slot(
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, frame_msg);
+            kani::assume(false);
             return;
         }
     };
     match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false, write_msg);
+            kani::assume(false);
             return;
         }
     }

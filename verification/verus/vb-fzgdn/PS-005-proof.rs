@@ -100,14 +100,14 @@ verus! {
     proof fn test_replacement_increments()
         ensures
             forall |s: TimerSlot| s.present ==>
-                s.insert_spec().present && s.insert_spec().generation == s.generation + 1,
+                s.insert_spec().present && s.insert_spec().generation == (s.generation + 1u64) as u64,
     {
         assert forall |s: TimerSlot| s.present ==>
-            s.insert_spec().present && s.insert_spec().generation == s.generation + 1 by {
+            s.insert_spec().present && s.insert_spec().generation == (s.generation + 1u64) as u64 by {
             if s.present {
                 let result = s.insert_spec();
                 assert(result.present);
-                assert(result.generation == s.generation + 1);
+                assert(result.generation == (s.generation + 1u64) as u64);
             }
         };
     }
