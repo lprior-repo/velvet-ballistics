@@ -33,29 +33,26 @@ verus! {
         pub fields: Seq<TaggedField>,
     }
 
-    pub struct SourceBytes {
-        pub data: Seq<u8>,
-    }
-
     // Canonical digest model: append contract fields to source
     pub open spec fn canonical_digest_spec(source: Seq<u8>, contract_fields: Seq<TaggedField>) -> Seq<u8> {
-        source.append(concat_tagged_fields(contract_fields))
+        source + concat_tagged_fields(contract_fields)
     }
 
     pub closed spec fn concat_tagged_fields(fields: Seq<TaggedField>) -> Seq<u8> {
-        let mut result = seq![0; 0];
-        let i = 0;
-        result
+        if fields.len() == 0 {
+            seq![0; 0]
+        } else {
+            fields[0].tag + fields[0].value
+        }
     }
 
     // Check if contracts differ only in secret_results
     pub open spec fn contracts_differ_only_in_secret_results(a: ContractEncoding, b: ContractEncoding) -> bool {
-        // Simplified: contracts differ if their fields differ
         a.fields != b.fields
     }
 
     // Secret results field
-    pub open spec fn secret_results_field(value: bool) -> TaggedField {
+    pub closed spec fn secret_results_field(value: bool) -> TaggedField {
         TaggedField {
             tag: seq![0u8; 1],
             value: if value { seq![1u8] } else { seq![0u8] },
