@@ -18,6 +18,12 @@
 use vb_core::contract_encoding::encode_contract_bytes;
 use vb_core::workflow::ResourceContract;
 
+// YAML source can't be symbolic (kani::any) because the YAML parser
+// (saphyr/vb_yaml) requires concrete string inputs. Coverage beyond the
+// representative single-step Set workflow is provided by:
+// - proptest: proptest_finish_digest, proptest_choose_lowering,
+//   proptest_together_errors
+// - fuzz: fuzz/fuzz_targets/compile_source.rs
 fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: collision_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {

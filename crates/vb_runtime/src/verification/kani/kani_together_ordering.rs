@@ -148,19 +148,25 @@ fn kani_together_join_pif_reduction() {
 
     // Place a list in the accumulator to test join behavior
     let acc_list = vec![SlotValue::I64(1), SlotValue::I64(2)];
-    let acc_list_id = store.insert_list(acc_list.into_boxed_slice())
-        .expect("insert acc list");
+    let acc_list_id = match store.insert_list(acc_list.into_boxed_slice()) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "insert acc list"); return; }
+    };
     let accumulator = SlotIdx::new(3);
-    run.write_slot(accumulator, SlotValue::List(acc_list_id))
-        .expect("write accumulator");
+    match run.write_slot(accumulator, SlotValue::List(acc_list_id)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "write accumulator"); return; }
+    }
 
     let output_slot = SlotIdx::new(4);
     let next_step = StepIdx::new(9);
     let step = StepIdx::new(8);
 
     // Write a non-list value to output slot (simulating last branch result)
-    run.write_slot(output_slot, SlotValue::I64(99))
-        .expect("write output");
+    match run.write_slot(output_slot, SlotValue::I64(99)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "write output"); return; }
+    }
 
     let branch_count: u16 = kani::any();
     kani::assume(branch_count >= 1);

@@ -130,8 +130,14 @@ together:
       steps: []
 "#;
 
-    let docs = saphyr::Yaml::load_from_str(yaml_text).unwrap();
-    let root = docs.into_iter().next().unwrap();
+    let docs = match saphyr::Yaml::load_from_str(yaml_text) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    let root = match docs.into_iter().next() {
+        Some(v) => v,
+        None => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     // Call parse_step which internally calls parse_step_primitive
     let result = crate::ast::parse_steps::parse_step(&root);
@@ -180,8 +186,14 @@ parallel:
       steps: []
 "#;
 
-    let docs = saphyr::Yaml::load_from_str(yaml_text).unwrap();
-    let root = docs.into_iter().next().unwrap();
+    let docs = match saphyr::Yaml::load_from_str(yaml_text) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    let root = match docs.into_iter().next() {
+        Some(v) => v,
+        None => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = crate::ast::parse_steps::parse_step(&root);
 
@@ -229,8 +241,14 @@ together:
   branches: []
 "#;
 
-    let docs = saphyr::Yaml::load_from_str(yaml_text).unwrap();
-    let root = docs.into_iter().next().unwrap();
+    let docs = match saphyr::Yaml::load_from_str(yaml_text) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    let root = match docs.into_iter().next() {
+        Some(v) => v,
+        None => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = crate::ast::parse_steps::parse_step(&root);
 

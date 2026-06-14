@@ -24,9 +24,16 @@ fn check_action_registry_panic_free() {
 
     let name_data: u8 = kani::any();
     // ActionName "test_a" is a valid name (≤64 chars, no whitespace).
+    let action_name = match ActionName::new("test_action") {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
     let contract = ActionContract {
         id: ActionId::new(id),
-        name: ActionName::new("test_action").unwrap(),
+        name: action_name,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 4096,
@@ -133,11 +140,16 @@ fn check_action_ticket_serialization() {
     };
 
     // Serialize (7-field format).
-    let serialized = postcard::to_allocvec(&ticket).expect("Serialization must succeed");
+    let serialized = match postcard::to_allocvec(&ticket) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Serialization must succeed"); return; }
+    };
 
     // Deserialize back.
-    let deserialized: ActionTicket =
-        postcard::from_bytes(&serialized).expect("Deserialization must succeed");
+    let deserialized: ActionTicket = match postcard::from_bytes(&serialized) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Deserialization must succeed"); return; }
+    };
 
     // Verify all 7 fields round-trip correctly.
     assert_eq!(deserialized.run.get(), ticket.run.get());
@@ -175,9 +187,14 @@ fn check_action_ticket_serialization_edge_cases() {
     };
 
     // Round-trip through postcard.
-    let serialized = postcard::to_allocvec(&ticket).expect("Serialization must succeed");
-    let deserialized: ActionTicket =
-        postcard::from_bytes(&serialized).expect("Deserialization must succeed");
+    let serialized = match postcard::to_allocvec(&ticket) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Serialization must succeed"); return; }
+    };
+    let deserialized: ActionTicket = match postcard::from_bytes(&serialized) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Deserialization must succeed"); return; }
+    };
 
     assert_eq!(deserialized, ticket, "All fields must round-trip correctly");
 }

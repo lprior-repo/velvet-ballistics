@@ -166,7 +166,13 @@ fn proof_eviction_safety() {
     let mut tracker = IdempotencyTracker::new(capacity);
 
     let mut first_ticket = any_bounded_ticket();
-    tracker.mark_completed(&first_ticket).unwrap();
+    match tracker.mark_completed(&first_ticket) {
+        Ok(v) => { let _ = v; },
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
 
     // Fill up to capacity
     for _ in 1..capacity {

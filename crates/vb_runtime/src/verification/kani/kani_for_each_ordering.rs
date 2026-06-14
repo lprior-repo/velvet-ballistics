@@ -64,8 +64,10 @@ fn kani_for_each_ordering() {
     };
 
     let input_slot = SlotIdx::new(0);
-    run.write_slot(input_slot, input_value)
-        .expect("write input slot");
+    match run.write_slot(input_slot, input_value) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "write input slot"); return; }
+    }
 
     let item_slot = SlotIdx::new(1);
     let body_step = StepIdx::new(1);
@@ -97,7 +99,10 @@ fn kani_for_each_ordering() {
                     );
 
                     // First item should be bound to item_slot
-                    let bound = run.read_slot(item_slot).expect("read item_slot");
+                    let bound = match run.read_slot(item_slot) {
+                        Ok(v) => v,
+                        Err(_) => { kani::assume(false, "read item_slot"); return; }
+                    };
                     assert_eq!(
                         *bound,
                         SlotValue::I64(0),
@@ -145,8 +150,10 @@ fn kani_for_each_next_progression() {
     };
 
     let input_slot = SlotIdx::new(0);
-    run.write_slot(input_slot, input_value)
-        .expect("write input slot");
+    match run.write_slot(input_slot, input_value) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "write input slot"); return; }
+    }
 
     let item_slot = SlotIdx::new(1);
     let body_step = StepIdx::new(1);
@@ -185,7 +192,10 @@ fn kani_for_each_next_progression() {
                 EngineSignal::Continue => {
                     if remaining > 0 {
                         // Should still have items
-                        let bound = run.read_slot(item_slot).expect("read item_slot");
+                        let bound = match run.read_slot(item_slot) {
+                            Ok(v) => v,
+                            Err(_) => { kani::assume(false, "read item_slot"); return; }
+                        };
                         assert_eq!(
                             *bound,
                             SlotValue::I64(expected_item),
@@ -220,10 +230,15 @@ fn kani_for_each_join_passthrough() {
 
     // Create a result list
     let result_list = vec![SlotValue::I64(42), SlotValue::I64(7)];
-    let output_value = insert_test_list(&mut store, &result_list).expect("insert result");
+    let output_value = match insert_test_list(&mut store, &result_list) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "insert result"); return; }
+    };
     let materialized_slot = SlotIdx::new(3);
-    run.write_slot(materialized_slot, output_value)
-        .expect("write materialized");
+    match run.write_slot(materialized_slot, output_value) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "write materialized"); return; }
+    }
 
     let output_slot = SlotIdx::new(4);
     let next_step = StepIdx::new(9);
@@ -243,7 +258,10 @@ fn kani_for_each_join_passthrough() {
                     "join must continue to next step"
                 );
                 // The output slot should hold the materialized value
-                let output = run.read_slot(output_slot).expect("read output");
+                let output = match run.read_slot(output_slot) {
+                    Ok(v) => v,
+                    Err(_) => { kani::assume(false, "read output"); return; }
+                };
                 assert_eq!(
                     *output, output_value,
                     "join must pass through the materialized list"

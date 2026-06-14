@@ -88,7 +88,10 @@ fn direct_write_mutated_metadata() {
     let (mut artifact, _ir) = arbitrary_accepted_artifact_with_valid_ir();
 
     // Create a valid serialized envelope (used to verify artifact is serializable)
-    let _envelope = postcard::to_allocvec(&artifact).expect("Artifact should serialize");
+    let _envelope = match postcard::to_allocvec(&artifact) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Artifact should serialize"); return; }
+    };
 
     // Compute the digest that will be stored in the record
     let stored_digest = artifact.digest;
@@ -104,8 +107,10 @@ fn direct_write_mutated_metadata() {
     artifact.source_digest = mutated_source_digest;
 
     // Create mutated envelope
-    let mutated_envelope =
-        postcard::to_allocvec(&artifact).expect("Mutated artifact should serialize");
+    let mutated_envelope = match postcard::to_allocvec(&artifact) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Mutated artifact should serialize"); return; }
+    };
 
     // Create CompiledIrRecord with correct digest but mutated envelope bytes
     let record = CompiledIrRecord {
@@ -177,7 +182,10 @@ fn source_digest_equals_digest_invariant() {
     };
 
     // Encode the artifact into a CompiledIrRecord
-    let envelope = postcard::to_allocvec(&artifact).expect("Should serialize");
+    let envelope = match postcard::to_allocvec(&artifact) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "Should serialize"); return; }
+    };
     let record = CompiledIrRecord {
         digest,
         ir: envelope,

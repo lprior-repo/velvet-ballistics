@@ -20,6 +20,11 @@
 use vb_core::contract_encoding::encode_contract_bytes;
 use vb_core::workflow::ResourceContract;
 
+// Baseline contract for single-field-mutation tests. A fixed baseline is required
+// because the harness selects one field at random (kani::any), mutates it, and
+// compares digest/encoding against the unchanged baseline. Both baseline and
+// mutated values are checked for inequality; the specific baseline values don't
+// affect the proof (only the fact of inequality matters).
 fn base_contract() -> ResourceContract {
     ResourceContract {
         max_steps: 50,
@@ -43,7 +48,12 @@ fn base_contract() -> ResourceContract {
     }
 }
 
-/// Helper: Get a representative WorkflowSource for Kani verification.
+// YAML source can't be symbolic (kani::any) because the YAML parser
+// (saphyr/vb_yaml) requires concrete string inputs. Coverage beyond the
+// representative single-step Set workflow is provided by:
+// - proptest: proptest_finish_digest, proptest_choose_lowering,
+//   proptest_together_errors
+// - fuzz: fuzz/fuzz_targets/compile_source.rs
 fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: field_sensitivity_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {

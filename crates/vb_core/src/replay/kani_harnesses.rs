@@ -104,8 +104,13 @@ mod verification {
                 },
             ],
             vec![],
-        )
-        .expect("plan construction failed");
+        ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    }
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -184,8 +189,13 @@ mod verification {
                 },
             ],
             vec![],
-        )
-        .expect("plan construction failed");
+        ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    }
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -257,8 +267,13 @@ mod verification {
                 },
             ],
             vec![],
-        )
-        .expect("plan construction failed");
+        ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    }
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();
@@ -349,8 +364,13 @@ mod verification {
                 },
             ],
             vec![],
-        )
-        .expect("plan construction failed");
+        ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    }
 
         let step_count = plan.node_count();
         let slot_count = plan.slot_count();

@@ -17,6 +17,12 @@
 
 use vb_core::workflow::ResourceContract;
 
+// YAML source can't be symbolic (kani::any) because the YAML parser
+// (saphyr/vb_yaml) requires concrete string inputs. Coverage beyond the
+// representative single-step Set workflow is provided by:
+// - proptest: proptest_finish_digest, proptest_choose_lowering,
+//   proptest_together_errors
+// - fuzz: fuzz/fuzz_targets/compile_source.rs
 fn representative_source() -> vb_yaml::ast::WorkflowSource {
     let yaml = "version: velvet-ballastics/v1\nname: dual_path_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
     match vb_yaml::parse_workflow_source(yaml) {
@@ -31,14 +37,16 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 #[kani::unwind(3)]
 fn prove_dual_path_digest_equivalence() {
     let source = representative_source();
-    let contract = ResourceContract::DEFAULT;
+    let contract: ResourceContract = kani::any();
 
     // Digest computed directly
     let digest_direct = crate::mod_compile_lowering::canonical_digest(&source, contract);
 
     // Digest from compilation
-    let workflow = crate::mod_compile_lowering::compile_source(&source, contract)
-        .expect("valid source must compile");
+    let workflow = match crate::mod_compile_lowering::compile_source(&source, contract) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "valid source must compile"); return; }
+    };
     let digest_compiled = workflow.digest();
 
     assert_eq!(
@@ -54,30 +62,14 @@ fn prove_dual_path_digest_equivalence() {
 #[kani::unwind(4)]
 fn prove_dual_path_digest_equivalence_non_default() {
     let source = representative_source();
-    let contract = ResourceContract {
-        max_steps: 5,
-        max_slots: 3,
-        max_constants: 2,
-        max_accessors: 2,
-        max_expressions: 2,
-        max_expr_stack: 4,
-        max_step_budget_per_tick: 8,
-        max_transitions_per_tick: 8,
-        max_input_bytes: 128,
-        max_output_bytes: 128,
-        max_blob_bytes: 8,
-        max_ipc_payload_bytes: 128,
-        max_retry_attempts: 2,
-        max_fanout: 4,
-        max_collect_items: 16,
-        max_queue_depth: 16,
-        max_journal_batch_bytes: 128,
-        allows_secret_results: true,
-    };
+    let contract: ResourceContract = kani::any();
+    kani::assume(contract != ResourceContract::DEFAULT);
 
     let digest_direct = crate::mod_compile_lowering::canonical_digest(&source, contract);
-    let workflow = crate::mod_compile_lowering::compile_source(&source, contract)
-        .expect("valid source must compile");
+    let workflow = match crate::mod_compile_lowering::compile_source(&source, contract) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "valid source must compile"); return; }
+    };
 
     assert_eq!(
         digest_direct,

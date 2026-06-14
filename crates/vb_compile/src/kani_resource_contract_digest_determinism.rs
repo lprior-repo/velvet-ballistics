@@ -87,6 +87,8 @@ fn bounded_contract() -> ResourceContract {
 ///
 /// This calls the actual production canonical_digest in mod_compile_lowering.
 /// We use a fixed representative YAML source for bounded verification.
+// YAML source can't be symbolic (kani::any) — see representative_source() doc
+// in sibling harness files for details and proptest/fuzz cross-refs.
 #[kani::proof]
 #[kani::unwind(3)]
 fn prove_digest_determinism() {
@@ -136,7 +138,10 @@ fn prove_canonical_policy_digest_agree_on_identity() {
     let contract_a = ResourceContract::DEFAULT;
 
     let mut contract_b = ResourceContract::DEFAULT;
-    contract_b.max_steps = 9_999; // Single field change
+    let max_steps: u16 = kani::any();
+    kani::assume(max_steps > 0 && max_steps < 10_000);
+    kani::assume(max_steps != contract_a.max_steps);
+    contract_b.max_steps = max_steps;
 
     // Verify contracts differ
     assert_ne!(contract_a, contract_b, "Test contracts must differ");
@@ -151,6 +156,7 @@ fn prove_canonical_policy_digest_agree_on_identity() {
     );
 
     // Verify the full canonical_digest incorporates the contract change
+    // YAML source can't be symbolic (kani::any) — see proptest cross-ref above.
     let yaml = "version: velvet-ballastics/v1\nname: test\nwhen: { manual: {} }\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: \"1\"\n";
     let source = match vb_yaml::parse_workflow_source(yaml) {
         Ok(v) => v,

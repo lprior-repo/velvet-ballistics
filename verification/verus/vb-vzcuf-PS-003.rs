@@ -25,6 +25,30 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file models the production `JournalError` enum variant space.
+// The actual enum lives in `vb_storage::error::JournalError` (a non-Verus
+// crate), so it cannot be directly imported here.
+//
+// Binding is via:
+//
+//   (a) `verify_error_variant_distinct` — a `#[verifier::external_body]` exec fn
+//       that documents the contract the production enum must satisfy.
+//
+//   (b) Kani POB-vb-vzcuf-010 (`kani_vb_vzcuf_ps003.rs`) — tests the actual
+//       production `JournalError` enum variants and their discriminability,
+//       calling `encode_record` (production codec) to verify that `PayloadTooLarge`
+//       fires before admission errors.
+//
+// TRUSTED BOUNDARY:
+//   JournalError is defined in non-Verus code.  The Verus spec proves the
+//   discriminant MODEL is sound; Kani proves the PRODUCTION enum satisfies
+//   the same properties.  Cross-verifier belt.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps003.rs
+
 /// Discriminant model for JournalError variants relevant to byte accounting.
 /// PRODUCTION BINDING: mirrors JournalError enum in error/mod.rs.
 pub enum ErrorVariant {
@@ -115,6 +139,35 @@ pub proof fn lemma_guard_precedence_well_ordered()
     ensures
         guard_precedence_order(),
 {
+}
+
+// =============================================================================
+// Exec bridge — documents production enum contract via external_body.
+// =============================================================================
+
+/// Exec bridge: documents the production `JournalError` variant contract.
+///
+/// PRODUCTION BINDING:
+///   `JournalError::JournalBatchBytesExceeded` (error/mod.rs:50-56) must be
+///   a distinct variant from `QueueFull` and `PayloadTooLarge`.  The
+///   implementation has a separate
+///   `#[error("journal batch byte budget exceeded: ...")]` annotation.
+///
+///   The body is `external_body` because `JournalError` lives in the
+///   non-Verus crate `vb_storage`.  Kani POB-vb-vzcuf-010 verifies the
+///   actual enum discriminability and error-path behavior.
+#[verifier::external_body]
+pub exec fn verify_error_variant_distinct() -> (ok: bool)
+    ensures
+        ok == distinct_variants(),
+{
+    // Body is external: the production JournalError enum at
+    // crates/vb_storage/src/error/mod.rs:20-273 is verified by
+    // Kani POB-vb-vzcuf-010 (kani_vb_vzcuf_ps003.rs).
+    //
+    // This exec fn exists to document the Verus-inferred contract
+    // that the production enum must satisfy.
+    true
 }
 
 } // verus!

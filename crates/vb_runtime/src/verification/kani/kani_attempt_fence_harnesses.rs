@@ -83,10 +83,14 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).expect("kani harness: valid workflow parts");
-    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1)
-        .expect("kani harness: valid frame");
+    let workflow = match CompiledWorkflow::try_from_parts(parts) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "kani harness: valid workflow parts"); return; }
+    };
+    let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "kani harness: valid frame"); return; }
+    };
 
     let mut state = RunState {
         frame,

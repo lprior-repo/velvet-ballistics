@@ -29,6 +29,28 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file's spec models are bound to production via:
+//
+//   (a) `admit_bytes_exec` — a Verus-verified exec fn that implements the
+//       admission check using `u64::checked_add` (the exact primitive the
+//       production code uses).  The `ensures` clause proves the exec output
+//       satisfies `admit_bytes`, so ANY implementation that matches this exec
+//       logic is contract-correct.
+//
+//   (b) Kani POB-vb-vzcuf-002 (`kani_vb_vzcuf_ps001.rs`) — tests the actual
+//       production `JournalWriteBatch::append_event` admission path with
+//       symbolic bounds, including `encode_record` (the actual codec).
+//
+// TRUSTED BOUNDARY:
+//   Production imports (JournalWriteBatch, JournalError, encode_record)
+//   are unavailable because vb_storage is a non-Verus crate.
+//   Cross-verifier belt: Verus spec + exec model + Kani production proof.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps001.rs
+
 /// Maximum journal batch bytes (matches C1 contract bound).
 /// Production binding: will become JournalBatchByteLimit value.
 pub open spec fn max_journal_batch_bytes_limit() -> u64 {
@@ -121,6 +143,35 @@ pub proof fn lemma_admission_exact(t: u64, n: u64, limit: u64)
             Err(_) => true,
         },
 {
+}
+
+// =============================================================================
+// Exec bridge — Verus-verified implementation matching the spec.
+// =============================================================================
+
+/// Exec bridge: implements `admit_bytes` using `u64::checked_add`.
+///
+/// PRODUCTION BINDING:
+///   Matches `JournalWriteBatch::append_event` byte admission logic:
+///   ```ignore
+///   let attempted = staged_bytes.checked_add(encoded_len)?;
+///   if attempted > limit { Err(JournalBatchBytesExceeded) } else { Ok(()) }
+///   ```
+///
+/// The `ensures` clause proves the exec output matches the spec model
+/// `admit_bytes`, so any correct reimplementation must produce the same
+/// results for all inputs.
+pub exec fn admit_bytes_exec(t: u64, n: u64, limit: u64) -> (result: Result<u64, ()>)
+    ensures
+        match admit_bytes(t, n, limit) {
+            Ok(expected) => result.is_ok() && result.unwrap() == expected as u64,
+            Err(_) => result.is_err(),
+        },
+{
+    match t.checked_add(n) {
+        Some(total) if total <= limit => Ok(total),
+        _ => Err(()),
+    }
 }
 
 } // verus!

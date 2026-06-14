@@ -24,6 +24,30 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file's spec models are bound to production via:
+//
+//   (a) `checked_add_exec` — a Verus-verified exec fn that calls
+//       `u64::checked_add` (Rust std) and proves via `ensures` that
+//       the result matches `model_checked_add_u64`.  This establishes
+//       that the spec model correctly captures Rust's checked_add semantics.
+//
+//   (b) `admission_check_exec` — Verus-verified exec fn implementing
+//       the full staged + candidate + limit check, with contract proving
+//       it matches `admission_check`.
+//
+//   (c) Kani POB-vb-vzcuf-006 (`kani_vb_vzcuf_ps002.rs`) — tests the
+//       production `append_event` overflow path with symbolic arithmetic.
+//
+// TRUSTED BOUNDARY:
+//   u64::checked_add is a Rust std primitive — this spec models it exactly.
+//   Production uses the same primitive.  Cross-verifier belt:
+//   Verus spec + exec model + Kani production proof.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps002.rs
+
 /// Model of u64::checked_add — returns Err on overflow.
 /// PRODUCTION BINDING: direct model of Rust std u64::checked_add.
 pub open spec fn model_checked_add_u64(a: u64, b: u64) -> Result<int, ()> {
@@ -148,6 +172,46 @@ pub proof fn lemma_zero_candidate_accepted(staged: u64, limit: u64)
     ensures
         admission_check(staged, 0u64, limit).is_ok(),
 {
+}
+
+// =============================================================================
+// Exec bridges — Verus-verified implementations matching the specs.
+// =============================================================================
+
+/// Exec bridge: calls `u64::checked_add` and proves it matches `model_checked_add_u64`.
+///
+/// PRODUCTION BINDING:
+///   `JournalWriteBatch::append_event` uses `staged_bytes.checked_add(encoded_len)?`
+///   for byte admission.  This exec fn verifies that Rust's `checked_add`
+///   matches the spec model for ALL inputs.
+pub exec fn checked_add_exec(a: u64, b: u64) -> (result: Option<u64>)
+    ensures
+        match model_checked_add_u64(a, b) {
+            Ok(expected) => result.is_some() && result.unwrap() == expected as u64,
+            Err(_) => result.is_none(),
+        },
+{
+    a.checked_add(b)
+}
+
+/// Exec bridge: implements `admission_check` using `u64::checked_add`.
+///
+/// PRODUCTION BINDING:
+///   Matches `JournalWriteBatch::append_event` byte admission logic exactly:
+///   1. staged_bytes.checked_add(encoded_len) — overflow → rejection
+///   2. if total > byte_limit — over-limit → rejection
+///   3. Ok(total) — acceptance
+pub exec fn admission_check_exec(staged: u64, candidate: u64, limit: u64) -> (result: Result<u64, ()>)
+    ensures
+        match admission_check(staged, candidate, limit) {
+            Ok(expected) => result.is_ok() && result.unwrap() == expected as u64,
+            Err(_) => result.is_err(),
+        },
+{
+    match staged.checked_add(candidate) {
+        Some(total) if total <= limit => Ok(total),
+        _ => Err(()),
+    }
 }
 
 } // verus!

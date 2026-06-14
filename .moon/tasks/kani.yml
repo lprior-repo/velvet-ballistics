@@ -113,3 +113,38 @@ tasks:
       - '.moon/tasks/kani.yml'
     options:
       runInCI: true
+
+  verify-kani-vb-compile:
+    script: |
+      set -euo pipefail
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      run_compile_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-compile: running %s\n' "$harness"
+        TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-compile RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo kani -p vb_compile --all-features --harness "$harness"
+      }
+      # foreach_parity: tests for_each lowering structure (just fixed GOD_RULE compliance)
+      run_compile_harness foreach_body_setconst_next_edge
+      run_compile_harness foreach_no_backward_edge
+      run_compile_harness foreach_all_nodes_reachable
+      run_compile_harness foreach_rejects_malformed_ir
+      run_compile_harness foreach_arbitrary_done_forward
+      # lower_control: symbolic step/slot generation (well-written)
+      run_compile_harness lower_repeat_accepts_non_max_id_and_uses_id_plus_one_slot
+      run_compile_harness lower_repeat_rejects_max_id_without_overflow
+      run_compile_harness lower_ask_accepts_non_max_id_and_uses_id_plus_one_resume
+      run_compile_harness lower_ask_rejects_max_id_without_overflow
+      run_compile_harness lower_choose_fanout_bound
+      run_compile_harness lower_choose_live_api_has_fanout_check
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_compile_sources)'
+      - 'crates/vb_core/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      runInCI: true

@@ -21,9 +21,14 @@ mod kani_capability_harnesses {
         let bytes: [u8; 16] = kani::any();
         let s = String::from_utf8_lossy(&bytes);
         // Split at null and take first part to avoid trailing null issues.
-        // Note: split() always yields at least one element for any &str input,
-        // so unwrap() is guaranteed safe here.
-        let name = s.split('\0').next().unwrap();
+        // Note: split() always yields at least one element for any &str input.
+        let name = match s.split('\0').next() {
+            Some(v) => v,
+            None => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
         // Ensure non-empty; if empty, use default.
         if name.is_empty() {
             Box::from("cap")

@@ -46,8 +46,12 @@ fn proof_check_evidence_validation() {
     // If we have a baseline and budget is non-zero, validation should pass
     // when result_us is within threshold
     if evidence.baseline_us.is_some() && evidence.budget_us > 0 {
-        let threshold_delta = evidence.baseline_us.unwrap() * evidence.threshold_pct / 100;
-        let max_allowed = evidence.baseline_us.unwrap() + threshold_delta;
+        let baseline = match evidence.baseline_us {
+            Some(v) => v,
+            None => { kani::assume(false, "unwrap failed"); return; }
+        };
+        let threshold_delta = baseline * evidence.threshold_pct / 100;
+        let max_allowed = baseline + threshold_delta;
         if evidence.result_us <= max_allowed {
             // Within threshold - should pass
             assert!(

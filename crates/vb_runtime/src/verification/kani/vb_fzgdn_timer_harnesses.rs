@@ -41,8 +41,13 @@ mod harnesses {
         assert!(result.is_ok());
         // Verify generation is 1 via get_entry
         let entry = wheel.get_entry(run);
-        assert!(entry.is_some());
-        assert_eq!(entry.unwrap().generation, 1);
+        match entry {
+            Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
+            None => {
+                kani::assume(false, "expected Some");
+                return;
+            }
+        }
     }
 
     /// PS-001-H2: Generation increments on replacement.
@@ -56,11 +61,23 @@ mod harnesses {
 
         // Insert first timer
         assert!(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert_eq!(wheel.get_entry(run).unwrap().generation, 1);
+        match wheel.get_entry(run) {
+            Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
+            None => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        }
 
         // Replace — generation should be 2
         assert!(wheel.insert(run, future, crate::shard::PendingTimerKind::Ask).is_ok());
-        assert_eq!(wheel.get_entry(run).unwrap().generation, 2);
+        match wheel.get_entry(run) {
+            Some(v) => kani::assert(v.generation == 2, "expected generation 2"),
+            None => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        }
     }
 
     /// PS-001-H3: Generation overflow returns GenerationExhausted error.
@@ -208,8 +225,13 @@ mod harnesses {
         let gen: u64 = kani::any();
         kani::assume(gen < u64::MAX);
         let next = gen.checked_add(1);
-        assert!(next.is_some());
-        assert_eq!(next.unwrap(), gen + 1);
+        match next {
+            Some(v) => kani::assert(v == gen + 1, "expected gen + 1"),
+            None => {
+                kani::assume(false, "expected Some");
+                return;
+            }
+        }
     }
 
     /// PS-004-H2: checked_add(1) on u64::MAX returns None.
@@ -302,8 +324,20 @@ mod harnesses {
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
-        let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
-        let frame = vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1).unwrap();
+        let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
+        let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
         let state = crate::shard::RunState {
             frame,
             workflow: wf,
@@ -346,8 +380,20 @@ mod harnesses {
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
-        let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
-        let frame = vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1).unwrap();
+        let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
+        let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
         let state = crate::shard::RunState {
             frame,
             workflow: wf,
@@ -390,8 +436,20 @@ mod harnesses {
             step_names: Box::from([]),
             resource_contract: ResourceContract::DEFAULT,
         };
-        let wf = vb_core::workflow::CompiledWorkflow::try_from_parts(parts).unwrap();
-        let frame = vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1).unwrap();
+        let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
+        let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
         let state = crate::shard::RunState {
             frame,
             workflow: wf,
@@ -567,8 +625,13 @@ mod harnesses {
 
         assert_eq!(wheel.len(), 1);
         let entry = wheel.get_entry(RunId::new(1));
-        assert!(entry.is_some());
-        let e = entry.unwrap();
+        let e = match entry {
+            Some(v) => v,
+            None => {
+                kani::assume(false, "unwrap failed");
+                return;
+            }
+        };
         assert_eq!(e.kind, crate::shard::PendingTimerKind::Ask);
         assert_eq!(e.deadline, later);
         assert_eq!(e.generation, 2);

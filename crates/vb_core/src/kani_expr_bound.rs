@@ -12,7 +12,10 @@ fn harness_empty_ops_returns_zero() {
     let ops: [ExprOp; 0] = [];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "empty ops should return Ok");
-    kani::assert(result.unwrap() == 0, "empty ops should require 0 stack");
+    match result {
+        Ok(v) => kani::assert(v == 0, "empty ops should require 0 stack"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -20,10 +23,10 @@ fn harness_single_loadslot_returns_one() {
     let ops = [ExprOp::LoadSlot(SlotIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "single LoadSlot should return Ok");
-    kani::assert(
-        result.unwrap() == 1,
-        "single LoadSlot should require stack of 1",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 1, "single LoadSlot should require stack of 1"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -32,10 +35,10 @@ fn harness_single_loadconst_returns_one() {
     let ops = [ExprOp::LoadConst(ConstIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "single LoadConst should return Ok");
-    kani::assert(
-        result.unwrap() == 1,
-        "single LoadConst should require stack of 1",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 1, "single LoadConst should require stack of 1"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -44,10 +47,10 @@ fn harness_single_loadaccessor_returns_one() {
     let ops = [ExprOp::LoadAccessor(AccessorIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "single LoadAccessor should return Ok");
-    kani::assert(
-        result.unwrap() == 1,
-        "single LoadAccessor should require stack of 1",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 1, "single LoadAccessor should require stack of 1"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -59,10 +62,10 @@ fn harness_binary_op_tracks_depth_correctly() {
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "binary op sequence should return Ok");
-    kani::assert(
-        result.unwrap() == 2,
-        "Add consumes 2, pushes 1, max depth is 2",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 2, "Add consumes 2, pushes 1, max depth is 2"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -70,10 +73,10 @@ fn harness_unary_op_tracks_depth_correctly() {
     let ops = [ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Not];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "unary op sequence should return Ok");
-    kani::assert(
-        result.unwrap() == 1,
-        "Not consumes 1, pushes 1, max depth is 1",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 1, "Not consumes 1, pushes 1, max depth is 1"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -86,10 +89,10 @@ fn harness_appendif_tracks_depth_correctly() {
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "AppendIf sequence should return Ok");
-    kani::assert(
-        result.unwrap() == 3,
-        "AppendIf consumes 3, pushes 1, max depth is 3",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 3, "AppendIf consumes 3, pushes 1, max depth is 3"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -104,7 +107,10 @@ fn harness_nested_binary_ops_tracks_max_depth() {
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "nested binary ops should return Ok");
-    kani::assert(result.unwrap() == 3, "max depth after nested Add is 3");
+    match result {
+        Ok(v) => kani::assert(v == 3, "max depth after nested Add is 3"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -122,7 +128,10 @@ fn harness_all_unary_ops_valid() {
         let ops = [ExprOp::LoadSlot(SlotIdx::new(0)), op];
         let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
         kani::assert(result.is_ok(), "unary op should be valid");
-        kani::assert(result.unwrap() == 1, "unary op should require stack of 1");
+        match result {
+            Ok(v) => kani::assert(v == 1, "unary op should require stack of 1"),
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        }
     }
 }
 
@@ -157,7 +166,10 @@ fn harness_all_binary_ops_valid() {
         ];
         let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
         kani::assert(result.is_ok(), "binary op should be valid");
-        kani::assert(result.unwrap() == 2, "binary op should require stack of 2");
+        match result {
+            Ok(v) => kani::assert(v == 2, "binary op should require stack of 2"),
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        }
     }
 }
 
@@ -192,10 +204,10 @@ fn harness_complex_expression_correct() {
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "complex expression should be valid");
-    kani::assert(
-        result.unwrap() == 2,
-        "complex expression max depth should be 2",
-    );
+    match result {
+        Ok(v) => kani::assert(v == 2, "complex expression max depth should be 2"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }
 
 #[kani::proof]
@@ -209,5 +221,8 @@ fn harness_multiple_loads_max_correct() {
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
     kani::assert(result.is_ok(), "multiple loads should be valid");
-    kani::assert(result.unwrap() == 4, "max depth before Add is 4");
+    match result {
+        Ok(v) => kani::assert(v == 4, "max depth before Add is 4"),
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    }
 }

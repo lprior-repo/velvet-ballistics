@@ -15,7 +15,10 @@ fn harness_new_valid_capacity() {
     let result = ExprStack::new(capacity);
     assert!(result.is_ok());
 
-    let stack = result.unwrap();
+    let stack = match result {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     assert_eq!(stack.len(), 0);
 }
 
@@ -43,7 +46,10 @@ fn harness_push_with_room() {
     kani::assume(usize::from(capacity) <= MAX_EXPRESSION_STACK_USIZE);
     kani::assume(capacity > 0);
 
-    let mut stack = ExprStack::new(capacity).unwrap();
+    let mut stack = match ExprStack::new(capacity) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = stack.push(SlotValue::Null);
     assert!(result.is_ok());
@@ -53,8 +59,14 @@ fn harness_push_with_room() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn harness_push_overflow_returns_error() {
-    let mut stack = ExprStack::new(1).unwrap();
-    stack.push(SlotValue::Null).unwrap();
+    let mut stack = match ExprStack::new(1) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    match stack.push(SlotValue::Null) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     assert_eq!(stack.len(), 1);
 
     let result = stack.push(SlotValue::Null);
@@ -75,9 +87,15 @@ fn harness_pop_with_items() {
     kani::assume(initial_len >= 1);
     kani::assume(initial_len <= 3);
 
-    let mut stack = ExprStack::new(4).unwrap();
+    let mut stack = match ExprStack::new(4) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     for _ in 0..initial_len {
-        stack.push(SlotValue::Null).unwrap();
+        match stack.push(SlotValue::Null) {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        };
     }
 
     let result = stack.pop();
@@ -88,7 +106,10 @@ fn harness_pop_with_items() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn harness_pop_empty_returns_underflow() {
-    let stack = ExprStack::new(4).unwrap();
+    let stack = match ExprStack::new(4) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     assert_eq!(stack.len(), 0);
     let mut stack = stack;
 
@@ -108,18 +129,33 @@ fn harness_push_pop_roundtrip() {
     kani::assume(usize::from(capacity) <= MAX_EXPRESSION_STACK_USIZE);
     kani::assume(capacity > 0);
 
-    let mut stack = ExprStack::new(capacity).unwrap();
+    let mut stack = match ExprStack::new(capacity) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
-    push_value(&mut stack, SlotValue::Null).unwrap();
-    let popped = pop_value(&mut stack).unwrap();
+    match push_value(&mut stack, SlotValue::Null) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    let popped = match pop_value(&mut stack) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     assert_eq!(popped, SlotValue::Null);
 }
 
 #[kani::proof]
 #[kani::unwind(4)]
 fn harness_pop_pair_underflow() {
-    let mut stack = ExprStack::new(4).unwrap();
-    stack.push(SlotValue::I64(42)).unwrap();
+    let mut stack = match ExprStack::new(4) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
+    match stack.push(SlotValue::I64(42)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     assert_eq!(stack.len(), 1);
 
     let result = pop_value(&mut stack);
@@ -141,14 +177,26 @@ fn harness_push_to_capacity_then_overflow() {
     kani::assume(capacity > 0);
     kani::assume(capacity <= 3);
 
-    let mut stack = ExprStack::new(capacity).unwrap();
+    let mut stack = match ExprStack::new(capacity) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
-    stack.push(SlotValue::I64(1)).unwrap();
+    match stack.push(SlotValue::I64(1)) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
     if capacity >= 2 {
-        stack.push(SlotValue::I64(2)).unwrap();
+        match stack.push(SlotValue::I64(2)) {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        };
     }
     if capacity >= 3 {
-        stack.push(SlotValue::I64(3)).unwrap();
+        match stack.push(SlotValue::I64(3)) {
+            Ok(v) => v,
+            Err(_) => { kani::assume(false, "unwrap failed"); return; }
+        };
     }
 
     let result = stack.push(SlotValue::Null);

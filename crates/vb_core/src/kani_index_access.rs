@@ -23,7 +23,10 @@ fn kani_write_slot_in_bounds() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let mut frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let result = frame.write_slot(slot, SlotValue::Null);
     kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
@@ -41,7 +44,10 @@ fn kani_read_slot_in_bounds() {
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
     kani::assume(frame.is_ok());
-    let mut frame = frame.unwrap();
+    let mut frame = match frame {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false, "unwrap failed"); return; }
+    };
 
     let write_result = frame.write_slot(slot, SlotValue::I64(42));
     kani::assume(write_result.is_ok());

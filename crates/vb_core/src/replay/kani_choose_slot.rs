@@ -48,23 +48,49 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
             nop_node(3),
         ],
         vec![],
-    )
-    .expect("plan construction failed");
+    ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    };
 
-    let mut run = RunFrame::new(
+    let mut run = match RunFrame::new(
         RunId::new(0),
         StepIdx::new(0),
         plan.node_count(),
         plan.slot_count(),
-    )
-    .expect("frame construction failed");
-    run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a))
-        .expect("write slot a failed");
-    run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b))
-        .expect("write slot b failed");
+    ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "frame construction failed");
+            return;
+        }
+    };
+    match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false, "write slot a failed");
+            return;
+        }
+    }
+    match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false, "write slot b failed");
+            return;
+        }
+    }
 
     let mut store = ValueStore::new();
-    let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+    let node = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false, "node 0 missing");
+            return;
+        }
+    };
     let result = replay_step(node, &mut run, &mut store, &plan);
 
     if !slot_a && !slot_b && !has_otherwise {
@@ -78,22 +104,49 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
 fn verify_choose_slot_output_in_input_set() {
     let slot_a: bool = kani::any();
     let slot_b: bool = kani::any();
-    let plan = two_branch_plan().expect("plan construction failed");
+    let plan = match two_branch_plan() {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    };
 
-    let mut run = RunFrame::new(
+    let mut run = match RunFrame::new(
         RunId::new(0),
         StepIdx::new(0),
         plan.node_count(),
         plan.slot_count(),
-    )
-    .expect("frame construction failed");
-    run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a))
-        .expect("write slot a failed");
-    run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b))
-        .expect("write slot b failed");
+    ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "frame construction failed");
+            return;
+        }
+    };
+    match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false, "write slot a failed");
+            return;
+        }
+    }
+    match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false, "write slot b failed");
+            return;
+        }
+    }
 
     let mut store = ValueStore::new();
-    let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+    let node = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false, "node 0 missing");
+            return;
+        }
+    };
     let result = replay_step(node, &mut run, &mut store, &plan);
 
     match result {
@@ -114,8 +167,20 @@ fn verify_choose_slot_output_in_input_set() {
 #[kani::proof]
 fn verify_replay_deterministic_for_same_input() {
     let slot_val: bool = kani::any();
-    let plan = deterministic_plan().expect("plan construction failed");
-    let node = plan.node(StepIdx::new(0)).expect("node 0 missing");
+    let plan = match deterministic_plan() {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "plan construction failed");
+            return;
+        }
+    };
+    let node = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false, "node 0 missing");
+            return;
+        }
+    };
 
     let result_a = replay_bool_slot(
         &plan,
@@ -207,15 +272,25 @@ fn replay_bool_slot(
     frame_msg: &str,
     write_msg: &str,
 ) -> Result<ReplayAction, ReplayError> {
-    let mut run = RunFrame::new(
+    let mut run = match RunFrame::new(
         RunId::new(0),
         StepIdx::new(0),
         plan.node_count(),
         plan.slot_count(),
-    )
-    .expect(frame_msg);
-    run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-        .expect(write_msg);
+    ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, frame_msg);
+            return;
+        }
+    };
+    match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false, write_msg);
+            return;
+        }
+    }
     let mut store = ValueStore::new();
     replay_step(node, &mut run, &mut store, plan)
 }

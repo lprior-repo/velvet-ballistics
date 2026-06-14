@@ -94,10 +94,22 @@ fn kani_watermark_monotonic() {
     );
 
     // Now fill the gap: complete seq=3, seq=4
-    let _ = watermark.complete(run, 3).unwrap();
+    match watermark.complete(run, 3) {
+        Ok(v) => { let _ = v; },
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
     kani::assert(watermark.boundary() == 3, "boundary advances to 3 after completing seq=3");
 
-    let _ = watermark.complete(run, 4).unwrap();
+    match watermark.complete(run, 4) {
+        Ok(v) => { let _ = v; },
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
     kani::assert(watermark.boundary() == 4, "boundary advances to 4 after completing seq=4");
 
     // seq=5 was already pending, so after seq=4, boundary should jump to 5

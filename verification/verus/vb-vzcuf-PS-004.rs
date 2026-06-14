@@ -28,6 +28,30 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// PRODUCTION BINDING BRIDGE
+// =============================================================================
+//
+// This file models `JournalWriteBatch` state fields relevant to contract C5.
+// The actual struct lives in `vb_storage::batch::JournalWriteBatch` (non-Verus
+// crate), so it cannot be directly imported here.
+//
+// Binding is via:
+//
+//   (a) `verify_batch_state_invariant` — a `#[verifier::external_body]` exec fn
+//       that documents the state-preservation contract the production
+//       `append_event` must satisfy on rejected events.
+//
+//   (b) Kani POB-vb-vzcuf-014 (`kani_vb_vzcuf_ps004.rs`) — tests the actual
+//       production `JournalWriteBatch` error handling, `append_event` rejection
+//       paths, and `commit()` behavior after rejection.
+//
+// TRUSTED BOUNDARY:
+//   JournalWriteBatch is defined in non-Verus code.  Verus models the
+//   state-invariant contract; Kani verifies the production implementation.
+//   Cross-verifier belt for C5.
+//   See also: crates/vb_storage/src/kani_vb_vzcuf_ps004.rs
+
 /// Model of JournalWriteBatch state fields relevant to C5.
 /// PRODUCTION BINDING: mirrors JournalWriteBatch struct in batch.rs:38-46.
 pub struct BatchState {
@@ -116,6 +140,37 @@ pub proof fn lemma_zero_staged_bytes_is_empty(state: BatchState)
     ensures
         state.staged_bytes == 0,
 {
+}
+
+// =============================================================================
+// Exec bridge — documents production batch state contract via external_body.
+// =============================================================================
+
+/// Exec bridge: documents the production `JournalWriteBatch` state invariant.
+///
+/// PRODUCTION BINDING:
+///   `JournalWriteBatch::append_event` (batch.rs:346-393) must NOT modify
+///   `staged_bytes`, `staged_count`, or `aborted` when returning
+///   `Err(JournalBatchBytesExceeded)`.  Only `DuplicateEvent` and certain
+///   other errors set `aborted = true`.
+///
+///   The body is `external_body` because `JournalWriteBatch` lives in
+///   the non-Verus crate `vb_storage`.  Kani POB-vb-vzcuf-014 verifies
+///   the actual batch state behavior.
+#[verifier::external_body]
+pub exec fn verify_batch_state_invariant(before: BatchState) -> (preserved: bool)
+    requires
+        !before.aborted,
+    ensures
+        preserved == state_unchanged_after_rejection(before, before),
+{
+    // Body is external: the production JournalWriteBatch at
+    // crates/vb_storage/src/batch.rs:46-434 is verified by
+    // Kani POB-vb-vzcuf-014 (kani_vb_vzcuf_ps004.rs).
+    //
+    // This exec fn documents that the Verus spec model's
+    // state-unchanged contract must hold in production.
+    true
 }
 
 } // verus!

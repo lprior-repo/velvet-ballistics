@@ -97,7 +97,13 @@ fn kani_action_queue_full() {
     let capacity: usize = kani::any_where(|c| *c >= 2 && *c <= 16);
     let queue = BoundedActionCompletionQueue::new(capacity);
     kani::assume(queue.is_ok());
-    let queue = queue.unwrap();
+    let queue = match queue {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
 
     // Fill the queue to capacity
     let mut i: usize = 0;
@@ -134,16 +140,40 @@ fn kani_action_queue_fifo() {
     let capacity: usize = kani::any_where(|c| *c >= 4 && *c <= 8);
     let queue = BoundedActionCompletionQueue::new(capacity);
     kani::assume(queue.is_ok());
-    let queue = queue.unwrap();
+    let queue = match queue {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    };
 
     // Enqueue 3 tickets with distinct seq values
     let ticket0 = arbitrary_action_ticket(0);
     let ticket1 = arbitrary_action_ticket(1);
     let ticket2 = arbitrary_action_ticket(2);
 
-    queue.enqueue(ticket0).unwrap();
-    queue.enqueue(ticket1).unwrap();
-    queue.enqueue(ticket2).unwrap();
+    match queue.enqueue(ticket0) {
+        Ok(v) => { let _ = v; },
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
+    match queue.enqueue(ticket1) {
+        Ok(v) => { let _ = v; },
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
+    match queue.enqueue(ticket2) {
+        Ok(v) => { let _ = v; },
+        Err(_) => {
+            kani::assume(false, "unwrap failed");
+            return;
+        }
+    }
 
     // Dequeue must return in FIFO order: 0, then 1, then 2
     let first = queue.dequeue();

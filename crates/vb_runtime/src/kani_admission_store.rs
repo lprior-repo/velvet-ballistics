@@ -43,8 +43,13 @@ mod stub_journal {
         ));
         // Expect is safe here: open returns Err only for path I/O issues;
         // temp paths are always writable in test/kani environments.
-        let journal = FjallJournal::open(&unique_path, None)
-            .expect("temp journal must open for kani harness");
+        let journal = match FjallJournal::open(&unique_path, None) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false, "temp journal must open for kani harness");
+                loop {}
+            }
+        };
         Arc::new(journal)
     }
 }
