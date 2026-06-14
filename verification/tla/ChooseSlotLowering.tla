@@ -135,7 +135,7 @@ LowerCanonical ==
         /\ loweredBranches' = CanonicalLoweredBranches
         /\ loweredOtherwise' = IF hasOtherwise THEN otherwiseLabelIndex ELSE NoOtherwise
 
-Next == LowerSlot \/ LowerCanonical
+Next == LowerSlot \/ LowerCanonical \/ (phase = "done" /\ UNCHANGED vars)
 Spec == Init /\ [][Next]_vars
 
 NoSuccessfulOverLimitLowering ==

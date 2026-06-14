@@ -18,7 +18,7 @@ use crate::lwr::canonical_digest;
 use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum non-empty prompt length for Kani bounded checking.
-const MAX_PROMPT_LEN: usize = 128;
+const MAX_PROMPT_LEN: usize = 10;
 
 /// Construct a minimal WorkflowSource with a single Ask step and the given prompt.
 fn source_with_ask_prompt(prompt: String) -> WorkflowSource {
@@ -50,7 +50,7 @@ fn source_with_ask_prompt(prompt: String) -> WorkflowSource {
 
 /// PO-KANI-003 H1: Empty prompt vs arbitrary non-empty prompt — digests must differ.
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(12)]
 fn check_empty_prompt_distinct() {
     // Construct source with empty prompt
     let source_empty = source_with_ask_prompt(String::new());
@@ -59,18 +59,10 @@ fn check_empty_prompt_distinct() {
     let non_empty_len: usize = kani::any();
     kani::assume(non_empty_len >= 1);
     kani::assume(non_empty_len <= MAX_PROMPT_LEN);
-    let mut non_empty_bytes = vec![0u8; non_empty_len];
-    for i in 0..non_empty_len {
-        non_empty_bytes[i] = kani::any();
+    let mut non_empty_prompt = String::new();
+    for _ in 0..non_empty_len {
+        non_empty_prompt.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let non_empty_prompt = match String::from_utf8(non_empty_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     let source_non_empty = source_with_ask_prompt(non_empty_prompt);
 

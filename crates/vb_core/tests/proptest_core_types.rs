@@ -220,9 +220,7 @@ proptest! {
         // Use cap = total so all should succeed.  Skip when total == 0 because
         // a cap of 0 means "uncapped" in ValueStore's convention.
         let cap = u16::try_from(total).unwrap_or(u16::MAX);
-        if cap == 0 {
-            return Ok(());
-        }
+        proptest::prop_assume!(cap  != 0 );
         let mut store = ValueStore::with_max_slots(cap);
 
         for _ in 0..n_symbols {

@@ -123,7 +123,7 @@ const QUICK_GATE_STATUSES: [&str; 15] = [
     "bounded:deferred",
     "budgets:deferred",
     "contracts:deferred",
-    "taint",
+    "taint:deferred",
     "idempotency:deferred",
     "durability:deferred",
     "capabilities:deferred",
@@ -141,7 +141,7 @@ const STANDARD_GATE_STATUSES: [&str; 15] = [
     "bounded",
     "budgets",
     "contracts:deferred",
-    "taint",
+    "taint:deferred",
     "idempotency:deferred",
     "durability:deferred",
     "capabilities:deferred",
@@ -149,15 +149,16 @@ const STANDARD_GATE_STATUSES: [&str; 15] = [
     "evidence:deferred",
 ];
 
-const FULL_DEFERRED_GATES: [&str; 5] = [
+const FULL_DEFERRED_GATES: [&str; 6] = [
     "contracts",
+    "taint",
     "idempotency",
     "durability",
     "capabilities",
     "evidence",
 ];
 
-const STANDARD_PASSED_GATES: [&str; 10] = [
+const STANDARD_PASSED_GATES: [&str; 9] = [
     "profile",
     "shape",
     "names",
@@ -166,7 +167,6 @@ const STANDARD_PASSED_GATES: [&str; 10] = [
     "CFG",
     "bounded",
     "budgets",
-    "taint",
     "results",
 ];
 
@@ -228,6 +228,7 @@ fn bdd_happy_quick_profile_returns_ok_with_checks() {
             "bounded".to_string(),
             "budgets".to_string(),
             "contracts".to_string(),
+            "taint".to_string(),
             "idempotency".to_string(),
             "durability".to_string(),
             "capabilities".to_string(),
@@ -541,7 +542,7 @@ fn bdd_full_profile_fails_closed_on_deferred_gates() {
     assert_eq!(
         json.pointer("/error").and_then(serde_json::Value::as_str),
         Some(
-            "full verification blocked: deferred gates remain: contracts, idempotency, durability, capabilities, evidence"
+            "full verification blocked: deferred gates remain: contracts, taint, idempotency, durability, capabilities, evidence"
         )
     );
 }
@@ -895,7 +896,7 @@ fn integration_full_profile_runs_budget_gates() {
     assert_eq!(
         json.pointer("/error").and_then(serde_json::Value::as_str),
         Some(
-            "full verification blocked: deferred gates remain: contracts, idempotency, durability, capabilities, evidence"
+            "full verification blocked: deferred gates remain: contracts, taint, idempotency, durability, capabilities, evidence"
         )
     );
     assert_eq!(

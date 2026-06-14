@@ -12,9 +12,7 @@ use vb_core::workflow::{
 
 pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 {
-        return Ok(());
-    }
+    proptest::prop_assume!(slot_count  != 0 );
 
     let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
 

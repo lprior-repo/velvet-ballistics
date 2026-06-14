@@ -31,8 +31,7 @@ fn any_run_frame(slot_count: u16, step_count: u16) -> RunFrame {
     match RunFrame::new(run_id, StepIdx::new(0), step_count, slot_count) {
         Ok(frame) => frame,
         Err(_) => {
-            kani::assume(false);
-            unreachable!()
+            unreachable!("RunFrame::new should not fail with bounded parameters")
         }
     }
 }

@@ -121,7 +121,7 @@ proptest! {
         slot_a in any::<u16>(),
         slot_b in any::<u16>(),
     ) {
-        if slot_a == slot_b { return Ok(()); }
+        proptest::prop_assume!(slot_a  != slot_b );
 
         let yaml_a = yaml_with_steps(&format!(
             "  - id: {id}\n    finish:\n      result: {slot_a}"
@@ -145,8 +145,8 @@ proptest! {
         out_a in step_id_strategy(),
         out_b in step_id_strategy(),
     ) {
-        if out_a == out_b { return Ok(()); }
-        if id == "s" { return Ok(()); }
+        proptest::prop_assume!(out_a  != out_b );
+        proptest::prop_assume!(id  != "s" );
         let _sid = "s".to_string();
 
         let yaml_a = yaml_with_steps(&format!(
@@ -186,7 +186,7 @@ proptest! {
         id2 in step_id_strategy(),
         slot in any::<u16>(),
     ) {
-        if id1 == id2 { return Ok(()); }
+        proptest::prop_assume!(id1  != id2 );
 
         let yaml_a = yaml_with_steps(&format!(
             "  - id: {id1}\n    finish:\n      result: {slot}"

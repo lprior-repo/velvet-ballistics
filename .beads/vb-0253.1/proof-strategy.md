@@ -15,7 +15,7 @@
 ## Verifier Selection
 | Risk | Verifier | Rationale |
 |------|----------|-----------|
-| Queue capacity overflow | Kani | Bounded model checking for capacity violations |
+| Queue capacity overflow | Kani | Bounded model checking for the `#[cfg(kani)]` queue model plus shared capacity predicate |
 | Queue invariants | Verus | Rust-local pure invariants |
 | Length correctness | Verus | Functional correctness of accessor |
 
@@ -26,7 +26,7 @@
 - **Verifier**: Kani
 - **Artifact**: vb_runtime/src/shard/types.rs
 - **Command**: `cargo kani --harness command_queue_bounds`
-- **Expected Evidence**: Kani reports no witness
+- **Expected Evidence**: Kani reports no witness for the queue-model/shared-predicate lane
 - **Assumptions**: Capacity bounded at construction
 - **Required**: Yes
 - **Mode**: verify-deep
@@ -45,6 +45,6 @@
 None - all obligations have appropriate verifiers.
 
 ## Strategy Summary
-- Primary: Kani for bounded model checking of queue capacity
+- Primary: Kani for bounded model checking of the queue-model/shared capacity predicate lane
 - Secondary: Verus for invariant proofs
 - No TLA+ needed - local data structure, no temporal behavior

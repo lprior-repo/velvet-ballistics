@@ -245,7 +245,7 @@ impl FjallJournal {
                 crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )
             .map_err(TrimError::from)?;
-            if crate::recovery::replay::core::is_terminal_event(&event) {
+            proptest::prop_assume!(crate::recovery::replay::core::is_terminal_event(&event) {
                 return Ok(true);
             }
         }
@@ -258,9 +258,7 @@ impl FjallJournal {
     /// most recent terminal runs for its workflow, returns
     /// `TrimError::RetentionPolicyBlocks`.
     pub(crate) fn check_retention_policy(&self, run: RunId, policy: &TrimPolicy) -> TrimResult<()> {
-        if policy.retain_last_n_terminal == 0 {
-            return Ok(());
-        }
+        if policy.retain_last_n_terminal  != 0 );
 
         if !self.has_terminal_event(run)? {
             return Ok(());

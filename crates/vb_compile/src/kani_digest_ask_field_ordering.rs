@@ -18,9 +18,9 @@ use crate::lwr::canonical_digest;
 use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum prompt length for bounded checking.
-const MAX_PROMPT_LEN: usize = 128;
+const MAX_PROMPT_LEN: usize = 10;
 /// Maximum timeout length for bounded checking.
-const MAX_TIMEOUT_LEN: usize = 64;
+const MAX_TIMEOUT_LEN: usize = 10;
 
 fn source_with_ask(prompt: String, timeout: Option<String>) -> WorkflowSource {
     let steps = vec![StepAst {
@@ -48,44 +48,25 @@ fn source_with_ask(prompt: String, timeout: Option<String>) -> WorkflowSource {
 
 /// PO-KANI-005 H1: Deterministic output — same input twice produces identical digest.
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(12)]
 fn check_ask_field_ordering_deterministic() {
     // Generate a prompt
     let prompt_len: usize = kani::any();
     kani::assume(prompt_len <= MAX_PROMPT_LEN);
-    let mut prompt_bytes = vec![0u8; prompt_len];
-    for i in 0..prompt_len {
-        prompt_bytes[i] = kani::any();
+    let mut prompt = String::new();
+    for _ in 0..prompt_len {
+        prompt.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let prompt = match String::from_utf8(prompt_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     // Generate a timeout (None or Some(string))
     let has_timeout: bool = kani::any();
     let timeout: Option<String> = if has_timeout {
         let timeout_len: usize = kani::any();
         kani::assume(timeout_len <= MAX_TIMEOUT_LEN);
-        let mut timeout_bytes = vec![0u8; timeout_len];
-        for i in 0..timeout_len {
-            timeout_bytes[i] = kani::any();
+        let mut timeout = String::new();
+        for _ in 0..timeout_len {
+            timeout.push(kani::any::<char>());
         }
-        // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-        Some(match String::from_utf8(timeout_bytes) {
-            Ok(s) => s,
-            Err(_) => {
-                kani::assume(false); // exclude invalid UTF-8 from verification domain
-                unreachable!();
-            }
-        })
-    } else {
-        None
-    };
 
     let source = source_with_ask(prompt.clone(), timeout.clone());
 

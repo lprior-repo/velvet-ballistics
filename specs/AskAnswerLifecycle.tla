@@ -161,6 +161,9 @@ Next ==
     \/ AppendAskStepSucceeded
     \/ /\ result # "Ok"
        /\ UNCHANGED vars
+    \/ /\ \A r \in RunIds : runtimeState[r] \in {"Absent", "Resumable", "Failed"}
+       /\ answerPhase = "None"
+       /\ UNCHANGED vars
 
 Fairness ==
     /\ WF_vars(AppendAskAnswered)

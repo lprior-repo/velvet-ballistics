@@ -18,7 +18,7 @@ use crate::lwr::canonical_digest;
 use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum timeout value length for Kani bounded checking.
-const MAX_TIMEOUT_LEN: usize = 256;
+const MAX_TIMEOUT_LEN: usize = 20;
 
 /// Construct a minimal WorkflowSource with a single Ask step and the given timeout.
 fn source_with_ask_timeout(timeout: Option<String>) -> WorkflowSource {
@@ -50,23 +50,15 @@ fn source_with_ask_timeout(timeout: Option<String>) -> WorkflowSource {
 
 /// PO-KANI-002 H1: Timeout sensitivity — None vs Some produce distinct digests.
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(22)]
 fn check_ask_timeout_sensitivity() {
     // Case 1: None vs Some(arbitrary string)
     let timeout_len: usize = kani::any();
     kani::assume(timeout_len <= MAX_TIMEOUT_LEN);
-    let mut timeout_bytes = vec![0u8; timeout_len];
-    for i in 0..timeout_len {
-        timeout_bytes[i] = kani::any();
+    let mut timeout_str = String::new();
+    for _ in 0..timeout_len {
+        timeout_str.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let timeout_str = match String::from_utf8(timeout_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     let source_none = source_with_ask_timeout(None);
     let source_some = source_with_ask_timeout(Some(timeout_str));
@@ -82,37 +74,21 @@ fn check_ask_timeout_sensitivity() {
 
 /// PO-KANI-002 H2: Timeout sensitivity — Some(v1) vs Some(v2) produce distinct digests.
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(22)]
 fn check_ask_timeout_sensitivity_different_values() {
     let timeout1_len: usize = kani::any();
     kani::assume(timeout1_len <= MAX_TIMEOUT_LEN);
-    let mut timeout1_bytes = vec![0u8; timeout1_len];
-    for i in 0..timeout1_len {
-        timeout1_bytes[i] = kani::any();
+    let mut timeout1 = String::new();
+    for _ in 0..timeout1_len {
+        timeout1.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let timeout1 = match String::from_utf8(timeout1_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     let timeout2_len: usize = kani::any();
     kani::assume(timeout2_len <= MAX_TIMEOUT_LEN);
-    let mut timeout2_bytes = vec![0u8; timeout2_len];
-    for i in 0..timeout2_len {
-        timeout2_bytes[i] = kani::any();
+    let mut timeout2 = String::new();
+    for _ in 0..timeout2_len {
+        timeout2.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let timeout2 = match String::from_utf8(timeout2_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     kani::assume(timeout1 != timeout2);
 

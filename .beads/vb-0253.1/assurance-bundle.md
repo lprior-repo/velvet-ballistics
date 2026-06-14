@@ -12,7 +12,7 @@
 - Machine gates: `machine-gate-report.md`.
 
 ## Raw Gate Evidence
-- `cargo kani -p vb_runtime --harness command_queue_bounds` -> `VERIFICATION:- SUCCESSFUL`.
+- `cargo kani -p vb_runtime --harness command_queue_bounds` -> `VERIFICATION:- SUCCESSFUL` for the `#[cfg(kani)]` queue model/shared capacity predicate lane; production `ArrayQueue` mutation remains a Rust-test lane.
 - `cargo test -p vb_runtime command_queue -- --nocapture` -> `11 passed, 1450 filtered out`.
 - `cargo check -p vb_runtime` -> PASS.
 - `cargo fmt --check` -> deferred global formatting drift; raw output path recorded.

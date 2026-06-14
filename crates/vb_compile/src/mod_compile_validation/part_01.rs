@@ -181,9 +181,7 @@ pub(super) fn validate_duplicate_keys_in_mapping<'input>(
         let Some((key_event, key_mark)) = parser.next_event().transpose()? else {
             return Ok(());
         };
-        if key_event == Event::MappingEnd {
-            return Ok(());
-        }
+        proptest::prop_assume!(key_event  != Event::MappingEnd );
         validate_unique_mapping_key(key_event, key_mark, &mut seen)?;
         let Some((value_event, value_mark)) = parser.next_event().transpose()? else {
             return Ok(());
@@ -216,9 +214,7 @@ pub(super) fn validate_duplicate_keys_in_sequence<'input>(
         let Some((event, mark)) = parser.next_event().transpose()? else {
             return Ok(());
         };
-        if event == Event::SequenceEnd {
-            return Ok(());
-        }
+        proptest::prop_assume!(event  != Event::SequenceEnd );
         validate_duplicate_keys_in_started_node(event, mark, parser)?;
     }
 }

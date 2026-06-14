@@ -92,6 +92,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       mkdir -p target/tmp
+      bash scripts/anti-verification-laundering.sh
       flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo check --quiet --workspace --all-targets --all-features
     deps:
       - 'nightly-feature-gate'
@@ -387,6 +388,31 @@ tasks:
       - '@globs(tests)'
       - '@globs(docs)'
       - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  hot-loop-bounds-audit:
+    # Per-bead vb-zluru: hot loops must use checked table access, bounded
+    # stacks, bounded queues, and preallocated/reservation-checked frame state.
+    command: 'bash scripts/check-hot-loop-bounds.sh'
+    inputs:
+      - 'scripts/check-hot-loop-bounds.sh'
+      - 'scripts/check-hot-loop-bounds.rs'
+      - 'crates/vb_core/src/**/*.rs'
+      - 'crates/vb_runtime/src/**/*.rs'
+      - 'crates/vb_storage/src/**/*.rs'
+      - 'crates/vb_ipc/src/**/*.rs'
+    options:
+      runInCI: true
+
+  moon-task-coverage-audit:
+    # Per-bead vb-83lq1: every master-mandatory tool must have a Moon task.
+    command: 'bash scripts/check-moon-task-coverage.sh'
+    inputs:
+      - 'scripts/check-moon-task-coverage.sh'
+      - 'scripts/check-moon-task-coverage.rs'
+      - '.moon/tasks/all.yml'
+      - 'velvet-ballistics-MASTER.md'
     options:
       runInCI: true
 
@@ -716,7 +742,7 @@ tasks:
       run_miri_smoke() {
         package="$1"
         filter="$2"
-        TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p "${package}" --lib --all-features "${filter}"
+        TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p "${package}" --lib --all-features "${filter}"
       }
       # CI policy: Miri is a bounded UB smoke lane for pure crates. The full
       # native test lane owns exhaustive behavior; sweeping all normal unit tests

@@ -175,11 +175,7 @@ fn symbolic_ticket() -> ActionTicket {
 }
 
 fn unreachable_for_kani_frame_bounds() -> RunFrame {
-    kani::assume(false);
-    match RunFrame::new(RunId::new(0), StepIdx::new(0), 1, 1) {
-        Ok(value) => value,
-        Err(_) => loop {},
-    }
+    unreachable!("RunFrame bounds guaranteed by assume");
 }
 
 /// Concrete contract for the MissingKey harness — avoids kani::any() branching

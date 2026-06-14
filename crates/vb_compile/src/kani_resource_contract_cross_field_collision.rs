@@ -29,7 +29,7 @@ fn representative_source() -> vb_yaml::ast::WorkflowSource {
 /// For each pair (field_A, field_B), construct two contracts where the values
 /// are swapped between fields and verify that the encodings differ.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_no_cross_field_collision() {
     // Test the most collision-prone pair: two u16 fields
     // Create contract where max_steps=A, max_slots=B
@@ -84,7 +84,7 @@ fn prove_no_cross_field_collision() {
 
 /// PO-K03 H2: Test same-type field collision for u32 pairs (max_input_bytes vs max_output_bytes).
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_no_cross_field_collision_u32() {
     let val_a: u32 = kani::any();
     kani::assume(val_a >= 1 && val_a <= 256);
@@ -114,7 +114,7 @@ fn prove_no_cross_field_collision_u32() {
 
 /// PO-K03 H3: Test same-type field collision for u64 pairs (max_step_budget_per_tick vs max_transitions_per_tick).
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_no_cross_field_collision_u64() {
     let val_a: u64 = kani::any();
     kani::assume(val_a >= 1 && val_a <= 16);

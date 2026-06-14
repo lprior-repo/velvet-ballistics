@@ -183,9 +183,7 @@ fn validate_flag_value_domain(
     if name != "--emit" {
         return Ok(());
     }
-    if command == "compile" {
-        return Ok(());
-    }
+    proptest::prop_assume!(command  != "compile" );
     let valid = matches!(value, "text" | "yaml" | "postcard");
     if valid {
         Ok(())

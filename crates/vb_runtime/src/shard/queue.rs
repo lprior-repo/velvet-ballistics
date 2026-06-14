@@ -43,9 +43,11 @@ pub struct ShardCommandQueue {
 /// the lock-free internals force CBMC through allocation/drop paths for every
 /// large `ShardCommand` variant before it reaches the wrapper invariants.  The
 /// proof harnesses bound valid capacities to two slots, so this model preserves
-/// the wrapper's capacity, FIFO, fullness, and error taxonomy for that proof
-/// domain without pulling Crossbeam's unsupported concurrent internals into the
-/// state space. Production builds always use the Crossbeam-backed struct above.
+/// the wrapper's capacity, FIFO, fullness, and error taxonomy for that Kani
+/// proof domain without pulling Crossbeam's unsupported concurrent internals
+/// into the state space. This is a queue-model stand-in only: it does not
+/// exercise production `ArrayQueue` enqueue/dequeue behavior. Production builds
+/// always use the Crossbeam-backed struct above.
 #[cfg(kani)]
 pub struct ShardCommandQueue {
     slots: RefCell<[Option<KaniShardCommandToken>; KANI_COMMAND_QUEUE_MODEL_SLOTS]>,

@@ -1446,8 +1446,8 @@ scope.
 ### 33.4 Agent-context parity
 
 Resolved: `agent_context::commands()` now returns all 30 matrix
-entries, including `help`, `version`, `status`, `system-status`,
-`action-list`, `action-inspect`, `ai-context`, and `cancel`.
+entries, including `help`, `version`, `status`, `system status`,
+`action list`, `action inspect`, `ai-context`, and `cancel`.
 
 ### 33.5 Cross-reference (where else in master the matrix appears)
 

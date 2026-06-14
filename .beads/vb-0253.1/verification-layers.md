@@ -8,10 +8,10 @@
 - **External systems excluded**: None
 
 ## Layer Assignment
-- INV-001 -> verus + kani (Rust-local queue capacity invariants)
+- INV-001 -> verus + kani queue model (Rust-local queue capacity invariants)
 - INV-002 -> verus (length accessor correctness)
 - PRE-001 -> proptest + unit test
-- POST-003 -> kani + unit test (queue full error case)
+- POST-003 -> kani queue model + unit test (queue full error case; production `ArrayQueue` mutation via unit test)
 - ERR-FULL -> unit test (error variant coverage)
 
 ## Verus Scope
@@ -22,8 +22,8 @@
 - **Shell exclusions**: None
 
 ## Kani Scope
-- **Rust target**: vb_runtime::shard command queue operations
-- **Claim**: Bounded model checking for capacity overflow
+- **Rust target**: `vb_runtime::shard` queue model plus shared capacity predicate
+- **Claim**: Bounded model checking for the `#[cfg(kani)]` queue model and constructor domain; not a production `ArrayQueue` mutation proof
 - **Command**: cargo kani --harness command_queue_bounds
 - **Evidence**: Kani witness report
 

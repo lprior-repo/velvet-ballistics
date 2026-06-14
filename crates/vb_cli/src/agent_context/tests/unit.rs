@@ -563,8 +563,8 @@ fn commands_includes_all_expected_names() {
         .expect("commands must be an object");
 
     let expected = [
-        "action-inspect",
-        "action-list",
+        "action inspect",
+        "action list",
         "agent-context",
         "ai-context",
         "answer",
@@ -588,7 +588,7 @@ fn commands_includes_all_expected_names() {
         "simulate",
         "status",
         "submit",
-        "system-status",
+        "system status",
         "trace",
         "validate",
         "version",
@@ -760,6 +760,281 @@ fn command_cancel_exposes_parser_reason_bound() {
     assert_eq!(
         reason.get("max_length").and_then(Value::as_u64),
         Some(CANCEL_REASON_MAX_CHARS as u64)
+    );
+}
+
+#[test]
+fn agent_context_help_reports_text_only_output_and_real_aliases() {
+    let context = build("0.1.0");
+    let command = context
+        .pointer("/commands/help")
+        .and_then(Value::as_object)
+        .expect("help command must be an object");
+
+    assert_eq!(command.get("summary").and_then(Value::as_str), Some("Print this message."));
+    assert_eq!(
+        command
+            .get("outputs")
+            .and_then(Value::as_array)
+            .expect("help outputs must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["text"]
+    );
+    assert_eq!(
+        command
+            .get("aliases")
+            .and_then(Value::as_array)
+            .expect("help aliases must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["--help", "-h"]
+    );
+}
+
+#[test]
+fn agent_context_version_reports_text_only_output_and_real_aliases() {
+    let context = build("0.1.0");
+    let command = context
+        .pointer("/commands/version")
+        .and_then(Value::as_object)
+        .expect("version command must be an object");
+
+    assert_eq!(command.get("summary").and_then(Value::as_str), Some("Print version."));
+    assert_eq!(
+        command
+            .get("outputs")
+            .and_then(Value::as_array)
+            .expect("version outputs must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["text"]
+    );
+    assert_eq!(
+        command
+            .get("aliases")
+            .and_then(Value::as_array)
+            .expect("version aliases must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["--version", "-V"]
+    );
+}
+
+#[test]
+fn agent_context_status_matches_parser_and_help_contract() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/status/flags")
+        .and_then(Value::as_object)
+        .expect("status flags must be an object");
+    let shard_config = vb_runtime::shard::ShardConfig::default();
+
+    assert_eq!(
+        context
+            .pointer("/commands/status/summary")
+            .and_then(Value::as_str),
+        Some("Report runtime shard status (with live Fjall probe when --db is supplied).")
+    );
+    assert_eq!(
+        flags
+            .get("--active-runs")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("type"))
+            .and_then(Value::as_str),
+        Some("usize")
+    );
+    assert_eq!(
+        flags
+            .get("--active-runs")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("max"))
+            .and_then(Value::as_u64),
+        Some(u64::try_from(shard_config.max_active_runs).expect("usize fits into u64"))
+    );
+    assert_eq!(
+        flags
+            .get("--queue-depth")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("type"))
+            .and_then(Value::as_str),
+        Some("usize")
+    );
+    assert_eq!(
+        flags
+            .get("--queue-depth")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("max"))
+            .and_then(Value::as_u64),
+        Some(
+            u64::try_from(shard_config.command_queue_capacity).expect("usize fits into u64")
+        )
+    );
+    assert_eq!(
+        flags
+            .get("--trace-dropped")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("type"))
+            .and_then(Value::as_str),
+        Some("u64")
+    );
+    assert_eq!(
+        flags
+            .get("--db")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("required"))
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        flags
+            .get("--emit")
+            .and_then(Value::as_object)
+            .expect("status emit flag must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("status emit values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["text", "yaml"]
+    );
+}
+
+#[test]
+fn agent_context_system_status_matches_parser_and_help_contract() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/system status/flags")
+        .and_then(Value::as_object)
+        .expect("system status flags must be an object");
+
+    assert_eq!(
+        context
+            .pointer("/commands/system status/summary")
+            .and_then(Value::as_str),
+        Some("Report bounded system health (probes Fjall when --db is supplied).")
+    );
+    assert_eq!(
+        flags
+            .get("--profile")
+            .and_then(Value::as_object)
+            .expect("system status profile must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("system status profile values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["quick", "standard", "full"]
+    );
+    assert_eq!(
+        flags
+            .get("--server")
+            .and_then(Value::as_object)
+            .expect("system status server must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("system status server values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["none"]
+    );
+    assert_eq!(
+        flags
+            .get("--db")
+            .and_then(Value::as_object)
+            .and_then(|flag| flag.get("required"))
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        flags
+            .get("--emit")
+            .and_then(Value::as_object)
+            .expect("system status emit flag must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("system status emit values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["text", "yaml"]
+    );
+}
+
+#[test]
+fn agent_context_action_list_matches_parser_and_help_contract() {
+    let context = build("0.1.0");
+    let flags = context
+        .pointer("/commands/action list/flags")
+        .and_then(Value::as_object)
+        .expect("action list flags must be an object");
+
+    assert_eq!(
+        context
+            .pointer("/commands/action list/summary")
+            .and_then(Value::as_str),
+        Some("List registered action contracts.")
+    );
+    assert_eq!(
+        flags
+            .get("--registry")
+            .and_then(Value::as_object)
+            .expect("action list registry flag must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("action list registry values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["registered", "empty", "uninitialized"]
+    );
+}
+
+#[test]
+fn agent_context_action_inspect_matches_parser_and_help_contract() {
+    let context = build("0.1.0");
+    let command = context
+        .pointer("/commands/action inspect")
+        .and_then(Value::as_object)
+        .expect("action inspect command must be an object");
+    let flags = command
+        .get("flags")
+        .and_then(Value::as_object)
+        .expect("action inspect flags must be an object");
+
+    assert_eq!(
+        command.get("summary").and_then(Value::as_str),
+        Some("Show one registered action contract.")
+    );
+    assert_eq!(
+        command
+            .get("positionals")
+            .and_then(Value::as_array)
+            .expect("action inspect positionals must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["action-name"]
+    );
+    assert_eq!(
+        flags
+            .get("--registry")
+            .and_then(Value::as_object)
+            .expect("action inspect registry flag must be an object")
+            .get("values")
+            .and_then(Value::as_array)
+            .expect("action inspect registry values must be an array")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>(),
+        vec!["registered", "empty", "uninitialized"]
     );
 }
 

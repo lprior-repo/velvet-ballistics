@@ -183,7 +183,7 @@ fn prove_single_field_changes_digest() {
 
 /// PO-K08: Prove that allows_secret_results changes the canonical digest.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_secret_results_changes_digest() {
     let mut contract_true = base_contract();
     contract_true.allows_secret_results = true;

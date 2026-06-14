@@ -49,6 +49,7 @@ pub mod ipc_serve;
 #[cfg(kani)]
 pub mod kani_lifecycle;
 pub mod lifecycle;
+pub mod matrix;
 pub mod mode_error;
 pub mod naming_scan;
 pub mod output;

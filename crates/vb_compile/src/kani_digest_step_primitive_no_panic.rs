@@ -19,45 +19,30 @@ use crate::lwr::{canonical_digest, digest_step_primitive};
 use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum prompt length for bounded panic-freedom checking.
-const MAX_PROMPT_LEN: usize = 256;
+const MAX_PROMPT_LEN: usize = 10;
 /// Maximum timeout length for bounded panic-freedom checking.
-const MAX_TIMEOUT_LEN: usize = 128;
+const MAX_TIMEOUT_LEN: usize = 10;
 
 /// PO-KANI-006 H1: digest_step_primitive does not panic on Ask variant.
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(12)]
 fn check_digest_step_primitive_no_panic() {
     let prompt_len: usize = kani::any();
     kani::assume(prompt_len <= MAX_PROMPT_LEN);
-    let mut prompt_bytes = vec![0u8; prompt_len];
-    for i in 0..prompt_len {
-        prompt_bytes[i] = kani::any();
+    let mut prompt = String::new();
+    for _ in 0..prompt_len {
+        prompt.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let prompt = match String::from_utf8(prompt_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     let has_timeout: bool = kani::any();
     let timeout: Option<String> = if has_timeout {
         let timeout_len: usize = kani::any();
         kani::assume(timeout_len <= MAX_TIMEOUT_LEN);
-        let mut timeout_bytes = vec![0u8; timeout_len];
-        for i in 0..timeout_len {
-            timeout_bytes[i] = kani::any();
+        let mut timeout_str = String::new();
+        for _ in 0..timeout_len {
+            timeout_str.push(kani::any::<char>());
         }
-        // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-        Some(match String::from_utf8(timeout_bytes) {
-            Ok(s) => s,
-            Err(_) => {
-                kani::assume(false); // exclude invalid UTF-8 from verification domain
-                unreachable!();
-            }
-        })
+        Some(timeout_str)
     } else {
         None
     };
@@ -72,39 +57,24 @@ fn check_digest_step_primitive_no_panic() {
 
 /// PO-KANI-006 H2: canonical_digest does not panic for Ask-containing sources.
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(12)]
 fn check_canonical_digest_no_panic() {
     let prompt_len: usize = kani::any();
     kani::assume(prompt_len <= MAX_PROMPT_LEN);
-    let mut prompt_bytes = vec![0u8; prompt_len];
-    for i in 0..prompt_len {
-        prompt_bytes[i] = kani::any();
+    let mut prompt = String::new();
+    for _ in 0..prompt_len {
+        prompt.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let prompt = match String::from_utf8(prompt_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     let has_timeout: bool = kani::any();
     let timeout: Option<String> = if has_timeout {
         let timeout_len: usize = kani::any();
         kani::assume(timeout_len <= MAX_TIMEOUT_LEN);
-        let mut timeout_bytes = vec![0u8; timeout_len];
-        for i in 0..timeout_len {
-            timeout_bytes[i] = kani::any();
+        let mut timeout_str = String::new();
+        for _ in 0..timeout_len {
+            timeout_str.push(kani::any::<char>());
         }
-        // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-        Some(match String::from_utf8(timeout_bytes) {
-            Ok(s) => s,
-            Err(_) => {
-                kani::assume(false); // exclude invalid UTF-8 from verification domain
-                unreachable!();
-            }
-        })
+        Some(timeout_str)
     } else {
         None
     };

@@ -86,7 +86,7 @@ fn prove_contract_survives_compilation() {
 
 /// PO-K07 H2: Prove that a non-DEFAULT contract's encoding differs from DEFAULT.
 #[kani::proof]
-#[kani::unwind(1)]
+#[kani::unwind(10)]
 fn prove_non_default_contract_encoding_differs() {
     let default = ResourceContract::DEFAULT;
 

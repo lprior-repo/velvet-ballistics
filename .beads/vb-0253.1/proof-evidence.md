@@ -17,4 +17,4 @@
 ## Pending Execution
 - `rustfmt --edition 2024 crates/vb_runtime/src/kani_shard_command_queue.rs crates/vb_runtime/src/lib.rs crates/vb_runtime/src/shard/types.rs crates/vb_runtime/src/shard/impl_parts/chunk_003.rs crates/vb_runtime/src/shard/impl_parts/chunk_004.rs` -> exit 0.
 - `cargo kani -p vb_runtime --harness command_queue_bounds` -> exit 0.
-- Kani result: `VERIFICATION:- SUCCESSFUL`; `0 of 3 failed`; `1 successfully verified harnesses, 0 failures, 1 total`.
+- Kani result: `VERIFICATION:- SUCCESSFUL`; `0 of 3 failed`; `1 successfully verified harnesses, 0 failures, 1 total`. Scope note: this harness runs against the `#[cfg(kani)]` queue model/shared capacity predicate, not production `ArrayQueue` enqueue/dequeue mutation.

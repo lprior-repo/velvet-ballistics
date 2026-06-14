@@ -5,11 +5,10 @@ use crate::recovery::digest::{
     first_action_abi_mismatch, first_policy_mismatch, workflow_digest_bytes_equal,
 };
 use crate::recovery::types::{
-    DigestCheck, DigestCheckConfig, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
-    RecoveryResult, RunSnapshot,
+    DigestCheck, DigestCheckConfig, RecoveryError, RecoveryHydration, RecoveryResult,
 };
 use crate::{FjallJournal, JournalEvent};
-use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
 /// Verifies that the workflow source digest matches the stored record.
 ///
@@ -294,58 +293,4 @@ pub fn recover_all_incomplete_runs(
     }
 
     Ok(recovered)
-}
-
-/// Persists a compact [`RunSnapshot`] derived from a fully-supported
-/// [`RecoveryFrameSeed`].
-///
-/// This is the only production caller of the snapshot write API
-/// (`FjallJournal::put_snapshot` and the free `write_snapshot` wrapper). It
-/// exists so the snapshot write API is not dead code: the runtime's recovery
-/// path invokes it after building a supported frame seed, so subsequent
-/// recoveries can short-circuit full event replay via
-/// `recover_snapshot_plus_tail`.
-///
-/// The seed must be fully supported (`unsupported.is_fully_supported()`);
-/// seeds with `pending_actions` or `action_payloads` cannot be faithfully
-/// captured in the compact form, so this function rejects them with
-/// `ReplayDivergence`. Callers should not invoke it for seeds that the
-/// runtime boundary would reject.
-pub fn write_recovered_snapshot(
-    journal: &FjallJournal,
-    seed: &RecoveryFrameSeed,
-) -> RecoveryResult<()> {
-    if !seed.unsupported.is_fully_supported() {
-        return Err(RecoveryError::ReplayDivergence {
-            step: seed.pc,
-            detail: "snapshot write rejected: seed has unsupported recovery state".to_owned(),
-        });
-    }
-    let workflow = seed.summary.workflow.ok_or(RecoveryError::NoRecoveryData {
-        run: seed.summary.run,
-    })?;
-    let slot_entries: Vec<(SlotIdx, SlotValue, Taint)> = seed
-        .slots
-        .iter()
-        .map(|entry| (entry.slot, entry.value, entry.taint))
-        .collect();
-    let slots =
-        postcard::to_allocvec(&slot_entries).map_err(|error| RecoveryError::ReplayDivergence {
-            step: seed.pc,
-            detail: format!("snapshot slot encode failed: {error}"),
-        })?;
-    let taint =
-        postcard::to_allocvec(&slot_entries).map_err(|error| RecoveryError::ReplayDivergence {
-            step: seed.pc,
-            detail: format!("snapshot taint encode failed: {error}"),
-        })?;
-    let snapshot = RunSnapshot {
-        run: seed.summary.run,
-        seq: seed.summary.last_seq,
-        workflow,
-        slots,
-        taint,
-    };
-    journal.put_snapshot(&snapshot)?;
-    Ok(())
 }

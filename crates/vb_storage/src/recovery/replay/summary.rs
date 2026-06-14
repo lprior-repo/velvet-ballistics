@@ -386,14 +386,6 @@ fn seed_unsupported_state(
         } else {
             UnsupportedRecoveryState::SUPPORTED
         },
-        if !accumulator.pending_actions.is_empty() {
-            // Recovered pending actions have no runtime rehydration path: the
-            // seed carries `(step, action)` pairs but loses the ticket envelope
-            // `(input, output)` slot mapping, so we must block full-frame recovery.
-            UnsupportedRecoveryState::pending_actions_unsupported()
-        } else {
-            UnsupportedRecoveryState::SUPPORTED
-        },
     ]
     .into_iter()
     .fold(

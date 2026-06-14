@@ -123,6 +123,8 @@ kani-vb-5iebh-check-scope = []
 kani-vb-ajc40 = []
 volatile = []
 test-util = []
+vb-rxru0-flux-refinements = []
+vb-rxru0-mock-marker = []
 "#
             ),
         )?;

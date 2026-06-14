@@ -209,7 +209,6 @@ pub(crate) fn run_verification(
         .map(|b| format!("{b:02x}"))
         .collect();
     let mut gate_outcomes = VerificationGateOutcomes::baseline_success();
-    gate_outcomes.taint = true;
     let mut warnings: Vec<String> = Vec::new();
 
     // Phase 3: IR validation gates
@@ -337,12 +336,15 @@ fn check_slot_bounds(parts: &WorkflowParts) -> Result<(), String> {
 
 /// Gate: taint propagation.
 ///
-/// The compile pipeline already runs `type_taint::validate_workflow_ast` before
-/// `compile_workflow` returns `Ok`, so successful compilation proves the master
-/// §63 taint gate for this CLI layer.
+/// No compiled-form taint validator over `WorkflowParts` exists in `vb_validate`
+/// today. The compile pipeline's AST taint pass is useful upstream, but it does
+/// not close the master §63 compiled-IR taint gate for this CLI layer.
 fn check_taint_propagation(parts: &WorkflowParts) -> Result<(), String> {
     let _ = parts;
-    Ok(())
+    Err(
+        "compiled-form WorkflowParts taint validation is not implemented; AST validation alone does not close this gate"
+            .to_string(),
+    )
 }
 
 /// Gate: every `Do` node has a structurally valid `ActionId` and a valid
@@ -456,7 +458,7 @@ steps:
         "bounded:deferred",
         "budgets:deferred",
         "contracts:deferred",
-        "taint",
+        "taint:deferred",
         "idempotency:deferred",
         "durability:deferred",
         "capabilities:deferred",
@@ -488,7 +490,7 @@ steps:
         "bounded",
         "budgets",
         "contracts:deferred",
-        "taint",
+        "taint:deferred",
         "idempotency:deferred",
         "durability:deferred",
         "capabilities:deferred",
@@ -652,12 +654,16 @@ steps:
             ok.deferred_gates(),
             vec![
                 "contracts",
+                "taint",
                 "idempotency",
                 "durability",
                 "capabilities",
                 "evidence",
             ]
         );
+        assert!(ok.warnings.iter().any(|warning| warning.contains(
+            "compiled-form WorkflowParts taint validation is not implemented"
+        )));
     }
 
     #[test]

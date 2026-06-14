@@ -23,7 +23,7 @@ use vb_core::workflow::ResourceContract;
 /// The duplicate 15-field type in compiled_workflow.rs has been removed (PF-BH-002).
 /// This confirms the canonical 18-field type in workflow/mod.rs is the single source of truth.
 #[kani::proof]
-#[kani::unwind(1)]
+#[kani::unwind(10)]
 fn prove_canonical_contract_has_18_fields() {
     // Construct a contract with all 18 fields explicitly assigned.
     // This binds to the actual struct definition; if a field is missing
@@ -65,7 +65,7 @@ fn prove_canonical_contract_has_18_fields() {
 /// PO-K05 variant: Verify that DEFAULT has all 18 fields set.
 /// This ensures no field of DEFAULT is accidentally left uninitialized.
 #[kani::proof]
-#[kani::unwind(1)]
+#[kani::unwind(10)]
 fn prove_default_contract_has_18_fields() {
     let default = ResourceContract::DEFAULT;
 

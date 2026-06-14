@@ -559,7 +559,8 @@ fn journaled_run_writes_storage_events() {
 
     if let (Some(compiled), Ok(dir)) = (compiled, dir) {
         let code = run_compiled_workflow(
-            &compiled,
+            vb_core::RunId::new(1),
+            compiled.clone(),
             Box::from([]),
             DurabilityMode::Journaled,
             Some(dir.path()),

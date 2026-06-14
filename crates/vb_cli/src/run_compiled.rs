@@ -16,7 +16,10 @@ use crate::run::{
     INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
     INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
 };
-use crate::run_compiled_runtime::{map_runtime_inputs, run_compiled_workflow};
+use crate::run_compiled_runtime::{
+    admitted_workflow_for_durability, map_runtime_inputs, run_compiled_workflow,
+};
+use crate::run_id::generate_run_id_from_clock;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::process::ExitCode;
@@ -96,7 +99,13 @@ pub(crate) fn cmd_run_compiled(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db, output)
+    let run_id = generate_run_id_from_clock();
+    let admitted_workflow = match admitted_workflow_for_durability(&compiled, durability, output) {
+        Ok(workflow) => workflow,
+        Err(code) => return code,
+    };
+
+    run_compiled_workflow(run_id, admitted_workflow, inputs, durability, db, output)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

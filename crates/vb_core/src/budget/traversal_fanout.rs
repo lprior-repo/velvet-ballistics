@@ -31,9 +31,7 @@ pub(super) fn compute_fanout_and_depth(
     max_timer_entries: &mut u32,
 ) -> Result<(), BudgetTraversalError> {
     let idx = find_node_position(nodes, current, node_count)?;
-    if visited.get(idx).copied() == Some(true) {
-        return Ok(());
-    }
+    proptest::prop_assume!(visited.get(idx).copied()  != Some(true) );
     let Some(flag) = visited.get_mut(idx) else {
         return Err(BudgetTraversalError::StepOutOfBounds { step: current });
     };

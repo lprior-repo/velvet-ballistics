@@ -1241,9 +1241,7 @@ proptest! {
         let w2 = make_legal_wait_shape(&e2, &t2);
 
         // If the Wait shapes are identical, skip
-        if w1 == w2 {
-            return Ok(());
-        }
+        proptest::prop_assume!(w1  != w2 );
 
         let source1 = wait_workflow_source(&w1.0, &w1.1);
         let source2 = wait_workflow_source(&w2.0, &w2.1);

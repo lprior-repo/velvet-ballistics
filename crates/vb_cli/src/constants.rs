@@ -18,7 +18,7 @@ commands:
   run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
   ipc-serve  --socket <path> --db <path>               Start IPC server
   inspect    <run_id> --db <path> [--emit text|yaml|postcard]     Inspect a run
-  events     <run_id> --db <path> [--emit text|yaml|postcard]     List run events
+   events     <run_id> --db <path> [--status <status>] [--limit <N>] [--emit text|yaml|postcard]     List run events
   replay     <run_id> --db <path> [--emit text|yaml|postcard]     Replay a run from journal
   trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>]
              [--since-seq <N>] [--until-seq <N>] [--limit <N>] [--emit text|yaml|postcard]

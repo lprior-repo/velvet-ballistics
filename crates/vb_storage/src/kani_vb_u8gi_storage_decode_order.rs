@@ -21,7 +21,7 @@ use crate::error::JournalError;
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-001: BadMagic has highest priority.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 pub fn vb_u8gi_storage_decode_order_bad_magic() {
     let header: [u8; 60] = kani::any();
     let max_payload_len: u32 = kani::any();
@@ -41,7 +41,7 @@ pub fn vb_u8gi_storage_decode_order_bad_magic() {
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-002: UnsupportedSchemaVersion is checked after magic.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 pub fn vb_u8gi_storage_decode_order_bad_version() {
     let mut header: [u8; 60] = kani::any();
     let max_payload_len: u32 = kani::any();
@@ -65,7 +65,7 @@ pub fn vb_u8gi_storage_decode_order_bad_version() {
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-003: UnknownRecordKind for invalid kind values.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 pub fn vb_u8gi_storage_decode_order_unknown_kind() {
     let mut header: [u8; 60] = kani::any();
     let max_payload_len: u32 = kani::any();
@@ -90,7 +90,7 @@ pub fn vb_u8gi_storage_decode_order_unknown_kind() {
 /// This tests kinds 1, 2, 3, 30, 40, 50 which are valid kinds but not valid
 /// for MAGIC_JOURNAL_EVENT (only 10..=27 are valid for journal events).
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 pub fn vb_u8gi_storage_decode_order_family_mismatch() {
     let mut header: [u8; 60] = kani::any();
     let max_payload_len: u32 = kani::any();
@@ -118,7 +118,7 @@ pub fn vb_u8gi_storage_decode_order_family_mismatch() {
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-005: HeaderLengthMismatch checked after kind family.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 pub fn vb_u8gi_storage_decode_order_bad_header_len() {
     let mut header: [u8; 60] = kani::any();
     let max_payload_len: u32 = kani::any();
@@ -148,7 +148,7 @@ pub fn vb_u8gi_storage_decode_order_bad_header_len() {
 
 /// VB-U8GI-STORAGE-DECODE-ORDER-006: PayloadTooLarge has lowest priority.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 pub fn vb_u8gi_storage_decode_order_payload_too_large() {
     let mut header: [u8; 60] = kani::any();
     let max_payload_len: u32 = kani::any();

@@ -56,7 +56,7 @@ mod kani_taint_guard {
 
     /// Panic-freedom: guard_decision must not panic for any valid input.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(10)]
     fn guard_decision_panic_free() {
         let input_taint = any_taint();
         let idempotency = any_idempotency();
@@ -65,7 +65,7 @@ mod kani_taint_guard {
 
     /// Invariant: guard fires iff idempotency=DeterministicPure AND input_taint!=Clean.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(10)]
     fn guard_fires_exactly_for_non_clean_deterministicpure() {
         let input_taint = any_taint();
         let idempotency = any_idempotency();
@@ -90,7 +90,7 @@ mod kani_taint_guard {
 
     /// DeterministicPure guard fires for every non-Clean taint variant.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(10)]
     fn every_non_clean_taint_triggers_guard_for_deterministicpure() {
         let input_taint = any_taint();
         kani::assume(input_taint != Taint::Clean);
@@ -104,7 +104,7 @@ mod kani_taint_guard {
 
     /// Clean input never triggers the guard, regardless of idempotency.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(10)]
     fn clean_input_never_triggers_guard() {
         let idempotency = any_idempotency();
         let result = guard_decision(idempotency, Taint::Clean);
@@ -116,7 +116,7 @@ mod kani_taint_guard {
 
     /// Non-DeterministicPure idempotency levels never trigger the guard.
     #[kani::proof]
-    #[kani::unwind(2)]
+    #[kani::unwind(10)]
     fn non_deterministicpure_never_triggers_guard() {
         let input_taint = any_taint();
         let idempotency = any_idempotency();

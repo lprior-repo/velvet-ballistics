@@ -276,48 +276,46 @@ fn commands() -> Value {
         command(
             "help",
             serde_json::json!({
-                "summary": "Print CLI help.",
-                "flags": output_flags()
+                "summary": "Print this message.",
+                "outputs": ["text"],
+                "aliases": ["--help", "-h"]
             }),
         ),
         command(
             "version",
             serde_json::json!({
-                "summary": "Print CLI version.",
-                "outputs": ["text"]
+                "summary": "Print version.",
+                "outputs": ["text"],
+                "aliases": ["--version", "-V"]
             }),
         ),
         command(
             "status",
             serde_json::json!({
-                "summary": "Runtime status snapshot.",
-                "flags": db_output_flags()
+                "summary": "Report runtime shard status (with live Fjall probe when --db is supplied).",
+                "flags": status_flags()
             }),
         ),
         command(
-            "system-status",
+            "system status",
             serde_json::json!({
-                "summary": "System status (storage + runtime backend).",
-                "flags": {
-                    "--profile": {"type": "enum", "values": ["quick", "standard", "full"], "default": "standard"},
-                    "--server": {"type": "enum", "values": ["strict", "journaled", "none"], "default": "none"},
-                    "--emit": output_emit_flag()
-                }
+                "summary": "Report bounded system health (probes Fjall when --db is supplied).",
+                "flags": system_status_flags()
             }),
         ),
         command(
-            "action-list",
+            "action list",
             serde_json::json!({
-                "summary": "List registered actions.",
-                "flags": output_flags()
+                "summary": "List registered action contracts.",
+                "flags": action_registry_flags()
             }),
         ),
         command(
-            "action-inspect",
+            "action inspect",
             serde_json::json!({
-                "summary": "Inspect an action contract.",
-                "positionals": ["action"],
-                "flags": output_flags()
+                "summary": "Show one registered action contract.",
+                "positionals": ["action-name"],
+                "flags": action_registry_flags()
             }),
         ),
         command(
@@ -339,12 +337,47 @@ fn output_flags() -> Value {
     serde_json::json!({"--emit": output_emit_flag()})
 }
 
+fn action_registry_flags() -> Value {
+    serde_json::json!({
+        "--emit": output_emit_flag(),
+        "--registry": {
+            "type": "enum",
+            "values": ["registered", "empty", "uninitialized"],
+            "default": "registered"
+        }
+    })
+}
+
 fn db_output_flags() -> Value {
     serde_json::json!({"--db": {"type": "path", "required": true}, "--emit": output_emit_flag()})
 }
 
+fn status_flags() -> Value {
+    let config = vb_runtime::shard::ShardConfig::default();
+    serde_json::json!({
+        "--active-runs": {"type": "usize", "max": config.max_active_runs},
+        "--queue-depth": {"type": "usize", "max": config.command_queue_capacity},
+        "--trace-dropped": {"type": "u64"},
+        "--db": {"type": "path", "required": false},
+        "--emit": text_yaml_emit_flag()
+    })
+}
+
+fn system_status_flags() -> Value {
+    serde_json::json!({
+        "--profile": {"type": "enum", "values": ["quick", "standard", "full"], "default": "standard"},
+        "--server": {"type": "enum", "values": ["none"], "default": "none"},
+        "--db": {"type": "path", "required": false},
+        "--emit": text_yaml_emit_flag()
+    })
+}
+
 fn output_emit_flag() -> Value {
     serde_json::json!({"type": "enum", "values": ["text", "yaml", "postcard"], "default": "text"})
+}
+
+fn text_yaml_emit_flag() -> Value {
+    serde_json::json!({"type": "enum", "values": ["text", "yaml"], "default": "text"})
 }
 
 fn run_id_db_command(summary: &str) -> Value {

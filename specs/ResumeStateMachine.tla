@@ -133,6 +133,10 @@ Next ==
     \/ \E r \in RunIds : ResumeDriveContinue(r)
     \/ \E r \in RunIds : ResumeDriveFailureRollback(r)
     \/ \E r \in RunIds : FailRun(r)
+    \/ /\ \/ Len(journal) = MaxJournalLength
+          \/ Len(opLog) >= MaxOpLogLength - 1
+          \/ \A r \in RunIds : runtimeState[r] = "Failed"
+       /\ UNCHANGED vars
 
 Spec == Init /\ [][Next]_vars
 

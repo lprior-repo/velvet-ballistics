@@ -15,7 +15,7 @@ use vb_core::workflow::{
 };
 
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(10)]
 fn kani_gate_08_valid_bounded_parts_pass() {
     let parts: WorkflowParts = kani::any();
     kani::assume(parts.slot_count > 0);
@@ -29,7 +29,7 @@ fn kani_gate_08_valid_bounded_parts_pass() {
             match segment {
                 PathSegment::Field(symbol) => kani::assume(symbol.get() < parts.symbols_count),
                 PathSegment::Index(index) => kani::assume(*index != u32::MAX),
-                _ => kani::assume(false),
+                _ => unreachable!("PathSegment variants covered"),
             }
         }
     }
@@ -71,7 +71,7 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
 }
 
 #[kani::proof]
-#[kani::unwind(5)]
+#[kani::unwind(10)]
 fn kani_gate_08_no_panic_bounded_inputs() {
     let parts: WorkflowParts = kani::any();
     kani::assume(parts.slot_count <= 256);

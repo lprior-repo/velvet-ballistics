@@ -112,6 +112,10 @@ FailNoOtherwise ==
     /\ UNCHANGED <<branchCount, branches, slotState, otherwise, scanIndex,
                   pc, pc0, executed, executed0, selectedIndex>>
 
+TerminalStutter ==
+    /\ phase = "done"
+    /\ UNCHANGED vars
+
 Next ==
     \/ ReadSlotUnavailable
     \/ ReadSlotNonBool
@@ -119,6 +123,7 @@ Next ==
     \/ SelectTrueBranch
     \/ SelectOtherwise
     \/ FailNoOtherwise
+    \/ TerminalStutter
 
 Spec == Init /\ [][Next]_vars
 

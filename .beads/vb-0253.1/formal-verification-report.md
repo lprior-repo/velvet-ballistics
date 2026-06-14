@@ -3,7 +3,7 @@
 STATUS: APPROVED
 
 ## Executed Obligations
-- `KANI-QUEUE-001`: `cargo kani -p vb_runtime --harness command_queue_bounds` -> PASS, `VERIFICATION:- SUCCESSFUL`, `0 of 3 failed`.
+- `KANI-QUEUE-001`: `cargo kani -p vb_runtime --harness command_queue_bounds` -> PASS, `VERIFICATION:- SUCCESSFUL`, `0 of 3 failed`, against the `#[cfg(kani)]` queue model/shared capacity predicate rather than production `ArrayQueue` mutation.
 - `VERUS-INV-001`: WAIVED via `formal-waivers.jsonl`.
 - `VERUS-INV-002`: WAIVED via `formal-waivers.jsonl`.
 

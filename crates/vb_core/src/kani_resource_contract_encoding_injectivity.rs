@@ -68,7 +68,7 @@ fn bounded_contract_extreme() -> ResourceContract {
 /// PO-K12: Prove that domain-tagged encoding is injective for bounded contracts.
 /// When two contracts differ, their encodings must differ.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_encoding_no_collision() {
     let a = bounded_contract_extreme();
     let b = bounded_contract_extreme();
@@ -86,7 +86,7 @@ fn prove_encoding_no_collision() {
 
 /// PO-K12 variant: All-zeros vs all-ones edge case.
 #[kani::proof]
-#[kani::unwind(1)]
+#[kani::unwind(10)]
 fn prove_encoding_no_collision_zeros_vs_ones() {
     let all_zeros = ResourceContract {
         max_steps: 0, max_slots: 0, max_constants: 0, max_accessors: 0,

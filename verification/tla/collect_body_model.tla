@@ -75,12 +75,17 @@ Overflow ==
   /\ overflow' = TRUE
   /\ UNCHANGED <<emitted, current_id, phase>>
 
+TerminalStutter ==
+  /\ phase = "done"
+  /\ UNCHANGED vars
+
 Next ==
   \/ EmitCollectStart
   \/ EmitSetConst
   \/ EmitCollectPage
   \/ EmitCollectFinish
   \/ Overflow
+  \/ TerminalStutter
 
 Spec == Init /\ [][Next]_vars
 

@@ -30,11 +30,8 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(bytes_result.is_ok(), "valid generated mismatch payload should encode");
-        let bytes = match bytes_result {
-            Ok(bytes) => bytes,
-            Err(_) => return Ok(()),
-        };
+        prop_assert!(bytes_result.is_ok(), "valid generated mispayload should encode");
+        let bytes = match bytes_result.unwrap();
         let decoded = decode_journal_event(
             &bytes,
             MAGIC_JOURNAL_EVENT,
@@ -67,11 +64,8 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(bytes_result.is_ok(), "valid generated mismatch payload should encode");
-        let bytes = match bytes_result {
-            Ok(bytes) => bytes,
-            Err(_) => return Ok(()),
-        };
+        prop_assert!(bytes_result.is_ok(), "valid generated mispayload should encode");
+        let bytes = match bytes_result.unwrap();
         let decoded = decode_journal_event(
             &bytes,
             MAGIC_JOURNAL_EVENT,

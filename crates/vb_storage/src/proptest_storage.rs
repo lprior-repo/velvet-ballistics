@@ -154,14 +154,14 @@ mod storage_tests {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.unwrap();
 
             let decoded = decode_record::<JournalEvent>(
                 &encoded,
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            let Ok((envelope, decoded_event)) = decoded else { return Ok(()) };
+            let (envelope, decoded_event) = decoded.unwrap();
 
             prop_assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
             prop_assert_eq!(envelope.record_kind, kind.id());
@@ -179,10 +179,10 @@ mod storage_tests {
                 bytes: blob_bytes,
             };
             let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, MAX_BLOB_BYTES);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.unwrap();
 
             let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, MAX_BLOB_BYTES);
-            let Ok((_, decoded_record)) = decoded else { return Ok(()) };
+            let (_, decoded_record) = decoded.unwrap();
 
             prop_assert_eq!(decoded_record, record);
         }

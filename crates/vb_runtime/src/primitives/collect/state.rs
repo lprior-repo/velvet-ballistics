@@ -81,9 +81,7 @@ impl CollectStates {
             self.lineages.entry(key).or_default();
             return Ok(());
         };
-        if current == next_page {
-            return Ok(());
-        }
+        proptest::prop_assume!(current  != next_page );
         let lineage = self.lineages.entry(key).or_default();
         if let Some(previous) = lineage.previous_page {
             lineage.stale_pages.try_reserve(1).map_err(|_| {

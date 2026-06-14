@@ -1696,6 +1696,77 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
     let run_id =
         extract_run_id_from_run_text_output(&run_output, "run --durability journaled --db");
 
+    let compiled = match vb_compile::compile_workflow(CLI_WORKFLOW.as_bytes()) {
+        Ok(compiled) => compiled,
+        Err(errors) => {
+            assert!(
+                forced_assertion_failure(),
+                "CLI workflow should compile in test setup: {errors:?}"
+            );
+            return;
+        }
+    };
+    let source_digest = WorkflowDigest::from_bytes(blake3::hash(CLI_WORKFLOW.as_bytes()).into());
+    let run_id_value = match run_id.parse::<u64>() {
+        Ok(value) => value,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "run id should parse as u64: {err}; run_id={run_id}"
+            );
+            return;
+        }
+    };
+    let journal = match vb_storage::FjallJournal::open(db_path.as_path(), None) {
+        Ok(journal) => journal,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "journal should reopen after run: {err}"
+            );
+            return;
+        }
+    };
+    let source_record = match journal.workflow_source(source_digest) {
+        Ok(record) => record,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "source record should be readable: {err}"
+            );
+            return;
+        }
+    };
+    let Some(source_record) = source_record else {
+        assert!(
+            forced_assertion_failure(),
+            "run should persist workflow source before execution"
+        );
+        return;
+    };
+    assert_eq!(source_record.digest, source_digest);
+    assert_eq!(source_record.source, CLI_WORKFLOW.as_bytes());
+    let header_record = match journal.run_header(vb_core::RunId::new(run_id_value)) {
+        Ok(record) => record,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "run header should be readable: {err}"
+            );
+            return;
+        }
+    };
+    let Some(header_record) = header_record else {
+        assert!(
+            forced_assertion_failure(),
+            "run should persist header before execution"
+        );
+        return;
+    };
+    assert_eq!(header_record.run, vb_core::RunId::new(run_id_value));
+    assert_eq!(header_record.compiled_digest, compiled.digest());
+    assert_eq!(header_record.status, 0);
+
     let events_output = match run_cli(&[
         std::ffi::OsStr::new("events"),
         std::ffi::OsStr::new(&run_id),
@@ -5431,6 +5502,227 @@ fn cli_events_nonexistent_run_reports_empty_or_not_found() {
             || stderr.contains("RUN_NOT_FOUND"),
         "events for nonexistent run must fail or report empty: stdout={stdout} stderr={stderr}"
     );
+}
+
+fn seed_events_filter_journal(db_path: &std::path::Path) -> bool {
+    let journal = match vb_storage::FjallJournal::open(db_path, None) {
+        Ok(journal) => journal,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to open seeded events journal: {err}"
+            );
+            return false;
+        }
+    };
+    let run_id = vb_core::RunId::new(7);
+    let workflow_digest = WorkflowDigest::from_bytes([7u8; 32]);
+    let events = vec![
+        vb_storage::JournalEvent::RunAccepted {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(0),
+            workflow: workflow_digest,
+        },
+        vb_storage::JournalEvent::StepStarted {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+        vb_storage::JournalEvent::ActionScheduled {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(2),
+            step: StepIdx::new(1),
+            action: vb_core::ids::ActionId::new(17),
+            attempt: 1,
+        },
+        vb_storage::JournalEvent::StepSucceeded {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(3),
+            step: StepIdx::new(0),
+            output: SlotIdx::ZERO,
+        },
+        vb_storage::JournalEvent::RunFinished {
+            run: run_id,
+            seq: vb_storage::EventSeq::new(4),
+            result: SlotIdx::ZERO,
+            attempt: 1,
+        },
+    ];
+    if !events.iter().all(|event| append_journal_event(&journal, event)) {
+        return false;
+    }
+    true
+}
+
+#[test]
+fn cli_events_status_filter_and_limit_apply_after_status_projection() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("events-filter-db");
+    if !seed_events_filter_journal(&db_path) {
+        return;
+    }
+
+    let all_events_output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&all_events_output, "events --emit yaml");
+    let all_packet = parse_yaml_stdout(&all_events_output, "events --emit yaml");
+    assert_eq!(all_packet.get("kind"), Some(&serde_json::json!("events_report")));
+    assert_eq!(all_packet.get("total"), Some(&serde_json::json!(5)));
+    let all_entries = match all_packet.get("events").and_then(serde_json::Value::as_array) {
+        Some(entries) => entries,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "events list missing from all-events packet: {all_packet}"
+            );
+            return;
+        }
+    };
+    assert_eq!(all_entries.len(), 5);
+
+    let active_output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--status"),
+        std::ffi::OsStr::new("active"),
+        std::ffi::OsStr::new("--limit"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&active_output, "events --status active --limit 1 --emit yaml");
+    let active_packet = parse_yaml_stdout(&active_output, "events --status active --limit 1 --emit yaml");
+    assert_eq!(active_packet.get("kind"), Some(&serde_json::json!("events_report")));
+    assert_eq!(active_packet.get("total"), Some(&serde_json::json!(1)));
+    let active_entries = match active_packet.get("events").and_then(serde_json::Value::as_array) {
+        Some(entries) => entries,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "filtered events list missing: {active_packet}"
+            );
+            return;
+        }
+    };
+    assert_eq!(active_entries.len(), 1);
+    assert_eq!(active_entries[0].get("type"), Some(&serde_json::json!("StepStarted")));
+    assert_eq!(active_entries[0].get("seq"), Some(&serde_json::json!(1)));
+
+    let empty_output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--status"),
+        std::ffi::OsStr::new("failed"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&empty_output, "events --status failed --emit yaml");
+    let empty_packet = parse_yaml_stdout(&empty_output, "events --status failed --emit yaml");
+    assert_eq!(empty_packet.get("kind"), Some(&serde_json::json!("events_report")));
+    assert_eq!(empty_packet.get("total"), Some(&serde_json::json!(0)));
+    let empty_entries = match empty_packet.get("events").and_then(serde_json::Value::as_array) {
+        Some(entries) => entries,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "empty filter should still emit events array: {empty_packet}"
+            );
+            return;
+        }
+    };
+    assert!(empty_entries.is_empty(), "failed filter should yield empty events list");
+}
+
+#[test]
+fn cli_events_and_inspect_share_locked_read_surface() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("locked-read-db");
+    let journal = match vb_storage::FjallJournal::open(db_path.as_path(), None) {
+        Ok(journal) => journal,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to open lock-holder journal: {err}"
+            );
+            return;
+        }
+    };
+
+    let events_output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&events_output, "events locked-read surface");
+    let events_packet = parse_yaml_stdout(&events_output, "events locked-read surface");
+    assert_eq!(events_packet.get("command"), Some(&serde_json::json!("events")));
+    assert_eq!(
+        events_packet.get("status"),
+        Some(&serde_json::json!("writer_lock_held"))
+    );
+    assert_eq!(events_packet.get("surface"), Some(&serde_json::json!("available")));
+    assert!(events_packet.get("run_id").is_some(), "locked surface should include run_id");
+
+    let inspect_output = match run_cli(&[
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&inspect_output, "inspect locked-read surface");
+    let inspect_packet = parse_yaml_stdout(&inspect_output, "inspect locked-read surface");
+    assert_eq!(inspect_packet.get("command"), Some(&serde_json::json!("inspect")));
+    assert_eq!(
+        inspect_packet.get("status"),
+        Some(&serde_json::json!("writer_lock_held"))
+    );
+    assert_eq!(inspect_packet.get("surface"), Some(&serde_json::json!("available")));
+    assert!(inspect_packet.get("run_id").is_some(), "locked surface should include run_id");
+
+    drop(journal);
 }
 
 #[test]

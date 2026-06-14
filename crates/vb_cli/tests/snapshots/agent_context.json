@@ -38,7 +38,7 @@
   ],
   "cli": "velvet-ballistics",
   "commands": {
-    "action-inspect": {
+    "action inspect": {
       "flags": {
         "--emit": {
           "default": "text",
@@ -47,15 +47,24 @@
             "text",
             "yaml",
             "postcard"
+          ]
+        },
+        "--registry": {
+          "default": "registered",
+          "type": "enum",
+          "values": [
+            "registered",
+            "empty",
+            "uninitialized"
           ]
         }
       },
       "positionals": [
-        "action"
+        "action-name"
       ],
-      "summary": "Inspect an action contract."
+      "summary": "Show one registered action contract."
     },
-    "action-list": {
+    "action list": {
       "flags": {
         "--emit": {
           "default": "text",
@@ -65,9 +74,18 @@
             "yaml",
             "postcard"
           ]
+        },
+        "--registry": {
+          "default": "registered",
+          "type": "enum",
+          "values": [
+            "registered",
+            "empty",
+            "uninitialized"
+          ]
         }
       },
-      "summary": "List registered actions."
+      "summary": "List registered action contracts."
     },
     "agent-context": {
       "outputs": [
@@ -312,18 +330,14 @@
       "summary": "Output the control-flow graph."
     },
     "help": {
-      "flags": {
-        "--emit": {
-          "default": "text",
-          "type": "enum",
-          "values": [
-            "text",
-            "yaml",
-            "postcard"
-          ]
-        }
-      },
-      "summary": "Print CLI help."
+      "aliases": [
+        "--help",
+        "-h"
+      ],
+      "outputs": [
+        "text"
+      ],
+      "summary": "Print this message."
     },
     "incident": {
       "flags": {
@@ -526,8 +540,12 @@
     },
     "status": {
       "flags": {
+        "--active-runs": {
+          "max": 1024,
+          "type": "usize"
+        },
         "--db": {
-          "required": true,
+          "required": false,
           "type": "path"
         },
         "--emit": {
@@ -535,12 +553,18 @@
           "type": "enum",
           "values": [
             "text",
-            "yaml",
-            "postcard"
+            "yaml"
           ]
+        },
+        "--queue-depth": {
+          "max": 1024,
+          "type": "usize"
+        },
+        "--trace-dropped": {
+          "type": "u64"
         }
       },
-      "summary": "Runtime status snapshot."
+      "summary": "Report runtime shard status (with live Fjall probe when --db is supplied)."
     },
     "submit": {
       "flags": {
@@ -576,15 +600,18 @@
       ],
       "summary": "Submit a workflow run to durable storage."
     },
-    "system-status": {
+    "system status": {
       "flags": {
+        "--db": {
+          "required": false,
+          "type": "path"
+        },
         "--emit": {
           "default": "text",
           "type": "enum",
           "values": [
             "text",
-            "yaml",
-            "postcard"
+            "yaml"
           ]
         },
         "--profile": {
@@ -600,13 +627,11 @@
           "default": "none",
           "type": "enum",
           "values": [
-            "strict",
-            "journaled",
             "none"
           ]
         }
       },
-      "summary": "System status (storage + runtime backend)."
+      "summary": "Report bounded system health (probes Fjall when --db is supplied)."
     },
     "trace": {
       "flags": {
@@ -647,10 +672,14 @@
       "summary": "Validate a workflow definition."
     },
     "version": {
+      "aliases": [
+        "--version",
+        "-V"
+      ],
       "outputs": [
         "text"
       ],
-      "summary": "Print CLI version."
+      "summary": "Print version."
     },
     "verify": {
       "flags": {

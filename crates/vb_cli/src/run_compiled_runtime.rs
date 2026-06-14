@@ -12,7 +12,6 @@ use crate::output::{
     write_stderr_line, write_stdout_line,
 };
 use crate::output_utils::*;
-use crate::run_id::generate_run_id_from_clock;
 use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::process::ExitCode;
@@ -113,17 +112,13 @@ pub(crate) fn open_storage_runtime_journal(
 }
 
 pub(crate) fn run_compiled_workflow(
-    compiled: &vb_core::CompiledWorkflow,
+    run_id: vb_core::RunId,
+    admitted_workflow: vb_core::CompiledWorkflow,
     inputs: Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>,
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
     output: OutputFormat,
 ) -> ExitCode {
-    let admitted_workflow = match workflow_for_durable_admission(compiled, durability, output) {
-        Ok(workflow) => workflow,
-        Err(code) => return code,
-    };
-    let run_id = generate_run_id_from_clock();
     let Some(shard_count) = NonZeroUsize::new(1) else {
         report_runtime_error(
             format_args!("runtime configuration error: shard count must be non-zero"),
@@ -207,7 +202,7 @@ pub(crate) fn run_compiled_workflow(
     ExitCode::SUCCESS
 }
 
-fn workflow_for_durable_admission(
+pub(crate) fn admitted_workflow_for_durability(
     compiled: &vb_core::CompiledWorkflow,
     durability: DurabilityMode,
     output: OutputFormat,

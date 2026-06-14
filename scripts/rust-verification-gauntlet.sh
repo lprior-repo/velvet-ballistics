@@ -63,6 +63,13 @@ run_ignored_fallible_gate() {
     fi
 }
 
+info "Enforcing Anti-Verification Laundering Shield..."
+if ! bash "$WS_DIR/scripts/anti-verification-laundering.sh"; then
+    fail "ANTI-VERIFICATION LAUNDERING SHIELD BROKEN. SEE OUTPUT."
+    exit 1
+fi
+pass "ANTI-VERIFICATION LAUNDERING SHIELD INTACT"
+
 case "$MODE" in
   fast)
     info "Mode: fast (clippy + unit tests)"

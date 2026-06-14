@@ -3,13 +3,18 @@
 
 use crate::args::{DurabilityMode, OutputFormat};
 use crate::exit_code::CliExitCode;
-use crate::file_io::{read_file as read_file_with_output, write_failure_message};
+use crate::file_io::{
+    read_file as read_file_with_output, report_storage_open_error, write_failure_message,
+};
+use crate::run_compiled_runtime::admitted_workflow_for_durability;
 use crate::run_compiled_runtime::{
     map_runtime_inputs as runtime_map_inputs, run_compiled_workflow,
 };
+use crate::run_id::generate_run_id_from_clock;
 use std::path::Path;
 use std::process::ExitCode;
-use vb_core::{CompiledWorkflow, SlotIdx, SlotValue, WorkflowParts};
+use std::time::{SystemTime, UNIX_EPOCH};
+use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, WorkflowDigest, WorkflowId, WorkflowParts};
 use vb_runtime::{InputMappingFailureKind, RuntimeError};
 
 pub(crate) const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str =
@@ -137,7 +142,25 @@ pub(crate) fn cmd_run(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db, output)
+    let run_id = generate_run_id_from_clock();
+    let admitted_workflow = match admitted_workflow_for_durability(&compiled, durability, output) {
+        Ok(workflow) => workflow,
+        Err(code) => return code,
+    };
+
+    if durability != DurabilityMode::None && let Some(db_path) = db {
+        if let Err(code) = persist_durable_run_records(
+            run_id,
+            &bytes,
+            &admitted_workflow,
+            db_path,
+            output,
+        ) {
+            return code;
+        }
+    }
+
+    run_compiled_workflow(run_id, admitted_workflow, inputs, durability, db, output)
 }
 
 pub(crate) fn cmd_run_compiled(
@@ -178,7 +201,13 @@ pub(crate) fn cmd_run_compiled(
         }
     };
 
-    run_compiled_workflow(&compiled, inputs, durability, db, OutputFormat::Text)
+    let run_id = generate_run_id_from_clock();
+    let admitted_workflow = match admitted_workflow_for_durability(&compiled, durability, OutputFormat::Text) {
+        Ok(workflow) => workflow,
+        Err(code) => return code,
+    };
+
+    run_compiled_workflow(run_id, admitted_workflow, inputs, durability, db, OutputFormat::Text)
 }
 
 pub(crate) fn map_runtime_inputs(
@@ -195,5 +224,63 @@ pub(crate) fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
             crate::errln!("error reading {}: {e}", path.display());
             Err(ExitCode::FAILURE)
         }
+    }
+}
+
+fn persist_durable_run_records(
+    run_id: RunId,
+    bytes: &[u8],
+    admitted_workflow: &CompiledWorkflow,
+    db: &Path,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+
+    let source_digest = WorkflowDigest::from_bytes(blake3::hash(bytes).into());
+    let source_record = vb_storage::WorkflowSourceRecord {
+        digest: source_digest,
+        source: bytes.to_vec(),
+    };
+    if let Err(error) = vb_storage::put_workflow_source(&journal, &source_record) {
+        write_failure_message(
+            &format!("workflow source write error: {error}"),
+            output,
+            CliExitCode::StorageError,
+        );
+        return Err(CliExitCode::StorageError.into());
+    }
+
+    let header = vb_storage::RunHeaderRecord {
+        run: run_id,
+        workflow_id: WorkflowId::new(0),
+        compiled_digest: admitted_workflow.digest(),
+        status: 0,
+        accepted_at_ms: sample_accepted_at_ms(),
+    };
+    if let Err(error) = vb_storage::put_run_header(&journal, &header) {
+        write_failure_message(
+            &format!("run header write error: {error}"),
+            output,
+            CliExitCode::StorageError,
+        );
+        return Err(CliExitCode::StorageError.into());
+    }
+
+    Ok(())
+}
+
+fn sample_accepted_at_ms() -> u64 {
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => match u64::try_from(duration.as_millis()) {
+            Ok(ms) => ms,
+            Err(_) => 0,
+        },
+        Err(_) => 0,
     }
 }

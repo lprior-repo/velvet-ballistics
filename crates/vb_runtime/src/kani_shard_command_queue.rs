@@ -1,7 +1,11 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-//! Kani harnesses for production-bound `ShardCommandQueue` invariants.
+//! Kani harnesses for the `#[cfg(kani)]` shard-command queue model.
+//!
+//! These harnesses prove the shared constructor predicate plus the bounded
+//! FIFO/fullness/error behavior of the two-slot Kani queue model in
+//! `shard::queue`. They do not execute production `crossbeam_queue::ArrayQueue`.
 
 use crate::{
     RuntimeError,

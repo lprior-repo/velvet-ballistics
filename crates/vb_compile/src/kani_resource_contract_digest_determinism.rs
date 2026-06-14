@@ -129,7 +129,7 @@ fn prove_contract_encoding_determinism() {
 /// Both canonical_digest (via encode_contract_bytes) and the policy digest
 /// system agree that different contracts produce different identifiers.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_canonical_policy_digest_agree_on_identity() {
     let contract_a = ResourceContract::DEFAULT;
 
@@ -167,7 +167,7 @@ fn prove_canonical_policy_digest_agree_on_identity() {
 /// PO-K14 H2: Verify that the encoding function distinguishes DEFAULT from
 /// a contract with a single extreme-value field change.
 #[kani::proof]
-#[kani::unwind(2)]
+#[kani::unwind(10)]
 fn prove_encoding_differentiates_default_from_modified() {
     let contract_a = ResourceContract::DEFAULT;
 

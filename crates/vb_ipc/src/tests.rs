@@ -1833,7 +1833,7 @@ mod proptests {
         fn ipc_command_roundtrips_through_u16(cmd in 1u16..=11u16) {
             let parsed = IpcCommand::from_u16(cmd);
             prop_assert_ok!(parsed);
-            let Ok(command) = parsed else { return Ok(()) };
+            let command = parsed.unwrap();
             prop_assert_eq!(command.as_u16(), cmd);
         }
     }
@@ -1860,18 +1860,16 @@ mod proptests {
     proptest! {
         #[test]
         fn ipc_command_encode_decode_roundtrip(cmd_val in 1u16..=11u16) {
-            let Ok(command) = IpcCommand::from_u16(cmd_val) else {
-                return Ok(());
-            };
+            let command = IpcCommand::from_u16(cmd_val).unwrap();
 
             let header = IpcFrameHeader::new(command, 0, 0, 0);
             let encoded = header.encode();
             prop_assert_ok!(encoded);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.unwrap();
             let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
             prop_assert_ok!(decoded);
-            let Ok(decoded) = decoded else { return Ok(()) };
+            let decoded = decoded.unwrap();
             prop_assert_eq!(decoded.command, command);
         }
     }
@@ -1883,11 +1881,11 @@ mod proptests {
 
             let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
             prop_assert_ok!(encoded);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.unwrap();
             let decoded = decode_payload(&encoded);
 
             prop_assert_ok!(decoded);
-            let Ok(decoded) = decoded else { return Ok(()) };
+            let decoded = decoded.unwrap();
             prop_assert_eq!(decoded, payload);
         }
     }
@@ -1895,15 +1893,13 @@ mod proptests {
     proptest! {
         #[test]
         fn frame_header_length_never_exceeds_max(cmd_val in 1u16..=11u16, payload_len in 0u32..=1024u32) {
-            let Ok(command) = IpcCommand::from_u16(cmd_val) else {
-                return Ok(());
-            };
+            let command = IpcCommand::from_u16(cmd_val).unwrap();
 
             let header = IpcFrameHeader::new(command, 0, 0, payload_len);
 
             let encoded = header.encode();
             prop_assert_ok!(encoded);
-            let Ok(encoded) = encoded else { return Ok(()) };
+            let encoded = encoded.unwrap();
             prop_assert_eq!(encoded.len(), IPC_HEADER_LEN);
         }
     }

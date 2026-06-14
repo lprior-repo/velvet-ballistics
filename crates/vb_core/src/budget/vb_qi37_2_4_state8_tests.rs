@@ -1312,9 +1312,7 @@ proptest! {
         };
 
         let added = usage.try_add_budget(&budget);
-        let Ok(added) = added else {
-            return Ok(());
-        };
+        let added = added.unwrap();
 
         let subtracted = added.try_subtract_budget(&budget);
         prop_assert_eq!(
@@ -1500,12 +1498,8 @@ proptest! {
         let result_a = usage.try_add_budget(&budget_a);
         let result_b = usage.try_add_budget(&budget_b);
 
-        let Ok(added_a) = result_a else {
-            return Ok(());
-        };
-        let Ok(added_b) = result_b else {
-            return Ok(());
-        };
+        let added_a = result_a.unwrap();
+        let added_b = result_b.unwrap();
 
         prop_assert_ne!(
             added_a.max_steps_executable, added_b.max_steps_executable,

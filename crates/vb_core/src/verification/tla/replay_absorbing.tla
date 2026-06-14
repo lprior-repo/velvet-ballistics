@@ -88,11 +88,11 @@ Init ==
 \* ---------------------------------------------------------------------------
 
 \* Check if current step is eligible for execution (not terminal)
-IsEligibleForExecution(pc, steps) ==
+IsEligibleForExecution(p, s) ==
     \* Step must exist
-    /\ pc \in 0 .. MaxSteps-1
+    /\ p \in 0 .. MaxSteps-1
     \* Step must NOT be in a terminal state
-    /\ steps[pc] \notin Terminal
+    /\ s[p] \notin Terminal
 
 \* Execute one replay step: if pc is eligible, advance pc and increment executed.
 \* If pc is NOT eligible (terminal state), skip to next step.
@@ -126,8 +126,10 @@ ReplayIteration ==
               ELSE replay_done' = FALSE
            /\ UNCHANGED <<executed, steps>>
 
+vars == <<pc, executed, steps, iteration, replay_done>>
+
 \* Next-state relation
-Next == ReplayIteration
+Next == ReplayIteration \/ (replay_done /\ UNCHANGED vars)
 
 \* ---------------------------------------------------------------------------
 \* Invariants
@@ -165,8 +167,6 @@ Fairness ==
 \* ---------------------------------------------------------------------------
 \* Specification
 \* ---------------------------------------------------------------------------
-
-vars == <<pc, executed, steps, iteration, replay_done>>
 
 Spec == Init /\ [][Next]_vars /\ Fairness
 

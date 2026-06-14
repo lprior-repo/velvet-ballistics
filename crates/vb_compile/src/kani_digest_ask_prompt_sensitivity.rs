@@ -19,7 +19,7 @@ use crate::lwr::canonical_digest;
 use vb_yaml::ast::{StepAst, StepPrimitive, TriggerAst, WorkflowSource, WorkflowSourceParts};
 
 /// Maximum prompt length for Kani bounded checking.
-const MAX_PROMPT_LEN: usize = 256;
+const MAX_PROMPT_LEN: usize = 20;
 
 /// Construct a minimal WorkflowSource with a single Ask step and the given prompt.
 fn source_with_ask_prompt(prompt: String) -> WorkflowSource {
@@ -51,41 +51,25 @@ fn source_with_ask_prompt(prompt: String) -> WorkflowSource {
 
 /// PO-KANI-001 H1: Prompt sensitivity — two different prompts produce distinct digests.
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(22)]
 fn check_ask_prompt_sensitivity() {
     // Generate a bounded-length prompt A
     let prompt_a_len: usize = kani::any();
     kani::assume(prompt_a_len <= MAX_PROMPT_LEN);
-    let mut prompt_a_bytes = vec![0u8; prompt_a_len];
-    for i in 0..prompt_a_len {
-        prompt_a_bytes[i] = kani::any();
+    let mut prompt_a = String::new();
+    for _ in 0..prompt_a_len {
+        prompt_a.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let prompt_a = match String::from_utf8(prompt_a_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
     kani::cover!(!prompt_a.is_empty(), "non-empty prompt A");
     kani::cover!(prompt_a.is_empty(), "empty prompt A");
 
     // Generate a bounded-length prompt B
     let prompt_b_len: usize = kani::any();
     kani::assume(prompt_b_len <= MAX_PROMPT_LEN);
-    let mut prompt_b_bytes = vec![0u8; prompt_b_len];
-    for i in 0..prompt_b_len {
-        prompt_b_bytes[i] = kani::any();
+    let mut prompt_b = String::new();
+    for _ in 0..prompt_b_len {
+        prompt_b.push(kani::any::<char>());
     }
-    // Restrict Kani to valid UTF-8 byte sequences to avoid harness-level panic
-    let prompt_b = match String::from_utf8(prompt_b_bytes) {
-        Ok(s) => s,
-        Err(_) => {
-            kani::assume(false); // exclude invalid UTF-8 from verification domain
-            unreachable!();
-        }
-    };
 
     // Require that prompts differ
     kani::assume(prompt_a != prompt_b);

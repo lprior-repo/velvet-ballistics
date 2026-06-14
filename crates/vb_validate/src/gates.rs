@@ -415,9 +415,7 @@ fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> Validation
 /// must be contained within their outer loop spans.
 pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResult<()> {
     let node_count = parts.nodes.len();
-    if node_count == 0 {
-        return Ok(());
-    }
+    proptest::prop_assume!(node_count  != 0 );
     check_step_in_range(parts.entry, node_count, 0, "entry")?;
     for (index, node) in parts.nodes.iter().enumerate() {
         if let Some(next) = node.next {
@@ -868,9 +866,7 @@ fn check_together_span(
 /// receive a value because it depends on itself.
 pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 {
-        return Ok(());
-    }
+    proptest::prop_assume!(slot_count  != 0 );
 
     let adjacency = build_slot_adjacency(parts, slot_count);
     let mut visited: Vec<u8> = vec![0; slot_count]; // 0 = white, 1 = gray, 2 = black
@@ -1624,9 +1620,7 @@ fn validate_no_duplicate_capability_requirements(
 /// writer and a Bool from another.
 pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 {
-        return Ok(());
-    }
+    proptest::prop_assume!(slot_count  != 0 );
 
     // For each slot, track the ConstValue discriminant written by SetConst nodes.
     // 0 = unset, 1 = Null, 2 = Bool, 3 = I64, 4 = F64, 5 = Symbol
