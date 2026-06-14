@@ -1,22 +1,169 @@
 #![cfg(kani)]
 #![forbid(unsafe_code)]
 
-//! Kani harnesses for the `#[cfg(kani)]` shard-command queue model.
+//! Kani harnesses for the shard-command queue constructor and private stand-in model.
 //!
 //! These harnesses prove the shared constructor predicate plus bounded
-//! FIFO/fullness/error behavior of the cfg(kani) sequential queue model in
-//! `shard::queue`. The model itself now represents every accepted capacity
-//! faithfully; the push/drain harnesses still sample only small capacities to
-//! keep the Kani state space tractable. They do not execute production
-//! `crossbeam_queue::ArrayQueue`.
+//! FIFO/fullness/error behavior of a private sequential model defined in this
+//! proof module. The model exists only to keep Kani tractable; it shares the
+//! public capacity domain but does not execute production
+//! `crossbeam_queue::ArrayQueue` logic and must not be treated as production
+//! queue proof.
+
+use std::cell::Cell;
 
 use crate::{
     RuntimeError,
-    shard::{
-        queue::KaniShardCommandToken,
-        types::{MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue},
-    },
+    shard::types::{MAX_COMMAND_QUEUE_CAPACITY, is_valid_command_queue_capacity},
 };
+
+const KANI_MODEL_SLOT_COUNT: usize = 3;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum KaniShardCommandToken {
+    Inspect { run: u64, correlation: u64 },
+    Shutdown,
+}
+
+struct KaniShardCommandQueueModel {
+    slots: Cell<[Option<KaniShardCommandToken>; KANI_MODEL_SLOT_COUNT]>,
+    head: Cell<usize>,
+    len: Cell<usize>,
+    capacity: usize,
+}
+
+impl KaniShardCommandQueueModel {
+    fn new(capacity: usize) -> Result<Self, RuntimeError> {
+        if !is_valid_command_queue_capacity(capacity) {
+            return Err(RuntimeError::CommandQueueCapacityExceeded {
+                capacity,
+                max: MAX_COMMAND_QUEUE_CAPACITY,
+            });
+        }
+
+        Ok(Self {
+            slots: Cell::new([None; KANI_MODEL_SLOT_COUNT]),
+            head: Cell::new(0),
+            len: Cell::new(0),
+            capacity,
+        })
+    }
+
+    fn enqueue_token(&self, token: KaniShardCommandToken) -> Result<(), RuntimeError> {
+        let len = self.len.get();
+        if len >= self.capacity {
+            return Err(RuntimeError::QueueFull);
+        }
+
+        let Some(slot_index) = self.slot_index_for_offset(len) else {
+            return Err(RuntimeError::QueueFull);
+        };
+        let Some(next_len) = len.checked_add(1) else {
+            return Err(RuntimeError::QueueFull);
+        };
+
+        let mut slots = self.slots.get();
+        let Some(slot) = slots.get_mut(slot_index) else {
+            return Err(RuntimeError::QueueFull);
+        };
+        if slot.is_some() {
+            return Err(RuntimeError::QueueFull);
+        }
+
+        *slot = Some(token);
+        self.slots.set(slots);
+        self.len.set(next_len);
+        Ok(())
+    }
+
+    fn pop_token(&self) -> Option<KaniShardCommandToken> {
+        let len = self.len.get();
+        if len == 0 {
+            return None;
+        }
+
+        let head = self.head.get();
+        let command = {
+            let mut slots = self.slots.get();
+            let slot = slots.get_mut(head)?;
+            let token = slot.take();
+            self.slots.set(slots);
+            token
+        };
+
+        if command.is_some() {
+            let next_len = len.saturating_sub(1);
+            self.len.set(next_len);
+            if next_len == 0 {
+                self.head.set(0);
+            } else {
+                let Some(next_head) = self.next_model_head(head) else {
+                    return command;
+                };
+                self.head.set(next_head);
+            }
+        }
+
+        command
+    }
+
+    fn len(&self) -> usize {
+        self.len.get()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    fn remaining_capacity(&self) -> usize {
+        self.capacity.saturating_sub(self.len())
+    }
+
+    fn is_full(&self) -> bool {
+        self.len() == self.capacity
+    }
+
+    fn slot_index_for_offset(&self, offset: usize) -> Option<usize> {
+        if offset >= self.capacity {
+            return None;
+        }
+
+        let span = self.model_slot_span();
+        if span == 0 {
+            return None;
+        }
+
+        let sum = self.head.get().checked_add(offset)?;
+        let index = if sum < span {
+            Some(sum)
+        } else {
+            sum.checked_sub(span)
+        }?;
+        if index < span { Some(index) } else { None }
+    }
+
+    fn next_model_head(&self, head: usize) -> Option<usize> {
+        let span = self.model_slot_span();
+        if span == 0 {
+            return None;
+        }
+
+        let next = head.checked_add(1)?;
+        if next < span { Some(next) } else { Some(0) }
+    }
+
+    const fn model_slot_span(&self) -> usize {
+        if self.capacity < KANI_MODEL_SLOT_COUNT {
+            self.capacity
+        } else {
+            KANI_MODEL_SLOT_COUNT
+        }
+    }
+}
 
 fn arbitrary_queue_token() -> KaniShardCommandToken {
     let use_shutdown: bool = kani::any();
@@ -45,7 +192,7 @@ fn kani_shard_command_queue_bounded_invariant() {
     );
 
     if capacity == 0 || capacity > MAX_COMMAND_QUEUE_CAPACITY {
-        match ShardCommandQueue::new(capacity) {
+        match KaniShardCommandQueueModel::new(capacity) {
             Err(RuntimeError::CommandQueueCapacityExceeded {
                 capacity: rejected_capacity,
                 max,
@@ -67,7 +214,7 @@ fn kani_shard_command_queue_bounded_invariant() {
         return;
     }
 
-    match ShardCommandQueue::new(capacity) {
+    match KaniShardCommandQueueModel::new(capacity) {
         Ok(queue) => {
             kani::assert(
                 queue.capacity() == capacity,
@@ -97,9 +244,9 @@ fn kani_shard_command_queue_push() {
     kani::cover!(capacity == 1, "single-slot push domain covered");
     kani::cover!(capacity == 2, "two-slot push domain covered");
 
-    match ShardCommandQueue::new(capacity) {
+    match KaniShardCommandQueueModel::new(capacity) {
         Ok(queue) => {
-            let first_result = queue.enqueue_kani_token(arbitrary_queue_token());
+            let first_result = queue.enqueue_token(arbitrary_queue_token());
             match first_result {
                 Ok(()) => {}
                 Err(error) => {
@@ -118,7 +265,7 @@ fn kani_shard_command_queue_push() {
                     !queue.is_full(),
                     "queue is not full before reaching capacity",
                 );
-                match queue.enqueue_kani_token(arbitrary_queue_token()) {
+                match queue.enqueue_token(arbitrary_queue_token()) {
                     Ok(()) => {}
                     Err(error) => {
                         std::mem::forget(error);
@@ -134,7 +281,7 @@ fn kani_shard_command_queue_push() {
                 "remaining capacity reaches zero at capacity",
             );
 
-            match queue.enqueue_kani_token(arbitrary_queue_token()) {
+            match queue.enqueue_token(arbitrary_queue_token()) {
                 Err(RuntimeError::QueueFull) => {}
                 Err(error) => {
                     std::mem::forget(error);
@@ -168,12 +315,12 @@ fn kani_shard_command_queue_drain() {
     kani::cover!(capacity == 1, "single-slot drain domain covered");
     kani::cover!(capacity == 2, "two-slot drain domain covered");
 
-    match ShardCommandQueue::new(capacity) {
+    match KaniShardCommandQueueModel::new(capacity) {
         Ok(queue) => {
             let first = arbitrary_queue_token();
             let second = arbitrary_queue_token();
 
-            let first_enqueue = queue.enqueue_kani_token(first);
+            let first_enqueue = queue.enqueue_token(first);
             match first_enqueue {
                 Ok(()) => {}
                 Err(error) => {
@@ -183,7 +330,7 @@ fn kani_shard_command_queue_drain() {
             }
 
             if capacity > 1 {
-                let second_enqueue = queue.enqueue_kani_token(second);
+                let second_enqueue = queue.enqueue_token(second);
                 match second_enqueue {
                     Ok(()) => {}
                     Err(error) => {
@@ -193,7 +340,7 @@ fn kani_shard_command_queue_drain() {
                 }
             }
 
-            let first_pop = queue.pop_kani_token();
+            let first_pop = queue.pop_token();
             kani::assert(
                 first_pop.is_some(),
                 "first pop must return the first command",
@@ -203,7 +350,7 @@ fn kani_shard_command_queue_drain() {
             }
 
             if capacity > 1 {
-                let second_pop = queue.pop_kani_token();
+                let second_pop = queue.pop_token();
                 kani::assert(
                     second_pop.is_some(),
                     "second pop must return the second command",
@@ -217,7 +364,7 @@ fn kani_shard_command_queue_drain() {
             }
 
             kani::assert(
-                queue.pop_kani_token().is_none(),
+                queue.pop_token().is_none(),
                 "queue pop returns None once drained",
             );
             kani::assert(queue.is_empty(), "queue is empty after draining all items");

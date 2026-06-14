@@ -17,6 +17,7 @@ blake3.workspace = true
 criterion.workspace = true
 postcard.workspace = true
 proptest = { workspace = true }
+# allow-cold-adapter: dev-dep test-only, used by serde_json round-trip tests under src/action/tests.rs and src/diagnostic/tests_and_verification.rs; never linked into runtime
 serde_json.workspace = true
 
 [[bench]]

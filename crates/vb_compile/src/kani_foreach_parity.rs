@@ -15,11 +15,11 @@
 //! - KANI-004 (PO-005 / POST-003): try_from_parts rejects malformed for_each IR.
 //!
 //! **GOD RULE compliance:**
-//! - All harnesses use `kani::any()` with bounds — no hardcoded shapes.
-//! - The 4-node for_each IR is constructed structurally via kani-driven SlotIdx
-//!   and StepIdx, not hardcoded test data.
+//! - The 4-node for_each topology (ForEachStart→SetConst→ForEachNext→Finish)
+//!   is fixed to verify the lowering correctness; slot/step/const indices and
+//!   metadata are generated via `kani::any()` with bounds.
 //! - KANI-003 and KANI-004 exercise `CompiledWorkflow::try_from_parts` over
-//!   arbitrary WorkflowParts (including those with ForEachStart/ForEachNext nodes).
+//!   the generated WorkflowParts (including those with ForEachStart/ForEachNext nodes).
 
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,

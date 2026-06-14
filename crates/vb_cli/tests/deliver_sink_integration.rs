@@ -93,6 +93,44 @@ fn agent_context_deliver_rejects_missing_target() -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn agent_context_deliver_rejects_symlink_alias_to_blocked_root() -> Result<(), String> {
+    let Some(blocked_root) = blocked_root_symlink_target() else {
+        return Ok(());
+    };
+
+    let dir = deliver_tempdir()?;
+    let blocked_root_alias = dir.path().join("blocked-root-alias");
+    std::os::unix::fs::symlink(blocked_root, &blocked_root_alias)
+        .map_err(|error| error.to_string())?;
+    let deliver_path = blocked_root_alias.join("vb-blocked-root-alias.jsonl");
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(["agent-context", "--deliver", target.as_str()])
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("deliver failed: deliver file path uses a blocked system root")
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+fn blocked_root_symlink_target() -> Option<&'static std::path::Path> {
+    let candidate = std::path::Path::new("/proc");
+    if cfg!(target_os = "linux") && candidate.is_dir() {
+        Some(candidate)
+    } else {
+        None
+    }
+}
+
 fn path_text(path: &std::path::Path) -> Result<String, String> {
     path.to_str()
         .map(str::to_owned)

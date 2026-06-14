@@ -9,5 +9,9 @@ publish = false
 proptest.workspace = true
 criterion.workspace = true
 
+[[bench]]
+name = "aggregate_resource_budget"
+harness = false
+
 [lints]
 workspace = true

@@ -15,7 +15,14 @@
 // Hand-rolled, no regex crate, no Cargo, no unsafe/unwrap/expect/panic.
 
 #![forbid(unsafe_code)]
-#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::todo, clippy::unimplemented, clippy::dbg_macro)]
+#![deny(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::dbg_macro
+)]
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -34,21 +41,51 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ("cargo-audit", &["supply-chain"]),
     ("cargo-deny", &["supply-chain"]),
     ("cargo-vet", &["supply-chain"]),
-    ("cargo-geiger (unsafe audit)", &["unsafe-audit", "supply-chain"]),
+    (
+        "cargo-geiger (unsafe audit)",
+        &["unsafe-audit", "supply-chain"],
+    ),
     ("panic surface scan", &["panic-surface"]),
-    ("ignored fallible results scan", &["ignored-fallible-results"]),
+    (
+        "ignored fallible results scan",
+        &["ignored-fallible-results"],
+    ),
     ("nightly feature gate", &["nightly-feature-gate"]),
     ("Kani list", &["kani-list"]),
-    ("Kani verify", &["verify-kani", "verify-kani-vb-validate", "verify-kani-runtime-shard-command-queue"]),
+    (
+        "Kani verify",
+        &[
+            "verify-kani",
+            "verify-kani-vb-validate",
+            "verify-kani-shard-command-queue-standin-model",
+        ],
+    ),
     ("Loom smoke", &["loom-run", "loom-list-smoke"]),
-    ("Flux check", &["flux-check-vb-compile", "flux-check-vb-runtime"]),
+    (
+        "Flux check",
+        &["flux-check-vb-compile", "flux-check-vb-runtime"],
+    ),
     ("Verus verify", &["verify-verus", "verify-verus-all"]),
-    ("TLC verify", &["run-tlc-checks", "verify-tlc", "verify-tlc-idempotency", "verify-tlc-workflow"]),
+    (
+        "TLC verify",
+        &[
+            "run-tlc-checks",
+            "verify-tlc",
+            "verify-tlc-idempotency",
+            "verify-tlc-workflow",
+        ],
+    ),
     ("moon ci (orchestration)", &["check", "ci", "quick"]),
     ("criterion / bench build", &["bench-build"]),
     ("maxperf / hardened build", &["maxperf", "hardened-build"]),
-    ("PGO build", &["pgo-instrument-build", "pgo-optimized-build"]),
-    ("section36-39 coverage audit", &["section36-39-coverage-audit"]),
+    (
+        "PGO build",
+        &["pgo-instrument-build", "pgo-optimized-build"],
+    ),
+    (
+        "section36-39 coverage audit",
+        &["section36-39-coverage-audit"],
+    ),
     ("moon task coverage (this)", &["moon-task-coverage-audit"]),
     ("spelling gate", &["check-spelling-gate"]),
     ("test density", &["check-test-density"]),
@@ -59,22 +96,34 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ("error exhaustiveness", &["check-error-exhaustiveness"]),
     ("dead IR duplicates", &["check-no-dead-ir-duplicates"]),
     ("kani shape vacuity", &["check-kani-shape-vacuity"]),
-    ("forbidden API scan", &["forbidden-scan", "hot-cold-forbidden-apis"]),
+    (
+        "forbidden API scan",
+        &["forbidden-scan", "hot-cold-forbidden-apis"],
+    ),
     ("hot path scan", &["hotpath-scan"]),
-    ("source length", &["source-length", "source-length-self-test"]),
+    (
+        "source length",
+        &["source-length", "source-length-self-test"],
+    ),
     ("workspace assertions", &["workspace-assertions"]),
     ("bench registration", &["check-bench-registration"]),
     ("agent CLI contract", &["agent-cli-contract"]),
     ("beads server mode", &["beads-server-mode"]),
     ("blocker closure evidence", &["blocker-closure-evidence"]),
     ("stepstate matrix", &["check-stepstate-matrix"]),
-    ("verify proof (deep)", &["verify-deep", "verify-all", "verify-proof"]),
+    (
+        "verify proof (deep)",
+        &["verify-deep", "verify-all", "verify-proof"],
+    ),
     ("verify fast", &["verify-fast"]),
     ("verify standard", &["verify-standard"]),
     ("no-legacy-primitives", &["verify-no-legacy-primitives"]),
     ("verify Lean", &["verify-lean"]),
     ("contracts task", &["contracts"]),
-    ("generate queue state verus helpers", &["generate-queue-state-verus-helpers"]),
+    (
+        "generate queue state verus helpers",
+        &["generate-queue-state-verus-helpers"],
+    ),
     ("guard zero tests", &["guard-zero-tests"]),
     ("doc", &["doc", "doc-test"]),
     ("sanitizer address check", &["sanitizer-address-check"]),
@@ -82,7 +131,10 @@ const MANDATORY_TOOLS: &[(&str, &[&str])] = &[
     ("bench instruction counts", &["bench-instruction-counts"]),
     ("build section39 latency", &["build-section39-latency"]),
     ("benchmark proof", &["benchmark-proof"]),
-    ("benchmark regression policy", &["benchmark-regression-policy"]),
+    (
+        "benchmark regression policy",
+        &["benchmark-regression-policy"],
+    ),
     ("fuzz minimization", &["fuzz-minimization"]),
 ];
 
@@ -92,14 +144,16 @@ fn collect_defined_tasks(moon_dir: &Path) -> Result<BTreeSet<String>, String> {
         return Err(format!("missing directory: {}", tasks_dir.display()));
     }
     let mut defined = BTreeSet::new();
-    let entries = fs::read_dir(&tasks_dir).map_err(|e| format!("read_dir({}): {e}", tasks_dir.display()))?;
+    let entries =
+        fs::read_dir(&tasks_dir).map_err(|e| format!("read_dir({}): {e}", tasks_dir.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("dir entry: {e}"))?;
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("yml") {
             continue;
         }
-        let content = fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+        let content =
+            fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
         // Hand-rolled: scan for lines matching `  <name>:` at exactly 2-space indent (top-level task).
         for line in content.lines() {
             if !line.starts_with("  ") || line.starts_with("    ") {
@@ -107,13 +161,18 @@ fn collect_defined_tasks(moon_dir: &Path) -> Result<BTreeSet<String>, String> {
             }
             // Strip "  " prefix and trailing ":"
             let trimmed = &line[2..];
-            let Some(colon_pos) = trimmed.find(':') else { continue };
+            let Some(colon_pos) = trimmed.find(':') else {
+                continue;
+            };
             let name = &trimmed[..colon_pos];
             // Skip yaml keys that are clearly not task names: empty, contains space, contains non-id chars
             if name.is_empty() || name.contains(' ') || name.contains('\t') {
                 continue;
             }
-            if !name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
+            if !name
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            {
                 continue;
             }
             defined.insert(name.to_owned());
@@ -125,7 +184,11 @@ fn collect_defined_tasks(moon_dir: &Path) -> Result<BTreeSet<String>, String> {
 fn run_audit() -> Result<u8, String> {
     let moon_dir = PathBuf::from(".moon");
     let defined = collect_defined_tasks(&moon_dir)?;
-    println!("moon-task-coverage-audit: parsed {} tasks from {} files", defined.len(), count_yml_files(&moon_dir)?);
+    println!(
+        "moon-task-coverage-audit: parsed {} tasks from {} files",
+        defined.len(),
+        count_yml_files(&moon_dir)?
+    );
     println!("defined: {:?}", defined);
     println!();
     let mut gaps: Vec<String> = Vec::new();
@@ -142,7 +205,10 @@ fn run_audit() -> Result<u8, String> {
         println!("FAIL: {} mandatory tools have no Moon task", gaps.len());
         return Ok(1);
     }
-    println!("PASS: all {} mandatory tool categories have at least one Moon task", MANDATORY_TOOLS.len());
+    println!(
+        "PASS: all {} mandatory tool categories have at least one Moon task",
+        MANDATORY_TOOLS.len()
+    );
     Ok(0)
 }
 
@@ -173,11 +239,14 @@ fn run_self_test() -> Result<u8, String> {
     fs::write(
         moon_tasks_dir.join("aux.yml"),
         "tasks:\n  miri:\n    command: 'cargo miri'\n",
-    ).map_err(|e| format!("write: {e}"))?;
+    )
+    .map_err(|e| format!("write: {e}"))?;
 
     let defined = collect_defined_tasks(&temp.join(".moon"))?;
     let expected: BTreeSet<String> = ["fmt", "lint-src", "coverage", "miri"]
-        .iter().map(|s| s.to_string()).collect();
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     if defined != expected {
         println!("FixtureFail: parsed {:?}, expected {:?}", defined, expected);
         let _ = fs::remove_dir_all(&temp);

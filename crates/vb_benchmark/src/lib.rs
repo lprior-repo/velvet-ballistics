@@ -1,13 +1,12 @@
 #![forbid(unsafe_code)]
 
-//! Core benchmark metadata types for Velvet Ballastics performance tracking.
+//! Core benchmark metadata types for Velvet Ballistics performance tracking.
 //!
 //! This module provides the data structures for capturing benchmark evidence,
-//! enforcing performance budgets, and gating releases based on regression detection.
-//!
-//! # RED PHASE NOTICE
-//! This module contains STUB implementations that will cause tests to FAIL.
-//! The real implementation must replace these stubs.
+//! enforcing performance budgets, and gating releases based on regression
+//! detection.
+
+pub mod aggregate_resource_budget;
 
 use std::time::Duration;
 

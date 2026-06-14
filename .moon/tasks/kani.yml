@@ -1,12 +1,16 @@
-# Kani bounded model checking verification tasks
-# These tasks run formal verification using the Kani model checker
+# Kani bounded model checking verification tasks.
+#
+# Model-only tasks must say so explicitly. In particular, the shard-command-queue
+# lane below exercises only the private Kani-only stand-in in
+# `crates/vb_runtime/src/kani_shard_command_queue.rs`; it shares the public
+# capacity predicate but does not prove production Crossbeam behavior.
 
 fileGroups:
   kani_core_sources:
     - 'crates/vb_core/src/**/*'
   kani_storage_sources:
     - 'crates/vb_storage/src/**/*'
-  kani_runtime_shard_command_queue_sources:
+  kani_runtime_shard_command_queue_model_sources:
     - 'crates/vb_runtime/src/**/*'
   kani_validate_sources:
     - 'crates/vb_validate/src/**/*'
@@ -79,14 +83,14 @@ tasks:
     options:
       runInCI: true
 
-  verify-kani-runtime-shard-command-queue:
+  verify-kani-shard-command-queue-standin-model:
     script: |
       set -euo pipefail
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
       run_runtime_shard_queue_harness() {
         local harness="$1"
-        printf 'verify-kani-runtime-shard-command-queue: running %s\n' "$harness"
+        printf 'verify-kani-shard-command-queue-standin-model: running %s\n' "$harness"
         TMPDIR="$PWD/target/kani-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-runtime-shard-command-queue RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_runtime --features kani-shard-command-queue --harness "$harness"
       }
       run_runtime_shard_queue_harness kani_shard_command_queue_bounded_invariant
@@ -97,7 +101,7 @@ tasks:
     inputs:
       - '@globs(kani_core_sources)'
       - '@globs(kani_storage_sources)'
-      - '@globs(kani_runtime_shard_command_queue_sources)'
+      - '@globs(kani_runtime_shard_command_queue_model_sources)'
       - 'crates/vb_core/Cargo.toml'
       - 'crates/vb_storage/Cargo.toml'
       - 'crates/vb_runtime/Cargo.toml'

@@ -2,13 +2,11 @@ use std::time::Duration;
 
 use vb_benchmark::*;
 
-// These tests verify the STUB implementations fail as expected.
-// When the real implementation is provided, these tests should pass.
+// These tests verify the public benchmark-helper API behaves per its contract.
+// Each test exercises a single boundary of the corresponding helper.
 
 #[test]
 fn baseline_within_budget_returns_true_when_under() {
-    // STUB: baseline_within_budget always returns false
-    // This test will FAIL until the real implementation is provided
     assert!(baseline_within_budget(
         Duration::from_micros(80000),
         100_000
@@ -17,9 +15,6 @@ fn baseline_within_budget_returns_true_when_under() {
 
 #[test]
 fn baseline_within_budget_returns_false_when_over() {
-    // STUB: baseline_within_budget always returns false
-    // This test will FAIL because we expect false but get false (coincidentally correct)
-    // Actually this passes because stub always returns false!
     assert!(!baseline_within_budget(
         Duration::from_micros(120000),
         100_000
@@ -28,8 +23,6 @@ fn baseline_within_budget_returns_false_when_over() {
 
 #[test]
 fn budget_utilization_percent_computes_correct() {
-    // STUB: budget_utilization_percent always returns 0
-    // This test will FAIL until the real implementation is provided
     assert_eq!(
         budget_utilization_percent(Duration::from_micros(75000), 100_000),
         7500
@@ -38,8 +31,6 @@ fn budget_utilization_percent_computes_correct() {
 
 #[test]
 fn budget_utilization_percent_returns_max_for_zero_budget() {
-    // STUB: budget_utilization_percent returns MAX for zero budget (correct)
-    // This test passes with the stub
     assert_eq!(
         budget_utilization_percent(Duration::from_micros(75000), 0),
         u128::MAX
@@ -48,15 +39,11 @@ fn budget_utilization_percent_returns_max_for_zero_budget() {
 
 #[test]
 fn latency_within_budget_returns_true_when_within() {
-    // STUB: latency_within_budget inverts the check
-    // This test will FAIL until the real implementation is provided
     assert!(latency_within_budget(Duration::from_micros(50000), 100_000));
 }
 
 #[test]
 fn latency_within_budget_returns_false_when_over() {
-    // STUB: latency_within_budget inverts the check (elapsed > budget)
-    // This test will FAIL because stub returns true when over budget
     assert!(!latency_within_budget(
         Duration::from_micros(150000),
         100_000
@@ -65,8 +52,6 @@ fn latency_within_budget_returns_false_when_over() {
 
 #[test]
 fn result_exceeds_threshold_true_when_significant_regression() {
-    // STUB: result_exceeds_threshold inverts the logic
-    // This test will FAIL because stub returns false when it should return true
     assert!(result_exceeds_threshold(
         Duration::from_micros(130000),
         Duration::from_micros(100000),
@@ -76,8 +61,6 @@ fn result_exceeds_threshold_true_when_significant_regression() {
 
 #[test]
 fn result_exceeds_threshold_false_when_within_threshold() {
-    // STUB: result_exceeds_threshold inverts the logic
-    // This test will FAIL because stub returns true when it should return false
     assert!(!result_exceeds_threshold(
         Duration::from_micros(115000),
         Duration::from_micros(100000),
@@ -87,8 +70,6 @@ fn result_exceeds_threshold_false_when_within_threshold() {
 
 #[test]
 fn check_evidence_gate_rejects_missing_baseline() {
-    // STUB: check_evidence_gate always returns Ok
-    // This test will FAIL until the real implementation is provided
     let metadata = BenchmarkMetadata {
         name: "yaml_parse".to_string(),
         baseline_us: None,
@@ -104,8 +85,6 @@ fn check_evidence_gate_rejects_missing_baseline() {
 
 #[test]
 fn check_evidence_gate_rejects_regression() {
-    // STUB: check_evidence_gate always returns Ok
-    // This test will FAIL until the real implementation is provided
     let metadata = BenchmarkMetadata {
         name: "yaml_parse".to_string(),
         baseline_us: Some(100_000),
@@ -124,8 +103,6 @@ fn check_evidence_gate_rejects_regression() {
 
 #[test]
 fn check_evidence_gate_accepts_valid() {
-    // STUB: check_evidence_gate always returns Ok
-    // This test will PASS with the stub (coincidentally correct)
     let metadata = BenchmarkMetadata {
         name: "yaml_parse".to_string(),
         baseline_us: Some(100_000),
@@ -606,4 +583,29 @@ fn check_evidence_gate_rejects_one_micro_over_threshold() {
         result,
         Err(EvidenceError::RegressionDetected { delta: 20_001, .. })
     ));
+}
+
+// === regression shield: no STUB markers may remain in this test file ===
+
+#[test]
+fn regression_shield_zero_stub_markers() {
+    // Read the current source of this test file back from disk and assert that
+    // no STUB marker substrings remain. The marker convention
+    // signals an unimplemented assertion body; reintroducing one is a silent
+    // regression of the test suite's behavioral coverage.
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("benchmark_tests.rs");
+    let content = std::fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("regression shield could not read {}: {err}", path.display()));
+    // Build the marker at runtime from parts so the literal token does not
+    // appear in this test's own body, where it would otherwise self-match.
+    let marker: String = ["//", " ", "STUB", ":"].concat();
+    let count = content.matches(marker.as_str()).count();
+    assert_eq!(
+        count,
+        0,
+        "regression shield: {count} markers remain in {}",
+        path.display()
+    );
 }

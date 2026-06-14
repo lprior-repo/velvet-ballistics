@@ -1,6 +1,6 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::fs::{File, OpenOptions, hard_link, remove_file};
+use std::fs::{canonicalize, hard_link, remove_file, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
 
@@ -139,6 +139,10 @@ fn validate_new_file_path(path: &Path) -> Result<(), DeliverSinkError> {
     };
     if !parent.is_dir() {
         return Err(DeliverSinkError::MissingParent);
+    }
+    let resolved_parent = canonicalize(parent).map_err(to_io_error)?;
+    if is_blocked_root(&resolved_parent) {
+        return Err(DeliverSinkError::BlockedPath);
     }
 
     Ok(())

@@ -152,37 +152,41 @@ fn line_contains_token(line: &str, token: &str) -> bool {
     false
 }
 
-fn last_word_of(s: &str) -> &str {
-    let trimmed = s.trim_end();
-    match trimmed.rfind(char::is_whitespace) {
-        Some(pos) => &trimmed[pos + 1..],
-        None => trimmed,
-    }
-}
-
 fn line_is_use_import_of(line: &str, token: &str) -> bool {
     let use_needle = format!("use {token}");
     let extern_needle = format!("extern crate {token}");
+
+    // Case 1: line starts with the import pattern (most common).
+    for needle in &[use_needle.as_str(), extern_needle.as_str()] {
+        if let Some(rest) = line.strip_prefix(needle) {
+            let boundary_ok = match rest.chars().next() {
+                Some(ch) => !(ch.is_alphanumeric() || ch == '_' || ch == '-'),
+                None => true,
+            };
+            if boundary_ok {
+                return true;
+            }
+        }
+    }
+
+    // Case 2: import appears after some prefix (e.g. `pub use foo::...`,
+    // `pub(crate) use foo::...`). The keyword is at the START of the
+    // needle, so the byte at `abs - 1` must be a non-identifier separator
+    // (or `abs == 0`, which case 1 already handled).
     for needle in &[use_needle.as_str(), extern_needle.as_str()] {
         let mut search_start: usize = 0;
         while let Some(rel) = line[search_start..].find(needle) {
             let abs = search_start + rel;
-            let after = abs + needle.len();
-            let boundary_ok = match line[after..].chars().next() {
-                Some(ch) => !(ch.is_alphanumeric() || ch == '_' || ch == '-'),
-                None => true,
+            let valid_prev = if abs == 0 {
+                true
+            } else {
+                let prev_byte = line.as_bytes()[abs - 1];
+                !(prev_byte.is_ascii_alphanumeric() || prev_byte == b'_' || prev_byte == b'-')
             };
-            if !boundary_ok {
-                search_start = abs + needle.len();
-                continue;
-            }
-            let prev = last_word_of(&line[..abs]);
-            let valid = (*needle == use_needle.as_str() && prev == "use")
-                || (*needle == extern_needle.as_str() && prev == "crate");
-            if valid {
+            if valid_prev {
                 return true;
             }
-            search_start = abs + needle.len();
+            search_start = abs + 1;
         }
     }
     false

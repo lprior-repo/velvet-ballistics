@@ -12,7 +12,9 @@ The active product is a Rust-nightly, no-unsafe, no-panic, single-server durable
 
 The active runtime mode is compiled numeric IR interpreted by shard-owned runtime state. YAML is authoring input only. The production trust unit is the accepted artifact, not the source YAML.
 
+<!-- position-disclaimer -->
 The product is not a generic DAG runner, low-code graph editor, YAML programming framework, Airflow replacement, Temporal clone, distributed workflow cluster, or current generated-code engine.
+<!-- /position-disclaimer -->
 
 ## Invariants
 
