@@ -148,6 +148,8 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
         step_budget_per_tick: 4,
         max_active_runs: 8,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));

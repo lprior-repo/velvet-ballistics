@@ -12,6 +12,19 @@ use crate::shard::types::{
     PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard, TerminalOutcome,
 };
 
+/// Outcome of a snapshot write attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SnapshotWriteOutcome {
+    /// Snapshot was written successfully.
+    Written,
+    /// Snapshot interval is disabled.
+    SkippedDisabled,
+    /// Snapshot would not fire (step count has not reached the interval).
+    SkippedNotReady,
+    /// Snapshot write failed; the error was logged and the caller continues.
+    Failed,
+}
+
 impl Shard {
     /// Applies a RuntimeEvent to mutate runtime_states.
     ///
@@ -73,13 +86,35 @@ impl Shard {
         }
     }
 
-    /// Re-inserts a run that has remaining work into the active runs map.
+   /// Re-inserts a run that has remaining work into the active runs map.
+    #[allow(dead_code)]
     pub(crate) fn keep_run(&mut self, run: RunId, state: RunState) {
         self.counters.add_steps(state.frame.executed());
         self.run_state_insert(run, state);
     }
 
-    /// Marks a run as finished, releases its frame, and updates counters.
+    /// Re-inserts a run into the active runs map, attempting a periodic snapshot.
+    ///
+    /// If `snapshot_interval_steps > 0` and enough steps have elapsed since the
+    /// last snapshot, a `RunSnapshot` is written before the state is re-inserted.
+    pub(crate) fn keep_run_with_snapshot(&mut self, run: RunId, mut state: RunState) -> RuntimeResult<()> {
+        let executed = state.frame.executed();
+        let interval = self.snapshot_interval_steps;
+        let last_executed = state.last_snapshot_executed;
+
+        // Attempt periodic snapshot if enabled.
+        let outcome = self.write_snapshot_for_run(run, &state, interval, executed, last_executed)?;
+
+        if matches!(outcome, self::SnapshotWriteOutcome::Written) {
+            state.last_snapshot_executed = executed;
+        }
+
+        self.counters.add_steps(executed);
+        self.run_state_insert(run, state);
+        Ok(())
+    }
+
+  /// Marks a run as finished, releases its frame, and updates counters.
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run);
@@ -87,6 +122,27 @@ impl Shard {
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
+
+        // Best-effort terminal snapshot: write before discarding the state.
+        // Per C-3: snapshot failure does NOT block run completion.
+        if self.snapshot_interval_steps > 0 {
+            let outcome = self.write_snapshot_for_run(
+                run,
+                &state,
+                self.snapshot_interval_steps,
+                state.frame.executed(),
+                state.last_snapshot_executed,
+            );
+            match outcome {
+                Ok(SnapshotWriteOutcome::Written) => {
+                    // Snapshot succeeded; state is retained above for the terminal transition.
+                }
+                _ => {
+                    // Snapshot skipped or failed — terminal transition proceeds anyway.
+                }
+            }
+        }
+
         let result = match crate::shard::helpers::result_slot_for_finished_run(&state) {
             Some(slot) => slot,
             None => SlotIdx::ZERO,
@@ -205,6 +261,27 @@ impl Shard {
         self.terminal_outcome_record(run, TerminalOutcome::Failed);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
+
+        // Best-effort terminal snapshot: write before discarding the state.
+        // Per C-3: snapshot failure does NOT block run completion.
+        if self.snapshot_interval_steps > 0 {
+            let outcome = self.write_snapshot_for_run(
+                run,
+                &state,
+                self.snapshot_interval_steps,
+                state.frame.executed(),
+                state.last_snapshot_executed,
+            );
+            match outcome {
+                Ok(SnapshotWriteOutcome::Written) => {
+                    // Snapshot succeeded; state is retained above for the terminal transition.
+                }
+                _ => {
+                    // Snapshot skipped or failed — terminal transition proceeds anyway.
+                }
+            }
+        }
+
         self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);
         self.discard_journal_sequence(run);

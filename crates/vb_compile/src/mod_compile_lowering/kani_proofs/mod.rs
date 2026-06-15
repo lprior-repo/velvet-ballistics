@@ -25,3 +25,7 @@ mod kani_nested_foreach_dispatch;
 mod kani_nested_foreach_offsets;
 mod kani_nested_foreach_recursion;
 mod kani_nested_foreach_width;
+
+// === vb-pkif2: Save/Set Alias Invariant Harnesses ===
+mod kani_canonical_primitive_name_save;
+mod kani_digest_save_prefix;

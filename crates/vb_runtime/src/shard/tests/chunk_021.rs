@@ -124,6 +124,8 @@ fn shard_config_new_accepts_max_step_budget() {
             step_budget_per_tick: u64::MAX,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         })
     );
 }

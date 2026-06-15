@@ -59,3 +59,13 @@ path = "tests/proptest/proptest_choose_depth.rs"
 [[test]]
 name = "proptest_choose_emission"
 path = "tests/proptest/proptest_choose_emission.rs"
+
+# === vb-pkif2: Save canonical name & digest prefix proptest targets ===
+
+[[test]]
+name = "proptest_save_canonical_name"
+path = "tests/proptest_save_canonical_name.rs"
+
+[[test]]
+name = "proptest_save_digest_prefix"
+path = "tests/proptest_save_digest_prefix.rs"

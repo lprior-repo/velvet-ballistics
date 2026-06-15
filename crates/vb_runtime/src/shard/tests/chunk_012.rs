@@ -7,6 +7,8 @@ fn shard_remaining_capacity_decrements_on_enqueue() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     assert_eq!(shard.remaining_capacity(), 4);
@@ -26,6 +28,8 @@ fn shard_remaining_capacity_is_zero_when_full() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     // Fill the queue
@@ -53,6 +57,8 @@ fn shard_is_queue_full_returns_true_when_at_capacity() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     // Fill the queue
@@ -71,6 +77,8 @@ fn shard_command_queue_capacity_returns_configured_value() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     // Then the capacity method returns 512
@@ -86,6 +94,8 @@ fn shard_remaining_capacity_after_pop() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -104,6 +114,8 @@ fn shard_queue_len_decrements_after_tick() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     // Cancel for a non-existent run returns typed error
@@ -216,6 +228,8 @@ fn shard_config_new_accepts_valid_parameters() {
             step_budget_per_tick: 1000,
             max_active_runs: 512,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         })
     );
 }

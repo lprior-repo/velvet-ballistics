@@ -30,6 +30,11 @@ pub struct RunState {
     pub collect_states: CollectStates,
     /// Validated action contracts used by Do execution.
     pub action_contracts: Box<[ActionContract]>,
+    /// Program-counter steps executed at the last successful snapshot.
+    ///
+    /// Used by the snapshot writer to determine whether enough steps have
+    /// elapsed since the last snapshot to justify another one.
+    pub last_snapshot_executed: u64,
 }
 
 /// Diagnostic snapshot returned by the Inspect command.

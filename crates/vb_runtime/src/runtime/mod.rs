@@ -531,6 +531,7 @@ impl Runtime {
             admission: None,
             collect_states: CollectStates::default(),
             action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
         }
     }
 

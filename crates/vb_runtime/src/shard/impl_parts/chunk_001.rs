@@ -1,6 +1,6 @@
-use indexmap::IndexSet;
 use crate::shard::types::{RuntimeState, TerminalOutcome};
 use crate::AskAnswer;
+use indexmap::IndexSet;
 
 impl Shard {
     /// Creates a new shard with the given configuration.
@@ -31,13 +31,17 @@ impl Shard {
             counters: ShardCounters::new(),
             step_budget_per_tick: config.step_budget_per_tick,
             max_active_runs: config.max_active_runs,
+            coalesce_window_ticks: config.coalesce_window_ticks,
             policy: config.policy,
+            snapshot_interval_steps: config.snapshot_interval_steps,
             artifact_store,
             inspect_response: None,
             shutting_down: false,
             current_tick: TimerTick::new(0),
             journal,
             admission_lock: std::sync::Mutex::new(()),
+            current_coalesce_window_remaining: 0,
+            coalesce_buffer: Vec::new(),
             #[cfg(feature = "test-util")]
             pending_workflows: IndexMap::new(),
         }
@@ -293,6 +297,7 @@ impl Shard {
             trace_dropped: self.trace_ring.dropped(),
             step_budget_per_tick: self.step_budget_per_tick,
             runtime_policy: self.policy,
+            snapshot_interval_steps: self.snapshot_interval_steps,
         }
     }
 }

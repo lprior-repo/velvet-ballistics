@@ -200,7 +200,7 @@ impl Shard {
         )
     }
 
-    fn apply_drive_result(
+     fn apply_drive_result(
         &mut self,
         run: RunId,
         state: RunState,
@@ -209,7 +209,7 @@ impl Shard {
         match result {
             Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
                 self.apply(run, RuntimeEvent::DriveContinue);
-                self.keep_run(run, state);
+                self.keep_run_with_snapshot(run, state)?;
                 Ok(())
             }
             Ok(RuntimeSignal::Finished(_)) => self.apply_terminal_finished(run, state),

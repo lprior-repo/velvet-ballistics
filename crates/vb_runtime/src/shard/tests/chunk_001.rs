@@ -170,6 +170,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     };
     let ticket = vb_core::action::ActionTicket {
         run: RunId::new(9),

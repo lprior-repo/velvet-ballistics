@@ -123,6 +123,7 @@ fn make_do_run_state(step_count: u16) -> RunState {
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     }
 }
 

@@ -27,13 +27,15 @@ impl ShardConfig {
         }
         if max_active_runs == 0 {
             return Err(RuntimeError::ActiveRunCapacityZero);
-        }
+        };
         Ok(Self {
             command_queue_capacity,
             trace_capacity,
             step_budget_per_tick,
             max_active_runs,
             policy,
+            coalesce_window_ticks: 1,
+            snapshot_interval_steps: 0,
         })
     }
 }

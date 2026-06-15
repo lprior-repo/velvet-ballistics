@@ -68,6 +68,6 @@ pub use super::queue::{
 // ============================================================================
 
 pub use super::config::{
-    Shard, ShardConfig, ShardHealth, ShardStatus, is_valid_step_budget_per_tick,
-    is_valid_trace_capacity,
+    Shard, ShardConfig, ShardHealth, ShardStatus, is_valid_coalesce_window_ticks,
+    is_valid_step_budget_per_tick, is_valid_trace_capacity,
 };

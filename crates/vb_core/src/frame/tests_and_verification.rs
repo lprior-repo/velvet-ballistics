@@ -18,25 +18,25 @@ mod tests {
             Ok(frame) => frame,
             Err(_) => return,
         };
-        kani::assert_eq!(frame.mark_running(StepIdx::new(1)), Ok(()))
-        kani::assert_eq!(frame.mark_succeeded(StepIdx::new(1)), Ok(()))
-        kani::assert_eq!(frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(true)),
-            Ok(()))
-        kani::assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret), Ok(()))
-        kani::assert_eq!(frame.increment_executed(), Ok(()))
+        assert_eq!(frame.mark_running(StepIdx::new(1)), Ok(()));
+        assert_eq!(frame.mark_succeeded(StepIdx::new(1)), Ok(()));
+        assert_eq!(frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(true)),
+            Ok(()));
+        assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret), Ok(()));
+        assert_eq!(frame.increment_executed(), Ok(()));
 
-        kani::assert_eq!(frame.reinitialize(RunId::new(2), StepIdx::new(2), 3, 2),
-            Ok(()))
+        assert_eq!(frame.reinitialize(RunId::new(2), StepIdx::new(2), 3, 2),
+            Ok(()));
 
-        kani::assert_eq!(frame.run_id(), RunId::new(2))
-        kani::assert_eq!(frame.pc(), StepIdx::new(2))
-        kani::assert_eq!(frame.executed(), 0)
-        kani::assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Pending))
-        kani::assert_eq!(frame.read_slot(SlotIdx::ZERO),
+        assert_eq!(frame.run_id(), RunId::new(2));
+        assert_eq!(frame.pc(), StepIdx::new(2));
+        assert_eq!(frame.executed(), 0);
+        assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Pending));
+        assert_eq!(frame.read_slot(SlotIdx::ZERO),
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
-            }))
-        kani::assert_eq!(frame.read_taint(SlotIdx::ZERO),
+            }));
+        assert_eq!(frame.read_taint(SlotIdx::ZERO),
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
             }))
@@ -49,14 +49,14 @@ mod tests {
             Err(_) => return,
         };
 
-        kani::assert_eq!(frame.reinitialize(RunId::new(2), StepIdx::ZERO, 4, 2),
+        assert_eq!(frame.reinitialize(RunId::new(2), StepIdx::ZERO, 4, 2),
             Err(CoreError::InvalidCompiledWorkflow {
                 reason: "frame_dimension_mismatch"
-            }))
+            }));
 
-        kani::assert_eq!(frame.run_id(), RunId::new(1))
-        kani::assert_eq!(frame.step_count(), 3)
-        kani::assert_eq!(frame.slot_count(), 2)
+        assert_eq!(frame.run_id(), RunId::new(1));
+        assert_eq!(frame.step_count(), 3);
+        assert_eq!(frame.slot_count(), 2)
     }
 
     // =========================================================================
@@ -69,7 +69,7 @@ mod tests {
     fn frame_new_step_count_zero_returns_invalid_compiled_workflow() {
         let result = RunFrame::new(RunId::new(1), StepIdx::ZERO, 0, 1);
 
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InvalidCompiledWorkflow {
                 reason: "step_count_zero"
             }))
@@ -81,7 +81,7 @@ mod tests {
     fn frame_new_first_step_out_of_bounds_returns_invalid_program_counter() {
         let result = RunFrame::new(RunId::new(1), StepIdx::new(5), 3, 1);
 
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InvalidProgramCounter {
                 step: StepIdx::new(5)
             }))
@@ -91,7 +91,7 @@ mod tests {
     fn frame_new_first_step_at_exact_step_count_returns_invalid_program_counter() {
         let result = RunFrame::new(RunId::new(1), StepIdx::new(3), 3, 1);
 
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InvalidProgramCounter {
                 step: StepIdx::new(3)
             }))
@@ -104,14 +104,14 @@ mod tests {
         let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 0) {
             Ok(frame) => frame,
             Err(error) => {
-                kani::assert_eq!(error,
+                assert_eq!(error,
                     CoreError::SlotOutOfBounds {
                         slot: SlotIdx::ZERO
-                    })
+                    });
                 return;
             }
         };
-        kani::assert_eq!(frame.slot_count(), 0)
+        assert_eq!(frame.slot_count(), 0)
     }
 
     // --- Succeeded step is terminal: rejects direct transition to Running ---
@@ -119,12 +119,12 @@ mod tests {
     #[test]
     fn frame_mark_succeeded_step_rejects_direct_running_transition() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Pending)
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Pending);
 
         // Must go through Running first: Pending -> Running -> Succeeded
         frame.mark_running(StepIdx::new(0))?;
         frame.mark_succeeded(StepIdx::new(0))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded)
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Succeeded);
 
         // Master contract: no terminal state transitions back to running.
         // The direct Succeeded->Running edge is invalid. Loop body reentry
@@ -136,7 +136,7 @@ mod tests {
                 Err(CoreError::InternalInvariantViolation {
                     reason: "invalid_state_transition"
                 })
-            ), "Succeeded->Running must be rejected (terminal states are absorbing)")
+            ), "Succeeded->Running must be rejected (terminal states are absorbing)");
 
         Ok(())
     }
@@ -149,15 +149,15 @@ mod tests {
 
         frame.mark_running(StepIdx::new(1))?;
         frame.mark_failed(StepIdx::new(1))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed)
+        assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed);
 
         // Failed is terminal: transition to Succeeded is rejected
         let result = frame.mark_succeeded(StepIdx::new(1));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
-        kani::assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed)
+            }));
+        assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Failed);
 
         Ok(())
     }
@@ -170,15 +170,15 @@ mod tests {
 
         frame.mark_running(StepIdx::new(2))?;
         frame.mark_cancelled(StepIdx::new(2))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled)
+        assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled);
 
         // Cancelled is terminal: transition back to Running is rejected
         let result = frame.mark_running(StepIdx::new(2));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
-        kani::assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled)
+            }));
+        assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Cancelled);
 
         Ok(())
     }
@@ -193,7 +193,7 @@ mod tests {
         };
 
         let result = frame.step_state(StepIdx::new(10));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::StepStateOutOfBounds {
                 step: StepIdx::new(10)
             }))
@@ -207,7 +207,7 @@ mod tests {
         };
 
         let result = frame.mark_running(StepIdx::new(100));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::StepStateOutOfBounds {
                 step: StepIdx::new(100)
             }))
@@ -223,7 +223,7 @@ mod tests {
         };
 
         let result = frame.read_slot(SlotIdx::new(5));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::SlotOutOfBounds {
                 slot: SlotIdx::new(5)
             }))
@@ -237,7 +237,7 @@ mod tests {
         };
 
         let result = frame.write_slot(SlotIdx::new(5), SlotValue::Bool(true));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::SlotOutOfBounds {
                 slot: SlotIdx::new(5)
             }))
@@ -253,7 +253,7 @@ mod tests {
         };
 
         let result = frame.read_slot(SlotIdx::ZERO);
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
             }))
@@ -270,15 +270,15 @@ mod tests {
         // we test the checked_add logic by calling increment many times and verifying
         // the counter advances.
         (0..100).try_for_each(|_| frame.increment_executed())?;
-        kani::assert_eq!(frame.executed(), 100)
+        assert_eq!(frame.executed(), 100);
 
         // The overflow path uses checked_add, so it will return Err when overflow occurs.
         // We verify the error variant is correct.
         let max_frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1);
-        kani::assert_eq!(max_frame.as_ref().map(RunFrame::step_count), Ok(2))
-        kani::assert_eq!(max_frame.as_ref().map(RunFrame::slot_count), Ok(1))
-        kani::assert_eq!(max_frame.as_ref().map(RunFrame::pc), Ok(StepIdx::ZERO))
-        kani::assert_eq!(max_frame.as_ref().map(RunFrame::executed), Ok(0))
+        assert_eq!(max_frame.as_ref().map(RunFrame::step_count), Ok(2));
+        assert_eq!(max_frame.as_ref().map(RunFrame::slot_count), Ok(1));
+        assert_eq!(max_frame.as_ref().map(RunFrame::pc), Ok(StepIdx::ZERO));
+        assert_eq!(max_frame.as_ref().map(RunFrame::executed), Ok(0));
 
         Ok(())
     }
@@ -290,12 +290,12 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
         // Step 9999 is out of bounds for a frame with 3 steps
-        kani::assert_eq!(frame.set_pc(StepIdx::new(9999)),
+        assert_eq!(frame.set_pc(StepIdx::new(9999)),
             Err(CoreError::InvalidProgramCounter {
                 step: StepIdx::new(9999)
-            }))
+            }));
         // PC must remain unchanged after rejection
-        kani::assert_eq!(frame.pc(), StepIdx::ZERO)
+        assert_eq!(frame.pc(), StepIdx::ZERO);
 
         Ok(())
     }
@@ -307,19 +307,19 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 5, 1)?;
 
         // Step 0 through 4 are valid for a frame with 5 steps
-        kani::assert_eq!(frame.set_pc(StepIdx::new(0)), Ok(()))
-        kani::assert_eq!(frame.pc(), StepIdx::new(0))
+        assert_eq!(frame.set_pc(StepIdx::new(0)), Ok(()));
+        assert_eq!(frame.pc(), StepIdx::new(0));
 
-        kani::assert_eq!(frame.set_pc(StepIdx::new(4)), Ok(()))
-        kani::assert_eq!(frame.pc(), StepIdx::new(4))
+        assert_eq!(frame.set_pc(StepIdx::new(4)), Ok(()));
+        assert_eq!(frame.pc(), StepIdx::new(4));
 
         // Step 5 (exactly at step_count) is out of bounds
-        kani::assert_eq!(frame.set_pc(StepIdx::new(5)),
+        assert_eq!(frame.set_pc(StepIdx::new(5)),
             Err(CoreError::InvalidProgramCounter {
                 step: StepIdx::new(5)
-            }))
+            }));
         // PC must remain at last valid value
-        kani::assert_eq!(frame.pc(), StepIdx::new(4))
+        assert_eq!(frame.pc(), StepIdx::new(4));
 
         Ok(())
     }
@@ -333,10 +333,10 @@ mod tests {
         // Initialize slot with a value before writing taint
         frame.write_slot(SlotIdx::new(1), SlotValue::I64(42))?;
         frame.write_taint(SlotIdx::new(1), Taint::Secret)?;
-        kani::assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::Secret)
+        assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::Secret);
 
         frame.write_taint(SlotIdx::new(1), Taint::DerivedFromSecret)?;
-        kani::assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::DerivedFromSecret)
+        assert_eq!(frame.read_taint(SlotIdx::new(1))?, Taint::DerivedFromSecret);
 
         Ok(())
     }
@@ -351,7 +351,7 @@ mod tests {
         };
 
         let result = frame.read_taint(SlotIdx::new(10));
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::SlotOutOfBounds {
                 slot: SlotIdx::new(10)
             }))
@@ -365,8 +365,8 @@ mod tests {
 
         frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(42), Taint::Secret)?;
 
-        kani::assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(42))
-        kani::assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret)
+        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(42));
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
 
         Ok(())
     }
@@ -378,10 +378,10 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
         let result = frame.reinitialize(RunId::new(2), StepIdx::ZERO, 0, 1);
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InvalidCompiledWorkflow {
                 reason: "step_count_zero"
-            }))
+            }));
 
         Ok(())
     }
@@ -394,10 +394,10 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
 
         let result = frame.reinitialize(RunId::new(2), StepIdx::new(5), 3, 1);
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::InvalidProgramCounter {
                 step: StepIdx::new(5)
-            }))
+            }));
 
         Ok(())
     }
@@ -417,9 +417,9 @@ mod tests {
 
         frame.reinitialize(RunId::new(2), StepIdx::new(0), 3, 1)?;
 
-        kani::assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Pending)
-        kani::assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Pending)
-        kani::assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Pending)
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Pending);
+        assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Pending);
+        assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Pending);
 
         Ok(())
     }
@@ -431,31 +431,31 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 7, 1)?;
 
         frame.mark_running(StepIdx::new(0))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running)
+        assert_eq!(frame.step_state(StepIdx::new(0))?, StepState::Running);
 
         frame.mark_running(StepIdx::new(1))?;
         frame.mark_succeeded(StepIdx::new(1))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Succeeded)
+        assert_eq!(frame.step_state(StepIdx::new(1))?, StepState::Succeeded);
 
         frame.mark_running(StepIdx::new(2))?;
         frame.mark_failed(StepIdx::new(2))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Failed)
+        assert_eq!(frame.step_state(StepIdx::new(2))?, StepState::Failed);
 
         frame.mark_running(StepIdx::new(3))?;
         frame.mark_skipped(StepIdx::new(3))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(3))?, StepState::Skipped)
+        assert_eq!(frame.step_state(StepIdx::new(3))?, StepState::Skipped);
 
         frame.mark_running(StepIdx::new(4))?;
         frame.mark_waiting(StepIdx::new(4))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(4))?, StepState::Waiting)
+        assert_eq!(frame.step_state(StepIdx::new(4))?, StepState::Waiting);
 
         frame.mark_running(StepIdx::new(5))?;
         frame.mark_asking(StepIdx::new(5))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(5))?, StepState::Asking)
+        assert_eq!(frame.step_state(StepIdx::new(5))?, StepState::Asking);
 
         frame.mark_running(StepIdx::new(6))?;
         frame.mark_cancelled(StepIdx::new(6))?;
-        kani::assert_eq!(frame.step_state(StepIdx::new(6))?, StepState::Cancelled)
+        assert_eq!(frame.step_state(StepIdx::new(6))?, StepState::Cancelled);
 
         Ok(())
     }
@@ -472,16 +472,16 @@ mod tests {
 
         // Slot 0 has never been written -- taint write must be rejected
         let result = frame.write_taint(SlotIdx::ZERO, Taint::Secret);
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
-            }))
+            }));
 
         // Taint must remain Clean (the default), not Secret
         // Note: read_taint also now requires the slot to be initialized,
         // so we verify by writing a value first, then checking taint.
         frame.write_slot(SlotIdx::ZERO, SlotValue::I64(1))?;
-        kani::assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean)
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Clean);
 
         Ok(())
     }
@@ -493,10 +493,10 @@ mod tests {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
         let result = frame.read_taint(SlotIdx::ZERO);
-        kani::assert_eq!(result,
+        assert_eq!(result,
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
-            }))
+            }));
 
         Ok(())
     }
@@ -508,8 +508,8 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
         frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(true))?;
-        kani::assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret), Ok(()))
-        kani::assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret)
+        assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret), Ok(()));
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
 
         Ok(())
     }
@@ -521,16 +521,16 @@ mod tests {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
         // Slot 0 exists but is uninitialized -- returns SlotUninitialized
-        kani::assert_eq!(frame.read_slot(SlotIdx::ZERO),
+        assert_eq!(frame.read_slot(SlotIdx::ZERO),
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
-            }))
+            }));
 
         // Slot 99 does not exist -- returns SlotOutOfBounds
-        kani::assert_eq!(frame.read_slot(SlotIdx::new(99)),
+        assert_eq!(frame.read_slot(SlotIdx::new(99)),
             Err(CoreError::SlotOutOfBounds {
                 slot: SlotIdx::new(99)
-            }))
+            }));
 
         Ok(())
     }
@@ -542,11 +542,11 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
         frame.write_slot(SlotIdx::ZERO, SlotValue::I64(10))?;
-        kani::assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(10))
+        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::I64(10));
 
         // Overwrite is allowed (no write-once enforcement)
         frame.write_slot(SlotIdx::ZERO, SlotValue::Bool(false))?;
-        kani::assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::Bool(false))
+        assert_eq!(frame.read_slot(SlotIdx::ZERO)?, &SlotValue::Bool(false));
 
         Ok(())
     }
@@ -557,10 +557,10 @@ mod tests {
     fn security_read_taint_out_of_bounds_returns_slot_out_of_bounds() -> CoreResult<()> {
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
-        kani::assert_eq!(frame.read_taint(SlotIdx::new(99)),
+        assert_eq!(frame.read_taint(SlotIdx::new(99)),
             Err(CoreError::SlotOutOfBounds {
                 slot: SlotIdx::new(99)
-            }))
+            }));
 
         Ok(())
     }
@@ -571,10 +571,10 @@ mod tests {
     fn security_write_taint_out_of_bounds_returns_slot_out_of_bounds() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 2)?;
 
-        kani::assert_eq!(frame.write_taint(SlotIdx::new(99), Taint::Secret),
+        assert_eq!(frame.write_taint(SlotIdx::new(99), Taint::Secret),
             Err(CoreError::SlotOutOfBounds {
                 slot: SlotIdx::new(99)
-            }))
+            }));
 
         Ok(())
     }
@@ -587,7 +587,7 @@ mod tests {
 
         // Initialize and verify
         frame.write_slot_with_taint(SlotIdx::ZERO, SlotValue::I64(1), Taint::Secret)?;
-        kani::assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret)
+        assert_eq!(frame.read_taint(SlotIdx::ZERO)?, Taint::Secret);
 
         // Overwrite with None-equivalent (clear via write_slot_with_taint not possible,
         // but write_slot sets the value directly)
@@ -595,10 +595,10 @@ mod tests {
         frame.reinitialize(RunId::new(2), StepIdx::ZERO, 2, 1)?;
 
         // Now write_taint should fail because slot is uninitialized again
-        kani::assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret),
+        assert_eq!(frame.write_taint(SlotIdx::ZERO, Taint::Secret),
             Err(CoreError::SlotUninitialized {
                 slot: SlotIdx::ZERO
-            }))
+            }));
 
         Ok(())
     }
@@ -612,13 +612,13 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;
         frame.set_max_parallel_in_flight(10);
 
-        kani::assert_eq!(frame.parallel_in_flight(), 0)
+        assert_eq!(frame.parallel_in_flight(), 0);
 
         frame.add_parallel_in_flight(3)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 3)
+        assert_eq!(frame.parallel_in_flight(), 3);
 
         frame.sub_parallel_in_flight(2)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 1)
+        assert_eq!(frame.parallel_in_flight(), 1);
 
         Ok(())
     }
@@ -629,19 +629,19 @@ mod tests {
         frame.set_max_parallel_in_flight(10);
 
         frame.add_parallel_in_flight(2)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 2)
+        assert_eq!(frame.parallel_in_flight(), 2);
 
         frame.add_parallel_in_flight(3)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 5)
+        assert_eq!(frame.parallel_in_flight(), 5);
 
         frame.sub_parallel_in_flight(5)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 0)
+        assert_eq!(frame.parallel_in_flight(), 0);
 
         frame.add_parallel_in_flight(4)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 4)
+        assert_eq!(frame.parallel_in_flight(), 4);
 
         frame.add_parallel_in_flight(2)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 6)
+        assert_eq!(frame.parallel_in_flight(), 6);
 
         Ok(())
     }
@@ -651,19 +651,19 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 10, 1)?;
         frame.set_max_parallel_in_flight(10);
 
-        kani::assert_eq!(frame.parallel_in_flight(), 0)
+        assert_eq!(frame.parallel_in_flight(), 0);
 
         frame.add_parallel_in_flight(4)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 4)
+        assert_eq!(frame.parallel_in_flight(), 4);
 
         frame.add_parallel_in_flight(2)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 6)
+        assert_eq!(frame.parallel_in_flight(), 6);
 
         frame.sub_parallel_in_flight(4)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 2)
+        assert_eq!(frame.parallel_in_flight(), 2);
 
         frame.sub_parallel_in_flight(2)?;
-        kani::assert_eq!(frame.parallel_in_flight(), 0)
+        assert_eq!(frame.parallel_in_flight(), 0);
 
         Ok(())
     }
@@ -674,10 +674,10 @@ mod tests {
         frame.set_max_parallel_in_flight(u16::MAX - 1);
 
         frame.add_parallel_in_flight(u16::MAX)?;
-        kani::assert_eq!(frame.add_parallel_in_flight(2),
+        assert_eq!(frame.add_parallel_in_flight(2),
             Err(CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight overflow"
-            }))
+            }));
 
         Ok(())
     }
@@ -686,10 +686,10 @@ mod tests {
     fn parallel_in_flight_underflow_returns_error() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
 
-        kani::assert_eq!(frame.sub_parallel_in_flight(1),
+        assert_eq!(frame.sub_parallel_in_flight(1),
             Err(CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight underflow"
-            }))
+            }));
 
         Ok(())
     }
@@ -715,65 +715,65 @@ mod tests {
         frame.mark_skipped(StepIdx::new(3))?;
 
         // Idempotent re-mark: same state → same state is always valid.
-        kani::assert_eq!(frame.mark_succeeded(StepIdx::ZERO), Ok(()))
-        kani::assert_eq!(frame.mark_failed(StepIdx::new(1)), Ok(()))
-        kani::assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()))
-        kani::assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()))
+        assert_eq!(frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(frame.mark_failed(StepIdx::new(1)), Ok(()));
+        assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
+        assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
 
         // Succeeded must reject direct transition to Running. Loop body
         // reentry uses the explicit Succeeded->Pending admission path via
         // mark_pending before mark_running.
-        kani::assert_eq!(frame.mark_running(StepIdx::ZERO),
+        assert_eq!(frame.mark_running(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
             }),
-            "Succeeded -> Running must be rejected (terminal states are absorbing)")
+            "Succeeded -> Running must be rejected (terminal states are absorbing)");
         // Use the explicit re-entry admission path on step 0.
         frame.mark_pending(StepIdx::ZERO)?;
         // Step is now Running, so Running -> Failed is valid
-        kani::assert_eq!(frame.mark_failed(StepIdx::ZERO),
+        assert_eq!(frame.mark_failed(StepIdx::ZERO),
             Ok(()),
-            "Running -> Failed must succeed")
+            "Running -> Failed must succeed");
         // Test Succeeded -> Waiting on original state (should fail - step is now Failed)
-        kani::assert_eq!(frame.mark_waiting(StepIdx::ZERO),
+        assert_eq!(frame.mark_waiting(StepIdx::ZERO),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
             }),
-            "Succeeded -> Waiting must fail")
+            "Succeeded -> Waiting must fail");
 
         // Failed cannot go to anything else.
-        kani::assert_eq!(frame.mark_running(StepIdx::new(1)),
+        assert_eq!(frame.mark_running(StepIdx::new(1)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
-        kani::assert_eq!(frame.mark_succeeded(StepIdx::new(1)),
+            }));
+        assert_eq!(frame.mark_succeeded(StepIdx::new(1)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
-        kani::assert_eq!(frame.mark_waiting(StepIdx::new(1)),
+            }));
+        assert_eq!(frame.mark_waiting(StepIdx::new(1)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
+            }));
 
         // Cancelled cannot go to anything else.
-        kani::assert_eq!(frame.mark_running(StepIdx::new(2)),
+        assert_eq!(frame.mark_running(StepIdx::new(2)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
-        kani::assert_eq!(frame.mark_succeeded(StepIdx::new(2)),
+            }));
+        assert_eq!(frame.mark_succeeded(StepIdx::new(2)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
+            }));
 
         // Skipped cannot go to anything else.
-        kani::assert_eq!(frame.mark_running(StepIdx::new(3)),
+        assert_eq!(frame.mark_running(StepIdx::new(3)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
-        kani::assert_eq!(frame.mark_failed(StepIdx::new(3)),
+            }));
+        assert_eq!(frame.mark_failed(StepIdx::new(3)),
             Err(CoreError::InternalInvariantViolation {
                 reason: "invalid_state_transition"
-            }))
+            }));
 
         Ok(())
     }
@@ -870,12 +870,12 @@ mod tests {
     fn runframe_set_pc_returns_error_when_out_of_bounds() {
         let step_count = 5u16;
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1).unwrap();
-        let pc = StepIdx::new(step_count); // PC >= step_count (out of bounds)
+        let pc = StepIdx::new(step_count); // PC >= step_count (out of bounds);
         let result = frame.set_pc(pc);
-        kani::assert(result.is_err(), "set_pc must reject out-of-bounds index")
+        kani::assert(result.is_err(), "set_pc must reject out-of-bounds index");
         match result {
             Err(CoreError::InvalidProgramCounter { step }) => {
-                kani::assert_eq!(step, pc, "error should contain the invalid PC")
+                assert_eq!(step, pc, "error should contain the invalid PC")
             }
             other => panic!("expected InvalidProgramCounter, got {:?}", other),
         }
@@ -885,11 +885,11 @@ mod tests {
     fn runframe_set_pc_returns_ok_when_in_bounds() {
         let step_count = 5u16;
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1).unwrap();
-        let pc = StepIdx::new(step_count - 1); // PC < step_count (in bounds)
+        let pc = StepIdx::new(step_count - 1); // PC < step_count (in bounds);
         let mut frame = frame;
         let result = frame.set_pc(pc);
-        kani::assert(result.is_ok(), "set_pc must accept in-bounds index")
-        kani::assert_eq!(frame.pc(), pc, "program counter should be updated")
+        kani::assert(result.is_ok(), "set_pc must accept in-bounds index");
+        assert_eq!(frame.pc(), pc, "program counter should be updated")
     }
 }
 

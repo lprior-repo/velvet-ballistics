@@ -346,6 +346,7 @@ mod harnesses {
             admission: None,
             collect_states: crate::primitives::collect::CollectStates::new(),
             action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
         };
         kani::assert(crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO), "timer harness assertion")
     }
@@ -402,6 +403,7 @@ mod harnesses {
             admission: None,
             collect_states: crate::primitives::collect::CollectStates::new(),
             action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
         };
         kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO), "timer harness assertion")
     }
@@ -458,6 +460,7 @@ mod harnesses {
             admission: None,
             collect_states: crate::primitives::collect::CollectStates::new(),
             action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
         };
         // Step 99 doesn't exist
         kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::new(99)), "timer harness assertion")

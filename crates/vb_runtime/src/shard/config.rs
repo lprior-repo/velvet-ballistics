@@ -10,12 +10,12 @@ use vb_storage::EventSeq;
 
 use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
-use crate::journal::SharedRuntimeJournal;
+use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::TraceRing;
 
 // Re-export from queue for ShardConfig
 pub use super::queue::{
-    MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue, is_valid_command_queue_capacity,
+    is_valid_command_queue_capacity, ShardCommandQueue, MAX_COMMAND_QUEUE_CAPACITY,
 };
 
 // ============================================================================
@@ -35,6 +35,21 @@ pub struct ShardConfig {
     pub max_active_runs: usize,
     /// Admission policy governing artifact verification.
     pub policy: vb_core::policy::RuntimePolicy,
+    /// Number of ticks over which to coalesce journal events into a single
+    /// batch commit. When equal to 1 (the default), each command is
+    /// journalized individually. When greater than 1, commands dispatched
+    /// within the window are accumulated and written atomically when the
+    /// window expires.
+    pub coalesce_window_ticks: u32,
+    /// Number of execution steps between periodic snapshots.
+    ///
+    /// A value of `0` disables periodic mid-run snapshots entirely.
+    /// A value of `1` snapshots after every completed step (valid but costly).
+    /// A value greater than `1` snapshots after every N completed steps.
+    ///
+    /// This is immutable after shard creation and applies uniformly to all
+    /// runs in the shard.
+    pub snapshot_interval_steps: u64,
 }
 
 /// Returns true when a trace ring capacity can retain at least one trace event.
@@ -49,6 +64,15 @@ pub const fn is_valid_step_budget_per_tick(budget: u64) -> bool {
     budget > 0
 }
 
+/// Returns true when a coalesce window tick count is valid.
+///
+/// A value of 1 means no coalescing (each command is journalized individually).
+/// Values greater than 1 enable coalescing over the specified number of ticks.
+#[must_use]
+pub const fn is_valid_coalesce_window_ticks(count: u32) -> bool {
+    count > 0
+}
+
 impl Default for ShardConfig {
     fn default() -> Self {
         Self {
@@ -57,6 +81,8 @@ impl Default for ShardConfig {
             step_budget_per_tick: 1000,
             max_active_runs: 1024,
             policy: vb_core::policy::RuntimePolicy::Strict,
+            coalesce_window_ticks: 1,
+            snapshot_interval_steps: 0,
         }
     }
 }
@@ -82,6 +108,15 @@ pub struct ShardStatus {
     pub active_runs: usize,
     /// Configured active-run ceiling.
     pub max_active_runs: usize,
+    /// Number of execution steps between periodic snapshots.
+    ///
+    /// A value of `0` disables periodic mid-run snapshots entirely.
+    /// A value of `1` snapshots after every completed step (valid but costly).
+    /// A value greater than `1` snapshots after every N completed steps.
+    ///
+    /// This is immutable after shard creation and applies uniformly to all
+    /// runs in the shard.
+    pub snapshot_interval_steps: u64,
     /// Configured trace ring capacity.
     pub trace_capacity: usize,
     /// Count of trace events dropped due to ring overflow.
@@ -127,12 +162,26 @@ pub struct Shard {
     pub(crate) counters: ShardCounters,
     pub(crate) step_budget_per_tick: u64,
     pub(crate) max_active_runs: usize,
+    pub(crate) coalesce_window_ticks: u32,
     pub(crate) policy: vb_core::policy::RuntimePolicy,
+    pub(crate) snapshot_interval_steps: u64,
     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
     pub(crate) inspect_response: Option<InspectResponse>,
     pub(crate) shutting_down: bool,
     pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
+    /// Remaining ticks in the current coalesce window.
+    ///
+    /// When `coalesce_window_ticks` exceeds 1, this counter decrements
+    /// each tick. When it reaches zero, the buffered events are flushed
+    /// atomically via `append_sequenced_batch`.
+    pub(crate) current_coalesce_window_remaining: u32,
+    /// Buffered journal events collected during the coalesce window.
+    ///
+    /// Each entry pairs a journal event with its per-run starting
+    /// sequence so that the batch flush can assign correct sequences
+    /// to every event, regardless of which run it belongs to.
+    pub(crate) coalesce_buffer: Vec<(RuntimeJournalEvent, EventSeq)>,
     /// Admission gate lock held for the duration of preflight+enqueue.
     ///
     /// `Runtime::submit_*` methods acquire this lock before evaluating the

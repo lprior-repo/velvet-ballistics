@@ -114,6 +114,7 @@ fn make_minimal_run_state() -> RunState {
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     }
 }
 

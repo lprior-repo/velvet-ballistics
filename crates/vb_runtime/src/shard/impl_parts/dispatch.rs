@@ -1,11 +1,35 @@
 impl Shard {
-    /// Processes one command from the queue. Returns false if the shard should shut down.
+    /// Processes commands from the queue, applying coalesce-window batching.
+    ///
+    /// When `coalesce_window_ticks` equals 1 (the default), exactly one command
+    /// is dispatched per tick and the journal event is written immediately.
+    ///
+    /// When `coalesce_window_ticks` is greater than 1, commands are dispatched
+    /// and their journal events are accumulated in `coalesce_buffer`. When the
+    /// remaining tick counter reaches zero, the buffer is flushed atomically
+    /// via `RuntimeJournal::append_sequenced_batch`.
+    ///
+    /// Returns `true` if the shard should continue ticking, `false` if it
+    /// should shut down.
     pub fn tick(&mut self) -> RuntimeResult<bool> {
         if self.shutting_down {
             return Ok(false);
         }
 
+        // Start a fresh coalesce window when the counter is at zero.
+        if self.current_coalesce_window_remaining == 0 {
+            let window = self.coalesce_window_ticks;
+            self.current_coalesce_window_remaining = window.saturating_sub(1);
+            self.coalesce_buffer.clear();
+        }
+
         let Some(cmd) = self.command_queue.pop() else {
+            // Queue is empty; no work to do.
+            // If we started a coalesce window that is now idle, flush it
+            // (the buffer is empty so this is a no-op).
+            if self.current_coalesce_window_remaining < self.coalesce_window_ticks {
+                self.flush_coalesce_buffer()?;
+            }
             return Ok(true);
         };
 
@@ -13,6 +37,17 @@ impl Shard {
         if self.shutting_down {
             return Ok(false);
         }
+
+        // Decrement the coalesce window counter.
+        if self.current_coalesce_window_remaining > 0 {
+            self.current_coalesce_window_remaining -= 1;
+        }
+
+        // Window expired: flush buffered events atomically.
+        if self.current_coalesce_window_remaining == 0 {
+            self.flush_coalesce_buffer()?;
+        }
+
         Ok(true)
     }
 
@@ -75,7 +110,9 @@ impl Shard {
             } => self.dispatch_timer(run, generation, deadline, kind)?,
             ShardCommand::Cancel { run, reason } => self.dispatch_cancel(run, reason)?,
             ShardCommand::Kill { run, reason } => self.dispatch_kill(run, reason)?,
-            ShardCommand::Inspect { run, correlation } => self.dispatch_inspect(run, correlation)?,
+            ShardCommand::Inspect { run, correlation } => {
+                self.dispatch_inspect(run, correlation)?
+            }
             ShardCommand::Shutdown => self.dispatch_shutdown()?,
         }
         Ok(())

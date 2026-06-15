@@ -47,6 +47,8 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
         step_budget_per_tick: 4,
         max_active_runs: 3,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
@@ -180,6 +182,8 @@ fn shard_queue_full_prevents_further_command_submission() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     // When filling the queue with 2 commands
@@ -201,6 +205,8 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
         step_budget_per_tick: 4,
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(wf1) = suspended_workflow() else {

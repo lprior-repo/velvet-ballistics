@@ -7,6 +7,8 @@ fn shard_rejects_active_run_capacity_overflow() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -41,6 +43,8 @@ fn inspect_command_stores_retrievable_snapshot() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -79,6 +83,8 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     assert_eq!(shard.is_shutting_down(), false);
@@ -115,6 +121,8 @@ fn counters_reflect_submitted_after_submit_tick() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
@@ -141,6 +149,8 @@ fn inspect_nonexistent_run_returns_not_found() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     assert_eq!(

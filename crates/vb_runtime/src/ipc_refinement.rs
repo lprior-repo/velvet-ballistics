@@ -288,6 +288,7 @@ mod tests {
             trace_dropped: 0,
             step_budget_per_tick: 1,
             runtime_policy: RuntimePolicy::Strict,
+            snapshot_interval_steps: 0,
         };
 
         let refined = shutdown_refinement(status);

@@ -126,6 +126,13 @@ pub mod kani_foreach_parity;
 #[cfg(kani)]
 pub mod kani_lower_control;
 
+// Kani harnesses for Save canonical name and digest prefix (vb-pkif2).
+// Proves Save{value} canonical name is "set" and digest uses b"set" prefix.
+#[cfg(all(kani, test))]
+pub mod kani_canonical_primitive_name_save;
+#[cfg(all(kani, test))]
+pub mod kani_digest_save_prefix;
+
 // Kani harnesses for vb-xi2f.33: digest covering Ask primitives.
 // Feature-gated behind test-util because these harnesses depend on
 // WorkflowSourceParts which is pub(crate) in production and only

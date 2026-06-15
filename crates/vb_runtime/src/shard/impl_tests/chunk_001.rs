@@ -51,6 +51,8 @@
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         }
     }
 
@@ -67,6 +69,8 @@
             step_budget_per_tick: 1,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         };
         assert_eq!(result, Ok(expected));
     }
@@ -117,6 +121,8 @@
             step_budget_per_tick: 1,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         };
         assert_eq!(result, Ok(expected));
     }
@@ -132,6 +138,8 @@
                 step_budget_per_tick: 256,
                 max_active_runs: 32,
                 policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
             })
         );
     }
@@ -161,6 +169,8 @@
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         };
         let shard = Shard::new(config);
         assert_eq!(shard.command_queue_capacity(), 4);
@@ -179,6 +189,8 @@
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         };
         let shard = Shard::new(config);
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -229,6 +241,8 @@
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         };
         let mut shard = Shard::new(config);
         let Some(wf) = finished_workflow() else {
@@ -256,6 +270,8 @@
             step_budget_per_tick: 4,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         };
         let mut shard = Shard::new(config);
         assert_eq!(

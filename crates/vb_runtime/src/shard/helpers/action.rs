@@ -147,6 +147,7 @@ pub fn make_run_state(workflow: CompiledWorkflow, run_id: RunId) -> Option<RunSt
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     })
 }
 

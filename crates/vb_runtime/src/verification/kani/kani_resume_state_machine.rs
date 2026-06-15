@@ -87,6 +87,7 @@ fn minimal_run_state(_run: RunId) -> RunState {
         admission: None,
         collect_states: Default::default(),
         action_contracts: Box::from([]),
+        last_snapshot_executed: 0,
     }
 }
 

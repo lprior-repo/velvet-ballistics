@@ -94,6 +94,8 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
         step_budget_per_tick: 8,
         max_active_runs: 1,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
 
@@ -223,6 +225,8 @@ fn shard_config_new_at_max_capacity_boundary() {
             step_budget_per_tick: 100,
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         })
     );
     assert_eq!(
@@ -243,6 +247,8 @@ fn shard_config_new_at_minimum_capacity() {
             step_budget_per_tick: 1,
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
         })
     );
 }

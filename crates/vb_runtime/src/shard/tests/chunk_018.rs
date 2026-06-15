@@ -32,6 +32,8 @@ fn bh_shd_11_zero_step_budget_never_executes() {
         step_budget_per_tick: 0,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {
@@ -169,6 +171,8 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(wf_suspend) = suspended_workflow() else {

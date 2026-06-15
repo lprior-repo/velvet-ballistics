@@ -106,6 +106,7 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     };
 
     // Set the initial current_attempt on step 0

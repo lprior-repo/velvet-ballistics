@@ -67,6 +67,7 @@
             admission: None,
             collect_states: CollectStates::new(),
             action_contracts: Box::from([contract]),
+            last_snapshot_executed: 0,
         }
     }
 
@@ -182,6 +183,7 @@
             admission: None,
             collect_states: CollectStates::new(),
             action_contracts: Box::from([contract.clone()]),
+            last_snapshot_executed: 0,
         };
         let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
         let result = reject_taint_downgrade(input_taint, &contract, Taint::DerivedFromSecret);
@@ -216,6 +218,7 @@
             admission: None,
             collect_states: CollectStates::new(),
             action_contracts: Box::from([contract.clone()]),
+            last_snapshot_executed: 0,
         };
         let input_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
         let result = reject_taint_downgrade(input_taint, &contract, Taint::Clean);
@@ -306,6 +309,7 @@
                 admission: None,
                 collect_states: CollectStates::new(),
                 action_contracts: Box::from([contract]),
+            last_snapshot_executed: 0,
             }
         }
 

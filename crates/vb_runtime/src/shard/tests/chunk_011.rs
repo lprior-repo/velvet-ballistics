@@ -8,6 +8,8 @@ fn shard_step_budget_one_processes_one_command_per_tick() {
         step_budget_per_tick: 1,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {
@@ -232,6 +234,8 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
         step_budget_per_tick: 4,
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut shard = Shard::new(config);
     let Some(workflow) = finished_workflow() else {
@@ -269,6 +273,8 @@ fn shard_command_queue_len_increments_on_enqueue() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     assert_eq!(shard.command_queue_len(), 0);

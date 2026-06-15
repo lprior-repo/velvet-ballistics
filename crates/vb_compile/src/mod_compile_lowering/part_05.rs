@@ -98,7 +98,7 @@ pub(super) fn canonical_finish_slot(
 pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { .. } => "set",
-        vb_yaml::ast::StepPrimitive::Save { .. } => "save",
+        vb_yaml::ast::StepPrimitive::Save { .. } => "set",
         vb_yaml::ast::StepPrimitive::Do { .. } => "do",
         vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
         vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
@@ -372,7 +372,7 @@ pub(crate) fn digest_step_primitive(
             }
         }
         vb_yaml::ast::StepPrimitive::Save { value } => {
-            hasher.update(b"save");
+            hasher.update(b"set");
             match value {
                 vb_yaml::ast::ScalarValue::String(v) => hasher.update(v.as_bytes()),
                 vb_yaml::ast::ScalarValue::Integer(v) => hasher.update(&v.to_le_bytes()),

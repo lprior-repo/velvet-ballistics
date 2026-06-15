@@ -214,7 +214,7 @@ fn canonical_name_all_harness() {
     // Verify each variant maps to correct canonical name
     match discriminant {
         0 => kani::assert(result == "set", "Set must map to \"set\""),
-        1 => kani::assert(result == "save", "Save must map to \"save\""),
+        1 => kani::assert(result == "set", "Save must map to \"set\""),  // FIXED: was "save", now "set" (vb-pkif2)
         2 => kani::assert(result == "do", "Do must map to \"do\""),
         3 => kani::assert(result == "choose", "Choose must map to \"choose\""),
         4 => kani::assert(result == "for_each", "ForEach must map to \"for_each\""),
