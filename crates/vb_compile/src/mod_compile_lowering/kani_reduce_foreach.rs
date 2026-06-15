@@ -69,8 +69,10 @@ fn check_foreach_width_advance() {
 
     match width_result {
         Ok(w) => {
-            kani::assert(w >= 2,
-                "ForEach width must be at least 2 (ForEachStart + ForEachNext)", )
+            kani::assert(
+                w >= 2,
+                "ForEach width must be at least 2 (ForEachStart + ForEachNext)",
+            );
             kani::cover!(w > 2, "ForEach with multi-step body produces width > 2");
         }
         Err(_) => {
@@ -98,7 +100,7 @@ fn check_foreach_width_never_one() {
     // Production call
     let width = canonical_body_step_width(&foreach_primitive);
     if let Ok(w) = width {
-        kani::assert(w != 1, "ForEach width must never be 1 (always >= 2)")
+        kani::assert(w != 1, "ForEach width must never be 1 (always >= 2)");
     }
 }
 
@@ -116,8 +118,10 @@ fn check_foreach_body_width_included() {
     match result {
         Ok(w) => {
             // Width = 2 + sum of body step widths. Each body step >= 1, so w >= 2 + foreach_body_len.
-            kani::assert(w >= 2 + foreach_body_len as usize,
-                "ForEach body width must include all body steps", )
+            kani::assert(
+                w >= 2 + foreach_body_len as usize,
+                "ForEach body width must include all body steps",
+            );
         }
         Err(_) => {}
     }

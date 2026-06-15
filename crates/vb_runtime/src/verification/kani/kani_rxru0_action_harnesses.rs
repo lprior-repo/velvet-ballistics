@@ -47,7 +47,7 @@ fn check_action_registry_panic_free() {
 
     // Register first action — must not panic.
     let reg_result = registry.register(contract);
-    kani::assert(reg_result.is_ok(), "First registration must succeed"
+    kani::assert(reg_result.is_ok(), "First registration must succeed");
 
     // Register duplicate ID — must return error, not panic.
     let different_name = match ActionName::new("different_action") {
@@ -74,18 +74,18 @@ fn check_action_registry_panic_free() {
     let dup_result = registry.register(contract2);
     kani::assert(
         dup_result.is_err(),
-        "Duplicate ID registration must return error"
-    
+        "Duplicate ID registration must return error",
+    );
 
     // Resolve the registered action — must not panic.
     let resolved = registry.resolve_compile_time(ActionId::new(id));
-    kani::assert(resolved.is_ok(), "Resolved action must be found"
+    kani::assert(resolved.is_ok(), "Resolved action must be found");
 
     // Resolve an unknown action — must return error, not panic.
     let unknown_id: u64 = kani::any();
     kani::assume(unknown_id > id);
     let unknown = registry.resolve_compile_time(ActionId::new(unknown_id));
-    kani::assert(unknown.is_err(), "Unknown action must return error"
+    kani::assert(unknown.is_err(), "Unknown action must return error");
 }
 
 // ─── OBL-010 extended: ActionRegistry resolves by name ──────────────────────────
@@ -179,13 +179,13 @@ fn check_action_ticket_serialization() {
     };
 
     // Verify all 7 fields round-trip correctly.
-    kani::assert_eq!(deserialized.run.get(), ticket.run.get())
-    kani::assert_eq!(deserialized.step.get(), ticket.step.get())
-    kani::assert_eq!(deserialized.seq.get(), ticket.seq.get())
-    kani::assert_eq!(deserialized.action.get(), ticket.action.get())
-    kani::assert_eq!(deserialized.attempt, ticket.attempt)
-    kani::assert_eq!(deserialized.idempotency_key, ticket.idempotency_key)
-    kani::assert_eq!(deserialized.capacity, ticket.capacity)
+    kani::assert_eq!(deserialized.run.get(), ticket.run.get());
+    kani::assert_eq!(deserialized.step.get(), ticket.step.get());
+    kani::assert_eq!(deserialized.seq.get(), ticket.seq.get());
+    kani::assert_eq!(deserialized.action.get(), ticket.action.get());
+    kani::assert_eq!(deserialized.attempt, ticket.attempt);
+    kani::assert_eq!(deserialized.idempotency_key, ticket.idempotency_key);
+    kani::assert_eq!(deserialized.capacity, ticket.capacity);
 }
 
 // ─── OBL-013 extended: Serialization of edge-case values ────────────────────────
@@ -229,5 +229,5 @@ fn check_action_ticket_serialization_edge_cases() {
         }
     };
 
-    kani::assert_eq!(deserialized, ticket, "All fields must round-trip correctly")
+    kani::assert_eq!(deserialized, ticket, "All fields must round-trip correctly");
 }

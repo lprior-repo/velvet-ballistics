@@ -15,7 +15,7 @@ use crate::trace::TraceRing;
 
 // Re-export from queue for ShardConfig
 pub use super::queue::{
-    is_valid_command_queue_capacity, ShardCommandQueue, MAX_COMMAND_QUEUE_CAPACITY,
+    MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue, is_valid_command_queue_capacity,
 };
 
 // ============================================================================

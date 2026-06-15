@@ -9,10 +9,10 @@
 use std::num::{NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 
 use crate::budget::BoundednessPolicy;
-use crate::policy::profile_validation_error::ProfileValidationError;
-use crate::policy::ContractViolation;
 use crate::limits::*;
+use crate::policy::ContractViolation;
 use crate::policy::profile_name::ProfileName;
+use crate::policy::profile_validation_error::ProfileValidationError;
 use crate::workflow::types::ResourceContract;
 
 /// Per-profile resource limits.
@@ -68,61 +68,129 @@ impl RuntimeLimitsProfile {
         ask_timeout_seconds: u64,
     ) -> Result<Self, ProfileValidationError> {
         if active_runs == 0 || active_runs > MAX_STEPS_PER_WORKFLOW {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "active_runs", value: active_runs as u64, limit: MAX_STEPS_PER_WORKFLOW as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "active_runs",
+                value: active_runs as u64,
+                limit: MAX_STEPS_PER_WORKFLOW as u64,
+            });
         }
         if ready_queue_depth == 0 || ready_queue_depth > MAX_QUEUE_DEPTH {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "ready_queue_depth", value: ready_queue_depth as u64, limit: MAX_QUEUE_DEPTH as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "ready_queue_depth",
+                value: ready_queue_depth as u64,
+                limit: MAX_QUEUE_DEPTH as u64,
+            });
         }
         if ipc_frame_bytes == 0 || ipc_frame_bytes > MAX_IPC_PAYLOAD_BYTES {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "ipc_frame_bytes", value: ipc_frame_bytes as u64, limit: MAX_IPC_PAYLOAD_BYTES as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "ipc_frame_bytes",
+                value: ipc_frame_bytes as u64,
+                limit: MAX_IPC_PAYLOAD_BYTES as u64,
+            });
         }
         if action_input_bytes == 0 || action_input_bytes > MAX_INPUT_BYTES {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "action_input_bytes", value: action_input_bytes as u64, limit: MAX_INPUT_BYTES as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "action_input_bytes",
+                value: action_input_bytes as u64,
+                limit: MAX_INPUT_BYTES as u64,
+            });
         }
         if action_output_bytes == 0 || action_output_bytes > MAX_OUTPUT_BYTES {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "action_output_bytes", value: action_output_bytes as u64, limit: MAX_OUTPUT_BYTES as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "action_output_bytes",
+                value: action_output_bytes as u64,
+                limit: MAX_OUTPUT_BYTES as u64,
+            });
         }
         if step_output_bytes == 0 || step_output_bytes > MAX_OUTPUT_BYTES {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "step_output_bytes", value: step_output_bytes as u64, limit: MAX_OUTPUT_BYTES as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "step_output_bytes",
+                value: step_output_bytes as u64,
+                limit: MAX_OUTPUT_BYTES as u64,
+            });
         }
         if result_bytes == 0 || result_bytes > MAX_OUTPUT_BYTES {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "result_bytes", value: result_bytes as u64, limit: MAX_OUTPUT_BYTES as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "result_bytes",
+                value: result_bytes as u64,
+                limit: MAX_OUTPUT_BYTES as u64,
+            });
         }
         if trace_ring_capacity == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "trace_ring_capacity", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "trace_ring_capacity",
+                value: 0,
+            });
         }
         if journal_writer_queue_capacity == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "journal_writer_queue_capacity", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "journal_writer_queue_capacity",
+                value: 0,
+            });
         }
         if for_each_item_count == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "for_each_item_count", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "for_each_item_count",
+                value: 0,
+            });
         }
         if together_branch_count == 0 || together_branch_count > MAX_FANOUT {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "together_branch_count", value: together_branch_count as u64, limit: MAX_FANOUT as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "together_branch_count",
+                value: together_branch_count as u64,
+                limit: MAX_FANOUT as u64,
+            });
         }
         if collect_pages == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "collect_pages", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "collect_pages",
+                value: 0,
+            });
         }
         if collect_items == 0 || collect_items > MAX_COLLECT_ITEMS {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "collect_items", value: collect_items as u64, limit: MAX_COLLECT_ITEMS as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_items",
+                value: collect_items as u64,
+                limit: MAX_COLLECT_ITEMS as u64,
+            });
         }
         if collect_time_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "collect_time_seconds", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "collect_time_seconds",
+                value: 0,
+            });
         }
         if repeat_attempts == 0 || repeat_attempts > MAX_RETRY_ATTEMPTS {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "repeat_attempts", value: repeat_attempts as u64, limit: MAX_RETRY_ATTEMPTS as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "repeat_attempts",
+                value: repeat_attempts as u64,
+                limit: MAX_RETRY_ATTEMPTS as u64,
+            });
         }
         if repeat_time_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "repeat_time_seconds", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "repeat_time_seconds",
+                value: 0,
+            });
         }
         if retry_attempts == 0 || retry_attempts > MAX_RETRY_ATTEMPTS {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "retry_attempts", value: retry_attempts as u64, limit: MAX_RETRY_ATTEMPTS as u64 });
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "retry_attempts",
+                value: retry_attempts as u64,
+                limit: MAX_RETRY_ATTEMPTS as u64,
+            });
         }
         if max_wait_duration_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "max_wait_duration_seconds", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "max_wait_duration_seconds",
+                value: 0,
+            });
         }
         if ask_timeout_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue { field: "ask_timeout_seconds", value: 0 });
+            return Err(ProfileValidationError::ZeroValue {
+                field: "ask_timeout_seconds",
+                value: 0,
+            });
         }
 
         Ok(Self {
@@ -135,7 +203,8 @@ impl RuntimeLimitsProfile {
             step_output_bytes: NonZeroU32::new(step_output_bytes).unwrap(),
             result_bytes: NonZeroU32::new(result_bytes).unwrap(),
             trace_ring_capacity: NonZeroUsize::new(trace_ring_capacity).unwrap(),
-            journal_writer_queue_capacity: NonZeroUsize::new(journal_writer_queue_capacity).unwrap(),
+            journal_writer_queue_capacity: NonZeroUsize::new(journal_writer_queue_capacity)
+                .unwrap(),
             for_each_item_count: NonZeroU32::new(for_each_item_count).unwrap(),
             together_branch_count: NonZeroU16::new(together_branch_count).unwrap(),
             collect_pages: NonZeroU32::new(collect_pages).unwrap(),
@@ -264,7 +333,8 @@ impl BoundednessPolicy {
             max_nesting_depth: MAX_LANGUAGE_NESTING_DEPTH as u16,
             absolute_max_action_tickets: 1024,
             absolute_max_parallel: profile.active_runs.get() as u16,
-            absolute_max_run_time_seconds: profile.max_wait_duration_seconds.get() + profile.repeat_time_seconds.get(),
+            absolute_max_run_time_seconds: profile.max_wait_duration_seconds.get()
+                + profile.repeat_time_seconds.get(),
             absolute_max_result_bytes: profile.result_bytes.get(),
             absolute_max_steps_executable: profile.active_runs.get() as u32,
             absolute_max_timer_entries: 256,
@@ -311,7 +381,10 @@ impl ResourceContract {
     /// field exceeds that limit.  Fields that have no direct profile mapping
     /// (steps, slots, constants, etc.) are validated against hard limits.
     #[must_use]
-    pub fn fits_within_profile(&self, profile: &RuntimeLimitsProfile) -> Result<(), ContractViolation> {
+    pub fn fits_within_profile(
+        &self,
+        profile: &RuntimeLimitsProfile,
+    ) -> Result<(), ContractViolation> {
         if self.max_input_bytes > profile.action_input_bytes.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_input_bytes",
@@ -697,7 +770,26 @@ mod profile_tests {
     #[test]
     fn test_new_validates_zero_active_runs() {
         let result = RuntimeLimitsProfile::new(
-            ProfileName::Strict, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            ProfileName::Strict,
+            0,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
         );
         assert!(result.is_err());
     }
@@ -705,7 +797,26 @@ mod profile_tests {
     #[test]
     fn test_new_validates_zero_retry_attempts() {
         let result = RuntimeLimitsProfile::new(
-            ProfileName::Strict, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+            ProfileName::Strict,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            1,
+            1,
         );
         assert!(result.is_err());
     }

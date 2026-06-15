@@ -47,15 +47,15 @@ pub fn new_writes_use_canonical_record_kind() {
 
     match &*event {
         JournalEvent::StepSucceeded { .. } => {
-            kani::assert(event.record_kind() != RecordKind::SlotWritten, "kani harness assertion")
-            kani::assert(event.record_kind() == RecordKind::StepSucceeded, "kani harness assertion")
+            kani::assert(event.record_kind() != RecordKind::SlotWritten, "kani harness assertion");
+            kani::assert(event.record_kind() == RecordKind::StepSucceeded, "kani harness assertion");
         }
         JournalEvent::SlotWrittenEvent { .. } => {
-            kani::assert(event.record_kind() == RecordKind::SlotWritten, "kani harness assertion")
-            kani::assert(event.record_kind() != RecordKind::StepSucceeded, "kani harness assertion")
+            kani::assert(event.record_kind() == RecordKind::SlotWritten, "kani harness assertion");
+            kani::assert(event.record_kind() != RecordKind::StepSucceeded, "kani harness assertion");
         }
         _ => {
-            kani::assert(false, "kani harness assertion")
+            kani::assert(false, "kani harness assertion");
         }
     }
 }

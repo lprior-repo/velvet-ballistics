@@ -58,8 +58,8 @@ proptest! {
         let r2 = validate_workflow_schema(&doc);
         let r3 = validate_workflow_schema(&doc);
 
-        prop_kani::assert_eq!(r1.clone(), r2.clone())
-        prop_kani::assert_eq!(r2, r3)
+        prop_assert_eq!(r1.clone(), r2.clone());
+        prop_assert_eq!(r2, r3);
     }
 
     #[test]
@@ -88,7 +88,7 @@ proptest! {
             .map(|s| s.to_owned())
             .collect();
 
-        prop_kani::assert_eq!(actual_fnames, expected_fnames)
+        prop_assert_eq!(actual_fnames, expected_fnames);
     }
 
     #[test]
@@ -99,7 +99,7 @@ proptest! {
             "version",
             FieldValue::String("velvet-ballistics/v1".to_owned()),
         )]);
-        prop_kani::assert_eq!(validate_version(&doc), Ok(()))
+        prop_assert_eq!(validate_version(&doc), Ok(()));
     }
 
     #[test]
@@ -110,7 +110,7 @@ proptest! {
         prop_assume!(version != "velvet-ballistics/v1");
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let result = validate_version(&doc);
-        prop_kani::assert(matches!(result, Err(ValidationError::InvalidVersion { version: ref v }) if *v == version), "expected InvalidVersion for non-canonical version, got {result:?}")
+        prop_assert!(matches!(result, Err(ValidationError::InvalidVersion { version: ref v }) if *v == version), "expected InvalidVersion for non-canonical version, got {result:?}");
     }
 
     #[test]
@@ -126,7 +126,7 @@ proptest! {
             ("id", FieldValue::String("step1".to_owned())),
             (prim, FieldValue::Empty),
         ]);
-        prop_kani::assert_eq!(validate_single_primitive(&step), Ok(()))
+        prop_assert_eq!(validate_single_primitive(&step), Ok(()));
     }
 
     #[test]
@@ -141,7 +141,7 @@ proptest! {
         }
         let step = make_step(step_fields);
         let result = validate_single_primitive(&step);
-        prop_kani::assert_eq!(result, Err(ValidationError::MissingStepPrimitive))
+        prop_assert_eq!(result, Err(ValidationError::MissingStepPrimitive));
     }
 
     #[test]
@@ -159,15 +159,15 @@ proptest! {
             (prims[prim1_idx], FieldValue::Empty),
             (prims[prim2_idx], FieldValue::Empty),
         ]);
-        prop_kani::assert_eq!(validate_single_primitive(&step),
-            Err(ValidationError::MultipleStepPrimitives))
+        prop_assert_eq!(validate_single_primitive(&step),
+            Err(ValidationError::MultipleStepPrimitives));
     }
 
     #[test]
     fn proptest_workflow_doc_get_string_roundtrip(str_len in 0usize..128usize) {
         let value = "y".repeat(str_len);
         let doc = make_doc(vec![("name", FieldValue::String(value.clone()))]);
-        prop_kani::assert_eq!(doc.get_string("name"), Some(value.as_str()))
+        prop_assert_eq!(doc.get_string("name"), Some(value.as_str()));
     }
 
     #[test]
@@ -184,9 +184,9 @@ proptest! {
         let doc = WorkflowDoc::from_pairs(pairs);
 
         for name in &all_names {
-            prop_kani::assert(doc.has_field(name), "kani harness assertion")
+            prop_assert!(doc.has_field(name), "kani harness assertion");
         }
-        prop_kani::assert(!doc.has_field("nonexistent_field_xyz"), "kani harness assertion")
+        prop_assert!(!doc.has_field("nonexistent_field_xyz"), "kani harness assertion");
     }
 
     #[test]
@@ -196,7 +196,7 @@ proptest! {
             step_fields.push(("id", FieldValue::Empty));
         }
         let step = make_step(step_fields);
-        prop_kani::assert_eq!(step.field_names().len(), n_fields)
+        prop_assert_eq!(step.field_names().len(), n_fields);
     }
 
     #[test]
@@ -210,7 +210,7 @@ proptest! {
         let doc_v = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let r1 = validate_version(&doc_v);
         let r2 = validate_version(&doc_v);
-        prop_kani::assert_eq!(r1, r2)
+        prop_assert_eq!(r1, r2);
 
         let doc_t = make_doc(vec![(
             "when",
@@ -218,7 +218,7 @@ proptest! {
         )]);
         let r1t = validate_trigger(&doc_t);
         let r2t = validate_trigger(&doc_t);
-        prop_kani::assert_eq!(r1t, r2t)
+        prop_assert_eq!(r1t, r2t);
     }
 
     #[test]
@@ -233,9 +233,9 @@ proptest! {
         let doc = make_doc(vec![("steps", FieldValue::Sequence(steps))]);
         let seq = doc.get_sequence("steps");
         if let Some(s) = seq {
-            prop_kani::assert_eq!(s.len(), n_steps)
+            prop_assert_eq!(s.len(), n_steps);
         } else {
-            prop_kani::assert_eq!(n_steps, 0)
+            prop_assert_eq!(n_steps, 0);
         }
     }
 
@@ -254,7 +254,7 @@ proptest! {
             (prims[prim_idx], FieldValue::Empty),
             ])]),
         )]);
-        prop_kani::assert_eq!(validate_step_fields(&doc), Ok(()))
+        prop_assert_eq!(validate_step_fields(&doc), Ok(()));
     }
 
     #[test]
@@ -270,8 +270,8 @@ proptest! {
                 (unknown_field.as_str(), FieldValue::Empty),
             ])]),
         )]);
-        prop_kani::assert_eq!(validate_step_fields(&doc),
-            Err(ValidationError::UnknownStepField))
+        prop_assert_eq!(validate_step_fields(&doc),
+            Err(ValidationError::UnknownStepField));
     }
 
     #[test]
@@ -280,10 +280,10 @@ proptest! {
     ) {
         let doc = make_doc(vec![("when", FieldValue::Mapping(vec![]))]);
         let result = validate_trigger(&doc);
-        prop_kani::assert_eq!(result,
+        prop_assert_eq!(result,
             Err(ValidationError::MissingRequiredField {
                 field: "when".to_owned(),
-            }))
+            }));
     }
 }
 
@@ -305,7 +305,7 @@ mod kani_harnesses {
     fn capability_name_length_boundary_is_ordered() {
         let len: usize = kani::any();
         kani::assume(len <= 256);
-        kani::assert((len == 0) || (len <= 128) || (len > 128));
+        assert!((len == 0) || (len <= 128) || (len > 128));
     }
 
     #[kani::proof]
@@ -315,7 +315,7 @@ mod kani_harnesses {
         kani::assume(first_index < 8);
         kani::assume(duplicate_index < 8);
         kani::assume(first_index < duplicate_index);
-        kani::assert(first_index < duplicate_index);
+        assert!(first_index < duplicate_index);
     }
 
     #[kani::proof]
@@ -325,9 +325,9 @@ mod kani_harnesses {
         let is_empty = len == 0;
         let is_valid = len >= 1 && len <= 128;
         let is_too_long = len > 128;
-        kani::assert(is_empty || is_valid || is_too_long);
-        kani::assert(!(is_valid && is_too_long));
-        kani::assert(!(is_empty && is_valid));
+        assert!(is_empty || is_valid || is_too_long);
+        assert!(!(is_valid && is_too_long));
+        assert!(!(is_empty && is_valid));
     }
 
     #[kani::proof]
@@ -337,8 +337,8 @@ mod kani_harnesses {
         kani::assume(first < 16);
         kani::assume(dup < 16);
         kani::assume(first < dup);
-        kani::assert(first < dup);
-        kani::assert(dup > first);
+        assert!(first < dup);
+        assert!(dup > first);
     }
 
     #[kani::proof]
@@ -348,7 +348,7 @@ mod kani_harnesses {
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let r1 = validate_version(&doc);
         let r2 = validate_version(&doc);
-        kani::assert(r1 == r2, "validate_version must be deterministic");
+        assert!(r1 == r2, "validate_version must be deterministic");
     }
 
     #[kani::proof]
@@ -362,7 +362,7 @@ mod kani_harnesses {
         )]);
         let r1 = validate_trigger(&doc);
         let r2 = validate_trigger(&doc);
-        kani::assert(r1 == r2, "validate_trigger must be deterministic");
+        assert!(r1 == r2, "validate_trigger must be deterministic");
     }
 
     #[kani::proof]
@@ -376,7 +376,7 @@ mod kani_harnesses {
         ]);
         let r1 = validate_single_primitive(&step);
         let r2 = validate_single_primitive(&step);
-        kani::assert(r1 == r2, "validate_single_primitive must be deterministic");
+        assert!(r1 == r2, "validate_single_primitive must be deterministic");
     }
 
     #[kani::proof]
@@ -450,7 +450,7 @@ mod kani_harnesses {
         ]);
         let r1 = validate_workflow_schema(&doc);
         let r2 = validate_workflow_schema(&doc);
-        kani::assert(r1 == r2, "validate_workflow_schema must be deterministic");
+        assert!(r1 == r2, "validate_workflow_schema must be deterministic");
     }
 
     #[kani::proof]
@@ -466,7 +466,7 @@ mod kani_harnesses {
             ("name", FieldValue::String(name)),
         ]);
         let names = doc.field_names();
-        kani::assert(
+        assert!(
             names.len() == 2,
             "from_pairs with 2 fields must produce field_names with length 2",
         );
@@ -482,7 +482,7 @@ mod kani_harnesses {
             (field_name.as_str(), FieldValue::Empty),
         ]);
         let names = step.field_names();
-        kani::assert(
+        assert!(
             names.len() == 2,
             "step with 2 fields must produce field_names with length 2",
         );
@@ -492,7 +492,7 @@ mod kani_harnesses {
     fn validate_version_handles_empty_doc() {
         let doc = make_doc(vec![]);
         let result = validate_version(&doc);
-        kani::assert(
+        assert!(
             matches!(result, Err(ValidationError::MissingRequiredField { .. })),
             "empty doc must produce MissingRequiredField, not panic",
         );
@@ -503,8 +503,8 @@ mod kani_harnesses {
         let name: String = kani::any();
         kani::assume(name.len() <= 64);
         let doc = make_doc(vec![("name", FieldValue::String(name))]);
-        kani::assert(doc.has_field("name"), "has_field true for present field");
-        kani::assert(
+        assert!(doc.has_field("name"), "has_field true for present field");
+        assert!(
             !doc.has_field("missing"),
             "has_field false for absent field",
         );
@@ -556,16 +556,16 @@ fn kani_integration_valid_workflow_passes_all_schema_gates() {
             ])]),
         ),
     ]);
-    kani::assert_eq!(validate_workflow_schema(&doc), Ok(()))
+    assert_eq!(validate_workflow_schema(&doc), Ok(()));
 }
 
 #[test]
 fn kani_integration_version_mismatch_is_invalid_version() {
     let doc = make_doc(vec![("version", FieldValue::String("v2.0".to_owned()))]);
-    kani::assert_eq!(validate_version(&doc),
+    assert_eq!(validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: "v2.0".to_owned(),
-        }))
+        }));
 }
 
 #[test]
@@ -574,17 +574,17 @@ fn kani_integration_http_trigger_is_rejected() {
         "when",
         FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)]),
     )]);
-    kani::assert_eq!(validate_trigger(&doc),
-        Err(ValidationError::HttpTriggerOutOfCore))
+    assert_eq!(validate_trigger(&doc),
+        Err(ValidationError::HttpTriggerOutOfCore));
 }
 
 #[test]
 fn kani_integration_empty_workflow_is_rejected() {
     let doc = make_doc(vec![]);
-    kani::assert_eq!(validate_workflow_schema(&doc),
+    assert_eq!(validate_workflow_schema(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
-        }))
+        }));
 }
 
 #[test]
@@ -593,8 +593,8 @@ fn kani_integration_duplicate_field_caught() {
         ("name", FieldValue::String("first".to_owned())),
         ("name", FieldValue::String("second".to_owned())),
     ]);
-    kani::assert_eq!(validate_workflow_schema(&doc),
-        Err(ValidationError::DuplicateKey))
+    assert_eq!(validate_workflow_schema(&doc),
+        Err(ValidationError::DuplicateKey));
 }
 
 #[test]
@@ -605,21 +605,21 @@ fn kani_integration_multiple_primitives_caught() {
         ("do", FieldValue::Empty),
         ("finish", FieldValue::Empty),
     ]);
-    kani::assert_eq!(validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives))
+    assert_eq!(validate_single_primitive(&step),
+        Err(ValidationError::MultipleStepPrimitives));
 }
 
 #[test]
 fn kani_integration_missing_primitive_caught() {
     let step = make_step(vec![("id", FieldValue::String("bare_step".to_owned()))]);
-    kani::assert_eq!(validate_single_primitive(&step),
-        Err(ValidationError::MissingStepPrimitive))
+    assert_eq!(validate_single_primitive(&step),
+        Err(ValidationError::MissingStepPrimitive));
 }
 
 #[test]
 fn kani_integration_get_string_returns_correct_value() {
     let doc = make_doc(vec![("name", FieldValue::String("my_workflow".to_owned()))]);
-    kani::assert_eq!(doc.get_string("name"), Some("my_workflow"))
+    assert_eq!(doc.get_string("name"), Some("my_workflow"));
 }
 
 #[test]
@@ -628,8 +628,8 @@ fn kani_integration_has_field_positive_and_negative() {
         "version",
         FieldValue::String("velvet-ballistics/v1".to_owned()),
     )]);
-    kani::assert(doc.has_field("version"), "kani harness assertion")
-    kani::assert(!doc.has_field("name"), "kani harness assertion")
+    assert!(doc.has_field("version"), "kani harness assertion");
+    assert!(!doc.has_field("name"), "kani harness assertion");
 }
 
 #[test]
@@ -638,7 +638,7 @@ fn kani_integration_manual_trigger_accepted() {
         "when",
         FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
     )]);
-    kani::assert_eq!(validate_trigger(&doc), Ok(()))
+    assert_eq!(validate_trigger(&doc), Ok(()));
 }
 
 #[test]
@@ -653,7 +653,7 @@ fn kani_integration_schedule_trigger_with_cron_accepted() {
             )]),
         )]),
     )]);
-    kani::assert_eq!(validate_trigger(&doc), Ok(()))
+    assert_eq!(validate_trigger(&doc), Ok(()));
 }
 
 #[test]
@@ -668,7 +668,7 @@ fn kani_integration_event_trigger_with_type_accepted() {
             )]),
         )]),
     )]);
-    kani::assert_eq!(validate_trigger(&doc), Ok(()))
+    assert_eq!(validate_trigger(&doc), Ok(()));
 }
 
 #[test]
@@ -677,7 +677,7 @@ fn kani_integration_webhook_trigger_accepted() {
         "when",
         FieldValue::Mapping(vec![("webhook".to_owned(), FieldValue::Mapping(vec![]))]),
     )]);
-    kani::assert_eq!(validate_trigger(&doc), Ok(()))
+    assert_eq!(validate_trigger(&doc), Ok(()));
 }
 
 #[test]
@@ -686,7 +686,7 @@ fn kani_integration_step_with_set_primitive_accepted() {
         ("id", FieldValue::String("s1".to_owned())),
         ("set", FieldValue::Empty),
     ]);
-    kani::assert_eq!(validate_single_primitive(&step), Ok(()))
+    assert_eq!(validate_single_primitive(&step), Ok(()));
 }
 
 #[test]
@@ -695,7 +695,7 @@ fn kani_integration_step_with_repeat_primitive_accepted() {
         ("id", FieldValue::String("repeat_step".to_owned())),
         ("repeat", FieldValue::Empty),
     ]);
-    kani::assert_eq!(validate_single_primitive(&step), Ok(()))
+    assert_eq!(validate_single_primitive(&step), Ok(()));
 }
 
 #[test]
@@ -704,7 +704,7 @@ fn kani_integration_step_with_collect_primitive_accepted() {
         ("id", FieldValue::String("collect_step".to_owned())),
         ("collect", FieldValue::Empty),
     ]);
-    kani::assert_eq!(validate_single_primitive(&step), Ok(()))
+    assert_eq!(validate_single_primitive(&step), Ok(()));
 }
 
 #[test]
@@ -728,8 +728,8 @@ fn kani_integration_unknown_top_level_field_is_caught() {
         ),
         ("bogus_top_level", FieldValue::Empty),
     ]);
-    kani::assert_eq!(validate_workflow_schema(&doc),
-        Err(ValidationError::UnknownTopLevelField))
+    assert_eq!(validate_workflow_schema(&doc),
+        Err(ValidationError::UnknownTopLevelField));
 }
 
 #[test]
@@ -738,7 +738,7 @@ fn kani_integration_step_with_reduce_primitive_accepted() {
         ("id", FieldValue::String("reduce_step".to_owned())),
         ("reduce", FieldValue::Empty),
     ]);
-    kani::assert_eq!(validate_single_primitive(&step), Ok(()))
+    assert_eq!(validate_single_primitive(&step), Ok(()));
 }
 
 #[test]
@@ -750,8 +750,8 @@ fn kani_integration_multiple_triggers_rejected() {
             ("schedule".to_owned(), FieldValue::Mapping(vec![])),
         ]),
     )]);
-    kani::assert_eq!(validate_trigger(&doc),
+    assert_eq!(validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "multiple triggers".to_owned(),
-        }))
+        }));
 }

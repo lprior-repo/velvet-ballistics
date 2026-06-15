@@ -77,10 +77,10 @@ mod kani_taint_guard {
         if expected_fires {
             kani::assert_eq!(result,
                 Some(Taint::Clean),
-                "guard must fire with required=Clean for DeterministicPure + non-Clean input")
+                "guard must fire with required=Clean for DeterministicPure + non-Clean input");
         } else {
             kani::assert_eq!(result, None,
-                "guard must NOT fire when idempotency≠DeterministicPure or input=Clean")
+                "guard must NOT fire when idempotency≠DeterministicPure or input=Clean");
         }
     }
 
@@ -93,7 +93,7 @@ mod kani_taint_guard {
         let result = guard_decision(Idempotency::DeterministicPure, input_taint);
         kani::assert_eq!(result,
             Some(Taint::Clean),
-            "DeterministicPure + non-Clean input must always fire the guard")
+            "DeterministicPure + non-Clean input must always fire the guard");
     }
 
     /// Clean input never triggers the guard, regardless of idempotency.
@@ -103,7 +103,7 @@ mod kani_taint_guard {
         let idempotency = any_idempotency();
         let result = guard_decision(idempotency, Taint::Clean);
         kani::assert_eq!(result, None,
-            "Clean input must never trigger the guard for any idempotency")
+            "Clean input must never trigger the guard for any idempotency");
     }
 
     /// Non-DeterministicPure idempotency levels never trigger the guard.
@@ -115,6 +115,6 @@ mod kani_taint_guard {
         kani::assume(idempotency != Idempotency::DeterministicPure);
         let result = guard_decision(idempotency, input_taint);
         kani::assert_eq!(result, None,
-            "Non-DeterministicPure idempotency must never trigger the DeterministicPure guard")
+            "Non-DeterministicPure idempotency must never trigger the DeterministicPure guard");
     }
 }

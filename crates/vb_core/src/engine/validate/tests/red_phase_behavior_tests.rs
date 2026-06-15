@@ -88,18 +88,18 @@ mod valid_workflow_graph_acceptance {
     #[test]
     fn accepts_single_finish_node() {
         let parts = valid_parts();
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_node_bounds(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
-        kani::assert_eq!(validate_resource_contract(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_node_bounds(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
+        kani::assert_eq!(validate_resource_contract(&parts), Ok(()));
     }
 
     #[test]
     fn accepts_two_node_linear_chain() {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_node_bounds(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_node_bounds(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
     }
 
     #[test]
@@ -109,9 +109,9 @@ mod valid_workflow_graph_acceptance {
             nop_node_with_next(1, 2),
             finish_node(2, 0),
         ]);
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_node_bounds(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_node_bounds(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
     }
 
     #[test]
@@ -153,8 +153,8 @@ mod valid_workflow_graph_acceptance {
             constants: vec![ConstValue::I64(0)].into_boxed_slice(),
             ..parts
         };
-        kani::assert_eq!(validate_compiled_workflow(&p), Ok(()))
-        kani::assert_eq!(validate_transition_target(&p), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&p), Ok(()));
+        kani::assert_eq!(validate_transition_target(&p), Ok(()));
     }
 
     #[test]
@@ -172,9 +172,9 @@ mod valid_workflow_graph_acceptance {
             },
             finish_node(1, 0),
         ]);
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
-        kani::assert_eq!(validate_node_bounds(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
+        kani::assert_eq!(validate_node_bounds(&parts), Ok(()));
     }
 }
 
@@ -201,11 +201,13 @@ mod cycle_detection_and_backward_edges {
             },
         ]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(1),
                 to: StepIdx::new(0),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -221,11 +223,13 @@ mod cycle_detection_and_backward_edges {
             },
         }]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(0),
                 to: StepIdx::new(0),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -244,11 +248,13 @@ mod cycle_detection_and_backward_edges {
             },
         ]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::JumpCycle {
                 step: StepIdx::new(1),
                 target: StepIdx::new(0),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -281,11 +287,13 @@ mod cycle_detection_and_backward_edges {
             ..parts
         };
         let result = validate_compiled_workflow(&p);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(1),
                 to: StepIdx::new(0),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -302,11 +310,13 @@ mod cycle_detection_and_backward_edges {
             },
         ]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::BackwardEdge {
                 from: StepIdx::new(1),
                 to: StepIdx::new(0),
-            })
+            }
+        );
     }
 }
 
@@ -321,10 +331,12 @@ mod disconnected_unreachable_nodes {
     fn rejects_single_isolated_unreachable_node() {
         let parts = valid_parts_with_nodes(vec![finish_node(0, 0), nop_node(1)]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::UnreachableNode {
                 step: StepIdx::new(1),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -336,20 +348,24 @@ mod disconnected_unreachable_nodes {
             nop_node(3),
         ]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::UnreachableNode {
                 step: StepIdx::new(1),
-            }))
+            })
+        );
     }
 
     #[test]
     fn unreachable_node_error_exact_fields_match() {
         let parts = valid_parts_with_nodes(vec![finish_node(0, 0), nop_node(1)]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::UnreachableNode {
                 step: StepIdx::new(1),
-            })
+            }
+        );
     }
 
     #[test]
@@ -359,7 +375,7 @@ mod disconnected_unreachable_nodes {
             nop_node_with_next(1, 2),
             finish_node(2, 0),
         ]);
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
     }
 }
 
@@ -383,11 +399,13 @@ mod duplicate_node_ids_detection {
             },
         }]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(0),
                 actual: StepIdx::new(5),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -405,11 +423,13 @@ mod duplicate_node_ids_detection {
             finish_node(2, 0),
         ]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(1),
                 actual: StepIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -428,11 +448,13 @@ mod duplicate_node_ids_detection {
             },
         ]);
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(1),
                 actual: StepIdx::new(5),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -446,11 +468,13 @@ mod duplicate_node_ids_detection {
             kind: CompiledNodeKind::Nop,
         }]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(0),
                 actual: StepIdx::new(7),
-            })
+            }
+        );
     }
 }
 
@@ -479,10 +503,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ConstOutOfBounds {
                 constant: ConstIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -503,10 +529,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(5),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -527,12 +555,14 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::Expression(
                 crate::errors::CoreError::ExprOutOfBounds {
                     expr: ExprIdx::new(99),
                 }
-            )))
+            ))
+        );
     }
 
     #[test]
@@ -556,10 +586,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "object_fields",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -583,10 +615,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "list_items",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -607,7 +641,7 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result, Err(WorkflowError::EmptyBranchTable))
+        kani::assert_eq!(result, Err(WorkflowError::EmptyBranchTable));
     }
 
     #[test]
@@ -628,7 +662,7 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result, Err(WorkflowError::EmptyBranchTable))
+        kani::assert_eq!(result, Err(WorkflowError::EmptyBranchTable));
     }
 
     #[test]
@@ -653,10 +687,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -677,11 +713,13 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(0),
                 to: StepIdx::new(0),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -702,10 +740,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "branch_count",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -727,10 +767,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_retry_attempts",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -752,10 +794,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -776,10 +820,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(50),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -798,10 +844,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -822,10 +870,12 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(77),
-            }))
+            })
+        );
     }
 }
 
@@ -844,10 +894,12 @@ mod resource_contract_exceeded {
         };
         parts.resource_contract.max_steps = 2;
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_steps",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -858,10 +910,12 @@ mod resource_contract_exceeded {
         };
         parts.resource_contract.max_slots = 3;
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_slots",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -873,10 +927,12 @@ mod resource_contract_exceeded {
         };
         parts.resource_contract.max_constants = 2;
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_constants",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -892,10 +948,12 @@ mod resource_contract_exceeded {
             ..parts
         };
         let result = validate_compiled_workflow(&parts_with_accessors);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_accessors",
-            }))
+            })
+        );
     }
 
     #[test]
@@ -911,10 +969,12 @@ mod resource_contract_exceeded {
             ..parts
         };
         let result = validate_compiled_workflow(&parts_with_expr);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_expressions",
-            }))
+            })
+        );
     }
 }
 
@@ -937,10 +997,12 @@ mod target_out_of_bounds {
                 target: StepIdx::new(99),
             },
         }]);
-        kani::assert_eq!(validate_transition_target(&parts),
+        kani::assert_eq!(
+            validate_transition_target(&parts),
             Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -959,10 +1021,12 @@ mod target_out_of_bounds {
                 done: StepIdx::new(99),
             },
         }]);
-        kani::assert_eq!(validate_transition_target(&parts),
+        kani::assert_eq!(
+            validate_transition_target(&parts),
             Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -972,10 +1036,12 @@ mod target_out_of_bounds {
             nodes: vec![finish_node(0, 0)].into_boxed_slice(),
             ..valid_parts()
         };
-        kani::assert_eq!(validate_compiled_workflow(&parts),
+        kani::assert_eq!(
+            validate_compiled_workflow(&parts),
             Err(WorkflowError::EntryOutOfBounds {
                 entry: StepIdx::new(42),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -988,10 +1054,12 @@ mod target_out_of_bounds {
             error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]);
-        kani::assert_eq!(validate_node_bounds(&parts),
+        kani::assert_eq!(
+            validate_node_bounds(&parts),
             Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -1011,10 +1079,12 @@ mod target_out_of_bounds {
             slot_count: 1,
             ..valid_parts()
         };
-        kani::assert_eq!(validate_compiled_workflow(&parts),
+        kani::assert_eq!(
+            validate_compiled_workflow(&parts),
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(77),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -1034,10 +1104,12 @@ mod target_out_of_bounds {
             constants: Box::new([]),
             ..valid_parts()
         };
-        kani::assert_eq!(validate_compiled_workflow(&parts),
+        kani::assert_eq!(
+            validate_compiled_workflow(&parts),
             Err(WorkflowError::ConstOutOfBounds {
                 constant: ConstIdx::new(99),
-            }))
+            })
+        );
     }
 }
 
@@ -1063,10 +1135,12 @@ mod taint_secret_validation {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }))
+            })
+        );
     }
 
     #[test]
@@ -1085,10 +1159,12 @@ mod taint_secret_validation {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert_eq!(result,
+        kani::assert_eq!(
+            result,
             Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }))
+            })
+        );
     }
 }
 
@@ -1113,11 +1189,13 @@ mod error_message_exactness_verification {
             },
         ]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::BackwardEdge {
                 from: StepIdx::new(1),
                 to: StepIdx::new(0),
-            })
+            }
+        );
     }
 
     #[test]
@@ -1127,8 +1205,8 @@ mod error_message_exactness_verification {
             ..valid_parts()
         };
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(
-);    }
+        kani::assert_eq!();
+    }
 
     #[test]
     fn nodeidmismatch_error_contains_exact_expected_actual() {
@@ -1141,11 +1219,13 @@ mod error_message_exactness_verification {
             kind: CompiledNodeKind::Nop,
         }]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(0),
                 actual: StepIdx::new(3),
-            })
+            }
+        );
     }
 
     #[test]
@@ -1156,10 +1236,12 @@ mod error_message_exactness_verification {
             ..valid_parts()
         };
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::EntryOutOfBounds {
                 entry: StepIdx::new(55),
-            })
+            }
+        );
     }
 
     #[test]
@@ -1170,8 +1252,8 @@ mod error_message_exactness_verification {
         };
         parts.resource_contract.max_steps = 2;
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(
-);    }
+        kani::assert_eq!();
+    }
 
     #[test]
     fn stepoutofbounds_error_contains_exact_step_field() {
@@ -1186,10 +1268,12 @@ mod error_message_exactness_verification {
             },
         }]);
         let err = validate_transition_target(&parts).unwrap_err();
-        kani::assert_eq!(err,
+        kani::assert_eq!(
+            err,
             WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(42),
-            })
+            }
+        );
     }
 }
 
@@ -1281,8 +1365,8 @@ mod complex_nested_workflow_validation {
             slot_count: 2,
             ..valid_parts()
         };
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
     }
 
     #[test]
@@ -1344,8 +1428,8 @@ mod complex_nested_workflow_validation {
             entry: StepIdx::new(0),
             ..valid_parts()
         };
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
     }
 
     #[test]
@@ -1373,8 +1457,8 @@ mod complex_nested_workflow_validation {
             .into_boxed_slice(),
             ..valid_parts()
         };
-        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-        kani::assert_eq!(validate_transition_target(&parts), Ok(()))
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
     }
 
     #[test]
@@ -1382,8 +1466,9 @@ mod complex_nested_workflow_validation {
         let parts = improperly_nested_loop_parts();
         let result = validate_compiled_workflow(&parts);
         kani::assert(matches!(
-            result, Err(WorkflowError::ImproperLoopNesting { .. })
-        ))
+            result,
+            Err(WorkflowError::ImproperLoopNesting { .. })
+        ));
     }
 }
 
@@ -1399,17 +1484,17 @@ mod determinism_idempotency_of_validation {
         let parts = valid_parts();
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert_eq!(
-);        let r3 = validate_node_bounds(&parts);
+        kani::assert_eq!();
+        let r3 = validate_node_bounds(&parts);
         let r4 = validate_node_bounds(&parts);
-        kani::assert_eq!(
-);        let r5 = validate_transition_target(&parts);
+        kani::assert_eq!();
+        let r5 = validate_transition_target(&parts);
         let r6 = validate_transition_target(&parts);
-        kani::assert_eq!(
-);        let r7 = validate_resource_contract(&parts);
+        kani::assert_eq!();
+        let r7 = validate_resource_contract(&parts);
         let r8 = validate_resource_contract(&parts);
-        kani::assert_eq!(
-);    }
+        kani::assert_eq!();
+    }
 
     #[test]
     fn validation_is_deterministic_on_invalid_input() {
@@ -1426,17 +1511,17 @@ mod determinism_idempotency_of_validation {
         ]);
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert_eq!(
-);    }
+        kani::assert_eq!();
+    }
 
     #[test]
     fn validation_is_idempotent_across_multiple_calls() {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
         for _ in 0..10 {
-            kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()))
-            kani::assert_eq!(validate_node_bounds(&parts), Ok(()))
-            kani::assert_eq!(validate_transition_target(&parts), Ok(()))
-            kani::assert_eq!(validate_resource_contract(&parts), Ok(()))
+            kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+            kani::assert_eq!(validate_node_bounds(&parts), Ok(()));
+            kani::assert_eq!(validate_transition_target(&parts), Ok(()));
+            kani::assert_eq!(validate_resource_contract(&parts), Ok(()));
         }
     }
 
@@ -1448,7 +1533,7 @@ mod determinism_idempotency_of_validation {
         };
         let expected = Err(WorkflowError::EmptyNodes);
         for _ in 0..10 {
-            kani::assert_eq!(validate_compiled_workflow(&parts), expected)
+            kani::assert_eq!(validate_compiled_workflow(&parts), expected);
         }
     }
 
@@ -1464,9 +1549,11 @@ mod determinism_idempotency_of_validation {
             nop_node_with_next(1, 2),
             finish_node(2, 0),
         ]);
-        kani::assert_eq!(validate_compiled_workflow(&parts_a), Ok(()))
-        kani::assert_eq!(validate_compiled_workflow(&parts_a),
-            validate_compiled_workflow(&parts_b))
+        kani::assert_eq!(validate_compiled_workflow(&parts_a), Ok(()));
+        kani::assert_eq!(
+            validate_compiled_workflow(&parts_a),
+            validate_compiled_workflow(&parts_b)
+        );
     }
 }
 
@@ -1486,7 +1573,7 @@ mod kani_harnesses {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert(r1 == r2, "kani harness assertion")
+        kani::assert(r1 == r2, "kani harness assertion");
     }
 
     /// Proves that `validate_compiled_workflow` never panics on a
@@ -1528,7 +1615,7 @@ mod kani_harnesses {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
         let r1 = validate_node_bounds(&parts);
         let r2 = validate_node_bounds(&parts);
-        kani::assert(r1 == r2, "kani harness assertion")
+        kani::assert(r1 == r2, "kani harness assertion");
     }
 
     /// Proves determinism of `validate_transition_target` when called
@@ -1538,7 +1625,7 @@ mod kani_harnesses {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
         let r1 = validate_transition_target(&parts);
         let r2 = validate_transition_target(&parts);
-        kani::assert(r1 == r2, "kani harness assertion")
+        kani::assert(r1 == r2, "kani harness assertion");
     }
 
     /// Proves determinism of `validate_resource_contract` when called
@@ -1548,6 +1635,6 @@ mod kani_harnesses {
         let parts = valid_parts();
         let r1 = validate_resource_contract(&parts);
         let r2 = validate_resource_contract(&parts);
-        kani::assert(r1 == r2, "kani harness assertion")
+        kani::assert(r1 == r2, "kani harness assertion");
     }
 }

@@ -51,21 +51,31 @@ mod harnesses {
             // Serialize
             let serialized = serialize_symbolic_code(&code);
             // Should produce JSON string of the symbolic name
-            kani::assert(serialized.contains(entry.symbolic), "Serialized form must contain the symbolic name")
+            kani::assert(
+                serialized.contains(entry.symbolic),
+                "Serialized form must contain the symbolic name",
+            );
 
             // Deserialize
             let deserialized = deserialize_symbolic_code(&serialized);
-            kani::assert(deserialized.is_ok(), "Deserialization must succeed for registered codes")
-            kani::assert_eq!(deserialized.map(|code| code.as_str()),
+            kani::assert(
+                deserialized.is_ok(),
+                "Deserialization must succeed for registered codes",
+            );
+            kani::assert_eq!(
+                deserialized.map(|code| code.as_str()),
                 Ok(entry.symbolic),
-                "Deserialized SymbolicCode must match original")
+                "Deserialized SymbolicCode must match original"
+            );
 
             // Round-trip identity
             let rt = roundtrip(&code);
-            kani::assert(rt.is_ok(), "Round-trip must succeed")
-            kani::assert_eq!(rt.map(|code| code.as_str()),
+            kani::assert(rt.is_ok(), "Round-trip must succeed");
+            kani::assert_eq!(
+                rt.map(|code| code.as_str()),
                 Ok(code.as_str()),
-                "Round-trip identity must hold")
+                "Round-trip identity must hold"
+            );
         }
     }
 
@@ -81,7 +91,7 @@ mod harnesses {
         ];
         for s in unknown.iter() {
             let result = deserialize_symbolic_code(s);
-            kani::assert(result.is_err(), "Unknown code '{}' must be rejected", s)
+            kani::assert(result.is_err(), "Unknown code '{}' must be rejected", s);
         }
     }
 }

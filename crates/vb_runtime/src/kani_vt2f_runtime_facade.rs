@@ -217,32 +217,40 @@ fn vt2f_runtime_facade_semantics() {
     let before = strict_state.queue_depth;
     let strict_result = strict_state.submit_direct(RuntimePolicy::Strict, StoreMode::Missing);
     kani::assert(matches!(
-        strict_result, Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-    ))
-    kani::assert_eq!(before, strict_state.queue_depth)
+        strict_result,
+        Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
+    ));
+    kani::assert_eq!(before, strict_state.queue_depth);
 
     let mut admitted_state = FacadeKernelState::seeded(selector);
     let admitted_before = admitted_state.queue_depth;
     let admitted_result = admitted_state.submit_direct(policy, store);
     if policy == RuntimePolicy::Relaxed || store == StoreMode::Accepted {
-        kani::assert(admitted_result.is_ok(), "kani harness assertion")
-        kani::assert_eq!(admitted_state.queue_depth,
-            admitted_before.saturating_add(1))
+        kani::assert(admitted_result.is_ok(), "kani harness assertion");
+        kani::assert_eq!(
+            admitted_state.queue_depth,
+            admitted_before.saturating_add(1)
+        );
     } else {
         kani::assert(matches!(
-            admitted_result, Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-        ))
-        kani::assert_eq!(admitted_state.queue_depth, admitted_before)
+            admitted_result,
+            Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
+        ));
+        kani::assert_eq!(admitted_state.queue_depth, admitted_before);
     }
 
     let fail_state = FacadeKernelState::seeded(selector);
     let unrelated_before = fail_state.snapshot_other(100);
     let ticket_run = shape.run(fail_state.target, fail_state.other, selector);
-    kani::assert(fail_state.fail_action_enqueue(ticket_run).is_ok(), "kani harness assertion")
+    kani::assert(
+        fail_state.fail_action_enqueue(ticket_run).is_ok(),
+        "kani harness assertion",
+    );
     kani::assert(matches!(
-        fail_state.tick_after_facade_fail_action(ticket_run), Err(KernelRuntimeError::InvalidActionCompletion)
-    ))
-    kani::assert_eq!(unrelated_before, fail_state.snapshot_other(100))
+        fail_state.tick_after_facade_fail_action(ticket_run),
+        Err(KernelRuntimeError::InvalidActionCompletion)
+    ));
+    kani::assert_eq!(unrelated_before, fail_state.snapshot_other(100));
 
     let mut ask_state = FacadeKernelState::seeded(selector);
     let ask_unrelated_before = ask_state.snapshot_other(200);
@@ -252,18 +260,19 @@ fn vt2f_runtime_facade_semantics() {
     // ERR-004 / LETHAL-001 fix: Stale ask MUST return RunNotFound (matching is Ok).
     // The else branch now correctly covers Stale, WrongRun, and AbsentRun.
     if matches!(shape, TicketShape::Matching) {
-        kani::assert(answer_result.is_ok(), "kani harness assertion")
-        kani::assert(tick_result.is_ok(), "kani harness assertion")
-        kani::assert_eq!(ask_state.answer_value, Some(value))
-        kani::assert_eq!(ask_state.answer_taint, Taint::Clean)
+        kani::assert(answer_result.is_ok(), "kani harness assertion");
+        kani::assert(tick_result.is_ok(), "kani harness assertion");
+        kani::assert_eq!(ask_state.answer_value, Some(value));
+        kani::assert_eq!(ask_state.answer_taint, Taint::Clean);
     } else {
         // Stale/WrongRun/AbsentRun all return RunNotFound per ERR-004 contract.
         kani::assert(matches!(
-            answer_result, Err(KernelRuntimeError::RunNotFound)
-        ))
-        kani::assert(matches!(tick_result, Err(KernelRuntimeError::RunNotFound)))
-        kani::assert_eq!(ask_state.answer_value, None)
-        kani::assert(ask_state.target_active, "kani harness assertion")
+            answer_result,
+            Err(KernelRuntimeError::RunNotFound)
+        ));
+        kani::assert(matches!(tick_result, Err(KernelRuntimeError::RunNotFound)));
+        kani::assert_eq!(ask_state.answer_value, None);
+        kani::assert(ask_state.target_active, "kani harness assertion");
     }
-    kani::assert_eq!(ask_unrelated_before, ask_state.snapshot_other(200))
+    kani::assert_eq!(ask_unrelated_before, ask_state.snapshot_other(200));
 }

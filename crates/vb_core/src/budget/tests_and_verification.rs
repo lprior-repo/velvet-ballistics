@@ -46,7 +46,7 @@ mod kani_harnesses {
         kani::assume(requested <= u64::MAX / 2);
         let result = add_dim(current, requested, "cpu");
         // add_dim with bounded inputs cannot overflow - returns Ok
-        kani::assert(result.is_ok(), "kani harness assertion")
+        kani::assert(result.is_ok(), "kani harness assertion");
     }
 
     /// K-B2: sub_dim is panic-free for bounded symbolic inputs.
@@ -59,7 +59,7 @@ mod kani_harnesses {
         kani::assume(requested <= current);
         let result = sub_dim(current, requested, "disk");
         // sub_dim with valid inputs (requested <= current) cannot underflow - returns Ok
-        kani::assert(result.is_ok(), "kani harness assertion")
+        kani::assert(result.is_ok(), "kani harness assertion");
     }
 
     /// K-B3: add_dim overflow with symbolic inputs.

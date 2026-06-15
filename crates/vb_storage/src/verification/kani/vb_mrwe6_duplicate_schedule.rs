@@ -47,10 +47,10 @@ fn vb_mrwe6_duplicate_arbitrary_facts() {
 
     if equal_payload {
         kani::assert_eq!(decision,
-            expected_equal_payload_decision(retry_class, marker_present))
+            expected_equal_payload_decision(retry_class, marker_present));
     } else {
         kani::assert_eq!(decision,
-            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict)
+            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict);
     }
-    kani::assert(unsupported_never_idempotent(retry_class, decision))
+    kani::assert(unsupported_never_idempotent(retry_class, decision));
 }

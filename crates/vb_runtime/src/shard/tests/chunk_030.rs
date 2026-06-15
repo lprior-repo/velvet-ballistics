@@ -7,17 +7,17 @@
 fn shard_created_with_default_config_has_expected_properties() {
     let config = ShardConfig::default();
     let shard = Shard::new(config);
-    kani::assert_eq!(shard.command_queue_capacity(), 1024)
-    kani::assert_eq!(shard.active_run_count(), 0)
-    kani::assert_eq!(shard.pending_timer_count(), 0)
-    kani::assert_eq!(shard.is_shutting_down(), false)
+    kani::assert_eq!(shard.command_queue_capacity(), 1024);
+    kani::assert_eq!(shard.active_run_count(), 0);
+    kani::assert_eq!(shard.pending_timer_count(), 0);
+    kani::assert_eq!(shard.is_shutting_down(), false);
     let status = shard.status();
-    kani::assert_eq!(status.health, super::ShardHealth::Running)
-    kani::assert_eq!(status.running, true)
-    kani::assert_eq!(status.shutting_down, false)
-    kani::assert_eq!(status.command_queue_capacity, 1024)
-    kani::assert_eq!(status.max_active_runs, 1024)
-    kani::assert_eq!(status.step_budget_per_tick, 1000)
+    kani::assert_eq!(status.health, super::ShardHealth::Running);
+    kani::assert_eq!(status.running, true);
+    kani::assert_eq!(status.shutting_down, false);
+    kani::assert_eq!(status.command_queue_capacity, 1024);
+    kani::assert_eq!(status.max_active_runs, 1024);
+    kani::assert_eq!(status.step_budget_per_tick, 1000);
 }
 
 #[test]
@@ -32,14 +32,14 @@ fn shard_created_with_custom_config_has_custom_properties() {
         snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
-    kani::assert_eq!(shard.command_queue_capacity(), 64)
-    kani::assert_eq!(shard.active_run_count(), 0)
+    kani::assert_eq!(shard.command_queue_capacity(), 64);
+    kani::assert_eq!(shard.active_run_count(), 0);
     let status = shard.status();
-    kani::assert_eq!(status.command_queue_capacity, 64)
-    kani::assert_eq!(status.max_active_runs, 16)
-    kani::assert_eq!(status.step_budget_per_tick, 500)
-    kani::assert_eq!(status.trace_capacity, 128)
-    kani::assert_eq!(status.runtime_policy, vb_core::policy::RuntimePolicy::Strict)
+    kani::assert_eq!(status.command_queue_capacity, 64);
+    kani::assert_eq!(status.max_active_runs, 16);
+    kani::assert_eq!(status.step_budget_per_tick, 500);
+    kani::assert_eq!(status.trace_capacity, 128);
+    kani::assert_eq!(status.runtime_policy, vb_core::policy::RuntimePolicy::Strict);
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn shard_config_new_rejects_zero_queue_capacity_via_validated_constructor() {
         Err(RuntimeError::CommandQueueCapacityExceeded {
             capacity: 0,
             max: super::MAX_COMMAND_QUEUE_CAPACITY,
-        }))
+        }));
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn shard_config_new_rejects_exceeding_max_command_queue_capacity() {
         Err(RuntimeError::CommandQueueCapacityExceeded {
             capacity: too_large,
             max: super::MAX_COMMAND_QUEUE_CAPACITY,
-        }))
+        }));
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn shard_config_new_rejects_zero_active_runs_via_validated_constructor() {
         0,
         vb_core::policy::RuntimePolicy::Strict,
     );
-    kani::assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero))
+    kani::assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
 }
 
 #[test]
@@ -96,13 +96,13 @@ fn shard_config_new_accepts_minimal_valid_config() {
         1,
         vb_core::policy::RuntimePolicy::Relaxed,
     );
-    kani::assert_eq!(result.is_ok(), true)
+    kani::assert_eq!(result.is_ok(), true);
     let config = match result {
         Ok(c) => c,
         Err(_) => return,
     };
-    kani::assert_eq!(config.command_queue_capacity, 1)
-    kani::assert_eq!(config.max_active_runs, 1)
+    kani::assert_eq!(config.command_queue_capacity, 1);
+    kani::assert_eq!(config.max_active_runs, 1);
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn shard_config_new_accepts_maximum_capacity_limit() {
         1,
         vb_core::policy::RuntimePolicy::Relaxed,
     );
-    kani::assert_eq!(result.is_ok(), true)
+    kani::assert_eq!(result.is_ok(), true);
 }
 
 // =========================================================================
@@ -126,23 +126,23 @@ fn shard_status_reports_running_health_for_fresh_shard() {
     let config = small_config();
     let shard = Shard::new(config);
     let status = shard.status();
-    kani::assert_eq!(status.health, super::ShardHealth::Running)
-    kani::assert_eq!(status.running, true)
-    kani::assert_eq!(status.shutting_down, false)
-    kani::assert_eq!(status.active_runs, 0)
-    kani::assert_eq!(status.command_queue_depth, 0)
+    kani::assert_eq!(status.health, super::ShardHealth::Running);
+    kani::assert_eq!(status.running, true);
+    kani::assert_eq!(status.shutting_down, false);
+    kani::assert_eq!(status.active_runs, 0);
+    kani::assert_eq!(status.command_queue_depth, 0);
 }
 
 #[test]
 fn shard_status_reports_shutting_down_after_shutdown_command() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(false))
+    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(false));
     let status = shard.status();
-    kani::assert_eq!(status.health, super::ShardHealth::ShuttingDown)
-    kani::assert_eq!(status.running, false)
-    kani::assert_eq!(status.shutting_down, true)
+    kani::assert_eq!(status.health, super::ShardHealth::ShuttingDown);
+    kani::assert_eq!(status.running, false);
+    kani::assert_eq!(status.shutting_down, true);
 }
 
 #[test]
@@ -158,18 +158,18 @@ fn shard_status_active_runs_increments_after_submitting_run() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 1)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 1);
     let status = shard.status();
-    kani::assert_eq!(status.active_runs, 1)
+    kani::assert_eq!(status.active_runs, 1);
 }
 
 #[test]
 fn shard_is_shutting_down_returns_false_before_shutdown_command() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    kani::assert_eq!(shard.is_shutting_down(), false)
+    kani::assert_eq!(shard.is_shutting_down(), false);
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -178,20 +178,20 @@ fn shard_is_shutting_down_returns_false_before_shutdown_command() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.is_shutting_down(), false)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.is_shutting_down(), false);
 }
 
 #[test]
 fn shard_tick_returns_false_when_shutting_down_and_queue_empty() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(false))
-    kani::assert_eq!(shard.tick(), Ok(false))
-    kani::assert_eq!(shard.tick(), Ok(false))
-    kani::assert_eq!(shard.is_shutting_down(), true)
+    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(false));
+    kani::assert_eq!(shard.tick(), Ok(false));
+    kani::assert_eq!(shard.tick(), Ok(false));
+    kani::assert_eq!(shard.is_shutting_down(), true);
 }
 
 // =========================================================================
@@ -202,20 +202,20 @@ fn shard_tick_returns_false_when_shutting_down_and_queue_empty() {
 fn shard_drain_for_shutdown_clears_queue_and_shuts_down() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()))
-    kani::assert_eq!(shard.drain_for_shutdown(), Ok(()))
-    kani::assert_eq!(shard.is_shutting_down(), true)
-    kani::assert_eq!(shard.command_queue_len(), 0)
+    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    kani::assert_eq!(shard.drain_for_shutdown(), Ok(()));
+    kani::assert_eq!(shard.is_shutting_down(), true);
+    kani::assert_eq!(shard.command_queue_len(), 0);
 }
 
 #[test]
 fn shard_drain_pending_and_shutdown_clears_timers_and_shuts_down() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    kani::assert_eq!(shard.drain_pending_and_shutdown(), Ok(()))
-    kani::assert_eq!(shard.is_shutting_down(), true)
-    kani::assert_eq!(shard.pending_timer_count(), 0)
-    kani::assert_eq!(shard.command_queue_len(), 0)
+    kani::assert_eq!(shard.drain_pending_and_shutdown(), Ok(()));
+    kani::assert_eq!(shard.is_shutting_down(), true);
+    kani::assert_eq!(shard.pending_timer_count(), 0);
+    kani::assert_eq!(shard.command_queue_len(), 0);
 }
 
 #[test]
@@ -231,14 +231,14 @@ fn shard_remaining_capacity_decreases_after_each_enqueue() {
     };
     let shard = Shard::new(config);
     let initial = shard.remaining_capacity();
-    kani::assert_eq!(initial, 8)
+    kani::assert_eq!(initial, 8);
     kani::assert_eq!(shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(9999),
             reason: None,
         }),
-        Ok(()))
-    kani::assert_eq!(shard.remaining_capacity(), 7)
-    kani::assert_eq!(shard.command_queue_len(), 1)
+        Ok(()));
+    kani::assert_eq!(shard.remaining_capacity(), 7);
+    kani::assert_eq!(shard.command_queue_len(), 1);
 }
 
 #[test]
@@ -255,17 +255,17 @@ fn shard_can_process_commands_in_fifo_order() {
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
+        Ok(()));
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run: run_b,
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 1)
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 2)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 1);
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 2);
 }
 
 // =========================================================================
@@ -284,10 +284,10 @@ fn shard_command_queue_initial_capacity_matches_config() {
         snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
-    kani::assert_eq!(shard.command_queue_capacity(), 256)
-    kani::assert_eq!(shard.remaining_capacity(), 256)
-    kani::assert_eq!(shard.command_queue_len(), 0)
-    kani::assert_eq!(shard.is_queue_full(), false)
+    kani::assert_eq!(shard.command_queue_capacity(), 256);
+    kani::assert_eq!(shard.remaining_capacity(), 256);
+    kani::assert_eq!(shard.command_queue_len(), 0);
+    kani::assert_eq!(shard.is_queue_full(), false);
 }
 
 #[test]
@@ -295,8 +295,8 @@ fn shard_frame_pool_metrics_new_shard_has_no_pools() {
     let config = small_config();
     let shard = Shard::new(config);
     let (free, total) = shard.frame_pool_metrics();
-    kani::assert_eq!(free, 0)
-    kani::assert_eq!(total, 0)
+    kani::assert_eq!(free, 0);
+    kani::assert_eq!(total, 0);
 }
 
 #[test]
@@ -312,14 +312,14 @@ fn shard_trace_ring_capacity_matches_config() {
     };
     let shard = Shard::new(config);
     let status = shard.status();
-    kani::assert_eq!(status.trace_capacity, 32)
+    kani::assert_eq!(status.trace_capacity, 32);
 }
 
 #[test]
 fn shard_pending_timer_count_zero_for_new_shard() {
     let config = small_config();
     let shard = Shard::new(config);
-    kani::assert_eq!(shard.pending_timer_count(), 0)
+    kani::assert_eq!(shard.pending_timer_count(), 0);
 }
 
 #[test]
@@ -330,8 +330,8 @@ fn shard_snapshot_run_returns_not_found_for_unknown_run() {
     let response = shard.snapshot_run(unknown_run, 42);
     match response {
         InspectResponse::NotFound { run, correlation } => {
-            kani::assert_eq!(run, unknown_run)
-            kani::assert_eq!(correlation, 42)
+            kani::assert_eq!(run, unknown_run);
+            kani::assert_eq!(correlation, 42);
         }
         InspectResponse::Found(_) => panic!("expected NotFound for unknown run"),
     }
@@ -350,13 +350,13 @@ fn shard_snapshot_run_returns_found_for_active_run() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
     let response = shard.snapshot_run(run, 99);
     match response {
         InspectResponse::Found(snapshot) => {
-            kani::assert_eq!(snapshot.run, run)
-            kani::assert_eq!(snapshot.correlation, 99)
+            kani::assert_eq!(snapshot.run, run);
+            kani::assert_eq!(snapshot.correlation, 99);
         }
         InspectResponse::NotFound { .. } => panic!("expected Found for active run"),
     }
@@ -382,10 +382,10 @@ fn shard_enqueue_rejects_when_queue_is_full() {
         run: super::RunId::new(7001),
         reason: None,
     };
-    kani::assert_eq!(shard.enqueue(cancel_cmd.clone()), Ok(()))
-    kani::assert_eq!(shard.enqueue(cancel_cmd.clone()), Ok(()))
-    kani::assert_eq!(shard.enqueue(cancel_cmd), Err(RuntimeError::QueueFull))
-    kani::assert_eq!(shard.is_queue_full(), true)
+    kani::assert_eq!(shard.enqueue(cancel_cmd.clone()), Ok(()));
+    kani::assert_eq!(shard.enqueue(cancel_cmd.clone()), Ok(()));
+    kani::assert_eq!(shard.enqueue(cancel_cmd), Err(RuntimeError::QueueFull));
+    kani::assert_eq!(shard.is_queue_full(), true);
 }
 
 #[test]
@@ -400,13 +400,13 @@ fn shard_is_queue_full_returns_false_when_below_capacity() {
         snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
-    kani::assert_eq!(shard.is_queue_full(), false)
+    kani::assert_eq!(shard.is_queue_full(), false);
     let cancel_cmd = ShardCommand::Cancel {
         run: super::RunId::new(7002),
         reason: None,
     };
-    kani::assert_eq!(shard.enqueue(cancel_cmd), Ok(()))
-    kani::assert_eq!(shard.is_queue_full(), false)
+    kani::assert_eq!(shard.enqueue(cancel_cmd), Ok(()));
+    kani::assert_eq!(shard.is_queue_full(), false);
 }
 
 #[test]
@@ -432,25 +432,25 @@ fn shard_max_active_runs_rejects_excess_submissions() {
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run: run_b,
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 2)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 2);
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run: run_c,
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
+        Ok(()));
     kani::assert_eq!(shard.tick(),
-        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 }))
-    kani::assert_eq!(shard.active_run_count(), 2)
+        Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 }));
+    kani::assert_eq!(shard.active_run_count(), 2);
 }
 
 #[test]
@@ -466,9 +466,9 @@ fn shard_command_queue_capacity_match_is_exact_after_construction() {
     };
     let shard = Shard::new(config);
     let status = shard.status();
-    kani::assert_eq!(status.command_queue_capacity, 512)
-    kani::assert_eq!(status.command_queue_depth, 0)
-    kani::assert_eq!(shard.remaining_capacity(), 512)
+    kani::assert_eq!(status.command_queue_capacity, 512);
+    kani::assert_eq!(status.command_queue_depth, 0);
+    kani::assert_eq!(shard.remaining_capacity(), 512);
 }
 
 #[test]
@@ -483,17 +483,17 @@ fn shard_queue_is_empty_and_full_are_mutually_consistent() {
         snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
-    kani::assert_eq!(shard.command_queue_len(), 0)
-    kani::assert_eq!(shard.remaining_capacity(), 1)
-    kani::assert_eq!(shard.is_queue_full(), false)
+    kani::assert_eq!(shard.command_queue_len(), 0);
+    kani::assert_eq!(shard.remaining_capacity(), 1);
+    kani::assert_eq!(shard.is_queue_full(), false);
     let cancel_cmd = ShardCommand::Cancel {
         run: super::RunId::new(7006),
         reason: None,
     };
-    kani::assert_eq!(shard.enqueue(cancel_cmd), Ok(()))
-    kani::assert_eq!(shard.command_queue_len(), 1)
-    kani::assert_eq!(shard.remaining_capacity(), 0)
-    kani::assert_eq!(shard.is_queue_full(), true)
+    kani::assert_eq!(shard.enqueue(cancel_cmd), Ok(()));
+    kani::assert_eq!(shard.command_queue_len(), 1);
+    kani::assert_eq!(shard.remaining_capacity(), 0);
+    kani::assert_eq!(shard.is_queue_full(), true);
 }
 
 // =========================================================================
@@ -514,16 +514,16 @@ fn shard_multiple_runs_different_states_preserve_isolation() {
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run: run_b,
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 2)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 2);
     let Some(_) = shard.timer_entry(run_a) else {
         panic!("run_a should have a timer entry");
     };
@@ -534,10 +534,10 @@ fn shard_multiple_runs_different_states_preserve_isolation() {
             run: run_a,
             reason: None,
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 1)
-    kani::assert_eq!(shard.timer_entry(run_b).is_some(), true)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 1);
+    kani::assert_eq!(shard.timer_entry(run_b).is_some(), true);
 }
 
 #[test]
@@ -557,17 +557,17 @@ fn shard_sequential_ticks_process_all_queued_commands() {
             workflow: workflow_a,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run: run_b,
             workflow: workflow_b,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 2)
-    kani::assert_eq!(shard.command_queue_len(), 0)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 2);
+    kani::assert_eq!(shard.command_queue_len(), 0);
 }
 
 #[test]
@@ -583,17 +583,17 @@ fn shard_cancel_command_removes_run_and_frees_resources() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 1)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 1);
     kani::assert_eq!(shard.enqueue(ShardCommand::Cancel {
             run,
             reason: Some(String::from("test cancellation")),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 0)
-    kani::assert_eq!(shard.pending_timer_count(), 0)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 0);
+    kani::assert_eq!(shard.pending_timer_count(), 0);
 }
 
 // =========================================================================
@@ -621,8 +621,8 @@ fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
         encoded_len: 0,
     };
     kani::assert_eq!(shard.enqueue(ShardCommand::ActionCompleted { ticket: invalid_ticket, output }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -632,9 +632,9 @@ fn shard_remains_operational_after_tick_returns_error_for_bad_command() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 1)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 1);
 }
 
 #[test]
@@ -650,31 +650,31 @@ fn shard_after_cancel_run_can_accept_new_run_with_same_id() {
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
     kani::assert_eq!(shard.enqueue(ShardCommand::Cancel {
             run,
             reason: None,
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 0)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 0);
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
-    kani::assert_eq!(shard.active_run_count(), 1)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
+    kani::assert_eq!(shard.active_run_count(), 1);
 }
 
 #[test]
 fn shard_enqueue_rejects_submit_after_shutdown() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(false))
+    kani::assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(false));
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -683,9 +683,9 @@ fn shard_enqueue_rejects_submit_after_shutdown() {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(false))
-    kani::assert_eq!(shard.active_run_count(), 0)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(false));
+    kani::assert_eq!(shard.active_run_count(), 0);
 }
 
 #[test]
@@ -701,16 +701,16 @@ fn shard_submit_rejects_duplicate_run_id_with_exact_error() {
             workflow: workflow.clone(),
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Ok(true))
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Ok(true));
     kani::assert_eq!(shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: vb_core::capability::CapabilitySet::empty(),
         }),
-        Ok(()))
-    kani::assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists))
-    kani::assert_eq!(shard.active_run_count(), 1)
+        Ok(()));
+    kani::assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    kani::assert_eq!(shard.active_run_count(), 1);
 }
 
 #[test]
@@ -718,7 +718,7 @@ fn shard_timer_entry_returns_none_for_unknown_run() {
     let config = small_config();
     let shard = Shard::new(config);
     let entry = shard.timer_entry(super::RunId::new(9010));
-    kani::assert_eq!(entry, None)
+    kani::assert_eq!(entry, None);
 }
 
 // =========================================================================
@@ -744,10 +744,10 @@ mod kani_proofs {
         snapshot_interval_steps: 0,
         };
         let shard = Shard::new(config);
-        kani::assert_eq!(shard.command_queue_capacity(), capacity)
-        kani::assert_eq!(shard.command_queue_len(), 0)
-        kani::assert(shard.remaining_capacity() <= capacity, "kani harness assertion")
-        kani::assert_eq!(shard.remaining_capacity(), capacity)
+        kani::assert_eq!(shard.command_queue_capacity(), capacity);
+        kani::assert_eq!(shard.command_queue_len(), 0);
+        kani::assert(shard.remaining_capacity() <= capacity, "kani harness assertion");
+        kani::assert_eq!(shard.remaining_capacity(), capacity);
     }
 
     #[kani::proof]
@@ -765,7 +765,7 @@ mod kani_proofs {
         snapshot_interval_steps: 0,
         });
         let rem = shard.remaining_capacity();
-        kani::assert(rem <= capacity, "kani harness assertion")
+        kani::assert(rem <= capacity, "kani harness assertion");
     }
 
     #[kani::proof]
@@ -784,7 +784,7 @@ mod kani_proofs {
         });
         let len = shard.command_queue_len();
         let is_full = shard.is_queue_full();
-        kani::assert_eq!(is_full, len == capacity)
+        kani::assert_eq!(is_full, len == capacity);
     }
 
     #[kani::proof]
@@ -801,19 +801,19 @@ mod kani_proofs {
         };
         match runtime_state {
             super::RuntimeState::Initial => {
-                kani::assert(!runtime_state.is_resumable(), "kani harness assertion")
+                kani::assert(!runtime_state.is_resumable(), "kani harness assertion");
             }
             super::RuntimeState::Running => {
-                kani::assert(!runtime_state.is_resumable(), "kani harness assertion")
+                kani::assert(!runtime_state.is_resumable(), "kani harness assertion");
             }
             super::RuntimeState::Resumable => {
-                kani::assert(runtime_state.is_resumable(), "kani harness assertion")
+                kani::assert(runtime_state.is_resumable(), "kani harness assertion");
             }
             super::RuntimeState::Resuming => {
-                kani::assert(!runtime_state.is_resumable(), "kani harness assertion")
+                kani::assert(!runtime_state.is_resumable(), "kani harness assertion");
             }
             super::RuntimeState::Failed => {
-                kani::assert(!runtime_state.is_resumable(), "kani harness assertion")
+                kani::assert(!runtime_state.is_resumable(), "kani harness assertion");
             }
         }
     }
@@ -836,13 +836,13 @@ mod kani_proofs {
         };
         let terminal = event.is_terminal();
         let resumable = event.is_resumable();
-        kani::assert(terminal != resumable || (!terminal && !resumable), "event cannot be both terminal and resumable: {event:?}")
+        kani::assert(terminal != resumable || (!terminal && !resumable), "event cannot be both terminal and resumable: {event:?}");
         if terminal {
             kani::assert(matches!(
                 event, super::RuntimeEvent::Fail
                     | super::RuntimeEvent::TerminalRemove
                     | super::RuntimeEvent::DriveFinished
-            ))
+            ));
         }
     }
 
@@ -851,11 +851,11 @@ mod kani_proofs {
         let cap: usize = kani::any();
         let valid = super::is_valid_command_queue_capacity(cap);
         if cap == 0 {
-            kani::assert(!valid, "kani harness assertion")
+            kani::assert(!valid, "kani harness assertion");
         } else if cap > super::MAX_COMMAND_QUEUE_CAPACITY {
-            kani::assert(!valid, "kani harness assertion")
+            kani::assert(!valid, "kani harness assertion");
         } else {
-            kani::assert(valid, "kani harness assertion")
+            kani::assert(valid, "kani harness assertion");
         }
     }
 
@@ -872,7 +872,7 @@ mod kani_proofs {
         let result = ShardConfig::new(0, 4096, 1000, 1, pol);
         kani::assert(matches!(
                 result, Err(RuntimeError::CommandQueueCapacityExceeded { .. })
-            ))
+            ));
     }
 
     #[kani::proof]
@@ -893,9 +893,9 @@ mod kani_proofs {
             generation,
             deadline: kani_deadline,
         };
-        kani::assert(timer.matches_authority(generation, kani_deadline, kind))
+        kani::assert(timer.matches_authority(generation, kani_deadline, kind));
         if generation > 0 {
-            kani::assert(!timer.matches_authority(generation.wrapping_sub(1), kani_deadline, kind))
+            kani::assert(!timer.matches_authority(generation.wrapping_sub(1), kani_deadline, kind));
         }
     }
 }

@@ -1,1 +1,1 @@
-pub mod edge_cases;
+mod edge_cases;

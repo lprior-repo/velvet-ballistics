@@ -34,7 +34,7 @@ fn kani_record_crc_accepts_matching() {
     match result {
         Ok(_) => kani::assert(true, "matching CRC accepted"),
         Err(JournalError::HeaderChecksumMismatch) => {
-            kani::assert(false, "matching CRC should not be rejected")
+            kani::assert(false, "matching CRC should not be rejected");
         }
         Err(_) => kani::assert(true, "matching CRC passes checksum check"),
     }

@@ -50,6 +50,7 @@ fn make_run_state(wf: CompiledWorkflow) -> RunState {
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     }
 }
 

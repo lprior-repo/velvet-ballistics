@@ -22,9 +22,11 @@ fn kani_from_u16_exhaustive() {
 
     // Invariant 1: from_u16 must never panic or return Err for any u16.
     let result = IpcCommand::from_u16(value);
-    kani::assert(result.is_ok(), "from_u16({}) must return Ok); got {:?}",
+    kani::assert(
+        result.is_ok(),
+        "from_u16({}) must return Ok); got {:?}",
         value,
-        result
+        result,
     );
 
     let command = match result {
@@ -123,51 +125,78 @@ fn kani_command_count_and_discriminants() {
     ];
 
     // Verify exactly 11 semantic variants.
-    kani::assert_eq!(variants.len(),
+    kani::assert_eq!(
+        variants.len(),
         11,
-        "Exactly 11 semantic IpcCommand variants must exist")
+        "Exactly 11 semantic IpcCommand variants must exist"
+    );
 
     // Verify discriminant range 1..=11 for each variant.
     for cmd in &variants {
         let id = cmd.as_u16();
-        kani::assert(id >= 1 && id <= 11,
-            "IpcCommand discriminant {} is outside 1..=11", id)
+        kani::assert(
+            id >= 1 && id <= 11,
+            "IpcCommand discriminant {} is outside 1..=11",
+            id,
+        );
     }
 
     // Verify each declared discriminant matches as_u16().
-    kani::assert_eq!(IpcCommand::SubmitRun.as_u16(),
+    kani::assert_eq!(
+        IpcCommand::SubmitRun.as_u16(),
         1,
-        "SubmitRun discriminant must be 1")
-    kani::assert_eq!(IpcCommand::SubmitRunInline.as_u16(),
+        "SubmitRun discriminant must be 1"
+    );
+    kani::assert_eq!(
+        IpcCommand::SubmitRunInline.as_u16(),
         2,
-        "SubmitRunInline discriminant must be 2")
-    kani::assert_eq!(IpcCommand::CancelRun.as_u16(),
+        "SubmitRunInline discriminant must be 2"
+    );
+    kani::assert_eq!(
+        IpcCommand::CancelRun.as_u16(),
         3,
-        "CancelRun discriminant must be 3")
-    kani::assert_eq!(IpcCommand::InspectRun.as_u16(),
+        "CancelRun discriminant must be 3"
+    );
+    kani::assert_eq!(
+        IpcCommand::InspectRun.as_u16(),
         4,
-        "InspectRun discriminant must be 4")
-    kani::assert_eq!(IpcCommand::ListEvents.as_u16(),
+        "InspectRun discriminant must be 4"
+    );
+    kani::assert_eq!(
+        IpcCommand::ListEvents.as_u16(),
         5,
-        "ListEvents discriminant must be 5")
-    kani::assert_eq!(IpcCommand::AnswerAsk.as_u16(),
+        "ListEvents discriminant must be 5"
+    );
+    kani::assert_eq!(
+        IpcCommand::AnswerAsk.as_u16(),
         6,
-        "AnswerAsk discriminant must be 6")
-    kani::assert_eq!(IpcCommand::CompleteAction.as_u16(),
+        "AnswerAsk discriminant must be 6"
+    );
+    kani::assert_eq!(
+        IpcCommand::CompleteAction.as_u16(),
         7,
-        "CompleteAction discriminant must be 7")
-    kani::assert_eq!(IpcCommand::FailAction.as_u16(),
+        "CompleteAction discriminant must be 7"
+    );
+    kani::assert_eq!(
+        IpcCommand::FailAction.as_u16(),
         8,
-        "FailAction discriminant must be 8")
-    kani::assert_eq!(IpcCommand::DrainTrace.as_u16(),
+        "FailAction discriminant must be 8"
+    );
+    kani::assert_eq!(
+        IpcCommand::DrainTrace.as_u16(),
         9,
-        "DrainTrace discriminant must be 9")
-    kani::assert_eq!(IpcCommand::Health.as_u16(),
+        "DrainTrace discriminant must be 9"
+    );
+    kani::assert_eq!(
+        IpcCommand::Health.as_u16(),
         10,
-        "Health discriminant must be 10")
-    kani::assert_eq!(IpcCommand::Shutdown.as_u16(),
+        "Health discriminant must be 10"
+    );
+    kani::assert_eq!(
+        IpcCommand::Shutdown.as_u16(),
         11,
-        "Shutdown discriminant must be 11")
+        "Shutdown discriminant must be 11"
+    );
 
     // Verify discriminant uniqueness: collect all values and check no duplicates.
     let ids: [u16; 11] = [
@@ -189,11 +218,14 @@ fn kani_command_count_and_discriminants() {
     // We verify that each declared discriminant has the expected value.
     for i in 0..ids.len() {
         for j in (i + 1)..ids.len() {
-            kani::assert(ids[i] != ids[j],
+            kani::assert(
+                ids[i] != ids[j],
                 "Duplicate discriminant detected: variant at index {} \
                  and {} both have discriminant {}",
                 i,
-                j, ids[i])
+                j,
+                ids[i],
+            );
         }
     }
 }
@@ -235,8 +267,11 @@ fn kani_roundtrip_identity() {
     // semantic variant through the encoder (i.e., as_u16 is injective).
     for i in 0..commands.len() {
         for j in (i + 1)..commands.len() {
-            kani::assert(commands[i].as_u16() != commands[j].as_u16(),
-                "as_u16() must be injective: two different variants share wire ID {}", commands[i].as_u16())
+            kani::assert(
+                commands[i].as_u16() != commands[j].as_u16(),
+                "as_u16() must be injective: two different variants share wire ID {}",
+                commands[i].as_u16(),
+            );
         }
     }
 }

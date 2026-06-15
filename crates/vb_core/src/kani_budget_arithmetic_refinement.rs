@@ -201,7 +201,7 @@ fn tla_add_word_matches_rust_checked_add_for_all_u64() {
                 "TLA AddWord must overflow when checked_add overflows",
             ),
             Err(error) => {
-                kani::assert(error == WordError::Overflow, "TLA AddWord reports Overflow")
+                kani::assert(error == WordError::Overflow, "TLA AddWord reports Overflow");
             }
         },
     }

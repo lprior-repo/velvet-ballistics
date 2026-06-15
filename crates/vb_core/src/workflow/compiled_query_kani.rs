@@ -51,13 +51,14 @@ fn vb_ajc40_query_decode_smoke_cases() {
     match validate_compiled_queries(
         CompiledQueries {
             queries: Vec::new().into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.is_empty())
-            kani::assert_eq!(admitted.len(), 0)
-            kani::assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert(admitted.is_empty());
+            kani::assert_eq!(admitted.len(), 0);
+            kani::assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
     }
@@ -65,14 +66,16 @@ fn vb_ajc40_query_decode_smoke_cases() {
     match validate_compiled_queries(
         CompiledQueries {
             queries: vec![query(0, 0)].into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1)
-            assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert_eq!(admitted.len(), 1);
+            assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => kani::assert(false), }
+        Err(_) => kani::assert(false),
+    }
 }
 
 /// Backward-compatible State 12 harness name for the same PO-007 smoke scope.
@@ -89,7 +92,7 @@ fn vb_ajc40_query_decode_bytes() {
 #[kani::proof]
 #[kani::unwind(66)]
 fn vb_ajc40_query_post_decode_semantics() {
-    let len: usize = kani::any());
+    let len: usize = kani::any();
     let declared_total: u64 = kani::any();
     let budget: u64 = kani::any();
     kani::assume(len <= SEMANTIC_ITEM_BOUND);
@@ -106,9 +109,12 @@ fn vb_ajc40_query_post_decode_semantics() {
         budget,
     ) {
         Ok(remaining_budget) => {
-            kani::assert(len <= MAX_QUERIES_PER_WORKFLOW, "kani harness assertion")
-            kani::assert(remaining_budget <= budget, "kani harness assertion")
-            kani::assert(max_path_depth <= MAX_QUERY_PATH_SEGMENTS, "kani harness assertion")
+            kani::assert(len <= MAX_QUERIES_PER_WORKFLOW, "kani harness assertion");
+            kani::assert(remaining_budget <= budget, "kani harness assertion");
+            kani::assert(
+                max_path_depth <= MAX_QUERY_PATH_SEGMENTS,
+                "kani harness assertion",
+            );
         }
         Err(QueryParseError::Decode(_))
         | Err(QueryParseError::YbBudgetExceeded { .. })
@@ -134,8 +140,8 @@ fn vb_ajc40_query_budget_boundaries() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1)
-            kani::assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert_eq!(admitted.len(), 1);
+            kani::assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
     }
@@ -143,12 +149,13 @@ fn vb_ajc40_query_budget_boundaries() {
     match validate_compiled_queries(
         CompiledQueries {
             queries: vec![query(0, 1)].into_boxed_slice(),
-            total_yield_cost: 1, },
+            total_yield_cost: 1,
+        },
         1,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1)
-            assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert_eq!(admitted.len(), 1);
+            assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
     }
@@ -156,14 +163,16 @@ fn vb_ajc40_query_budget_boundaries() {
     match validate_compiled_queries(
         CompiledQueries {
             queries: vec![query(0, 1)].into_boxed_slice(),
-            total_yield_cost: 1, },
+            total_yield_cost: 1,
+        },
         0,
     ) {
         Err(QueryParseError::YbBudgetExceeded { total, max }) => {
             kani::assert_eq!(total, 1);
-            assert_eq!(max, 0)
+            assert_eq!(max, 0);
         }
-        _ => kani::assert(false), }
+        _ => kani::assert(false),
+    }
 }
 
 /// PO-028: depth 16 is admitted subject to budget); depth 17 rejects before budget.
@@ -184,14 +193,16 @@ fn vb_ajc40_query_path_depth_16_17() {
     match validate_compiled_queries(
         CompiledQueries {
             queries: vec![query(MAX_QUERY_PATH_SEGMENTS + 1, 0)].into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         0,
     ) {
         Err(QueryParseError::QueryPathTooDeep { depth, max }) => {
-            assert_eq!(depth, MAX_QUERY_PATH_SEGMENTS + 1)
-            assert_eq!(max, MAX_QUERY_PATH_SEGMENTS)
+            assert_eq!(depth, MAX_QUERY_PATH_SEGMENTS + 1);
+            assert_eq!(max, MAX_QUERY_PATH_SEGMENTS);
         }
-        _ => kani::assert(false), }
+        _ => kani::assert(false),
+    }
 }
 
 /// PO-036: exact 65_535/65_536 count boundary fixture.
@@ -201,7 +212,10 @@ fn vb_ajc40_query_path_depth_16_17() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn vb_ajc40_query_count_65535_65536() {
-    kani::assert(validate_compiled_query_count(MAX_QUERIES_PER_WORKFLOW).is_ok(), "kani harness assertion")
+    kani::assert(
+        validate_compiled_query_count(MAX_QUERIES_PER_WORKFLOW).is_ok(),
+        "kani harness assertion",
+    );
 
     match validate_compiled_query_count(QUERY_COUNT_OVER_LIMIT) {
         Err(QueryParseError::TooManyQueries { count, max }) => {

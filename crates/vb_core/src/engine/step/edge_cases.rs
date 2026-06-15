@@ -7,7 +7,7 @@
 use crate::action::ActionTicket;
 use crate::budget::{AggregateBudgetError, AggregateResourceBudget};
 use crate::engine::step::{
-    resume_action_completion, step_once, EngineSignal, RunFrame, ValueStore,
+    EngineSignal, RunFrame, ValueStore, resume_action_completion, step_once,
 };
 use crate::errors::EngineError;
 use crate::frame::StepState;

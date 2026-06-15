@@ -86,7 +86,7 @@ impl Shard {
         }
     }
 
-   /// Re-inserts a run that has remaining work into the active runs map.
+    /// Re-inserts a run that has remaining work into the active runs map.
     #[allow(dead_code)]
     pub(crate) fn keep_run(&mut self, run: RunId, state: RunState) {
         self.counters.add_steps(state.frame.executed());
@@ -97,13 +97,18 @@ impl Shard {
     ///
     /// If `snapshot_interval_steps > 0` and enough steps have elapsed since the
     /// last snapshot, a `RunSnapshot` is written before the state is re-inserted.
-    pub(crate) fn keep_run_with_snapshot(&mut self, run: RunId, mut state: RunState) -> RuntimeResult<()> {
+    pub(crate) fn keep_run_with_snapshot(
+        &mut self,
+        run: RunId,
+        mut state: RunState,
+    ) -> RuntimeResult<()> {
         let executed = state.frame.executed();
         let interval = self.snapshot_interval_steps;
         let last_executed = state.last_snapshot_executed;
 
         // Attempt periodic snapshot if enabled.
-        let outcome = self.write_snapshot_for_run(run, &state, interval, executed, last_executed)?;
+        let outcome =
+            self.write_snapshot_for_run(run, &state, interval, executed, last_executed)?;
 
         if matches!(outcome, self::SnapshotWriteOutcome::Written) {
             state.last_snapshot_executed = executed;
@@ -114,7 +119,7 @@ impl Shard {
         Ok(())
     }
 
-  /// Marks a run as finished, releases its frame, and updates counters.
+    /// Marks a run as finished, releases its frame, and updates counters.
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timer_remove(run);
         self.terminal_runs_insert(run);

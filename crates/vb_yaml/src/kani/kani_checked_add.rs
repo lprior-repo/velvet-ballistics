@@ -61,7 +61,7 @@ fn check_checked_add_counters_depth() {
 
     match result {
         Ok(new_depth) => {
-            kani::assert(new_depth > depth, "kani harness assertion")
+            kani::assert(new_depth > depth, "kani harness assertion");
             // Cover: production branch where depth exceeds limit (lines 97-102, 113-118)
             if new_depth > max_depth {
                 kani::cover!(new_depth > max_depth, "depth_exceeded_max");
@@ -71,7 +71,7 @@ fn check_checked_add_counters_depth() {
         Err(_) => {
             kani::cover!(depth == u16::MAX, "depth_overflow");
             // Overflow path: depth was u16::MAX, checked_add returns None.
-            kani::assert_eq!(depth, u16::MAX)
+            kani::assert_eq!(depth, u16::MAX);
         }
     }
 }
@@ -94,14 +94,14 @@ fn check_checked_add_counters_node_count() {
 
     match result {
         Ok(new_count) => {
-            kani::assert(new_count > node_count, "kani harness assertion")
+            kani::assert(new_count > node_count, "kani harness assertion");
             if new_count > max_nodes {
                 kani::cover!(new_count > max_nodes, "node_count_exceeded_max");
             }
         }
         Err(_) => {
             kani::cover!(node_count == u32::MAX, "node_count_overflow");
-            kani::assert_eq!(node_count, u32::MAX)
+            kani::assert_eq!(node_count, u32::MAX);
         }
     }
 }
@@ -118,11 +118,11 @@ fn check_checked_add_counters_document_count() {
 
     match result {
         Ok(new_count) => {
-            kani::assert(new_count > document_count, "kani harness assertion")
+            kani::assert(new_count > document_count, "kani harness assertion");
         }
         Err(_) => {
             kani::cover!(document_count == usize::MAX, "document_count_overflow");
-            kani::assert_eq!(document_count, usize::MAX)
+            kani::assert_eq!(document_count, usize::MAX);
         }
     }
 }
@@ -150,7 +150,7 @@ fn check_checked_add_counters_sequence() {
 
     match result {
         Ok(new_count) => {
-            kani::assert(new_count > count, "kani harness assertion")
+            kani::assert(new_count > count, "kani harness assertion");
             if new_count > limits.max_sequence_len {
                 kani::cover!(
                     new_count > limits.max_sequence_len,
@@ -160,7 +160,7 @@ fn check_checked_add_counters_sequence() {
         }
         Err(_) => {
             kani::cover!(count == usize::MAX, "sequence_count_overflow");
-            kani::assert_eq!(count, usize::MAX)
+            kani::assert_eq!(count, usize::MAX);
         }
     }
 }
@@ -188,7 +188,7 @@ fn check_checked_add_counters_mapping() {
 
     match result {
         Ok(new_count) => {
-            kani::assert(new_count > count, "kani harness assertion")
+            kani::assert(new_count > count, "kani harness assertion");
             if new_count > limits.max_mapping_entries {
                 kani::cover!(
                     new_count > limits.max_mapping_entries,
@@ -198,7 +198,7 @@ fn check_checked_add_counters_mapping() {
         }
         Err(_) => {
             kani::cover!(count == usize::MAX, "mapping_count_overflow");
-            kani::assert_eq!(count, usize::MAX)
+            kani::assert_eq!(count, usize::MAX);
         }
     }
 }
@@ -231,13 +231,13 @@ fn check_checked_add_counters_merge() {
 
     match result {
         Ok(sum) => {
-            kani::assert(sum >= parent, "kani harness assertion")
-            kani::assert(sum >= child, "kani harness assertion")
+            kani::assert(sum >= parent, "kani harness assertion");
+            kani::assert(sum >= child, "kani harness assertion");
         }
         Err(_) => {
             kani::cover!(parent > usize::MAX - child, "merge_overflow");
             // Overflow: parent + child > usize::MAX.
-            kani::assert(parent > usize::MAX - child, "kani harness assertion")
+            kani::assert(parent > usize::MAX - child, "kani harness assertion");
         }
     }
 }

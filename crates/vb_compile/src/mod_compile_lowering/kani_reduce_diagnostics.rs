@@ -83,6 +83,8 @@ fn check_reduce_unsupported_step_diagnostic() {
     );
 
     // Must return error for non-Set/non-Do/non-ForEach step
-    kani::assert(result.is_err(),
-        "emit_single_body_set must return error for unsupported primitive", )
+    kani::assert(
+        result.is_err(),
+        "emit_single_body_set must return error for unsupported primitive",
+    );
 }

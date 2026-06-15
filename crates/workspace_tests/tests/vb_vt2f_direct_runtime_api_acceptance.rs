@@ -34,6 +34,8 @@ fn relaxed_config() -> ShardConfig {
         step_budget_per_tick: 16,
         max_active_runs: 8,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     }
 }
 

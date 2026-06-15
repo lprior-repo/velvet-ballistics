@@ -95,6 +95,7 @@ fn run_state_after_n_steps(workflow: &CompiledWorkflow, run_id: RunId, executed:
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::from([]),
+        last_snapshot_executed: 0,
     }
 }
 

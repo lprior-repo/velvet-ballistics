@@ -34,9 +34,9 @@ pub fn step_succeeded_and_slot_written_roundtrip_with_envelope_assertions() {
         attempt: kani::any::<u16>() | 1,
     });
 
-    kani::assert(step_event.record_kind() == RecordKind::StepSucceeded, "kani harness assertion")
-    kani::assert(slot_event.record_kind() == RecordKind::SlotWritten, "kani harness assertion")
-    kani::assert(step_event.record_kind() != slot_event.record_kind(), "kani harness assertion")
+    kani::assert(step_event.record_kind() == RecordKind::StepSucceeded, "kani harness assertion");
+    kani::assert(slot_event.record_kind() == RecordKind::SlotWritten, "kani harness assertion");
+    kani::assert(step_event.record_kind() != slot_event.record_kind(), "kani harness assertion");
 
     let step_envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,
@@ -44,8 +44,8 @@ pub fn step_succeeded_and_slot_written_roundtrip_with_envelope_assertions() {
         record_kind: RecordKind::StepSucceeded.id(),
         sequence: step_event.seq().get(),
     };
-    kani::assert(semantic_decode_accepts(&step_envelope, &step_event))
-    kani::assert(matches!(&*step_event, JournalEvent::StepSucceeded { .. }))
+    kani::assert(semantic_decode_accepts(&step_envelope, &step_event));
+    kani::assert(matches!(&*step_event, JournalEvent::StepSucceeded { .. }));
 
     let slot_envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,
@@ -53,8 +53,8 @@ pub fn step_succeeded_and_slot_written_roundtrip_with_envelope_assertions() {
         record_kind: RecordKind::SlotWritten.id(),
         sequence: slot_event.seq().get(),
     };
-    kani::assert(semantic_decode_accepts(&slot_envelope, &slot_event))
+    kani::assert(semantic_decode_accepts(&slot_envelope, &slot_event));
     kani::assert(matches!(
         &*slot_event, JournalEvent::SlotWrittenEvent { .. }
-    ))
+    ));
 }

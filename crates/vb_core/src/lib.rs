@@ -123,8 +123,7 @@ pub use ids::{
     SymbolId, WorkflowDigest, WorkflowId,
 };
 pub use policy::{
-    ContractViolation, ProfileName, ProfileValidationError, RuntimeLimitsProfile,
-    RuntimePolicy,
+    ContractViolation, ProfileName, ProfileValidationError, RuntimeLimitsProfile, RuntimePolicy,
 };
 pub use span::{Located, SourceMap, Span, Spanned};
 pub use value::{ConstValue, FiniteF64, SlotValue, Taint, join_taint};

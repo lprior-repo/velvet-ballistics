@@ -75,7 +75,7 @@ fn kani_record_magic_accepts_correct_magic() {
     match result {
         Ok(_) => kani::assert(true, "correct magic passes magic check"),
         Err(JournalError::BadMagic { .. }) => {
-            kani::assert(false, "correct magic should not fail BadMagic")
+            kani::assert(false, "correct magic should not fail BadMagic");
         }
         Err(_) => kani::assert(
             true,

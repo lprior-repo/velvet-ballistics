@@ -33,14 +33,14 @@ fn test_mock_marker_no_panic_on_all_variants() {
         let buf = match postcard::to_allocvec(m) {
             Ok(b) => b,
             Err(_) => {
-                kani::assume(false);
+                panic!("operation failed");
                 return;
             }
         };
         let _: MockMarker = match postcard::from_bytes(&buf) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false);
+                panic!("operation failed");
                 return;
             }
         };
@@ -74,7 +74,7 @@ fn test_legacy_7field_deserialize_fallback() {
     let buf = match postcard::to_allocvec(&legacy_ticket) {
         Ok(b) => b,
         Err(_) => {
-            kani::assume(false);
+            panic!("operation failed");
             return;
         }
     };
@@ -83,7 +83,7 @@ fn test_legacy_7field_deserialize_fallback() {
     let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false);
+            panic!("operation failed");
             return;
         }
     };
@@ -112,14 +112,14 @@ fn test_action_ticket_serde_no_panic_boundary() {
     let buf = match postcard::to_allocvec(&ticket) {
         Ok(b) => b,
         Err(_) => {
-            kani::assume(false);
+            panic!("operation failed");
             return;
         }
     };
     let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false);
+            panic!("operation failed");
             return;
         }
     };

@@ -2052,6 +2052,9 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "vb_core",
+ "vb_runtime",
+ "vb_storage",
 ]
 
 [[package]]

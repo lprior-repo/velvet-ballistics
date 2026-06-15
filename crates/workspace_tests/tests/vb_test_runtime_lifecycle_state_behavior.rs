@@ -49,6 +49,8 @@ fn test_config() -> ShardConfig {
         step_budget_per_tick: 16,
         max_active_runs: 8,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     }
 }
 
@@ -956,6 +958,8 @@ fn submit_returns_exact_queue_full_on_full_queue() -> Result<(), String> {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let runtime = Runtime::new(shard_count(1)?, config);
 
@@ -1258,6 +1262,8 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
         step_budget_per_tick: 4,
         max_active_runs: 2, // Only 2 active runs per shard
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let mut runtime = Runtime::new(shard_count(1)?, config);
 

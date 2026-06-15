@@ -449,10 +449,10 @@ mod tests {
 
         let result = token.try_consume(cost);
 
-        kani::assert(result.is_some(), "should succeed when sufficient tokens")
+        kani::assert(result.is_some(), "should succeed when sufficient tokens");
         let (remaining, consumed) = result.unwrap();
-        kani::assert_eq!(remaining.value(), 50, "remaining tokens should be 50")
-        kani::assert_eq!(consumed.value(), 50, "consumed cost should be 50")
+        kani::assert_eq!(remaining.value(), 50, "remaining tokens should be 50");
+        kani::assert_eq!(consumed.value(), 50, "consumed cost should be 50");
     }
 
     #[test]
@@ -462,10 +462,10 @@ mod tests {
 
         let result = token.try_consume(cost);
 
-        kani::assert(result.is_some(), "should succeed with exact tokens")
+        kani::assert(result.is_some(), "should succeed with exact tokens");
         let (remaining, consumed) = result.unwrap();
-        kani::assert_eq!(remaining.value(), 0, "remaining should be 0")
-        kani::assert_eq!(consumed.value(), 42, "consumed should be full cost")
+        kani::assert_eq!(remaining.value(), 0, "remaining should be 0");
+        kani::assert_eq!(consumed.value(), 42, "consumed should be full cost");
     }
 
     #[test]
@@ -475,7 +475,7 @@ mod tests {
 
         let result = token.try_consume(cost);
 
-        kani::assert(result.is_none(), "should fail when insufficient tokens")
+        kani::assert(result.is_none(), "should fail when insufficient tokens");
     }
 
     #[test]
@@ -485,25 +485,25 @@ mod tests {
 
         let result = token.try_consume(cost);
 
-        kani::assert(result.is_some(), "zero cost should always succeed")
+        kani::assert(result.is_some(), "zero cost should always succeed");
         let (remaining, consumed) = result.unwrap();
-        kani::assert_eq!(remaining.value(), 100, "remaining unchanged")
-        kani::assert_eq!(consumed.value(), 0, "consumed is 0")
+        kani::assert_eq!(remaining.value(), 100, "remaining unchanged");
+        kani::assert_eq!(consumed.value(), 0, "consumed is 0");
     }
 
     #[test]
     fn yb_token_can_consume() {
         let token = YbToken::new(100);
 
-        kani::assert(token.can_consume(YbTokenCost::new(50)), "can consume when sufficient")
-        kani::assert(token.can_consume(YbTokenCost::new(100)), "can consume exact")
-        kani::assert(!token.can_consume(YbTokenCost::new(101)), "cannot consume when insufficient")
+        kani::assert(token.can_consume(YbTokenCost::new(50)), "can consume when sufficient");
+        kani::assert(token.can_consume(YbTokenCost::new(100)), "can consume exact");
+        kani::assert(!token.can_consume(YbTokenCost::new(101)), "cannot consume when insufficient");
     }
 
     #[test]
     fn yb_token_default() {
         let token = YbToken::default();
-        kani::assert_eq!(token.value(), 0, "default token should be 0")
+        kani::assert_eq!(token.value(), 0, "default token should be 0");
     }
 
     #[test]
@@ -522,19 +522,19 @@ mod tests {
     #[test]
     fn yb_token_budget_new_valid() {
         let budget = YbTokenBudget::new(100);
-        kani::assert(budget.is_ok(), "new with non-zero should succeed")
+        kani::assert(budget.is_ok(), "new with non-zero should succeed");
         let budget = budget.unwrap();
-        kani::assert_eq!(budget.initial(), 100, "initial preserved")
-        kani::assert_eq!(budget.remaining(), 100, "remaining equals initial at creation")
+        kani::assert_eq!(budget.initial(), 100, "initial preserved");
+        kani::assert_eq!(budget.remaining(), 100, "remaining equals initial at creation");
     }
 
     #[test]
     fn yb_token_budget_new_zero() {
         let result = YbTokenBudget::new(0);
-        kani::assert(result.is_err(), "new with zero should fail")
+        kani::assert(result.is_err(), "new with zero should fail");
         kani::assert_eq!(result.unwrap_err(),
             YbTokenError::InvalidInitial { value: 0 },
-            "error variant should be InvalidInitial")
+            "error variant should be InvalidInitial");
     }
 
     #[test]
@@ -544,8 +544,8 @@ mod tests {
 
         let result = budget.consume(cost);
 
-        kani::assert(result.is_ok(), "consume should succeed with sufficient budget")
-        kani::assert_eq!(budget.remaining(), 70, "remaining should decrease")
+        kani::assert(result.is_ok(), "consume should succeed with sufficient budget");
+        kani::assert_eq!(budget.remaining(), 70, "remaining should decrease");
     }
 
     #[test]
@@ -555,9 +555,9 @@ mod tests {
 
         let result = budget.consume(cost);
 
-        kani::assert(result.is_ok(), "consume exact should succeed")
-        kani::assert_eq!(budget.remaining(), 0, "remaining should be 0")
-        kani::assert(budget.is_exhausted(), "budget should be exhausted")
+        kani::assert(result.is_ok(), "consume exact should succeed");
+        kani::assert_eq!(budget.remaining(), 0, "remaining should be 0");
+        kani::assert(budget.is_exhausted(), "budget should be exhausted");
     }
 
     #[test]
@@ -567,14 +567,14 @@ mod tests {
 
         let result = budget.consume(cost);
 
-        kani::assert(result.is_err(), "consume should fail with insufficient budget")
+        kani::assert(result.is_err(), "consume should fail with insufficient budget");
         kani::assert_eq!(result.unwrap_err(),
             YbTokenError::InsufficientBudget {
                 required: 50,
                 available: 30
             },
-            "error should contain required and available")
-        kani::assert_eq!(budget.remaining(), 30, "remaining unchanged after failed consume")
+            "error should contain required and available");
+        kani::assert_eq!(budget.remaining(), 30, "remaining unchanged after failed consume");
     }
 
     #[test]
@@ -584,50 +584,50 @@ mod tests {
 
         let result = budget.consume(cost);
 
-        kani::assert(result.is_ok(), "consume zero should always succeed")
-        kani::assert_eq!(budget.remaining(), 100, "remaining unchanged")
+        kani::assert(result.is_ok(), "consume zero should always succeed");
+        kani::assert_eq!(budget.remaining(), 100, "remaining unchanged");
     }
 
     #[test]
     fn yb_token_budget_remaining_ratio() {
         let budget = YbTokenBudget::new(100).unwrap();
-        kani::assert_eq!(budget.remaining_ratio(), 1.0, "full budget ratio is 1.0")
+        kani::assert_eq!(budget.remaining_ratio(), 1.0, "full budget ratio is 1.0");
 
         let mut budget = YbTokenBudget::new(100).unwrap();
         budget.consume(YbTokenCost::new(25)).unwrap();
-        kani::assert_eq!(budget.remaining_ratio(), 0.75, "ratio after 25% consume is 0.75")
+        kani::assert_eq!(budget.remaining_ratio(), 0.75, "ratio after 25% consume is 0.75");
     }
 
     #[test]
     fn yb_token_budget_is_exhausted() {
         let mut budget = YbTokenBudget::new(50).unwrap();
-        kani::assert(!budget.is_exhausted(), "new budget not exhausted")
+        kani::assert(!budget.is_exhausted(), "new budget not exhausted");
 
         budget.consume(YbTokenCost::new(50)).unwrap();
-        kani::assert(budget.is_exhausted(), "exhausted after consuming all")
+        kani::assert(budget.is_exhausted(), "exhausted after consuming all");
     }
 
     #[test]
     fn yb_token_budget_can_consume() {
         let budget = YbTokenBudget::new(100).unwrap();
-        kani::assert(budget.can_consume(YbTokenCost::new(50)), "can consume within budget")
-        kani::assert(budget.can_consume(YbTokenCost::new(100)), "can consume exact budget")
-        kani::assert(!budget.can_consume(YbTokenCost::new(101)), "cannot consume over budget")
+        kani::assert(budget.can_consume(YbTokenCost::new(50)), "can consume within budget");
+        kani::assert(budget.can_consume(YbTokenCost::new(100)), "can consume exact budget");
+        kani::assert(!budget.can_consume(YbTokenCost::new(101)), "cannot consume over budget");
     }
 
     #[test]
     fn yb_token_budget_default() {
         let budget = YbTokenBudget::default();
-        kani::assert_eq!(budget.initial(), 1, "default initial is 1")
-        kani::assert_eq!(budget.remaining(), 1, "default remaining is 1")
+        kani::assert_eq!(budget.initial(), 1, "default initial is 1");
+        kani::assert_eq!(budget.remaining(), 1, "default remaining is 1");
     }
 
     #[test]
     fn yb_token_budget_max_initial() {
         let budget = YbTokenBudget::new(u64::MAX).unwrap();
-        kani::assert_eq!(budget.initial(), u64::MAX, "u64::MAX initial preserved")
-        kani::assert_eq!(budget.remaining(), u64::MAX, "u64::MAX remaining preserved")
-        kani::assert(!budget.is_exhausted(), "u64::MAX budget not exhausted")
+        kani::assert_eq!(budget.initial(), u64::MAX, "u64::MAX initial preserved");
+        kani::assert_eq!(budget.remaining(), u64::MAX, "u64::MAX remaining preserved");
+        kani::assert(!budget.is_exhausted(), "u64::MAX budget not exhausted");
     }
 
     // -------------------------------------------------------------------------
@@ -636,19 +636,19 @@ mod tests {
 
     #[test]
     fn yb_token_cost_basic() {
-        kani::assert_eq!(YbTokenCost::BASIC.value(), 1, "BASIC cost is 1")
+        kani::assert_eq!(YbTokenCost::BASIC.value(), 1, "BASIC cost is 1");
     }
 
     #[test]
     fn yb_token_cost_new_and_value() {
         let cost = YbTokenCost::new(42);
-        kani::assert_eq!(cost.value(), 42, "value preserved")
+        kani::assert_eq!(cost.value(), 42, "value preserved");
     }
 
     #[test]
     fn yb_token_cost_is_zero() {
-        kani::assert(YbTokenCost::new(0).is_zero(), "zero cost is zero")
-        kani::assert(!YbTokenCost::new(1).is_zero(), "non-zero is not zero")
+        kani::assert(YbTokenCost::new(0).is_zero(), "zero cost is zero");
+        kani::assert(!YbTokenCost::new(1).is_zero(), "non-zero is not zero");
     }
 
     #[test]
@@ -662,7 +662,7 @@ mod tests {
     #[test]
     fn yb_token_cost_default() {
         let cost = YbTokenCost::default();
-        kani::assert_eq!(cost.value(), 0, "default cost is 0")
+        kani::assert_eq!(cost.value(), 0, "default cost is 0");
     }
 
     // -------------------------------------------------------------------------
@@ -676,15 +676,15 @@ mod tests {
             available: 30,
         };
         let msg = err.to_string();
-        kani::assert(msg.contains("50"), "error message contains required")
-        kani::assert(msg.contains("30"), "error message contains available")
+        kani::assert(msg.contains("50"), "error message contains required");
+        kani::assert(msg.contains("30"), "error message contains available");
     }
 
     #[test]
     fn yb_token_error_invalid_initial() {
         let err = YbTokenError::InvalidInitial { value: 0 };
         let msg = err.to_string();
-        kani::assert(msg.contains("0"), "error message contains invalid value")
+        kani::assert(msg.contains("0"), "error message contains invalid value");
     }
 
     #[test]
@@ -712,8 +712,8 @@ mod tests {
     #[test]
     fn yb_token_zero_value() {
         let token = YbToken::new(0);
-        kani::assert_eq!(token.value(), 0, "zero token value is 0")
-        kani::assert_eq!(token.remaining(), 0, "zero token remaining is 0")
+        kani::assert_eq!(token.value(), 0, "zero token value is 0");
+        kani::assert_eq!(token.remaining(), 0, "zero token remaining is 0");
     }
 
     #[test]
@@ -721,7 +721,7 @@ mod tests {
         let token = YbToken::new(0);
         let cost = YbTokenCost::new(1);
         let result = token.try_consume(cost);
-        kani::assert(result.is_none(), "zero token cannot consume any positive cost")
+        kani::assert(result.is_none(), "zero token cannot consume any positive cost");
     }
 
     #[test]
@@ -729,26 +729,26 @@ mod tests {
         let token = YbToken::new(0);
         let cost = YbTokenCost::new(0);
         let result = token.try_consume(cost);
-        kani::assert(result.is_some(), "zero token can consume zero cost")
+        kani::assert(result.is_some(), "zero token can consume zero cost");
         let (remaining, consumed) = result.unwrap();
-        kani::assert_eq!(remaining.value(), 0, "remaining stays 0")
-        kani::assert_eq!(consumed.value(), 0, "consumed is 0")
+        kani::assert_eq!(remaining.value(), 0, "remaining stays 0");
+        kani::assert_eq!(consumed.value(), 0, "consumed is 0");
     }
 
     #[test]
     fn yb_token_one_value() {
         let token = YbToken::new(1);
-        kani::assert_eq!(token.value(), 1, "one token value is 1")
-        kani::assert(token.can_consume(YbTokenCost::new(1)), "can consume exact cost of 1")
-        kani::assert(!token.can_consume(YbTokenCost::new(2)), "cannot consume cost > 1")
+        kani::assert_eq!(token.value(), 1, "one token value is 1");
+        kani::assert(token.can_consume(YbTokenCost::new(1)), "can consume exact cost of 1");
+        kani::assert(!token.can_consume(YbTokenCost::new(2)), "cannot consume cost > 1");
     }
 
     #[test]
     fn yb_token_max_value() {
         let token = YbToken::new(u64::MAX);
-        kani::assert_eq!(token.value(), u64::MAX, "u64::MAX token value preserved")
-        kani::assert(token.can_consume(YbTokenCost::new(u64::MAX)), "can consume u64::MAX cost")
-        kani::assert(token.can_consume(YbTokenCost::new(1)), "can consume cost of 1 from u64::MAX")
+        kani::assert_eq!(token.value(), u64::MAX, "u64::MAX token value preserved");
+        kani::assert(token.can_consume(YbTokenCost::new(u64::MAX)), "can consume u64::MAX cost");
+        kani::assert(token.can_consume(YbTokenCost::new(1)), "can consume cost of 1 from u64::MAX");
     }
 
     #[test]
@@ -756,49 +756,49 @@ mod tests {
         let token = YbToken::new(u64::MAX - 1);
         let cost = YbTokenCost::new(u64::MAX);
         let result = token.try_consume(cost);
-        kani::assert(result.is_none(), "cannot consume more than available")
+        kani::assert(result.is_none(), "cannot consume more than available");
     }
 
     #[test]
     fn yb_token_budget_new_one() {
         let budget = YbTokenBudget::new(1).unwrap();
-        kani::assert_eq!(budget.initial(), 1, "initial is 1")
-        kani::assert_eq!(budget.remaining(), 1, "remaining equals initial")
-        kani::assert(!budget.is_exhausted(), "budget with 1 is not exhausted")
+        kani::assert_eq!(budget.initial(), 1, "initial is 1");
+        kani::assert_eq!(budget.remaining(), 1, "remaining equals initial");
+        kani::assert(!budget.is_exhausted(), "budget with 1 is not exhausted");
     }
 
     #[test]
     fn yb_token_budget_consume_one_from_one() {
         let mut budget = YbTokenBudget::new(1).unwrap();
         let result = budget.consume(YbTokenCost::new(1));
-        kani::assert(result.is_ok(), "consume(1) from budget(1) succeeds")
-        kani::assert_eq!(budget.remaining(), 0, "remaining is 0")
-        kani::assert(budget.is_exhausted(), "budget is exhausted")
-        kani::assert_eq!(budget.remaining_ratio(), 0.0, "ratio is 0.0 when exhausted")
+        kani::assert(result.is_ok(), "consume(1) from budget(1) succeeds");
+        kani::assert_eq!(budget.remaining(), 0, "remaining is 0");
+        kani::assert(budget.is_exhausted(), "budget is exhausted");
+        kani::assert_eq!(budget.remaining_ratio(), 0.0, "ratio is 0.0 when exhausted");
     }
 
     #[test]
     fn yb_token_budget_consume_u64_max_from_u64_max() {
         let mut budget = YbTokenBudget::new(u64::MAX).unwrap();
         let result = budget.consume(YbTokenCost::new(u64::MAX));
-        kani::assert(result.is_ok(), "consume(u64::MAX) from u64::MAX budget succeeds")
-        kani::assert_eq!(budget.remaining(), 0, "remaining is 0 after consuming all")
-        kani::assert(budget.is_exhausted(), "budget is exhausted")
+        kani::assert(result.is_ok(), "consume(u64::MAX) from u64::MAX budget succeeds");
+        kani::assert_eq!(budget.remaining(), 0, "remaining is 0 after consuming all");
+        kani::assert(budget.is_exhausted(), "budget is exhausted");
     }
 
     #[test]
     fn yb_token_budget_consume_one_from_u64_max() {
         let mut budget = YbTokenBudget::new(u64::MAX).unwrap();
         let result = budget.consume(YbTokenCost::new(1));
-        kani::assert(result.is_ok(), "consume(1) from u64::MAX budget succeeds")
-        kani::assert_eq!(budget.remaining(), u64::MAX - 1, "remaining is u64::MAX - 1")
+        kani::assert(result.is_ok(), "consume(1) from u64::MAX budget succeeds");
+        kani::assert_eq!(budget.remaining(), u64::MAX - 1, "remaining is u64::MAX - 1");
     }
 
     #[test]
     fn yb_token_budget_remaining_ratio_zero_remaining() {
         let mut budget = YbTokenBudget::new(100).unwrap();
         budget.consume(YbTokenCost::new(100)).unwrap();
-        kani::assert_eq!(budget.remaining_ratio(), 0.0, "ratio is 0.0 when fully consumed")
+        kani::assert_eq!(budget.remaining_ratio(), 0.0, "ratio is 0.0 when fully consumed");
     }
 
     #[test]
@@ -811,16 +811,16 @@ mod tests {
         let ratio = budget.remaining_ratio();
         // The ratio computed from u64::MAX - 1 and u64::MAX is very close to 1.0
         // Just verify it's a valid ratio value
-        kani::assert(ratio >= 0.0 && ratio <= 1.0, "ratio is between 0 and 1")
+        kani::assert(ratio >= 0.0 && ratio <= 1.0, "ratio is between 0 and 1");
     }
 
     #[test]
     fn yb_token_budget_consume_leaves_initial_unchanged() {
         let mut budget = YbTokenBudget::new(100).unwrap();
         budget.consume(YbTokenCost::new(50)).unwrap();
-        kani::assert_eq!(budget.initial(), 100, "initial never changes")
+        kani::assert_eq!(budget.initial(), 100, "initial never changes");
         budget.consume(YbTokenCost::new(30)).unwrap();
-        kani::assert_eq!(budget.initial(), 100, "initial still 100 after multiple consumes")
+        kani::assert_eq!(budget.initial(), 100, "initial still 100 after multiple consumes");
     }
 
     #[test]
@@ -834,42 +834,42 @@ mod tests {
     fn yb_token_budget_multiple_consume_all() {
         let mut budget = YbTokenBudget::new(100).unwrap();
         budget.consume(YbTokenCost::new(25)).unwrap();
-        kani::assert_eq!(budget.remaining(), 75)
+        kani::assert_eq!(budget.remaining(), 75);
         budget.consume(YbTokenCost::new(25)).unwrap();
-        kani::assert_eq!(budget.remaining(), 50)
+        kani::assert_eq!(budget.remaining(), 50);
         budget.consume(YbTokenCost::new(25)).unwrap();
-        kani::assert_eq!(budget.remaining(), 25)
+        kani::assert_eq!(budget.remaining(), 25);
         budget.consume(YbTokenCost::new(25)).unwrap();
-        kani::assert_eq!(budget.remaining(), 0)
-        kani::assert(budget.is_exhausted(), "kani harness assertion")
+        kani::assert_eq!(budget.remaining(), 0);
+        kani::assert(budget.is_exhausted(), "kani harness assertion");
     }
 
     #[test]
     fn yb_token_budget_attempt_overconsume_preserves_state() {
         let mut budget = YbTokenBudget::new(30).unwrap();
         let result = budget.consume(YbTokenCost::new(50));
-        kani::assert(result.is_err(), "overconsume fails")
+        kani::assert(result.is_err(), "overconsume fails");
         kani::assert_eq!(result.unwrap_err(),
             YbTokenError::InsufficientBudget {
                 required: 50,
                 available: 30
-            })
+            });
         // Budget state unchanged
-        kani::assert_eq!(budget.remaining(), 30, "remaining unchanged after failed consume")
-        kani::assert_eq!(budget.initial(), 30, "initial unchanged after failed consume")
+        kani::assert_eq!(budget.remaining(), 30, "remaining unchanged after failed consume");
+        kani::assert_eq!(budget.initial(), 30, "initial unchanged after failed consume");
     }
 
     #[test]
     fn yb_token_cost_u64_max() {
         let cost = YbTokenCost::new(u64::MAX);
-        kani::assert_eq!(cost.value(), u64::MAX, "cost value is u64::MAX")
-        kani::assert(!cost.is_zero(), "u64::MAX cost is not zero")
+        kani::assert_eq!(cost.value(), u64::MAX, "cost value is u64::MAX");
+        kani::assert(!cost.is_zero(), "u64::MAX cost is not zero");
     }
 
     #[test]
     fn yb_token_cost_zero_is_zero() {
         let cost = YbTokenCost::new(0);
-        kani::assert(cost.is_zero(), "zero cost is zero")
+        kani::assert(cost.is_zero(), "zero cost is zero");
     }
 
     #[test]
@@ -879,17 +879,17 @@ mod tests {
             available: 25,
         };
         let s = err.to_string();
-        kani::assert(s.contains("insufficient budget"), "error contains insufficient budget text")
-        kani::assert(s.contains("100"), "error contains required")
-        kani::assert(s.contains("25"), "error contains available")
+        kani::assert(s.contains("insufficient budget"), "error contains insufficient budget text");
+        kani::assert(s.contains("100"), "error contains required");
+        kani::assert(s.contains("25"), "error contains available");
     }
 
     #[test]
     fn yb_token_error_invalid_initial_display() {
         let err = YbTokenError::InvalidInitial { value: 42 };
         let s = err.to_string();
-        kani::assert(s.contains("invalid initial"), "error contains invalid initial text")
-        kani::assert(s.contains("42"), "error contains the invalid value")
+        kani::assert(s.contains("invalid initial"), "error contains invalid initial text");
+        kani::assert(s.contains("42"), "error contains the invalid value");
     }
 
     #[test]
@@ -907,9 +907,9 @@ mod tests {
         let token = YbToken::new(1);
         let cost = YbTokenCost::new(1);
         let result = token.try_consume(cost);
-        kani::assert(result.is_some(), "exact consume succeeds")
+        kani::assert(result.is_some(), "exact consume succeeds");
         let (remaining, _) = result.unwrap();
-        kani::assert_eq!(remaining.value(), 0, "remaining is 0")
+        kani::assert_eq!(remaining.value(), 0, "remaining is 0");
     }
 
     #[test]
@@ -917,10 +917,10 @@ mod tests {
         let token = YbToken::new(100);
         let cost = YbTokenCost::new(1);
         let result = token.try_consume(cost);
-        kani::assert(result.is_some(), "partial consume succeeds")
+        kani::assert(result.is_some(), "partial consume succeeds");
         let (remaining, consumed) = result.unwrap();
-        kani::assert_eq!(remaining.value(), 99, "remaining decreased by 1")
-        kani::assert_eq!(consumed.value(), 1, "consumed is 1")
+        kani::assert_eq!(remaining.value(), 99, "remaining decreased by 1");
+        kani::assert_eq!(consumed.value(), 1, "consumed is 1");
     }
 
     // -------------------------------------------------------------------------
@@ -931,7 +931,7 @@ mod tests {
         #[test]
         fn yb_token_budget_remaining_never_exceeds_initial(initial in 1u64..=1_000_000u64) {
             let budget = YbTokenBudget::new(initial).unwrap();
-            kani::assert_eq!(budget.remaining(), budget.initial(), "remaining equals initial at creation")
+            kani::assert_eq!(budget.remaining(), budget.initial(), "remaining equals initial at creation");
         }
 
         #[test]
@@ -945,7 +945,7 @@ mod tests {
             let result = budget.consume(cost);
 
             if result.is_ok() {
-                kani::assert_eq!(budget.remaining(), initial.saturating_sub(cost_value), "remaining decreases by cost")
+                kani::assert_eq!(budget.remaining(), initial.saturating_sub(cost_value), "remaining decreases by cost");
             }
         }
 
@@ -959,7 +959,7 @@ mod tests {
 
             let _ = budget.consume(cost);
 
-            kani::assert(budget.remaining() <= budget.initial(), "remaining never exceeds initial")
+            kani::assert(budget.remaining() <= budget.initial(), "remaining never exceeds initial");
         }
 
         #[test]
@@ -979,7 +979,7 @@ mod tests {
                 + if r2.is_ok() { remaining_after_first / 2 } else { 0 };
             let expected_remaining = initial.saturating_sub(total_consumed);
 
-            kani::assert_eq!(budget.remaining(), expected_remaining, "remaining accounts for consumed costs")
+            kani::assert_eq!(budget.remaining(), expected_remaining, "remaining accounts for consumed costs");
         }
 
         #[test]
@@ -994,11 +994,11 @@ mod tests {
 
             match result {
                 Some((remaining, consumed)) => {
-                    kani::assert_eq!(remaining.value(), token_value.saturating_sub(cost_value), "remaining is token minus cost")
-                    kani::assert_eq!(consumed.value(), cost_value.min(token_value), "consumed is min of cost and token")
+                    kani::assert_eq!(remaining.value(), token_value.saturating_sub(cost_value), "remaining is token minus cost");
+                    kani::assert_eq!(consumed.value(), cost_value.min(token_value), "consumed is min of cost and token");
                 }
                 None => {
-                    kani::assert(cost_value > token_value, "None iff cost exceeds token")
+                    kani::assert(cost_value > token_value, "None iff cost exceeds token");
                 }
             }
         }
@@ -1020,10 +1020,10 @@ mod tests {
         ) {
             let mut budget = YbTokenBudget::new(initial).unwrap();
             let result = budget.consume(YbTokenCost::new(initial));
-            kani::assert(result.is_ok(), "consuming exact initial succeeds")
-            kani::assert(budget.is_exhausted(), "budget is exhausted after consuming all")
-            kani::assert_eq!(budget.remaining(), 0, "remaining is 0")
-            kani::assert_eq!(budget.remaining_ratio(), 0.0, "ratio is 0.0")
+            kani::assert(result.is_ok(), "consuming exact initial succeeds");
+            kani::assert(budget.is_exhausted(), "budget is exhausted after consuming all");
+            kani::assert_eq!(budget.remaining(), 0, "remaining is 0");
+            kani::assert_eq!(budget.remaining_ratio(), 0.0, "ratio is 0.0");
         }
 
         #[test]
@@ -1035,7 +1035,7 @@ mod tests {
             let cost = YbTokenCost::new(cost);
             let _ = budget.consume(cost);
             if cost.value() < initial {
-                kani::assert(!budget.is_exhausted(), "budget not exhausted when cost < initial")
+                kani::assert(!budget.is_exhausted(), "budget not exhausted when cost < initial");
             }
         }
 
@@ -1045,7 +1045,7 @@ mod tests {
         ) {
             let budget = YbTokenBudget::new(initial).unwrap();
             let ratio = budget.remaining_ratio();
-            kani::assert(ratio >= 0.0 && ratio <= 1.0, "ratio always between 0 and 1")
+            kani::assert(ratio >= 0.0 && ratio <= 1.0, "ratio always between 0 and 1");
             kani::assert_eq!(ratio, 1.0, "new budget has ratio 1.0");
         }
 
@@ -1064,11 +1064,11 @@ mod tests {
             let result = budget_clone.consume(cost);
 
             if can_consume {
-                kani::assert(result.is_ok(), "can_consume true means consume succeeds")
+                kani::assert(result.is_ok(), "can_consume true means consume succeeds");
             } else {
-                kani::assert(result.is_err(), "can_consume false means consume fails")
+                kani::assert(result.is_err(), "can_consume false means consume fails");
                 let err = result.unwrap_err();
-                kani::assert(matches!(err, YbTokenError::InsufficientBudget { .. }))
+                kani::assert(matches!(err, YbTokenError::InsufficientBudget { .. }));
             }
         }
 
@@ -1081,8 +1081,8 @@ mod tests {
 
             budget1.consume(YbTokenCost::new(initial / 2)).unwrap();
 
-            kani::assert_eq!(budget1.remaining(), initial - (initial / 2), "budget1 consumed")
-            kani::assert_eq!(budget2.remaining(), initial, "budget2 unchanged after budget1 consume")
+            kani::assert_eq!(budget1.remaining(), initial - (initial / 2), "budget1 consumed");
+            kani::assert_eq!(budget2.remaining(), initial, "budget2 unchanged after budget1 consume");
         }
 
         #[test]
@@ -1098,12 +1098,12 @@ mod tests {
             match result {
                 Some((remaining_token, _)) => {
                     // try_consume succeeded, so token_value >= cost_value
-                    kani::assert(token_value >= cost_value, "success implies sufficient funds")
-                    kani::assert_eq!(remaining_token.value(), token_value - cost_value, "remaining correct")
+                    kani::assert(token_value >= cost_value, "success implies sufficient funds");
+                    kani::assert_eq!(remaining_token.value(), token_value - cost_value, "remaining correct");
                 }
                 None => {
                     // try_consume failed, so token_value < cost_value
-                    kani::assert(token_value < cost_value, "failure implies insufficient funds")
+                    kani::assert(token_value < cost_value, "failure implies insufficient funds");
                 }
             }
         }

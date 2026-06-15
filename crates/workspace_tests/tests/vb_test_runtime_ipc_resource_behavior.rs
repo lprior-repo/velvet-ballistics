@@ -34,6 +34,8 @@ fn test_config() -> ShardConfig {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     }
 }
 
@@ -240,6 +242,8 @@ fn ipc_queue_full_does_not_corrupt_other_runs() {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
@@ -1011,6 +1015,8 @@ fn resource_active_run_capacity_enforced_on_tick() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
@@ -1048,6 +1054,8 @@ fn resource_runs_submitted_count_includes_all_submissions() {
         step_budget_per_tick: 4,
         max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;

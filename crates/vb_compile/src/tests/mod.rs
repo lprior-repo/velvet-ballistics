@@ -9,3 +9,6 @@ pub(crate) mod error_variant_tests;
 mod foreach_digest_tests;
 
 pub(crate) mod wait_digest_unit_tests;
+
+#[cfg(test)]
+mod validation_edge_cases;

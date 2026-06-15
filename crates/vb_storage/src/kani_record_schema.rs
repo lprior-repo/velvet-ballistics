@@ -34,10 +34,10 @@ fn kani_record_schema_accepts_current_version() {
     match result {
         Ok(_) => kani::assert(true, "current schema version accepted"),
         Err(JournalError::MigrationRequired { .. }) => {
-            kani::assert(false, "current schema should not require migration")
+            kani::assert(false, "current schema should not require migration");
         }
         Err(JournalError::UnsupportedSchemaVersion { .. }) => {
-            kani::assert(false, "current schema should not be unsupported")
+            kani::assert(false, "current schema should not be unsupported");
         }
         Err(_) => kani::assert(true, "current schema passes version check"),
     }

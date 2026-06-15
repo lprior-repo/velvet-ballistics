@@ -95,37 +95,37 @@ fn vb_mrwe6_queue_intent_preservation() {
         (EventClass::Scheduled, SideIndexIntent::PutPending)
             | (EventClass::Resolution, SideIndexIntent::RemovePending)
             | (EventClass::Unrelated, SideIndexIntent::None)
-    ))
+    ));
 
     match class {
         EventClass::Scheduled => {
-            kani::assert(matches!(intent, SideIndexIntent::PutPending))
+            kani::assert(matches!(intent, SideIndexIntent::PutPending));
             kani::assert(matches!(
                 production_intent, VerificationActionIndexIntent::Put {
                     action: classified_action,
                     run: classified_run,
                     step: classified_step,
                 } if classified_action == action && classified_run == run && classified_step == step
-            ))
-            kani::assert(matches!(keys_exist, Ok(true)))
+            ));
+            kani::assert(matches!(keys_exist, Ok(true)));
         }
         EventClass::Resolution => {
-            kani::assert(matches!(intent, SideIndexIntent::RemovePending))
+            kani::assert(matches!(intent, SideIndexIntent::RemovePending));
             kani::assert(matches!(
                 production_intent, VerificationActionIndexIntent::Delete {
                     action: classified_action,
                     run: classified_run,
                     step: classified_step,
                 } if classified_action == action && classified_run == run && classified_step == step
-            ))
-            kani::assert(matches!(keys_exist, Ok(true)))
+            ));
+            kani::assert(matches!(keys_exist, Ok(true)));
         }
         EventClass::Unrelated => {
-            kani::assert(matches!(intent, SideIndexIntent::None))
+            kani::assert(matches!(intent, SideIndexIntent::None));
             kani::assert(matches!(
                 production_intent, VerificationActionIndexIntent::None
-            ))
-            kani::assert(matches!(keys_exist, Ok(false)))
+            ));
+            kani::assert(matches!(keys_exist, Ok(false)));
         }
     }
 

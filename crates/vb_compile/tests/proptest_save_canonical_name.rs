@@ -29,7 +29,7 @@ use vb_yaml::ast::{ScalarValue, StepPrimitive};
 fn canonical_name(primitive: &StepPrimitive) -> &'static str {
     match primitive {
         StepPrimitive::Set { .. } => "set",
-        StepPrimitive::Save { .. } => "set",  // FIXED: was "save", now "set" (vb-pkif2)
+        StepPrimitive::Save { .. } => "set", // FIXED: was "save", now "set" (vb-pkif2)
         StepPrimitive::Do { .. } => "do",
         StepPrimitive::Choose { .. } => "choose",
         StepPrimitive::ForEach { .. } => "for_each",
@@ -51,8 +51,7 @@ fn canonical_name(primitive: &StepPrimitive) -> &'static str {
 /// Generates an arbitrary ScalarValue: String (1-64 chars) or Integer.
 fn arbitrary_scalar_value() -> impl Strategy<Value = ScalarValue> {
     prop_oneof![
-        "(a-z|A-Z|0-9|_|.)+"
-            .prop_map(ScalarValue::String),
+        "(a-z|A-Z|0-9|_|.)+".prop_map(ScalarValue::String),
         any::<i64>().prop_map(ScalarValue::Integer),
     ]
 }
@@ -64,8 +63,8 @@ fn arbitrary_save() -> impl Strategy<Value = StepPrimitive> {
 
 /// Generates an arbitrary Set primitive for comparison.
 fn arbitrary_set() -> impl Strategy<Value = StepPrimitive> {
-    let output = "(a-z|A-Z|_)+"
-        .prop_map(|s: String| s.chars().filter(|c| *c != '0').collect::<String>());
+    let output =
+        "(a-z|A-Z|_)+".prop_map(|s: String| s.chars().filter(|c| *c != '0').collect::<String>());
     let value = "(a-z|A-Z|0-9|_)+"
         .prop_map(|s: String| s.chars().filter(|c| *c != '0').collect::<String>());
     (output, value).prop_map(|(output, value)| StepPrimitive::Set { output, value })

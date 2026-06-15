@@ -34,23 +34,31 @@ mod harnesses {
         // Second call — must produce identical result
         let result2 = dc.symbolic_code();
 
-        kani::assert_eq!(result1, result2,
-            "symbolic_code() must be deterministic: two calls must return same result")
+        kani::assert_eq!(
+            result1,
+            result2,
+            "symbolic_code() must be deterministic: two calls must return same result"
+        );
 
         // If the code IS in the registry (result is Some), verify it matches the registry
         if let Some(sym) = result1 {
             // The symbolic string must actually be in the registry
             let found_in_registry = CODE_REGISTRY.iter().any(|e| e.symbolic == sym.as_str());
-            kani::assert(found_in_registry, "Returned SymbolicCode must be in the registry")
+            kani::assert(
+                found_in_registry,
+                "Returned SymbolicCode must be in the registry",
+            );
 
             // And the registry entry's numeric code must match
             let entry_numeric = CODE_REGISTRY
                 .iter()
                 .find(|e| e.symbolic == sym.as_str())
                 .map(|e| e.numeric);
-            kani::assert_eq!(entry_numeric,
+            kani::assert_eq!(
+                entry_numeric,
                 Some(raw),
-                "Registry numeric must match input")
+                "Registry numeric must match input"
+            );
         }
     }
 
@@ -62,7 +70,7 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let dc = DiagnosticCode::new(entry.numeric);
             let result = dc.symbolic_code();
-            kani::assert(result.is_some(), "Registered code must resolve")
+            kani::assert(result.is_some(), "Registered code must resolve");
             let result2 = dc.symbolic_code();
             kani::assert_eq!(result, result2, "Must be consistent");
         }

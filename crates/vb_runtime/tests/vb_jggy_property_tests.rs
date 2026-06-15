@@ -86,6 +86,7 @@ fn make_run_state(step_count: u16, action_attempts: &[u16]) -> Result<RunState, 
         admission: None,
         collect_states: CollectStates::new(),
         action_contracts: Box::new([]),
+        last_snapshot_executed: 0,
     })
 }
 

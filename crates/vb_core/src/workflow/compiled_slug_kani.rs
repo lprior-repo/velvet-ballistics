@@ -50,13 +50,14 @@ fn vb_ajc40_slug_decode_smoke_cases() {
     match validate_compiled_slugs(
         CompiledSlugs {
             slugs: Vec::new().into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.is_empty())
-            kani::assert_eq!(admitted.len(), 0)
-            kani::assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert(admitted.is_empty());
+            kani::assert_eq!(admitted.len(), 0);
+            kani::assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
     }
@@ -64,14 +65,16 @@ fn vb_ajc40_slug_decode_smoke_cases() {
     match validate_compiled_slugs(
         CompiledSlugs {
             slugs: vec![slug(0, 0)].into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1)
-            assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert_eq!(admitted.len(), 1);
+            assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => kani::assert(false), }
+        Err(_) => kani::assert(false),
+    }
 }
 
 /// Backward-compatible State 12 harness name for the same PO-002 smoke scope.
@@ -88,7 +91,7 @@ fn vb_ajc40_slug_decode_bytes() {
 #[kani::proof]
 #[kani::unwind(66)]
 fn vb_ajc40_slug_post_decode_semantics() {
-    let len: usize = kani::any());
+    let len: usize = kani::any();
     let declared_total: u64 = kani::any();
     let budget: u64 = kani::any();
     kani::assume(len <= SEMANTIC_ITEM_BOUND);
@@ -105,9 +108,12 @@ fn vb_ajc40_slug_post_decode_semantics() {
         budget,
     ) {
         Ok(remaining_budget) => {
-            kani::assert(len <= MAX_SLUGS_PER_WORKFLOW, "kani harness assertion")
-            kani::assert(remaining_budget <= budget, "kani harness assertion")
-            kani::assert(max_path_depth <= MAX_SLUG_PATH_SEGMENTS, "kani harness assertion")
+            kani::assert(len <= MAX_SLUGS_PER_WORKFLOW, "kani harness assertion");
+            kani::assert(remaining_budget <= budget, "kani harness assertion");
+            kani::assert(
+                max_path_depth <= MAX_SLUG_PATH_SEGMENTS,
+                "kani harness assertion",
+            );
         }
         Err(SlugParseError::Decode(_))
         | Err(SlugParseError::YbBudgetExceeded { .. })
@@ -133,8 +139,8 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1)
-            kani::assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert_eq!(admitted.len(), 1);
+            kani::assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
     }
@@ -142,12 +148,13 @@ fn vb_ajc40_slug_budget_boundaries() {
     match validate_compiled_slugs(
         CompiledSlugs {
             slugs: vec![slug(0, 1)].into_boxed_slice(),
-            total_yield_cost: 1, },
+            total_yield_cost: 1,
+        },
         1,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1)
-            assert_eq!(admitted.remaining_budget(), 0)
+            kani::assert_eq!(admitted.len(), 1);
+            assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
     }
@@ -155,14 +162,16 @@ fn vb_ajc40_slug_budget_boundaries() {
     match validate_compiled_slugs(
         CompiledSlugs {
             slugs: vec![slug(0, 1)].into_boxed_slice(),
-            total_yield_cost: 1, },
+            total_yield_cost: 1,
+        },
         0,
     ) {
         Err(SlugParseError::YbBudgetExceeded { total, max }) => {
             kani::assert_eq!(total, 1);
-            assert_eq!(max, 0)
+            assert_eq!(max, 0);
         }
-        _ => kani::assert(false), }
+        _ => kani::assert(false),
+    }
 }
 
 /// PO-024: depth 16 is admitted subject to budget); depth 17 rejects before budget.
@@ -183,14 +192,16 @@ fn vb_ajc40_slug_path_depth_16_17() {
     match validate_compiled_slugs(
         CompiledSlugs {
             slugs: vec![slug(MAX_SLUG_PATH_SEGMENTS + 1, 0)].into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         0,
     ) {
         Err(SlugParseError::SlugPathTooDeep { depth, max }) => {
-            assert_eq!(depth, MAX_SLUG_PATH_SEGMENTS + 1)
-            assert_eq!(max, MAX_SLUG_PATH_SEGMENTS)
+            assert_eq!(depth, MAX_SLUG_PATH_SEGMENTS + 1);
+            assert_eq!(max, MAX_SLUG_PATH_SEGMENTS);
         }
-        _ => kani::assert(false), }
+        _ => kani::assert(false),
+    }
 }
 
 /// PO-032: exact 65_535/65_536 count boundary fixture.
@@ -200,7 +211,10 @@ fn vb_ajc40_slug_path_depth_16_17() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn vb_ajc40_slug_count_65535_65536() {
-    kani::assert(validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW).is_ok(), "kani harness assertion")
+    kani::assert(
+        validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW).is_ok(),
+        "kani harness assertion",
+    );
 
     match validate_compiled_slug_count(SLUG_COUNT_OVER_LIMIT) {
         Err(SlugParseError::TooManySlugs { count, max }) => {

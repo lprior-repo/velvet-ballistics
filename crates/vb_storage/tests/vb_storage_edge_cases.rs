@@ -11,9 +11,9 @@
 
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::constants::DIGEST_BYTES;
-use vb_storage::recovery::{replay_events, recover_runtime_frame_seed, ActionReplayTracker};
-use vb_storage::{EventSeq, FjallJournal, JournalEvent, JournalError, RunHeaderRecord};
 use vb_storage::recovery::RecoveryError;
+use vb_storage::recovery::{ActionReplayTracker, recover_runtime_frame_seed, replay_events};
+use vb_storage::{EventSeq, FjallJournal, JournalError, JournalEvent, RunHeaderRecord};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -189,9 +189,11 @@ fn duplicate_event_with_mismatched_payload_returns_duplicate_error() {
     );
 
     // Verify: the original (matching) event is still readable
-    let events = journal.events_for_run(run).expect("events_for_run must succeed");
+    let events = journal
+        .events_for_run(run)
+        .expect("events_for_run must succeed");
     assert_eq!(events.len(), 1, "exactly one event must be stored");
-    match &events[0] {;
+    match &events[0] {
         JournalEvent::RunAccepted { workflow, .. } => {
             assert_eq!(
                 *workflow,

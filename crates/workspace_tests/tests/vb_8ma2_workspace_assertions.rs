@@ -228,7 +228,7 @@ fn forbidden_runtime_format_dependency_fails_target_crate() -> TestResult {
 
 #[test]
 fn renamed_forbidden_ui_dependency_fails_target_crate() -> TestResult {
-    let workspace = workspace_with_dependency_line(format!(
+    let workspace = workspace_with_dependency_line(&format!(
         "ui = {{ package = \"{}\" }}\n",
         REMOVED_UI_MAKEPAD,
     ))?;
@@ -257,7 +257,7 @@ fn renamed_forbidden_runtime_format_dependency_fails_target_crate() -> TestResul
 
 #[test]
 fn path_aliased_forbidden_ui_dependency_fails_target_crate() -> TestResult {
-    let workspace = workspace_with_dependency_line(format!(
+    let workspace = workspace_with_dependency_line(&format!(
         "ui = {{ path = \"../{}\" }}\n",
         REMOVED_UI_MAKEPAD,
     ))?;

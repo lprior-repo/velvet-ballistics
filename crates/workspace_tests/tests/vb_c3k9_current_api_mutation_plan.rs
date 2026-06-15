@@ -113,7 +113,7 @@ exclusion policy",
         REMOVED_UI_MODEL,
     );
 
-    let report = validate_plan(misplaced_plan);
+    let report = validate_plan(&misplaced_plan);
 
     assert_eq!(
         report.missing_requirements,
@@ -180,7 +180,7 @@ exclusion policy",
         REMOVED_UI_MODEL,
     );
 
-    let report = validate_plan(missing_section_plan);
+    let report = validate_plan(&missing_section_plan);
 
     assert_eq!(report.required_section_count, REQUIRED_SECTIONS.len());
     assert_eq!(

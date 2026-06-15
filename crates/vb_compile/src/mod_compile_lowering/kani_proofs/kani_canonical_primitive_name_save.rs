@@ -188,7 +188,7 @@ fn kani_canonical_primitive_name_all_variants() {
     // Verify each variant maps to its canonical name — NOTE: Save (discriminant 1) now asserts "set"
     match discriminant {
         0 => kani::assert(result == "set", "Set must map to \"set\""),
-        1 => kani::assert(result == "set", "Save must map to \"set\""),  // FIXED from "save"
+        1 => kani::assert(result == "set", "Save must map to \"set\""), // FIXED from "save"
         2 => kani::assert(result == "do", "Do must map to \"do\""),
         3 => kani::assert(result == "choose", "Choose must map to \"choose\""),
         4 => kani::assert(result == "for_each", "ForEach must map to \"for_each\""),

@@ -99,67 +99,67 @@ fn checked_above_bound_field_id(symbols_count: u32) -> u32 {
 fn gate_08_accepts_field_symbol_zero_when_symbols_count_is_one() {
     let parts = one_accessor_parts_with_segment(1, 1, 0, PathSegment::Field(SymbolId::new(0)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
 fn gate_08_accepts_field_symbol_at_symbols_count_minus_one() {
     let parts = one_accessor_parts_with_segment(1, 3, 0, PathSegment::Field(SymbolId::new(2)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
 fn gate_08_accepts_field_symbol_at_larger_symbols_count_minus_one() {
     let parts = one_accessor_parts_with_segment(1, 8, 0, PathSegment::Field(SymbolId::new(7)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
 fn gate_08_rejects_field_symbol_equal_to_symbols_count() {
     let parts = one_accessor_parts_with_segment(1, 3, 0, PathSegment::Field(SymbolId::new(3)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
             symbol: 3,
             symbols_count: 3,
-        }))
+        }));
 }
 
 #[test]
 fn gate_08_rejects_field_symbol_above_symbols_count() {
     let parts = one_accessor_parts_with_segment(1, 3, 0, PathSegment::Field(SymbolId::new(4)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
             symbol: 4,
             symbols_count: 3,
-        }))
+        }));
 }
 
 #[test]
 fn gate_08_rejects_field_segment_when_symbols_count_is_zero() {
     let parts = one_accessor_parts_with_segment(1, 0, 0, PathSegment::Field(SymbolId::new(0)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
             symbol: 0,
             symbols_count: 0,
-        }))
+        }));
 }
 
 #[test]
 fn gate_08_accepts_index_zero() {
     let parts = one_accessor_parts_with_segment(1, 0, 0, PathSegment::Index(0));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
@@ -167,18 +167,18 @@ fn gate_08_accepts_index_u32_max_minus_one() {
     let parts =
         one_accessor_parts_with_segment(1, 0, 0, PathSegment::Index(u32::MAX.saturating_sub(1)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
 fn gate_08_rejects_sentinel_index_segment() {
     let parts = one_accessor_parts_with_segment(1, 0, 0, PathSegment::Index(u32::MAX));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorPathInvalid {
             accessor_index: 0,
             segment_index: 0,
-        }))
+        }));
 }
 
 #[test]
@@ -189,14 +189,14 @@ fn gate_08_accepts_empty_accessor_paths() {
         Box::new([accessor_allocating_boxed_path(0, Box::new([]))]),
     );
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
 fn gate_08_accepts_empty_accessor_collection() {
     let parts = workflow_parts_with_accessors(1, 0, Box::new([]));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
@@ -210,7 +210,7 @@ fn gate_08_accepts_accessor_root_at_slot_count_minus_one() {
         )]),
     );
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
 }
 
 #[test]
@@ -221,12 +221,12 @@ fn gate_08_rejects_accessor_root_equal_to_slot_count() {
         Box::new([accessor_allocating_boxed_path(3, Box::new([]))]),
     );
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSlotOutOfRange {
             accessor_index: 0,
             slot: 3,
             slot_count: 3,
-        }))
+        }));
 }
 
 #[test]
@@ -237,12 +237,12 @@ fn gate_08_rejects_accessor_root_greater_than_slot_count() {
         Box::new([accessor_allocating_boxed_path(5, Box::new([]))]),
     );
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSlotOutOfRange {
             accessor_index: 0,
             slot: 5,
             slot_count: 1,
-        }))
+        }));
 }
 
 #[test]
@@ -259,13 +259,13 @@ fn gate_08_reports_invalid_field_segment_coordinates() {
         ]),
     );
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 1,
             segment_index: 1,
             symbol: 2,
             symbols_count: 2,
-        }))
+        }));
 }
 
 #[test]
@@ -279,41 +279,41 @@ fn gate_08_checks_root_before_path_segments() {
         )]),
     );
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSlotOutOfRange {
             accessor_index: 0,
             slot: 5,
             slot_count: 1,
-        }))
+        }));
 }
 
 #[test]
 fn focused_and_aggregate_gate_08_accept_field_zero_when_symbols_count_is_one() {
     let parts = one_accessor_parts_with_segment(1, 1, 0, PathSegment::Field(SymbolId::new(0)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()))
-    kani::assert_eq!(crate::gates::validate_gate_08_accessor_path_segments(&parts),
-        Ok(()))
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
+    assert_eq!(crate::gates::validate_gate_08_accessor_path_segments(&parts),
+        Ok(()));
 }
 
 #[test]
 fn focused_and_aggregate_gate_08_reject_field_equal_to_symbols_count() {
     let parts = one_accessor_parts_with_segment(1, 1, 0, PathSegment::Field(SymbolId::new(1)));
 
-    kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+    assert_eq!(validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
             symbol: 1,
             symbols_count: 1,
-        }))
-    kani::assert_eq!(crate::gates::validate_gate_08_accessor_path_segments(&parts),
+        }));
+    assert_eq!(crate::gates::validate_gate_08_accessor_path_segments(&parts),
         Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
             symbol: 1,
             symbols_count: 1,
-        }))
+        }));
 }
 
 proptest! {
@@ -333,8 +333,8 @@ proptest! {
             0,
             PathSegment::Field(SymbolId::new(field_id)),
         );
-        prop_kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_field_result(symbols_count, field_id))
+        prop_assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_field_result(symbols_count, field_id));
     }
 
     #[test]
@@ -348,15 +348,15 @@ proptest! {
             0,
             PathSegment::Field(SymbolId::new(field_id)),
         );
-        prop_kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_field_result(symbols_count, field_id))
+        prop_assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_field_result(symbols_count, field_id));
     }
 
     #[test]
     fn proptest_gate_08_accepts_exactly_non_sentinel_index_values(index in any::<u32>()) {
         let parts = one_accessor_parts_with_segment(1, 0, 0, PathSegment::Index(index));
-        prop_kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_index_result(index))
+        prop_assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_index_result(index));
     }
 
     #[test]
@@ -376,13 +376,13 @@ proptest! {
                 ]),
             )]),
         );
-        prop_kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+        prop_assert_eq!(validate_gate_08_accessor_path_segments(&parts),
             Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 1,
                 symbol: invalid_field,
                 symbols_count: 2,
-            }))
+            }));
     }
 
     #[test]
@@ -398,8 +398,8 @@ proptest! {
                 Box::new([PathSegment::Field(SymbolId::new(0))]),
             )]),
         );
-        prop_kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_root_result(slot_count, root))
+        prop_assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_root_result(slot_count, root));
     }
 }
 
@@ -420,8 +420,8 @@ mod verification {
             PathSegment::Field(SymbolId::new(field_id)),
         );
 
-        kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_field_result(symbols_count, field_id))
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_field_result(symbols_count, field_id));
     }
 
     #[kani::proof]
@@ -436,8 +436,8 @@ mod verification {
             Box::new([accessor_allocating_boxed_path(root, Box::new([]))]),
         );
 
-        kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_root_result(slot_count, root))
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_root_result(slot_count, root));
     }
 
     #[kani::proof]
@@ -445,8 +445,8 @@ mod verification {
         let index: u32 = kani::any();
         let parts = one_accessor_parts_with_segment(1, 0, 0, PathSegment::Index(index));
 
-        kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
-            expected_single_index_result(index))
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+            expected_single_index_result(index));
     }
 
     #[kani::proof]
@@ -465,11 +465,11 @@ mod verification {
             )]),
         );
 
-        kani::assert_eq!(validate_gate_08_accessor_path_segments(&parts),
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts),
             Err(ValidationError::AccessorSlotOutOfRange {
                 accessor_index: 0,
                 slot: usize::from(root),
                 slot_count: usize::from(slot_count),
-            }))
+            }));
     }
 }

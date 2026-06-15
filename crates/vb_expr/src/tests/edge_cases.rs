@@ -8,10 +8,10 @@
 //! - Lexer token count boundary: `MAX_TOKENS = 256`
 //! - Empty expression program evaluation
 
-use crate::eval::eval_expr_program;
-use crate::lexer::{lex_expr, LiteralToken, Token};
-use crate::parser::parse_expr;
 use crate::ExprError;
+use crate::eval::eval_expr_program;
+use crate::lexer::{LiteralToken, Token, lex_expr};
+use crate::parser::parse_expr;
 use vb_core::ExprProgram;
 
 // =========================================================================
@@ -74,7 +74,7 @@ fn parser_depth_65_nested_parens_fails() {
     match parse_expr(&tokens) {
         Err(ExprError::ParseDepthExceeded { max }) => {
             assert_eq!(max, 64, "error should report max=64, got max={max}");
-        };
+        }
         other => panic!("expected ParseDepthExceeded {{ max: 64 }}, got {other:?}"),
     }
 }
@@ -92,7 +92,7 @@ fn lexer_source_4095_bytes_succeeds() -> crate::ExprResult<()> {
     assert_eq!(tokens.len(), 2);
     assert_eq!(tokens[0], Token::Literal(LiteralToken::I64(1)));
     assert_eq!(tokens[1], Token::End);
-    Ok(());
+    Ok(())
 }
 
 /// Lexing a 4096-byte source string succeeds (4096 == MAX_SOURCE_BYTES).
@@ -107,7 +107,7 @@ fn lexer_source_4096_bytes_succeeds_at_boundary() -> crate::ExprResult<()> {
     assert_eq!(tokens.len(), 2);
     assert_eq!(tokens[0], Token::Literal(LiteralToken::I64(1)));
     assert_eq!(tokens[1], Token::End);
-    Ok(());
+    Ok(())
 }
 
 /// Lexing a 4097-byte source string fails with ExpressionTooLong.

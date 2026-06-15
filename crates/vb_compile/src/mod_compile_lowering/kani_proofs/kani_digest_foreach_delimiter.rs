@@ -15,7 +15,7 @@ fn kani_foreach_delimiter_byte_not_in_yaml_id() {
     let byte_val: u8 = kani::any();
     let is_yaml_id = byte_val.is_ascii_alphanumeric() || byte_val == b'_' || byte_val == b'-';
     if is_yaml_id {
-        kani::assert_ne!(byte_val, b':')
+        kani::assert_ne!(byte_val, b':');
     }
 }
 
@@ -26,7 +26,7 @@ fn kani_foreach_delimiter_no_collision_possible() {
     let byte_val: u8 = kani::any();
     let is_delimiter = byte_val == b':';
     let is_yaml_id = byte_val.is_ascii_alphanumeric() || byte_val == b'_' || byte_val == b'-';
-    kani::assert(!(is_delimiter && is_yaml_id), "kani harness assertion")
+    kani::assert(!(is_delimiter && is_yaml_id), "kani harness assertion");
 }
 
 /// H3: Boundary collision prevention — delimiters prevent ambiguous concatenation.
@@ -75,5 +75,5 @@ fn kani_foreach_delimiter_prevents_boundary_collision() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
-    kani::assert_ne!(ha.finalize().as_bytes(), hb.finalize().as_bytes())
+    kani::assert_ne!(ha.finalize().as_bytes(), hb.finalize().as_bytes());
 }

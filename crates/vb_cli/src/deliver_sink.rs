@@ -154,7 +154,7 @@ fn resolve_new_file_target(path: &Path) -> Result<DeliverFileTarget, DeliverSink
     };
     let parent_dir = open_parent_directory(parent)?;
     #[cfg(test)]
-    test_support::maybe_change_parent_path(parent);
+    let _ = test_support::maybe_change_parent_path(parent);
     let resolved_parent = canonicalize_parent_path(parent)?;
     if is_blocked_root(&resolved_parent) {
         return Err(DeliverSinkError::BlockedPath);

@@ -50,17 +50,17 @@ pub fn kind_ids_and_legacy_policy_are_narrow() {
     let journal_family = matches!(&*family_result, Ok(()));
 
     if bounded_kind == RecordKind::SlotWritten.id() {
-        kani::assert(known, "kani harness assertion")
-        kani::assert(journal_family, "kani harness assertion")
+        kani::assert(known, "kani harness assertion");
+        kani::assert(journal_family, "kani harness assertion");
     }
 
     if bounded_kind == RecordKind::StepSucceeded.id() {
-        kani::assert(known, "kani harness assertion")
-        kani::assert(journal_family, "kani harness assertion")
+        kani::assert(known, "kani harness assertion");
+        kani::assert(journal_family, "kani harness assertion");
     }
 
     if !known {
-        kani::assert(!journal_family, "kani harness assertion")
+        kani::assert(!journal_family, "kani harness assertion");
     }
 
     let use_legacy_like_pair = kani::any::<bool>();
@@ -74,7 +74,7 @@ pub fn kind_ids_and_legacy_policy_are_narrow() {
     } else {
         RecordKind::StepSucceeded
     };
-    kani::assert(wrong_envelope != payload.record_kind(), "kani harness assertion")
+    kani::assert(wrong_envelope != payload.record_kind(), "kani harness assertion");
 
     let envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,
@@ -82,5 +82,5 @@ pub fn kind_ids_and_legacy_policy_are_narrow() {
         record_kind: wrong_envelope.id(),
         sequence: payload.seq().get(),
     };
-    kani::assert(!semantic_decode_accepts(&envelope, &payload))
+    kani::assert(!semantic_decode_accepts(&envelope, &payload));
 }

@@ -107,6 +107,8 @@ fn shard_new_with_custom_config_returns_generation_one() {
         step_budget_per_tick: 100,
         max_active_runs: 16,
         policy: vb_core::policy::RuntimePolicy::Strict,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     };
     let shard = Shard::new(config);
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));

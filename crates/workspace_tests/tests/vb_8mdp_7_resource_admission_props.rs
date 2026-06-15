@@ -65,6 +65,8 @@ fn new_shard_config(queue_capacity: usize) -> ShardConfig {
         step_budget_per_tick: 100,
         max_active_runs: 16,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     }
 }
 
@@ -316,6 +318,8 @@ fn no_run_inserted_when_active_run_capacity_exceeded() {
         step_budget_per_tick: 100,
         max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     });
 
     shard
@@ -359,6 +363,8 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
         step_budget_per_tick: 100,
         max_active_runs: 1,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     });
 
     // Get initial pool metrics (pool may be lazily created)
@@ -445,6 +451,8 @@ fn staged_frame_release_integration_accept_then_reject() {
         step_budget_per_tick: 100,
         max_active_runs: 4,
         policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
     });
 
     // Initial state: no frame pool (lazy creation), no runs
@@ -741,7 +749,9 @@ proptest! {
             step_budget_per_tick: 100,
             max_active_runs: capacity,
             policy: RuntimePolicy::Relaxed,
-        });
+            coalesce_window_ticks: 1,
+            snapshot_interval_steps: 0,
+});
 
         // Submit unique runs
         for i in 0..run_count {

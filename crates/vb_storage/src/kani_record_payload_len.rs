@@ -35,7 +35,7 @@ fn kani_record_payload_len_within_max() {
     match result {
         Ok(_) => kani::assert(true, "payload within max accepted"),
         Err(JournalError::PayloadTooLarge { .. }) => {
-            kani::assert(false, "payload within max should not be rejected")
+            kani::assert(false, "payload within max should not be rejected");
         }
         Err(_) => kani::assert(true, "payload within max passes length check"),
     }
@@ -115,7 +115,7 @@ fn kani_record_payload_len_exactly_at_max() {
     match result {
         Ok(_) => kani::assert(true, "payload at max accepted"),
         Err(JournalError::PayloadTooLarge { .. }) => {
-            kani::assert(false, "payload at max should not be rejected")
+            kani::assert(false, "payload at max should not be rejected");
         }
         Err(_) => kani::assert(true, "payload at max passes length check"),
     }

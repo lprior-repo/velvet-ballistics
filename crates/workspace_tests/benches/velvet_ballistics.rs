@@ -9,12 +9,12 @@ use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
 use vb_core::action::{ActionOutputReady, ActionTicket};
 use vb_core::ids::SeqNo;
+use vb_core::policy::RuntimePolicy;
 use vb_core::{
     ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx,
     ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget,
     StepIdx, SymbolId, Taint, WorkflowDigest, WorkflowParts,
 };
-use vb_core::policy::RuntimePolicy;
 use vb_runtime::journal::RuntimeJournal;
 use vb_runtime::{Runtime, RuntimeError};
 use vb_storage::{EventSeq, JournalEvent};
@@ -3231,7 +3231,9 @@ fn missing_slot_copy_bench(c: &mut Criterion) {
                     }
                     frame
                 } else {
-                    frame
+                    Err(vb_core::CoreError::InvalidConfig {
+                        reason: "workflow compile failed".into(),
+                    })
                 }
             })
         },
@@ -4764,33 +4766,31 @@ fn missing_action_complete_resume_bench(c: &mut Criterion) {
         ),
         |b| {
             let run = RunId::new(900);
-                let ticket = ActionTicket {
-                    run,
-                    step: StepIdx::ZERO,
-                    seq: SeqNo::new(0),
-                    action: ActionId::new(7),
-                    attempt: 1,
-                    idempotency_key: 0,
-                    capacity: 1,
-                    mock: Default::default(),
-                };
-                let output = ActionOutputReady {
-                    output_slot: SlotIdx::new(1),
-                    value: vb_core::SlotValue::I64(42),
-                    taint: Taint::Clean,
-                    encoded_len: 8,
-                };
-                checked_iter(b, "action_complete_resume", || {
-                    if workflow.is_some() {
-                        let result = runtime.complete_action_with_output(
-                            black_box(ticket),
-                            black_box(output.clone()),
-                        );
-                        black_box(result)
-                    } else {
-                        black_box(Result::<(), _>::Err(RuntimeError::RunNotFound))
-                    }
-                })
+            let ticket = ActionTicket {
+                run,
+                step: StepIdx::ZERO,
+                seq: SeqNo::new(0),
+                action: ActionId::new(7),
+                attempt: 1,
+                idempotency_key: 0,
+                capacity: 1,
+                mock: Default::default(),
+            };
+            let output = ActionOutputReady {
+                output_slot: SlotIdx::new(1),
+                value: vb_core::SlotValue::I64(42),
+                taint: Taint::Clean,
+                encoded_len: 8,
+            };
+            checked_iter(b, "action_complete_resume", || {
+                if workflow.is_some() {
+                    let result = runtime
+                        .complete_action_with_output(black_box(ticket), black_box(output.clone()));
+                    black_box(result)
+                } else {
+                    black_box(Result::<(), _>::Err(RuntimeError::RunNotFound))
+                }
+            })
         },
     );
 
@@ -4833,23 +4833,23 @@ fn missing_wait_timer_resume_bench(c: &mut Criterion) {
         ),
         |b| {
             let run = RunId::new(901);
-                let captured = match runtime.capture_timer_entry(run) {
-                    Ok(entry) => entry,
-                    Err(_) => {
-                        checked_iter(b, "wait_timer_resume", || {
-                            black_box(Result::<(), _>::Err(RuntimeError::InvalidTimerFire))
-                        });
-                        return;
-                    }
-                };
-                checked_iter(b, "wait_timer_resume", || {
-                    if workflow.is_some() {
-                        let result = runtime.timer_entry_fired(black_box(captured));
-                        black_box(result)
-                    } else {
-                        black_box(Result::<(), _>::Err(RuntimeError::RunNotFound))
-                    }
-                })
+            let captured = match runtime.capture_timer_entry(run) {
+                Ok(entry) => entry,
+                Err(_) => {
+                    checked_iter(b, "wait_timer_resume", || {
+                        black_box(Result::<(), _>::Err(RuntimeError::InvalidTimerFire))
+                    });
+                    return;
+                }
+            };
+            checked_iter(b, "wait_timer_resume", || {
+                if workflow.is_some() {
+                    let result = runtime.timer_entry_fired(black_box(captured));
+                    black_box(result)
+                } else {
+                    black_box(Result::<(), _>::Err(RuntimeError::RunNotFound))
+                }
+            })
         },
     );
 

@@ -136,7 +136,7 @@ fn prove_digest_determinism() {
     let digest_b = crate::mod_compile_lowering::canonical_digest(&source, contract);
 
     kani::assert_eq!(digest_a, digest_b,
-        "canonical_digest must be deterministic: same inputs -> same output")
+        "canonical_digest must be deterministic: same inputs -> same output");
 
     kani::cover!(digest_a == digest_b);
 }
@@ -152,7 +152,7 @@ fn prove_contract_encoding_determinism() {
     let encoding_b = encode_contract_bytes(&contract);
 
     kani::assert_eq!(encoding_a, encoding_b,
-        "encode_contract_bytes must be deterministic: same contract -> same encoding")
+        "encode_contract_bytes must be deterministic: same contract -> same encoding");
 
     kani::cover!(encoding_a == encoding_b);
 }
@@ -172,14 +172,14 @@ fn prove_canonical_policy_digest_agree_on_identity() {
     contract_b.max_steps = max_steps;
 
     // Verify contracts differ
-    kani::assert_ne!(contract_a, contract_b, "Test contracts must differ")
+    kani::assert_ne!(contract_a, contract_b, "Test contracts must differ");
 
     // Verify encoding differs (key to digest inequality)
     let encoding_a = encode_contract_bytes(&contract_a);
     let encoding_b = encode_contract_bytes(&contract_b);
 
     kani::assert_ne!(encoding_a, encoding_b,
-        "Different contracts must produce different encodings for hashing")
+        "Different contracts must produce different encodings for hashing");
 
     // Verify the full canonical_digest incorporates the contract change
     // YAML source is generated symbolically so the harness is not tied to
@@ -194,7 +194,7 @@ fn prove_canonical_policy_digest_agree_on_identity() {
     let digest_b = crate::mod_compile_lowering::canonical_digest(&source, contract_b);
 
     kani::assert_ne!(digest_a, digest_b,
-        "canonical_digest must differ when contracts differ")
+        "canonical_digest must differ when contracts differ");
 
     kani::cover!(digest_a != digest_b);
 }
@@ -217,13 +217,13 @@ fn prove_encoding_differentiates_default_from_modified() {
     kani::assume(budget != contract_a.max_step_budget_per_tick);
     contract_b.max_step_budget_per_tick = budget;
 
-    kani::assert_ne!(contract_a, contract_b, "Contracts must differ")
+    kani::assert_ne!(contract_a, contract_b, "Contracts must differ");
 
     let encoding_a = encode_contract_bytes(&contract_a);
     let encoding_b = encode_contract_bytes(&contract_b);
 
     kani::assert_ne!(encoding_a, encoding_b,
-        "Different contracts must produce different encodings")
+        "Different contracts must produce different encodings");
 
     kani::cover!(contract_a != contract_b);
 }

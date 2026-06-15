@@ -48,11 +48,17 @@ fn kani_f64_add_preserves_finiteness() {
     let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(left), SlotValue::F64(right));
 
     // PO-001: Result must be Ok and the F64 must be finite
-    kani::assert(result.is_ok(), "eval_add_op with bounded finite inputs must not error")
+    kani::assert(
+        result.is_ok(),
+        "eval_add_op with bounded finite inputs must not error",
+    );
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get().is_finite(), "eval_add_op of two bounded finite f64s must produce finite f64")
+    kani::assert(
+        f.get().is_finite(),
+        "eval_add_op of two bounded finite f64s must produce finite f64",
+    );
 }
 
 /// Kani harness for PO-001: F64 subtraction preserves finiteness.
@@ -85,11 +91,17 @@ fn kani_f64_sub_preserves_finiteness() {
 
     let result = eval_binary_op(BinaryOp::Sub, SlotValue::F64(left), SlotValue::F64(right));
 
-    kani::assert(result.is_ok(), "eval_sub_op with bounded finite inputs must not error")
+    kani::assert(
+        result.is_ok(),
+        "eval_sub_op with bounded finite inputs must not error",
+    );
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get().is_finite(), "eval_sub_op of two bounded finite f64s must produce finite f64")
+    kani::assert(
+        f.get().is_finite(),
+        "eval_sub_op of two bounded finite f64s must produce finite f64",
+    );
 }
 
 /// Kani harness for PO-001: F64 multiplication preserves finiteness.
@@ -126,11 +138,17 @@ fn kani_f64_mul_preserves_finiteness() {
 
     let result = eval_binary_op(BinaryOp::Mul, SlotValue::F64(left), SlotValue::F64(right));
 
-    kani::assert(result.is_ok(), "eval_mul_op with bounded finite inputs must not error")
+    kani::assert(
+        result.is_ok(),
+        "eval_mul_op with bounded finite inputs must not error",
+    );
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get().is_finite(), "eval_mul_op of two bounded finite f64s must produce finite f64")
+    kani::assert(
+        f.get().is_finite(),
+        "eval_mul_op of two bounded finite f64s must produce finite f64",
+    );
 }
 
 /// Kani harness for PO-001: F64 negation preserves finiteness.
@@ -150,9 +168,15 @@ fn kani_f64_neg_preserves_finiteness() {
 
     let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(val));
 
-    kani::assert(result.is_ok(), "eval_neg_op with finite input must not error")
+    kani::assert(
+        result.is_ok(),
+        "eval_neg_op with finite input must not error",
+    );
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get().is_finite(), "eval_neg_op of a finite f64 must produce finite f64")
+    kani::assert(
+        f.get().is_finite(),
+        "eval_neg_op of a finite f64 must produce finite f64",
+    );
 }

@@ -514,7 +514,7 @@ fn recover_hydrates_pending_timers() -> Result<(), String> {
                 admission: None,
                 collect_states: Default::default(),
                 action_contracts: Box::new([]),
-        last_snapshot_executed: 0,
+                last_snapshot_executed: 0,
             },
         );
     }

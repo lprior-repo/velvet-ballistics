@@ -91,7 +91,7 @@ fn ps_008_proof_flags_exhaustive() {
                 "taint_safe was false and bounded was true",
             ),
             "retry_safe" => {
-                kani::assert(!retry_safe && bounded && taint_safe, "retry_safe was false")
+                kani::assert(!retry_safe && bounded && taint_safe, "retry_safe was false");
             }
             "idempotency_verified" => {
                 kani::assert(

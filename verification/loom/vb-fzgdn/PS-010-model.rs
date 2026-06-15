@@ -12,10 +12,10 @@
 
 #![cfg(loom)]
 
-use std::collections::VecDeque;
 use loom::sync::Arc;
 use loom::sync::Mutex;
 use loom::thread;
+use std::collections::VecDeque;
 
 use vb_core::ids::RunId;
 use vb_runtime::shard::types::PendingTimerKind;
@@ -42,8 +42,8 @@ impl TimerModel {
         }
     }
 
-    fn matches_authority(self, gen: u64, dl: u64, k: PendingTimerKind) -> bool {
-        self.generation == gen && self.deadline == dl && self.kind == k
+    fn matches_authority(self, generation: u64, dl: u64, k: PendingTimerKind) -> bool {
+        self.generation == generation && self.deadline == dl && self.kind == k
     }
 }
 
@@ -100,7 +100,8 @@ impl TimerState {
             self.pending = Some(timer); // restore state
             return false;
         }
-        self.command_queue.push_back(TimerFiredCommand::from_timer(&timer));
+        self.command_queue
+            .push_back(TimerFiredCommand::from_timer(&timer));
         true
     }
 
@@ -117,7 +118,13 @@ impl TimerState {
 fn ps_010_fire_succeeds_when_room() {
     loom::model(|| {
         let mut state = TimerState::new(10);
-        state.set_pending(TimerModel::new(RunId::new(1), 5, PendingTimerKind::Wait, 1, 100));
+        state.set_pending(TimerModel::new(
+            RunId::new(1),
+            5,
+            PendingTimerKind::Wait,
+            1,
+            100,
+        ));
         assert!(state.fire());
         assert!(!state.is_pending());
         assert_eq!(state.queue_len(), 1);
@@ -128,7 +135,13 @@ fn ps_010_fire_succeeds_when_room() {
 fn ps_010_fire_preserves_state_when_full() {
     loom::model(|| {
         let mut state = TimerState::new(2);
-        state.set_pending(TimerModel::new(RunId::new(1), 5, PendingTimerKind::Wait, 1, 100));
+        state.set_pending(TimerModel::new(
+            RunId::new(1),
+            5,
+            PendingTimerKind::Wait,
+            1,
+            100,
+        ));
         // Fill queue to capacity
         state.command_queue.push_back(TimerFiredCommand {
             run: RunId::new(99),
@@ -154,7 +167,13 @@ fn ps_010_concurrent_fire_maintains_atomicity() {
         let state = Arc::new(Mutex::new(TimerState::new(1)));
         {
             let mut guard = state.lock().unwrap();
-            guard.set_pending(TimerModel::new(RunId::new(1), 5, PendingTimerKind::Wait, 1, 100));
+            guard.set_pending(TimerModel::new(
+                RunId::new(1),
+                5,
+                PendingTimerKind::Wait,
+                1,
+                100,
+            ));
         }
 
         let s1 = state.clone();

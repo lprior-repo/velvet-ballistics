@@ -271,7 +271,7 @@ proptest! {
 #[test]
 fn boundary_exposure_none() {
     let exposure = BoundaryExposure::none();
-    assert_eq!(exposure.risk, BoundaryRisk::None)
+    assert_eq!(exposure.risk, BoundaryRisk::None);
 }
 
 #[test]
@@ -285,7 +285,7 @@ fn boundary_risk_all_variants() {
     ];
     for risk in risks {
         let exposure = BoundaryExposure::risky(risk);
-        assert_eq!(exposure.risk, risk)
+        assert_eq!(exposure.risk, risk);
     }
 }
 
@@ -315,33 +315,42 @@ fn boundary_class_all_variants() {
             },
         );
         let result = classify_boundary(candidate);
-        assert!(result.is_ok(), "classify_boundary must succeed for valid class");
-        assert_eq!(result.unwrap().class, class)
+        assert!(
+            result.is_ok(),
+            "classify_boundary must succeed for valid class"
+        );
+        assert_eq!(result.unwrap().class, class);
     }
 }
 
 #[test]
 fn review_status_from_serialized_approved() {
     let status = ReviewStatus::from_serialized("approved");
-    assert!(matches!(status, ReviewStatus::Approved), "approved must parse to Approved")
+    assert!(
+        matches!(status, ReviewStatus::Approved),
+        "approved must parse to Approved"
+    );
 }
 
 #[test]
 fn review_status_from_serialized_waived() {
     let status = ReviewStatus::from_serialized("waived");
-    assert!(matches!(status, ReviewStatus::Waived), "waived must parse to Waived")
+    assert!(
+        matches!(status, ReviewStatus::Waived),
+        "waived must parse to Waived"
+    );
 }
 
 #[test]
 fn review_status_serialized_approved() {
     let status = ReviewStatus::Approved;
-    assert_eq!(status.serialized(), "approved")
+    assert_eq!(status.serialized(), "approved");
 }
 
 #[test]
 fn review_status_serialized_waived() {
     let status = ReviewStatus::Waived;
-    assert_eq!(status.serialized(), "waived")
+    assert_eq!(status.serialized(), "waived");
 }
 
 #[test]
@@ -356,7 +365,7 @@ fn evidence_kind_all_variants() {
         let ref_e = EvidenceReference::repo_local(PathBuf::from("fuzz/test.rs"), kind);
         match ref_e {
             EvidenceReference::RepoLocal { kind: k, .. } => {
-                assert_eq!(k, kind)
+                assert_eq!(k, kind);
             }
             _ => panic!("Expected RepoLocal"),
         }
@@ -366,35 +375,35 @@ fn evidence_kind_all_variants() {
 #[test]
 fn field_state_from_none_returns_missing() {
     let state: FieldState<String> = FieldState::from(None);
-    assert!(matches!(state, FieldState::Missing))
+    assert!(matches!(state, FieldState::Missing));
 }
 
 #[test]
 fn field_state_missing_map_preserves_missing() {
     let state: FieldState<String> = FieldState::Missing;
     let mapped = state.map(|s: String| s.len());
-    assert!(matches!(mapped, FieldState::Missing))
+    assert!(matches!(mapped, FieldState::Missing));
 }
 
 #[test]
 fn field_state_missing_as_ref_preserves_missing() {
     let state: FieldState<String> = FieldState::Missing;
     let ref_state = state.as_ref();
-    assert!(matches!(ref_state, FieldState::Missing))
+    assert!(matches!(ref_state, FieldState::Missing));
 }
 
 #[test]
 fn validated_inventory_empty_records_cast_to_completion() {
     let validated = ValidatedBoundaryInventory::from_records(Vec::new());
     assert_eq!(validated.records.len(), 0);
-    assert_eq!(validated.discovered_boundary_count, 0)
+    assert_eq!(validated.discovered_boundary_count, 0);
 }
 
 #[test]
 fn workspace_root_path_accessor_works() {
     let path = PathBuf::from("/some/test/path");
     let root = WorkspaceRoot::new(path.clone());
-    assert_eq!(root.path, path)
+    assert_eq!(root.path, path);
 }
 
 #[test]
@@ -402,14 +411,17 @@ fn freshness_marker_new_preserves_all_three_versions() {
     let marker = FreshnessMarker::new(10, 20, 30);
     assert_eq!(marker.source_version, 10);
     assert_eq!(marker.schema_version, 20);
-    assert_eq!(marker.evidence_version, 30)
+    assert_eq!(marker.evidence_version, 30);
 }
 
 #[test]
 fn boundary_candidate_new_empty_path_returns_empty() {
     let candidate = BoundaryCandidate::new("", "extern-c-boundary");
-    assert!(candidate.source_path.as_os_str().is_empty(), "empty path must produce empty source_path");
-    assert_eq!(candidate.marker, "extern-c-boundary")
+    assert!(
+        candidate.source_path.as_os_str().is_empty(),
+        "empty path must produce empty source_path"
+    );
+    assert_eq!(candidate.marker, "extern-c-boundary");
 }
 
 #[test]
@@ -428,7 +440,10 @@ fn boundary_record_draft_review_status_missing() {
         review_status: FieldState::Missing,
         waiver: FieldState::Missing,
     });
-    assert!(record.review_status().is_none(), "Missing review_status must return None")
+    assert!(
+        record.review_status().is_none(),
+        "Missing review_status must return None"
+    );
 }
 
 #[test]
@@ -436,9 +451,15 @@ fn review_status_from_serialized_unique_values() {
     let approved = ReviewStatus::from_serialized("approved");
     let waived = ReviewStatus::from_serialized("waived");
     let custom = ReviewStatus::from_serialized("custom-status");
-    assert!(matches!(approved, ReviewStatus::Approved), "approved must parse to Approved");
-    assert!(matches!(waived, ReviewStatus::Waived), "waived must parse to Waived");
-    assert!(matches!(custom, ReviewStatus::Other(ref s) if s == "custom-status"))
+    assert!(
+        matches!(approved, ReviewStatus::Approved),
+        "approved must parse to Approved"
+    );
+    assert!(
+        matches!(waived, ReviewStatus::Waived),
+        "waived must parse to Waived"
+    );
+    assert!(matches!(custom, ReviewStatus::Other(ref s) if s == "custom-status"));
 }
 
 // =============================================================================

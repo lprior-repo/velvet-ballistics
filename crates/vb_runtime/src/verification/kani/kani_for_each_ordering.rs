@@ -88,11 +88,11 @@ fn kani_for_each_ordering() {
                 if item_count == 0 {
                     // Empty list: pc should now be at done
                     kani::assert_eq!(run.pc(), done_step,
-                        "empty list must jump to done")
+                        "empty list must jump to done");
                 } else {
                     // Non-empty list: pc should be at body
                     kani::assert_eq!(run.pc(), body_step,
-                        "non-empty list must jump to body")
+                        "non-empty list must jump to body");
 
                     // First item should be bound to item_slot
                     let bound = match run.read_slot(item_slot) {
@@ -101,7 +101,7 @@ fn kani_for_each_ordering() {
                     };
                     kani::assert_eq!(*bound,
                         SlotValue::I64(0),
-                        "first item must be I64(0)")
+                        "first item must be I64(0)");
                 }
             }
             _ => {
@@ -193,7 +193,7 @@ fn kani_for_each_next_progression() {
                         kani::assert_eq!(*bound,
                             SlotValue::I64(expected_item),
                             "for_each_next must bind item {} in order",
-                            expected_item)
+                            expected_item);
                         expected_item += 1;
                         remaining -= 1;
                     }
@@ -246,14 +246,14 @@ fn kani_for_each_join_passthrough() {
             EngineSignal::Continue => {
                 // join must continue to next step
                 kani::assert_eq!(run.pc(), next_step,
-                    "join must continue to next step")
+                    "join must continue to next step");
                 // The output slot should hold the materialized value
                 let output = match run.read_slot(output_slot) {
                     Ok(v) => v,
                     Err(_) => { kani::assume(false); loop {}}
                 };
                 kani::assert_eq!(*output, output_value,
-                    "join must pass through the materialized list")
+                    "join must pass through the materialized list");
             }
             _ => {
                 // Other signals — ok

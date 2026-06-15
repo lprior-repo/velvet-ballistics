@@ -378,21 +378,21 @@ mod harnesses {
         for (i, err) in core_errors.iter().enumerate() {
             let code = err.symbolic_code();
             kani::assert(is_registered(code.0),
-                "CoreError variant {}: code '{}' must be registered", i, code.0)
+                "CoreError variant {}: code '{}' must be registered", i, code.0);
         }
 
         // Verify RuntimeError
         for (i, err) in runtime_errors.iter().enumerate() {
             let code = err.symbolic_code();
             kani::assert(is_registered(code.0),
-                "RuntimeError variant {}: code '{}' must be registered", i, code.0)
+                "RuntimeError variant {}: code '{}' must be registered", i, code.0);
         }
 
         // Verify JournalError
         for (i, err) in journal_errors.iter().enumerate() {
             let code = err.symbolic_code();
             kani::assert(is_registered(code.0),
-                "JournalError variant {}: code '{}' must be registered", i, code.0)
+                "JournalError variant {}: code '{}' must be registered", i, code.0);
         }
     }
 }

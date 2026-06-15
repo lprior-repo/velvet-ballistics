@@ -177,15 +177,15 @@ fn verify_all_variants_registered() {
     let registered = SymbolicCode::from_static(code.as_str());
     kani::assert(registered.is_some(),
         "YamlError variant {}: symbolic_code '{}' is not registered in CODE_REGISTRY",
-        variant, code.as_str())
+        variant, code.as_str());
 
     // The code must not be the INTERNAL_INVARIANT sentinel.
     kani::assert_ne!(code,
         SymbolicCode::INTERNAL_INVARIANT,
         "YamlError variant {}: symbolic_code must not be INTERNAL_INVARIANT",
-        variant)
+        variant);
 
     // The code name must be non-empty.
     kani::assert(!code.as_str().is_empty(),
-        "YamlError variant {}: symbolic_code must not be empty", variant)
+        "YamlError variant {}: symbolic_code must not be empty", variant);
 }

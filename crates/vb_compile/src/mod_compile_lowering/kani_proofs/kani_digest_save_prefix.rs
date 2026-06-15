@@ -54,11 +54,12 @@ fn kani_digest_step_primitive_save_prefix_is_set() {
 
     // Compute actual digest via production function
     let mut h1 = blake3::Hasher::new();
-    crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_primitive)
-        .unwrap_or(());
+    crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_primitive).unwrap_or(());
     let actual = h1.finalize().into();
 
-    kani::assert_eq!(actual, expected,
+    kani::assert_eq!(
+        actual,
+        expected,
         "digest_step_primitive(Save{{String}}) must produce blake3(b\"set\" + value_bytes)",
     );
 }
@@ -78,11 +79,12 @@ fn kani_digest_step_primitive_save_integer_prefix_is_set() {
 
     // Actual
     let mut h1 = blake3::Hasher::new();
-    crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_primitive)
-        .unwrap_or(());
+    crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_primitive).unwrap_or(());
     let actual = h1.finalize().into();
 
-    kani::assert_eq!(actual, expected,
+    kani::assert_eq!(
+        actual,
+        expected,
         "digest_step_primitive(Save{{Integer}}) must produce blake3(b\"set\" + i64_le_bytes)",
     );
 }
@@ -111,8 +113,7 @@ fn kani_digest_save_and_set_both_use_set_tag() {
         value: ScalarValue::String(save_val),
     };
     let mut h_save = blake3::Hasher::new();
-    crate::mod_compile_lowering::digest_step_primitive(&mut h_save, &save_prim)
-        .unwrap_or(());
+    crate::mod_compile_lowering::digest_step_primitive(&mut h_save, &save_prim).unwrap_or(());
     let save_actual = h_save.finalize().into();
 
     // Compute actual Set digest
@@ -121,15 +122,18 @@ fn kani_digest_save_and_set_both_use_set_tag() {
         value: set_value,
     };
     let mut h_set = blake3::Hasher::new();
-    crate::mod_compile_lowering::digest_step_primitive(&mut h_set, &set_prim)
-        .unwrap_or(());
+    crate::mod_compile_lowering::digest_step_primitive(&mut h_set, &set_prim).unwrap_or(());
     let set_actual = h_set.finalize().into();
 
     // Both must match their expected digests
-    kani::assert_eq!(save_actual, save_expected,
+    kani::assert_eq!(
+        save_actual,
+        save_expected,
         "Save digest must be blake3(b\"set\" + value_bytes)",
     );
-    kani::assert_eq!(set_actual, set_expected,
+    kani::assert_eq!(
+        set_actual,
+        set_expected,
         "Set digest must be blake3(b\"set\" + value_bytes)",
     );
 }
@@ -146,12 +150,12 @@ fn kani_digest_save_deterministic() {
 
     let mut h1 = blake3::Hasher::new();
     let mut h2 = blake3::Hasher::new();
-    crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_prim)
-        .unwrap_or(());
-    crate::mod_compile_lowering::digest_step_primitive(&mut h2, &save_prim)
-        .unwrap_or(());
+    crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_prim).unwrap_or(());
+    crate::mod_compile_lowering::digest_step_primitive(&mut h2, &save_prim).unwrap_or(());
 
-    kani::assert_eq!(h1.finalize().as_bytes(), h2.finalize().as_bytes(),
+    kani::assert_eq!(
+        h1.finalize().as_bytes(),
+        h2.finalize().as_bytes(),
         "Save digest must be deterministic",
     );
 }

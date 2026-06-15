@@ -53,7 +53,8 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
     match validate_compiled_queries(
         CompiledQueries {
             queries: vec![empty_path_query(1)].into_boxed_slice(),
-            total_yield_cost: 0, },
+            total_yield_cost: 0,
+        },
         1,
     ) {
         Err(QueryParseError::TotalYieldCostMismatch {
@@ -61,7 +62,7 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
             recomputed,
         }) => {
             kani::assert_eq!(declared, 0);
-            assert_eq!(recomputed, 1)
+            assert_eq!(recomputed, 1);
         }
         _ => assert!(false),
     }

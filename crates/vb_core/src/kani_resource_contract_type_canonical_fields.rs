@@ -71,25 +71,25 @@ fn prove_default_contract_has_18_fields() {
 
     // All 18 fields of DEFAULT must be accessible.
     // Compilation ensures this; we verify the values are sensible.
-    kani::assert(default.max_steps > 0, "kani harness assertion")
-    kani::assert(default.max_slots > 0, "kani harness assertion")
-    kani::assert(default.max_constants > 0, "kani harness assertion")
-    kani::assert(default.max_accessors > 0, "kani harness assertion")
-    kani::assert(default.max_expressions > 0, "kani harness assertion")
-    kani::assert(default.max_expr_stack > 0, "kani harness assertion")
-    kani::assert(default.max_step_budget_per_tick > 0, "kani harness assertion")
+    kani::assert(default.max_steps > 0, "kani harness assertion");
+    kani::assert(default.max_slots > 0, "kani harness assertion");
+    kani::assert(default.max_constants > 0, "kani harness assertion");
+    kani::assert(default.max_accessors > 0, "kani harness assertion");
+    kani::assert(default.max_expressions > 0, "kani harness assertion");
+    kani::assert(default.max_expr_stack > 0, "kani harness assertion");
+    kani::assert(default.max_step_budget_per_tick > 0, "kani harness assertion");
     kani::assert(default.max_transitions_per_tick > 0, "kani harness assertion") // Critical field
-    kani::assert(default.max_input_bytes > 0, "kani harness assertion")
-    kani::assert(default.max_output_bytes > 0, "kani harness assertion")
-    kani::assert(default.max_blob_bytes > 0, "kani harness assertion")
-    kani::assert(default.max_ipc_payload_bytes > 0, "kani harness assertion")
-    kani::assert(default.max_retry_attempts > 0, "kani harness assertion")
-    kani::assert(default.max_fanout > 0, "kani harness assertion")
-    kani::assert(default.max_collect_items > 0, "kani harness assertion")
-    kani::assert(default.max_queue_depth > 0, "kani harness assertion")
-    kani::assert(default.max_journal_batch_bytes > 0, "kani harness assertion")
+    kani::assert(default.max_input_bytes > 0, "kani harness assertion");
+    kani::assert(default.max_output_bytes > 0, "kani harness assertion");
+    kani::assert(default.max_blob_bytes > 0, "kani harness assertion");
+    kani::assert(default.max_ipc_payload_bytes > 0, "kani harness assertion");
+    kani::assert(default.max_retry_attempts > 0, "kani harness assertion");
+    kani::assert(default.max_fanout > 0, "kani harness assertion");
+    kani::assert(default.max_collect_items > 0, "kani harness assertion");
+    kani::assert(default.max_queue_depth > 0, "kani harness assertion");
+    kani::assert(default.max_journal_batch_bytes > 0, "kani harness assertion");
     // allows_secret_results is false by default (conservative)
-    kani::assert(!default.allows_secret_results, "kani harness assertion")
+    kani::assert(!default.allows_secret_results, "kani harness assertion");
 
     kani::cover!(default.max_transitions_per_tick > 0);
 }

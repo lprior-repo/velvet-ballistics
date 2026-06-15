@@ -98,28 +98,28 @@ fn vb_mrwe6_atomic_index_all_cases() {
             run: classified_run,
             step: classified_step,
         } if classified_action == action && classified_run == run && classified_step == step
-    ))
+    ));
     kani::assert(matches!(
         verification_event_and_index_keys_exist(&event), Ok(true)
-    ))
+    ));
 
     let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
     let index_staged = matches!(verification_event_and_index_keys_exist(&event), Ok(true));
-    kani::assert_eq!(event_staged, index_staged)
+    kani::assert_eq!(event_staged, index_staged);
 
     let event_committed = matches!(commit, CommitResult::Success) && event_staged;
     let index_committed = matches!(commit, CommitResult::Success) && index_staged;
-    kani::assert_eq!(event_committed, index_committed)
+    kani::assert_eq!(event_committed, index_committed);
 
     match variant {
         ScheduleVariant::Legacy => kani::assert(matches!(event, JournalEvent::ActionScheduled { .. })), ScheduleVariant::Ticketed => {
-            kani::assert(matches!(event, JournalEvent::ActionScheduledTicket { .. }))
+            kani::assert(matches!(event, JournalEvent::ActionScheduledTicket { .. }));
         }
     }
 
     if matches!(commit, CommitResult::Failure) {
-        kani::assert(!event_committed, "kani harness assertion")
-        kani::assert(!index_committed, "kani harness assertion")
+        kani::assert(!event_committed, "kani harness assertion");
+        kani::assert(!index_committed, "kani harness assertion");
     }
 
     core::mem::forget(event));

@@ -166,7 +166,9 @@ fn test_config() -> vb_runtime::shard::ShardConfig {
         step_budget_per_tick: 100,
         max_active_runs: 16,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
-    }
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
+}
 }
 
 fn temp_journal() -> Option<(tempfile::TempDir, Arc<vb_storage::FjallJournal>)> {

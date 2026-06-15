@@ -45,8 +45,8 @@ fn kani_div_by_zero_returns_error() {
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
 
-    kani::assert(result.is_err(), "kani harness assertion")
-    kani::assert(matches!(result, Err(EngineError::DivisionByZero)))
+    kani::assert(result.is_err(), "kani harness assertion");
+    kani::assert(matches!(result, Err(EngineError::DivisionByZero)));
 }
 
 #[kani::proof]
@@ -83,7 +83,7 @@ fn kani_div_by_nonzero_succeeds() {
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
 
-    kani::assert(result.is_ok(), "kani harness assertion")
+    kani::assert(result.is_ok(), "kani harness assertion");
 }
 
 #[kani::proof]
@@ -115,7 +115,13 @@ fn kani_div_i64_min_neg_one() {
 
     let result = eval_expr_operator(ExprOp::Div, &mut stack, &mut store);
 
-    kani::assert(result.is_err(), "kani harness assertion")
-    let err = match result { Err(e) => e, Ok(_) => { kani::assume(false); loop {} } };
-    kani::assert(matches!(err, EngineError::InvalidCompiledWorkflow { .. }))
+    kani::assert(result.is_err(), "kani harness assertion");
+    let err = match result {
+        Err(e) => e,
+        Ok(_) => {
+            kani::assume(false);
+            loop {}
+        }
+    };
+    kani::assert(matches!(err, EngineError::InvalidCompiledWorkflow { .. }));
 }

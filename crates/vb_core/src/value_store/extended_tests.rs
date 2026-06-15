@@ -486,30 +486,36 @@ fn handle_valid_after_insert_blob() -> Result<(), String> {
 fn handle_invalid_symbol_on_empty_store_returns_error() {
     let store = ValueStore::new();
     let result = store.symbol(SymbolId::new(0));
-    kani::assert_eq!(result,
+    kani::assert_eq!(
+        result,
         Err(CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(0),
-        }))
+        })
+    );
 }
 
 #[test]
 fn handle_forged_max_symbol_id_returns_error_not_panic() {
     let store = ValueStore::new();
     let result = store.symbol(SymbolId::new(u32::MAX));
-    kani::assert_eq!(result,
+    kani::assert_eq!(
+        result,
         Err(CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(u32::MAX),
-        }))
+        })
+    );
 }
 
 #[test]
 fn handle_forged_max_blob_id_returns_error_not_panic() {
     let store = ValueStore::new();
     let result = store.blob(BlobId::new(u64::MAX));
-    kani::assert_eq!(result,
+    kani::assert_eq!(
+        result,
         Err(CoreError::BlobOutOfBounds {
             blob: BlobId::new(u64::MAX),
-        }))
+        })
+    );
 }
 
 #[test]
@@ -549,10 +555,12 @@ fn handle_list_item_out_of_bounds_index_rejected() -> Result<(), String> {
 fn handle_object_field_on_forged_object_id_returns_error() {
     let store = ValueStore::new();
     let result = store.object_field(ObjectId::new(u32::MAX), SymbolId::new(0));
-    kani::assert_eq!(result,
+    kani::assert_eq!(
+        result,
         Err(CoreError::ObjectOutOfBounds {
             object: ObjectId::new(u32::MAX),
-        }))
+        })
+    );
 }
 
 // =============================================================================
@@ -608,7 +616,7 @@ fn value_store_accepts_all_primitive_slot_values_in_list() -> Result<(), String>
 
 #[test]
 fn value_null_is_not_bool_true_in_store_context() {
-    kani::assert(!SlotValue::Null.is_true(), "kani harness assertion")
+    kani::assert(!SlotValue::Null.is_true(), "kani harness assertion");
 }
 
 #[test]
@@ -674,7 +682,7 @@ fn value_const_to_slot_all_variants_roundtrip_in_store() -> Result<(), String> {
 
 #[test]
 fn slot_value_equality_null_distinct_from_bool_false() {
-    kani::assert_ne!(SlotValue::Null, SlotValue::Bool(false))
+    kani::assert_ne!(SlotValue::Null, SlotValue::Bool(false));
 }
 
 #[test]
@@ -686,12 +694,18 @@ fn slot_value_equality_i64_vs_f64_same_numeric_value_are_distinct() -> Result<()
 
 #[test]
 fn slot_value_equality_different_handle_types_different() {
-    kani::assert_ne!(SlotValue::Symbol(SymbolId::new(1)),
-        SlotValue::List(ListId::new(1)));
-    kani::assert_ne!(SlotValue::List(ListId::new(1)),
-        SlotValue::Object(ObjectId::new(1)));
-    kani::assert_ne!(SlotValue::Object(ObjectId::new(1)),
-        SlotValue::Blob(BlobId::new(1)));
+    kani::assert_ne!(
+        SlotValue::Symbol(SymbolId::new(1)),
+        SlotValue::List(ListId::new(1))
+    );
+    kani::assert_ne!(
+        SlotValue::List(ListId::new(1)),
+        SlotValue::Object(ObjectId::new(1))
+    );
+    kani::assert_ne!(
+        SlotValue::Object(ObjectId::new(1)),
+        SlotValue::Blob(BlobId::new(1))
+    );
 }
 
 #[test]
@@ -742,8 +756,8 @@ fn store_clone_produces_equal_store() -> Result<(), String> {
 fn store_default_equals_new() {
     let default: ValueStore = Default::default();
     let constructed = ValueStore::new();
-    kani::assert_eq!(
-);}
+    kani::assert_eq!();
+}
 
 #[test]
 fn store_counts_accurate_after_mixed_inserts() -> Result<(), String> {
@@ -1110,10 +1124,10 @@ mod kani {
         match store.insert_symbol(Box::<str>::from(bounded)) {
             Ok(id) => match store.symbol(id) {
                 Ok(resolved) => {
-                    kani::assert_eq!(
-);                }
+                    kani::assert_eq!();
+                }
                 Err(_) => {
-                    kani::assert(false, "valid handle must resolve")
+                    kani::assert(false, "valid handle must resolve");
                 }
             },
             Err(_) => {}
@@ -1145,12 +1159,12 @@ mod kani {
         let result = store.insert_symbol(Box::<str>::from("overflow"));
         match result {
             Ok(_) => {
-                kani::assert(false, "insert over cap must not succeed")
+                kani::assert(false, "insert over cap must not succeed");
             }
             Err(CoreError::BudgetExceeded { budget, limit }) => {
-                kani::assert_eq!(
-);                kani::assert_eq!(
-);            }
+                kani::assert_eq!();
+                kani::assert_eq!();
+            }
             Err(_) => {}
         }
     }
@@ -1183,7 +1197,7 @@ proptest::proptest! {
                 )));
             }
         };
-        prop_kani::assert_eq!(retrieved, s.as_str())
+        prop_kani::assert_eq!(retrieved, s.as_str());
     }
 
     #[test]
@@ -1209,7 +1223,7 @@ proptest::proptest! {
                 )));
             }
         };
-        prop_kani::assert_eq!(retrieved.len(), data.len())
+        prop_kani::assert_eq!(retrieved.len(), data.len());
         prop_kani::assert(retrieved == data.as_slice(), "kani harness assertion")
     }
 
@@ -1237,7 +1251,7 @@ proptest::proptest! {
                 )));
             }
         };
-        prop_kani::assert_eq!(retrieved.len(), values.len())
+        prop_kani::assert_eq!(retrieved.len(), values.len());
         for (i, expected) in values.iter().enumerate() {
             let Some(actual) = retrieved.get(i) else {
                 return Err(proptest::test_runner::TestCaseError::fail(format!(

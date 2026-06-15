@@ -300,3 +300,7 @@ mod tests;
 #[cfg(test)]
 #[path = "step/edge_cases.rs"]
 mod edge_cases;
+
+#[cfg(test)]
+#[path = "step/error_paths.rs"]
+mod error_paths;

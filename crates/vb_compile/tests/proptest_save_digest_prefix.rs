@@ -41,13 +41,11 @@ fn hash_bytes(data: &[&[u8]]) -> [u8; 32] {
 /// Post-fix (vb-pkif2): uses b"set" instead of b"save".
 fn digest_save(primitive: &StepPrimitive) -> [u8; 32] {
     match primitive {
-        StepPrimitive::Save { value } => {
-            match value {
-                ScalarValue::String(v) => hash_bytes(&[b"set", v.as_bytes()]),
-                ScalarValue::Integer(v) => hash_bytes(&[b"set", &v.to_le_bytes()]),
-                _ => hash_bytes(&[b"set", b"unsupported"]),
-            }
-        }
+        StepPrimitive::Save { value } => match value {
+            ScalarValue::String(v) => hash_bytes(&[b"set", v.as_bytes()]),
+            ScalarValue::Integer(v) => hash_bytes(&[b"set", &v.to_le_bytes()]),
+            _ => hash_bytes(&[b"set", b"unsupported"]),
+        },
         _ => hash_bytes(&[b"unknown"]),
     }
 }
@@ -58,23 +56,21 @@ fn digest_save(primitive: &StepPrimitive) -> [u8; 32] {
 
 /// Generates arbitrary Save primitives with String values.
 fn arbitrary_save_string() -> impl Strategy<Value = StepPrimitive> {
-    "(a-z|A-Z|0-9|_){1,64}"
-        .prop_map(|s: String| StepPrimitive::Save {
-            value: ScalarValue::String(s),
-        })
+    "(a-z|A-Z|0-9|_){1,64}".prop_map(|s: String| StepPrimitive::Save {
+        value: ScalarValue::String(s),
+    })
 }
 
 /// Generates arbitrary Save primitives with Integer values.
 fn arbitrary_save_integer() -> impl Strategy<Value = StepPrimitive> {
-    any::<i64>().prop_map(|v| StepPrimitive::Save { value: ScalarValue::Integer(v) })
+    any::<i64>().prop_map(|v| StepPrimitive::Save {
+        value: ScalarValue::Integer(v),
+    })
 }
 
 /// Generates arbitrary Save primitives (String or Integer).
 fn arbitrary_save() -> impl Strategy<Value = StepPrimitive> {
-    prop_oneof![
-        arbitrary_save_string(),
-        arbitrary_save_integer(),
-    ]
+    prop_oneof![arbitrary_save_string(), arbitrary_save_integer(),]
 }
 
 // ---------------------------------------------------------------------------
@@ -133,4 +129,3 @@ proptest! {
         prop_assert_ne!(h_str, h_int, "Save String \"42\" vs Integer 42 must differ");
     }
 }
-

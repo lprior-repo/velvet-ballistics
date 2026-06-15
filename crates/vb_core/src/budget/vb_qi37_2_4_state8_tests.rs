@@ -1255,7 +1255,7 @@ proptest! {
         let subtracted = added.try_subtract_budget(&budget);
         prop_kani::assert_eq!(subtracted,
             Ok(usage),
-            "add then subtract same budget must roundtrip to original usage")
+            "add then subtract same budget must roundtrip to original usage");
     }
 
     #[test]
@@ -1367,7 +1367,7 @@ proptest! {
             Ok(subtracted) => {
                 prop_kani::assert(base_steps >= u64::from(delta_steps), "subtract returned Ok but base < delta")
                 prop_kani::assert_eq!(subtracted.max_steps_executable,
-                    base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX))
+                    base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX));
             }
             Err(_other) => {
                 prop_kani::assert(false, "expected Ok or Underflow, got unexpected error")

@@ -171,28 +171,30 @@ fn vt2f_shard_lower_semantics() {
 
     let absent_lower = ShardKernelState::explicit(RuntimePolicy::Relaxed, StoreMode::AlwaysPresent);
     kani::assert(matches!(
-        absent_lower.action_failed_lower(run), Err(KernelRuntimeError::RunNotFound)
-    ))
+        absent_lower.action_failed_lower(run),
+        Err(KernelRuntimeError::RunNotFound)
+    ));
 
     let active_lower = ShardKernelState::with_active_run(RuntimePolicy::Relaxed, run);
     let ticket_run = if selector & 1 == 0 { run } else { other };
     let facade_result = active_lower.runtime_action_failed(ticket_run);
     kani::assert(matches!(
-        facade_result, Err(KernelRuntimeError::InvalidActionCompletion)
-    ))
+        facade_result,
+        Err(KernelRuntimeError::InvalidActionCompletion)
+    ));
 
     let explicit = ShardKernelState::explicit(selected_policy, selected_store);
-    kani::assert_eq!(explicit.runtime_policy, selected_policy)
-    kani::assert_eq!(explicit.store_mode, selected_store)
-    kani::assert_eq!(explicit.queue_depth, 0)
+    kani::assert_eq!(explicit.runtime_policy, selected_policy);
+    kani::assert_eq!(explicit.store_mode, selected_store);
+    kani::assert_eq!(explicit.queue_depth, 0);
 
     let runtime_constructed = ShardKernelState::runtime_constructed(selected_policy);
-    kani::assert_eq!(runtime_constructed.runtime_policy, selected_policy)
-    kani::assert_eq!(runtime_constructed.queue_depth, 0)
+    kani::assert_eq!(runtime_constructed.runtime_policy, selected_policy);
+    kani::assert_eq!(runtime_constructed.queue_depth, 0);
     if selected_policy == RuntimePolicy::Relaxed {
-        kani::assert_eq!(runtime_constructed.store_mode, StoreMode::AlwaysPresent)
+        kani::assert_eq!(runtime_constructed.store_mode, StoreMode::AlwaysPresent);
     } else {
-        kani::assert_eq!(runtime_constructed.store_mode, StoreMode::Missing)
+        kani::assert_eq!(runtime_constructed.store_mode, StoreMode::Missing);
     }
 
     let mut frame = AskKernelFrame::new(
@@ -202,10 +204,10 @@ fn vt2f_shard_lower_semantics() {
     let executed_before = frame.executed;
     let ask_result = frame.ask();
     if matches!(prompt_value(selector), SlotValue::Bool(_)) {
-        kani::assert(ask_result.is_err(), "kani harness assertion")
-        kani::assert_eq!(frame.executed, executed_before)
+        kani::assert(ask_result.is_err(), "kani harness assertion");
+        kani::assert_eq!(frame.executed, executed_before);
     } else {
-        kani::assert(ask_result.is_ok(), "kani harness assertion")
-        kani::assert_eq!(frame.executed, executed_before.saturating_add(1))
+        kani::assert(ask_result.is_ok(), "kani harness assertion");
+        kani::assert_eq!(frame.executed, executed_before.saturating_add(1));
     }
 }
