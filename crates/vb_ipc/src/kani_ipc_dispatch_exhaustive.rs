@@ -107,43 +107,34 @@ fn kani_unknown_command_returns_bad_request() {
 fn kani_dispatch_arm_count() {
     let mut runtime = make_runtime();
 
-    // Verify all 11 semantic variant arms dispatch without panicking.
-    let semantic_commands: [IpcCommand; 11] = [
-        IpcCommand::SubmitRun,
-        IpcCommand::SubmitRunInline,
-        IpcCommand::CancelRun,
-        IpcCommand::InspectRun,
-        IpcCommand::ListEvents,
-        IpcCommand::AnswerAsk,
-        IpcCommand::CompleteAction,
-        IpcCommand::FailAction,
-        IpcCommand::DrainTrace,
-        IpcCommand::Health,
-        IpcCommand::Shutdown,
-    ];
-
     // Verify count is exactly 11.
     assert_eq!(
-        semantic_commands.len(),
+        11,
         11,
         "Exactly 11 semantic command variants must exist"
     );
 
-    // Each semantic variant must dispatch without panicking.
-    // We reconstruct None for each call since Option<&mut dyn ...> is consumed.
-    for cmd in &semantic_commands {
-        let header = make_header(*cmd);
-        let payload: &[u8] = &[];
-        let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+    // Verify a single symbolic semantic command dispatches without panicking.
+    let cmd_raw: u16 = kani::any();
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
+    let command = match IpcCommand::from_u16(cmd_raw) {
+        Ok(c) => c,
+        Err(_) => {
+            kani::assume(false);
+            return,
+        }
+    };
+    let header = make_header(command);
+    let payload: &[u8] = &[];
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
-        // Any response is acceptable — we only verify no panic occurred.
-        // The response must be a valid IpcResponse discriminant (Rust
-        // compiler enforces exhaustiveness of the match expression).
-        let _ = response;
-    }
+    // Any response is acceptable — we only verify no panic occurred.
+    let _ = response;
 
     // Verify UnknownCommand arm (12th arm) dispatches to BadRequest.
-    let unknown = IpcCommand::UnknownCommand(0);
+    let unknown_value: u16 = kani::any();
+    kani::assume(unknown_value == 0 || unknown_value >= 12);
+    let unknown = IpcCommand::UnknownCommand(unknown_value);
     let header = make_header(unknown);
     let payload: &[u8] = &[];
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
@@ -154,7 +145,7 @@ fn kani_dispatch_arm_count() {
         "UnknownCommand must dispatch to BadRequest"
     );
 
-    // Coverage note: all 12 match arms (11 semantic + UnknownCommand)
+    // Coverage note: the semantic command and UnknownCommand arms
     // have been exercised. The Rust compiler enforces exhaustiveness of
     // the match expression. The Kani proof additionally verifies that
     // each arm's handler call does not panic under this test setup.

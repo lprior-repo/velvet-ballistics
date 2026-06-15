@@ -11,10 +11,16 @@ use crate::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcFrameHeader, 
 /// VB-IPC-DECODE-001/003 H1: decode valid header succeeds
 #[kani::proof]
 fn kani_ipc_header_decode_valid() {
-    let command = IpcCommand::Health;
-    let flags: u16 = 0;
-    let correlation: u64 = 12345;
-    let payload_len: u32 = 0;
+    let cmd_raw: u16 = kani::any();
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
+    let command = match IpcCommand::from_u16(cmd_raw) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let flags: u16 = kani::any();
+    let correlation: u64 = kani::any();
+    let payload_len: u32 = kani::any();
+    kani::assume(payload_len <= MaxPayloadBytes::DEFAULT.get() as u32);
 
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
     let encoded = header.encode();
@@ -82,32 +88,35 @@ fn kani_ipc_header_rejects_reserved_nonzero() {
 #[kani::proof]
 #[kani::unwind(6)]
 fn kani_ipc_header_decode_various_commands() {
-    let commands: &[IpcCommand] = &[
-        IpcCommand::Health,
-        IpcCommand::Shutdown,
-        IpcCommand::SubmitRun,
-        IpcCommand::CancelRun,
-        IpcCommand::InspectRun,
-    ];
+    let cmd_raw: u16 = kani::any();
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
+    let command = match IpcCommand::from_u16(cmd_raw) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
 
-    for &command in commands {
-        let header = IpcFrameHeader::new(command, 0, 0, 0);
-        let encoded = header.encode();
-        kani::assume(encoded.is_ok());
-        let Ok(encoded) = encoded else { return };
+    let header = IpcFrameHeader::new(command, 0, 0, 0);
+    let encoded = header.encode();
+    kani::assume(encoded.is_ok());
+    let Ok(encoded) = encoded else { return };
 
-        let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
-        kani::assert(decoded.is_ok(), "command decodes successfully");
-    }
+    let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+    kani::assert(decoded.is_ok(), "command decodes successfully");
 }
 
 /// VB-IPC-DECODE-001/003 H6: decode preserves all header fields
 #[kani::proof]
 fn kani_ipc_header_preserves_all_fields() {
-    let command = IpcCommand::SubmitRun;
-    let flags: u16 = 0x00FF;
-    let correlation: u64 = 0xDEAD_BEEF_CAFE;
-    let payload_len: u32 = 256;
+    let cmd_raw: u16 = kani::any();
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
+    let command = match IpcCommand::from_u16(cmd_raw) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let flags: u16 = kani::any();
+    let correlation: u64 = kani::any();
+    let payload_len: u32 = kani::any();
+    kani::assume(payload_len <= MaxPayloadBytes::DEFAULT.get() as u32);
 
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
     let encoded = header.encode();

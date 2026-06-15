@@ -1287,3 +1287,363 @@ fn validate_evidence_bounded_wording_multiple_claims_counted() {
         })
     );
 }
+
+// ============================================================================
+// Unicode edge cases — to_ascii_lowercase() behavior with non-ASCII content
+//
+// The EvidenceSupport::is_pending_for() and contains_control_flow_conflation()
+// methods use str::to_ascii_lowercase() on the document text before substring
+// search. to_ascii_lowercase() preserves all non-ASCII bytes unchanged. This
+// section documents that behavior with exact assertions so future changes do
+// not silently alter it.
+// ============================================================================
+
+#[test]
+fn check_doc_taint_consistency_cjk_text_does_not_panic() {
+    // Given — Japanese text with ASCII "pending" keyword
+    let text = "テスト is pending";
+
+    // When
+    let result = check_doc_taint_consistency(text);
+
+    // Then — no stale phrases, to_ascii_lowercase preserves the CJK bytes
+    // "テスト is pending".to_ascii_lowercase() == "テスト is pending"
+    // The contradictions collector sees no ASCII stale-keyword patterns
+    let report = result.expect("CJK text should produce a valid report without panicking");
+    assert!(report.stale_clean_only.is_empty());
+}
+
+#[test]
+fn check_doc_taint_consistency_emoji_text_does_not_panic() {
+    // Given — emoji-only leading content with ASCII "pending" keyword
+    let text = "🔥 pending build complete";
+
+    // When
+    let result = check_doc_taint_consistency(text);
+
+    // Then — emoji bytes are preserved by to_ascii_lowercase, no stale phrases
+    let report = result.expect("emoji text should produce a valid report without panicking");
+    assert!(report.stale_clean_only.is_empty());
+}
+
+#[test]
+fn check_doc_taint_consistency_mixed_unicode_and_emoji_does_not_panic() {
+    // Given — CJK + emoji mixed with ASCII
+    let text = "テスト🔥pendingは正常です";
+
+    // When
+    let result = check_doc_taint_consistency(text);
+
+    // Then — mixed Unicode/emoji should not cause panics or stale-phrasing errors
+    let report = result.expect("mixed Unicode text should produce a valid report");
+    assert!(report.stale_clean_only.is_empty());
+}
+
+#[test]
+fn check_doc_taint_consistency_cjk_with_stale_phrase_still_detects_it() {
+    // Given — CJK text that also contains an ASCII stale keyword
+    let text = "テスト EvalExpr is Always Clean";
+
+    // When
+    let result = check_doc_taint_consistency(text);
+
+    // Then — stale phrase detection still works (keywords are ASCII)
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::EvalExpr,
+            phrase: "Always Clean".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn check_doc_taint_consistency_emoji_with_stale_phrase_still_detects_it() {
+    // Given — emoji + stale phrase
+    let text = "🔥 BuildObject has no join of field taints";
+
+    // When
+    let result = check_doc_taint_consistency(text);
+
+    // Then — stale phrase detection is unaffected by preceding emoji bytes
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::BuildObject,
+            phrase: "no join of field taints".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn evidence_support_pending_matches_pending_in_unicode_text() {
+    // Given — Pending support + text with CJK prefix and "pending" keyword
+    let support = EvidenceSupport::pending("runtime claim");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "テスト runtime claim is pending",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — "pending" is found in ASCII-lowered text (CJK bytes preserved)
+    // to_ascii_lowercase() does NOT remove or alter non-ASCII bytes, it only
+    // lowercases ASCII alphabetic bytes.
+    let report = result.expect("should not error");
+    assert_eq!(report.pending_claims, 1);
+    assert_eq!(report.cited_claims, 0);
+}
+
+#[test]
+fn evidence_support_pending_matches_unverified_in_emoji_text() {
+    // Given — Pending support + text with emoji and "unverified" keyword
+    let support = EvidenceSupport::pending("build claim");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "🔥🔥 build claim is unverified",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — "unverified" found after to_ascii_lowercase preserves emoji bytes
+    let report = result.expect("should not error");
+    assert_eq!(report.pending_claims, 1);
+}
+
+#[test]
+fn evidence_support_pending_matches_pending_with_cjk_emoji_mixed() {
+    // Given — Pending support + text with CJK, emoji, and "pending" keyword
+    let support = EvidenceSupport::pending("claim");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "テスト🔥 claim is pending",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — to_ascii_lowercase preserves all non-ASCII bytes; "pending" still
+    // matches as a substring
+    let report = result.expect("should not error");
+    assert_eq!(report.pending_claims, 1);
+}
+
+#[test]
+fn evidence_support_cited_empty_sentence_matches_any_text_with_artifact() {
+    // Given — cited support with empty sentence string (edge case: "".contains("")
+    // is always true in Rust)
+    let support = EvidenceSupport::cited("", "artifact.md");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "artifact.md",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — is_cited_by checks text.contains("") && text.contains(artifact).
+    // "".contains("") → true in Rust, so any text referencing the artifact
+    // counts as a cited claim.
+    let report = result.expect("should not error");
+    assert_eq!(report.cited_claims, 1);
+}
+
+#[test]
+fn evidence_support_pending_empty_sentence_matches_pending_in_text() {
+    // Given — Pending support with empty sentence string + text containing "pending"
+    let support = EvidenceSupport::pending("");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "some text with pending status",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — is_pending_for checks text.lowercase().contains("pending"), not the
+    // support's sentence field, so empty-sentence pending supports still count
+    let report = result.expect("should not error");
+    assert_eq!(report.pending_claims, 1);
+}
+
+#[test]
+fn evidence_support_cited_empty_sentence_with_cjk_artifact() {
+    // Given — cited with empty sentence and CJK artifact string
+    let support = EvidenceSupport::cited("", "テスト.md");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "テスト.md reference",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — artifact contains "テスト.md" which is found in text
+    let report = result.expect("should not error");
+    assert_eq!(report.cited_claims, 1);
+}
+
+#[test]
+fn validate_taint_vocabulary_consistency_unicode_text_passes() {
+    // Given — text with Unicode characters and valid taint vocabulary
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "Clean < DerivedFromSecret < Secret.\nテスト v1 does not track control-flow taint.",
+    );
+
+    // When
+    let result = validate_taint_vocabulary_consistency(doc);
+
+    // Then — Unicode should not interfere with vocabulary parsing
+    let report = result.expect("should not error");
+    assert_eq!(report.lattice, vec!["Clean", "DerivedFromSecret", "Secret"]);
+    assert!(report.conflicts.is_empty());
+}
+
+#[test]
+fn validate_taint_vocabulary_consistency_emoji_text_passes() {
+    // Given — emoji + valid taint vocabulary
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "Clean < DerivedFromSecret < Secret.\n🔥🔥 v1 does not track control-flow taint.",
+    );
+
+    // When
+    let result = validate_taint_vocabulary_consistency(doc);
+
+    // Then — emoji bytes do not affect vocabulary validation
+    let report = result.expect("should not error");
+    assert!(report.conflicts.is_empty());
+}
+
+#[test]
+fn validate_taint_vocabulary_consistency_unicode_with_wrong_order_rejected() {
+    // Given — Unicode text with lattice ordering conflict
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "Clean < Secret < DerivedFromSecret テスト",
+    );
+
+    // When
+    let result = validate_taint_vocabulary_consistency(doc);
+
+    // Then — WrongOrder is detected regardless of trailing CJK
+    assert_eq!(
+        result,
+        Err(DocReconcileError::TaintVocabularyConflict {
+            conflict: ConflictKind::WrongOrder,
+            sentence: "Clean < Secret < DerivedFromSecret テスト".to_owned(),
+            term: None,
+        })
+    );
+}
+
+#[test]
+fn evidence_support_pending_empty_text_yields_no_pending_claims() {
+    // Given — Pending support + empty document text
+    let support = EvidenceSupport::pending("claim");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — empty text contains neither "pending" nor "unverified" after
+    // to_ascii_lowercase, so no pending claims are counted
+    let report = result.expect("should not error");
+    assert_eq!(report.cited_claims, 0);
+    assert_eq!(report.pending_claims, 0);
+}
+
+#[test]
+fn evidence_support_pending_empty_sentence_empty_text_yields_no_pending_claims() {
+    // Given — Pending support with empty sentence + empty document text
+    let support = EvidenceSupport::pending("");
+    let index = EvidenceIndex::from_supports(vec![support]);
+    let doc = MasterDocSnapshot::for_workspace_text(
+        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
+        "",
+    );
+
+    // When
+    let result = validate_evidence_bounded_wording(doc, index);
+
+    // Then — is_pending_for checks text.lowercase().contains("pending"),
+    // which is false for empty text regardless of the support's sentence
+    let report = result.expect("should not error");
+    assert_eq!(report.cited_claims, 0);
+    assert_eq!(report.pending_claims, 0);
+}
+
+#[test]
+fn evidence_support_pending_with_multibyte_unicode_lowercase_behavior() {
+    // Given — text where to_ascii_lowercase preserves multi-byte UTF-8
+    let text = "日本語 PENDING status";
+
+    // When — simulate the to_ascii_lowercase call from is_pending_for
+    let lowered = text.to_ascii_lowercase();
+
+    // Then — only ASCII bytes are affected; multi-byte UTF-8 is preserved
+    // "日本語 PENDING status".to_ascii_lowercase() == "日本語 pending status"
+    assert!(lowered.contains("pending"));
+    assert!(!lowered.contains("PENDING"));
+    assert!(lowered.starts_with("日本語 "));
+}
+
+#[test]
+fn evidence_support_pending_with_emoji_lowercase_behavior() {
+    // Given — emoji + uppercase keyword
+    let text = "🚀🔥 UNVERIFIED";
+
+    // When
+    let lowered = text.to_ascii_lowercase();
+
+    // Then — emoji bytes unchanged, ASCII uppercase lowered
+    assert!(lowered.contains("unverified"));
+    assert!(!lowered.contains("UNVERIFIED"));
+    assert!(lowered.starts_with("🚀"));
+}
+
+#[test]
+fn check_doc_taint_consistency_long_multibyte_text_does_not_panic() {
+    // Given — long text composed of repeating multi-byte UTF-8 sequences
+    // with a stale phrase on the same line as the node name
+    let cjk_block: String = "テスト".repeat(100);
+    let text = format!("{} EvalExpr No taint join", cjk_block);
+
+    // When
+    let result = check_doc_taint_consistency(&text);
+
+    // Then — stale phrase detection works after large CJK prefix
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::EvalExpr,
+            phrase: "No taint join".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn check_doc_taint_consistency_bmp_and_supplementary_unicode() {
+    // Given — text mixing basic multi-byte (CJK) and supplementary-plane emoji
+    let text = "テスト👋🏿🏽 pending text";
+
+    // When
+    let result = check_doc_taint_consistency(text);
+
+    // Then — both BMP and supplementary-plane characters pass through
+    let report = result.expect("should not error");
+    assert!(report.stale_clean_only.is_empty());
+}

@@ -11,7 +11,7 @@
 // - PO-K01: canonical_digest(source, contract) is deterministic
 // - PO-K14: canonical and policy digests agree on contract identity direction
 //
-// GOD RULE 1: Uses kani::any() for bounded contract generation.
+// GOD RULE 1: Uses kani::any() for bounded contract AND source generation.
 // GOD RULE 2: Calls actual production canonical_digest and encode_contract_bytes.
 
 #![cfg(kani)]
@@ -82,18 +82,50 @@ fn bounded_contract() -> ResourceContract {
     }
 }
 
+/// Generates a representative YAML workflow source string with
+/// symbolic field values (name, step id) for bounded verification.
+///
+/// Each field is generated via kani::any() as a Vec<u8> with
+/// printable-ASCII constraints. The same symbolic value is used
+/// throughout a single proof harness execution, ensuring that
+/// both calls to canonical_digest see identical input.
+///
+/// This replaces the hardcoded YAML literal that previously
+/// violated GOD RULE 1 (hardcoded structural inputs).
+fn representative_yaml_source() -> String {
+    let mut name_bytes: Vec<u8> = kani::any();
+    kani::assume(name_bytes.len() >= 1 && name_bytes.len() <= 16);
+    for b in name_bytes.iter_mut() {
+        kani::assume(*b >= b'a' && *b <= b'z');
+    }
+    let name = String::from_utf8(name_bytes).unwrap();
+
+    let mut step_id_bytes: Vec<u8> = kani::any();
+    kani::assume(step_id_bytes.len() >= 1 && step_id_bytes.len() <= 16);
+    for b in step_id_bytes.iter_mut() {
+        kani::assume(*b >= b'a' && *b <= b'z');
+    }
+    let step_id = String::from_utf8(step_id_bytes).unwrap();
+
+    format!(
+        "version: velvet-ballastics/v1\nname: {name}\n\
+         when: {{ manual: {{}} }}\nsteps:\n  - id: {step_id}\n    set:\n      output: x\n      value: \"42\"\n",
+        name = name,
+        step_id = step_id
+    )
+}
+
 /// PO-K01: Prove canonical_digest is deterministic.
 /// Two calls with identical (source, contract) must produce identical digest.
 ///
 /// This calls the actual production canonical_digest in mod_compile_lowering.
-/// We use a fixed representative YAML source for bounded verification.
-// YAML source can't be symbolic (kani::any) — see representative_source() doc
-// in sibling harness files for details and proptest/fuzz cross-refs.
+/// The YAML source is generated symbolically (representative_yaml_source) so
+/// the harness is not tied to a single hardcoded literal.
 #[kani::proof]
 #[kani::unwind(8)]
 fn prove_digest_determinism() {
-    let yaml = "version: velvet-ballastics/v1\nname: kani_test\nwhen: { manual: {} }\nsteps:\n  - id: step_one\n    set:\n      output: x\n      value: \"42\"\n";
-    let source = match vb_yaml::parse_workflow_source(yaml) {
+    let yaml = representative_yaml_source();
+    let source = match vb_yaml::parse_workflow_source(&yaml) {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
@@ -105,7 +137,7 @@ fn prove_digest_determinism() {
 
     assert_eq!(
         digest_a, digest_b,
-        "canonical_digest must be deterministic: same inputs → same output"
+        "canonical_digest must be deterministic: same inputs -> same output"
     );
 
     kani::cover!(digest_a == digest_b);
@@ -123,7 +155,7 @@ fn prove_contract_encoding_determinism() {
 
     assert_eq!(
         encoding_a, encoding_b,
-        "encode_contract_bytes must be deterministic: same contract → same encoding"
+        "encode_contract_bytes must be deterministic: same contract -> same encoding"
     );
 
     kani::cover!(encoding_a == encoding_b);
@@ -156,9 +188,10 @@ fn prove_canonical_policy_digest_agree_on_identity() {
     );
 
     // Verify the full canonical_digest incorporates the contract change
-    // YAML source can't be symbolic (kani::any) — see proptest cross-ref above.
-    let yaml = "version: velvet-ballastics/v1\nname: test\nwhen: { manual: {} }\nsteps:\n  - id: s1\n    set:\n      output: x\n      value: \"1\"\n";
-    let source = match vb_yaml::parse_workflow_source(yaml) {
+    // YAML source is generated symbolically so the harness is not tied to
+    // a single hardcoded literal.
+    let yaml = representative_yaml_source();
+    let source = match vb_yaml::parse_workflow_source(&yaml) {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
