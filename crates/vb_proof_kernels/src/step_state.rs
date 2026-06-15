@@ -195,19 +195,19 @@ mod tests {
 
     #[test]
     fn test_invalid_transitions() {
-        kani::assert(!is_valid_transition(StepState::Running, StepState::Pending))
+        kani::assert(!is_valid_transition(StepState::Running, StepState::Pending));
         // No terminal state may transition back to Running. Loop body reentry
         // uses the explicit Succeeded->Pending admission path; the direct
         // Succeeded->Running edge is invalid.
         kani::assert(!is_valid_transition(
             StepState::Succeeded, StepState::Running
-        ))
-        kani::assert(!is_valid_transition(StepState::Failed, StepState::Running))
+        ));
+        kani::assert(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
     #[test]
     fn test_terminal_immutable() {
-        kani::assert(terminal_cannot_transition_to_non_terminal(), "kani harness assertion")
+        kani::assert(terminal_cannot_transition_to_non_terminal(), "kani harness assertion");
     }
 
     #[test]
