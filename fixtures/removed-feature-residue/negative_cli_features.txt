@@ -1,0 +1,10 @@
+# CLI --features fixture for the removed-feature scanner.
+#
+# This fixture has --features flags for maxperf and generated,
+# which the scanner MUST detect as active residue.
+# It must exit 1 with findings for both.
+
+cargo build --features maxperf
+cargo build --features generated
+cargo run --features=maxperf
+cargo run --features=generated

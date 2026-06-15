@@ -48,7 +48,7 @@
 //   <rel>:N: POSITIONING: <phrase>: <line>      (active violation)
 //   <rel>:N: disclaimered: <phrase>: <line>     (suppressed by block marker)
 // Final line:
-//   "summary: active=N allowlisted=M disclaimered=K files_scanned=J"
+//   "summary: active=N disclaimered=K files_scanned=J"
 //
 // Exit 0 if active == 0, exit 1 otherwise.
 
@@ -175,7 +175,6 @@ impl fmt::Display for ScanError {
 #[derive(Debug, Default)]
 struct ScanSummary {
     active_total: usize,
-    allowlisted_total: usize,
     disclaimered_total: usize,
     files_scanned: usize,
 }
@@ -202,8 +201,8 @@ impl ScanSummary {
 
     fn emit(&self) {
         eprintln!(
-            "summary: active={} allowlisted={} disclaimered={} files_scanned={}",
-            self.active_total, self.allowlisted_total, self.disclaimered_total, self.files_scanned
+            "summary: active={} disclaimered={} files_scanned={}",
+            self.active_total, self.disclaimered_total, self.files_scanned
         );
     }
 

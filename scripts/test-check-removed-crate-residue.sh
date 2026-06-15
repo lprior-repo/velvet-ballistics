@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # test-check-removed-crate-residue: self-test for the removed-crate scanner.
 # Verifies that:
-#   [1/6] the positive fixture passes (exit 0, no active findings),
-#   [2/6] the negative fixture fails (exit 1, all removed tokens fire),
-#   [3/6] the bare-makepad fixture fails (exit 1, file:line finding),
-#   [4/6] a shell negation probe fails active (exit 1, not allowlisted),
-#   [5/6] the real repository scan passes (exit 0, no active residue), and
-#   [6/6] a typoed explicit path fails closed (exit 2, no false green).
+#   [1/8] the positive fixture passes (exit 0, no active findings),
+#   [2/8] the negative fixture fails (exit 1, all removed tokens fire),
+#   [3/8] the bare-makepad fixture fails (exit 1, file:line finding),
+#   [4/8] a shell negation probe fails active (exit 1, not allowlisted),
+#   [5/8] the real repository scan passes (exit 0, no active residue),
+#   [6/8] a typoed explicit path fails closed (exit 2, no false green),
+#   [7/8] word-boundary false positives are correctly excluded, and
+#   [8/8] allowlisted historical lines are suppressed.
 #
 # Exits 0 on success, exits 1 on any failed assertion.
 set -euo pipefail
@@ -18,6 +20,8 @@ GATE="$ROOT/scripts/check-removed-crate-residue.sh"
 POSITIVE="$ROOT/fixtures/removed-crate-residue/positive.md"
 NEGATIVE="$ROOT/fixtures/removed-crate-residue/negative.md"
 NEGATIVE_MAKEPAD="$ROOT/fixtures/removed-crate-residue/negative_makepad.rs"
+NEGATIVE_BOUNDARY="$ROOT/fixtures/removed-crate-residue/negative_boundary.md"
+ALLOWLISTED="$ROOT/fixtures/removed-crate-residue/negative_allowlisted.md"
 MISSING_EXPLICIT="$ROOT/fixtures/removed-crate-residue/typo-does-not-exist.md"
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -26,7 +30,7 @@ if [[ ! -x "$GATE" ]]; then
   echo "AssertionFailed: gate script is missing or not executable: $GATE" >&2
   exit 1
 fi
-for fixture in "$POSITIVE" "$NEGATIVE" "$NEGATIVE_MAKEPAD"; do
+for fixture in "$POSITIVE" "$NEGATIVE" "$NEGATIVE_MAKEPAD" "$NEGATIVE_BOUNDARY" "$ALLOWLISTED"; do
   if [[ ! -f "$fixture" ]]; then
     echo "AssertionFailed: fixture missing: $fixture" >&2
     exit 1
@@ -82,14 +86,14 @@ assert_output_omits() {
   esac
 }
 
-printf '[1/6] positive fixture must PASS (exit 0, no active findings)\n'
+printf '[1/8] positive fixture must PASS (exit 0, no active findings)\n'
 run_gate_capture "$POSITIVE"
 assert_exit "positive fixture" "0" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "positive summary" "summary: active=0" "$GATE_OUTPUT"
 echo "  ok: exit 0"
 echo "  ok: summary reports active=0"
 
-printf '[2/6] negative fixture must FAIL (exit 1, all removed tokens fire)\n'
+printf '[2/8] negative fixture must FAIL (exit 1, all removed tokens fire)\n'
 run_gate_capture "$NEGATIVE"
 assert_exit "negative fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "negative file:line" \
@@ -97,12 +101,12 @@ assert_output_contains "negative file:line" \
 for token in vb_codegen vb_ui_model vb_ui_makepad makepad-widgets makepad-draw; do
   assert_output_contains "negative token ${token}" "$token" "$GATE_OUTPUT"
 done
-assert_output_contains "negative summary" "summary: active=" "$GATE_OUTPUT"
+assert_output_contains "negative summary" "summary: active=5 allowlisted=0 files_scanned=1" "$GATE_OUTPUT"
 echo "  ok: exit 1 with file:line finding"
-echo "  ok: summary reports active > 0"
+echo "  ok: summary reports active=5"
 echo "  ok: every removed-token banner appears"
 
-printf '[3/6] negative makepad fixture must FAIL (exit 1, bare token)\n'
+printf '[3/8] negative makepad fixture must FAIL (exit 1, bare token)\n'
 run_gate_capture "$NEGATIVE_MAKEPAD"
 assert_exit "negative makepad fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "negative makepad file:line" \
@@ -110,7 +114,7 @@ assert_output_contains "negative makepad file:line" \
 assert_output_contains "negative makepad token" "makepad" "$GATE_OUTPUT"
 echo "  ok: exit 1 with makepad finding"
 
-printf '[4/6] shell negation probe must FAIL (exit 1, no allowlist bypass)\n'
+printf '[4/8] shell negation probe must FAIL (exit 1, no allowlist bypass)\n'
 SHELL_BYPASS="$TMPDIR/shell-bypass.sh"
 cat > "$SHELL_BYPASS" <<'EOF'
 ! vb_codegen
@@ -123,7 +127,7 @@ assert_output_omits "shell negation allowlist banner" " allowlisted: " "$GATE_OU
 echo "  ok: exit 1 with shell negation finding"
 echo "  ok: no allowlisted banner in output"
 
-printf '[5/6] real repository scan must PASS (exit 0, no active residue)\n'
+printf '[5/8] real repository scan must PASS (exit 0, no active residue)\n'
 run_gate_capture
 assert_exit "real repository scan" "0" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "real repository summary" "summary: active=0" "$GATE_OUTPUT"
@@ -132,13 +136,30 @@ echo "  ok: exit 0"
 echo "  ok: summary reports active=0"
 echo "  ok: no REMOVED-CRATE line in output"
 
-printf '[6/6] typoed explicit path must FAIL CLOSED (exit 2, no false green)\n'
+printf '[6/8] typoed explicit path must FAIL CLOSED (exit 2, no false green)\n'
 run_gate_capture "$MISSING_EXPLICIT"
 assert_exit "missing explicit path" "2" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "missing explicit path diagnostic" \
   "explicit target missing" "$GATE_OUTPUT"
 echo "  ok: exit 2 for missing explicit path"
 echo "  ok: diagnostic names explicit target"
+
+printf '[7/8] word-boundary fixture must PASS (exit 0, no false positives)\n'
+run_gate_capture "$NEGATIVE_BOUNDARY"
+assert_exit "word-boundary fixture" "0" "$GATE_EXIT" "$GATE_OUTPUT"
+assert_output_contains "word-boundary summary" "summary: active=0" "$GATE_OUTPUT"
+assert_output_omits "word-boundary REMOVED-CRATE" " REMOVED-CRATE:" "$GATE_OUTPUT"
+echo "  ok: exit 0 with no active findings"
+echo "  ok: makepad-2.0 / Makepad / makepad_draw / makepad2 do not false-positive"
+
+printf '[8/8] allowlisted fixture must PASS (exit 0, no active findings)\n'
+run_gate_capture "$ALLOWLISTED"
+assert_exit "allowlisted fixture" "0" "$GATE_EXIT" "$GATE_OUTPUT"
+assert_output_contains "allowlisted summary" "summary: active=0" "$GATE_OUTPUT"
+assert_output_contains "allowlisted marker" " allowlisted: " "$GATE_OUTPUT"
+assert_output_omits "allowlisted REMOVED-CRATE" " REMOVED-CRATE:" "$GATE_OUTPUT"
+echo "  ok: exit 0 with allowlisted suppression"
+echo "  ok: allowlisted: entries suppress historical banned-token lines"
 
 echo "self-test PASSED"
 exit 0

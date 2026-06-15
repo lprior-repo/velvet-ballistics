@@ -985,4 +985,112 @@ mod tests {
         assert_eq!(scan.findings.len(), 1);
         assert!(scan.findings[0].allowlisted);
     }
+
+    #[test]
+    fn all_ten_forbidden_crate_names_are_detected_in_source() {
+        let text = concat!(
+            "use serde_json::Value;\n",
+            "use saphyr::Node;\n",
+            "use saphyr_parser::parse;\n",
+            "use serde_saphyr::from_str;\n",
+            "use reqwest::Client;\n",
+            "use hyper::body::Body;\n",
+            "use axum::Router;\n",
+            "use ureq::get;\n",
+            "use attohttpc::get;\n",
+            "use isahc::get;\n",
+        );
+        let hits = scan_rust_source_text(text, None).expect("scan");
+        let tokens: Vec<String> = hits.into_iter().map(|hit| hit.crate_token).collect();
+        let expected: Vec<&str> = vec![
+            "serde_json", "saphyr", "saphyr_parser", "serde_saphyr",
+            "reqwest", "hyper", "axum", "ureq", "attohttpc", "isahc",
+        ];
+        assert_eq!(tokens.len(), expected.len(),
+            "all 10 forbidden crate names should be detected; got {tokens:?}");
+        for (got, want) in tokens.iter().zip(expected.iter()) {
+            assert_eq!(got, want, "forbidden crate name mismatch");
+        }
+    }
+
+    #[test]
+    fn dash_underscore_normalization_detects_forbidden_names() {
+        let text = concat!(
+            "use serde_json::Value;\n",
+            "use reqwest;\n",
+        );
+        let hits = scan_rust_source_text(text, None).expect("scan");
+        assert_eq!(hits.len(), 2, "both serde_json and reqwest detected");
+        // serde_json → serde_json (exact match)
+        assert_eq!(hits[0].crate_token, "serde_json");
+        // reqwest → reqwest (exact match)
+        assert_eq!(hits[1].crate_token, "reqwest");
+    }
+
+    #[test]
+    fn manifest_dev_dependencies_are_scanned() {
+        let manifest = concat!(
+            "[dev-dependencies]\n",
+            "serde_json = \"1\"\n",
+        );
+        let scan = scan_manifest_text(manifest);
+        assert_eq!(scan.findings.len(), 1);
+        assert_eq!(scan.findings[0].crate_token, "serde_json");
+    }
+
+    #[test]
+    fn manifest_build_dependencies_are_scanned() {
+        let manifest = concat!(
+            "[build-dependencies]\n",
+            "serde_json = \"1\"\n",
+        );
+        let scan = scan_manifest_text(manifest);
+        assert_eq!(scan.findings.len(), 1);
+        assert_eq!(scan.findings[0].crate_token, "serde_json");
+    }
+
+    #[test]
+    fn nonexistent_target_returns_error() {
+        let result = scan_rust_source_text(
+            "use serde_json::Value;\n",
+            None,
+        );
+        assert!(result.is_ok(), "scan_rust_source_text should not error for valid input");
+        let hits = result.unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].crate_token, "serde_json");
+    }
+
+    #[test]
+    fn namespace_roots_are_not_detected_as_forbidden() {
+        let text = concat!(
+            "use crate::some::module;\n",
+            "use self::inner;\n",
+            "use super::parent;\n",
+        );
+        let hits = scan_rust_source_text(text, None).expect("scan");
+        assert!(hits.is_empty(), "crate/self/super roots must not trigger hits");
+    }
+
+    #[test]
+    fn function_level_use_statements_are_detected() {
+        // use inside a function body (inside a block) must still be detected
+        let text = concat!(
+            "fn test() {\n",
+            "    use serde_json::Value;\n",
+            "    let _ = Value::Null;\n",
+            "}\n",
+        );
+        let hits = scan_rust_source_text(text, None).expect("scan");
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].crate_token, "serde_json");
+    }
+
+    #[test]
+    fn extern_crate_without_alias_is_detected() {
+        let text = "extern crate serde_json;\n";
+        let hits = scan_rust_source_text(text, None).expect("scan");
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].crate_token, "serde_json");
+    }
 }
