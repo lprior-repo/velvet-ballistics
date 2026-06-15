@@ -155,9 +155,9 @@ assert_exit "CLI --features fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "CLI features file:line" \
   "fixtures/removed-feature-residue/negative_cli_features.txt:" "$GATE_OUTPUT"
 assert_output_contains "CLI features maxperf token" \
-  "REMOVED-FEATURE: maxperf: CLI --features flag" "$GATE_OUTPUT"
+  "REMOVED-FEATURE: maxperf: CLI flag '--features maxperf'" "$GATE_OUTPUT"
 assert_output_contains "CLI features generated token" \
-  "REMOVED-FEATURE: generated: CLI --features flag" "$GATE_OUTPUT"
+  "REMOVED-FEATURE: generated: CLI flag '--features generated'" "$GATE_OUTPUT"
 assert_output_contains "CLI features summary" \
   "summary: active=4 allowlisted=0 files_scanned=1" "$GATE_OUTPUT"
 echo "  ok: exit 1 with file:line finding"

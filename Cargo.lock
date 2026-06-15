@@ -2048,6 +2048,7 @@ name = "vb_benchmark"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "kani",
  "proptest",
  "serde",
  "serde_json",

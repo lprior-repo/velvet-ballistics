@@ -12,14 +12,14 @@ serde = { workspace = true, features = ["derive"] }
 proptest.workspace = true
 criterion.workspace = true
 serde_json.workspace = true
-kani = { version = "0.0.1", optional = true }
+kani = "0.0.1"
 
 [[bench]]
 name = "aggregate_resource_budget"
 harness = false
 
 [features]
-kani-harnesses = ["kani"]
+kani-harnesses = []
 
 [lints]
 workspace = true

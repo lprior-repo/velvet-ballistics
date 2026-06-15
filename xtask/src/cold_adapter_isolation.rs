@@ -1003,7 +1003,7 @@ mod tests {
         let hits = scan_rust_source_text(text, None).expect("scan");
         let tokens: Vec<String> = hits.into_iter().map(|hit| hit.crate_token).collect();
         let expected: Vec<&str> = vec![
-            "serde_json", "saphyr", "saphyr_parser", "serde_saphyr",
+            "serde_json", "saphyr", "saphyr-parser", "serde-saphyr",
             "reqwest", "hyper", "axum", "ureq", "attohttpc", "isahc",
         ];
         assert_eq!(tokens.len(), expected.len(),
