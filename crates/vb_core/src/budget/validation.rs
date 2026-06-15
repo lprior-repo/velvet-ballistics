@@ -217,3 +217,61 @@ impl From<BudgetTraversalError> for BudgetError {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Tests — check_capacity boundary values (GAP-CAP-001 through GAP-CAP-003)
+// ---------------------------------------------------------------------------
+// check_capacity is pub(super) and only accessible from within the budget
+// module tree.  The tests here cover the exact-equals boundary that the
+// requested test plan identified as uncovered.
+
+#[cfg(test)]
+mod check_capacity_tests {
+    use super::check_capacity;
+    use crate::budget::AggregateBudgetError;
+
+    fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
+    where
+        T: core::fmt::Debug + PartialEq,
+    {
+        if actual == expected {
+            Ok(())
+        } else {
+            Err(format!("expected {expected:?}, found {actual:?}"))
+        }
+    }
+
+    /// GAP-CAP-001: requested == available is the valid boundary — returns Ok.
+    #[test]
+    fn check_capacity_exact_equal_returns_ok() -> Result<(), String> {
+        let result = check_capacity("steps", 100, 100);
+        result.map_err(|e| format!("exact boundary should be Ok, got {e:?}"))
+    }
+
+    /// GAP-CAP-002: requested > available returns CapacityExceeded with
+    /// correct requested/available fields.
+    #[test]
+    fn check_capacity_over_limit_returns_capacity_exceeded() -> Result<(), String> {
+        let result = check_capacity("steps", 101, 100);
+        match result {
+            Err(AggregateBudgetError::CapacityExceeded {
+                resource,
+                requested,
+                available,
+            }) => {
+                ensure_equal(resource, "steps")?;
+                ensure_equal(requested, 101)?;
+                ensure_equal(available, 100)
+            }
+            Err(other) => Err(format!("expected CapacityExceeded, got {other:?}"))?,
+            Ok(_) => Err("expected Err(CapacityExceeded), got Ok".to_string())?,
+        }
+    }
+
+    /// GAP-CAP-003: requested == 0 and available == 0 is a valid boundary — returns Ok.
+    #[test]
+    fn check_capacity_zero_zero_returns_ok() -> Result<(), String> {
+        let result = check_capacity("steps", 0, 0);
+        result.map_err(|e| format!("0 == 0 should be Ok, got {e:?}"))
+    }
+}

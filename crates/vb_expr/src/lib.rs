@@ -30,6 +30,9 @@ mod harness_tests;
 #[cfg(test)]
 mod property_tests;
 
+#[cfg(test)]
+mod tests;
+
 #[cfg(kani)]
 pub mod proofs;
 
