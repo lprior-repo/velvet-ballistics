@@ -17,8 +17,10 @@ use crate::shard::types::{
 pub(crate) enum SnapshotWriteOutcome {
     /// Snapshot was written successfully.
     Written,
-    /// Snapshot interval is disabled.
+    /// Snapshot interval is disabled (`interval == 0`).
     SkippedDisabled,
+    /// No storage journal available (volatile/noop journal): cannot write snapshots.
+    SkippedNoStorage,
     /// Snapshot would not fire (step count has not reached the interval).
     SkippedNotReady,
     /// Snapshot write failed; the error was logged and the caller continues.
@@ -97,6 +99,7 @@ impl Shard {
     ///
     /// If `snapshot_interval_steps > 0` and enough steps have elapsed since the
     /// last snapshot, a `RunSnapshot` is written before the state is re-inserted.
+    /// Snapshot write errors are non-fatal — the run always continues.
     pub(crate) fn keep_run_with_snapshot(
         &mut self,
         run: RunId,
@@ -107,8 +110,10 @@ impl Shard {
         let last_executed = state.last_snapshot_executed;
 
         // Attempt periodic snapshot if enabled.
+        // write_snapshot_for_run is non-blocking: serialization and storage
+        // errors return SnapshotWriteOutcome::Failed rather than propagating.
         let outcome =
-            self.write_snapshot_for_run(run, &state, interval, executed, last_executed)?;
+            self.write_snapshot_for_run(run, &state, interval, executed, last_executed);
 
         if matches!(outcome, self::SnapshotWriteOutcome::Written) {
             state.last_snapshot_executed = executed;
@@ -139,7 +144,7 @@ impl Shard {
                 state.last_snapshot_executed,
             );
             match outcome {
-                Ok(SnapshotWriteOutcome::Written) => {
+                SnapshotWriteOutcome::Written => {
                     // Snapshot succeeded; state is retained above for the terminal transition.
                 }
                 _ => {
@@ -278,7 +283,7 @@ impl Shard {
                 state.last_snapshot_executed,
             );
             match outcome {
-                Ok(SnapshotWriteOutcome::Written) => {
+                SnapshotWriteOutcome::Written => {
                     // Snapshot succeeded; state is retained above for the terminal transition.
                 }
                 _ => {

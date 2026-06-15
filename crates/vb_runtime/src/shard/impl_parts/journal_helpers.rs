@@ -112,6 +112,11 @@ impl Shard {
     ///    the threshold. On failure, the sequence is rolled back.
     ///
     /// Returns the outcome of the write attempt.
+    ///
+    /// **Non-blocking contract (C-2 / C-3):** Serialization failures and
+    /// journal write errors are converted to `SnapshotWriteOutcome::Failed`
+    /// so the caller can continue the run lifecycle. Only the `Written`
+    /// outcome carries a successful sequence advance.
     pub(crate) fn write_snapshot_for_run(
         &mut self,
         run: RunId,
@@ -119,39 +124,69 @@ impl Shard {
         interval: u64,
         executed: u64,
         last_snapshot_executed: u64,
-    ) -> RuntimeResult<SnapshotWriteOutcome> {
+    ) -> SnapshotWriteOutcome {
         // C1: Disabled → skip immediately.
         if interval == 0 {
-            return Ok(SnapshotWriteOutcome::SkippedDisabled);
+            return SnapshotWriteOutcome::SkippedDisabled;
         }
 
         // C2: Check if enough steps have elapsed since the last snapshot.
         if executed.saturating_sub(last_snapshot_executed) < interval {
-            return Ok(SnapshotWriteOutcome::SkippedNotReady);
+            return SnapshotWriteOutcome::SkippedNotReady;
         }
 
         // Resolve the underlying FjallJournal from the runtime journal trait.
         let Some(fjall) = self.journal.storage_journal() else {
             // Non-storage journal (volatile/noop): cannot write snapshots.
             // Best-effort: log and continue.
-            return Ok(SnapshotWriteOutcome::SkippedDisabled);
+            return SnapshotWriteOutcome::SkippedNoStorage;
         };
 
         // Advance the journal sequence before attempting the write.
         // Per C-4: snapshot seq must be strictly greater than any journal event
         // seq written before the snapshot.
         let current_seq = self.journal_sequence_for(run);
-        let snapshot_seq = current_seq
+        let snapshot_seq = match current_seq
             .get()
             .checked_add(1)
             .map(vb_storage::EventSeq::new)
-            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        {
+            Some(seq) => seq,
+            None => {
+                // Sequence overflow is a structural invariant violation.
+                // Log and return Failed so the run continues.
+                tracing::warn!(
+                    "snapshot_write_failed run=? seq_overflow",
+                    run.0
+                );
+                return SnapshotWriteOutcome::Failed;
+            }
+        };
 
         // Serialise slots and taint from the RunFrame.
-        let slots_bytes = postcard::to_allocvec(&state.frame.slots_snapshot())
-            .map_err(|_| RuntimeError::EncodeFailed)?;
-        let taint_bytes = postcard::to_allocvec(&state.frame.taint_snapshot())
-            .map_err(|_| RuntimeError::EncodeFailed)?;
+        // Serialization errors are non-fatal to the run lifecycle (C-2, C-5).
+        let slots_bytes = match postcard::to_allocvec(&state.frame.slots_snapshot()) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                tracing::warn!(
+                    "snapshot_write_failed run=? seq=? reason=postcard_encode_failed_slots",
+                    run.0,
+                    snapshot_seq.0
+                );
+                return SnapshotWriteOutcome::Failed;
+            }
+        };
+        let taint_bytes = match postcard::to_allocvec(&state.frame.taint_snapshot()) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                tracing::warn!(
+                    "snapshot_write_failed run=? seq=? reason=postcard_encode_failed_taint",
+                    run.0,
+                    snapshot_seq.0
+                );
+                return SnapshotWriteOutcome::Failed;
+            }
+        };
 
         let snapshot = RunSnapshot {
             run: state.frame.run_id(),
@@ -170,14 +205,19 @@ impl Shard {
                 self.journal_sequences.insert(run, snapshot_seq);
                 // The caller updates last_snapshot_executed = executed via the
                 // SnapshotWritten outcome.
-                Ok(SnapshotWriteOutcome::Written)
+                SnapshotWriteOutcome::Written
             }
             Err(_e) => {
                 // Failure: roll back the sequence advance.
                 self.journal_sequences.insert(run, current_seq);
-                // Log the error and return Failed so the caller can decide.
+                // Log the error per C-2 contract requirement.
                 // The run continues without snapshot.
-                Ok(SnapshotWriteOutcome::Failed)
+                tracing::warn!(
+                    "snapshot_write_failed run=? seq=? reason=storage_write_error",
+                    run.0,
+                    snapshot_seq.0
+                );
+                SnapshotWriteOutcome::Failed
             }
         }
     }

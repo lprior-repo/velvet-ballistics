@@ -24,6 +24,7 @@ vb_core = { path = "../vb_core" }
 vb_storage = { path = "../vb_storage" }
 postcard.workspace = true
 serde.workspace = true
+tracing.workspace = true
 flux-rs = { git = "https://github.com/flux-rs/flux", rev = "4d329f2", package = "flux-rs", optional = true }
 
 [dev-dependencies]

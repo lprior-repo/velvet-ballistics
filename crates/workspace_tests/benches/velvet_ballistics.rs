@@ -3203,8 +3203,8 @@ fn missing_slot_copy_bench(c: &mut Criterion) {
                 let mut frame = vb_core::RunFrame::new(RunId::new(500), StepIdx::new(0), 4, 2);
                 if let Ok(ref mut run) = frame {
                     let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(42));
-                    if let Some(value) = run.read_slot(SlotIdx::new(0)) {
-                        let _ = run.write_slot(SlotIdx::new(2), black_box(value));
+                    if let Ok(value) = run.read_slot(SlotIdx::new(0)) {
+                        let _ = run.write_slot(SlotIdx::new(2), black_box(value.clone()));
                     }
                 }
                 frame
@@ -3225,13 +3225,13 @@ fn missing_slot_copy_bench(c: &mut Criterion) {
                     let mut frame = vb_core::new_run_frame(RunId::new(501), plan);
                     if let Ok(ref mut run) = frame {
                         let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(7));
-                        if let Some(val) = run.read_slot(SlotIdx::new(0)) {
-                            let _ = run.write_slot(SlotIdx::new(1), black_box(val));
+                        if let Ok(val) = run.read_slot(SlotIdx::new(0)) {
+                            let _ = run.write_slot(SlotIdx::new(1), black_box(val.clone()));
                         }
                     }
                     frame
                 } else {
-                    Err(vb_core::CoreError::InvalidConfig {
+                    Err(vb_core::CoreError::InternalInvariantViolation {
                         reason: "workflow compile failed".into(),
                     })
                 }
@@ -4276,8 +4276,10 @@ fn missing_journal_writer_group_commit_1(c: &mut Criterion) {
     use std::hint::black_box;
     use vb_storage::JournalWriterQueue;
 
+    let mut group = c.benchmark_group("section39_missing");
+
     let journal_dir = tempfile::tempdir();
-    let (journal, queue) = match (journal_dir.as_ref()).ok().and_then(|dir| {
+    let Some((journal, queue)) = (journal_dir.as_ref()).ok().and_then(|dir| {
         vb_storage::FjallJournal::open(dir.path(), None)
             .ok()
             .and_then(|j| {
@@ -4285,14 +4287,13 @@ fn missing_journal_writer_group_commit_1(c: &mut Criterion) {
                     .ok()
                     .map(|q| (j, q))
             })
-    }) {
-        Some(pair) => Some(pair),
-        None => None,
+    }) else {
+        return;
     };
 
-    if let Some(ref pair) = (journal, queue) {
+    if let (Some(ref journal), Some(ref queue)) = (Some(&journal), Some(&queue)) {
         for i in 0..10 {
-            let _ = pair.1.enqueue_journaled(bench_event(42, i));
+            let _ = queue.enqueue_journaled(bench_event(42, i));
         }
     }
 
@@ -4303,15 +4304,11 @@ fn missing_journal_writer_group_commit_1(c: &mut Criterion) {
             "fixture=journal_writer_queue;surface=group_commit_1",
         ),
         |b| {
-            let (journal, queue) = match (journal.as_ref(), queue.as_ref()) {
-                (Some(j), Some(q)) => (j, q),
-                _ => {
-                    black_box(Err(vb_storage::JournalError::QueueShutdown));
-                    return;
-                }
-            };
+            // journal and queue are already Arc<...> from setup, deref them
+            let journal_ref: &vb_storage::FjallJournal = &journal;
+            let queue_ref: &vb_storage::JournalWriterQueue = &queue;
             checked_iter(b, "journal_writer_group_commit_1", || {
-                black_box(queue.flush_batch(journal))
+                black_box(queue_ref.flush_batch(journal_ref))
             })
         },
     );
@@ -4324,8 +4321,10 @@ fn missing_journal_writer_group_commit_64(c: &mut Criterion) {
     use std::hint::black_box;
     use vb_storage::JournalWriterQueue;
 
+    let mut group = c.benchmark_group("section39_missing");
+
     let journal_dir = tempfile::tempdir();
-    let (journal, queue) = match (journal_dir.as_ref()).ok().and_then(|dir| {
+    let Some((journal, queue)) = (journal_dir.as_ref()).ok().and_then(|dir| {
         vb_storage::FjallJournal::open(dir.path(), None)
             .ok()
             .and_then(|j| {
@@ -4333,14 +4332,13 @@ fn missing_journal_writer_group_commit_64(c: &mut Criterion) {
                     .ok()
                     .map(|q| (j, q))
             })
-    }) {
-        Some(pair) => Some(pair),
-        None => None,
+    }) else {
+        return;
     };
 
-    if let Some(ref pair) = (journal, queue) {
+    if let (Some(ref queue), Some(_)) = (Some(&queue), Some(&journal)) {
         for i in 0..64 {
-            let _ = pair.1.enqueue_journaled(bench_event(42, i));
+            let _ = queue.enqueue_journaled(bench_event(42, i));
         }
     }
 
@@ -4351,15 +4349,10 @@ fn missing_journal_writer_group_commit_64(c: &mut Criterion) {
             "fixture=journal_writer_queue;surface=group_commit_64",
         ),
         |b| {
-            let (journal, queue) = match (journal.as_ref(), queue.as_ref()) {
-                (Some(j), Some(q)) => (j, q),
-                _ => {
-                    black_box(Err(vb_storage::JournalError::QueueShutdown));
-                    return;
-                }
-            };
+            let journal_ref: &vb_storage::FjallJournal = &journal;
+            let queue_ref: &vb_storage::JournalWriterQueue = &queue;
             checked_iter(b, "journal_writer_group_commit_64", || {
-                black_box(queue.flush_batch(journal))
+                black_box(queue_ref.flush_batch(journal_ref))
             })
         },
     );
@@ -4372,8 +4365,10 @@ fn missing_journal_writer_group_commit_1024(c: &mut Criterion) {
     use std::hint::black_box;
     use vb_storage::JournalWriterQueue;
 
+    let mut group = c.benchmark_group("section39_missing");
+
     let journal_dir = tempfile::tempdir();
-    let (journal, queue) = match (journal_dir.as_ref()).ok().and_then(|dir| {
+    let Some((journal, queue)) = (journal_dir.as_ref()).ok().and_then(|dir| {
         vb_storage::FjallJournal::open(dir.path(), None)
             .ok()
             .and_then(|j| {
@@ -4381,14 +4376,13 @@ fn missing_journal_writer_group_commit_1024(c: &mut Criterion) {
                     .ok()
                     .map(|q| (j, q))
             })
-    }) {
-        Some(pair) => Some(pair),
-        None => None,
+    }) else {
+        return;
     };
 
-    if let Some(ref pair) = (journal, queue) {
+    if let (Some(ref queue), Some(_)) = (Some(&queue), Some(&journal)) {
         for i in 0..512 {
-            let _ = pair.1.enqueue_journaled(bench_event(42, i));
+            let _ = queue.enqueue_journaled(bench_event(42, i));
         }
     }
 
@@ -4399,15 +4393,10 @@ fn missing_journal_writer_group_commit_1024(c: &mut Criterion) {
             "fixture=journal_writer_queue;surface=group_commit_1024",
         ),
         |b| {
-            let (journal, queue) = match (journal.as_ref(), queue.as_ref()) {
-                (Some(j), Some(q)) => (j, q),
-                _ => {
-                    black_box(Err(vb_storage::JournalError::QueueShutdown));
-                    return;
-                }
-            };
+            let journal_ref: &vb_storage::FjallJournal = &journal;
+            let queue_ref: &vb_storage::JournalWriterQueue = &queue;
             checked_iter(b, "journal_writer_group_commit_1024", || {
-                black_box(queue.flush_batch(journal))
+                black_box(queue_ref.flush_batch(journal_ref))
             })
         },
     );
@@ -4487,7 +4476,7 @@ fn missing_shard_submit_to_finish(c: &mut Criterion) {
                         caps: caps.clone(),
                     };
                     let _ = shard.enqueue(black_box(cmd));
-                    black_box(shard.tick(black_box()))
+                    black_box(shard.tick())
                 })
             },
         );
@@ -4524,12 +4513,16 @@ fn missing_direct_api_submit_to_finish(c: &mut Criterion) {
                             );
                             black_box(signal)
                         } else {
-                            black_box(false)
+                            black_box(Err(vb_core::CoreError::InternalInvariantViolation {
+                                reason: "frame not ok".into(),
+                            }))
                         }
                     }
                     Err(e) => {
-                        black_box(Err(e));
-                        Err(vb_core::CoreError::FrameError)
+                        let _ = black_box(Err::<vb_core::EngineSignal, vb_compile::CompileErrors>(e));
+                        Err(vb_core::CoreError::InternalInvariantViolation {
+                            reason: "frame error".into(),
+                        })
                     }
                 }
             })
@@ -4560,15 +4553,20 @@ fn missing_ask_answer_resume(c: &mut Criterion) {
                 let ticket = vb_core::action::ActionTicket {
                     run: RunId::new(900),
                     step: StepIdx::new(0),
-                    seq: vb_core::action::SeqNo::new(0),
+                    seq: vb_core::ids::SeqNo::new(0),
                     action: ActionId::new(0),
                     attempt: 1,
                     idempotency_key: 0,
                     capacity: 3,
                     mock: vb_core::action::MockMarker::default(),
                 };
+                let ask_ticket = vb_runtime::shard::AskTicket {
+                    run: RunId::new(900),
+                    ask_step: StepIdx::new(0),
+                    resume_step: StepIdx::new(1),
+                };
                 let answer = AskAnswer::new(
-                    black_box(ticket),
+                    black_box(ask_ticket),
                     SlotIdx::new(0),
                     vb_core::SlotValue::I64(42),
                     vb_core::Taint::Clean,

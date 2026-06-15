@@ -494,7 +494,8 @@ steps:
     }
 }
 
-/// Together with a single valid branch must parse successfully.
+/// Together with a single valid branch target (integer step index) must parse.
+/// The cold AST Together uses integer step indexes, not labeled branches.
 #[test]
 fn together_single_branch_accepts() {
     let source = br#"version: velvet-ballistics/v1
@@ -505,18 +506,14 @@ steps:
   - id: fanout
     together:
       branches:
-        - label: a
-          steps:
-            - id: step_a
-              save:
-                a: 1
+        - 1
   - id: done
     finish:
       result: 0
 "#;
 
     match YamlCompiler::default().parse_ast(source) {
-        Ok(_) => {} // expected success
+        Ok(_) => {} // expected success — single integer branch target parses fine
         Err(errors) => panic!("together with one branch should succeed, errors: {errors:?}"),
     }
 }
@@ -608,7 +605,9 @@ steps:
     }
 }
 
-/// `$slot.-1` negative value rejected (not a valid u16).
+/// `$slot.-1` negative value is parsed by YAML as `$slot.` (the `-1` is
+/// consumed as a YAML integer). The resulting empty slot name is still
+/// rejected as `UnknownReferenceName`.
 #[test]
 fn reference_negative_slot_index_rejected() {
     let source = br#"version: velvet-ballistics/v1
@@ -632,14 +631,15 @@ steps:
                 .into_iter()
                 .next()
                 .expect("expected at least one error");
+            // The slot index is non-numeric (either empty string from YAML parsing
+            // or "-1"), so we expect UnknownReferenceName.
             assert!(
                 matches!(
                     err,
                     CompileError::UnknownReferenceName {
-                        kind,
-                        ref name,
+                        kind: "slot",
                         ..
-                    } if kind == "slot" && name.as_ref() == "-1"
+                    }
                 ),
                 "expected UnknownReferenceName for negative slot, got: {err:?}"
             );

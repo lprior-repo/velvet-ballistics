@@ -450,3 +450,8 @@ pub fn check_evidence_gate(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    mod edge_cases;
+}
