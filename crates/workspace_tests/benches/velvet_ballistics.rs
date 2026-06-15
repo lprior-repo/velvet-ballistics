@@ -3189,7 +3189,11 @@ fn missing_slot_copy_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("section39_missing");
 
     group.bench_function(
-        metadata("slot_copy", b"slot_copy", "fixture=run_frame_slot;surface=slot_copy"),
+        metadata(
+            "slot_copy",
+            b"slot_copy",
+            "fixture=run_frame_slot;surface=slot_copy",
+        ),
         |b| {
             checked_iter(b, "slot_copy", || {
                 let mut frame = vb_core::RunFrame::new(RunId::new(500), StepIdx::new(0), 4, 2);
@@ -3384,11 +3388,7 @@ fn collect_workflow() -> Option<CompiledWorkflow> {
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::BuildList {
-                items: Box::new([
-                    SlotIdx::new(0),
-                    SlotIdx::new(1),
-                    SlotIdx::new(2),
-                ]),
+                items: Box::new([SlotIdx::new(0), SlotIdx::new(1), SlotIdx::new(2)]),
             },
         },
         CompiledNode {
@@ -3493,11 +3493,7 @@ fn reduce_workflow() -> Option<CompiledWorkflow> {
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::BuildList {
-                items: Box::new([
-                    SlotIdx::new(2),
-                    SlotIdx::new(3),
-                    SlotIdx::new(4),
-                ]),
+                items: Box::new([SlotIdx::new(2), SlotIdx::new(3), SlotIdx::new(4)]),
             },
         },
         CompiledNode {
@@ -4173,8 +4169,8 @@ fn missing_rtrb_push_pop(c: &mut Criterion) {
 
 /// Benchmark TraceRing push performance.
 fn missing_trace_event_push(c: &mut Criterion) {
-    use vb_runtime::trace::{TraceEvent, TraceRing};
     use std::hint::black_box;
+    use vb_runtime::trace::{TraceEvent, TraceRing};
 
     let mut group = c.benchmark_group("section39_missing");
 
@@ -4202,8 +4198,8 @@ fn missing_trace_event_push(c: &mut Criterion) {
 
 /// Benchmark TraceRing ring full policy: overflow behavior.
 fn missing_trace_ring_full(c: &mut Criterion) {
-    use vb_runtime::trace::{TraceEvent, TraceRing};
     use std::hint::black_box;
+    use vb_runtime::trace::{TraceEvent, TraceRing};
 
     let mut group = c.benchmark_group("section39_missing");
 
@@ -4240,8 +4236,8 @@ fn missing_trace_ring_full(c: &mut Criterion) {
 
 /// Benchmark JournalWriterQueue enqueue performance.
 fn missing_journal_writer_queue_push(c: &mut Criterion) {
-    use vb_storage::JournalWriterQueue;
     use std::hint::black_box;
+    use vb_storage::JournalWriterQueue;
 
     let mut group = c.benchmark_group("section39_missing");
 
@@ -4252,15 +4248,17 @@ fn missing_journal_writer_queue_push(c: &mut Criterion) {
             "fixture=journal_writer_queue;surface=writer_queue_push",
         ),
         |b| {
-            checked_iter(b, "journal_writer_queue_push", || {
-                match JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
+            checked_iter(
+                b,
+                "journal_writer_queue_push",
+                || match JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
                     Ok(queue) => {
                         let event = bench_event(42, 0);
                         black_box(queue.enqueue_journaled(event))
                     }
                     Err(_) => Err(vb_storage::JournalError::QueueFull),
-                }
-            })
+                },
+            )
         },
     );
 
@@ -4269,21 +4267,19 @@ fn missing_journal_writer_queue_push(c: &mut Criterion) {
 
 /// Benchmark group_commit with batch size 1.
 fn missing_journal_writer_group_commit_1(c: &mut Criterion) {
-    use vb_storage::JournalWriterQueue;
     use std::hint::black_box;
+    use vb_storage::JournalWriterQueue;
 
     let journal_dir = tempfile::tempdir();
-    let (journal, queue) = match (journal_dir.as_ref())
-        .ok()
-        .and_then(|dir| {
-            vb_storage::FjallJournal::open(dir.path(), None)
-                .ok()
-                .and_then(|j| {
-                    JournalWriterQueue::new(64, 1, vb_storage::StorageLimits::DEFAULT)
-                        .ok()
-                        .map(|q| (j, q))
-                })
-        }) {
+    let (journal, queue) = match (journal_dir.as_ref()).ok().and_then(|dir| {
+        vb_storage::FjallJournal::open(dir.path(), None)
+            .ok()
+            .and_then(|j| {
+                JournalWriterQueue::new(64, 1, vb_storage::StorageLimits::DEFAULT)
+                    .ok()
+                    .map(|q| (j, q))
+            })
+    }) {
         Some(pair) => Some(pair),
         None => None,
     };
@@ -4319,21 +4315,19 @@ fn missing_journal_writer_group_commit_1(c: &mut Criterion) {
 
 /// Benchmark group_commit with batch size 64.
 fn missing_journal_writer_group_commit_64(c: &mut Criterion) {
-    use vb_storage::JournalWriterQueue;
     use std::hint::black_box;
+    use vb_storage::JournalWriterQueue;
 
     let journal_dir = tempfile::tempdir();
-    let (journal, queue) = match (journal_dir.as_ref())
-        .ok()
-        .and_then(|dir| {
-            vb_storage::FjallJournal::open(dir.path(), None)
-                .ok()
-                .and_then(|j| {
-                    JournalWriterQueue::new(256, 64, vb_storage::StorageLimits::DEFAULT)
-                        .ok()
-                        .map(|q| (j, q))
-                })
-        }) {
+    let (journal, queue) = match (journal_dir.as_ref()).ok().and_then(|dir| {
+        vb_storage::FjallJournal::open(dir.path(), None)
+            .ok()
+            .and_then(|j| {
+                JournalWriterQueue::new(256, 64, vb_storage::StorageLimits::DEFAULT)
+                    .ok()
+                    .map(|q| (j, q))
+            })
+    }) {
         Some(pair) => Some(pair),
         None => None,
     };
@@ -4369,21 +4363,19 @@ fn missing_journal_writer_group_commit_64(c: &mut Criterion) {
 
 /// Benchmark group_commit with batch size 1024.
 fn missing_journal_writer_group_commit_1024(c: &mut Criterion) {
-    use vb_storage::JournalWriterQueue;
     use std::hint::black_box;
+    use vb_storage::JournalWriterQueue;
 
     let journal_dir = tempfile::tempdir();
-    let (journal, queue) = match (journal_dir.as_ref())
-        .ok()
-        .and_then(|dir| {
-            vb_storage::FjallJournal::open(dir.path(), None)
-                .ok()
-                .and_then(|j| {
-                    JournalWriterQueue::new(2048, 1024, vb_storage::StorageLimits::DEFAULT)
-                        .ok()
-                        .map(|q| (j, q))
-                })
-        }) {
+    let (journal, queue) = match (journal_dir.as_ref()).ok().and_then(|dir| {
+        vb_storage::FjallJournal::open(dir.path(), None)
+            .ok()
+            .and_then(|j| {
+                JournalWriterQueue::new(2048, 1024, vb_storage::StorageLimits::DEFAULT)
+                    .ok()
+                    .map(|q| (j, q))
+            })
+    }) {
         Some(pair) => Some(pair),
         None => None,
     };
@@ -4421,10 +4413,10 @@ fn missing_journal_writer_group_commit_1024(c: &mut Criterion) {
 
 /// Benchmark shard submit: enqueue Submit command.
 fn missing_shard_submit_to_start(c: &mut Criterion) {
+    use std::hint::black_box;
     use vb_runtime::journal::NoopRuntimeJournal;
     use vb_runtime::shard::command::ShardCommand;
     use vb_runtime::shard::config::ShardConfig;
-    use std::hint::black_box;
 
     let mut group = c.benchmark_group("section39_missing");
 
@@ -4460,10 +4452,10 @@ fn missing_shard_submit_to_start(c: &mut Criterion) {
 
 /// Benchmark shard submit-to-finish: enqueue Submit and tick.
 fn missing_shard_submit_to_finish(c: &mut Criterion) {
+    use std::hint::black_box;
     use vb_runtime::journal::NoopRuntimeJournal;
     use vb_runtime::shard::command::ShardCommand;
     use vb_runtime::shard::config::ShardConfig;
-    use std::hint::black_box;
 
     let mut group = c.benchmark_group("section39_missing");
 
@@ -4545,9 +4537,9 @@ fn missing_direct_api_submit_to_finish(c: &mut Criterion) {
 
 /// Benchmark ask/answer/resume async primitive pattern.
 fn missing_ask_answer_resume(c: &mut Criterion) {
+    use std::hint::black_box;
     use vb_core::action::ActionTicket;
     use vb_runtime::shard::ask::AskAnswer;
-    use std::hint::black_box;
 
     let mut group = c.benchmark_group("section39_missing");
 

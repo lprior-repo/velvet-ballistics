@@ -133,26 +133,73 @@ mod tests {
     #[test]
     fn test_pending_valid_transitions() {
         let next = next_states(StepState::Pending);
-        assert!(next.contains(&StepState::Pending), "Pending should allow Pending->Pending");
-        assert!(next.contains(&StepState::Running), "Pending should transition to Running");
-        assert!(next.contains(&StepState::Succeeded), "Pending should transition to Succeeded");
-        assert!(next.contains(&StepState::Failed), "Pending should transition to Failed");
-        assert!(next.contains(&StepState::Cancelled), "Pending should transition to Cancelled");
-        assert!(next.contains(&StepState::Skipped), "Pending should transition to Skipped");
-        assert_eq!(next.len(), 6, "Pending should have exactly 6 valid next states");
+        assert!(
+            next.contains(&StepState::Pending),
+            "Pending should allow Pending->Pending"
+        );
+        assert!(
+            next.contains(&StepState::Running),
+            "Pending should transition to Running"
+        );
+        assert!(
+            next.contains(&StepState::Succeeded),
+            "Pending should transition to Succeeded"
+        );
+        assert!(
+            next.contains(&StepState::Failed),
+            "Pending should transition to Failed"
+        );
+        assert!(
+            next.contains(&StepState::Cancelled),
+            "Pending should transition to Cancelled"
+        );
+        assert!(
+            next.contains(&StepState::Skipped),
+            "Pending should transition to Skipped"
+        );
+        assert_eq!(
+            next.len(),
+            6,
+            "Pending should have exactly 6 valid next states"
+        );
     }
 
     #[test]
     fn test_running_valid_transitions() {
         let next = next_states(StepState::Running);
-        assert!(next.contains(&StepState::Running), "Running should allow Running->Running");
-        assert!(next.contains(&StepState::Succeeded), "Running should transition to Succeeded");
-        assert!(next.contains(&StepState::Failed), "Running should transition to Failed");
-        assert!(next.contains(&StepState::Waiting), "Running should transition to Waiting");
-        assert!(next.contains(&StepState::Asking), "Running should transition to Asking");
-        assert!(next.contains(&StepState::Cancelled), "Running should transition to Cancelled");
-        assert!(next.contains(&StepState::Skipped), "Running should transition to Skipped");
-        assert_eq!(next.len(), 7, "Running should have exactly 7 valid next states");
+        assert!(
+            next.contains(&StepState::Running),
+            "Running should allow Running->Running"
+        );
+        assert!(
+            next.contains(&StepState::Succeeded),
+            "Running should transition to Succeeded"
+        );
+        assert!(
+            next.contains(&StepState::Failed),
+            "Running should transition to Failed"
+        );
+        assert!(
+            next.contains(&StepState::Waiting),
+            "Running should transition to Waiting"
+        );
+        assert!(
+            next.contains(&StepState::Asking),
+            "Running should transition to Asking"
+        );
+        assert!(
+            next.contains(&StepState::Cancelled),
+            "Running should transition to Cancelled"
+        );
+        assert!(
+            next.contains(&StepState::Skipped),
+            "Running should transition to Skipped"
+        );
+        assert_eq!(
+            next.len(),
+            7,
+            "Running should have exactly 7 valid next states"
+        );
     }
 
     #[test]
@@ -184,11 +231,13 @@ mod tests {
     #[test]
     fn test_terminal_self_transition() {
         assert!(is_valid_transition(
-            StepState::Succeeded, StepState::Succeeded
+            StepState::Succeeded,
+            StepState::Succeeded
         ));
         assert!(is_valid_transition(StepState::Failed, StepState::Failed));
         assert!(is_valid_transition(
-            StepState::Cancelled, StepState::Cancelled
+            StepState::Cancelled,
+            StepState::Cancelled
         ));
         assert!(is_valid_transition(StepState::Skipped, StepState::Skipped));
     }
@@ -200,14 +249,18 @@ mod tests {
         // uses the explicit Succeeded->Pending admission path; the direct
         // Succeeded->Running edge is invalid.
         assert!(!is_valid_transition(
-            StepState::Succeeded, StepState::Running
+            StepState::Succeeded,
+            StepState::Running
         ));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
     #[test]
     fn test_terminal_immutable() {
-        assert!(terminal_cannot_transition_to_non_terminal(), "kani harness assertion");
+        assert!(
+            terminal_cannot_transition_to_non_terminal(),
+            "kani harness assertion"
+        );
     }
 
     #[test]
@@ -316,14 +369,22 @@ mod tests {
 
     #[test]
     fn test_validate_transition_terminal_idempotent() {
-        assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
-            StepState::Succeeded);
-        assert_eq!(validate_transition(StepState::Failed, StepState::Failed).unwrap(),
-            StepState::Failed);
-        assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
-            StepState::Cancelled);
-        assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
-            StepState::Skipped);
+        assert_eq!(
+            validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(
+            validate_transition(StepState::Failed, StepState::Failed).unwrap(),
+            StepState::Failed
+        );
+        assert_eq!(
+            validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
+            StepState::Cancelled
+        );
+        assert_eq!(
+            validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
+            StepState::Skipped
+        );
     }
 
     #[test]
@@ -432,9 +493,18 @@ mod tests {
 
     #[test]
     fn test_step_state_eq() {
-        assert!(StepState::Pending == StepState::Pending, "kani harness assertion");
-        assert!(StepState::Running != StepState::Pending, "kani harness assertion");
-        assert!(StepState::Failed == StepState::Failed, "kani harness assertion");
+        assert!(
+            StepState::Pending == StepState::Pending,
+            "kani harness assertion"
+        );
+        assert!(
+            StepState::Running != StepState::Pending,
+            "kani harness assertion"
+        );
+        assert!(
+            StepState::Failed == StepState::Failed,
+            "kani harness assertion"
+        );
     }
 
     // ── is_valid_transition exhaustive idempotent ───────────────────────────
