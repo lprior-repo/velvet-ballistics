@@ -7,12 +7,16 @@ use criterion::{Bencher, BenchmarkId, Criterion, Throughput, criterion_group, cr
 use std::hint::black_box;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
+use vb_core::action::{ActionOutputReady, ActionTicket};
+use vb_core::ids::SeqNo;
 use vb_core::{
     ActionId, Capability, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx,
     ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget,
     StepIdx, SymbolId, Taint, WorkflowDigest, WorkflowParts,
 };
+use vb_core::policy::RuntimePolicy;
 use vb_runtime::journal::RuntimeJournal;
+use vb_runtime::{Runtime, RuntimeError};
 use vb_storage::{EventSeq, JournalEvent};
 
 fn cap(action: ActionId) -> Capability {
@@ -4603,6 +4607,8 @@ fn section39_missing_all(c: &mut Criterion) {
     missing_shard_submit_to_finish(c);
     missing_direct_api_submit_to_finish(c);
     missing_ask_answer_resume(c);
+    missing_action_complete_resume_bench(c);
+    missing_wait_timer_resume_bench(c);
 }
 
 criterion_group!(
@@ -4628,3 +4634,224 @@ criterion_group!(
     section39_missing_all
 );
 criterion_main!(benches);
+
+// --- S22: action_complete_resume (section 39 GAP: action_complete_resume) ---
+
+/// Builds a Do → Finish workflow that suspends on an action dispatch.
+fn action_complete_resume_workflow() -> Option<CompiledWorkflow> {
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(7),
+                input: SlotIdx::ZERO,
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+        },
+    ];
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("bench_action_complete_resume"),
+        digest: WorkflowDigest::from_bytes([0x71; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 2,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+        symbols_count: 0,
+    })
+    .ok()
+}
+
+/// Builds a WaitUntil → Finish workflow that suspends on a timer.
+fn wait_timer_resume_workflow() -> Option<CompiledWorkflow> {
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::ZERO),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO,
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        },
+    ];
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("bench_wait_timer_resume"),
+        digest: WorkflowDigest::from_bytes([0x72; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([vb_core::value::ConstValue::I64(10)]),
+        slot_count: 1,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+        symbols_count: 0,
+    })
+    .ok()
+}
+
+/// Benchmark `Runtime::complete_action_with_output()` — Do→Finish workflow resume.
+fn missing_action_complete_resume_bench(c: &mut Criterion) {
+    use vb_runtime::shard::ShardConfig;
+
+    let mut group = c.benchmark_group("section39_missing");
+
+    let workflow = action_complete_resume_workflow();
+    let config = ShardConfig {
+        command_queue_capacity: 32,
+        trace_capacity: 64,
+        step_budget_per_tick: 16,
+        max_active_runs: 8,
+        policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
+    };
+    let shard_count = match NonZeroUsize::new(1) {
+        Some(n) => n,
+        None => return,
+    };
+    let mut runtime = Runtime::new(shard_count, config);
+
+    if let Some(ref wf) = workflow {
+        let run = RunId::new(900);
+        let _ = runtime.submit_direct(run, wf.clone());
+        let _ = runtime.tick_all();
+    }
+
+    group.bench_function(
+        metadata(
+            "action_complete_resume",
+            b"action_complete_resume",
+            "fixture=action_resume;surface=complete_action_with_output",
+        ),
+        |b| {
+            let run = RunId::new(900);
+                let ticket = ActionTicket {
+                    run,
+                    step: StepIdx::ZERO,
+                    seq: SeqNo::new(0),
+                    action: ActionId::new(7),
+                    attempt: 1,
+                    idempotency_key: 0,
+                    capacity: 1,
+                    mock: Default::default(),
+                };
+                let output = ActionOutputReady {
+                    output_slot: SlotIdx::new(1),
+                    value: vb_core::SlotValue::I64(42),
+                    taint: Taint::Clean,
+                    encoded_len: 8,
+                };
+                checked_iter(b, "action_complete_resume", || {
+                    if workflow.is_some() {
+                        let result = runtime.complete_action_with_output(
+                            black_box(ticket),
+                            black_box(output.clone()),
+                        );
+                        black_box(result)
+                    } else {
+                        black_box(Result::<(), _>::Err(RuntimeError::RunNotFound))
+                    }
+                })
+        },
+    );
+
+    group.finish();
+}
+
+/// Benchmark `Runtime::timer_entry_fired()` — WaitUntil→Finish workflow resume.
+fn missing_wait_timer_resume_bench(c: &mut Criterion) {
+    use vb_runtime::shard::ShardConfig;
+
+    let mut group = c.benchmark_group("section39_missing");
+
+    let workflow = wait_timer_resume_workflow();
+    let config = ShardConfig {
+        command_queue_capacity: 32,
+        trace_capacity: 64,
+        step_budget_per_tick: 16,
+        max_active_runs: 8,
+        policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        snapshot_interval_steps: 0,
+    };
+    let shard_count = match NonZeroUsize::new(1) {
+        Some(n) => n,
+        None => return,
+    };
+    let mut runtime = Runtime::new(shard_count, config);
+
+    if let Some(ref wf) = workflow {
+        let run = RunId::new(901);
+        let _ = runtime.submit_direct(run, wf.clone());
+        let _ = runtime.tick_all();
+    }
+
+    group.bench_function(
+        metadata(
+            "wait_timer_resume",
+            b"wait_timer_resume",
+            "fixture=timer_resume;surface=timer_entry_fired",
+        ),
+        |b| {
+            let run = RunId::new(901);
+                let captured = match runtime.capture_timer_entry(run) {
+                    Ok(entry) => entry,
+                    Err(_) => {
+                        checked_iter(b, "wait_timer_resume", || {
+                            black_box(Result::<(), _>::Err(RuntimeError::InvalidTimerFire))
+                        });
+                        return;
+                    }
+                };
+                checked_iter(b, "wait_timer_resume", || {
+                    if workflow.is_some() {
+                        let result = runtime.timer_entry_fired(black_box(captured));
+                        black_box(result)
+                    } else {
+                        black_box(Result::<(), _>::Err(RuntimeError::RunNotFound))
+                    }
+                })
+        },
+    );
+
+    group.finish();
+}
