@@ -723,8 +723,8 @@ steps:
                 matches!(
                     err,
                     CompileError::UnsupportedAccessorReference {
-                        reference,
-                        root,
+                        ref reference,
+                        ref root,
                         ref path,
                         ..
                     } if reference.as_ref() == "$slot.0.1.name"

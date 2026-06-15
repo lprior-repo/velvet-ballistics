@@ -61,6 +61,20 @@ fn build_finish_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(parts).expect("build_finish_workflow")
 }
 
+/// Drains a shard: ticks until the command queue is empty, then shuts down and
+/// ticks until shutdown completes (flushing any remaining coalesce buffer).
+fn drain_shard(shard: &mut Shard) {
+    // Tick until the command queue is empty.
+    while shard.command_queue_len() > 0 {
+        shard.tick().expect("shard tick");
+    }
+    // Send shutdown to flush the coalesce buffer, then drain to completion.
+    let _ = shard.enqueue(ShardCommand::Shutdown);
+    while shard.tick().expect("shard tick") {
+        // keep going until shutdown returns false
+    }
+}
+
 /// Builds two shards with identical settings except for `coalesce_window_ticks`.
 ///
 /// Each shard is given its own isolated volatile journal so that event counts
@@ -102,7 +116,7 @@ fn bench_batched_atomicity(c: &mut Criterion) {
     c.bench_function("batched_atomicity", |b| {
         b.iter_batched_ref(
             || build_shards(),
-            |(shard_a, shard_b, vol_a, vol_b)| {
+            |&mut (mut shard_a, mut shard_b, vol_a, vol_b)| {
                 // Submit 100 commands to each shard.
                 for i in 0..100u64 {
                     let _ = shard_a.enqueue(ShardCommand::Submit {
@@ -117,19 +131,9 @@ fn bench_batched_atomicity(c: &mut Criterion) {
                     });
                 }
 
-                // Tick each shard until queues are drained.
-                loop {
-                    let r_a = shard_a.tick().unwrap();
-                    if !r_a {
-                        break;
-                    }
-                }
-                loop {
-                    let r_b = shard_b.tick().unwrap();
-                    if !r_b {
-                        break;
-                    }
-                }
+                // Drain each shard completely (including coalesce buffer flush).
+                drain_shard(&mut shard_a);
+                drain_shard(&mut shard_b);
 
                 // Measure journal event counts.
                 let events_a = vol_a.snapshot().unwrap().len();
