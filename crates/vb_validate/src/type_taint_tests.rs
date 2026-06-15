@@ -13,7 +13,10 @@ fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         vars: vec![],
         secrets: vec![],
         steps,
-        resource_contract: ResourceLimits::default(),
+        resource_contract: ResourceLimits {
+            allows_secret_results: true,
+            ..ResourceLimits::default()
+        },
     }
 }
 
@@ -770,7 +773,10 @@ fn arb_workflow_types(max_steps: usize) -> impl Strategy<Value = WorkflowTypes> 
         vars,
         secrets,
         steps,
-        resource_contract: ResourceLimits::default(),
+        resource_contract: ResourceLimits {
+            allows_secret_results: true,
+            ..ResourceLimits::default()
+        },
     })
 }
 
@@ -2032,6 +2038,7 @@ fn blackhat_resource_limits_at_exact_hard_limit_passes() {
             max_collect_items: 1_000,
             max_queue_depth: 1_024,
             max_journal_batch_bytes: 1_048_576,
+            allows_secret_results: true,
         },
     };
     let hard = ResourceLimits::default();
@@ -2232,6 +2239,7 @@ fn blackhat_resource_limits_all_zero_rejected() {
             max_collect_items: 0,
             max_queue_depth: 0,
             max_journal_batch_bytes: 0,
+            allows_secret_results: true,
         },
     };
     let hard = ResourceLimits::default();
@@ -2272,6 +2280,7 @@ fn blackhat_resource_limits_all_exceeding_hard_rejected() {
             max_collect_items: 999_999,
             max_queue_depth: 999_999,
             max_journal_batch_bytes: 999_999,
+            allows_secret_results: true,
         },
     };
     let hard = ResourceLimits::default();

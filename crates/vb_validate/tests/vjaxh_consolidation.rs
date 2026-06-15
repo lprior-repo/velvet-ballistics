@@ -94,7 +94,13 @@ fn schema_public_api_rejects_legacy_primitives_and_event_name() {
 
 #[test]
 fn type_taint_public_api_keeps_finish_secret_acceptance_and_limits() {
-    let mut workflow = WorkflowTypes::default();
+    let mut workflow = WorkflowTypes {
+        resource_contract: ResourceLimits {
+            allows_secret_results: true,
+            ..ResourceLimits::default()
+        },
+        ..WorkflowTypes::default()
+    };
     workflow.secrets.push("token".to_owned());
     workflow.steps.push(StepTypes {
         id: "done".to_owned(),

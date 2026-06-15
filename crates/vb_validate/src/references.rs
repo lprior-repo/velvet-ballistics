@@ -207,7 +207,7 @@ pub fn validate_single_reference_with_context(
         return Ok(());
     };
     let Some((root, tail)) = body.split_once('.') else {
-        return validate_bare_reference(reference, body);
+        return validate_bare_reference(reference, body, tables);
     };
     validate_rooted_reference(
         reference,
@@ -304,14 +304,27 @@ pub fn validate_step_references(
     Ok(())
 }
 
-fn validate_bare_reference(reference: &str, body: &str) -> ValidationResult<()> {
+fn validate_bare_reference(
+    reference: &str,
+    body: &str,
+    tables: &RefTables,
+) -> ValidationResult<()> {
     if matches!(body, "now" | "random") {
-        Err(ValidationError::DirectRuntimeReference)
-    } else {
-        Err(ValidationError::UnknownReference {
-            reference: reference.to_owned(),
-        })
+        return Err(ValidationError::DirectRuntimeReference);
     }
+    if tables.contains_step_id(body) {
+        return Err(ValidationError::DirectStepReference {
+            step: body.to_owned(),
+        });
+    }
+    if tables.contains_loop_variable(body) {
+        return Err(ValidationError::DirectLoopReference {
+            variable: body.to_owned(),
+        });
+    }
+    Err(ValidationError::UnknownReference {
+        reference: reference.to_owned(),
+    })
 }
 
 fn validate_rooted_reference(
@@ -478,12 +491,16 @@ fn step_index_to_step_idx(step_idx: usize) -> StepIdx {
 fn validate_declared(
     reference: &str,
     tail: &str,
-    _kind: &str,
+    kind: &str,
     names: &HashSet<String>,
 ) -> ValidationResult<()> {
     let name = reference_name(tail);
     if names.contains(name) {
         Ok(())
+    } else if kind == "secrets" {
+        Err(ValidationError::SecretNotDeclared {
+            secret: name.to_owned(),
+        })
     } else {
         Err(ValidationError::UnknownReference {
             reference: reference.to_owned(),

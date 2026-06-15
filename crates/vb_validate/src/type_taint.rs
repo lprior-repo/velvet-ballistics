@@ -3,8 +3,8 @@
 //!
 //! Tracks input/action/result types through workflow steps, propagates secret
 //! taint facts, and validates resource contract bounds against protocol hard
-//! limits. `Finish` results may be secret or derived from secret data; their
-//! taint is tracked and does not by itself produce `SECRET_RESULT_LEAK`.
+//! limits. `Finish` results carrying `Secret` or `DerivedFromSecret` taint
+//! produce `SECRET_RESULT_LEAK` when `allows_secret_results` is `false`.
 
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashMap;
@@ -155,6 +155,8 @@ pub struct ResourceLimits {
     pub max_queue_depth: usize,
     /// Maximum journal batch bytes.
     pub max_journal_batch_bytes: usize,
+    /// Whether the workflow is allowed to produce secret-tainted results.
+    pub allows_secret_results: bool,
 }
 
 impl Default for ResourceLimits {
@@ -176,6 +178,7 @@ impl Default for ResourceLimits {
             max_collect_items: 1_000,
             max_queue_depth: 1_024,
             max_journal_batch_bytes: 1_048_576,
+            allows_secret_results: false,
         }
     }
 }
@@ -250,7 +253,9 @@ pub fn validate_types(workflow: &WorkflowTypes) -> ValidationResult<()> {
     validate_step_types(workflow, &facts, &mut slots)
 }
 
-/// Validates secret taint tracking; rejects secret data leaking into results.
+/// Validates secret taint tracking; emits [`SecretResultLeak`] when a `Finish`
+/// step produces `Secret` or `DerivedFromSecret` taint and the resource
+/// contract does not allow secret results.
 pub fn validate_taint(workflow: &WorkflowTypes) -> ValidationResult<()> {
     let facts = Facts::build(workflow);
     let mut slots = vec![None::<ValueFact>; workflow.steps.len()];
@@ -529,9 +534,15 @@ fn validate_step_taint(
                 // validate_step_types.
             }
             StepKind::Finish { result } => {
-                // Section 47: No rejection of Secret or DerivedFromSecret results
-                // Taint is tracked but does not cause rejection in Finish
-                let _fact = resolve_value(result, facts, slots);
+                let fact = resolve_value(result, facts, slots);
+                match fact.taint {
+                    Taint::Secret | Taint::DerivedFromSecret
+                        if !workflow.resource_contract.allows_secret_results =>
+                    {
+                        return Err(ValidationError::SecretResultLeak);
+                    }
+                    _ => {}
+                }
             }
         }
     }

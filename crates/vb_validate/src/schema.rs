@@ -229,6 +229,138 @@ pub fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
     for step in steps {
         validate_step_unknown_fields(step)?;
         validate_single_primitive(step)?;
+        validate_step_body(step)?;
+    }
+    Ok(())
+}
+
+/// Validates that a step's primitive body is structurally sound.
+///
+/// Each primitive field should have a non-empty body that matches the
+/// expected structure. This emits type-specific [`ValidationError`]
+/// variants (e.g., `InvalidChoose`, `InvalidForEach`) rather than
+/// generic schema errors, enabling precise diagnostics.
+///
+/// An `Empty` body is accepted as a valid marker (the YAML parser may
+/// produce `Empty` for null/unspecified primitives); structural checks
+/// only apply to non-empty bodies.
+fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
+    let Some((primitive, value)) = step.primitive_value() else {
+        return Ok(());
+    };
+    if *value == FieldValue::Empty {
+        return Ok(());
+    }
+    match primitive {
+        "choose" => {
+            // choose body must be a Mapping with `branches:` or `default:`
+            if let FieldValue::Mapping(entries) = value {
+                let has_branches = entries.iter().any(|(k, _)| k == "branches");
+                let has_default = entries.iter().any(|(k, _)| k == "default");
+                if !has_branches && !has_default {
+                    return Err(ValidationError::InvalidChoose);
+                }
+            }
+        }
+        "for_each" => {
+            // for_each body must be a Mapping with `for_each:` and body steps
+            if let FieldValue::Mapping(entries) = value {
+                let has_body = entries
+                    .iter()
+                    .any(|(k, v)| k == "for_each" && !matches!(v, FieldValue::Empty));
+                if !has_body {
+                    return Err(ValidationError::InvalidForEach);
+                }
+            }
+        }
+        "together" => {
+            // together body must be a Sequence of steps
+            if let FieldValue::Mapping(entries) = value {
+                let has_body = entries
+                    .iter()
+                    .any(|(k, v)| k == "together" && matches!(v, FieldValue::Sequence(_)));
+                if !has_body {
+                    return Err(ValidationError::InvalidTogether);
+                }
+            }
+        }
+        "collect" => {
+            // collect body must have `of:` and `reduce:`
+            if let FieldValue::Mapping(entries) = value {
+                let has_of = entries.iter().any(|(k, _)| k == "of");
+                let has_reduce = entries.iter().any(|(k, _)| k == "reduce");
+                if !has_of || !has_reduce {
+                    return Err(ValidationError::InvalidCollect);
+                }
+            }
+        }
+        "reduce" => {
+            // reduce body must have `reduce:` and body steps
+            if let FieldValue::Mapping(entries) = value {
+                let has_body = entries
+                    .iter()
+                    .any(|(k, v)| k == "reduce" && !matches!(v, FieldValue::Empty));
+                if !has_body {
+                    return Err(ValidationError::InvalidReduce);
+                }
+            }
+        }
+        "repeat" => {
+            // repeat body must be a Mapping with `repeat:` and body steps
+            if let FieldValue::Mapping(entries) = value {
+                let has_body = entries
+                    .iter()
+                    .any(|(k, v)| k == "repeat" && !matches!(v, FieldValue::Empty));
+                if !has_body {
+                    return Err(ValidationError::InvalidRepeat);
+                }
+            }
+        }
+        "wait" => {
+            // wait body must be a Mapping with timeout or event
+            if let FieldValue::Mapping(entries) = value
+                && entries.is_empty()
+            {
+                return Err(ValidationError::InvalidWait);
+            }
+        }
+        "ask" => {
+            // ask body must be a Mapping with prompt fields
+            if let FieldValue::Mapping(entries) = value
+                && entries.is_empty()
+            {
+                return Err(ValidationError::InvalidAsk);
+            }
+        }
+        "finish" => {
+            // finish body must be a Mapping with `result:`
+            if let FieldValue::Mapping(entries) = value {
+                let has_result = entries.iter().any(|(k, _)| k == "result");
+                if !has_result {
+                    return Err(ValidationError::InvalidFinish);
+                }
+            }
+        }
+        "retry" | "try_again" => {
+            // retry body must be non-empty Mapping
+            if let FieldValue::Mapping(entries) = value
+                && entries.is_empty()
+            {
+                return Err(ValidationError::InvalidRetry);
+            }
+        }
+        "on_error" => {
+            // on_error body must have body steps
+            if let FieldValue::Mapping(entries) = value {
+                let has_body = entries
+                    .iter()
+                    .any(|(k, v)| k == "on_error" && !matches!(v, FieldValue::Empty));
+                if !has_body {
+                    return Err(ValidationError::InvalidOnError);
+                }
+            }
+        }
+        _ => {}
     }
     Ok(())
 }
@@ -443,6 +575,21 @@ impl StepDoc {
     /// Returns all field names.
     pub fn field_names(&self) -> Vec<&str> {
         self.fields.iter().map(|(name, _)| name.as_str()).collect()
+    }
+
+    /// Returns the primitive field name and its value, if one is declared.
+    ///
+    /// A step primitive is one of the `STEP_PRIMITIVES` list (set, do, choose,
+    /// for_each, together, collect, reduce, repeat, wait, ask, finish).
+    /// Returns `None` if no primitive is present (handled by
+    /// `validate_single_primitive` separately).
+    fn primitive_value(&self) -> Option<(&str, &FieldValue)> {
+        for (field, value) in &self.fields {
+            if STEP_PRIMITIVES.contains(&field.as_str()) {
+                return Some((field, value));
+            }
+        }
+        None
     }
 }
 

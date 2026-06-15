@@ -327,11 +327,11 @@ fn adversarial_undeclared_secret_reference_is_rejected_as_unknown() {
     };
     // When validate_references is called
     let result = validate_references(&workflow);
-    // Then it returns UnknownReference (E0201) -- secret name not declared
+    // Then it returns SecretNotDeclared -- secret name not declared
     assert_eq!(
         result,
-        Err(ValidationError::UnknownReference {
-            reference: "$secrets.api_key".to_owned(),
+        Err(ValidationError::SecretNotDeclared {
+            secret: "api_key".to_owned(),
         })
     );
 }
@@ -1238,15 +1238,13 @@ fn direct_loop_variable_root_does_not_collide_with_reserved_namespace() {
     let tables = make_tables_with_loop_vars(&[], &[], &[], &[], &["item"]);
     // When: validating `$item` (bare, no dot).
     let result = validate_single_reference("$item", &tables);
-    // Then: bare references are NOT routed to DirectLoopReference
-    // because the routing lives in `validate_rooted_reference` (which
-    // requires a dot to split root and tail). This documents the
-    // scope: loop variable routing only triggers for `$<var>.<field>`
-    // references, matching the master spec's `$loop_name.x` form.
+    // Then: bare references to a loop variable name emit
+    // DirectLoopReference (not UnknownReference), giving the user
+    // a more specific diagnostic pointing at the direct variable usage.
     assert_eq!(
         result,
-        Err(ValidationError::UnknownReference {
-            reference: "$item".to_owned(),
+        Err(ValidationError::DirectLoopReference {
+            variable: "item".to_owned(),
         })
     );
 }
