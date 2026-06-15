@@ -1127,8 +1127,8 @@ mod error_message_exactness_verification {
             ..valid_parts()
         };
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err, WorkflowError::EmptyNodes)
-    }
+        kani::assert_eq!(
+);    }
 
     #[test]
     fn nodeidmismatch_error_contains_exact_expected_actual() {
@@ -1170,11 +1170,8 @@ mod error_message_exactness_verification {
         };
         parts.resource_contract.max_steps = 2;
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert_eq!(err,
-            WorkflowError::ResourceContractExceeded {
-                resource: "max_steps",
-            })
-    }
+        kani::assert_eq!(
+);    }
 
     #[test]
     fn stepoutofbounds_error_contains_exact_step_field() {
@@ -1402,17 +1399,17 @@ mod determinism_idempotency_of_validation {
         let parts = valid_parts();
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert_eq!(r1, r2)
-        let r3 = validate_node_bounds(&parts);
+        kani::assert_eq!(
+);        let r3 = validate_node_bounds(&parts);
         let r4 = validate_node_bounds(&parts);
-        kani::assert_eq!(r3, r4)
-        let r5 = validate_transition_target(&parts);
+        kani::assert_eq!(
+);        let r5 = validate_transition_target(&parts);
         let r6 = validate_transition_target(&parts);
-        kani::assert_eq!(r5, r6)
-        let r7 = validate_resource_contract(&parts);
+        kani::assert_eq!(
+);        let r7 = validate_resource_contract(&parts);
         let r8 = validate_resource_contract(&parts);
-        kani::assert_eq!(r7, r8)
-    }
+        kani::assert_eq!(
+);    }
 
     #[test]
     fn validation_is_deterministic_on_invalid_input() {
@@ -1429,8 +1426,8 @@ mod determinism_idempotency_of_validation {
         ]);
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert_eq!(r1, r2)
-    }
+        kani::assert_eq!(
+);    }
 
     #[test]
     fn validation_is_idempotent_across_multiple_calls() {

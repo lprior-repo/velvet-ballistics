@@ -65,7 +65,7 @@ mod harnesses {
 
             // And the numeric→symbolic lookup should also find it
             let rev = super::super::kani_registry_bijection::count_numeric(entry.numeric);
-            kani::assert_eq!(rev, 1, "Each numeric code must appear exactly once")
+            kani::assert_eq!(rev, 1, "Each numeric code must appear exactly once");
         }
     }
 

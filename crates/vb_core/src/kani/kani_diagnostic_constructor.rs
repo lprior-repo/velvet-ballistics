@@ -113,7 +113,7 @@ mod harnesses {
                 "Reverse lookup must return the original SymbolicCode")
             // Also verify code matches
             kani::assert_eq!(diagnostic.code, sym,
-                "Diagnostic.code must match the input SymbolicCode")
+                "Diagnostic.code must match the input SymbolicCode");
         }
     }
 

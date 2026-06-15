@@ -159,7 +159,7 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Err(SlugParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert_eq!(total, 1)
+            kani::assert_eq!(total, 1);
             assert_eq!(max, 0)
         }
         _ => kani::assert(false), }
@@ -204,8 +204,8 @@ fn vb_ajc40_slug_count_65535_65536() {
 
     match validate_compiled_slug_count(SLUG_COUNT_OVER_LIMIT) {
         Err(SlugParseError::TooManySlugs { count, max }) => {
-            kani::assert_eq!(count, SLUG_COUNT_OVER_LIMIT)
-            kani::assert_eq!(max, MAX_SLUGS_PER_WORKFLOW)
+            kani::assert_eq!(count, SLUG_COUNT_OVER_LIMIT);
+            kani::assert_eq!(max, MAX_SLUGS_PER_WORKFLOW);
         }
         _ => assert!(false),
     }

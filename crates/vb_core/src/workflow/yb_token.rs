@@ -512,7 +512,7 @@ mod tests {
         let token = YbToken::from(original);
         let recovered: u64 = token.into();
 
-        kani::assert_eq!(original, recovered, "u64 -> YbToken -> u64 roundtrip")
+        kani::assert_eq!(original, recovered, "u64 -> YbToken -> u64 roundtrip");
     }
 
     // -------------------------------------------------------------------------
@@ -656,7 +656,7 @@ mod tests {
         let original: u64 = 999;
         let cost = YbTokenCost::from(original);
         let recovered: u64 = cost.into();
-        kani::assert_eq!(original, recovered, "u64 -> YbTokenCost -> u64 roundtrip")
+        kani::assert_eq!(original, recovered, "u64 -> YbTokenCost -> u64 roundtrip");
     }
 
     #[test]
@@ -701,8 +701,8 @@ mod tests {
             required: 100,
             available: 30,
         };
-        kani::assert_eq!(err1, err2, "same errors are equal")
-        kani::assert_ne!(err1, err3, "different errors are not equal")
+        kani::assert_eq!(err1, err2, "same errors are equal");
+        kani::assert_ne!(err1, err3, "different errors are not equal");
     }
 
     // -------------------------------------------------------------------------
@@ -827,7 +827,7 @@ mod tests {
     fn yb_token_budget_can_consume_zero_always() {
         let budget = YbTokenBudget::new(0).unwrap_err(); // 0 is invalid
         // Just verify the error path - zero initial is rejected
-        kani::assert_eq!(budget, YbTokenError::InvalidInitial { value: 0 })
+        kani::assert_eq!(budget, YbTokenError::InvalidInitial { value: 0 });
     }
 
     #[test]
@@ -899,7 +899,7 @@ mod tests {
             available: 5,
         };
         let err_invalid = YbTokenError::InvalidInitial { value: 0 };
-        kani::assert_ne!(err_insufficient, err_invalid, "different error variants are not equal")
+        kani::assert_ne!(err_insufficient, err_invalid, "different error variants are not equal");
     }
 
     #[test]
@@ -1011,7 +1011,7 @@ mod tests {
             // YbTokenCost doesn't have Add impl, but we test value-level commutativity
             let sum_ab = a.saturating_add(b);
             let sum_ba = b.saturating_add(a);
-            kani::assert_eq!(sum_ab, sum_ba, "cost value addition is commutative")
+            kani::assert_eq!(sum_ab, sum_ba, "cost value addition is commutative");
         }
 
         #[test]
@@ -1046,7 +1046,7 @@ mod tests {
             let budget = YbTokenBudget::new(initial).unwrap();
             let ratio = budget.remaining_ratio();
             kani::assert(ratio >= 0.0 && ratio <= 1.0, "ratio always between 0 and 1")
-            kani::assert_eq!(ratio, 1.0, "new budget has ratio 1.0")
+            kani::assert_eq!(ratio, 1.0, "new budget has ratio 1.0");
         }
 
         #[test]

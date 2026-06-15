@@ -36,7 +36,7 @@ fn harness_new_invalid_capacity() {
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
-            kani::assert_eq!(max, capacity)
+            kani::assert_eq!(max, capacity);
         }
         _ => {
             kani::assume(false);
@@ -89,7 +89,7 @@ fn harness_push_overflow_returns_error() {
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
-            kani::assert_eq!(max, 1)
+            kani::assert_eq!(max, 1);
         }
         _ => {
             kani::assume(false);
@@ -181,7 +181,7 @@ fn harness_push_pop_roundtrip() {
             loop {}
         }
     };
-    kani::assert_eq!(popped, SlotValue::Null)
+    kani::assert_eq!(popped, SlotValue::Null);
 }
 
 #[kani::proof]

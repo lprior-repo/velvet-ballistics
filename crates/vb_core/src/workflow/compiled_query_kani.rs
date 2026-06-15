@@ -160,7 +160,7 @@ fn vb_ajc40_query_budget_boundaries() {
         0,
     ) {
         Err(QueryParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert_eq!(total, 1)
+            kani::assert_eq!(total, 1);
             assert_eq!(max, 0)
         }
         _ => kani::assert(false), }
@@ -205,8 +205,8 @@ fn vb_ajc40_query_count_65535_65536() {
 
     match validate_compiled_query_count(QUERY_COUNT_OVER_LIMIT) {
         Err(QueryParseError::TooManyQueries { count, max }) => {
-            kani::assert_eq!(count, QUERY_COUNT_OVER_LIMIT)
-            kani::assert_eq!(max, MAX_QUERIES_PER_WORKFLOW)
+            kani::assert_eq!(count, QUERY_COUNT_OVER_LIMIT);
+            kani::assert_eq!(max, MAX_QUERIES_PER_WORKFLOW);
         }
         _ => assert!(false),
     }

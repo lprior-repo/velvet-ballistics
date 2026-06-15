@@ -680,18 +680,18 @@ fn slot_value_equality_null_distinct_from_bool_false() {
 #[test]
 fn slot_value_equality_i64_vs_f64_same_numeric_value_are_distinct() -> Result<(), String> {
     let finite = FiniteF64::new(0.0).map_err(|e| e.to_string())?;
-    kani::assert_ne!(SlotValue::I64(0), SlotValue::F64(finite))
+    kani::assert_ne!(SlotValue::I64(0), SlotValue::F64(finite));
     Ok(())
 }
 
 #[test]
 fn slot_value_equality_different_handle_types_different() {
     kani::assert_ne!(SlotValue::Symbol(SymbolId::new(1)),
-        SlotValue::List(ListId::new(1)))
+        SlotValue::List(ListId::new(1)));
     kani::assert_ne!(SlotValue::List(ListId::new(1)),
-        SlotValue::Object(ObjectId::new(1)))
+        SlotValue::Object(ObjectId::new(1)));
     kani::assert_ne!(SlotValue::Object(ObjectId::new(1)),
-        SlotValue::Blob(BlobId::new(1)))
+        SlotValue::Blob(BlobId::new(1)));
 }
 
 #[test]
@@ -742,8 +742,8 @@ fn store_clone_produces_equal_store() -> Result<(), String> {
 fn store_default_equals_new() {
     let default: ValueStore = Default::default();
     let constructed = ValueStore::new();
-    kani::assert_eq!(default, constructed)
-}
+    kani::assert_eq!(
+);}
 
 #[test]
 fn store_counts_accurate_after_mixed_inserts() -> Result<(), String> {
@@ -1110,8 +1110,8 @@ mod kani {
         match store.insert_symbol(Box::<str>::from(bounded)) {
             Ok(id) => match store.symbol(id) {
                 Ok(resolved) => {
-                    kani::assert_eq!(resolved, bounded)
-                }
+                    kani::assert_eq!(
+);                }
                 Err(_) => {
                     kani::assert(false, "valid handle must resolve")
                 }
@@ -1148,9 +1148,9 @@ mod kani {
                 kani::assert(false, "insert over cap must not succeed")
             }
             Err(CoreError::BudgetExceeded { budget, limit }) => {
-                kani::assert_eq!(budget, "max_slots")
-                kani::assert_eq!(limit, cap_u64)
-            }
+                kani::assert_eq!(
+);                kani::assert_eq!(
+);            }
             Err(_) => {}
         }
     }
@@ -1244,7 +1244,7 @@ proptest::proptest! {
                     "retrieved list missing index {i}"
                 )));
             };
-            prop_kani::assert_eq!(*actual, *expected)
-        }
+            prop_kani::assert_eq!(
+);        }
     }
 }

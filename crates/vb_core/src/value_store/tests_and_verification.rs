@@ -629,7 +629,7 @@ mod tests {
     fn value_store_default_is_same_as_new() {
         let default: ValueStore = Default::default();
         let constructed = ValueStore::new();
-        kani::assert_eq!(default, constructed)
+        kani::assert_eq!(default, constructed);
     }
 
     #[test]
@@ -1073,7 +1073,7 @@ mod tests {
     fn value_store_default_equals_new() {
         let default: ValueStore = Default::default();
         let constructed = ValueStore::new();
-        kani::assert_eq!(default, constructed)
+        kani::assert_eq!(default, constructed);
     }
 
     // =========================================================================
@@ -1462,7 +1462,7 @@ mod tests {
         kani::assert_eq!(value, SlotValue::I64(100))
         kani::assert_eq!(taint,
             Taint::Secret,
-            "first-wins must apply to taint index too")
+            "first-wins must apply to taint index too");
 
         Ok(())
     }
@@ -1488,12 +1488,12 @@ mod tests {
         let (_, clean_taint) = store
             .list_item_with_taint(clean_list, 0)
             .map_err(|e| e.to_string())?;
-        kani::assert_eq!(clean_taint, Taint::Clean)
+        kani::assert_eq!(clean_taint, Taint::Clean);
 
         let (_, secret_taint) = store
             .list_item_with_taint(secret_list, 0)
             .map_err(|e| e.to_string())?;
-        kani::assert_eq!(secret_taint, Taint::Secret)
+        kani::assert_eq!(secret_taint, Taint::Secret);
 
         Ok(())
     }
@@ -1548,7 +1548,7 @@ mod tests {
             if cap > 0 {
                 prop_kani::assert_eq!(succeeded, (insert_count as u64).min(u64::from(cap)))
             } else {
-                prop_kani::assert_eq!(succeeded, insert_count as u64)
+                prop_kani::assert_eq!(succeeded, insert_count as u64);
             }
         }
     }
@@ -1571,8 +1571,8 @@ mod tests {
         let (_, taint1) = store
             .list_item_with_taint(list_id, 1)
             .map_err(|e| e.to_string())?;
-        kani::assert_eq!(taint0, Taint::Clean)
-        kani::assert_eq!(taint1, Taint::Clean)
+        kani::assert_eq!(taint0, Taint::Clean);
+        kani::assert_eq!(taint1, Taint::Clean);
         Ok(())
     }
 
@@ -1590,8 +1590,8 @@ mod tests {
         let (_, taint1) = store
             .list_item_with_taint(list_id, 1)
             .map_err(|e| e.to_string())?;
-        kani::assert_eq!(taint0, Taint::Secret)
-        kani::assert_eq!(taint1, Taint::DerivedFromSecret)
+        kani::assert_eq!(taint0, Taint::Secret);
+        kani::assert_eq!(taint1, Taint::DerivedFromSecret);
         Ok(())
     }
 
@@ -1615,9 +1615,9 @@ mod tests {
             .object_field_with_taint(obj_id, SymbolId::new(2))
             .map_err(|e| e.to_string())?;
         kani::assert_eq!(val1, SlotValue::I64(100))
-        kani::assert_eq!(taint1, Taint::Secret)
+        kani::assert_eq!(taint1, Taint::Secret);
         kani::assert_eq!(val2, SlotValue::I64(200))
-        kani::assert_eq!(taint2, Taint::DerivedFromSecret)
+        kani::assert_eq!(taint2, Taint::DerivedFromSecret);
         Ok(())
     }
 
@@ -1635,7 +1635,7 @@ mod tests {
             .list_item_with_taint(list_id, 0)
             .map_err(|e| e.to_string())?;
         kani::assert_eq!(value, SlotValue::Bool(true))
-        kani::assert_eq!(taint, Taint::Clean)
+        kani::assert_eq!(taint, Taint::Clean);
         Ok(())
     }
 
@@ -1649,7 +1649,7 @@ mod tests {
             .object_field_with_taint(obj_id, SymbolId::new(5))
             .map_err(|e| e.to_string())?;
         kani::assert_eq!(value, SlotValue::I64(42))
-        kani::assert_eq!(taint, Taint::Clean)
+        kani::assert_eq!(taint, Taint::Clean);
         Ok(())
     }
 
@@ -1700,7 +1700,7 @@ mod tests {
             .insert_blob(Bytes::from(data.clone()))
             .map_err(|e| e.to_string())?;
         let retrieved = store.blob(blob_id).map_err(|e| e.to_string())?;
-        kani::assert_eq!(retrieved, &data[..])
+        kani::assert_eq!(retrieved, &data[..]);
         Ok(())
     }
 
@@ -1820,7 +1820,7 @@ mod tests {
     #[test]
     fn object_field_clean_creates_clean_taint() -> Result<(), String> {
         let field = ObjectField::clean(SymbolId::new(1), SlotValue::I64(42));
-        kani::assert_eq!(field.taint, Taint::Clean)
+        kani::assert_eq!(field.taint, Taint::Clean);
         kani::assert_eq!(field.key, SymbolId::new(1))
         kani::assert_eq!(field.value, SlotValue::I64(42))
         Ok(())
@@ -1829,7 +1829,7 @@ mod tests {
     #[test]
     fn object_field_with_taint_preserves_taint() -> Result<(), String> {
         let field = ObjectField::with_taint(SymbolId::new(2), SlotValue::Bool(true), Taint::Secret);
-        kani::assert_eq!(field.taint, Taint::Secret)
+        kani::assert_eq!(field.taint, Taint::Secret);
         kani::assert_eq!(field.key, SymbolId::new(2))
         kani::assert_eq!(field.value, SlotValue::Bool(true))
         Ok(())
