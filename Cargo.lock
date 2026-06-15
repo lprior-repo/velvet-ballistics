@@ -2049,6 +2049,8 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "proptest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2655,6 +2657,7 @@ dependencies = [
  "image",
  "kani",
  "postcard",
+ "proc-macro2",
  "proptest",
  "regex",
  "saphyr",
@@ -2662,6 +2665,7 @@ dependencies = [
  "serde-saphyr",
  "serde_json",
  "serde_yaml",
+ "syn",
  "tempfile",
  "toml",
  "vb_validate",

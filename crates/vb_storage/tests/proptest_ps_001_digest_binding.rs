@@ -17,7 +17,7 @@ use vb_core::{
     value::ConstValue,
     workflow::{ResourceContract, WorkflowParts},
 };
-use vb_storage::admission::submit_artifact;
+use vb_storage::admission::{AcceptedArtifact, submit_artifact};
 use vb_storage::journal::FjallJournal;
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -61,10 +61,12 @@ fn make_workflow(digest_bytes: [u8; 32]) -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = postcard::to_allocvec(&parts)
+        .expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    CompiledWorkflow::try_from_parts(parts)
+        .expect("construct compiled workflow from valid parts")
 }
 
 proptest! {
@@ -74,7 +76,11 @@ proptest! {
         let (_temp, journal) = temp_journal();
         let workflow = make_workflow([0u8; 32]);
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-        prop_assert!(result.is_ok(), "valid workflow submission must succeed under Journaled");
+        let artifact = result.expect("valid workflow submission must succeed under Journaled");
+        prop_assert_eq!(
+            artifact.digest, workflow.digest(),
+            "artifact digest must match workflow digest"
+        );
     }
 
     /// PS-001b: submit_artifact with Strict policy succeeds and persists.
@@ -83,9 +89,14 @@ proptest! {
         let (_temp, journal) = temp_journal();
         let workflow = make_workflow([0u8; 32]);
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
-        prop_assert!(result.is_ok(), "valid workflow must succeed under Strict policy");
-        let artifact = result.unwrap();
-        prop_assert!(artifact.verification.durable, "Strict policy must set durable=true");
+        let artifact = result.expect("valid workflow must succeed under Strict policy");
+        prop_assert!(artifact.verification.durable,
+            "Strict policy must set durable=true, got durable={}",
+            artifact.verification.durable);
+        prop_assert_eq!(
+            artifact.verification.gate_count, 15,
+            "Strict policy must produce 15-gate proof"
+        );
     }
 
     /// PS-001c: Artifact read-back after submit succeeds (roundtrip).
@@ -96,7 +107,13 @@ proptest! {
         let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
             .expect("submit");
         let stored = journal.compiled_ir(artifact.digest).expect("read");
-        prop_assert!(stored.is_some(), "artifact must be retrievable after submit");
+        let record = stored.expect("artifact must be retrievable after submit");
+        prop_assert_eq!(record.digest, artifact.digest,
+            "retrieved record digest must match artifact digest");
+        let decoded: AcceptedArtifact = postcard::from_bytes(&record.ir)
+            .expect("retrieved record must decode as AcceptedArtifact");
+        prop_assert_eq!(decoded.digest, artifact.digest,
+            "decoded artifact digest must match");
     }
 
     /// PS-001d: Relaxed policy is rejected when journal expects checked admission.

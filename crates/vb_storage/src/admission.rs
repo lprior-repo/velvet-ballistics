@@ -430,7 +430,9 @@ pub(crate) fn validate_accepted_artifact_digest(
     Ok(())
 }
 
-pub(crate) fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
+pub(crate) fn validate_accepted_artifact_metadata(
+    artifact: &AcceptedArtifact,
+) -> Result<(), JournalError> {
     if artifact.source_digest != artifact.digest {
         return Err(JournalError::ArtifactMalformed);
     }
@@ -438,7 +440,9 @@ pub(crate) fn validate_accepted_artifact_metadata(artifact: &AcceptedArtifact) -
     validate_verification_proof(&artifact.verification)
 }
 
-pub(crate) fn validate_artifact_policy_digest(artifact: &AcceptedArtifact) -> Result<(), JournalError> {
+pub(crate) fn validate_artifact_policy_digest(
+    artifact: &AcceptedArtifact,
+) -> Result<(), JournalError> {
     let workflow = workflow_from_artifact_ir(artifact)?;
     if artifact.policy_digest == compute_policy_digest(&workflow)? {
         Ok(())

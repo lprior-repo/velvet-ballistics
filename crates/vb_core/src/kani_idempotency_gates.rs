@@ -31,7 +31,8 @@ fn symbolic_contract_no_caps() -> ActionContract {
         name: match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false); loop {}
+                kani::assume(false);
+                loop {}
             }
         },
         input_slot_count: kani::any(),
@@ -180,7 +181,8 @@ fn symbolic_ticket() -> ActionTicket {
 }
 
 fn unreachable_for_kani_frame_bounds() -> RunFrame {
-    unreachable!("RunFrame bounds guaranteed by assume");
+    kani::assume(false);
+    loop {}
 }
 
 /// Concrete contract for the MissingKey harness — avoids kani::any() branching
@@ -191,7 +193,8 @@ fn concrete_key_required_contract() -> ActionContract {
         name: match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false); loop {}
+                kani::assume(false);
+                loop {}
             }
         },
         input_slot_count: 1,
@@ -709,7 +712,8 @@ fn kani_verify_idempotency_missing_key() {
         name: match ActionName::new("test-action") {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false); loop {}
+                kani::assume(false);
+                loop {}
             }
         },
         input_slot_count: 1,

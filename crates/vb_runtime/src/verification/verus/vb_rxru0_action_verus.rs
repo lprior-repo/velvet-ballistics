@@ -9,7 +9,6 @@
 //!
 /// GOD RULE 2: Each spec fn models actual production behavior in
 /// `vb_runtime::action::dispatch_generic` and `vb_core::action::issue_action_ticket`.
-
 use vstd::prelude::*;
 
 verus! {

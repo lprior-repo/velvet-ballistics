@@ -59,9 +59,17 @@ fn accumulator_overflow_max_initial() {
         ConstIdx::new(0), StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)),
     );
 
-    assert!(result.is_ok() || result.is_err());
-    if result.is_ok() {
-        assert_eq!(result.unwrap(), vb_core::EngineSignal::Continue);
+    // Accumulator overflow test: ensure the operation doesn't panic on i64::MAX initial
+    match result {
+        Ok(signal) => assert_eq!(
+            signal,
+            vb_core::EngineSignal::Continue,
+            "overflow initial must signal Continue (not panic)"
+        ),
+        Err(e) => assert!(
+            !e.is_empty(),
+            "error must have non-empty description when overflow occurs"
+        ),
     }
 }
 
@@ -96,7 +104,18 @@ fn accumulator_overflow_reduce_next_max() {
         StepIdx::new(1), StepIdx::new(2), Some(SlotIdx::new(2)),
     );
 
-    assert!(result.is_ok() || result.is_err());
+    // reduce_next with i64::MAX accumulator must not panic
+    match result {
+        Ok(signal) => assert_eq!(
+            signal,
+            vb_core::EngineSignal::Continue,
+            "reduce_next with i64::MAX accumulator must signal Continue"
+        ),
+        Err(e) => assert!(
+            !e.is_empty(),
+            "reduce_next error must have non-empty description"
+        ),
+    }
 }
 
 #[test]
@@ -109,8 +128,16 @@ fn accumulator_overflow_reduce_finish_large() {
         Some(StepIdx::new(1)), StepIdx::ZERO,
     );
 
-    assert!(result.is_ok() || result.is_err());
-    if result.is_ok() {
-        assert_eq!(result.unwrap(), vb_core::EngineSignal::Continue);
+    // reduce_finish with i64::MAX accumulator must not panic
+    match result {
+        Ok(signal) => assert_eq!(
+            signal,
+            vb_core::EngineSignal::Continue,
+            "reduce_finish with i64::MAX accumulator must signal Continue"
+        ),
+        Err(e) => assert!(
+            !e.is_empty(),
+            "reduce_finish error must have non-empty description when overflow occurs"
+        ),
     }
 }

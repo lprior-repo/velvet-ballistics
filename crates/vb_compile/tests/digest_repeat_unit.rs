@@ -214,11 +214,7 @@ fn test_repeat_multi_step_body_rejected() {
 
     let result = compile_workflow_from_steps(steps_multi);
 
-    assert!(
-        result.is_err(),
-        "multi-step repeat body must be rejected by lowering validation"
-    );
-    let err = result.unwrap_err();
+    let err = result.expect_err("multi-step repeat body must be rejected by lowering validation");
     assert!(
         err.contains("exactly one set step") || err.contains("step"),
         "multi-step body rejection error must mention step constraint, got: {err}"
@@ -304,11 +300,7 @@ fn test_repeat_empty_body_rejected_with_step_field_shape() {
 
     let result = compile_workflow_from_steps(steps_empty);
 
-    assert!(
-        result.is_err(),
-        "repeat with empty body (body: []) must fail to compile"
-    );
-    let err = result.unwrap_err();
+    let err = result.expect_err("repeat with empty body (body: []) must fail to compile");
     assert!(
         err.contains("step"),
         "empty repeat body error must mention 'step', got: {err}"

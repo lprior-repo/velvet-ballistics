@@ -22,10 +22,10 @@ proptest! {
         let now = Instant::now();
 
         let result = wheel.insert(run, now, kind);
-        prop_assert!(result.is_ok());
+        prop_assert_eq!(result, Ok(()), "insert must succeed for any run");
 
         let entry = wheel.get_entry(run);
-        prop_assert!(entry.is_some());
+        prop_assert!(entry.is_some(), "entry must exist after insert");
         prop_assert_eq!(entry.unwrap().generation, 1);
     }
 

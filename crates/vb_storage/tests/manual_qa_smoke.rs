@@ -7,8 +7,9 @@ use vb_storage::{EventSeq, JournalEvent, RunHeaderRecord, RunSnapshot};
 use vb_storage::{FjallJournal, TrimError, TrimPolicy, TrimStatus};
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
-    let temp = tempfile::tempdir().unwrap();
-    let journal = FjallJournal::open(temp.path(), None).unwrap();
+    let temp = tempfile::tempdir().expect("temp_journal: tempdir creation must succeed");
+    let journal = FjallJournal::open(temp.path(), None)
+        .expect("temp_journal: journal open must succeed");
     (temp, journal)
 }
 
@@ -53,7 +54,8 @@ fn smoke_happy_path_trim() {
             }
         })
         .collect();
-    journal.append_strict_batch(&events).unwrap();
+    journal.append_strict_batch(&events)
+        .expect("smoke_happy_path_trim: batch append must succeed");
 
     let snapshot = RunSnapshot {
         run,
@@ -62,16 +64,18 @@ fn smoke_happy_path_trim() {
         slots: vec![0u8],
         taint: vec![],
     };
-    journal.put_snapshot(&snapshot).unwrap();
+    journal.put_snapshot(&snapshot)
+        .expect("smoke_happy_path_trim: put snapshot must succeed");
 
     let result = journal
         .trim_events_for_run(run, TrimPolicy::default())
-        .unwrap();
+        .expect("smoke_happy_path_trim: trim must succeed in happy path");
     println!("Happy path trim result: {:?}", result);
     assert_eq!(result.status, TrimStatus::Trimmed);
     assert_eq!(result.deleted_count, 3);
 
-    let remaining = journal.events_for_run(run).unwrap();
+    let remaining = journal.events_for_run(run)
+        .expect("smoke_happy_path_trim: events_for_run must succeed");
     println!("Remaining events after trim: {}", remaining.len());
     // Snapshot at seq 3 covers events 0..3; events 4,5 remain for replay
     assert_eq!(remaining.len(), 2);
@@ -89,7 +93,8 @@ fn smoke_retention_policy_blocks() {
         make_step_started(run, 1, 0, 1),
         make_run_finished(run, 2, 1),
     ];
-    journal.append_strict_batch(&events).unwrap();
+    journal.append_strict_batch(&events)
+        .expect("smoke_retention_policy_blocks: batch append must succeed");
 
     let header = RunHeaderRecord {
         run,
@@ -98,7 +103,8 @@ fn smoke_retention_policy_blocks() {
         status: 0,
         accepted_at_ms: 1000,
     };
-    journal.put_run_header(&header).unwrap();
+    journal.put_run_header(&header)
+        .expect("smoke_retention_policy_blocks: put_run_header must succeed");
 
     let snapshot = RunSnapshot {
         run,
@@ -107,7 +113,8 @@ fn smoke_retention_policy_blocks() {
         slots: vec![0u8],
         taint: vec![],
     };
-    journal.put_snapshot(&snapshot).unwrap();
+    journal.put_snapshot(&snapshot)
+        .expect("smoke_retention_policy_blocks: put_snapshot must succeed");
 
     let policy = TrimPolicy {
         skip_noop_runs: true,
@@ -127,7 +134,8 @@ fn smoke_no_snapshot_fails_closed() {
     let run = RunId::new(200);
 
     let events = vec![make_event(run, 0), make_step_started(run, 1, 0, 1)];
-    journal.append_strict_batch(&events).unwrap();
+    journal.append_strict_batch(&events)
+        .expect("smoke_no_snapshot_fails_closed: batch append must succeed");
 
     let result = journal.trim_events_for_run(run, TrimPolicy::default());
     println!("No snapshot result: {:?}", result);
@@ -149,7 +157,8 @@ fn smoke_idempotency() {
             }
         })
         .collect();
-    journal.append_strict_batch(&events).unwrap();
+    journal.append_strict_batch(&events)
+        .expect("smoke_idempotency: batch append must succeed");
 
     let snapshot = RunSnapshot {
         run,
@@ -158,17 +167,18 @@ fn smoke_idempotency() {
         slots: vec![0u8],
         taint: vec![],
     };
-    journal.put_snapshot(&snapshot).unwrap();
+    journal.put_snapshot(&snapshot)
+        .expect("smoke_idempotency: put_snapshot must succeed");
 
     let r1 = journal
         .trim_events_for_run(run, TrimPolicy::default())
-        .unwrap();
+        .expect("smoke_idempotency: first trim must succeed");
     println!("First trim: {:?}", r1);
     assert_eq!(r1.status, TrimStatus::Trimmed);
 
     let r2 = journal
         .trim_events_for_run(run, TrimPolicy::default())
-        .unwrap();
+        .expect("smoke_idempotency: second trim must succeed");
     println!("Second trim: {:?}", r2);
     assert_eq!(r2.status, TrimStatus::NoOp);
     assert_eq!(r2.deleted_count, 0);

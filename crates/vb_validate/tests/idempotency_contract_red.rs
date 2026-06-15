@@ -32,9 +32,13 @@ fn contract(
     idempotency: Idempotency,
     retry_safety: RetrySafety,
 ) -> ActionContract {
+    let name = match ActionName::new("test-action") {
+        Ok(v) => v,
+        Err(e) => panic!("ActionName::new(\"test-action\") should succeed: {e:?}"),
+    };
     ActionContract {
         id,
-        name: ActionName::new("test-action").unwrap(),
+        name,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1_024,
@@ -887,8 +891,10 @@ proptest! {
         let candidate = contract(ActionId::new(0), side_effect, idempotency, RetrySafety::RequiresIdempotencyKey);
         let key_slots: Vec<SlotIdx> = (0..key_count as u16).map(SlotIdx::new).collect();
 
-        let mut frame = RunFrame::new(RunId::ZERO, StepIdx::ZERO, 8, 8)
-            .unwrap();
+        let mut frame = match RunFrame::new(RunId::ZERO, StepIdx::ZERO, 8, 8) {
+            Ok(f) => f,
+            Err(e) => panic!("RunFrame::new(8,8) should succeed in proptest: {e:?}"),
+        };
         for (i, &slot_idx) in key_slots.iter().enumerate() {
             let taint_bit = (taint_pattern >> i) & 1;
             let taint = if taint_bit == 0 { Taint::Clean } else { Taint::Secret };
@@ -946,7 +952,15 @@ fn idempotency_contract_red_validate_action_propagates_unknown() {
         RetrySafety::Unknown,
     );
     let result = validate_action_idempotency_contract(&c);
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+            action: action(9998),
+            side_effect: SideEffect::LocalWrite,
+            idempotency: Idempotency::IdempotentExternal,
+            retry_safety: RetrySafety::Unknown,
+        })
+    );
 }
 
 /// Tier 1: 4-variant exhaustive static-validation table for

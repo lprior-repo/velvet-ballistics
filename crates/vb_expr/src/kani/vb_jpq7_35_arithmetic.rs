@@ -219,12 +219,18 @@ fn check_f64_div_zero_returns_non_finite_float() {
     kani::assume(dividend_f64 != 0.0);
 
     let dividend = match FiniteF64::new(dividend_f64) {
-        Some(v) => v,
-        None => { kani::assume(false, "FiniteF64::new failed"); return; }
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
     let divisor = match FiniteF64::new(0.0_f64) {
-        Some(v) => v,
-        None => { kani::assume(false, "FiniteF64::new failed"); return; }
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
 
     let result = eval_binary_op(
@@ -256,12 +262,18 @@ fn check_f64_div_zero_returns_non_finite_float() {
 #[kani::unwind(4)]
 fn check_f64_zero_div_zero_returns_non_finite_float() {
     let divisor = match FiniteF64::new(0.0_f64) {
-        Some(v) => v,
-        None => { kani::assume(false, "FiniteF64::new failed"); return; }
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
     let dividend = match FiniteF64::new(0.0_f64) {
-        Some(v) => v,
-        None => { kani::assume(false, "FiniteF64::new failed"); return; }
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
 
     let result = eval_binary_op(

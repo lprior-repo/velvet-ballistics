@@ -49,11 +49,14 @@ proptest! {
             run: RunId::new(run), seq: EventSeq::new(seq),
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         };
-        let result = encode_record(
-            MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, seq,
-            &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        );
-        prop_assert!(result.is_ok());
+  let result = encode_record(
+             MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, seq,
+             &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+         );
+         let bytes = result.expect("encode RunAccepted must succeed for valid inputs");
+         prop_assert!(bytes.len() > 0,
+             "encoded RunAccepted must produce non-empty bytes, got {} bytes",
+             bytes.len());
     }
     #[test]
     fn ps002_chain_safe(

@@ -61,7 +61,10 @@ mod kani_admission_ps001 {
             }
             None => {
                 // Overflow rejection (C7)
-                kani::assert(current as u128 + candidate as u128 > u64::MAX as u128, "overflow check");
+                kani::assert(
+                    current as u128 + candidate as u128 > u64::MAX as u128,
+                    "overflow check",
+                );
             }
         }
     }

@@ -205,7 +205,7 @@ fn cancel_succeeds_when_bead_is_active() {
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "cancel from Active state must succeed: {result:?}"
     );
 
@@ -253,7 +253,7 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "cancel from WaitingAnswer state must succeed: {result:?}"
     );
 
@@ -300,7 +300,7 @@ fn resume_succeeds_when_bead_is_cancelled() {
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "resume from Cancelled state must succeed: {result:?}"
     );
 
@@ -347,7 +347,7 @@ fn retry_succeeds_when_bead_is_failed() {
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "retry from Failed state must succeed: {result:?}"
     );
 
@@ -395,7 +395,7 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
 
     let result = vb_cli::lifecycle::answer(run, answer_content, &journal);
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "answer from WaitingAnswer state must succeed: {result:?}"
     );
 
@@ -959,7 +959,10 @@ fn cancel_returns_duplicate_request_when_called_twice() {
 
     // First cancel - should succeed
     let first = vb_cli::lifecycle::cancel(run, &journal);
-    assert!(first.is_ok(), "first cancel must succeed: {first:?}");
+    assert!(
+        matches!(&first, Ok(())),
+        "first cancel must succeed: {first:?}"
+    );
 
     // Second cancel in same state - must return E_DUPLICATE_REQUEST
     let second = vb_cli::lifecycle::cancel(run, &journal);
@@ -997,7 +1000,10 @@ fn resume_returns_duplicate_request_when_called_twice() {
     write_cancelled(&journal, run);
 
     let first = vb_cli::lifecycle::resume(run, &journal);
-    assert!(first.is_ok(), "first resume must succeed: {first:?}");
+    assert!(
+        matches!(&first, Ok(())),
+        "first resume must succeed: {first:?}"
+    );
 
     // POST-004: verify exactly one event after first resume (3 total: setup + cancel + resume)
     let events_after_first = journal
@@ -1041,7 +1047,10 @@ fn retry_returns_duplicate_request_when_called_twice() {
     write_failed(&journal, run);
 
     let first = vb_cli::lifecycle::retry(run, &journal);
-    assert!(first.is_ok(), "first retry must succeed: {first:?}");
+    assert!(
+        matches!(&first, Ok(())),
+        "first retry must succeed: {first:?}"
+    );
 
     // POST-004: verify exactly one event after first retry (3 total: setup + Failed + retry)
     let events_after_first = journal
@@ -1085,7 +1094,10 @@ fn answer_returns_duplicate_request_when_called_twice() {
     write_waiting_answer(&journal, run);
 
     let first = vb_cli::lifecycle::answer(run, "answer1".to_string(), &journal);
-    assert!(first.is_ok(), "first answer must succeed: {first:?}");
+    assert!(
+        matches!(&first, Ok(())),
+        "first answer must succeed: {first:?}"
+    );
 
     // POST-004: verify exactly one event after first answer (3 total: setup + AskScheduled + answer)
     let events_after_first = journal
@@ -1232,7 +1244,7 @@ fn replay_from_empty_journal_produces_valid_initial_state() {
 
     let result = vb_cli::lifecycle::replay(&journal);
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(_)),
         "replay from empty journal must succeed: {result:?}"
     );
 
@@ -1412,7 +1424,7 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
         // This should succeed because journal IS connected
         let result = vb_cli::lifecycle::cancel(run, &journal);
         assert!(
-            result.is_ok(),
+            matches!(&result, Ok(())),
             "lifecycle command must succeed with connected journal: {result:?}"
         );
     }
@@ -1438,9 +1450,9 @@ fn lifecycle_command_returns_journal_write_failure_on_io_error() {
     // a fault-injection wrapper on the journal would be needed.
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
-        result.is_ok()
+        matches!(&result, Ok(()))
             || matches!(
-                result,
+                &result,
                 Err(vb_core::errors::CoreError::JournalWriteFailure { .. })
             ),
         "cancel from Active should succeed or return JournalWriteFailure on I/O error: {result:?}"
@@ -1564,12 +1576,12 @@ fn valid_transition_graph_contains_all_expected_edges() {
     // Valid: cancel from Active
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
-        result.is_ok()
+        matches!(&result, Ok(()))
             || matches!(
-                result,
+                &result,
                 Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
             ),
-        "cancel from Active should be valid: {result:?}"
+        "cancel from Active should succeed or return InvalidTransition: {result:?}"
     );
 }
 
@@ -1609,7 +1621,7 @@ fn each_successful_command_appends_exactly_one_event() {
 
     // Execute cancel
     let result = vb_cli::lifecycle::cancel(run, &journal);
-    if result.is_ok() {
+    if matches!(&result, Ok(())) {
         let final_events = journal
             .events_for_run(run)
             .expect("events_for_run must succeed");
@@ -1663,7 +1675,7 @@ fn retry_writes_lifecycle_event_to_journal() {
 
     // Then: the operation succeeded.
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "lifecycle::retry from Failed state must succeed: {result:?}"
     );
 
@@ -1721,7 +1733,7 @@ fn resume_writes_lifecycle_event_to_journal() {
 
     // Then: the operation succeeded.
     assert!(
-        result.is_ok(),
+        matches!(&result, Ok(())),
         "lifecycle::resume from WaitingAnswer state must succeed: {result:?}"
     );
 

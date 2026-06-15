@@ -28,7 +28,11 @@ where
 fn compile_error_propagates_to_cli() {
     let source = b"version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let compiled = vb_compile::compile_workflow(source);
-    assert!(compiled.is_err(), "expected compile error for empty steps");
+    assert!(
+        matches!(&compiled, Err(errors) if errors.iter().any(|e| matches!(e, vb_compile::CompileError::EmptySteps))),
+        "expected EmptySteps compile error for empty steps, got: {:?}",
+        compiled
+    );
     let errors = match compiled {
         Ok(_) => std::process::abort(),
         Err(errors) => errors,
@@ -43,15 +47,9 @@ fn compile_error_propagates_to_cli() {
     assert_eq!(errors.len(), 1, "expected exactly one compile error");
 
     // The first error implements Display
-    let first = errors.first();
-    assert!(
-        first.is_some(),
-        "CompileErrors should contain at least one CompileError"
-    );
-    let first_error = match first {
-        Some(error) => error,
-        None => std::process::abort(),
-    };
+    let first_error = errors
+        .first()
+        .expect("errors must have at least one element");
     let first_display = format!("{first_error}");
     assert_eq!(
         first_display, "workflow steps must not be empty",

@@ -2090,11 +2090,15 @@ fn value_store_default_has_zero_arena_entries() -> Result<(), String> {
 /// swapped to a `HashMap<SymbolId, ObjectField>`, the order would be lost
 /// and this test would fail.
 #[test]
-fn value_store_object_slice_iteration_matches_caller_insertion_order(
-) -> Result<(), String> {
+fn value_store_object_slice_iteration_matches_caller_insertion_order() -> Result<(), String> {
     let mut store = ValueStore::new();
     // Deliberately non-sorted, non-alphabetical order.
-    let input_keys = [SymbolId::new(7), SymbolId::new(2), SymbolId::new(9), SymbolId::new(4)];
+    let input_keys = [
+        SymbolId::new(7),
+        SymbolId::new(2),
+        SymbolId::new(9),
+        SymbolId::new(4),
+    ];
     let input_values = [
         SlotValue::I64(70),
         SlotValue::I64(20),
@@ -2125,7 +2129,10 @@ fn value_store_object_slice_iteration_matches_caller_insertion_order(
         input_keys.iter().zip(input_values.iter()).enumerate()
     {
         let actual = stored.get(i).ok_or_else(|| {
-            format!("missing field at index {i}; field count is {}", stored.len())
+            format!(
+                "missing field at index {i}; field count is {}",
+                stored.len()
+            )
         })?;
         if actual.key != *expected_key {
             return Err(format!(
@@ -2148,10 +2155,14 @@ fn value_store_object_slice_iteration_matches_caller_insertion_order(
 /// A swap from `IndexMap` to `HashMap` would change iteration order
 /// and this test would fail.
 #[test]
-fn value_store_object_indexmap_secondary_index_matches_insertion_order(
-) -> Result<(), String> {
+fn value_store_object_indexmap_secondary_index_matches_insertion_order() -> Result<(), String> {
     let mut store = ValueStore::new();
-    let keys = [SymbolId::new(1), SymbolId::new(2), SymbolId::new(3), SymbolId::new(4)];
+    let keys = [
+        SymbolId::new(1),
+        SymbolId::new(2),
+        SymbolId::new(3),
+        SymbolId::new(4),
+    ];
     let values = [
         SlotValue::I64(100),
         SlotValue::I64(200),
@@ -2231,9 +2242,7 @@ fn value_store_object_reversed_field_order_is_preserved_not_sorted() -> Result<(
         .insert_object(fields.into_boxed_slice())
         .map_err(|e| e.to_string())?;
     let stored = store.object(id).map_err(|e| e.to_string())?;
-    for (i, (expected_key, expected_value)) in
-        keys.iter().zip(values.iter()).enumerate()
-    {
+    for (i, (expected_key, expected_value)) in keys.iter().zip(values.iter()).enumerate() {
         let actual = stored
             .get(i)
             .ok_or_else(|| format!("missing field at index {i}"))?;
@@ -2335,17 +2344,32 @@ fn value_store_multiple_objects_each_preserve_independent_order() -> Result<(), 
     let stored_b = store.object(id_b).map_err(|e| e.to_string())?;
     let stored_c = store.object(id_c).map_err(|e| e.to_string())?;
     for (i, k) in keys_a.iter().enumerate() {
-        if stored_a.get(i).ok_or_else(|| String::from("a missing"))?.key != *k {
+        if stored_a
+            .get(i)
+            .ok_or_else(|| String::from("a missing"))?
+            .key
+            != *k
+        {
             return Err(format!("object a order broken at {i}"));
         }
     }
     for (i, k) in keys_b.iter().enumerate() {
-        if stored_b.get(i).ok_or_else(|| String::from("b missing"))?.key != *k {
+        if stored_b
+            .get(i)
+            .ok_or_else(|| String::from("b missing"))?
+            .key
+            != *k
+        {
             return Err(format!("object b order broken at {i}"));
         }
     }
     for (i, k) in keys_c.iter().enumerate() {
-        if stored_c.get(i).ok_or_else(|| String::from("c missing"))?.key != *k {
+        if stored_c
+            .get(i)
+            .ok_or_else(|| String::from("c missing"))?
+            .key
+            != *k
+        {
             return Err(format!("object c order broken at {i}"));
         }
     }

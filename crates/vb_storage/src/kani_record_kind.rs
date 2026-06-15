@@ -126,7 +126,10 @@ fn check_journal_family_exhaustive() {
             kani::assert(is_valid_journal_kind, "kind must be in valid journal range");
         }
         Err(_) => {
-            kani::assert(!is_valid_journal_kind, "kind must not be in valid journal range");
+            kani::assert(
+                !is_valid_journal_kind,
+                "kind must not be in valid journal range",
+            );
         }
     }
 }

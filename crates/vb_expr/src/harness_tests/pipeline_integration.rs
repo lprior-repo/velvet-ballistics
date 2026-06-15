@@ -270,8 +270,61 @@ fn pipeline_err_variants_are_known_exprerror_members() {
         ("@", "UnexpectedChar"),
         ("foobar(1)", "UnknownHelper"),
     ];
-    for (source, _expected_variant_name) in &error_sources {
+    for (source, expected_variant_name) in &error_sources {
         let result = pipeline_eval(source);
-        assert!(result.is_err(), "'{}' must produce an error", source);
+        let Err(err) = result else {
+            panic!("'{}' must produce an error, got Ok", source);
+        };
+        match *expected_variant_name {
+            "UnexpectedToken" => {
+                assert!(
+                    matches!(err, crate::ExprError::UnexpectedToken { .. }),
+                    "expected UnexpectedToken for '{}', got {:?}",
+                    source,
+                    err
+                );
+            }
+            "DivisionByZero" => {
+                assert!(
+                    matches!(err, crate::ExprError::DivisionByZero),
+                    "expected DivisionByZero for '{}', got {:?}",
+                    source,
+                    err
+                );
+            }
+            "UnterminatedString" => {
+                assert!(
+                    matches!(err, crate::ExprError::UnterminatedString { .. }),
+                    "expected UnterminatedString for '{}', got {:?}",
+                    source,
+                    err
+                );
+            }
+            "InvalidReference" => {
+                assert!(
+                    matches!(err, crate::ExprError::InvalidReference { .. }),
+                    "expected InvalidReference for '{}', got {:?}",
+                    source,
+                    err
+                );
+            }
+            "UnexpectedChar" => {
+                assert!(
+                    matches!(err, crate::ExprError::UnexpectedChar { .. }),
+                    "expected UnexpectedChar for '{}', got {:?}",
+                    source,
+                    err
+                );
+            }
+            "UnknownHelper" => {
+                assert!(
+                    matches!(err, crate::ExprError::UnknownHelper { .. }),
+                    "expected UnknownHelper for '{}', got {:?}",
+                    source,
+                    err
+                );
+            }
+            other => panic!("unknown expected variant: {}", other),
+        }
     }
 }

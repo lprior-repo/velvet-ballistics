@@ -29,7 +29,10 @@ mod kani_bridge_ps007 {
             "payload limit not too large",
         );
         kani::assert(MAX_BATCH_COUNT > 0, "batch count > 0");
-        kani::assert(MAX_BATCH_COUNT <= 1_000_000, "batch count limit not too large");
+        kani::assert(
+            MAX_BATCH_COUNT <= 1_000_000,
+            "batch count limit not too large",
+        );
         kani::assert(RECORD_HEADER_LEN == 60, "RECORD_HEADER_LEN must be 60");
     }
 

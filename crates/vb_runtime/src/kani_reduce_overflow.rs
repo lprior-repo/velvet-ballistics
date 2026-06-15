@@ -36,7 +36,7 @@ fn minimal_workflow(cv: vb_core::value::ConstValue) -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(parts)
         .ok()
         .unwrap_or_else(|| {
-            kani::assume(false, "workflow must compile");
+            kani::assume(false);
             std::process::abort()
         })
 }

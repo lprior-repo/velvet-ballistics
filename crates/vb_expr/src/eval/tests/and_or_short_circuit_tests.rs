@@ -217,7 +217,7 @@ fn and_evaluates_both_operands_error_accumulation_i64_left_f64_right() -> ExprRe
     // Given: left = SlotValue::I64(1), right = SlotValue::F64(1.0)
     //       BOTH are non-bool TypeMismatch
     let left = SlotValue::I64(1);
-    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).unwrap());
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite"));
 
     // When: eval_binary_op is called with BinaryOp::And
     let result = eval_binary_op(BinaryOp::And, left, right);
@@ -277,7 +277,7 @@ fn or_evaluates_both_operands_error_accumulation_null_left_f64_right() -> ExprRe
     // Given: left = SlotValue::Null, right = SlotValue::F64(1.0)
     //       BOTH are non-bool TypeMismatch
     let left = SlotValue::Null;
-    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).unwrap());
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite"));
 
     // When: eval_binary_op is called with BinaryOp::Or
     let result = eval_binary_op(BinaryOp::Or, left, right);
@@ -470,7 +470,7 @@ fn or_rejects_f64_bool() -> ExprResult<()> {
     // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
     let result = eval_binary_op(
         BinaryOp::Or,
-        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).unwrap()),
+        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite")),
         SlotValue::Bool(true),
     );
     let Err(ExprError::TypeMismatch { expected, found }) = result else {
@@ -504,8 +504,8 @@ fn and_rejects_null_null() -> ExprResult<()> {
 fn or_rejects_f64_f64() -> ExprResult<()> {
     let result = eval_binary_op(
         BinaryOp::Or,
-        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).unwrap()),
-        SlotValue::F64(vb_core::value::FiniteF64::new(2.0).unwrap()),
+        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite")),
+        SlotValue::F64(vb_core::value::FiniteF64::new(2.0).expect("2.0 is finite")),
     );
     let Err(ExprError::TypeMismatch { expected, found }) = result else {
         return Err(ExprError::UnexpectedToken {
@@ -763,8 +763,8 @@ mod proptests {
         proptest!(|(a: bool, b: bool)| {
             let left = SlotValue::Bool(a);
             let right = SlotValue::Bool(b);
-            let result_ab = eval_binary_op(BinaryOp::And, left, right).unwrap();
-            let result_ba = eval_binary_op(BinaryOp::And, right, left).unwrap();
+            let result_ab = eval_binary_op(BinaryOp::And, left, right).expect("And with bools must succeed");
+            let result_ba = eval_binary_op(BinaryOp::And, right, left).expect("And with bools must succeed");
             prop_assert_eq!(result_ab, result_ba);
         });
     }
@@ -777,8 +777,8 @@ mod proptests {
         proptest!(|(a: bool, b: bool)| {
             let left = SlotValue::Bool(a);
             let right = SlotValue::Bool(b);
-            let result_ab = eval_binary_op(BinaryOp::Or, left, right).unwrap();
-            let result_ba = eval_binary_op(BinaryOp::Or, right, left).unwrap();
+            let result_ab = eval_binary_op(BinaryOp::Or, left, right).expect("Or with bools must succeed");
+            let result_ba = eval_binary_op(BinaryOp::Or, right, left).expect("Or with bools must succeed");
             prop_assert_eq!(result_ab, result_ba);
         });
     }
@@ -793,14 +793,14 @@ mod proptests {
         let left = SlotValue::Bool(false);
         let right_bools = [SlotValue::Bool(false), SlotValue::Bool(true)];
         for right in right_bools {
-            let result = eval_binary_op(BinaryOp::And, left, right).unwrap();
+            let result = eval_binary_op(BinaryOp::And, left, right).expect("And with bools must succeed");
             prop_assert_eq!(result, SlotValue::Bool(false));
         }
 
         // Section 46: non-bool right must be evaluated, producing TypeMismatch
         let right_non_bools = [
             SlotValue::I64(0),
-            SlotValue::F64(vb_core::value::FiniteF64::new(0.0).unwrap()),
+            SlotValue::F64(vb_core::value::FiniteF64::new(0.0).expect("0.0 is finite")),
             SlotValue::Null,
         ];
         for right in right_non_bools {
@@ -819,14 +819,14 @@ mod proptests {
         let left = SlotValue::Bool(true);
         let right_bools = [SlotValue::Bool(false), SlotValue::Bool(true)];
         for right in right_bools {
-            let result = eval_binary_op(BinaryOp::Or, left, right).unwrap();
+            let result = eval_binary_op(BinaryOp::Or, left, right).expect("Or with bools must succeed");
             prop_assert_eq!(result, SlotValue::Bool(true));
         }
 
         // Section 46: non-bool right must be evaluated, producing TypeMismatch
         let right_non_bools = [
             SlotValue::I64(0),
-            SlotValue::F64(vb_core::value::FiniteF64::new(0.0).unwrap()),
+            SlotValue::F64(vb_core::value::FiniteF64::new(0.0).expect("0.0 is finite")),
             SlotValue::Null,
         ];
         for right in right_non_bools {
@@ -841,7 +841,7 @@ mod proptests {
     fn proptest_and_requires_both_bools() {
         let non_bools = [
             SlotValue::I64(1),
-            SlotValue::F64(vb_core::value::FiniteF64::new(1.0).unwrap()),
+            SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite")),
             SlotValue::Null,
             SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
         ];
@@ -865,7 +865,7 @@ mod proptests {
     fn proptest_or_requires_both_bools() {
         let non_bools = [
             SlotValue::I64(1),
-            SlotValue::F64(vb_core::value::FiniteF64::new(1.0).unwrap()),
+            SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite")),
             SlotValue::Null,
             SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
         ];

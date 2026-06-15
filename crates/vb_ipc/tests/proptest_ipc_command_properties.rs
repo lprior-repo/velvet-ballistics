@@ -126,11 +126,15 @@ fn prop_roundtrip_exhaustive_all_eleven() {
 proptest! {
     #[test]
     fn prop_roundtrip_valid_ids(id in valid_command_id()) {
+        let expected = IpcCommand::from_u16(id).unwrap();
         let decoded = IpcCommand::from_u16(id);
-        prop_assert!(decoded.is_ok(), "from_u16({}) must return Ok", id);
-        let cmd = decoded.unwrap();
-        let re_encoded = cmd.as_u16();
-        prop_assert_eq!(re_encoded, id, "Roundtrip: as_u16(from_u16({})) != {}", id, id);
+        prop_assert!(
+            matches!(&decoded, Ok(c) if *c == expected),
+            "from_u16({}) must return Ok({:?}), got {:?}",
+            id,
+            expected,
+            decoded
+        );
     }
 }
 
@@ -168,15 +172,14 @@ fn invalid_command_id() -> impl Strategy<Value = u16> {
 proptest! {
     #[test]
     fn prop_invalid_ids_return_unknown_command(id in invalid_command_id()) {
+        let expected = IpcCommand::UnknownCommand(id);
         let result = IpcCommand::from_u16(id);
-        prop_assert!(result.is_ok(), "from_u16({}) must return Ok, got {:?}", id, result);
-        let command = result.unwrap();
-        prop_assert_eq!(
-            command,
-            IpcCommand::UnknownCommand(id),
-            "Value {} outside 1..=11 must decode to UnknownCommand({})",
+        prop_assert!(
+            matches!(&result, Ok(c) if *c == expected),
+            "from_u16({}) outside 1..=11 must return Ok(UnknownCommand({})), got {:?}",
             id,
-            id
+            id,
+            result
         );
     }
 }
@@ -188,9 +191,18 @@ proptest! {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             IpcCommand::from_u16(id)
         }));
-        prop_assert!(result.is_ok(), "from_u16({}) must never panic", id);
-        let inner = result.unwrap();
-        prop_assert!(inner.is_ok(), "from_u16({}) must return Ok, got {:?}", id, inner);
+        prop_assert!(
+            result.is_ok(),
+            "from_u16({}) must never panic",
+            id
+        );
+        let inner: Result<IpcCommand, _> = result.expect("catch_unwind should not panic");
+        prop_assert!(
+            inner.is_ok(),
+            "from_u16({}) must return Ok, got {:?}",
+            id,
+            inner
+        );
     }
 }
 
@@ -206,19 +218,13 @@ const RESERVED_IDS: [u16; 5] = [12, 13, 14, 15, 16];
 fn prop_reserved_ids_return_unknown_command() {
     for &id in &RESERVED_IDS {
         let result = IpcCommand::from_u16(id);
-        assert!(
-            result.is_ok(),
-            "Reserved ID {} must decode Ok, got {:?}",
+        assert_eq!(
+            result,
+            Ok(IpcCommand::UnknownCommand(id)),
+            "Reserved ID {} must return Ok(UnknownCommand({})), got {:?}",
+            id,
             id,
             result
-        );
-        let command = result.unwrap();
-        assert_eq!(
-            command,
-            IpcCommand::UnknownCommand(id),
-            "Reserved ID {} must be UnknownCommand({})",
-            id,
-            id
         );
     }
 }
@@ -262,23 +268,29 @@ fn prop_stale_baseline_commands_do_not_exist() {
 
     // Second: IDs 12-16 map to UnknownCommand (not named variants).
     for &id in &RESERVED_IDS {
-        let cmd = IpcCommand::from_u16(id).unwrap();
-        assert!(
-            matches!(cmd, IpcCommand::UnknownCommand(_)),
-            "ID {} must not be a named variant",
+        let cmd = IpcCommand::from_u16(id);
+        assert_eq!(
+            cmd,
+            Ok(IpcCommand::UnknownCommand(id)),
+            "ID {} must be UnknownCommand({}), not a named variant",
+            id,
             id
         );
-        // The value is preserved inside UnknownCommand.
-        assert_eq!(cmd, IpcCommand::UnknownCommand(id));
     }
 
     // Third: the UnknownCommand catch-all is position-independent —
     // from_u16 returns UnknownCommand for any value outside 1..=11.
     // This covers the reserved range exhaustively.
     for id in 0u16..=16 {
-        let result = IpcCommand::from_u16(id).unwrap();
+        let result = IpcCommand::from_u16(id);
         if id == 0 || id >= 12 {
-            assert_eq!(result, IpcCommand::UnknownCommand(id));
+            assert_eq!(
+                result,
+                Ok(IpcCommand::UnknownCommand(id)),
+                "ID {} (outside 1..=11) must be UnknownCommand({})",
+                id,
+                id
+            );
         }
     }
 }

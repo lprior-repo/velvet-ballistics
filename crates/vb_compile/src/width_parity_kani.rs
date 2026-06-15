@@ -136,7 +136,6 @@ fn width_node_parity_together_kani() {
                 "PO-003-K: width failed but emission ok (should not happen)"
             );
         }
-        (Err(_), Err(_)) => {
-        }
+        (Err(_), Err(_)) => {}
     }
 }

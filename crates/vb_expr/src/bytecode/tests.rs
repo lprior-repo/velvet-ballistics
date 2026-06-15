@@ -129,7 +129,10 @@ fn compiles_float_literal_to_f64_constant() -> crate::ExprResult<()> {
     let expected_ops = vec![ExprOp::LoadConst(ConstIdx::new(0))];
     assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
     assert_eq!(constants.len(), 1);
-    let ConstValue::F64(finite) = constants.first().unwrap() else {
+    let ConstValue::F64(finite) = constants.first().ok_or(crate::ExprError::UnexpectedToken {
+        token: "expected at least one constant".into(),
+    })?
+    else {
         return Err(crate::ExprError::UnexpectedToken {
             token: "expected ConstValue::F64".into(),
         });
@@ -142,7 +145,10 @@ fn compiles_float_literal_to_f64_constant() -> crate::ExprResult<()> {
 fn compiles_float_literal_with_leading_zero() -> crate::ExprResult<()> {
     let (_program, constants) = compile_with_pool("0.5")?;
     assert_eq!(constants.len(), 1);
-    let ConstValue::F64(finite) = constants.first().unwrap() else {
+    let ConstValue::F64(finite) = constants.first().ok_or(crate::ExprError::UnexpectedToken {
+        token: "expected at least one constant".into(),
+    })?
+    else {
         return Err(crate::ExprError::UnexpectedToken {
             token: "expected ConstValue::F64".into(),
         });

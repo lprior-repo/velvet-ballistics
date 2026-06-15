@@ -11,12 +11,28 @@ use vb_ipc::IpcCommand;
 /// Test that exactly 11 commands parse successfully (1-11).
 #[test]
 fn test_eleven_commands_parse_ok() {
-    for i in 1..=11 {
-        let result = IpcCommand::from_u16(i);
-        assert!(
-            result.is_ok(),
-            "Expected Ok for command {}, got {:?}",
-            i,
+    let expected_commands = [
+        IpcCommand::SubmitRun,
+        IpcCommand::SubmitRunInline,
+        IpcCommand::CancelRun,
+        IpcCommand::InspectRun,
+        IpcCommand::ListEvents,
+        IpcCommand::AnswerAsk,
+        IpcCommand::CompleteAction,
+        IpcCommand::FailAction,
+        IpcCommand::DrainTrace,
+        IpcCommand::Health,
+        IpcCommand::Shutdown,
+    ];
+    for (i, &expected) in expected_commands.iter().enumerate() {
+        let wire_id = (i + 1) as u16;
+        let result = IpcCommand::from_u16(wire_id);
+        assert_eq!(
+            result,
+            Ok(expected),
+            "Expected Ok({:?}) for command {}, got {:?}",
+            expected,
+            wire_id,
             result
         );
     }
@@ -27,13 +43,14 @@ fn test_eleven_commands_parse_ok() {
 fn test_removed_commands_return_unknown_command() {
     for i in 12..=16 {
         let result = IpcCommand::from_u16(i);
-        assert!(
-            result.is_ok(),
-            "Expected Ok for removed command {}, got {:?}",
+        assert_eq!(
+            result,
+            Ok(IpcCommand::UnknownCommand(i)),
+            "Removed command {} must return UnknownCommand({}), got {:?}",
+            i,
             i,
             result
         );
-        assert_eq!(result.unwrap(), IpcCommand::UnknownCommand(i));
     }
 }
 

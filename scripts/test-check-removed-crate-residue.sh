@@ -82,14 +82,14 @@ assert_output_omits() {
   esac
 }
 
-printf '[1/5] positive fixture must PASS (exit 0, no active findings)\n'
+printf '[1/6] positive fixture must PASS (exit 0, no active findings)\n'
 run_gate_capture "$POSITIVE"
 assert_exit "positive fixture" "0" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "positive summary" "summary: active=0" "$GATE_OUTPUT"
 echo "  ok: exit 0"
 echo "  ok: summary reports active=0"
 
-printf '[2/5] negative fixture must FAIL (exit 1, all removed tokens fire)\n'
+printf '[2/6] negative fixture must FAIL (exit 1, all removed tokens fire)\n'
 run_gate_capture "$NEGATIVE"
 assert_exit "negative fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "negative file:line" \
@@ -102,7 +102,7 @@ echo "  ok: exit 1 with file:line finding"
 echo "  ok: summary reports active > 0"
 echo "  ok: every removed-token banner appears"
 
-printf '[3/5] negative makepad fixture must FAIL (exit 1, bare token)\n'
+printf '[3/6] negative makepad fixture must FAIL (exit 1, bare token)\n'
 run_gate_capture "$NEGATIVE_MAKEPAD"
 assert_exit "negative makepad fixture" "1" "$GATE_EXIT" "$GATE_OUTPUT"
 assert_output_contains "negative makepad file:line" \

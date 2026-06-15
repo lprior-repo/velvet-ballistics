@@ -62,10 +62,12 @@ fn make_workflow() -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = postcard::to_allocvec(&parts)
+        .expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    CompiledWorkflow::try_from_parts(parts)
+        .expect("construct compiled workflow from valid parts")
 }
 
 proptest! {
@@ -80,18 +82,29 @@ proptest! {
         // Serialize and deserialize the artifact
         let envelope = postcard::to_allocvec(&artifact).expect("serialize");
         let decoded: Result<AcceptedArtifact, _> = postcard::from_bytes(&envelope);
-        prop_assert!(decoded.is_ok(), "valid envelope must decode as AcceptedArtifact");
-        prop_assert_eq!(decoded.unwrap().digest, artifact.digest);
+        let decoded_artifact = decoded.expect("valid envelope must decode as AcceptedArtifact");
+        prop_assert_eq!(decoded_artifact.digest, artifact.digest);
+        prop_assert_eq!(decoded_artifact.verification.gate_count, 15,
+            "decoded envelope must have 15 verification gates");
     }
 
     /// PS-004b: Random bytes do NOT decode as AcceptedArtifact.
     #[test]
     fn ps_004_random_bytes_not_accepted_artifact(bytes in proptest::collection::vec(0u8.., 0..256)) {
         let decoded: Result<AcceptedArtifact, _> = postcard::from_bytes(&bytes);
-        // Random bytes should not successfully decode (statistically)
-        if decoded.is_ok() {
-            // Extremely unlikely: random bytes happened to be a valid postcard encoding
-            // of an AcceptedArtifact. This is fine — postcard is self-describing.
+        // Random bytes should not successfully decode as AcceptedArtifact (statistically).
+        // If they do decode, assert they are a genuine AcceptedArtifact (not a false positive).
+        match decoded {
+            Ok(artifact) => {
+                prop_assert_eq!(artifact.verification.gate_count, 15,
+                    "decoded artifact must have valid gate count even if rare collision");
+                prop_assert_eq!(artifact.verification.durable, true,
+                    "decoded artifact must have durable flag set");
+            }
+            Err(_) => {
+                prop_assert!(true,
+                    "random bytes correctly failed to decode as AcceptedArtifact (common case)");
+            }
         }
     }
 
@@ -108,6 +121,15 @@ proptest! {
         let half = envelope.len() / 2;
         let truncated = &envelope[..half];
         let decoded: Result<AcceptedArtifact, _> = postcard::from_bytes(truncated);
-        prop_assert!(decoded.is_err(), "truncated envelope must fail decode");
+        match decoded {
+            Ok(ref bad) => {
+                prop_assert!(false,
+                    "truncated envelope must NOT decode as AcceptedArtifact, got gate_count={}",
+                    bad.verification.gate_count);
+            }
+            Err(_) => {
+                prop_assert!(true, "truncated envelope correctly failed decode");
+            }
+        }
     }
 }

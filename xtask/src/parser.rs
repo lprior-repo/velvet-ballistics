@@ -83,6 +83,7 @@ fn parse_legacy(command: &str) -> Option<&'static str> {
         "proof-evidence" => Some("proof-evidence"),
         "proof-drift" => Some("proof-drift"),
         "loom" => Some("loom"),
+        "cold-adapter-isolation" => Some("cold-adapter-isolation"),
         "list-crates" => Some("list-crates"),
         "proof" => Some("proof"),
         "contracts" => Some("contracts"),
@@ -126,6 +127,13 @@ mod tests {
         let parsed = parse_xtask_command(["xtask".into(), "contracts".into(), "--check".into()]);
 
         assert_eq!(parsed, Ok(XtaskCommand::Legacy("contracts")));
+    }
+
+    #[test]
+    fn cold_adapter_isolation_remains_routed_to_legacy_cli() {
+        let parsed = parse_xtask_command(["xtask".into(), "cold-adapter-isolation".into()]);
+
+        assert_eq!(parsed, Ok(XtaskCommand::Legacy("cold-adapter-isolation")));
     }
 
     #[test]

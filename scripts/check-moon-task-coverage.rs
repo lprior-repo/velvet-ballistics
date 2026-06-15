@@ -320,10 +320,26 @@ fn write_fixture_tasks(moon_tasks_dir: &Path, task_names: &BTreeSet<String>) -> 
 fn required_task_names_for_tools(
     required_tools: &[(&str, &[&str])],
 ) -> Result<BTreeSet<String>, String> {
+    required_task_names_with_alias_overrides(required_tools, &[])
+}
+
+fn required_task_names_with_alias_overrides(
+    required_tools: &[(&str, &[&str])],
+    alias_overrides: &[(&str, usize)],
+) -> Result<BTreeSet<String>, String> {
     let mut task_names = BTreeSet::new();
     for (tool, candidates) in required_tools {
-        let Some(candidate) = candidates.first() else {
-            return Err(format!("tool {tool} is missing candidate task IDs"));
+        let mut candidate_index = 0_usize;
+        for (override_tool, override_index) in alias_overrides {
+            if tool == override_tool {
+                candidate_index = *override_index;
+                break;
+            }
+        }
+        let Some(candidate) = candidates.get(candidate_index) else {
+            return Err(format!(
+                "tool {tool} is missing candidate task ID at index {candidate_index}"
+            ));
         };
         task_names.insert((*candidate).to_string());
     }
@@ -343,9 +359,7 @@ fn assert_required_tool_candidates_present(
             .iter()
             .find(|(actual_tool, _)| actual_tool == expected_tool)
         else {
-            return Err(format!(
-                "missing mandatory tool entry: {expected_tool}"
-            ));
+            return Err(format!("missing mandatory tool entry: {expected_tool}"));
         };
         if actual_candidates != expected_candidates {
             return Err(format!(
@@ -384,6 +398,36 @@ fn run_self_test() -> Result<u8, String> {
         println!("AuditHappyPathFail: unexpected gaps {:?}", full_audit.gaps);
         cleanup();
         return Ok(1);
+    }
+
+    let alternate_aliases = required_task_names_with_alias_overrides(
+        MANDATORY_TOOLS,
+        &[
+            ("Loom smoke", 1),
+            ("Verus verify", 1),
+            ("moon ci (orchestration)", 2),
+        ],
+    )?;
+    write_fixture_tasks(&moon_tasks_dir, &alternate_aliases)?;
+
+    let alternate_alias_audit = audit_moon_dir(&temp.join(".moon"))?;
+    if !alternate_alias_audit.gaps.is_empty() {
+        println!(
+            "AliasAuditFail: alternate candidate fixture unexpectedly gapped {:?}",
+            alternate_alias_audit.gaps
+        );
+        cleanup();
+        return Ok(1);
+    }
+    for required_alias in ["loom-list-smoke", "verify-verus-all", "quick"] {
+        if !alternate_alias_audit.defined.contains(required_alias) {
+            println!(
+                "AliasAuditFail: missing alternate candidate task {required_alias} in {:?}",
+                alternate_alias_audit.defined
+            );
+            cleanup();
+            return Ok(1);
+        }
     }
 
     let mut missing_fmt = expected.clone();

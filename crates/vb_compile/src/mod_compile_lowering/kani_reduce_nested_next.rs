@@ -81,8 +81,7 @@ fn check_nested_next_correctness() {
                     "for intermediate position: next_body_step must be after body step",
                 );
                 // next_body_step should be before next_step
-                if next_body_id.get() < ns_id.get() || ns_id.get() >= next_body_id.get() {
-                }
+                if next_body_id.get() < ns_id.get() || ns_id.get() >= next_body_id.get() {}
             }
         }
         _ => {

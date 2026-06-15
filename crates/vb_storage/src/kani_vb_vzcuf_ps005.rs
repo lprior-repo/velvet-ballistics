@@ -156,10 +156,7 @@ mod kani_encoding_ps005 {
     fn check_max_encoded_fits_u64() {
         use crate::constants::RECORD_HEADER_LEN;
         let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        kani::assert(
-            max_encoded < u64::MAX,
-            "max encoded must be < u64::MAX",
-        );
+        kani::assert(max_encoded < u64::MAX, "max encoded must be < u64::MAX");
     }
 
     /// C2: encode_record with exact kind mapping.

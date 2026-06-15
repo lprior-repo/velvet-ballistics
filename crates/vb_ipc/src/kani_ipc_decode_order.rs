@@ -146,8 +146,7 @@ fn kani_harness_ipc_magic_before_version() {
     // If magic is wrong, InvalidMagic must be returned (not UnsupportedVersion)
     if arbitrary_magic != IPC_MAGIC {
         match result {
-            Err(IpcError::InvalidMagic { .. }) => {
-            }
+            Err(IpcError::InvalidMagic { .. }) => {}
             Ok(_) => {
                 kani::assert(false, "wrong magic should not return Ok");
             }

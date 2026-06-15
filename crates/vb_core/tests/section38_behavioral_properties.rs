@@ -146,7 +146,10 @@ fn terminal_state_failed_rejects_mark_succeeded() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     // Failed -> Succeeded is forbidden
     let result = frame.mark_succeeded(StepIdx::new(0));
-    ensure(result.is_err(), "failed step must reject mark_succeeded")
+    ensure(
+        matches!(result, Err(CoreError::InternalInvariantViolation { .. })),
+        "failed step must reject mark_succeeded"
+    )
 }
 
 #[test]
@@ -161,7 +164,10 @@ fn terminal_state_cancelled_rejects_mark_running() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     // Cancelled -> Running is forbidden
     let result = frame.mark_running(StepIdx::new(0));
-    ensure(result.is_err(), "cancelled step must reject mark_running")
+    ensure(
+        matches!(result, Err(CoreError::InternalInvariantViolation { .. })),
+        "cancelled step must reject mark_running"
+    )
 }
 
 // =========================================================================

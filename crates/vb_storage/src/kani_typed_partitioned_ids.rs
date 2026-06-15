@@ -71,32 +71,56 @@ fn assert_key_contracts(inputs: SymbolicKeyInputs) {
     match keys::index_workflow_key(workflow, run) {
         Ok(key) => {
             kani::assert(key[0] == PREFIX_INDEX_WORKFLOW, "index_workflow prefix");
-            kani::assert(key[1..5] == workflow_value.to_be_bytes(), "index_workflow workflow bytes");
-            kani::assert(key[5..13] == run_value.to_be_bytes(), "index_workflow run bytes");
+            kani::assert(
+                key[1..5] == workflow_value.to_be_bytes(),
+                "index_workflow workflow bytes",
+            );
+            kani::assert(
+                key[5..13] == run_value.to_be_bytes(),
+                "index_workflow run bytes",
+            );
         }
         Err(_) => kani::assert(false, "index_workflow_key must succeed"),
     }
     match keys::index_action_key(action, run, step) {
         Ok(key) => {
             kani::assert(key[0] == PREFIX_INDEX_ACTION, "index_action prefix");
-            kani::assert(key[1..3] == action_value.to_be_bytes(), "index_action action bytes");
-            kani::assert(key[3..11] == run_value.to_be_bytes(), "index_action run bytes");
-            kani::assert(key[11..13] == step_value.to_be_bytes(), "index_action step bytes");
+            kani::assert(
+                key[1..3] == action_value.to_be_bytes(),
+                "index_action action bytes",
+            );
+            kani::assert(
+                key[3..11] == run_value.to_be_bytes(),
+                "index_action run bytes",
+            );
+            kani::assert(
+                key[11..13] == step_value.to_be_bytes(),
+                "index_action step bytes",
+            );
         }
         Err(_) => kani::assert(false, "index_action_key must succeed"),
     }
 
     match SeqNo::new(seq_value).checked_add(1) {
-        Some(next) => kani::assert(seq_value.checked_add(1) == Some(next.get()), "seq checked_add"),
+        Some(next) => kani::assert(
+            seq_value.checked_add(1) == Some(next.get()),
+            "seq checked_add",
+        ),
         None => kani::assert(seq_value == u64::MAX, "seq overflow sentinel"),
     }
 }
 
 fn assert_record_kind_contract(input: SymbolicRecordKindInput) {
     let kind = u16::from(input.record_kind_raw);
-    kani::assert(is_known_record_kind(kind) != unknown_record_kind(kind), "is_known != unknown");
+    kani::assert(
+        is_known_record_kind(kind) != unknown_record_kind(kind),
+        "is_known != unknown",
+    );
     if unknown_record_kind(kind) {
-        kani::assert(unknown_record_kind_value(kind) == Some(kind), "unknown kind value");
+        kani::assert(
+            unknown_record_kind_value(kind) == Some(kind),
+            "unknown kind value",
+        );
     }
     kani::assert(RecordKind::WorkflowSource.id() == 1, "WorkflowSource=1");
     kani::assert(RecordKind::CompiledIr.id() == 2, "CompiledIr=2");
@@ -125,5 +149,8 @@ fn vb_eepg_unknown_record_kind_error_contract() {
     let input: SymbolicRecordKindInput = kani::any();
     let kind = u16::from(input.record_kind_raw);
     kani::assume(unknown_record_kind(kind));
-    kani::assert(unknown_record_kind_value(kind) == Some(kind), "unknown kind returns Some(kind)");
+    kani::assert(
+        unknown_record_kind_value(kind) == Some(kind),
+        "unknown kind returns Some(kind)",
+    );
 }

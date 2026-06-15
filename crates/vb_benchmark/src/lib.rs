@@ -8,13 +8,53 @@
 
 pub mod aggregate_resource_budget;
 
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+/// Identifies one of the three required latency measurement fields.
+///
+/// Used by `EvidenceError::MissingLatencyField` and
+/// `EvidenceError::ZeroLatencyField` to distinguish which latency
+/// measurement was absent or zero.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LatencyFieldId {
+    /// The Fjall LSM-tree write path latency.
+    FjallWrite,
+    /// The direct API submit-to-return latency.
+    DirectApi,
+    /// The IPC frame encode-to-decode latency.
+    Ipc,
+}
+
+/// Master metadata field names for JSON serialization completeness.
+///
+/// These 10 keys must all be present in any serialized `BenchmarkMetadata`
+/// output. Used by completeness invariants and audit pipelines.
+///
+/// Note: These are the JSON keys produced by serde serialization.
+/// The Python audit script (`check-section36-39-coverage.py`) tracks
+/// 20 broader system-level metadata fields across multiple evidence files;
+/// this constant covers only the `BenchmarkMetadata` struct's own keys.
+pub const MASTER_METADATA_FIELDS: [&str; 10] = [
+    "name",
+    "baseline_us",
+    "result_us",
+    "command",
+    "commit",
+    "environment",
+    "budget_us",
+    "fjall_write_latency",
+    "direct_api_latency",
+    "ipc_latency",
+];
 
 /// Benchmark metadata captured during a single benchmark run.
 ///
 /// Contains baseline, result, and environment information required for
-/// evidence-based performance regression gating.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// evidence-based performance regression gating, including three
+/// latency measurements for the Fjall write path, direct API, and IPC.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BenchmarkMetadata {
     /// Name of the benchmark group.
     pub name: String,
@@ -25,11 +65,21 @@ pub struct BenchmarkMetadata {
     /// Command that produced this result.
     pub command: String,
     /// Git commit hash (non-empty ASCII hex string).
+    #[serde(rename = "commit")]
     pub commit_hash: String,
     /// Environment identifier (e.g., "linux-x86_64").
     pub environment: String,
     /// Performance budget in microseconds.
     pub budget_us: u64,
+    /// Nanoseconds from `append_journaled` entry to `persist_strict` return.
+    #[serde(rename = "fjall_write_latency", alias = "fjall_write_latency_ns")]
+    pub fjall_write_latency_ns: u64,
+    /// Nanoseconds from `submit_direct` entry to `RuntimeResult` return.
+    #[serde(rename = "direct_api_latency", alias = "direct_api_latency_ns")]
+    pub direct_api_latency_ns: u64,
+    /// Nanoseconds from IPC frame encode start to decode complete.
+    #[serde(rename = "ipc_latency", alias = "ipc_latency_ns")]
+    pub ipc_latency_ns: u64,
 }
 
 /// Error types for evidence gate validation.
@@ -55,6 +105,19 @@ pub enum EvidenceError {
     },
     /// Budget not configured (zero budget_us).
     EmptyBudget,
+    /// A required latency measurement is missing (value is zero, indicating
+    /// the timer was never armed).
+    MissingLatencyField {
+        /// Which latency field was absent.
+        field: LatencyFieldId,
+    },
+    /// A required latency measurement is zero, indicating it was never
+    /// armed. A zero value means the latency was not captured, not that
+    /// it took zero time.
+    ZeroLatencyField {
+        /// Which latency field was zero.
+        field: LatencyFieldId,
+    },
 }
 
 impl std::fmt::Display for EvidenceError {
@@ -69,6 +132,25 @@ impl std::fmt::Display for EvidenceError {
                 write!(f, "regression detected: {benchmark} delta={delta}")
             }
             EvidenceError::EmptyBudget => write!(f, "budget not configured"),
+            EvidenceError::MissingLatencyField { field } => {
+                let name = match field {
+                    LatencyFieldId::FjallWrite => "fjall_write_latency_ns",
+                    LatencyFieldId::DirectApi => "direct_api_latency_ns",
+                    LatencyFieldId::Ipc => "ipc_latency_ns",
+                };
+                write!(f, "missing latency measurement: {name}")
+            }
+            EvidenceError::ZeroLatencyField { field } => {
+                let name = match field {
+                    LatencyFieldId::FjallWrite => "fjall_write_latency_ns",
+                    LatencyFieldId::DirectApi => "direct_api_latency_ns",
+                    LatencyFieldId::Ipc => "ipc_latency_ns",
+                };
+                write!(
+                    f,
+                    "zero latency measurement: {name} indicates timer was never armed"
+                )
+            }
         }
     }
 }
@@ -192,6 +274,20 @@ impl std::error::Error for RuntimeBenchmarkError {}
 /// # Errors
 ///
 /// Returns `Err(EvidenceError::MissingCommit)` if `commit_hash` is empty or not ASCII hex.
+///
+/// # Precondition
+///
+/// All duration values must be well-formed (non-negative). The caller is
+/// responsible for measuring latencies with `Instant::now()` or equivalent
+/// and converting to nanosecond counts via `Duration::as_nanos()` or
+/// equivalent arithmetic.
+///
+/// # Postcondition
+///
+/// Returns `Ok(BenchmarkMetadata)` with all master metadata fields
+/// represented (structurally present; semantic correctness of values
+/// is verified by `check_evidence_gate`).
+#[allow(clippy::too_many_arguments)]
 pub fn capture_metadata(
     name: &str,
     baseline: Option<Duration>,
@@ -200,6 +296,9 @@ pub fn capture_metadata(
     commit_hash: &str,
     environment: &str,
     budget_us: u64,
+    fjall_write_latency_ns: u64,
+    direct_api_latency_ns: u64,
+    ipc_latency_ns: u64,
 ) -> Result<BenchmarkMetadata, EvidenceError> {
     // Validate commit_hash is non-empty ASCII hex
     if commit_hash.is_empty() {
@@ -222,6 +321,9 @@ pub fn capture_metadata(
         commit_hash: commit_hash.to_string(),
         environment: environment.to_string(),
         budget_us,
+        fjall_write_latency_ns,
+        direct_api_latency_ns,
+        ipc_latency_ns,
     })
 }
 
@@ -276,10 +378,32 @@ pub fn budget_utilization_percent(elapsed: Duration, budget_us: u64) -> u128 {
 ///
 /// Returns `Ok(())` if all required metadata is present and result is within
 /// the configured threshold. Returns an error otherwise.
+///
+/// New requirements beyond existing checks:
+/// - `fjall_write_latency_ns > 0`
+/// - `direct_api_latency_ns > 0`
+/// - `ipc_latency_ns > 0`
 pub fn check_evidence_gate(
     metadata: &BenchmarkMetadata,
     threshold_pct: u64,
 ) -> Result<(), EvidenceError> {
+    // Check zero-latency fields first
+    if metadata.fjall_write_latency_ns == 0 {
+        return Err(EvidenceError::ZeroLatencyField {
+            field: LatencyFieldId::FjallWrite,
+        });
+    }
+    if metadata.direct_api_latency_ns == 0 {
+        return Err(EvidenceError::ZeroLatencyField {
+            field: LatencyFieldId::DirectApi,
+        });
+    }
+    if metadata.ipc_latency_ns == 0 {
+        return Err(EvidenceError::ZeroLatencyField {
+            field: LatencyFieldId::Ipc,
+        });
+    }
+
     // Check baseline is present
     let baseline_us = match metadata.baseline_us {
         Some(b) => b,

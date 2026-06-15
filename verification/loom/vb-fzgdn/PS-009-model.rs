@@ -11,10 +11,10 @@
 
 #![cfg(loom)]
 
-use std::collections::HashMap;
 use loom::sync::Arc;
 use loom::sync::Mutex;
 use loom::thread;
+use std::collections::HashMap;
 
 use vb_core::ids::RunId;
 use vb_runtime::shard::types::PendingTimerKind;
@@ -43,7 +43,11 @@ impl TimerWheelModel {
         self.by_run.remove(&run);
         self.by_run.insert(
             run,
-            TimerEntry { run, deadline, kind },
+            TimerEntry {
+                run,
+                deadline,
+                kind,
+            },
         );
     }
 

@@ -906,7 +906,7 @@ mod kani {
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
         let frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let key_slots: [SlotIdx; 0] = [];
@@ -929,7 +929,7 @@ mod kani {
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 4);
         let mut frame = match frame {
             Ok(f) => f,
-            Err(_) => { kani::assume(false, "frame construction"); return; }
+            Err(_) => { kani::assume(false); return; }
         };
 
         let _ = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);

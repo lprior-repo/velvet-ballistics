@@ -326,13 +326,21 @@ fn validated_journal_record_vs_generic_decode_parity() {
     let generic_result =
         decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
 
-    assert!(
-        validated_result.is_ok(),
-        "canonical must decode via validated path"
+    let validated_record = validated_result.expect(
+        "canonical encoding must decode via validated path"
     );
-    assert!(
-        generic_result.is_ok(),
-        "canonical must decode via generic path"
+    assert_eq!(
+        validated_record.parity().envelope_kind(),
+        RecordKind::StepSucceeded.id(),
+        "validated record must show StepSucceeded envelope kind"
+    );
+    let (generic_envelope, generic_event) = generic_result.expect(
+        "canonical encoding must decode via generic path"
+    );
+    assert_eq!(
+        generic_envelope.record_kind,
+        RecordKind::StepSucceeded.id(),
+        "generic record must show StepSucceeded record kind"
     );
 
     // Given: a mismatched encoding

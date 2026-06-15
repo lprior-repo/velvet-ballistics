@@ -7,8 +7,8 @@ use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNode, CompiledNodeKind, SlotBranch};
 
-use super::{ReplayAction, step::replay_step};
 use super::kani_harnesses_plan::make_minimal_plan;
+use super::{ReplayAction, step::replay_step};
 
 /// Proves that replay is deterministic: two identical frames
 /// with the same slot values produce identical results.
@@ -76,9 +76,7 @@ fn verify_replay_deterministic_for_same_input() {
             return;
         }
     };
-    match run_a
-        .write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-    {
+    match run_a.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val)) {
         Ok(_) => {}
         Err(_) => {
             kani::assume(false);
@@ -95,9 +93,7 @@ fn verify_replay_deterministic_for_same_input() {
             return;
         }
     };
-    match run_b
-        .write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val))
-    {
+    match run_b.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val)) {
         Ok(_) => {}
         Err(_) => {
             kani::assume(false);
@@ -113,7 +109,8 @@ fn verify_replay_deterministic_for_same_input() {
         }
         (Err(_), Err(_)) => {}
         _ => {
-            kani::assume(false); return;
+            kani::assume(false);
+            return;
         }
     }
 }

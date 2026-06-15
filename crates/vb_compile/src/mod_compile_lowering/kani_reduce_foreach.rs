@@ -123,7 +123,6 @@ fn check_foreach_body_width_included() {
                 "ForEach body width must include all body steps",
             );
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }

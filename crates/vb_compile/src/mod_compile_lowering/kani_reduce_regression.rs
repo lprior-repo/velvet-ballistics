@@ -93,8 +93,7 @@ fn check_single_step_reference_behavior() {
                 );
             }
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -111,8 +110,7 @@ fn check_single_step_body_width_contract() {
             assert!(w >= 4, "reduce width with single body step >= 4");
             assert!(w <= usize::from(u16::MAX), "width within u16::MAX");
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -137,8 +135,7 @@ fn check_single_step_equivalence_contract() {
             assert!(w >= 4, "single-step body width >= 4");
             assert!(w <= usize::from(u16::MAX), "width within bounds");
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 
     // Direct equivalence comparison: both dispatchers with identical inputs
@@ -220,14 +217,16 @@ fn check_single_step_equivalence_contract() {
                 true,
                 "single-step succeeded but multi-step failed — CONTRACT VIOLATION"
             );
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
         (Err(_), Ok(())) => {
             kani::cover!(
                 true,
                 "single-step failed but multi-step succeeded — CONTRACT VIOLATION"
             );
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     }
 }

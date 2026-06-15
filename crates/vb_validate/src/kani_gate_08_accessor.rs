@@ -29,7 +29,10 @@ fn kani_gate_08_valid_bounded_parts_pass() {
             match segment {
                 PathSegment::Field(symbol) => kani::assume(symbol.get() < parts.symbols_count),
                 PathSegment::Index(index) => kani::assume(*index != u32::MAX),
-                _ => unreachable!("PathSegment variants covered"),
+                _ => {
+                    kani::assume(false);
+                    loop {}
+                }
             }
         }
     }
@@ -146,7 +149,10 @@ fn kani_gate_08_path_too_deep_rejected() {
     let mut i = 0u32;
     while i < 17 {
         path.push(PathSegment::Field(SymbolId::new(i % 100)));
-        i = match i.checked_add(1) { Some(n) => n, None => break };
+        i = match i.checked_add(1) {
+            Some(n) => n,
+            None => break,
+        };
     }
 
     let parts = workflow_parts_with_accessors(

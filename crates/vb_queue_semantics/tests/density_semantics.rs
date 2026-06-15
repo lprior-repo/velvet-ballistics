@@ -22,7 +22,8 @@ fn property_enqueue_accepts_is_negation_of_queue_is_full() {
         for len in 0..=10 {
             let accepts = helper_enqueue_accepts(capacity, len);
             let full = queue_is_full(capacity, len);
-            assert_eq!(accepts, !full,
+            assert_eq!(
+                accepts, !full,
                 "enqueue_accepts({capacity},{len})={accepts} != !queue_is_full({capacity},{len})={full}",
             );
         }
@@ -35,7 +36,9 @@ fn property_queue_is_full_matches_len_geq_capacity() {
     for capacity in 0..=10 {
         for len in 0..=10 {
             let full = queue_is_full(capacity, len);
-            assert_eq!(full, len >= capacity,
+            assert_eq!(
+                full,
+                len >= capacity,
                 "queue_is_full({capacity},{len})={full} != len({len}) >= capacity({capacity})",
             );
         }
@@ -49,7 +52,8 @@ fn property_command_pop_matches_shard_tick() {
         for len in 0..=10 {
             let cmd = helper_command_pop_is_pop_front(capacity, len);
             let tick = helper_shard_tick_is_pop_front(capacity, len);
-            assert_eq!(cmd, tick,
+            assert_eq!(
+                cmd, tick,
                 "command_pop({capacity},{len})={cmd} != shard_tick({capacity},{len})={tick}",
             );
         }
@@ -63,7 +67,8 @@ fn property_helper_queue_is_full_matches_queue_is_full() {
         for len in 0..=10 {
             let h = helper_queue_is_full(capacity, len);
             let q = queue_is_full(capacity, len);
-            assert_eq!(h, q,
+            assert_eq!(
+                h, q,
                 "helper({capacity},{len})={h} != public({capacity},{len})={q}",
             );
         }
@@ -89,7 +94,8 @@ fn property_runtime_queue_full_maps_delegates_to_helper_queue_is_full() {
         for capacity in 0..=10 {
             let maps = helper_runtime_queue_full_maps(depth, capacity);
             let full = helper_queue_is_full(capacity, depth);
-            assert_eq!(maps, full,
+            assert_eq!(
+                maps, full,
                 "maps({depth},{capacity})={maps} != is_full({capacity},{depth})={full}",
             );
         }
@@ -194,19 +200,13 @@ fn composition_shard_tick_fills_then_drains() {
 /// Zero-capacity edge for command_pop_transition_decision.
 #[test]
 fn command_pop_transition_decision_zero_capacity_zero_len_is_empty() {
-    assert_eq!(
-        command_pop_transition_decision(0, 0),
-        PopDecision::Empty,
-    );
+    assert_eq!(command_pop_transition_decision(0, 0), PopDecision::Empty,);
 }
 
 /// Zero-capacity edge for shard_tick_transition_decision.
 #[test]
 fn shard_tick_transition_decision_zero_capacity_zero_len_is_empty() {
-    assert_eq!(
-        shard_tick_transition_decision(0, 0),
-        PopDecision::Empty,
-    );
+    assert_eq!(shard_tick_transition_decision(0, 0), PopDecision::Empty,);
 }
 
 // ─── Missing boundary tests ───────────────────────────────────────────────────
@@ -274,7 +274,13 @@ fn dequeue_on_empty_preserves_empty_state() {
 fn warning_payload_triggers_at_threshold_capacity_2() {
     // capacity=2, threshold=1, so depth=1 should trigger.
     assert!(
-        matches!(warning_payload(2, 1), Some(WarningPayload { depth: 1, capacity: 2 })),
+        matches!(
+            warning_payload(2, 1),
+            Some(WarningPayload {
+                depth: 1,
+                capacity: 2
+            })
+        ),
         "expected payload at depth 1 for capacity 2",
     );
     assert_eq!(warning_payload(2, 0), None, "depth 0 should not trigger");
@@ -284,12 +290,20 @@ fn warning_payload_triggers_at_threshold_capacity_2() {
 #[test]
 fn warning_payload_capacity_5_threshold_4() {
     assert_eq!(warning_payload(5, 3), None);
-    assert!(
-        matches!(warning_payload(5, 4), Some(WarningPayload { depth: 4, capacity: 5 })),
-    );
-    assert!(
-        matches!(warning_payload(5, 5), Some(WarningPayload { depth: 5, capacity: 5 })),
-    );
+    assert!(matches!(
+        warning_payload(5, 4),
+        Some(WarningPayload {
+            depth: 4,
+            capacity: 5
+        })
+    ),);
+    assert!(matches!(
+        warning_payload(5, 5),
+        Some(WarningPayload {
+            depth: 5,
+            capacity: 5
+        })
+    ),);
     assert_eq!(warning_payload(5, 6), None); // above capacity
 }
 
@@ -298,9 +312,13 @@ fn warning_payload_capacity_5_threshold_4() {
 #[test]
 fn warning_payload_capacity_1_threshold_1() {
     // threshold(1) = 1, so depth=1 should trigger (1 >= 1 && 1 <= 1)
-    assert!(
-        matches!(warning_payload(1, 1), Some(WarningPayload { depth: 1, capacity: 1 })),
-    );
+    assert!(matches!(
+        warning_payload(1, 1),
+        Some(WarningPayload {
+            depth: 1,
+            capacity: 1
+        })
+    ),);
     assert_eq!(warning_payload(1, 0), None);
 }
 
@@ -311,10 +329,19 @@ fn action_warning_transition_multiple_independent_on_same_state() {
     let t1 = action_warning_transition(state.clone(), WarningSendOutcome::Delivered);
     let t2 = action_warning_transition(state.clone(), WarningSendOutcome::Full);
     let t3 = action_warning_transition(state, WarningSendOutcome::Disconnected);
-    // All have the same payload and state length.
-    assert!(t1.payload.is_some());
-    assert!(t2.payload.is_some());
-    assert!(t3.payload.is_some());
+    // All have the same payload (depth=8, capacity=10) and state length.
+    assert!(
+        matches!(t1.payload, Some(p) if p.depth == 8 && p.capacity == 10),
+        "t1 payload should be depth=8, capacity=10",
+    );
+    assert!(
+        matches!(t2.payload, Some(p) if p.depth == 8 && p.capacity == 10),
+        "t2 payload should be depth=8, capacity=10",
+    );
+    assert!(
+        matches!(t3.payload, Some(p) if p.depth == 8 && p.capacity == 10),
+        "t3 payload should be depth=8, capacity=10",
+    );
     assert_eq!(t1.state.len(), t2.state.len());
     assert_eq!(t2.state.len(), t3.state.len());
 }
@@ -323,11 +350,17 @@ fn action_warning_transition_multiple_independent_on_same_state() {
 #[test]
 fn runtime_queue_full_error_transition_depth_above_capacity_maps() {
     let t = runtime_queue_full_error_transition(5, 3, RuntimeQueueSurface::Inspect);
-    assert!(t.is_some());
-    let t = t.unwrap();
-    assert_eq!(t.capacity, 3);
-    assert_eq!(t.depth, 5);
-    assert!(t.rejected_without_admission);
+    match t {
+        Some(result) => {
+            assert_eq!(result.capacity, 3, "capacity should be 3");
+            assert_eq!(result.depth, 5, "depth should be 5");
+            assert!(
+                result.rejected_without_admission,
+                "rejected_without_admission should be true"
+            );
+        }
+        None => panic!("expected Some(runtime queue full error) for depth=5 > capacity=3"),
+    }
 }
 
 /// EnqueueDecision and command_enqueue_transition agree on full detection.
@@ -335,7 +368,10 @@ fn runtime_queue_full_error_transition_depth_above_capacity_maps() {
 fn enqueue_decision_agrees_with_enqueue_transition_on_full() {
     let state = state_with_items(3, &[1, 2, 3]);
     // Decision predicts full.
-    assert_eq!(enqueue_decision(3, 3), EnqueueDecision::QueueFull { capacity: 3 });
+    assert_eq!(
+        enqueue_decision(3, 3),
+        EnqueueDecision::QueueFull { capacity: 3 }
+    );
     // Transition also rejects.
     let (_state, decision) = command_enqueue_transition(state, 99);
     assert_eq!(decision, EnqueueDecision::QueueFull { capacity: 3 });
@@ -345,19 +381,13 @@ fn enqueue_decision_agrees_with_enqueue_transition_on_full() {
 #[test]
 fn pop_decision_agrees_with_command_pop_transition() {
     // Empty
-    assert_eq!(
-        command_pop_transition_decision(4, 0),
-        PopDecision::Empty,
-    );
+    assert_eq!(command_pop_transition_decision(4, 0), PopDecision::Empty,);
     assert!(matches!(
         command_pop_transition(empty_state(4)),
         PopTransition::Empty { .. }
     ));
     // Non-empty
-    assert_eq!(
-        command_pop_transition_decision(4, 4),
-        PopDecision::PopFront,
-    );
+    assert_eq!(command_pop_transition_decision(4, 4), PopDecision::PopFront,);
     assert!(matches!(
         command_pop_transition(state_with_items(4, &[1])),
         PopTransition::Popped { .. }

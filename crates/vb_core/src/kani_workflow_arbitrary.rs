@@ -461,10 +461,13 @@ fn bounded_accessor_path() -> Box<[PathSegment]> {
             let mut i = 0u8;
             while i < len {
                 path.push(kani::any::<PathSegment>());
-                i = match i.checked_add(1) { Some(n) => n, None => break };
+                i = match i.checked_add(1) {
+                    Some(n) => n,
+                    None => break,
+                };
             }
             path.into_boxed_slice()
-        },
+        }
     }
 }
 

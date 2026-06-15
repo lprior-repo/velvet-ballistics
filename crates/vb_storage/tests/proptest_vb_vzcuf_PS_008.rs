@@ -37,10 +37,12 @@ proptest! {
     #[test]
     fn ps008_encode_before_mut(run in 1u64..1000u64) {
         let event = make_event(run, 0);
-        let result = encode_record(
-            MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, 0,
-        );
-        prop_assert!(result.is_err());
+let result = encode_record(
+             MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, 0,
+         );
+        let is_err = result.is_err();
+        prop_assert!(is_err,
+            "encode with zero payload limit must fail");
     }
     #[test]
     fn ps008_key_first(run in 1u64..1000u64) {
@@ -48,7 +50,9 @@ proptest! {
         let event = make_event(run, 0);
         let mut batch = JournalWriteBatch::new(&journal);
         let result = batch.append_event(&event);
-        prop_assert!(result.is_ok());
+        result.expect("first append of RunAccepted must succeed");
+        prop_assert_eq!(batch.len(), 1,
+            "batch must contain exactly 1 event after first append");
     }
     #[test]
     fn ps008_count_limit(_dummy in proptest::bool::ANY) {

@@ -497,8 +497,7 @@ fn flag_validate_zero_mask() {
                 }
             }
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -584,8 +583,7 @@ fn flag_validate_small_mask() {
                 kani::assert(is_prod_valid(prod), "small-mask production: valid → Ok");
             }
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -662,8 +660,7 @@ fn reserved_bits_all_commands() {
                 }
             }
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -701,9 +698,7 @@ fn decode_roundtrip_valid_flags() {
     // Build and encode
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
     let encoded = match header.encode() {
-        Ok(bytes) => {
-            bytes
-        }
+        Ok(bytes) => bytes,
         Err(_) => {
             // F-005: encode failure is a property violation
             kani::assert(false, "encode failed unexpectedly for valid-flag header");
@@ -912,8 +907,7 @@ fn model_invariant_disjoint_masks() {
                 "INV-6: valid_mask and reserved_global_mask are disjoint",
             );
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -932,8 +926,7 @@ fn model_zero_flags_always_valid() {
                 "flags=0 must always be valid for any command",
             );
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -949,8 +942,7 @@ fn model_flag_validation_no_panic() {
         Ok(cmd) => {
             let _result = validate_flags_model(cmd, raw_flags);
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -970,7 +962,6 @@ fn production_impl_no_panic() {
                 "production_impl: full input space exercised without panic"
             );
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }

@@ -51,14 +51,14 @@ fn build_foreach_parts() -> WorkflowParts {
     // Symbolic slot/step/const indices within the 4-node topology.
     // Bounds ensure they reference valid slots (0..4) and const (0..1).
     let input_slot: SlotIdx = kani::any();
-    kani::assume(input_slot.as_u16() < 4);
+    kani::assume(input_slot.get() < 4);
     let item_slot: SlotIdx = kani::any();
-    kani::assume(item_slot.as_u16() < 4);
+    kani::assume(item_slot.get() < 4);
     let const_idx: ConstIdx = kani::any();
-    kani::assume(const_idx.as_u16() < 1);
+    kani::assume(const_idx.get() < 1);
     let result_slot: SlotIdx = kani::any();
-    kani::assume(result_slot.as_u16() < 4);
-    let limit: u16 = kani::any();
+    kani::assume(result_slot.get() < 4);
+    let limit: u32 = kani::any();
     kani::assume(limit >= 1 && limit <= 16);
 
     // Const value: use kani::any() for variety (bounded to a few representative values)
@@ -96,9 +96,7 @@ fn build_foreach_parts() -> WorkflowParts {
         next: Some(StepIdx::new(2)),
         on_error: None,
         error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: const_idx,
-        },
+        kind: CompiledNodeKind::SetConst { value: const_idx },
     });
 
     // Node 2: ForEachNext { body=1, done=3 }

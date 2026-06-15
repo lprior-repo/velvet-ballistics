@@ -842,8 +842,8 @@ fn backward_compat_3variant_ordinals() {
 /// separate journal-API bead and would change artifact hashes, so it is
 /// intentionally deferred.
 #[test]
-fn accepted_at_seq_placeholder_invariant_pins_field_to_zero_with_hash_protection(
-) -> Result<(), String> {
+fn accepted_at_seq_placeholder_invariant_pins_field_to_zero_with_hash_protection()
+-> Result<(), String> {
     use crate::types::EventSeq;
     let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let journal =
@@ -904,8 +904,7 @@ fn accepted_at_seq_placeholder_invariant_pins_field_to_zero_with_hash_protection
 /// update of the audit record (`bd remember` note from 2026-06-14) and
 /// the bead's evidence matrix.
 #[test]
-fn submit_artifact_does_not_populate_index_status_or_workflow_keyspaces(
-) -> Result<(), String> {
+fn submit_artifact_does_not_populate_index_status_or_workflow_keyspaces() -> Result<(), String> {
     let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let journal =
         crate::journal::FjallJournal::open(temp_dir.path(), None).map_err(|e| e.to_string())?;

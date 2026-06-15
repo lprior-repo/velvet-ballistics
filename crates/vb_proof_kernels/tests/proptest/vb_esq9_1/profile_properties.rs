@@ -1,17 +1,20 @@
-//! proptest properties for vb-esq9.1 profile contract validation.
+//! vb-esq9.1 inline proptest properties.
 //!
-//! Bead: vb-esq9.1 | State: 5 (proof-writer)
-//! Obligations: PO-P-001 through PO-P-005
+//! This module is loaded as part of the profile_properties test binary
+//! via tests/proptest/vb_esq9_1/mod.rs.
 //!
-//! Command: cargo test -p vb_proof_kernels --test profile_properties -- --nocapture
+//! All proptest properties here are unique to this module; the modularized
+//! versions in profile_property_cases/ are loaded as a sibling module.
 
 use proptest::prelude::*;
 use vb_proof_kernels::profile_contract::{
     ContractGap, DebugMode, MASTER_PROFILE_CONTRACT, ProfileConfig, ProfileKey, ProfileName,
-    SettingValue, StrVal, WorkspaceProfileSet,
+    SettingValue, StrVal,
     binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
-    resolve_inheritance, validate_against_governance, validate_against_master,
+    validate_against_governance, validate_against_master,
 };
+
+use super::profile_property_cases::strategies::{arb_correct_workspace, arb_workspace_profile_set};
 
 // =========================================================================
 // Strategy: Generate arbitrary ProfileName (6 valid variants)
@@ -91,66 +94,6 @@ fn arb_profile_config() -> impl Strategy<Value = ProfileConfig> {
 }
 
 // =========================================================================
-// Strategy: Generate arbitrary WorkspaceProfileSet (1..6 profiles)
-// =========================================================================
-
-fn arb_workspace_profile_set() -> impl Strategy<Value = WorkspaceProfileSet> {
-    proptest::collection::vec(arb_profile_config(), 1..=6).prop_map(|profiles| {
-        let mut ws = WorkspaceProfileSet::new();
-        for p in profiles {
-            ws.add(p);
-        }
-        ws
-    })
-}
-
-// =========================================================================
-// Strategy: Generate a "correct" WorkspaceProfileSet
-// (release + bench with master-specified values, hardened with debug-assertions)
-// =========================================================================
-
-fn arb_correct_workspace() -> impl Strategy<Value = WorkspaceProfileSet> {
-    Just(()).prop_map(|_| {
-        let mut ws = WorkspaceProfileSet::new();
-        ws.add(ProfileConfig::new(
-            ProfileName::Release,
-            vec![
-                (ProfileKey::OptLevel, SettingValue::U8(3)),
-                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-                (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-            ],
-        ));
-        ws.add(ProfileConfig::new(
-            ProfileName::Bench,
-            vec![
-                (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-                (ProfileKey::Debug, SettingValue::Bool(true)),
-                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-            ],
-        ));
-        ws.add(ProfileConfig::new(
-            ProfileName::Hardened,
-            vec![
-                (ProfileKey::Inherits, SettingValue::String(StrVal::Release)),
-                (ProfileKey::CodegenUnits, SettingValue::U16(1)),
-                (
-                    ProfileKey::Debug,
-                    SettingValue::DebugMode(DebugMode::LineTablesOnly),
-                ),
-                (ProfileKey::Lto, SettingValue::String(StrVal::Thin)),
-                (ProfileKey::OverflowChecks, SettingValue::Bool(true)),
-                (ProfileKey::Panic, SettingValue::String(StrVal::Abort)),
-                (ProfileKey::Strip, SettingValue::String(StrVal::Symbols)),
-                (ProfileKey::DebugAssertions, SettingValue::Bool(true)),
-            ],
-        ));
-        ws
-    })
-}
-
-// =========================================================================
 // PO-P-001: Forbidden states produce correct errors
 // =========================================================================
 
@@ -221,92 +164,6 @@ proptest! {
                     !gov_gaps.is_empty(),
                     "Hardened without debug-assertions=true must produce governance gap"
                 );
-            }
-        }
-    }
-}
-
-// =========================================================================
-// PO-P-002: Pure core functions are idempotent
-// =========================================================================
-
-proptest! {
-    /// Verify that pure core functions are idempotent: f(x) == f(f(x)).
-    ///
-    /// Tests: validate_against_master, validate_against_governance,
-    /// resolve_inheritance.
-    #[test]
-    fn prop_pure_core_functions_are_idempotent(
-        ws in arb_workspace_profile_set(),
-    ) {
-        // validate_against_master idempotence
-        let gaps1 = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
-        let gaps2 = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
-        assert_eq!(gaps1, gaps2, "validate_against_master must be deterministic");
-
-        // validate_against_governance idempotence
-        let gov1 = validate_against_governance(&ws);
-        let gov2 = validate_against_governance(&ws);
-        assert_eq!(gov1, gov2, "validate_against_governance must be deterministic");
-
-        // resolve_inheritance idempotence for each profile
-        for config in &ws.profiles {
-            let r1 = resolve_inheritance(config, &ws);
-            let r2 = resolve_inheritance(config, &ws);
-            assert_eq!(r1, r2, "resolve_inheritance must be deterministic");
-        }
-    }
-}
-
-// =========================================================================
-// PO-P-003: Inheritance resolution is deterministic and override-consistent
-// =========================================================================
-
-proptest! {
-    /// Verify inheritance resolution properties:
-    /// 1. Determinism: same input produces same output
-    /// 2. Override consistency: child explicit keys override parent keys
-    /// 3. Deep idempotence: calling twice with same input yields identical result
-    #[test]
-    fn prop_inheritance_resolution_deterministic_and_override_consistent(
-        ws in arb_workspace_profile_set(),
-    ) {
-        for config in &ws.profiles {
-            let r1 = resolve_inheritance(config, &ws);
-            let r2 = resolve_inheritance(config, &ws);
-            assert_eq!(r1, r2, "Resolution must be deterministic");
-
-            if let Ok(resolved) = r1 {
-                // Check override consistency: for each unique key in explicit settings,
-                // the LAST entry wins (override semantics). Verify the resolved
-                // value matches the last explicit value for that key.
-                use std::collections::BTreeMap;
-                let mut explicit_by_key: BTreeMap<ProfileKey, &SettingValue> = BTreeMap::new();
-                for (key, value) in &config.settings {
-                    explicit_by_key.insert(*key, value);
-                }
-                for (key, expected_value) in &explicit_by_key {
-                    let found = resolved.iter().find(|(k, _)| k == key);
-                    assert!(
-                        found.is_some(),
-                        "Profile's explicit key {:?} must appear in resolved settings", key
-                    );
-                    if let Some((_, resolved_value)) = found {
-                        assert_eq!(
-                            resolved_value, *expected_value,
-                            "Explicit setting value for {:?} must match the last entry in settings", key
-                        );
-                    }
-                }
-
-                // No duplicate keys in resolved
-                let mut seen = std::collections::BTreeSet::new();
-                for (key, _) in &resolved {
-                    assert!(
-                        seen.insert(*key),
-                        "Resolved settings must not contain duplicate keys"
-                    );
-                }
             }
         }
     }

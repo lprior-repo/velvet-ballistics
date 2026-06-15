@@ -62,10 +62,12 @@ fn make_workflow() -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = postcard::to_allocvec(&parts)
+        .expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    CompiledWorkflow::try_from_parts(parts)
+        .expect("construct compiled workflow from valid parts")
 }
 
 proptest! {
@@ -113,7 +115,12 @@ proptest! {
 
         // submit_artifact uses the CORRECT check: BLAKE3(artifact.ir) == digest
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-        prop_assert!(result.is_ok(),
-            "submit_artifact uses correct two-step unwrap-then-verify pattern");
+        let artifact = result.expect(
+            "submit_artifact with Journaled policy must succeed for valid workflow"
+        );
+        prop_assert_eq!(
+            artifact.verification.gate_count, 15,
+            "submit_artifact must produce 15-gate proof for valid workflow"
+        );
     }
 }

@@ -83,6 +83,11 @@ pub(crate) enum Commands {
         #[arg(long)]
         model: String,
     },
+    #[command(name = "cold-adapter-isolation")]
+    ColdAdapterIsolation {
+        #[arg(value_name = "PATH")]
+        targets: Vec<std::path::PathBuf>,
+    },
     #[command(name = "forbidden-scan")]
     ForbiddenScan {
         #[arg(long)]

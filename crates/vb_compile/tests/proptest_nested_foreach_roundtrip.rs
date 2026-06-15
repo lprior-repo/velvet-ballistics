@@ -15,8 +15,6 @@
 
 #![cfg(test)]
 #![forbid(unsafe_code)]
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_compile::mod_compile_lowering::compile_source;

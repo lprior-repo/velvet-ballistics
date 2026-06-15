@@ -7,8 +7,8 @@ use crate::value::SlotValue;
 use crate::value_store::ValueStore;
 use crate::workflow::{CompiledNode, CompiledNodeKind, SlotBranch};
 
-use super::{ReplayAction, step::replay_step};
 use super::kani_harnesses_plan::make_minimal_plan;
+use super::{ReplayAction, step::replay_step};
 
 /// Proves that `replay_choose_slot` never panics for any boolean
 /// combination of two slot conditions, with and without an otherwise
@@ -76,7 +76,8 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     };
 
@@ -88,19 +89,22 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     };
     match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     }
     match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     }
 
@@ -108,7 +112,8 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     let node = match plan.node(StepIdx::new(0)) {
         Some(v) => v,
         None => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     };
     let _result = replay_step(node, &mut run, &mut store, &plan);
@@ -180,7 +185,8 @@ fn verify_choose_slot_output_in_input_set() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     };
 
@@ -192,19 +198,22 @@ fn verify_choose_slot_output_in_input_set() {
     ) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     };
     match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     }
     match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
         Ok(_) => {}
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     }
 
@@ -212,7 +221,8 @@ fn verify_choose_slot_output_in_input_set() {
     let node = match plan.node(StepIdx::new(0)) {
         Some(v) => v,
         None => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     };
     let result = replay_step(node, &mut run, &mut store, &plan);
@@ -224,10 +234,12 @@ fn verify_choose_slot_output_in_input_set() {
             assert!(valid);
         }
         Ok(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
         Err(_) => {
-            kani::assume(false); loop {}
+            kani::assume(false);
+            loop {}
         }
     }
 }

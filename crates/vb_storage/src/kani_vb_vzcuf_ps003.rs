@@ -36,7 +36,10 @@ mod kani_errors_ps003 {
         let qf = JournalError::QueueFull;
         match qf {
             JournalError::QueueFull => {} // OK
-            _ => { kani::assume(false); loop {}}
+            _ => {
+                kani::assume(false);
+                loop {}
+            }
         }
 
         // PayloadTooLarge has payload fields
@@ -46,7 +49,10 @@ mod kani_errors_ps003 {
                 kani::assert(len == 100, "PayloadTooLarge.len == 100");
                 kani::assert(max == 50, "PayloadTooLarge.max == 50");
             }
-            _ => { kani::assume(false); loop {}}
+            _ => {
+                kani::assume(false);
+                loop {}
+            }
         }
 
         // DuplicateEvent has run and seq fields
@@ -58,7 +64,10 @@ mod kani_errors_ps003 {
                 kani::assert(r == run, "DuplicateEvent.run matches");
                 kani::assert(s == seq, "DuplicateEvent.seq matches");
             }
-            _ => { kani::assume(false); loop {}}
+            _ => {
+                kani::assume(false);
+                loop {}
+            }
         }
     }
 
@@ -87,10 +96,12 @@ mod kani_errors_ps003 {
                 // Expected: per-record encoding guard fires
             }
             Err(_e) => {
-                kani::assume(false); loop {}
+                kani::assume(false);
+                loop {}
             }
             Ok(_) => {
-                kani::assume(false); loop {}
+                kani::assume(false);
+                loop {}
             }
         }
     }
@@ -120,7 +131,10 @@ mod kani_errors_ps003 {
 
         match result {
             Ok(value) => {
-                kani::assert(value.len() >= RECORD_HEADER_LEN as usize, "encoded >= header len");
+                kani::assert(
+                    value.len() >= RECORD_HEADER_LEN as usize,
+                    "encoded >= header len",
+                );
             }
             Err(_) => {
                 // Could fail if event serialization is too large,

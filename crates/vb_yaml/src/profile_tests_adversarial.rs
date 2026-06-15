@@ -169,7 +169,7 @@ fn adversarial_yaml_11_boolean_quoted_accepted() {
 fn adversarial_comments_only_rejected_as_empty() {
     let yaml = "# just a comment\n# another comment\n";
     let result = validate_yaml_profile(yaml);
-    assert!(result.is_err(), "expected error for comments-only YAML");
+    assert_eq!(result, Err(YamlError::EmptySource));
 }
 
 #[test]

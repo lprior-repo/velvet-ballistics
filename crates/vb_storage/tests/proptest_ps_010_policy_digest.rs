@@ -62,10 +62,12 @@ fn make_workflow() -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = postcard::to_allocvec(&parts)
+        .expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    CompiledWorkflow::try_from_parts(parts)
+        .expect("construct compiled workflow from valid parts")
 }
 
 proptest! {
@@ -83,7 +85,14 @@ proptest! {
     fn ps_010_compute_policy_digest_succeeds(_dummy in proptest::bool::ANY) {
         let workflow = make_workflow();
         let result = compute_policy_digest(&workflow);
-        prop_assert!(result.is_ok(), "compute_policy_digest must succeed for valid workflow");
+        let policy_digest = result.expect(
+            "compute_policy_digest must succeed for valid workflow"
+        );
+        prop_assert_ne!(
+            policy_digest,
+            WorkflowDigest::from_bytes([0u8; 32]),
+            "policy_digest must be non-zero for valid workflow"
+        );
     }
 
     /// PS-010c: Submitted artifact's policy_digest matches compute_policy_digest.

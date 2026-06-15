@@ -144,7 +144,10 @@ fn is_comment_line(path: &Path, line: &str) -> bool {
     ) {
         return trimmed.starts_with('#');
     }
-    trimmed.starts_with('#') || trimmed.starts_with("//") || trimmed.starts_with(';') || trimmed.starts_with("<!--")
+    trimmed.starts_with('#')
+        || trimmed.starts_with("//")
+        || trimmed.starts_with(';')
+        || trimmed.starts_with("<!--")
 }
 
 fn is_allowlisted_target_line(path: &Path, line: &str) -> bool {
@@ -160,7 +163,9 @@ fn is_doc_like(path: &Path) -> bool {
 
 fn contains_historical_marker(line: &str) -> bool {
     let lower = line.to_ascii_lowercase();
-    HISTORICAL_MARKERS.iter().any(|marker| lower.contains(marker))
+    HISTORICAL_MARKERS
+        .iter()
+        .any(|marker| lower.contains(marker))
 }
 
 fn is_historical_doc_line(path: &Path, line: &str) -> bool {
@@ -223,23 +228,8 @@ fn push_exact_matches(line: &str, findings: &mut Vec<(String, String)>) {
     }
 }
 
-fn push_finding(
-    findings: &mut Vec<Finding>,
-    line_no: usize,
-    line_text: &str,
-    token: String,
-    context: String,
-    allowlisted: bool,
-    reason: String,
-) {
-    findings.push(Finding {
-        line_no,
-        line_text: line_text.to_owned(),
-        token,
-        context,
-        allowlisted,
-        reason,
-    });
+fn push_finding(findings: &mut Vec<Finding>, finding: Finding) {
+    findings.push(finding);
 }
 
 #[derive(Debug, Default)]
@@ -271,7 +261,9 @@ fn scan_text_line(
     if raw_line.trim().is_empty() {
         return pending_reason;
     }
-    if let Some(reason) = pending_reason && is_allowlisted_target_line(path, raw_line) {
+    if let Some(reason) = pending_reason
+        && is_allowlisted_target_line(path, raw_line)
+    {
         push_allowlisted_finding(findings, line_no, raw_line, reason);
         return None;
     }
@@ -287,12 +279,14 @@ fn push_allowlisted_finding(
 ) {
     push_finding(
         findings,
-        line_no,
-        line_text,
-        "allowlisted".to_owned(),
-        "allowlist consumed".to_owned(),
-        true,
-        reason,
+        Finding {
+            line_no,
+            line_text: line_text.to_owned(),
+            token: "allowlisted".to_owned(),
+            context: "allowlist consumed".to_owned(),
+            allowlisted: true,
+            reason,
+        },
     );
 }
 
@@ -302,12 +296,14 @@ fn push_scan_findings(line_no: usize, raw_line: &str, findings: &mut Vec<Finding
     for (token, context) in line_findings {
         push_finding(
             findings,
-            line_no,
-            raw_line,
-            token,
-            context,
-            false,
-            String::new(),
+            Finding {
+                line_no,
+                line_text: raw_line.to_owned(),
+                token,
+                context,
+                allowlisted: false,
+                reason: String::new(),
+            },
         );
     }
 }
@@ -328,39 +324,44 @@ fn collect_scan_files(targets: &[PathBuf], explicit_targets: bool) -> Result<Vec
     Ok(files)
 }
 
-fn collect_target_files(target: &Path, explicit_targets: bool, files: &mut Vec<PathBuf>) -> Result<(), String> {
+fn collect_target_files(
+    target: &Path,
+    explicit_targets: bool,
+    files: &mut Vec<PathBuf>,
+) -> Result<(), String> {
     ensure_target_resolved(target, explicit_targets)?;
     if target.is_file() {
         files.push(target.to_path_buf());
         return Ok(());
     }
-    collect_target_directory(target, explicit_targets, files)
+    collect_target_directory(target, files)
 }
 
 fn ensure_target_resolved(target: &Path, explicit_targets: bool) -> Result<(), String> {
     match target.try_exists() {
         Ok(true) => Ok(()),
-        Ok(false) if explicit_targets => Err(format!("explicit target missing: {}", target.display())),
+        Ok(false) if explicit_targets => {
+            Err(format!("explicit target missing: {}", target.display()))
+        }
         Ok(false) => Ok(()),
-        Err(error) if explicit_targets => Err(format!("explicit target unreadable: {}: {error}", target.display())),
+        Err(error) if explicit_targets => Err(format!(
+            "explicit target unreadable: {}: {error}",
+            target.display()
+        )),
         Err(_) => Ok(()),
     }
 }
 
-fn collect_target_directory(target: &Path, explicit_targets: bool, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    walk(target, files, explicit_targets).map_err(|error| format!("scan {}: {error}", target.display()))
+fn collect_target_directory(
+    target: &Path,
+    files: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    walk(target, files)
+        .map_err(|error| format!("scan {}: {error}", target.display()))
 }
 
-fn walk(dir: &Path, out: &mut Vec<PathBuf>, explicit_targets: bool) -> io::Result<()> {
-    let entries = match fs::read_dir(dir) {
-        Ok(entries) => entries,
-        Err(error) => {
-            if explicit_targets {
-                return Err(error);
-            }
-            return Ok(());
-        }
-    };
+fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
+    let entries = fs::read_dir(dir)?;
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
@@ -368,7 +369,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>, explicit_targets: bool) -> io::Resul
             continue;
         }
         if path.is_dir() {
-            walk(&path, out, explicit_targets)?;
+            walk(&path, out)?;
         } else if should_scan_file(&path) {
             out.push(path);
         }
@@ -377,31 +378,53 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>, explicit_targets: bool) -> io::Resul
 }
 
 fn should_skip_walk_entry(path: &Path) -> bool {
-    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
     (name.starts_with('.') && name != ".moon") || SKIP_DIRS.contains(&name)
+}
+
+fn should_skip_scan_name(name: &str) -> bool {
+    SELF_SKIP_NAMES.contains(&name)
+}
+
+fn is_scanned_special_name(name: &str) -> bool {
+    matches!(name, "Cargo.toml" | "Cargo.lock" | "README.md" | "Makefile")
+}
+
+fn has_scanned_extension(ext: &str) -> bool {
+    matches!(
+        ext,
+        "toml"
+            | "lock"
+            | "yml"
+            | "yaml"
+            | "rs"
+            | "sh"
+            | "bash"
+            | "py"
+            | "md"
+            | "txt"
+            | "tla"
+            | "cfg"
+    )
 }
 
 fn should_scan_file(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
         return false;
     };
-    if SELF_SKIP_NAMES.contains(&name) {
+    if should_skip_scan_name(name) {
         return false;
     }
-    if name == "Cargo.toml"
-        || name == "Cargo.lock"
-        || name == "README.md"
-        || name == "Makefile"
-    {
+    if is_scanned_special_name(name) {
         return true;
     }
     let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
         return false;
     };
-    matches!(
-        ext,
-        "toml" | "lock" | "yml" | "yaml" | "rs" | "sh" | "bash" | "py" | "md" | "txt" | "tla" | "cfg"
-    )
+    has_scanned_extension(ext)
 }
 
 fn relative_label(root: &Path, path: &Path) -> String {
@@ -444,14 +467,13 @@ fn emit_file_findings(root: &Path, file: &Path, findings: Vec<Finding>, totals: 
 fn run_scan(root: &Path, targets: &[PathBuf], explicit_targets: bool) -> Result<u8, String> {
     let files = collect_scan_files(targets, explicit_targets)?;
     let mut totals = ScanTotals::default();
+    let mut scan_errors: usize = 0;
     for file in &files {
         let findings = match scan_file(file) {
             Ok(findings) => findings,
             Err(message) => {
-                if explicit_targets {
-                    return Err(message);
-                }
                 eprintln!("{message}");
+                scan_errors = scan_errors.saturating_add(1);
                 continue;
             }
         };
@@ -461,6 +483,11 @@ fn run_scan(root: &Path, targets: &[PathBuf], explicit_targets: bool) -> Result<
         return Err("no files successfully scanned from explicit targets".to_owned());
     }
     emit_summary(&totals);
+    if scan_errors > 0 {
+        return Err(format!(
+            "{scan_errors} file(s) were unreadable during scan"
+        ));
+    }
     Ok(if totals.active_total == 0 { 0 } else { 1 })
 }
 

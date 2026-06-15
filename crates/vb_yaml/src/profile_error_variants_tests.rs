@@ -462,10 +462,7 @@ fn kind_legacy_primitive_deprecated() {
         name: "old_name".to_string(),
         replacement: "new_name".to_string(),
     };
-    assert_eq!(
-        err.kind(),
-        crate::YamlErrorKind::LegacyPrimitiveDeprecated
-    );
+    assert_eq!(err.kind(), crate::YamlErrorKind::LegacyPrimitiveDeprecated);
 }
 
 /// Verify kind() → code() mapping consistency for each error variant.
@@ -482,7 +479,11 @@ fn kind_legacy_primitive_deprecated() {
 #[test]
 fn kind_to_code_mapping_consistent() {
     assert_eq!(
-        YamlError::DuplicateKey { key: Box::from("x") }.code().as_str(),
+        YamlError::DuplicateKey {
+            key: Box::from("x")
+        }
+        .code()
+        .as_str(),
         "DUPLICATE_KEY"
     );
     assert_eq!(
@@ -494,7 +495,11 @@ fn kind_to_code_mapping_consistent() {
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
-        YamlError::CustomTag { tag: Box::from("!x") }.code().as_str(),
+        YamlError::CustomTag {
+            tag: Box::from("!x")
+        }
+        .code()
+        .as_str(),
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
@@ -502,11 +507,17 @@ fn kind_to_code_mapping_consistent() {
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
-        YamlError::AmbiguousScalar { scalar: Box::from("x") }.code().as_str(),
+        YamlError::AmbiguousScalar {
+            scalar: Box::from("x")
+        }
+        .code()
+        .as_str(),
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
-        YamlError::UnsupportedFeature { feature: "x" }.code().as_str(),
+        YamlError::UnsupportedFeature { feature: "x" }
+            .code()
+            .as_str(),
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
@@ -514,27 +525,45 @@ fn kind_to_code_mapping_consistent() {
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
-        YamlError::ParseError { line: 1, reason: Box::from("x") }.code().as_str(),
+        YamlError::ParseError {
+            line: 1,
+            reason: Box::from("x")
+        }
+        .code()
+        .as_str(),
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
-        YamlError::LegacyPrimitiveDeprecated { name: "x".into(), replacement: "y".into() }.code().as_str(),
+        YamlError::LegacyPrimitiveDeprecated {
+            name: "x".into(),
+            replacement: "y".into()
+        }
+        .code()
+        .as_str(),
         "FORBIDDEN_YAML_FEATURE"
     );
     assert_eq!(
-        YamlError::UnsupportedTrigger { trigger: "x" }.code().as_str(),
+        YamlError::UnsupportedTrigger { trigger: "x" }
+            .code()
+            .as_str(),
         "UNSUPPORTED_TRIGGER"
     );
     assert_eq!(
-        YamlError::SourceTooLarge { size: 1, max: 0 }.code().as_str(),
+        YamlError::SourceTooLarge { size: 1, max: 0 }
+            .code()
+            .as_str(),
         "PAYLOAD_TOO_LARGE"
     );
     assert_eq!(
-        YamlError::NestingTooDeep { depth: 1, max: 0 }.code().as_str(),
+        YamlError::NestingTooDeep { depth: 1, max: 0 }
+            .code()
+            .as_str(),
         "LIMIT_EXCEEDED"
     );
     assert_eq!(
-        YamlError::NodeLimitExceeded { count: 1, max: 0 }.code().as_str(),
+        YamlError::NodeLimitExceeded { count: 1, max: 0 }
+            .code()
+            .as_str(),
         "LIMIT_EXCEEDED"
     );
     assert_eq!(
@@ -542,15 +571,23 @@ fn kind_to_code_mapping_consistent() {
         "LIMIT_EXCEEDED"
     );
     assert_eq!(
-        YamlError::SequenceTooLong { len: 1, max: 0 }.code().as_str(),
+        YamlError::SequenceTooLong { len: 1, max: 0 }
+            .code()
+            .as_str(),
         "LIMIT_EXCEEDED"
     );
     assert_eq!(
-        YamlError::MappingTooLarge { count: 1, max: 0 }.code().as_str(),
+        YamlError::MappingTooLarge { count: 1, max: 0 }
+            .code()
+            .as_str(),
         "LIMIT_EXCEEDED"
     );
     assert_eq!(
-        YamlError::UnknownField { field: Box::from("x") }.code().as_str(),
+        YamlError::UnknownField {
+            field: Box::from("x")
+        }
+        .code()
+        .as_str(),
         "UNKNOWN_TOP_LEVEL_FIELD"
     );
     assert_eq!(
@@ -562,7 +599,12 @@ fn kind_to_code_mapping_consistent() {
         "MISSING_REQUIRED_FIELD"
     );
     assert_eq!(
-        YamlError::FieldShape { field: "x", expected: "y" }.code().as_str(),
+        YamlError::FieldShape {
+            field: "x",
+            expected: "y"
+        }
+        .code()
+        .as_str(),
         "TYPE_MISMATCH"
     );
 }

@@ -13,8 +13,7 @@ fn vb_e7tl_trailing_bytes_required() {
     let result = trailing_byte_bounds(declared_end, declared_end);
 
     match result {
-        None => {
-        }
+        None => {}
         Some(_) => {
             kani::assert(
                 false,

@@ -467,7 +467,17 @@ fn fanout_error_propagation_preserves_output_slot_after_branch_failure() {
         &mut run, &mut store,
         2, StepIdx::new(3), StepIdx::new(4), accumulator, Some(output),
     );
-    assert!(result.is_err());
+    assert!(
+        result.is_err(),
+        "fanout should error when accumulator type changed between branches"
+    );
+    match &result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            assert_eq!(expected, "list");
+            assert_eq!(found, "boolean");
+        }
+        other => panic!("expected TypeMismatch, got {other:?}"),
+    }
 
     let out_val = *run.read_slot(output)
         .ok()
@@ -883,7 +893,17 @@ fn nested_fanout_inner_failure_does_not_corrupt_outer_state() {
         &mut run, &mut store,
         1, inner_entry, inner_join, inner_acc, Some(inner_out),
     );
-    assert!(inner_branch_result.is_err());
+    assert!(
+        inner_branch_result.is_err(),
+        "inner branch must error when accumulator is not a list"
+    );
+    match &inner_branch_result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            assert_eq!(expected, "list");
+            assert_eq!(found, "boolean");
+        }
+        other => panic!("expected TypeMismatch, got {other:?}"),
+    }
 
     let outer_acc_val = *run.read_slot(outer_acc)
         .ok()

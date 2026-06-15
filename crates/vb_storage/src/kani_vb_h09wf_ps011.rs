@@ -33,7 +33,11 @@ fn ps_011_digest_triangle() {
     // Keep bounded: 0..255 bytes
     let ir: Vec<u8> = (0..ir_len).map(|_| kani::any()).collect();
 
-    let record = crate::records::CompiledIrRecord { digest, ir, metadata_hash: None };
+    let record = crate::records::CompiledIrRecord {
+        digest,
+        ir,
+        metadata_hash: None,
+    };
 
     let result = validate_compiled_ir_record(&record);
 
@@ -79,7 +83,11 @@ fn ps_011_oversized_envelope_rejected_early() {
 
     let ir: Vec<u8> = vec![0u8; ir_len as usize];
 
-    let record = crate::records::CompiledIrRecord { digest, ir, metadata_hash: None };
+    let record = crate::records::CompiledIrRecord {
+        digest,
+        ir,
+        metadata_hash: None,
+    };
 
     let result = validate_compiled_ir_record(&record);
 

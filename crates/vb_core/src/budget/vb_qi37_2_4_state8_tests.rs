@@ -91,8 +91,7 @@ mod kani_overflow_harnesses {
             Some(_) => {
                 kani::assert(false, "u64::MAX * 2 should overflow");
             }
-            None => {
-            }
+            None => {}
         }
     }
 
@@ -110,8 +109,7 @@ mod kani_overflow_harnesses {
             Some(_) => {
                 kani::assert(false, "total + product should overflow");
             }
-            None => {
-            }
+            None => {}
         }
     }
 

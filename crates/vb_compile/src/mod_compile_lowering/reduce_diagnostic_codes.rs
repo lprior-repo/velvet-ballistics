@@ -55,8 +55,9 @@ mod tests {
             );
 
             prop_assert!(
-                result.is_err(),
-                "canonical_body_step_width should reject unsupported primitive in body"
+                matches!(result, Err(_)),
+                "canonical_body_step_width should reject unsupported primitive in body, got {:?}",
+                result
             );
         }
     }
@@ -81,28 +82,6 @@ mod tests {
         assert!(
             result.is_err(),
             "body_width must error for unsupported primitives"
-        );
-    }
-
-    /// Test that body_width with unsupported primitives in body returns Err.
-    #[test]
-    fn test_reduce_body_width_unsupported_primitive() {
-        let body = vec![vb_yaml::ast::StepAst {
-            id: "bad".to_string(),
-            name: None,
-            condition: None,
-            primitive: StepPrimitive::Finish {
-                result: ScalarValue::Integer(0),
-            },
-            with: None,
-            retry: None,
-            on_error: None,
-            then: None,
-        }];
-        let result = crate::mod_compile_lowering::part_01::body_width(&body, 3);
-        assert!(
-            result.is_err(),
-            "body_width must reject unsupported primitive in body"
         );
     }
 }

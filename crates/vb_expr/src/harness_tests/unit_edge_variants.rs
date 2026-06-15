@@ -185,7 +185,7 @@ fn unit_valid_program_constructs_successfully() {
         "balanced program must construct, got {:?}",
         program
     );
-    let program = program.unwrap();
+    let program = program.expect("balanced program must construct");
     let result = eval_with_consts(&program, vec![ConstValue::I64(2), ConstValue::I64(3)]);
     match result {
         Ok(SlotValue::I64(n)) => assert_eq!(n, 5),

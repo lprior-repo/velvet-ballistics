@@ -33,14 +33,14 @@ fn kani_f64_add_preserves_finiteness() {
     let left = match FiniteF64::new(left_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            kani::assume(false);
             return;
         }
     };
     let right = match FiniteF64::new(right_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            kani::assume(false);
             return;
         }
     };
@@ -77,14 +77,14 @@ fn kani_f64_sub_preserves_finiteness() {
     let left = match FiniteF64::new(left_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            kani::assume(false);
             return;
         }
     };
     let right = match FiniteF64::new(right_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            kani::assume(false);
             return;
         }
     };
@@ -124,14 +124,14 @@ fn kani_f64_mul_preserves_finiteness() {
     let left = match FiniteF64::new(left_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            kani::assume(false);
             return;
         }
     };
     let right = match FiniteF64::new(right_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded input");
+            kani::assume(false);
             return;
         }
     };
@@ -161,7 +161,7 @@ fn kani_f64_neg_preserves_finiteness() {
     let val = match FiniteF64::new(val_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite input");
+            kani::assume(false);
             return;
         }
     };

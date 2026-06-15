@@ -79,7 +79,10 @@ fn read_taint_no_panic() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop {}}
+        Err(_) => {
+            kani::assume(false);
+            loop {}
+        }
     };
 
     let init_result = frame.write_slot(slot, SlotValue::Null);
@@ -105,7 +108,10 @@ fn write_taint_no_panic() {
     kani::assume(frame.is_ok());
     let mut frame = match frame {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop {}}
+        Err(_) => {
+            kani::assume(false);
+            loop {}
+        }
     };
 
     let init_result = frame.write_slot(slot, SlotValue::Null);

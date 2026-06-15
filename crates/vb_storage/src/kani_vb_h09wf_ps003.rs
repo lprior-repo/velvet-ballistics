@@ -42,7 +42,10 @@ fn ps_003_size_bound() {
         // Oversized lengths rejected
         match result {
             Err(JournalError::PayloadTooLarge { len: reported, max }) => {
-                kani::assert(reported == len as u32, "PayloadTooLarge.len must match input");
+                kani::assert(
+                    reported == len as u32,
+                    "PayloadTooLarge.len must match input",
+                );
                 kani::assert(
                     max == MAX_COMPILED_IR_BYTES,
                     "PayloadTooLarge.max must be MAX_COMPILED_IR_BYTES",
@@ -75,13 +78,16 @@ fn ps_003_size_bound() {
 #[kani::proof]
 fn ps_003_u32_conversion_safe() {
     // MAX_COMPILED_IR_BYTES = 16_777_216 fits in u32
-   kani::assert(MAX_COMPILED_IR_BYTES <= u32::MAX, "MAX fits u32");
+    kani::assert(MAX_COMPILED_IR_BYTES <= u32::MAX, "MAX fits u32");
 
     // Zero always converts
     kani::assert(u32::try_from(0usize).is_ok(), "zero converts");
 
     // MAX_COMPILED_IR_BYTES as usize converts
-    kani::assert(u32::try_from(MAX_COMPILED_IR_BYTES as usize).is_ok(), "MAX converts");
+    kani::assert(
+        u32::try_from(MAX_COMPILED_IR_BYTES as usize).is_ok(),
+        "MAX converts",
+    );
 
     // Any value up to MAX_COMPILED_IR_BYTES converts safely
     let v: usize = kani::any();

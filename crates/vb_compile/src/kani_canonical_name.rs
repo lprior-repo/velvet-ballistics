@@ -203,7 +203,10 @@ fn canonical_name_all_harness() {
         11 => StepPrimitive::Finish {
             result: ScalarValue::String(value.clone()),
         },
-        _ => unreachable!("kani::assume ensures discriminant < 12"),
+        _ => {
+            kani::assume(false);
+            loop {}
+        }
     };
 
     let result = crate::mod_compile_lowering::canonical_primitive_name(&primitive);
@@ -222,7 +225,10 @@ fn canonical_name_all_harness() {
         9 => kani::assert(result == "wait", "Wait must map to \"wait\""),
         10 => kani::assert(result == "ask", "Ask must map to \"ask\""),
         11 => kani::assert(result == "finish", "Finish must map to \"finish\""),
-        _ => unreachable!("kani::assume ensures discriminant < 12"),
+        _ => {
+            kani::assume(false);
+            loop {}
+        }
     }
 }
 

@@ -63,10 +63,12 @@ fn make_workflow() -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = postcard::to_allocvec(&parts)
+        .expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    CompiledWorkflow::try_from_parts(parts)
+        .expect("construct compiled workflow from valid parts")
 }
 
 proptest! {
@@ -76,7 +78,11 @@ proptest! {
         let (_temp, journal) = temp_journal();
         let workflow = make_workflow();
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-        prop_assert!(result.is_ok(), "normal workflow submission must succeed");
+        let artifact = result.expect("normal workflow submission must succeed");
+        prop_assert_eq!(
+            artifact.verification.gate_count, 15,
+            "successful submission must produce 15-gate proof"
+        );
     }
 
     /// PS-003b: MAX_COMPILED_IR_BYTES is a u32 and fits in its domain.
@@ -101,12 +107,12 @@ proptest! {
         let (_temp, journal) = temp_journal();
         let workflow = make_workflow();
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-        if result.is_ok() {
-            let artifact = result.unwrap();
-            let envelope = postcard::to_allocvec(&artifact).expect("serialize");
-            // Envelope must be within bounds for submission to succeed
-            prop_assert!(envelope.len() as u32 <= MAX_COMPILED_IR_BYTES,
-                "successfully submitted artifact envelope must not exceed MAX");
-        }
+        let artifact = result.expect("large envelope submission must succeed for valid workflow");
+        let envelope = postcard::to_allocvec(&artifact)
+            .expect("serialize artifact envelope for size check");
+        // Envelope must be within bounds for submission to succeed
+        prop_assert!(envelope.len() as u32 <= MAX_COMPILED_IR_BYTES,
+            "successfully submitted artifact envelope must not exceed MAX, got {} bytes",
+            envelope.len());
     }
 }

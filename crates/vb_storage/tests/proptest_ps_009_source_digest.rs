@@ -61,10 +61,12 @@ fn make_workflow() -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts).unwrap();
+    let hash_bytes = postcard::to_allocvec(&parts)
+        .expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts).unwrap()
+    CompiledWorkflow::try_from_parts(parts)
+        .expect("construct compiled workflow from valid parts")
 }
 
 proptest! {
@@ -93,9 +95,10 @@ proptest! {
         let workflow = make_workflow();
 
         let result = submit_artifact(&journal, &workflow, policy);
-        if let Ok(artifact) = result {
-            prop_assert_eq!(artifact.source_digest, artifact.digest);
-        }
+        let artifact = result.expect(
+            &format!("source_digest invariance test: {policy:?} must succeed for valid workflow")
+        );
+        prop_assert_eq!(artifact.source_digest, artifact.digest);
     }
 
     /// PS-009c: Multiple submissions preserve source_digest invariance.

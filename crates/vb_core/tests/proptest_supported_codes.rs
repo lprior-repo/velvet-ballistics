@@ -65,27 +65,27 @@ fn from_str_round_trips_for_all_registry_codes() {
 #[test]
 fn from_str_accepts_new_gate_verifier_ranges() {
     // E05xx range (0x0501-0x0513)
-    assert!(DiagnosticCode::from_str("E0501").is_ok());
-    assert!(DiagnosticCode::from_str("E0513").is_ok());
-    assert!(DiagnosticCode::from_str("E0507").is_ok());
-    assert!(DiagnosticCode::from_str("E050D").is_ok());
-    assert!(DiagnosticCode::from_str("E0511").is_ok());
+    assert!(matches!(DiagnosticCode::from_str("E0501"), Ok(ref dc) if dc.code() == 0x0501));
+    assert!(matches!(DiagnosticCode::from_str("E0513"), Ok(ref dc) if dc.code() == 0x0513));
+    assert!(matches!(DiagnosticCode::from_str("E0507"), Ok(ref dc) if dc.code() == 0x0507));
+    assert!(matches!(DiagnosticCode::from_str("E050D"), Ok(ref dc) if dc.code() == 0x050D));
+    assert!(matches!(DiagnosticCode::from_str("E0511"), Ok(ref dc) if dc.code() == 0x0511));
 }
 
 #[test]
 fn from_str_accepts_new_contract_discovery_ranges() {
     // E06xx range (0x0601-0x0603)
-    assert!(DiagnosticCode::from_str("E0601").is_ok());
-    assert!(DiagnosticCode::from_str("E0602").is_ok());
-    assert!(DiagnosticCode::from_str("E0603").is_ok());
+    assert!(matches!(DiagnosticCode::from_str("E0601"), Ok(ref dc) if dc.code() == 0x0601));
+    assert!(matches!(DiagnosticCode::from_str("E0602"), Ok(ref dc) if dc.code() == 0x0602));
+    assert!(matches!(DiagnosticCode::from_str("E0603"), Ok(ref dc) if dc.code() == 0x0603));
 }
 
 #[test]
 fn from_str_accepts_extended_runtime_boundary_ranges() {
     // E40xx range extended to 0x4021 (past 0x401B)
-    assert!(DiagnosticCode::from_str("E401C").is_ok());
-    assert!(DiagnosticCode::from_str("E4020").is_ok());
-    assert!(DiagnosticCode::from_str("E4021").is_ok());
+    assert!(matches!(DiagnosticCode::from_str("E401C"), Ok(ref dc) if dc.code() == 0x401C));
+    assert!(matches!(DiagnosticCode::from_str("E4020"), Ok(ref dc) if dc.code() == 0x4020));
+    assert!(matches!(DiagnosticCode::from_str("E4021"), Ok(ref dc) if dc.code() == 0x4021));
 }
 
 // ---------------------------------------------------------------------------

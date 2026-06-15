@@ -30,10 +30,12 @@ proptest! {
         b1.append_event(&event).expect("append");
         b1.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
-        prop_assert_eq!(b2.len(), 0);
+        prop_assert_eq!(b2.len(), 0, "new batch must start empty");
         let result = b2.append_event(&event);
-        prop_assert!(result.is_err());
-        prop_assert_eq!(b2.len(), 0);
+        let is_err = result.is_err();
+        prop_assert!(is_err,
+            "duplicate event must fail to append, got Ok");
+        prop_assert_eq!(b2.len(), 0, "failed append must not increase batch length");
     }
     #[test]
     fn ps004_no_persist(run in 1u64..1000u64) {
@@ -60,8 +62,18 @@ proptest! {
             &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         match (r1, r2) {
-            (Ok(v1), Ok(v2)) => { prop_assert_eq!(v1, v2); }
-            _ => {}
+            (Ok(v1), Ok(v2)) => {
+                prop_assert_eq!(v1, v2,
+                    "encode_record must be deterministic for same inputs");
+            }
+            (Err(e1), Err(e2)) => {
+                prop_assert!(true,
+                    "both encode attempts failed (acceptable edge case)");
+            }
+            _ => {
+                prop_assert!(false,
+                    "encode_record must be consistently Ok or Err, not mixed");
+            }
         }
     }
     #[test]
@@ -71,9 +83,18 @@ proptest! {
         let mut prev = 0usize;
         for (run, seq) in events {
             let event = make_event(run, seq);
-            if batch.append_event(&event).is_ok() {
-                prop_assert!(batch.len() > prev);
-                prev = batch.len();
+            match batch.append_event(&event) {
+                Ok(()) => {
+                    let new_len = batch.len();
+                    prop_assert!(new_len > prev,
+                        "batch length must grow after successful append: {} -> {}",
+                        prev, new_len);
+                    prev = new_len;
+                }
+                Err(_) => {
+                    prop_assert_eq!(batch.len(), prev,
+                        "failed append must not change batch length");
+                }
             }
         }
     }

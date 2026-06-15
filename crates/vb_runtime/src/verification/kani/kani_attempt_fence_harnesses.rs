@@ -85,11 +85,17 @@ fn any_do_run_state(step_count: u16, current_attempt: u16) -> RunState {
     };
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop {}}
+        Err(_) => {
+            kani::assume(false);
+            loop {}
+        }
     };
     let frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop {}}
+        Err(_) => {
+            kani::assume(false);
+            loop {}
+        }
     };
 
     let mut state = RunState {
@@ -211,8 +217,7 @@ fn proof_future_attempt_rejected_or_normalized() {
 
     let result2 = normalize_scheduled_ticket(&state, future_ticket);
     match result2 {
-        Err(RuntimeError::AttemptBeyondMax { .. }) => {
-        }
+        Err(RuntimeError::AttemptBeyondMax { .. }) => {}
         _ => {}
     }
 }
@@ -334,16 +339,14 @@ fn proof_typed_missing_run_error() {
     // Verify that the error type exists and carries typed information
     let error = RuntimeError::RunNotFound;
     match error {
-        RuntimeError::RunNotFound => {
-        }
+        RuntimeError::RunNotFound => {}
         _ => {}
     }
 
     // Verify InvalidActionCompletion is differentiated from RunNotFound
     let error2 = RuntimeError::InvalidActionCompletion;
     match error2 {
-        RuntimeError::InvalidActionCompletion => {
-        }
+        RuntimeError::InvalidActionCompletion => {}
         _ => {}
     }
 }
@@ -437,8 +440,7 @@ fn proof_retry_fence_no_overflow() {
                 kani::assert(!can_retry, "if at max, retry must be exhausted");
             }
         }
-        Err(RuntimeError::UnsupportedOperation { .. }) => {
-        }
+        Err(RuntimeError::UnsupportedOperation { .. }) => {}
         _ => {}
     }
 }

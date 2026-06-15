@@ -275,8 +275,7 @@ fn runtime_admission_requires_artifact_digest_not_raw_workflow() -> Result<(), S
     let journal = temp_journal()?;
     let workflow = minimal_workflow()?;
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
-    assert!(result.is_ok(), "Relaxed must be accepted");
-    let artifact = result.unwrap();
+    let artifact = result.expect("Relaxed must be accepted");
     assert_eq!(artifact.digest, workflow.digest());
     Ok(())
 }
@@ -301,8 +300,9 @@ fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
     .map_err(|e| format!("workflow with zero digest should fail: {e}"))?;
     let result = submit_artifact(&journal, &bad_workflow, RuntimePolicy::Strict);
     assert!(
-        result.is_err(),
-        "workflow with zero digest should be rejected"
+        matches!(result, Err(vb_storage::JournalError::ArtifactChecksumMismatch)),
+        "workflow with zero digest must be rejected with ArtifactChecksumMismatch, got {:?}",
+        result
     );
     Ok(())
 }
@@ -311,8 +311,10 @@ fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
 fn submit_artifact_validates_workflow_structure() -> Result<(), String> {
     let journal = temp_journal()?;
     let workflow = minimal_workflow()?;
-    let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict);
-    assert!(result.is_ok(), "valid workflow should be accepted");
+    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
+        .expect("valid workflow should be accepted under Strict policy");
+    assert_eq!(artifact.verification.gate_count, 15,
+        "accepted workflow must have 15 gates");
     Ok(())
 }
 

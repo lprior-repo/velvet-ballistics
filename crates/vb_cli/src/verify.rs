@@ -115,39 +115,8 @@ pub(crate) fn cmd_verify_with_durability(
                 }
                 return emit_verify_error(&err, profile, code, output, legacy_json);
             }
-            match &err {
-                VerifyError::DeferredGates(result) => {
-                    crate::errln!("{}", deferred_gate_message(result));
-                    crate::errln!("gate statuses: {}", result.checks.join(", "));
-                    crate::errln!("passed gates: {}", result.passed_gates().join(", "));
-                    let deferred_checks = result.deferred_gates();
-                    if !deferred_checks.is_empty() {
-                        crate::errln!("deferred gates: {}", deferred_checks.join(", "));
-                    }
-                    if !result.warnings.is_empty() {
-                        crate::errln!("warnings: {}", result.warnings.join(" | "));
-                    }
-                }
-                VerifyError::YamlParse(msg) => {
-                    crate::errln!("{msg}");
-                }
-                VerifyError::Compile(errors) => {
-                    for e in errors {
-                        crate::errln!("compile error: {e}");
-                    }
-                }
-                VerifyError::IrValidation(msg) => {
-                    crate::errln!("{msg}");
-                }
-                VerifyError::BudgetPolicy(msg) => {
-                    crate::errln!("{msg}");
-                }
-                VerifyError::StorageError(msg) => {
-                    crate::errln!("{msg}");
-                }
-                VerifyError::ReplayDivergence(msg) => {
-                    crate::errln!("{msg}");
-                }
+            for line in human_verify_error_lines(&err) {
+                crate::errln!("{line}");
             }
             code.into()
         }
@@ -278,6 +247,35 @@ fn emit_verify_error(
             output,
             legacy_json,
         ),
+    }
+}
+
+fn human_verify_error_lines(err: &VerifyError) -> Vec<String> {
+    match err {
+        VerifyError::DeferredGates(result) => {
+            let mut lines = vec![
+                deferred_gate_message(result),
+                format!("gate statuses: {}", result.checks.join(", ")),
+                format!("passed gates: {}", result.passed_gates().join(", ")),
+            ];
+            let deferred_checks = result.deferred_gates();
+            if !deferred_checks.is_empty() {
+                lines.push(format!("deferred gates: {}", deferred_checks.join(", ")));
+            }
+            if !result.warnings.is_empty() {
+                lines.push(format!("warnings: {}", result.warnings.join(" | ")));
+            }
+            lines
+        }
+        VerifyError::Compile(errors) => errors
+            .iter()
+            .map(|error| format!("compile error: {error}"))
+            .collect(),
+        VerifyError::YamlParse(message)
+        | VerifyError::IrValidation(message)
+        | VerifyError::BudgetPolicy(message)
+        | VerifyError::StorageError(message)
+        | VerifyError::ReplayDivergence(message) => vec![message.clone()],
     }
 }
 
@@ -563,6 +561,70 @@ mod tests {
             report.pointer("/error").and_then(serde_json::Value::as_str),
             Some("full verification blocked: deferred gates remain: contracts, evidence")
         );
+    }
+
+    #[test]
+    fn human_verify_error_lines_formats_compile_errors() {
+        let lines = human_verify_error_lines(&VerifyError::Compile(vec![
+            String::from("first compile failure"),
+            String::from("second compile failure"),
+        ]));
+
+        assert_eq!(
+            lines,
+            vec![
+                String::from("compile error: first compile failure"),
+                String::from("compile error: second compile failure"),
+            ]
+        );
+        assert_eq!(
+            verify_error_message(&VerifyError::Compile(vec![
+                String::from("first compile failure"),
+                String::from("second compile failure"),
+            ])),
+            String::from(
+                "compilation failed:\n  first compile failure\n  second compile failure\n"
+            )
+        );
+    }
+
+    #[test]
+    fn remaining_verify_error_variants_keep_public_text_and_exit_codes() {
+        let cases = vec![
+            (
+                VerifyError::IrValidation(String::from("bad ir")),
+                vec![String::from("bad ir")],
+                String::from("IR validation error: bad ir"),
+                CliExitCode::VerificationFailed,
+            ),
+            (
+                VerifyError::BudgetPolicy(String::from("over budget")),
+                vec![String::from("over budget")],
+                String::from("budget policy violation: over budget"),
+                CliExitCode::VerificationFailed,
+            ),
+            (
+                VerifyError::StorageError(String::from("disk full")),
+                vec![String::from("disk full")],
+                String::from("storage error: disk full"),
+                CliExitCode::StorageError,
+            ),
+            (
+                VerifyError::ReplayDivergence(String::from("state diverged")),
+                vec![String::from("state diverged")],
+                String::from("replay divergence: state diverged"),
+                CliExitCode::ReplayDivergence,
+            ),
+        ];
+
+        for (error, expected_lines, expected_message, expected_code) in cases {
+            assert_eq!(human_verify_error_lines(&error), expected_lines);
+            assert_eq!(verify_error_message(&error), expected_message);
+            assert_eq!(
+                cli_exit_code_number(exit_code_for_error(&error)),
+                cli_exit_code_number(expected_code)
+            );
+        }
     }
 
     #[test]

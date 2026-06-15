@@ -16,13 +16,14 @@ fn connect_ipc_rejects_nonexistent_socket() {
     let path = PathBuf::from("/tmp/vb_ipc_test_nonexistent_39f2.socket");
     let result = IpcClient::connect(&path);
 
-    assert!(
-        result.is_err(),
-        "connecting to a nonexistent socket must fail"
-    );
     let Err(error) = result else {
-        return;
+        panic!("connecting to a nonexistent socket must return ConnectFailed error");
     };
+    assert!(
+        matches!(error, IpcClientError::ConnectFailed { .. }),
+        "must return ConnectFailed, got {:?}",
+        error
+    );
     let message = error.to_string();
     assert!(
         message.contains("connect failed"),

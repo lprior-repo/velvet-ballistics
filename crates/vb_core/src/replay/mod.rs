@@ -346,8 +346,8 @@ pub use step::replay_step;
 mod tests;
 
 #[cfg(kani)]
+mod kani_harnesses_frame;
+#[cfg(kani)]
 mod kani_harnesses_plan;
 #[cfg(kani)]
 mod kani_harnesses_slots;
-#[cfg(kani)]
-mod kani_harnesses_frame;

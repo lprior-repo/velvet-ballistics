@@ -40,12 +40,16 @@ fn make_frame(run_id_val: u64, payload_bytes: impl Into<Bytes>) -> IngressFrame 
         payload_bytes.into(),
         MaxPayloadBytes::DEFAULT,
     )
-    .expect("test frame must be valid")
+    .unwrap_or_else(|e| {
+        panic!("test frame must be valid, got {:?} for run_id={}", e, run_id_val)
+    })
 }
 
 /// Creates a `QueueCapacity` from a `usize`.
 fn capacity(cap: usize) -> QueueCapacity {
-    QueueCapacity::new(NonZeroUsize::new(cap).expect("capacity must be non-zero"))
+    QueueCapacity::new(
+        NonZeroUsize::new(cap).unwrap_or_else(|| panic!("capacity must be non-zero: {}", cap)),
+    )
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════
@@ -71,11 +75,10 @@ fn memory_ingress_bounded_constructor_produces_memory_ingress_instance() {
         "submit to fresh queue must succeed"
     );
     let recv_result = ingress.try_recv();
-    assert!(recv_result.is_ok(), "recv from fresh queue must succeed");
-    assert!(
-        recv_result.unwrap().is_some(),
-        "recv from fresh queue must return Some(frame)"
-    );
+    let recv_frame = recv_result.expect("recv from fresh queue must succeed");
+    let recv_frame = recv_frame.expect("recv from fresh queue must return Some(frame)");
+    assert_eq!(recv_frame.run_id(), RunId::new(1), "recv frame must have correct run_id");
+    assert_eq!(recv_frame.workflow(), WorkflowDigest::from_bytes([0u8; 32]));
 }
 
 /// BDD scenario for LETHAL-1: capacity=1 queue construction.
@@ -153,11 +156,7 @@ fn ingress_frame_new_returns_ingress_frame_when_payload_within_limit() {
     let result = IngressFrame::new(run_id, workflow, payload, MaxPayloadBytes::DEFAULT);
 
     // Then: it succeeds with exact field values
-    assert!(
-        result.is_ok(),
-        "IngressFrame::new must succeed for empty payload"
-    );
-    let frame = result.unwrap();
+    let frame = result.expect("IngressFrame::new must succeed for empty payload");
     assert_eq!(frame.run_id(), run_id, "run_id must match exactly");
     assert_eq!(frame.workflow(), workflow, "workflow must match exactly");
     assert_eq!(frame.payload().bytes().len(), 0, "payload must be empty");
@@ -273,10 +272,11 @@ fn bounded_payload_new_accepts_empty_payload_for_any_limit() {
     ];
     for limit in limits {
         let result = BoundedPayload::new(Bytes::new(), limit);
-        assert!(
-            result.is_ok(),
-            "empty payload must be accepted with limit {:?}",
-            limit
+        let bounded = result.expect("empty payload must be accepted with limit {:?}", limit);
+        assert_eq!(
+            bounded.bytes().len(),
+            0,
+            "bounded payload must have zero-length payload"
         );
     }
 }
@@ -423,7 +423,7 @@ fn memory_ingress_try_recv_returns_none_when_queue_is_empty() {
         Ok(None),
         "recv on empty queue must return Ok(None), not Err"
     );
-    assert!(result.is_ok(), "result must be Ok (not Err)");
+    assert!(matches!(result, Ok(None)), "result must be Ok(None) exactly");
 }
 
 /// Empty queue: `Ok(None)` is NOT the same as `Err(Disconnected)`.
@@ -439,11 +439,11 @@ fn memory_ingress_try_recv_empty_differs_from_disconnected() {
     disconnected_ingress.disconnect_sender();
     let disc_result = disconnected_ingress.try_recv();
 
-    assert!(
-        disc_result.is_err(),
-        "disconnected queue must return Err, not Ok(None)"
+    assert_eq!(
+        disc_result,
+        Err(IpcError::Disconnected),
+        "disconnected queue must return Err(Disconnected), not Ok(None)"
     );
-    assert_eq!(disc_result, Err(IpcError::Disconnected));
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════
@@ -480,9 +480,11 @@ fn memory_ingress_try_recv_returns_disconnected_after_partial_submit() {
     ingress.disconnect_sender();
 
     // First recv should still work (queue not empty)
+    let first_recv = ingress.try_recv();
     assert!(
-        ingress.try_recv().is_ok(),
-        "recv before disconnect signal must succeed"
+        matches!(first_recv, Ok(Some(_))),
+        "recv before disconnect signal must return Ok(Some(frame)), got {:?}",
+        first_recv
     );
     // Second recv after disconnect
     assert_eq!(
@@ -596,11 +598,10 @@ fn ingress_frame_new_accepts_single_byte_payloads_within_limit() {
             payload,
             MaxPayloadBytes::DEFAULT,
         );
-        assert!(
-            result.is_ok(),
-            "single byte 0x{:02X} must be accepted within limit",
-            byte
-        );
+        let frame = result
+            .expect("single byte 0x{:02X} must be accepted within limit", byte);
+        assert_eq!(frame.run_id(), RunId::new(1));
+        assert_eq!(frame.payload().bytes().len(), 1);
     }
 }
 
@@ -616,7 +617,9 @@ fn ingress_frame_new_accepts_multi_byte_payloads_within_limit() {
         mid_payload,
         MaxPayloadBytes::DEFAULT,
     );
-    assert!(result.is_ok(), "mid-size payload within limit must succeed");
+    let frame = result.expect("mid-size payload within limit must succeed");
+    assert_eq!(frame.payload().bytes().len(), mid_payload.len());
+    assert_eq!(frame.run_id(), RunId::new(1));
 }
 
 /// One byte over limit must return exact `PayloadTooLarge` variant.
@@ -685,7 +688,13 @@ fn arb_ingress_frame() -> impl Strategy<Value = IngressFrame> {
                 Bytes::from(bytes),
                 MaxPayloadBytes::DEFAULT,
             )
-            .expect("generated frame must be valid within default limit")
+            .unwrap_or_else(|e| {
+                panic!(
+                    "generated frame must be valid within default limit: payload_len={}, error={:?}",
+                    bytes.len(),
+                    e
+                )
+            })
         })
     })
 }

@@ -80,7 +80,10 @@ fn check_is_retry_safe_with_key_panic_free() {
         1 => crate::action::RetrySafety::RequiresIdempotencyKey,
         2 => crate::action::RetrySafety::NotRetrySafe,
         3 => crate::action::RetrySafety::Unknown,
-        _ => unreachable!(),
+        _ => {
+            kani::assume(false);
+            loop {}
+        }
     };
 
     // This must not panic — the function only does pattern matching.

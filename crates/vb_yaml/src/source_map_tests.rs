@@ -2,6 +2,7 @@
 //! Source map module tests.
 
 use super::*;
+use crate::YamlError;
 use crate::source_map::build_semantic_source_map;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
@@ -209,8 +210,8 @@ fn adversarial_source_map_malformed_yaml_returns_error() {
     let yaml = "a: [1, 2\n";
     let result = build_source_map(yaml);
     assert!(
-        result.is_err(),
-        "expected error for malformed YAML in source map"
+        matches!(result, Err(YamlError::ParseError { .. })),
+        "expected ParseError for malformed YAML in source map, got {result:?}"
     );
 }
 
@@ -339,8 +340,11 @@ fn semantic_source_map_trigger_when_event() {
     let trigger = map.span_for_path("$.when.event");
     assert!(trigger.is_some(), "expected $.when.event trigger span");
     if let Some(span) = trigger {
-        assert!(span_text(yaml, span).contains("event"),
-            "trigger span should contain 'event', got: {:?}", span_text(yaml, span));
+        assert!(
+            span_text(yaml, span).contains("event"),
+            "trigger span should contain 'event', got: {:?}",
+            span_text(yaml, span)
+        );
     }
 }
 
@@ -377,8 +381,10 @@ fn semantic_source_map_non_trigger_not_flagged_as_trigger() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    name: invoice\nsteps:\n  - id: first\n    set:\n      output: result\nnext_key: after\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     // $.next_key is not a trigger container path
-    assert!(map.span_for_path("$.next_key").is_some(),
-        "non-trigger paths should still be tracked, just not flagged as triggers");
+    assert!(
+        map.span_for_path("$.next_key").is_some(),
+        "non-trigger paths should still be tracked, just not flagged as triggers"
+    );
 }
 
 /// Sequence indices in semantic paths are 0-based and sequential.
@@ -396,7 +402,10 @@ fn semantic_source_map_sequence_indices_sequential() {
     if let (Some(sa), Some(sb)) = (a, b) {
         let text_a = span_text(yaml, sa);
         let text_b = span_text(yaml, sb);
-        assert_ne!(text_a, text_b, "different step indices should map to different text");
+        assert_ne!(
+            text_a, text_b,
+            "different step indices should map to different text"
+        );
     }
 }
 
@@ -435,8 +444,10 @@ fn semantic_source_map_root_scalar() {
     let version = map.span_for_path("$.version");
     assert!(version.is_some(), "expected $.version path");
     if let Some(span) = version {
-        assert!(span_text(yaml, span).contains("velvet-ballistics/v1"),
-            "version span should contain version string");
+        assert!(
+            span_text(yaml, span).contains("velvet-ballistics/v1"),
+            "version span should contain version string"
+        );
     }
 }
 
@@ -510,7 +521,15 @@ fn build_source_map_handles_mixed_indentation() {
 fn build_source_map_flow_style_sequence() {
     let yaml = "items: [a, b, c]\n";
     let result = build_source_map(yaml);
-    assert!(result.is_ok(), "flow-style sequence should be accepted");
+    match result {
+        Ok(map) => {
+            assert!(
+                !map.is_empty(),
+                "flow-style sequence source map should not be empty"
+            );
+        }
+        Err(e) => panic!("flow-style sequence should be accepted, got error: {e:?}"),
+    }
 }
 
 /// Source map handles YAML with flow style mappings.
@@ -518,7 +537,15 @@ fn build_source_map_flow_style_sequence() {
 fn build_source_map_flow_style_mapping() {
     let yaml = "obj: {key: value}\n";
     let result = build_source_map(yaml);
-    assert!(result.is_ok(), "flow-style mapping should be accepted");
+    match result {
+        Ok(map) => {
+            assert!(
+                !map.is_empty(),
+                "flow-style mapping source map should not be empty"
+            );
+        }
+        Err(e) => panic!("flow-style mapping should be accepted, got error: {e:?}"),
+    }
 }
 
 /// Source map handles empty sequences and mappings.
@@ -527,7 +554,10 @@ fn build_source_map_empty_containers() {
     let yaml = "items: []\nobj: {}\n";
     let result = build_source_map(yaml);
     match result {
-        Ok(map) => assert!(map.len() >= 2, "expected at least 2 nodes for empty containers"),
+        Ok(map) => assert!(
+            map.len() >= 2,
+            "expected at least 2 nodes for empty containers"
+        ),
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
 }
@@ -537,7 +567,10 @@ fn build_source_map_empty_containers() {
 fn semantic_source_map_no_steps() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
-    assert!(map.span_for_path("$.version").is_some(), "expected $.version");
+    assert!(
+        map.span_for_path("$.version").is_some(),
+        "expected $.version"
+    );
     assert!(map.span_for_path("$.name").is_some(), "expected $.name");
 }
 

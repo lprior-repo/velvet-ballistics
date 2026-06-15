@@ -39,7 +39,10 @@ impl MonotonicClock {
             if new_tick < current {
                 return false; // backward tick rejected
             }
-            match self.tick.compare_exchange(current, new_tick, Ordering::SeqCst, Ordering::SeqCst) {
+            match self
+                .tick
+                .compare_exchange(current, new_tick, Ordering::SeqCst, Ordering::SeqCst)
+            {
                 Ok(_) => return true,
                 Err(actual) => current = actual,
             }

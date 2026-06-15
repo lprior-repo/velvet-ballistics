@@ -22,7 +22,6 @@ verus! {
 /// over arbitrary byte inputs with libFuzzer.
 #[verifier::external_body]
 pub proof fn po_006_decode_container_blocker_documented()
-    ensures true
 {
     // Blocked: requires postcard/Serde wire-format model in Verus.
     // Fuzz target compensates: see fuzz/fuzz_targets/vb_ajc40_compiled_query_decode.rs

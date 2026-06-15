@@ -93,10 +93,14 @@ fn kani_lifecycle_duplicate_cancel() {
 
     // Simulate the state machine path for duplicate cancel
     // State 1: Active or WaitingAnswer (cancelable)
-    let initial_state = kani::any::<LifecycleState>();
-    kani::assume(
-        initial_state == LifecycleState::Active || initial_state == LifecycleState::WaitingAnswer,
-    );
+    let initial_state_u8: u8 = kani::any();
+    kani::assume(initial_state_u8 <= 2); // 0=Pending, 1=Active, 2=WaitingAnswer
+    let initial_state = match initial_state_u8 {
+        0 => LifecycleState::Pending,
+        1 => LifecycleState::Active,
+        2 => LifecycleState::WaitingAnswer,
+        _ => LifecycleState::Active,
+    };
 
     // Simulate first cancel: state transitions to Cancelled
     let state_after_cancel = LifecycleState::Cancelled;

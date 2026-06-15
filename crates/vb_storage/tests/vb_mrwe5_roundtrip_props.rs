@@ -31,19 +31,38 @@ proptest! {
             &step_event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(step_bytes_result.is_ok(), "generated StepSucceeded should encode");
-        let step_bytes = step_bytes_result.unwrap();
+        let step_bytes = step_bytes_result.expect(
+            "generated StepSucceeded should encode without error"
+        );
         let decoded_step_result = decode_journal_event(
             &step_bytes,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(decoded_step_result.is_ok(), "generated StepSucceeded should decode");
-        let (step_envelope, decoded_step) = decoded_step_result.unwrap();
+        let (step_envelope, decoded_step) = decoded_step_result.expect(
+            "generated StepSucceeded should decode without error"
+        );
 
         prop_assert_eq!(step_envelope.record_kind, RecordKind::StepSucceeded.id());
-        let decoded_step_is_step = matches!(decoded_step, JournalEvent::StepSucceeded { .. });
-        prop_assert!(decoded_step_is_step);
+        match &decoded_step {
+            JournalEvent::StepSucceeded {
+                run: d_run,
+                seq: d_seq,
+                step: d_step,
+                output: d_output,
+            } => {
+                prop_assert_eq!(*d_run, RunId::new(run),
+                    "decoded run must match original");
+                prop_assert_eq!(*d_seq, EventSeq::new(seq),
+                    "decoded seq must match original");
+                prop_assert_eq!(*d_step, StepIdx::new(step),
+                    "decoded step must match original");
+                prop_assert_eq!(*d_output, SlotIdx::new(output),
+                    "decoded output must match original");
+            }
+            other => prop_assert!(false,
+                "decoded StepSucceeded should be StepSucceeded variant, got {:?}", other),
+        }
 
         let slot_event = JournalEvent::SlotWrittenEvent {
             run: RunId::new(run),
@@ -60,19 +79,44 @@ proptest! {
             &slot_event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(slot_bytes_result.is_ok(), "generated SlotWrittenEvent should encode");
-        let slot_bytes = slot_bytes_result.unwrap();
+        let slot_bytes = slot_bytes_result.expect(
+            "generated SlotWrittenEvent should encode without error"
+        );
         let decoded_slot_result = decode_journal_event(
             &slot_bytes,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(decoded_slot_result.is_ok(), "generated SlotWrittenEvent should decode");
-        let (slot_envelope, decoded_slot) = decoded_slot_result.unwrap();
+        let (slot_envelope, decoded_slot) = decoded_slot_result.expect(
+            "generated SlotWrittenEvent should decode without error"
+        );
 
         prop_assert_eq!(slot_envelope.record_kind, RecordKind::SlotWritten.id());
-        let decoded_slot_is_slot = matches!(decoded_slot, JournalEvent::SlotWrittenEvent { .. });
-        prop_assert!(decoded_slot_is_slot);
+        match &decoded_slot {
+            JournalEvent::SlotWrittenEvent {
+                run: d_run,
+                seq: d_seq,
+                slot: d_slot,
+                value: d_value,
+                extra: d_extra,
+                attempt: d_attempt,
+            } => {
+                prop_assert_eq!(*d_run, RunId::new(run),
+                    "decoded run must match original");
+                prop_assert_eq!(*d_seq, EventSeq::new(seq),
+                    "decoded seq must match original");
+                prop_assert_eq!(*d_slot, SlotIdx::new(slot),
+                    "decoded slot must match original");
+                prop_assert!(d_value.is_none(),
+                    "decoded value must match None");
+                prop_assert!(d_extra.is_none(),
+                    "decoded extra must match None");
+                prop_assert_eq!(*d_attempt, attempt,
+                    "decoded attempt must match original");
+            }
+            other => prop_assert!(false,
+                "decoded SlotWrittenEvent should be SlotWrittenEvent variant, got {:?}", other),
+        }
     }
 
     /// Proptest: SlotWrittenEvent with value=Some(bytes) roundtrips correctly.
@@ -102,8 +146,9 @@ proptest! {
 
         // Encode with canonical record kind
         let slot_bytes_result = encode_journal_event_record(&slot_event);
-        prop_assert!(slot_bytes_result.is_ok(), "SlotWrittenEvent with value must encode");
-        let slot_bytes = slot_bytes_result.unwrap();
+        let slot_bytes = slot_bytes_result.expect(
+            "SlotWrittenEvent with value=Some must encode without error"
+        );
 
         // Decode and verify
         let decoded_slot_result = decode_journal_event(
@@ -111,8 +156,9 @@ proptest! {
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(decoded_slot_result.is_ok(), "SlotWrittenEvent with value must decode");
-        let (_, decoded_slot) = decoded_slot_result.unwrap();
+        let (_, decoded_slot) = decoded_slot_result.expect(
+            "SlotWrittenEvent with value=Some must decode without error"
+        );
 
         // Verify envelope kind is correct
         // We need to use decode_record to get the envelope
@@ -154,23 +200,18 @@ proptest! {
         };
 
         let slot_bytes_result = encode_journal_event_record(&slot_event);
-        prop_assert!(slot_bytes_result.is_ok(), "SlotWrittenEvent with None must encode");
-        let slot_bytes = match slot_bytes_result {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                return Err(proptest::test_runner::TestCaseError::fail(format!(
-                    "SlotWrittenEvent with None failed to encode: {error}"
-                )));
-            }
-        };
+        let slot_bytes = slot_bytes_result.expect(
+            "SlotWrittenEvent with value=None must encode without error"
+        );
 
         let decoded_slot_result = decode_journal_event(
             &slot_bytes,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(decoded_slot_result.is_ok(), "SlotWrittenEvent with None must decode");
-        let (_, decoded_slot) = decoded_slot_result.unwrap();
+        let (_, decoded_slot) = decoded_slot_result.expect(
+            "SlotWrittenEvent with value=None must decode without error"
+        );
 
         match decoded_slot {
             JournalEvent::SlotWrittenEvent { value: None, .. } => {

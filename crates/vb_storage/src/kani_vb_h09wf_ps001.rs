@@ -79,7 +79,10 @@ fn ps_001_inner_ir_digest() {
         Ok(()) => {
             // Success: artifact digest equals computed digest
             kani::assert(artifact.digest == digest, "digest matches");
-            kani::assert(artifact.verification.digest == digest, "verification.digest matches");
+            kani::assert(
+                artifact.verification.digest == digest,
+                "verification.digest matches",
+            );
         }
         Err(JournalError::ArtifactChecksumMismatch) => {
             // Failure: either artifact.digest != digest or verification.digest != digest

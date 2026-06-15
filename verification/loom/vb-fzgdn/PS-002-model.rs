@@ -41,7 +41,12 @@ impl TimerAuthority {
 /// Model of matches_authority check using atomic reads.
 /// Matches the production `PendingTimer::matches_authority` semantics:
 /// all three fields must match for the timer to be considered valid.
-fn matches_authority(auth: &TimerAuthority, expected_gen: u64, expected_deadline: u64, expected_kind: PendingTimerKind) -> bool {
+fn matches_authority(
+    auth: &TimerAuthority,
+    expected_gen: u64,
+    expected_deadline: u64,
+    expected_kind: PendingTimerKind,
+) -> bool {
     let current = auth.generation.load(Ordering::SeqCst);
     current == expected_gen && auth.deadline == expected_deadline && auth.kind == expected_kind
 }

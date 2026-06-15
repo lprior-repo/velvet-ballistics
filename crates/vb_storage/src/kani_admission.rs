@@ -64,14 +64,18 @@ fn minimal_valid_workflow() -> CompiledWorkflow {
 
     let hash_bytes = match postcard::to_allocvec(&parts) {
         Ok(v) => v,
-        Err(_) => loop { kani::assume(false) },
+        Err(_) => loop {
+            kani::assume(false)
+        },
     };
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(computed.into());
 
     let workflow = match CompiledWorkflow::try_from_parts(parts) {
         Ok(v) => v,
-        Err(_) => loop { kani::assume(false) },
+        Err(_) => loop {
+            kani::assume(false)
+        },
     };
     workflow
 }

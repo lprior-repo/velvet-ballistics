@@ -59,7 +59,7 @@ fn harness_returns_silently_for_empty_bytes() {
     // Then: lex returns Ok with [End] (empty input is valid for lexing)
     let tokens = lex_expr(text);
     assert!(tokens.is_ok(), "empty string must lex successfully");
-    let tokens = tokens.unwrap();
+    let tokens = tokens.expect("empty string must lex successfully");
     assert_eq!(
         tokens.len(),
         1,
@@ -79,7 +79,7 @@ fn harness_returns_silently_for_whitespace_only_input() {
     // Then: lex returns Ok with [End]
     let tokens = lex_expr(text);
     assert!(tokens.is_ok(), "whitespace-only must lex successfully");
-    let tokens = tokens.unwrap();
+    let tokens = tokens.expect("whitespace-only must lex successfully");
     assert_eq!(
         tokens.len(),
         1,

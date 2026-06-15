@@ -63,7 +63,7 @@ fn bench_inherits_release_correctly() {
     let bench_config = match ws.find(ProfileName::Bench) {
         Some(p) => p,
         None => {
-            kani::assume(false, "Bench profile should exist in workspace");
+            kani::assume(false);
             return;
         }
     };
@@ -71,7 +71,7 @@ fn bench_inherits_release_correctly() {
     let resolved = match resolve_inheritance(bench_config, &ws) {
         Ok(r) => r,
         Err(_) => {
-            kani::assume(false, "Bench inheriting from release should resolve successfully");
+            kani::assume(false);
             return;
         }
     };
@@ -170,14 +170,14 @@ fn hardened_inherits_release_with_overrides() {
     let hardened_config = match ws.find(ProfileName::Hardened) {
         Some(p) => p,
         None => {
-            kani::assume(false, "Hardened profile should exist");
+            kani::assume(false);
             return;
         }
     };
     let resolved = match resolve_inheritance(hardened_config, &ws) {
         Ok(r) => r,
         Err(_) => {
-            kani::assume(false, "Hardened inheriting from release should resolve successfully");
+            kani::assume(false);
             return;
         }
     };

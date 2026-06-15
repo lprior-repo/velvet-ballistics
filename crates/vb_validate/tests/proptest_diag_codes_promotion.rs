@@ -193,11 +193,12 @@ fn diag_codes_each_numeric_code_has_registry_entry() {
     let codes = all_validation_error_variant_codes();
     for (symbolic, numeric) in &codes {
         let found = CODE_REGISTRY.iter().find(|e| e.numeric == *numeric);
-        assert!(
-            found.is_some(),
-            "ValidationError code '{symbolic}' (0x{numeric:04X}): no registry entry with matching numeric code"
-        );
-        let entry = found.unwrap();
+        let entry = match found {
+            Some(e) => e,
+            None => panic!(
+                "ValidationError code '{symbolic}' (0x{numeric:04X}): no registry entry with matching numeric code"
+            ),
+        };
         // At least one entry with this numeric should have the matching symbolic name
         let name_match = CODE_REGISTRY
             .iter()

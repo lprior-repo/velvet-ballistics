@@ -571,10 +571,8 @@ steps:
 
     // Step 2: Compilation must fail (lowering/validation catches the unknown output name)
     let result = compile_source(&source);
-    assert!(
-        result.is_err(),
-        "compilation must fail when finish result references unknown output name"
-    );
+    let err = result
+        .expect_err("compilation must fail when finish result references unknown output name");
 
     // Step 3: The error variant is documented — it's an UnknownOutputName
     // (from canonical_finish_slot in part_05.rs:80)
@@ -585,16 +583,11 @@ steps:
     //   canonical_finish_slot). Therefore the digest WAS computed deterministically.
     //
     // This test documents this design contract.
-    match result {
-        Ok(_) => panic!("expected compilation failure"),
-        Err(errors) => {
-            // Verify at least one error is present (not an empty error vec)
-            assert!(
-                errors.iter().next().is_some(),
-                "compilation failure must contain at least one error"
-            );
-        }
-    }
+    // Verify at least one error is present (not an empty error vec)
+    assert!(
+        err.iter().next().is_some(),
+        "compilation failure must contain at least one error"
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────

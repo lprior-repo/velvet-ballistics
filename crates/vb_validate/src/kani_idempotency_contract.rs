@@ -50,7 +50,7 @@ fn kani_decision_001_all_combinations() {
                     name: match ActionName::new("test-action") {
                         Ok(n) => n,
                         Err(_) => {
-                            kani::assume(false, "test-action must be a valid ActionName");
+                            kani::assume(false);
                             return;
                         }
                     },
@@ -118,7 +118,7 @@ fn decision_table_ok_branch() {
                 name: match ActionName::new("test-action") {
                     Ok(n) => n,
                     Err(_) => {
-                        kani::assume(false, "test-action must be a valid ActionName");
+                        kani::assume(false);
                         return;
                     }
                 },
@@ -171,7 +171,7 @@ fn decision_table_ok_branch() {
                 name: match ActionName::new("test-action") {
                     Ok(n) => n,
                     Err(_) => {
-                        kani::assume(false, "test-action must be a valid ActionName");
+                        kani::assume(false);
                         return;
                     }
                 },
@@ -237,7 +237,7 @@ fn decision_table_unsafe_rejected() {
                 name: match ActionName::new("test-action") {
                     Ok(n) => n,
                     Err(_) => {
-                        kani::assume(false, "test-action must be a valid ActionName");
+                        kani::assume(false);
                         return;
                     }
                 },
@@ -306,7 +306,7 @@ fn decision_table_at_least_once_rejected() {
                 name: match ActionName::new("test-action") {
                     Ok(n) => n,
                     Err(_) => {
-                        kani::assume(false, "test-action must be a valid ActionName");
+                        kani::assume(false);
                         return;
                     }
                 },
@@ -379,7 +379,7 @@ fn decision_table_deterministic_rejected() {
                 name: match ActionName::new("test-action") {
                     Ok(n) => n,
                     Err(_) => {
-                        kani::assume(false, "test-action must be a valid ActionName");
+                        kani::assume(false);
                         return;
                     }
                 },

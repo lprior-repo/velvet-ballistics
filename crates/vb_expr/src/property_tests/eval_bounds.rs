@@ -23,7 +23,12 @@ fn be_check_expr_stack_bound_rejects_100_loads_no_pop() {
     let result = crate::bytecode::check_expr_stack_bound(&ops);
     // This should fail because either the stack overflows OR final depth != 1
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(crate::ExprError::StackOverflow { .. }
+                | crate::ExprError::BytecodeTooLong { .. }
+                | crate::ExprError::StackUnderflow)
+        ),
         "100 LoadConst ops with no pops must be rejected"
     );
 }
@@ -39,9 +44,10 @@ fn be_check_expr_stack_bound_accepts_proper_program_depth_2() {
         ExprOp::Add,
     ];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(
-        result.is_ok(),
-        "proper program with max depth 2 should be accepted"
+    let depth = result.expect("proper program with max depth 2 should be accepted");
+    assert_eq!(
+        depth, 2,
+        "required max depth should be 2 for LoadConst+LoadConst+Add"
     );
 }
 
@@ -56,7 +62,12 @@ fn be_check_expr_stack_bound_rejects_too_many_ops() {
         .collect();
     let result = crate::bytecode::check_expr_stack_bound(&ops);
     assert!(
-        result.is_err(),
+        matches!(
+            result,
+            Err(crate::ExprError::StackOverflow { .. }
+                | crate::ExprError::BytecodeTooLong { .. }
+                | crate::ExprError::StackUnderflow)
+        ),
         "300 ops must be rejected (exceeds MAX_EXPRESSION_OPS)"
     );
 }
@@ -70,7 +81,8 @@ fn be_not_operation_depth_is_one() {
     // LoadConst, Not — stack: [val] → [result], depth = 1 throughout.
     let ops = vec![ExprOp::LoadConst(vb_core::ConstIdx::new(0)), ExprOp::Not];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(result.is_ok());
+    let depth = result.expect("LoadConst+Not must succeed with max depth 1");
+    assert_eq!(depth, 1, "LoadConst+Not must report required depth 1");
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +98,11 @@ fn be_division_depth_is_two() {
         ExprOp::Div,
     ];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(result.is_ok());
+    let depth = result.expect("LoadConst+LoadConst+Div must succeed with max depth 2");
+    assert_eq!(
+        depth, 2,
+        "LoadConst+LoadConst+Div must report required depth 2"
+    );
 }
 
 // ---------------------------------------------------------------------------

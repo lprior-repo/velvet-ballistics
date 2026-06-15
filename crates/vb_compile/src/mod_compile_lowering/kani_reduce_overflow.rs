@@ -66,8 +66,7 @@ fn check_reduce_body_width_overflow() {
             );
             assert!(w >= 3, "width must be >= overhead");
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -84,8 +83,7 @@ fn check_reduce_checked_step_offset_boundary() {
             assert!(step.get() >= id_val, "Ok result must be >= input id");
             assert!(step.get() <= u16::MAX, "Ok result must be <= u16::MAX");
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 

@@ -40,15 +40,21 @@ mod tests {
 
             // Width computation for single Set step = overhead + 1
             let width = crate::mod_compile_lowering::part_01::body_width(&body, 3);
-            assert!(width.is_ok(), "single Set step body_width must succeed");
-            assert_eq!(width.unwrap(), 4, "single Set step: width = 3 + 1 = 4");
+            assert_eq!(
+                width,
+                Ok(4),
+                "single Set step: width = overhead(3) + 1 = 4"
+            );
 
             // canonical_body_step_width for Set = 1
             let step_width = crate::mod_compile_lowering::part_01::canonical_body_step_width(
                 &body[0].primitive
             );
-            assert!(step_width.is_ok(), "Set step width must be supported");
-            assert_eq!(step_width.unwrap(), 1, "Set step width must be 1");
+            assert_eq!(
+                step_width,
+                Ok(1),
+                "Set step width must be exactly 1"
+            );
         }
     }
 

@@ -71,8 +71,7 @@ fn check_reduce_body_width_parity() {
                 "body_width must not exceed u16::MAX"
             );
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }
 
@@ -92,8 +91,7 @@ fn check_individual_step_widths_consistent() {
                 assert!(sw >= 1, "supported body step width must be at least 1");
                 total_individual = total_individual.saturating_add(sw);
             }
-            Err(_) => {
-            }
+            Err(_) => {}
         }
     }
 

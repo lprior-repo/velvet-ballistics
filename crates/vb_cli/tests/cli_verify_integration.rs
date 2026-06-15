@@ -21,6 +21,23 @@ steps:
     invalid indentation here
 "#;
 
+/// Parseable workflow that fails during semantic compilation.
+const COMPILE_FAILURE_YAML: &str = r#"version: velvet-ballistics/v1
+name: bad_reference_workflow
+when:
+  manual: {}
+steps:
+  - id: greet
+    save:
+      output: greeting
+      value: $steps.nonexistent
+  - id: done
+    finish:
+      result: greeting
+"#;
+
+const INVALID_UTF8_BYTES: &[u8] = &[0xff, b'v', b'e', b'l', b'v', b'e', b't', b'\n'];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -31,15 +48,21 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) {
     }
 }
 
-fn must_create_temp_yaml_file(prefix: &str) -> tempfile::NamedTempFile {
+fn must_create_temp_file(prefix: &str, suffix: &str) -> tempfile::NamedTempFile {
     match tempfile::Builder::new()
         .prefix(prefix)
-        .suffix(".yaml")
+        .suffix(suffix)
         .tempfile()
     {
         Ok(file) => file,
-        Err(error) => panic!("failed to create temp file with prefix {prefix}: {error}"),
+        Err(error) => {
+            panic!("failed to create temp file with prefix {prefix} and suffix {suffix}: {error}")
+        }
     }
+}
+
+fn must_create_temp_yaml_file(prefix: &str) -> tempfile::NamedTempFile {
+    must_create_temp_file(prefix, ".yaml")
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
@@ -688,6 +711,156 @@ fn integration_verify_emit_text_parse_error_uses_text_diagnostic_contract() {
     assert!(
         stderr.trim_end().starts_with("YAML parse error: "),
         "verify --emit text malformed-yaml stderr must carry the YAML parse classification, got: {stderr}"
+    );
+}
+
+#[test]
+fn integration_verify_default_text_rejects_invalid_utf8() {
+    let temp_file = must_create_temp_file("vb-test-invalid-utf8-", ".yaml");
+    write_test_file(temp_file.path(), INVALID_UTF8_BYTES);
+
+    let output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        temp_file.path().as_os_str(),
+    ]);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_empty_stream(&output.stdout, "verify invalid-utf8 default-text stdout");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.trim_end().starts_with("file is not valid UTF-8: "),
+        "verify invalid-utf8 default-text stderr must classify UTF-8 failure, got: {stderr}"
+    );
+}
+
+#[test]
+fn integration_verify_default_text_reports_compile_failure_lines() {
+    let temp_file = must_create_temp_yaml_file("vb-test-compile-failure-text-");
+    write_test_file(temp_file.path(), COMPILE_FAILURE_YAML.as_bytes());
+
+    let output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        temp_file.path().as_os_str(),
+    ]);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_empty_stream(&output.stdout, "verify compile-failure default-text stdout");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let lines: Vec<&str> = stderr.lines().collect();
+    assert!(
+        !lines.is_empty(),
+        "verify compile-failure default-text stderr must contain at least one compile line"
+    );
+    assert!(
+        lines.iter().all(|line| line.starts_with("compile error: ")),
+        "verify compile-failure default-text stderr must use compile error lines, got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("compilation failed"),
+        "verify compile-failure default-text stderr must not collapse to machine summary text: {stderr}"
+    );
+}
+
+#[test]
+fn integration_verify_emit_yaml_compile_failure_uses_diagnostic_report_stderr() {
+    let temp_file = must_create_temp_yaml_file("vb-test-compile-failure-yaml-");
+    write_test_file(temp_file.path(), COMPILE_FAILURE_YAML.as_bytes());
+
+    let output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+        temp_file.path().as_os_str(),
+    ]);
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_empty_stream(&output.stdout, "verify --emit yaml compile-failure stdout");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let diagnostic = must_parse_yaml_value(
+        &stderr,
+        "verify --emit yaml compile-failure stderr must be parseable diagnostic YAML",
+    );
+    assert_machine_diagnostic(
+        &diagnostic,
+        "ValidationFailed",
+        2,
+        "compilation failed",
+        "verify --emit yaml compile-failure diagnostic",
+    );
+}
+
+#[test]
+fn integration_verify_legacy_json_flags_report_compile_failure_object() {
+    let temp_file = must_create_temp_yaml_file("vb-test-compile-failure-json-");
+    write_test_file(temp_file.path(), COMPILE_FAILURE_YAML.as_bytes());
+
+    let json_output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--json"),
+        temp_file.path().as_os_str(),
+    ]);
+    let jsonl_output = must_run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--jsonl"),
+        temp_file.path().as_os_str(),
+    ]);
+
+    assert_eq!(json_output.status.code(), Some(2));
+    assert_eq!(jsonl_output.status.code(), Some(2));
+    assert_empty_stream(&json_output.stdout, "verify --json compile-failure stdout");
+    assert_empty_stream(
+        &jsonl_output.stdout,
+        "verify --jsonl compile-failure stdout",
+    );
+
+    let json_error = must_parse_json_value(
+        &json_output.stderr,
+        "verify --json compile-failure stderr must be parseable JSON",
+    );
+    let jsonl_error = must_parse_jsonl_value(
+        &jsonl_output.stderr,
+        "verify --jsonl compile-failure stderr must be exactly one JSON line",
+    );
+    assert_eq!(json_error, jsonl_error);
+    assert_eq!(
+        json_error
+            .pointer("/success")
+            .and_then(serde_json::Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        json_error
+            .pointer("/profile")
+            .and_then(serde_json::Value::as_str),
+        Some("quick")
+    );
+    assert_eq!(
+        json_error
+            .pointer("/error")
+            .and_then(serde_json::Value::as_str),
+        Some("compilation failed")
+    );
+    let errors = json_error
+        .pointer("/errors")
+        .and_then(serde_json::Value::as_array);
+    assert!(
+        errors.is_some_and(|items| {
+            !items.is_empty()
+                && items
+                    .iter()
+                    .all(|item| item.as_str().is_some_and(|value| !value.is_empty()))
+        }),
+        "verify compile-failure legacy JSON stderr must carry non-empty compile errors, got: {json_error}"
     );
 }
 

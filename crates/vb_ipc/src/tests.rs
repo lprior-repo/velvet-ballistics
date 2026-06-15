@@ -997,14 +997,10 @@ fn ut_u32_to_usize_conversion_succeeds_for_valid_values() {
     let values = [0u32, 1, 100, u32::MAX];
     for value in values {
         let result = crate::u32_to_usize(value);
-        assert!(
-            result.is_ok(),
-            "u32_to_usize({value}) should succeed on this platform"
-        );
-        let converted = result.unwrap();
         assert_eq!(
-            converted as u32, value,
-            "round-trip u32->usize->u32 should preserve value"
+            result,
+            Ok(value as usize),
+            "u32_to_usize({value}) should succeed and return {value} on this platform"
         );
     }
 }

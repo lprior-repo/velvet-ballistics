@@ -32,11 +32,17 @@ fn test_mock_marker_no_panic_on_all_variants() {
         // Serialization roundtrip must not panic.
         let buf = match postcard::to_allocvec(m) {
             Ok(b) => b,
-            Err(_) => { kani::assume(false, "serialize must not panic"); return; }
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
         };
         let _: MockMarker = match postcard::from_bytes(&buf) {
             Ok(v) => v,
-            Err(_) => { kani::assume(false, "deserialize must not panic"); return; }
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
         };
 
         // Debug formatting must not panic.
@@ -67,13 +73,19 @@ fn test_legacy_7field_deserialize_fallback() {
 
     let buf = match postcard::to_allocvec(&legacy_ticket) {
         Ok(b) => b,
-        Err(_) => { kani::assume(false, "serialization must not panic"); return; }
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
 
     // Deserialize back.
     let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "deserialization must not panic"); return; }
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
 
     assert_eq!(
@@ -99,11 +111,17 @@ fn test_action_ticket_serde_no_panic_boundary() {
 
     let buf = match postcard::to_allocvec(&ticket) {
         Ok(b) => b,
-        Err(_) => { kani::assume(false, "max-value serialization must not panic"); return; }
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
     let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false, "max-value deserialization must not panic"); return; }
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
     };
 
     assert_eq!(restored.run.get(), u64::MAX, "max run must be preserved");

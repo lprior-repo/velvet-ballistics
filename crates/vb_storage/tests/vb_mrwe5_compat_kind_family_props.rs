@@ -15,16 +15,25 @@ proptest! {
     fn vb_mrwe5_kind_family_and_legacy_policy_props(kind in 0_u16..=64_u16) {
         if kind == RecordKind::SlotWritten.id() {
             prop_assert!(is_known_record_kind(kind));
-            prop_assert!(validate_record_kind_family(MAGIC_JOURNAL_EVENT, kind).is_ok());
+            let kind_result = validate_record_kind_family(MAGIC_JOURNAL_EVENT, kind);
+            let ok = kind_result.is_ok();
+            prop_assert!(ok,
+                "SlotWritten (kind={kind}) must validate as known family");
         }
 
         if kind == RecordKind::StepSucceeded.id() {
             prop_assert!(is_known_record_kind(kind));
-            prop_assert!(validate_record_kind_family(MAGIC_JOURNAL_EVENT, kind).is_ok());
+            let kind_result = validate_record_kind_family(MAGIC_JOURNAL_EVENT, kind);
+            let ok = kind_result.is_ok();
+            prop_assert!(ok,
+                "StepSucceeded (kind={kind}) must validate as known family");
         }
 
         if !is_known_record_kind(kind) {
-            prop_assert!(validate_record_kind_family(MAGIC_JOURNAL_EVENT, kind).is_err());
+            let kind_result = validate_record_kind_family(MAGIC_JOURNAL_EVENT, kind);
+            let is_err = kind_result.is_err();
+            prop_assert!(is_err,
+                "unknown kind (kind={kind}) must be rejected by family validation");
         }
     }
 
@@ -68,15 +77,9 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(bytes_result.is_ok(), "mismatrix records must be digest-valid");
-        let bytes = match bytes_result {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                return Err(proptest::test_runner::TestCaseError::fail(format!(
-                    "mismatch record encoding failed: {error}"
-                )));
-            }
-        };
+        let bytes = bytes_result.expect(
+            "mismatch record encoding must succeed (digest validation is permissive)"
+        );
         prop_assert!(matches!(
             decode_journal_event(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES),
             Err(JournalError::InvalidEvent)

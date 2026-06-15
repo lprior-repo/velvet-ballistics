@@ -58,7 +58,7 @@ fn serialize_produces_json_string_of_symbolic_name() {
 fn deserialize_rejects_unregistered_code_name() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("\"BOGUS_NOT_A_CODE\"");
     assert!(
-        result.is_err(),
+        matches!(result, Err(_)),
         "deserialize should reject unknown code name"
     );
 }
@@ -68,7 +68,7 @@ fn deserialize_rejects_non_string_json_types() {
     for input in &["123", "null", "[]", "{}", "true", "false"] {
         let result: Result<SymbolicCode, _> = serde_json::from_str(input);
         assert!(
-            result.is_err(),
+            matches!(result, Err(_)),
             "deserialize should reject non-string JSON: {input}"
         );
     }
@@ -77,14 +77,14 @@ fn deserialize_rejects_non_string_json_types() {
 #[test]
 fn deserialize_rejects_empty_json_string() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("\"\"");
-    assert!(result.is_err(), "deserialize should reject empty string");
+    assert!(matches!(result, Err(_)), "deserialize should reject empty string");
 }
 
 #[test]
 fn deserialize_rejects_wrong_case_registered_name() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("\"duplicate_key\"");
     assert!(
-        result.is_err(),
+        matches!(result, Err(_)),
         "deserialize should reject lowercase variant"
     );
 }
@@ -92,23 +92,23 @@ fn deserialize_rejects_wrong_case_registered_name() {
 #[test]
 fn deserialize_rejects_number_instead_of_string() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("42");
-    assert!(result.is_err(), "deserialize should reject number");
+    assert!(matches!(result, Err(_)), "deserialize should reject number");
 }
 
 #[test]
 fn deserialize_rejects_null() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("null");
-    assert!(result.is_err(), "deserialize should reject null");
+    assert!(matches!(result, Err(_)), "deserialize should reject null");
 }
 
 #[test]
 fn deserialize_rejects_empty_object() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("{}");
-    assert!(result.is_err(), "deserialize should reject object");
+    assert!(matches!(result, Err(_)), "deserialize should reject object");
 }
 
 #[test]
 fn deserialize_rejects_empty_array() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("[]");
-    assert!(result.is_err(), "deserialize should reject array");
+    assert!(matches!(result, Err(_)), "deserialize should reject array");
 }

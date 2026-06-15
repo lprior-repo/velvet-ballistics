@@ -70,7 +70,11 @@ mod tests {
                 let branch_width = crate::mod_compile_lowering::part_01::body_width(
                     &branch_body, 1
                 );
-                assert!(branch_width.is_ok(), "together branch width must compute");
+                assert_eq!(
+                    branch_width,
+                    Ok(2),
+                    "together branch width = overhead(1) + 1 step = 2"
+                );
             }
         }
     }

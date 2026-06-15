@@ -28,12 +28,13 @@ proptest! {
     #[test]
     fn ps001_encoded_len_min(run in 1u64..1000u64) {
         let event = make_event(run, 0);
-        if let Ok(value) = encode_record(
+        let value = encode_record(
             MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0,
             &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        ) {
-            prop_assert!(value.len() >= RECORD_HEADER_LEN as usize);
-        }
+        ).expect("encode RecordKind::RunAccepted must succeed for valid inputs");
+        prop_assert!(value.len() >= RECORD_HEADER_LEN as usize,
+            "encoded RunAccepted must be at least header length, got {} bytes",
+            value.len());
     }
     #[test]
     fn ps001_admission_exact(current in 0u64..1000000u64, delta in 1u64..1000000u64) {
@@ -45,7 +46,7 @@ proptest! {
         prop_assume!(current <= limit);
         let total = current.checked_add(0u64);
         prop_assert!(total.is_some());
-        prop_assert_eq!(total.unwrap(), current);
+        prop_assert_eq!(total.expect("checked_add must not overflow here"), current);
     }
     #[test]
     fn ps001_overflow_none(n in 1u64..u64::MAX) {

@@ -68,10 +68,8 @@ fn ps_004_truncated_header_rejected() {
     let result = decode_accepted_artifact_envelope(&bytes);
     kani::assert(result.is_err(), "truncated header must be rejected");
     match result {
-        Err(JournalError::ArtifactMalformed) => {
-        }
-        Err(JournalError::UnexpectedEof) => {
-        }
+        Err(JournalError::ArtifactMalformed) => {}
+        Err(JournalError::UnexpectedEof) => {}
         Err(_) => {}
         Ok(_) => {
             kani::assert(false, "truncated input must not decode");

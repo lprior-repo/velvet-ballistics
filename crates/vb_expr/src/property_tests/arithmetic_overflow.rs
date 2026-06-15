@@ -118,8 +118,10 @@ proptest! {
 proptest! {
     #[test]
     fn ao_neg_f64_zero_neg_zero(_unit in Just(())) {
-        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(FiniteF64::new(-0.0).unwrap()));
-        prop_assert_eq!(result, Ok(SlotValue::F64(FiniteF64::new(0.0).unwrap())));
+        let neg_zero = FiniteF64::new(-0.0).expect("-0.0 is finite");
+        let pos_zero = FiniteF64::new(0.0).expect("0.0 is finite");
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(neg_zero));
+        prop_assert_eq!(result, Ok(SlotValue::F64(pos_zero)));
     }
 }
 

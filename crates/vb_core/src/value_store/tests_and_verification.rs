@@ -15,7 +15,7 @@ mod kani_harnesses {
 
         match store.insert_blob(bytes::Bytes::new()) {
             Ok(_) => {}
-                Err(_) => { kani::assume(false, "first insert_blob should succeed"); return; },
+                Err(_) => { kani::assume(false); return; },
         }
         assert!(store.total_arena_count() == 1);
 
@@ -25,8 +25,8 @@ mod kani_harnesses {
                 assert!(same_static_str(budget, "max_slots"));
                 assert!(*limit == 1);
             }
-            Ok(_) => { kani::assume(false, "second insert must fail with BudgetExceeded"); return; },
-            Err(_) => { kani::assume(false, "unexpected error variant"); return; },
+            Ok(_) => { kani::assume(false); return; },
+            Err(_) => { kani::assume(false); return; },
         }
         core::mem::forget(result);
         assert!(store.total_arena_count() == 1);

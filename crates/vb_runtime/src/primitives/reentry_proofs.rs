@@ -17,7 +17,7 @@ pub mod reentry_harnesses {
     use vb_core::value::SlotValue;
     use vb_core::value_store::ValueStore;
 
-    use crate::primitives::collect::{collect_next, collect_page, CollectStates};
+    use crate::primitives::collect::{CollectStates, collect_next, collect_page};
     use crate::primitives::for_each::for_each_next;
     use crate::primitives::reduce::reduce_next;
     use crate::primitives::repeat::{repeat_attempt, repeat_check};
@@ -31,7 +31,7 @@ pub mod reentry_harnesses {
         ) {
             Ok(frame) => frame,
             Err(_) => {
-                kani::assume(false, "RunFrame::new failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -46,14 +46,14 @@ pub mod reentry_harnesses {
         let id = match store.insert_list(items.into_boxed_slice()) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "insert_list failed");
+                kani::assume(false);
                 return;
             }
         };
         match run.write_slot(slot, SlotValue::List(id)) {
             Ok(_) => {}
             Err(_) => {
-                kani::assume(false, "write_slot failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -121,7 +121,7 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -131,42 +131,42 @@ pub mod reentry_harnesses {
             StepState::Succeeded => match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -237,7 +237,7 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -247,42 +247,42 @@ pub mod reentry_harnesses {
             StepState::Succeeded => match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -372,7 +372,7 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -382,42 +382,42 @@ pub mod reentry_harnesses {
             StepState::Succeeded => match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -497,7 +497,7 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -507,42 +507,42 @@ pub mod reentry_harnesses {
             StepState::Succeeded => match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -590,7 +590,7 @@ pub mod reentry_harnesses {
         match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
             Ok(_) => {}
             Err(_) => {
-                kani::assume(false, "write_slot failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -608,7 +608,7 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -618,42 +618,42 @@ pub mod reentry_harnesses {
             StepState::Succeeded => match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -713,7 +713,7 @@ pub mod reentry_harnesses {
         match run.mark_succeeded(body_step) {
             Ok(_) => {}
             Err(_) => {
-                kani::assume(false, "mark_succeeded failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -733,7 +733,7 @@ pub mod reentry_harnesses {
             let state_after = match run.step_state(body_step) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "step_state failed");
+                    kani::assume(false);
                     return;
                 }
             };
@@ -769,7 +769,7 @@ pub mod reentry_harnesses {
         match run.mark_succeeded(body_step) {
             Ok(_) => {}
             Err(_) => {
-                kani::assume(false, "mark_succeeded failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -788,7 +788,7 @@ pub mod reentry_harnesses {
             let state_after = match run.step_state(body_step) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "step_state failed");
+                    kani::assume(false);
                     return;
                 }
             };
@@ -840,7 +840,7 @@ pub mod reentry_harnesses {
             match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -857,7 +857,7 @@ pub mod reentry_harnesses {
                 let state_after = match run.step_state(body_step) {
                     Ok(v) => v,
                     Err(_) => {
-                        kani::assume(false, "step_state failed");
+                        kani::assume(false);
                         return;
                     }
                 };
@@ -879,7 +879,7 @@ pub mod reentry_harnesses {
             match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "write_slot failed");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -889,7 +889,7 @@ pub mod reentry_harnesses {
             match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -899,7 +899,7 @@ pub mod reentry_harnesses {
                 let state_after = match run.step_state(body_step) {
                     Ok(v) => v,
                     Err(_) => {
-                        kani::assume(false, "step_state failed");
+                        kani::assume(false);
                         return;
                     }
                 };
@@ -921,7 +921,7 @@ pub mod reentry_harnesses {
             match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "write_slot failed");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -931,7 +931,7 @@ pub mod reentry_harnesses {
             match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -941,7 +941,7 @@ pub mod reentry_harnesses {
                 let state_after = match run.step_state(body_step) {
                     Ok(v) => v,
                     Err(_) => {
-                        kani::assume(false, "step_state failed");
+                        kani::assume(false);
                         return;
                     }
                 };
@@ -977,56 +977,56 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Running => match run.mark_running(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_running failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Succeeded => match run.mark_succeeded(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body) {
                 Ok(v) => v,
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -1036,7 +1036,7 @@ pub mod reentry_harnesses {
         let state_before = match run.step_state(body) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "step_state failed");
+                kani::assume(false);
                 return;
             }
         };
@@ -1061,7 +1061,7 @@ pub mod reentry_harnesses {
         let state_after = match run.step_state(body) {
             Ok(v) => v,
             Err(_) => {
-                kani::assume(false, "step_state failed");
+                kani::assume(false);
                 return;
             }
         };
@@ -1098,7 +1098,7 @@ pub mod reentry_harnesses {
         match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
             Ok(_) => {}
             Err(_) => {
-                kani::assume(false, "write_slot failed");
+                kani::assume(false);
                 return;
             }
         }
@@ -1116,7 +1116,7 @@ pub mod reentry_harnesses {
             StepState::Pending => match run.mark_pending(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_pending failed");
+                    kani::assume(false);
                     return;
                 }
             },
@@ -1126,42 +1126,42 @@ pub mod reentry_harnesses {
             StepState::Succeeded => match run.mark_succeeded(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_succeeded failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Failed => match run.mark_failed(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_failed failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Skipped => match run.mark_skipped(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_skipped failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Waiting => match run.mark_waiting(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_waiting failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Asking => match run.mark_asking(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_asking failed");
+                    kani::assume(false);
                     return;
                 }
             },
             StepState::Cancelled => match run.mark_cancelled(body_step) {
                 Ok(_) => {}
                 Err(_) => {
-                    kani::assume(false, "mark_cancelled failed");
+                    kani::assume(false);
                     return;
                 }
             },

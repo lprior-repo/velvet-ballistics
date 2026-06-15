@@ -58,9 +58,13 @@ fn capability(name: &str, action: u16) -> Capability {
 }
 
 fn action_contract(action: u16, required_capabilities: Box<[Capability]>) -> ActionContract {
+    let name = match ActionName::new("test-action") {
+        Ok(v) => v,
+        Err(e) => panic!("ActionName::new(\"test-action\") should succeed: {e:?}"),
+    };
     ActionContract {
         id: ActionId::new(action),
-        name: ActionName::new("test-action").unwrap(),
+        name,
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,

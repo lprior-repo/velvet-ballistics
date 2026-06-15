@@ -151,7 +151,11 @@ fn validate_then_compile_bad_version_rejected_by_both_crates() {
     // When: compiling through the full pipeline
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails (vb_compile runs its own validation)
-    assert!(result.is_err(), "invalid version should fail compile");
+    assert!(
+        matches!(&result, Err(_)),
+        "invalid version should fail compile, got Ok: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -236,12 +240,12 @@ fn compile_to_core_valid_workflow_produces_valid_compiled_workflow() {
                 workflow.node_count() > 0,
                 "compiled workflow should have nodes"
             );
-            // Verify core validation passes
+            // Verify core validation passes with no errors
             let parts = workflow.to_parts();
-            assert!(
-                vb_core::engine::validate_compiled_workflow(&parts).is_ok(),
-                "core should accept the compiled workflow"
-            );
+            match vb_core::engine::validate_compiled_workflow(&parts) {
+                Ok(()) => {}
+                Err(e) => fail_assert!("core validation should pass on valid workflow, got: {e:?}"),
+            }
         }
         Err(err) => fail_assert!("valid workflow should compile: {err}"),
     }
@@ -252,8 +256,12 @@ fn compile_to_core_rejects_empty_input_at_compilation_boundary() {
     // Given: empty source bytes
     // When: compiling
     let result = vb_compile::compile_workflow(b"");
-    // Then: compilation fails with a meaningful error
-    assert!(result.is_err(), "empty input should fail compilation");
+    // Then: compilation fails with an empty source error
+    assert!(
+        matches!(&result, Err(errors) if errors.iter().any(|e| e.to_string().contains("empty") || e.to_string().contains("Empty"))),
+        "empty input should fail compilation, got Ok: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -262,8 +270,12 @@ fn compile_to_core_rejects_non_utf8_input_at_compilation_boundary() {
     let binary: &[u8] = &[0xff, 0xfe, 0x00, 0x01, 0x80];
     // When: compiling
     let result = vb_compile::compile_workflow(binary);
-    // Then: compilation fails (UTF-8 rejection)
-    assert!(result.is_err(), "non-UTF-8 input should fail compilation");
+    // Then: compilation fails with a UTF-8 encoding error
+    assert!(
+        matches!(&result, Err(errors) if errors.iter().any(|e| e.to_string().contains("utf-8") || e.to_string().contains("UTF-8"))),
+        "non-UTF-8 input should fail compilation, got Ok: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -371,8 +383,15 @@ fn core_to_runtime_jump_to_out_of_bounds_step_is_rejected() {
     let parts = minimal_parts(Box::from([node]));
     // When: validating transition targets
     let result = vb_core::engine::validate_transition_target(&parts);
-    // Then: validation rejects the out-of-bounds jump
-    assert!(result.is_err(), "out-of-bounds jump should be rejected");
+    // Then: validation rejects the out-of-bounds jump with a StepOutOfBounds error
+    assert!(
+        matches!(
+            &result,
+            Err(vb_core::workflow::WorkflowError::StepOutOfBounds { .. })
+        ),
+        "out-of-bounds jump should return StepOutOfBounds error, got: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -393,7 +412,14 @@ fn core_to_runtime_choose_with_empty_branches_is_rejected() {
     // When: constructing the compiled workflow
     let result = vb_core::workflow::CompiledWorkflow::try_from_parts(parts);
     // Then: construction fails (empty branch table is invalid)
-    assert!(result.is_err(), "empty branch table should be rejected");
+    assert!(
+        matches!(
+            &result,
+            Err(vb_core::workflow::WorkflowError::EmptyBranchTable)
+        ),
+        "empty branch table should return EmptyBranchTable error, got: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -524,7 +550,7 @@ fn runtime_to_storage_journal_event_encode_decode_roundtrip() {
 fn runtime_to_storage_corrupted_record_fails_integrity_check() {
     use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Serialize, Deserialize, Debug)]
     struct TestPayload {
         value: i64,
     }
@@ -552,8 +578,15 @@ fn runtime_to_storage_corrupted_record_fails_integrity_check() {
     let result: Result<(vb_storage::RecordEnvelope, TestPayload), _> =
         vb_storage::decode_record(&encoded, magic, 4096);
 
-    // Then: decoding fails
-    assert!(result.is_err(), "corrupted record should fail decode");
+    // Then: decoding fails with any JournalError (corruption detected)
+    assert!(
+        matches!(
+            &result,
+            Err(vb_storage::JournalError::PayloadDigestMismatch)
+        ),
+        "corrupted record should return PayloadDigestMismatch, got: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -1074,8 +1107,12 @@ fn expr_compile_to_eval_division_by_zero_returns_error() {
     };
     // When: evaluating
     let result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
-    // Then: evaluation fails
-    assert!(result.is_err(), "division by zero should fail");
+    // Then: evaluation fails with DivisionByZero
+    assert!(
+        matches!(&result, Err(vb_expr::ExprError::DivisionByZero)),
+        "division by zero should return DivisionByZero error, got: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -1189,8 +1226,12 @@ fn compile_pipeline_empty_steps_rejected() {
     let yaml = b"version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
-    // Then: compilation fails because steps must not be empty
-    assert!(result.is_err(), "empty steps should fail compilation");
+    // Then: compilation fails with EmptySteps error
+    assert!(
+        matches!(&result, Err(errors) if errors.iter().any(|e| e.to_string().contains("empty") || e.to_string().contains("Empty"))),
+        "empty steps should fail compilation, got Ok: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -1199,8 +1240,12 @@ fn compile_pipeline_reserved_step_id_rejected() {
     let yaml = b"version: velvet-ballistics/v1\nname: reserved\nwhen:\n  manual: {}\nsteps:\n  - id: runtime\n    finish:\n      result: x\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
-    // Then: compilation fails
-    assert!(result.is_err(), "reserved step ID should be rejected");
+    // Then: compilation fails (runtime reserved ID or any compile error)
+    assert!(
+        matches!(&result, Err(_)),
+        "reserved step ID should fail compilation, got Ok: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -1209,8 +1254,12 @@ fn compile_pipeline_uppercase_step_id_rejected() {
     let yaml = b"version: velvet-ballistics/v1\nname: upper\nwhen:\n  manual: {}\nsteps:\n  - id: MyStep\n    finish:\n      result: x\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
-    // Then: compilation fails
-    assert!(result.is_err(), "uppercase step ID should be rejected");
+    // Then: compilation fails (uppercase ID rejected or other compile error)
+    assert!(
+        matches!(&result, Err(_)),
+        "uppercase step ID should fail compilation, got Ok: {:?}",
+        result
+    );
 }
 
 // ===========================================================================
@@ -1499,16 +1548,25 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
     // When: submitting the same run ID twice, then ticking
     let first = runtime.submit_direct(run_id, workflow.clone());
     let first_tick = runtime.tick_all(); // First submission processes
-    assert!(first_tick.is_ok(), "first tick should succeed");
+    match &first_tick {
+        Ok(_) => {}
+        Err(e) => fail_assert!("first tick should succeed, got: {e:?}"),
+    }
     let second = runtime.submit_direct(run_id, workflow);
     // The second submission overwrites the first run (current behavior)
     let tick_result = runtime.tick_all();
 
     // Then: both submits succeed and the second overwrites the first
-    assert!(first.is_ok(), "first submit should succeed");
-    assert!(second.is_ok(), "second submit enqueues to command queue");
     assert!(
-        tick_result.is_ok(),
-        "second submit overwrites the first run"
+        matches!(&first, Ok(())),
+        "first submit should succeed, got: {first:?}"
     );
+    assert!(
+        matches!(&second, Ok(())),
+        "second submit enqueues to command queue, got: {second:?}"
+    );
+    match &tick_result {
+        Ok(_) => {}
+        Err(e) => fail_assert!("second tick should succeed, got: {e:?}"),
+    }
 }

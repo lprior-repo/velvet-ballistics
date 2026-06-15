@@ -88,16 +88,10 @@ fn postcard_roundtrip_with_null_value() {
         value: SlotValue::Null,
         taint: Taint::Clean,
     };
-    let encoded = postcard::to_allocvec(&payload);
-    let Ok(encoded) = encoded else {
-        assert!(false, "postcard encoding should succeed");
-        return;
-    };
-    let decoded: Result<IpcActionOutputPayload, _> = postcard::from_bytes(&encoded);
-    let Ok(decoded) = decoded else {
-        assert!(false, "postcard decoding should succeed");
-        return;
-    };
+    let encoded =
+        postcard::to_allocvec(&payload).expect("postcard encoding of null value must succeed");
+    let decoded: IpcActionOutputPayload =
+        postcard::from_bytes(&encoded).expect("postcard decoding of null value must succeed");
     assert_eq!(decoded.output_slot, payload.output_slot);
     assert_eq!(decoded.value, payload.value);
     assert_eq!(decoded.taint, payload.taint);
@@ -110,17 +104,12 @@ fn postcard_roundtrip_with_bool_value() {
         value: SlotValue::Bool(false),
         taint: Taint::Clean,
     };
-    let Ok(encoded) = postcard::to_allocvec(&payload) else {
-        return;
-    };
-    let decoded: IpcActionOutputPayload = match postcard::from_bytes(&encoded) {
-        Ok(d) => d,
-        Err(_) => {
-            assert!(false, "decoding should succeed");
-            return;
-        }
-    };
+    let encoded =
+        postcard::to_allocvec(&payload).expect("postcard encoding of bool value must succeed");
+    let decoded: IpcActionOutputPayload =
+        postcard::from_bytes(&encoded).expect("postcard decoding of bool value must succeed");
     assert_eq!(decoded.value, SlotValue::Bool(false));
+    assert_eq!(decoded.output_slot, payload.output_slot);
 }
 
 #[test]
@@ -130,18 +119,13 @@ fn postcard_roundtrip_with_i64_value() {
         value: SlotValue::I64(-100),
         taint: Taint::DerivedFromSecret,
     };
-    let Ok(encoded) = postcard::to_allocvec(&payload) else {
-        return;
-    };
-    let decoded: IpcActionOutputPayload = match postcard::from_bytes(&encoded) {
-        Ok(d) => d,
-        Err(_) => {
-            assert!(false, "decoding should succeed");
-            return;
-        }
-    };
+    let encoded =
+        postcard::to_allocvec(&payload).expect("postcard encoding of i64 value must succeed");
+    let decoded: IpcActionOutputPayload =
+        postcard::from_bytes(&encoded).expect("postcard decoding of i64 value must succeed");
     assert_eq!(decoded.value, SlotValue::I64(-100));
     assert_eq!(decoded.taint, Taint::DerivedFromSecret);
+    assert_eq!(decoded.output_slot, payload.output_slot);
 }
 
 #[test]

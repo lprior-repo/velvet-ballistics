@@ -52,10 +52,8 @@ fn kani_choose_no_otherwise() {
     let result = replay_choose_slot(&mut run, &branches, otherwise);
 
     match &result {
-        Ok(_) => {
-        }
-        Err(_) => {
-        }
+        Ok(_) => {}
+        Err(_) => {}
     }
     kani::assert(
         result.is_err(),

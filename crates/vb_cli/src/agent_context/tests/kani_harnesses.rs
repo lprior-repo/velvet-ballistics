@@ -129,7 +129,7 @@ fn kani_build_serializable_roundtrip() {
     let decoded: Result<serde_json::Value, _> = match encoded {
         Ok(s) => serde_json::from_str(&s),
         Err(_) => {
-            kani::assume(false, "encoding failed");
+            kani::assume(false);
             return;
         }
     };
@@ -156,7 +156,7 @@ fn kani_agent_contract_booleans_are_bools() {
             match val {
                 Some(v) => assert!(v.is_boolean()),
                 None => {
-                    kani::assume(false, "expected boolean field");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -178,7 +178,7 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
             match val {
                 Some(v) => assert!(v.is_array()),
                 None => {
-                    kani::assume(false, "expected array field");
+                    kani::assume(false);
                     return;
                 }
             }
@@ -270,7 +270,7 @@ fn kani_enums_has_all_variants() {
             match e.get(*key) {
                 Some(v) => assert!(v.is_array()),
                 None => {
-                    kani::assume(false, "expected enum variant");
+                    kani::assume(false);
                     return;
                 }
             }

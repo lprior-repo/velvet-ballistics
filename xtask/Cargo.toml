@@ -23,6 +23,8 @@ cargo_metadata = "0.19"
 crossbeam-channel = { workspace = true }
 chrono = { workspace = true }
 postcard = { workspace = true }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+syn = { version = "2", features = ["full", "visit"] }
 
 [dev-dependencies]
 serde-saphyr = { workspace = true, features = ["serialize"] }

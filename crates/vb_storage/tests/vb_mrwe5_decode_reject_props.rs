@@ -30,23 +30,19 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(bytes_result.is_ok(), "valid generated mispayload should encode");
-        let bytes = match bytes_result {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                return Err(proptest::test_runner::TestCaseError::fail(format!(
-                    "mismatched StepSucceeded record encoding failed: {error}"
-                )));
-            }
-        };
+        let bytes = bytes_result.expect(
+            "valid generated mispayload should encode without error"
+        );
         let decoded = decode_journal_event(
             &bytes,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
 
-        prop_assert!(matches!(decoded, Err(JournalError::InvalidEvent)));
-        prop_assert!(matches!(parse_event(&bytes), Err(JournalError::InvalidEvent)));
+        prop_assert!(matches!(decoded, Err(JournalError::InvalidEvent)),
+            "SlotWritten-kind with StepSucceeded payload must be InvalidEvent");
+        prop_assert!(matches!(parse_event(&bytes), Err(JournalError::InvalidEvent)),
+            "parse_event must also reject SlotWritten-kind with StepSucceeded payload");
     }
 
     #[test]
@@ -71,22 +67,18 @@ proptest! {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        prop_assert!(bytes_result.is_ok(), "valid generated mispayload should encode");
-        let bytes = match bytes_result {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                return Err(proptest::test_runner::TestCaseError::fail(format!(
-                    "mismatched SlotWritten record encoding failed: {error}"
-                )));
-            }
-        };
+        let bytes = bytes_result.expect(
+            "valid generated mispayload should encode without error"
+        );
         let decoded = decode_journal_event(
             &bytes,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
 
-        prop_assert!(matches!(decoded, Err(JournalError::InvalidEvent)));
-        prop_assert!(matches!(parse_event(&bytes), Err(JournalError::InvalidEvent)));
+        prop_assert!(matches!(decoded, Err(JournalError::InvalidEvent)),
+            "StepStarted-kind with SlotWrittenEvent payload must be InvalidEvent");
+        prop_assert!(matches!(parse_event(&bytes), Err(JournalError::InvalidEvent)),
+            "parse_event must also reject StepStarted-kind with SlotWrittenEvent payload");
     }
 }

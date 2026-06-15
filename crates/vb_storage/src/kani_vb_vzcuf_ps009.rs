@@ -62,7 +62,10 @@ mod kani_duplicate_ps009 {
 
                 // The encoded output includes RECORD_HEADER_LEN overhead
                 use crate::constants::RECORD_HEADER_LEN;
-                kani::assert(v1.len() as u64 > RECORD_HEADER_LEN as u64, "encoded > header len");
+                kani::assert(
+                    v1.len() as u64 > RECORD_HEADER_LEN as u64,
+                    "encoded > header len",
+                );
             }
             _ => {}
         }
@@ -100,7 +103,10 @@ mod kani_duplicate_ps009 {
         match (r1, r2) {
             (Ok(v1), Ok(v2)) => {
                 // Different events produce different encoded bytes
-                kani::assert(v1 != v2, "different events produce different encoded output");
+                kani::assert(
+                    v1 != v2,
+                    "different events produce different encoded output",
+                );
             }
             _ => {}
         }
@@ -126,7 +132,10 @@ mod kani_duplicate_ps009 {
 
         // Conservative: always add encoded_len
         let conservative = current_bytes + encoded_len;
-        kani::assert(conservative > current_bytes, "conservative increases staged bytes");
+        kani::assert(
+            conservative > current_bytes,
+            "conservative increases staged bytes",
+        );
 
         // Precise for new key: add encoded_len (same as conservative)
         let precise_new = current_bytes + encoded_len;

@@ -69,12 +69,14 @@ fn ps_010_policy_digest() {
     // are acceptable — we mainly verify no panic.
     if result.is_err() {
         match result {
-            Err(JournalError::ArtifactMalformed) => {
-            }
+            Err(JournalError::ArtifactMalformed) => {}
             Err(_) => {
                 // Other errors from decode path
             }
-            Ok(()) => unreachable!(),
+            Ok(()) => {
+                kani::assume(false);
+                loop {}
+            }
         }
     }
 

@@ -839,8 +839,8 @@ mod tests {
         };
         let result = eval_expr_program(&program, &[], &[]);
         assert!(
-            result.is_err(),
-            "LoadConst with out-of-bounds index should fail"
+            matches!(result, Err(ExprError::UnexpectedEof)),
+            "LoadConst with out-of-bounds index should return UnexpectedEof"
         );
         Ok(())
     }
@@ -854,8 +854,8 @@ mod tests {
         let slots: Vec<Option<SlotValue>> = vec![];
         let result = eval_expr_program(&program, &slots, &[]);
         assert!(
-            result.is_err(),
-            "LoadSlot with out-of-bounds index should fail"
+            matches!(result, Err(ExprError::StackUnderflow)),
+            "LoadSlot with out-of-bounds index should return StackUnderflow"
         );
         Ok(())
     }
@@ -2394,7 +2394,7 @@ mod tests {
     #[test]
     fn and_evaluates_both_operands_error_accumulation_i64_left_f64_right() -> ExprResult<()> {
         let left = SlotValue::I64(1);
-        let right = SlotValue::F64(FiniteF64::new(1.0).unwrap());
+        let right = SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite"));
         let result = eval_binary_op(BinaryOp::And, left, right);
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
@@ -2426,7 +2426,7 @@ mod tests {
     #[test]
     fn or_evaluates_both_operands_error_accumulation_null_left_f64_right() -> ExprResult<()> {
         let left = SlotValue::Null;
-        let right = SlotValue::F64(FiniteF64::new(1.0).unwrap());
+        let right = SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite"));
         let result = eval_binary_op(BinaryOp::Or, left, right);
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
@@ -2593,7 +2593,7 @@ mod tests {
     fn or_rejects_f64_bool() -> ExprResult<()> {
         let result = eval_binary_op(
             BinaryOp::Or,
-            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
             SlotValue::Bool(true),
         );
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
@@ -2623,8 +2623,8 @@ mod tests {
     fn or_rejects_f64_f64() -> ExprResult<()> {
         let result = eval_binary_op(
             BinaryOp::Or,
-            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
-            SlotValue::F64(FiniteF64::new(2.0).unwrap()),
+            SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
+            SlotValue::F64(FiniteF64::new(2.0).expect("2.0 is finite")),
         );
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
@@ -2874,8 +2874,8 @@ mod tests {
             // eval_binary_op(And, Bool(a), Bool(b)) == eval_binary_op(And, Bool(b), Bool(a))
             let left = SlotValue::Bool(a);
             let right = SlotValue::Bool(b);
-            let result_ab = eval_binary_op(BinaryOp::And, left, right).unwrap();
-            let result_ba = eval_binary_op(BinaryOp::And, right, left).unwrap();
+            let result_ab = eval_binary_op(BinaryOp::And, left, right).expect("And with bools must succeed");
+            let result_ba = eval_binary_op(BinaryOp::And, right, left).expect("And with bools must succeed");
             prop_assert_eq!(result_ab, result_ba);
         }
     }
@@ -2887,8 +2887,8 @@ mod tests {
             // eval_binary_op(Or, Bool(a), Bool(b)) == eval_binary_op(Or, Bool(b), Bool(a))
             let left = SlotValue::Bool(a);
             let right = SlotValue::Bool(b);
-            let result_ab = eval_binary_op(BinaryOp::Or, left, right).unwrap();
-            let result_ba = eval_binary_op(BinaryOp::Or, right, left).unwrap();
+            let result_ab = eval_binary_op(BinaryOp::Or, left, right).expect("Or with bools must succeed");
+            let result_ba = eval_binary_op(BinaryOp::Or, right, left).expect("Or with bools must succeed");
             prop_assert_eq!(result_ab, result_ba);
         }
     }
@@ -2899,7 +2899,8 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(false);
         // Test with valid bool right - should return false
-        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true)).unwrap();
+        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true))
+            .expect("And with bools must succeed");
         assert_eq!(result, SlotValue::Bool(false));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
@@ -2916,7 +2917,8 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(true);
         // Test with valid bool right - should return true
-        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false)).unwrap();
+        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false))
+            .expect("Or with bools must succeed");
         assert_eq!(result, SlotValue::Bool(true));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
@@ -2932,7 +2934,7 @@ mod tests {
         // Any non-bool left OR right produces TypeMismatch
         let non_bools = [
             SlotValue::I64(1),
-            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
             SlotValue::Null,
             SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
         ];
@@ -2961,7 +2963,7 @@ mod tests {
         // Any non-bool left OR right produces TypeMismatch
         let non_bools = [
             SlotValue::I64(1),
-            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
             SlotValue::Null,
             SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
         ];

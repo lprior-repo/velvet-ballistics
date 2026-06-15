@@ -86,7 +86,6 @@ fn check_offset_overflow_detected() {
                 "production never returns step index > u16::MAX",
             );
         }
-        Err(_) => {
-        }
+        Err(_) => {}
     }
 }

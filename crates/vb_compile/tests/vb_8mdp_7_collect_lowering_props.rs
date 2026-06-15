@@ -111,13 +111,16 @@ struct CollectParams {
 
 fn collect_params_strategy() -> impl Strategy<Value = CollectParams> {
     (
-        "[0-9]+",
-        any::<Option<u32>>(),
-        any::<Option<u32>>(),
-        "[0-9]+",
+        // Restrict to single-digit slot indices to stay within u16 slot range
+        "[0-9]",
+        // Restrict pages/items to small values to stay within budget
+        any::<Option<u16>>().prop_map(|p| p.map(|v| v as u32)),
+        any::<Option<u16>>().prop_map(|i| i.map(|v| v as u32)),
+        // Restrict set_value to small integers
+        "[0-9]{1,4}",
     )
         .prop_map(|(source, pages, items, set_value)| CollectParams {
-            source,
+            source: source.to_string(),
             pages,
             items,
             set_value,
@@ -145,50 +148,49 @@ proptest! {
         let yaml = collect_yaml(&params.source, params.pages, params.items, &params.set_value);
         let result = compile_workflow(yaml.as_bytes());
 
-        // Source parsing can fail; skip invalid source strings
-        if result.is_ok() {
-            let wf = result.unwrap();
-            // Expect at least 5 nodes (4 collect + 1 finish)
-            prop_assert!(wf.node_count() >= 5,
-                "workflow with collect should have at least 5 nodes, got {}",
-                wf.node_count());
+        // Skip invalid source strings (slot range, budget, etc.)
+        prop_assume!(result.is_ok(), "collect YAML with valid parameters must compile");
+        let wf = result.expect("collect YAML with valid parameters must compile");
+        // Expect at least 5 nodes (4 collect + 1 finish)
+        prop_assert!(wf.node_count() >= 5,
+            "workflow with collect should have at least 5 nodes, got {}",
+            wf.node_count());
 
-            // Node 0 must be CollectStart
-            let start = node_at(&wf, 0).expect("node 0 must exist");
-            prop_assert_eq!(start.id.get(), 0,
-                "CollectStart must have ID 0");
-            prop_assert!(
-                matches!(&start.kind, CompiledNodeKind::CollectStart { .. }),
-                "node[0] must be CollectStart, got {:?}", start.kind
-            );
+        // Node 0 must be CollectStart
+        let start = node_at(&wf, 0).expect("node 0 must exist");
+        prop_assert_eq!(start.id.get(), 0,
+            "CollectStart must have ID 0");
+        prop_assert!(
+            matches!(&start.kind, CompiledNodeKind::CollectStart { .. }),
+            "node[0] must be CollectStart, got {:?}", start.kind
+        );
 
-            // Node 1 must be SetConst (body step)
-            let set_node = node_at(&wf, 1).expect("node 1 must exist");
-            prop_assert_eq!(set_node.id.get(), 1,
-                "body node must have ID 1 (id+1)");
-            prop_assert!(
-                matches!(&set_node.kind, CompiledNodeKind::SetConst { .. }),
-                "node[1] must be SetConst, got {:?}", set_node.kind
-            );
+        // Node 1 must be SetConst (body step)
+        let set_node = node_at(&wf, 1).expect("node 1 must exist");
+        prop_assert_eq!(set_node.id.get(), 1,
+            "body node must have ID 1 (id+1)");
+        prop_assert!(
+            matches!(&set_node.kind, CompiledNodeKind::SetConst { .. }),
+            "node[1] must be SetConst, got {:?}", set_node.kind
+        );
 
-            // Node 2 must be CollectPage
-            let page = node_at(&wf, 2).expect("node 2 must exist");
-            prop_assert_eq!(page.id.get(), 2,
-                "CollectPage must have ID 2 (id+2)");
-            prop_assert!(
-                matches!(&page.kind, CompiledNodeKind::CollectPage { .. }),
-                "node[2] must be CollectPage, got {:?}", page.kind
-            );
+        // Node 2 must be CollectPage
+        let page = node_at(&wf, 2).expect("node 2 must exist");
+        prop_assert_eq!(page.id.get(), 2,
+            "CollectPage must have ID 2 (id+2)");
+        prop_assert!(
+            matches!(&page.kind, CompiledNodeKind::CollectPage { .. }),
+            "node[2] must be CollectPage, got {:?}", page.kind
+        );
 
-            // Node 3 must be CollectFinish
-            let finish_node = node_at(&wf, 3).expect("node 3 must exist");
-            prop_assert_eq!(finish_node.id.get(), 3,
-                "CollectFinish must have ID 3 (id+3)");
-            prop_assert!(
-                matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }),
-                "node[3] must be CollectFinish, got {:?}", finish_node.kind
-            );
-        }
+        // Node 3 must be CollectFinish
+        let finish_node = node_at(&wf, 3).expect("node 3 must exist");
+        prop_assert_eq!(finish_node.id.get(), 3,
+            "CollectFinish must have ID 3 (id+3)");
+        prop_assert!(
+            matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }),
+            "node[3] must be CollectFinish, got {:?}", finish_node.kind
+        );
     }
 
     /// B-013: When collect is not the first step, the 4 collect nodes
@@ -203,47 +205,47 @@ proptest! {
         let yaml = collect_yaml_with_preamble(&source, pages, items);
         let result = compile_workflow(yaml.as_bytes());
 
-        if result.is_ok() {
-            let wf = result.unwrap();
-            // Preamble takes IDs 0,1. Collect starts at ID 2.
-            let base: u16 = 2;
+        // Skip invalid inputs (budget exceeded, slot range)
+        prop_assume!(result.is_ok(), "collect YAML with preamble must compile");
+        let wf = result.expect("collect YAML with preamble must compile");
+        // Preamble takes IDs 0,1. Collect starts at ID 2.
+        let base: u16 = 2;
 
-            prop_assert!(wf.node_count() >= 6,
-                "workflow with preamble+collect should have at least 6 nodes, got {}",
-                wf.node_count());
+        prop_assert!(wf.node_count() >= 6,
+            "workflow with preamble+collect should have at least 6 nodes, got {}",
+            wf.node_count());
 
-            // CollectStart at base
-            let start = node_at(&wf, base).expect("CollectStart must exist");
-            prop_assert_eq!(start.id.get(), base);
-            prop_assert!(
-                matches!(&start.kind, CompiledNodeKind::CollectStart { .. }),
-                "node at base must be CollectStart"
-            );
+        // CollectStart at base
+        let start = node_at(&wf, base).expect("CollectStart must exist");
+        prop_assert_eq!(start.id.get(), base);
+        prop_assert!(
+            matches!(&start.kind, CompiledNodeKind::CollectStart { .. }),
+            "node at base must be CollectStart"
+        );
 
-            // SetConst at base+1
-            let body_node = node_at(&wf, base + 1).expect("body SetConst must exist");
-            prop_assert_eq!(body_node.id.get(), base + 1);
-            prop_assert!(
-                matches!(&body_node.kind, CompiledNodeKind::SetConst { .. }),
-                "node at base+1 must be SetConst"
-            );
+        // SetConst at base+1
+        let body_node = node_at(&wf, base + 1).expect("body SetConst must exist");
+        prop_assert_eq!(body_node.id.get(), base + 1);
+        prop_assert!(
+            matches!(&body_node.kind, CompiledNodeKind::SetConst { .. }),
+            "node at base+1 must be SetConst"
+        );
 
-            // CollectPage at base+2
-            let page = node_at(&wf, base + 2).expect("CollectPage must exist");
-            prop_assert_eq!(page.id.get(), base + 2);
-            prop_assert!(
-                matches!(&page.kind, CompiledNodeKind::CollectPage { .. }),
-                "node at base+2 must be CollectPage"
-            );
+        // CollectPage at base+2
+        let page = node_at(&wf, base + 2).expect("CollectPage must exist");
+        prop_assert_eq!(page.id.get(), base + 2);
+        prop_assert!(
+            matches!(&page.kind, CompiledNodeKind::CollectPage { .. }),
+            "node at base+2 must be CollectPage"
+        );
 
-            // CollectFinish at base+3
-            let finish_node = node_at(&wf, base + 3).expect("CollectFinish must exist");
-            prop_assert_eq!(finish_node.id.get(), base + 3);
-            prop_assert!(
-                matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }),
-                "node at base+3 must be CollectFinish"
-            );
-        }
+        // CollectFinish at base+3
+        let finish_node = node_at(&wf, base + 3).expect("CollectFinish must exist");
+        prop_assert_eq!(finish_node.id.get(), base + 3);
+        prop_assert!(
+            matches!(&finish_node.kind, CompiledNodeKind::CollectFinish { .. }),
+            "node at base+3 must be CollectFinish"
+        );
     }
 }
 
@@ -265,8 +267,9 @@ proptest! {
         let yaml = collect_yaml(&source_digit, pages, items, "42");
         let result = compile_workflow(yaml.as_bytes());
 
-        if result.is_ok() {
-            let wf = result.unwrap();
+        // Skip invalid inputs (budget exceeded, slot range)
+        prop_assume!(result.is_ok(), "collect YAML must compile");
+        let wf = result.expect("collect YAML must compile");
 
             let start = node_at(&wf, 0).expect("node 0 must exist");
             match &start.kind {
@@ -329,7 +332,6 @@ proptest! {
                 other => prop_assert!(false,
                     "expected CollectFinish, got {:?}", other),
             }
-        }
     }
 }
 
@@ -342,8 +344,7 @@ fn collect_defaults_limit_and_page_size_to_one() {
     let yaml = collect_yaml_no_budget();
     let result = compile_workflow(yaml.as_bytes());
 
-    assert!(result.is_ok(), "collect without budget should compile");
-    let wf = result.unwrap();
+    let wf = result.expect("collect without budget should compile");
 
     let start = node_at(&wf, 0).expect("CollectStart must exist");
     match &start.kind {
@@ -437,12 +438,7 @@ fn collect_with_moderate_preamble_has_correct_offsets() {
     yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
 
     let result = compile_workflow(yaml.as_bytes());
-    assert!(
-        result.is_ok(),
-        "collect after 100-step preamble should compile: {:?}",
-        result.err()
-    );
-    let wf = result.unwrap();
+    let wf = result.expect("collect after 100-step preamble should compile");
 
     // CollectStart at ID 100
     let start = node_at(&wf, 100).expect("CollectStart must exist at id 100");
@@ -486,8 +482,7 @@ fn lower_collect_emits_three_nodes() {
     let done = StepIdx::new(12);
 
     let result = lower_collect(id, source, 5, 10, body, done, &mut builder);
-    assert!(result.is_ok(), "lower_collect should succeed");
-    let nodes = result.unwrap();
+    let nodes = result.expect("lower_collect should succeed");
     assert_eq!(nodes.len(), 3, "lower_collect emits exactly 3 nodes");
 }
 
@@ -499,7 +494,7 @@ fn lower_collect_node_ids_are_id_body_done() {
     let done = StepIdx::new(12);
 
     let result = lower_collect(id, SlotIdx::new(0), 5, 10, body, done, &mut builder);
-    let nodes = result.unwrap();
+    let nodes = result.expect("lower_collect should succeed");
 
     assert_eq!(nodes[0].id.get(), 10, "CollectStart at id");
     assert_eq!(nodes[1].id.get(), 11, "CollectPage at body");
@@ -517,7 +512,7 @@ fn lower_collect_collectstart_has_correct_fields() {
     let done = StepIdx::new(12);
 
     let result = lower_collect(id, source, limit, page_size, body, done, &mut builder);
-    let nodes = result.unwrap();
+    let nodes = result.expect("lower_collect should succeed");
 
     match &nodes[0].kind {
         CompiledNodeKind::CollectStart {
@@ -546,7 +541,7 @@ fn lower_collect_collectpage_has_correct_slot_reference() {
     let done = StepIdx::new(12);
 
     let result = lower_collect(id, source, 3, 4, body, done, &mut builder);
-    let nodes = result.unwrap();
+    let nodes = result.expect("lower_collect should succeed");
 
     match &nodes[1].kind {
         CompiledNodeKind::CollectPage {
@@ -575,7 +570,7 @@ fn lower_collect_collectfinish_has_correct_slot_reference() {
     let done = StepIdx::new(12);
 
     let result = lower_collect(id, source, 3, 4, body, done, &mut builder);
-    let nodes = result.unwrap();
+    let nodes = result.expect("lower_collect should succeed");
 
     match &nodes[2].kind {
         CompiledNodeKind::CollectFinish { collector_slot } => {
@@ -601,9 +596,11 @@ fn lower_collect_accepts_zero_limit_and_page_size() {
         StepIdx::new(12),
         &mut builder,
     );
-    assert!(
-        result.is_ok(),
-        "lower_collect should accept zero limit/page_size"
+    let nodes = result.expect("lower_collect should accept zero limit/page_size");
+    assert_eq!(
+        nodes.len(),
+        3,
+        "zero budget lower_collect still emits 3 nodes"
     );
 }
 
@@ -623,6 +620,12 @@ fn lower_collect_accepts_u32_max_values() {
         result.is_ok(),
         "lower_collect should accept u32::MAX limit/page_size"
     );
+    let nodes = result.expect("u32::MAX budget lower_collect must emit nodes");
+    assert_eq!(
+        nodes.len(),
+        3,
+        "u32::MAX budget lower_collect still emits 3 nodes"
+    );
 }
 
 #[test]
@@ -639,15 +642,13 @@ fn lower_collect_preserves_source_in_builder() {
         StepIdx::new(12),
         &mut builder,
     );
-    assert!(result.is_ok());
+    let nodes = result.expect("lower_collect should succeed");
+    assert_eq!(nodes.len(), 3, "lower_collect must emit 3 nodes");
     // The builder should have recorded the slot
-    let count = builder.slot_count();
-    assert!(count.is_ok(), "slot_count should be valid: {count:?}");
+    let count = builder.slot_count().expect("slot_count should be valid");
     // source slot 42 means slot_count should be at least 43
-    if let Ok(c) = count {
-        assert!(
-            c >= 43,
-            "slot_count should be at least source.get()+1=43, got {c}"
-        );
-    }
+    assert!(
+        count >= 43,
+        "slot_count should be at least source.get()+1=43, got {count}"
+    );
 }

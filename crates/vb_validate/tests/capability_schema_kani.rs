@@ -110,7 +110,10 @@ proptest! {
         prop_assume!(version != "velvet-ballistics/v1");
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let result = validate_version(&doc);
-        prop_assert!(result.is_err());
+        prop_assert!(
+            matches!(result, Err(ValidationError::InvalidVersion { version: ref v }) if *v == version),
+            "expected InvalidVersion for non-canonical version, got {result:?}"
+        );
     }
 
     #[test]
@@ -591,7 +594,12 @@ fn kani_integration_http_trigger_is_rejected() {
 #[test]
 fn kani_integration_empty_workflow_is_rejected() {
     let doc = make_doc(vec![]);
-    assert!(validate_workflow_schema(&doc).is_err());
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::MissingRequiredField {
+            field: "version".to_owned(),
+        })
+    );
 }
 
 #[test]

@@ -1,10 +1,13 @@
 #![forbid(unsafe_code)]
 
-use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const MAX_TEMP_STAGE_ATTEMPTS: usize = 8;
+const TEST_CLEANUP_FAILURES_ENV: &str = "VB_DELIVER_SINK_TEST_CLEANUP_FAILURES";
+const TEST_POST_COMMIT_FINAL_ACTION_ENV: &str = "VB_DELIVER_SINK_TEST_POST_COMMIT_FINAL_ACTION";
+const TEST_SYNC_RESULTS_ENV: &str = "VB_DELIVER_SINK_TEST_SYNC_RESULTS";
+const PUBLISH_STATE_UNKNOWN_MESSAGE: &str = "deliver failed: deliver publish outcome is unknown after post-commit state could not be confirmed";
+const RIVAL_REPLACEMENT_TEXT: &str = "rival replacement\n";
 
 #[test]
 fn agent_context_deliver_stdout_writes_single_json_line() -> Result<(), String> {
@@ -17,14 +20,7 @@ fn agent_context_deliver_stdout_writes_single_json_line() -> Result<(), String> 
     );
     assert_eq!(output.stderr, Vec::<u8>::new());
 
-    let (_, value) =
-        parse_single_jsonl_record_bytes(&output.stdout, "agent-context --deliver stdout stdout")?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
-    assert_eq!(
-        value.get("cli"),
-        Some(&serde_json::json!("velvet-ballistics"))
-    );
-    Ok(())
+    assert_agent_context_jsonl_bytes(&output.stdout, "agent-context --deliver stdout stdout")
 }
 
 #[test]
@@ -33,24 +29,81 @@ fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String>
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
-        .args(["agent-context", "--deliver", target.as_str()])
+    let output = agent_context_deliver_command(target.as_str())
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(
-        output.status.success(),
-        "agent-context --deliver must succeed, stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_successful_file_delivery(
+        &output,
+        &deliver_path,
+        &["agent-context.jsonl"],
+        "agent-context --deliver",
+    )
+}
 
-    let (_, value) = read_single_jsonl_record(&deliver_path)?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
+#[test]
+fn agent_context_deliver_reports_unknown_publish_when_rival_unlinks_final_path_after_publish()
+-> Result<(), String> {
+    let dir = deliver_tempdir()?;
+    let deliver_path = dir.path().join("agent-context.jsonl");
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = agent_context_deliver_command(target.as_str())
+        .env(TEST_POST_COMMIT_FINAL_ACTION_ENV, "unlink-final")
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_line(&output, PUBLISH_STATE_UNKNOWN_MESSAGE)?;
+    assert!(!deliver_path.exists());
+    assert_directory_entries_exact(dir.path(), &[])?;
+    Ok(())
+}
+
+#[test]
+fn agent_context_deliver_reports_unknown_publish_when_rival_replaces_final_path_after_publish()
+-> Result<(), String> {
+    let dir = deliver_tempdir()?;
+    let deliver_path = dir.path().join("agent-context.jsonl");
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = agent_context_deliver_command(target.as_str())
+        .env(TEST_POST_COMMIT_FINAL_ACTION_ENV, "replace-final")
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_line(&output, PUBLISH_STATE_UNKNOWN_MESSAGE)?;
     assert_eq!(
-        value.get("cli"),
-        Some(&serde_json::json!("velvet-ballistics"))
+        std::fs::read_to_string(&deliver_path).map_err(|error| error.to_string())?,
+        String::from(RIVAL_REPLACEMENT_TEXT)
     );
+    assert_directory_entries_exact(dir.path(), &["agent-context.jsonl"])?;
+    Ok(())
+}
+
+#[test]
+fn agent_context_deliver_reports_unknown_publish_when_rollback_leaves_temp_link()
+-> Result<(), String> {
+    let dir = deliver_tempdir()?;
+    let deliver_path = dir.path().join("agent-context.jsonl");
+    let temp_stage_path = dir.path().join(".agent-context.jsonl.tmp");
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = agent_context_deliver_command(target.as_str())
+        .env(TEST_SYNC_RESULTS_ENV, "permission_denied,ok")
+        .env(TEST_CLEANUP_FAILURES_ENV, ".agent-context.jsonl.tmp")
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_line(&output, PUBLISH_STATE_UNKNOWN_MESSAGE)?;
+    assert!(!deliver_path.exists());
+    assert_agent_context_jsonl_at_path(&temp_stage_path)?;
+    assert_directory_entries_exact(dir.path(), &[".agent-context.jsonl.tmp"])?;
     Ok(())
 }
 
@@ -68,19 +121,16 @@ fn agent_context_deliver_retries_after_preexisting_preferred_stage_file() -> Res
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(
-        output.status.success(),
-        "agent-context --deliver must retry around a stage-file collision, stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_successful_file_delivery(
+        &output,
+        &deliver_path,
+        &[".agent-context.jsonl.tmp", "agent-context.jsonl"],
+        "agent-context --deliver",
+    )?;
     assert_eq!(
         std::fs::read_to_string(&preferred_stage_path).map_err(|error| error.to_string())?,
         String::from("preexisting stage\n")
     );
-
-    let (_, value) = read_single_jsonl_record(&deliver_path)?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
     Ok(())
 }
 
@@ -102,9 +152,12 @@ fn agent_context_deliver_file_succeeds_at_exact_max_path_bytes_4095_with_staging
     );
     assert_eq!(path_text(&deliver_path)?.len(), 4095);
 
-    let (_, value) = read_single_jsonl_record(&deliver_path)?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
-    Ok(())
+    assert_successful_file_delivery(
+        &output,
+        &deliver_path,
+        &["four"],
+        "agent-context --deliver at 4095 bytes",
+    )
 }
 
 #[test]
@@ -120,12 +173,108 @@ fn agent_context_deliver_rejects_exact_4095_byte_path_without_staging_retry_room
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("deliver failed: deliver file path is too long")
-    );
+    assert_stderr_line(&output, "deliver failed: deliver file path is too long")?;
     assert!(!deliver_path.exists());
     Ok(())
+}
+
+#[test]
+fn agent_context_deliver_accepts_exact_4094_byte_path_when_short_stage_name_still_fits()
+-> Result<(), String> {
+    let (_root, deliver_path) = actual_exact_path_target(4094, "f")?;
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
+        .args(["agent-context", "--deliver", target.as_str()])
+        .output()
+        .map_err(|error| error.to_string())?;
+
+    assert!(
+        output.status.success(),
+        "agent-context --deliver at 4094 bytes must succeed, stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(path_text(&deliver_path)?.len(), 4094);
+
+    assert_successful_file_delivery(
+        &output,
+        &deliver_path,
+        &["f"],
+        "agent-context --deliver at 4094 bytes",
+    )
+}
+
+#[test]
+fn agent_context_deliver_reports_staging_unavailable_for_4094_byte_path_when_short_stage_is_taken()
+-> Result<(), String> {
+    let (_root, deliver_path) = actual_exact_path_target(4094, "f")?;
+    let parent = deliver_path
+        .parent()
+        .ok_or_else(|| String::from("deliver path is missing parent"))?;
+    let short_stage_path = parent.join(".t");
+    std::fs::write(&short_stage_path, "preexisting short stage\n")
+        .map_err(|error| error.to_string())?;
+    let target = format!("file:{}", path_text(&deliver_path)?);
+
+    let output = run_agent_context_deliver(&target)?;
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_line(
+        &output,
+        "deliver failed: deliver temporary staging path is unavailable",
+    )?;
+    assert!(!deliver_path.exists());
+    assert_eq!(
+        std::fs::read_to_string(&short_stage_path).map_err(|error| error.to_string())?,
+        String::from("preexisting short stage\n")
+    );
+    assert_directory_entries_exact(parent, &[".t"])?;
+    Ok(())
+}
+
+#[test]
+fn agent_context_deliver_accepts_251_to_255_byte_file_names_with_shorter_stage_fallback()
+-> Result<(), String> {
+    for file_name_len in 251..=255 {
+        let dir = deliver_tempdir()?;
+        let file_name = repeated_file_name(file_name_len);
+        let deliver_path = dir.path().join(&file_name);
+        let target = format!("file:{}", path_text(&deliver_path)?);
+        let output = run_agent_context_deliver(&target)?;
+        let expected_parent_entries = [file_name.as_str()];
+        let label = format!("agent-context --deliver with {file_name_len}-byte file name");
+
+        assert_successful_file_delivery(&output, &deliver_path, &expected_parent_entries, &label)?;
+    }
+
+    Ok(())
+}
+
+#[test]
+fn agent_context_deliver_handles_256_byte_file_name_at_parent_component_boundary()
+-> Result<(), String> {
+    let dir = deliver_tempdir()?;
+    let file_name = repeated_file_name(256);
+    let deliver_path = dir.path().join(&file_name);
+    let target = format!("file:{}", path_text(&deliver_path)?);
+    let file_name_supported = probe_file_name_support(dir.path(), &file_name)?;
+    let output = run_agent_context_deliver(&target)?;
+
+    if file_name_supported {
+        let expected_parent_entries = [file_name.as_str()];
+        assert_successful_file_delivery(
+            &output,
+            &deliver_path,
+            &expected_parent_entries,
+            "agent-context --deliver with 256-byte file name",
+        )
+    } else {
+        assert_eq!(output.status.code(), Some(2));
+        assert_eq!(output.stdout, Vec::<u8>::new());
+        assert_stderr_line(&output, "deliver failed: deliver file path is too long")?;
+        assert_directory_entries_exact(dir.path(), &[])
+    }
 }
 
 #[test]
@@ -140,10 +289,7 @@ fn agent_context_deliver_rejects_path_just_above_4095_bytes() -> Result<(), Stri
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("deliver failed: deliver file path is too long")
-    );
+    assert_stderr_line(&output, "deliver failed: deliver file path is too long")?;
     assert!(!deliver_path.exists());
     Ok(())
 }
@@ -159,12 +305,14 @@ fn agent_context_deliver_rejects_unknown_flag_before_writing_file() -> Result<()
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("invalid agent-context argument: unknown flag --bogus")
-    );
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_starts_with_line(
+        &output,
+        "invalid agent-context argument: unknown flag --bogus",
+    )?;
     assert!(!deliver_path.exists());
+    assert_directory_entries_exact(dir.path(), &[])?;
     Ok(())
 }
 
@@ -175,11 +323,12 @@ fn agent_context_deliver_rejects_missing_target() -> Result<(), String> {
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(!output.status.success());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("--deliver requires stdout, file:<absolute-path>, or webhook:<url>")
-    );
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_starts_with_line(
+        &output,
+        "invalid agent-context argument: --deliver requires stdout, file:<absolute-path>, or webhook:<url>",
+    )?;
     Ok(())
 }
 
@@ -212,7 +361,7 @@ fn agent_context_deliver_rejects_unsupported_webhook_target() -> Result<(), Stri
 #[test]
 fn agent_context_deliver_rejects_unknown_target_scheme() -> Result<(), String> {
     assert_deliver_validation_failure(
-        "ftp:/tmp/agent-context.jsonl",
+        "ftp:/absolute/agent-context.jsonl",
         "deliver failed: deliver target scheme is unknown",
     )
 }
@@ -270,34 +419,41 @@ fn agent_context_deliver_rejects_symlink_alias_to_blocked_root() -> Result<(), S
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("deliver failed: deliver file path uses a blocked system root")
-    );
+    assert_stderr_line(
+        &output,
+        "deliver failed: deliver file path uses a blocked system root",
+    )?;
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
 #[test]
-fn agent_context_deliver_reports_staging_unavailable_when_all_stage_names_are_taken()
--> Result<(), String> {
-    let dir = deliver_tempdir()?;
-    let deliver_path = dir.path().join("agent-context.jsonl");
-    occupy_all_stage_names(&deliver_path)?;
-    let target = format!("file:{}", path_text(&deliver_path)?);
+fn agent_context_deliver_rejects_dev_root_directly() -> Result<(), String> {
+    assert_direct_blocked_root_rejection(Path::new("/dev"), "vb-direct-dev.jsonl")
+}
 
-    let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
-        .args(["agent-context", "--deliver", target.as_str()])
-        .output()
-        .map_err(|error| error.to_string())?;
+#[cfg(target_os = "linux")]
+#[test]
+fn agent_context_deliver_rejects_sys_root_directly() -> Result<(), String> {
+    assert_direct_blocked_root_rejection(Path::new("/sys"), "vb-direct-sys.jsonl")
+}
 
-    assert_eq!(output.status.code(), Some(2));
-    assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("deliver failed: deliver temporary staging path is unavailable")
-    );
-    assert!(!deliver_path.exists());
-    Ok(())
+#[cfg(target_os = "linux")]
+#[test]
+fn agent_context_deliver_rejects_proc_descendant_path() -> Result<(), String> {
+    assert_direct_blocked_root_rejection(Path::new("/proc/self"), "vb-proc-self.jsonl")
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn agent_context_deliver_rejects_sys_descendant_path() -> Result<(), String> {
+    assert_direct_blocked_root_rejection(Path::new("/sys/kernel"), "vb-sys-kernel.jsonl")
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn agent_context_deliver_rejects_dev_descendant_path() -> Result<(), String> {
+    assert_direct_blocked_root_rejection(Path::new("/dev/shm"), "vb-dev-shm.jsonl")
 }
 
 #[cfg(unix)]
@@ -318,21 +474,14 @@ fn agent_context_deliver_accepts_symlink_alias_to_allowed_parent() -> Result<(),
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(
-        output.status.success(),
-        "agent-context --deliver via symlink alias must succeed, stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, Vec::<u8>::new());
     assert!(deliver_path.exists());
 
-    let (_, value) = read_single_jsonl_record(&actual_path)?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
-    assert_eq!(
-        value.get("cli"),
-        Some(&serde_json::json!("velvet-ballistics"))
-    );
-    Ok(())
+    assert_successful_file_delivery(
+        &output,
+        &actual_path,
+        &["agent-context.jsonl"],
+        "agent-context --deliver via symlink alias",
+    )
 }
 
 #[cfg(unix)]
@@ -360,36 +509,21 @@ fn agent_context_deliver_resolves_parent_as_written_before_collapsing_dotdot() -
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(
-        output.status.success(),
-        "agent-context --deliver via symlink/.. parent must succeed, stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, Vec::<u8>::new());
-
-    let (_, value) = read_single_jsonl_record(&actual_path)?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
-    Ok(())
+    assert_successful_file_delivery(
+        &output,
+        &actual_path,
+        &["agent-context.jsonl"],
+        "agent-context --deliver via symlink/.. parent",
+    )
 }
 
 #[cfg(target_os = "linux")]
 #[test]
 fn agent_context_deliver_allows_proc_dotdot_tmp_path_when_resolved_parent_is_allowed()
 -> Result<(), String> {
-    let dir = tempfile::Builder::new()
-        .prefix("vb-deliver-proc-dotdot-")
-        .tempdir_in("/tmp")
-        .map_err(|error| error.to_string())?;
-    let relative_parent = dir
-        .path()
-        .strip_prefix("/tmp")
-        .map_err(|error| error.to_string())?;
-    let deliver_path = std::path::Path::new("/proc")
-        .join("..")
-        .join("tmp")
-        .join(relative_parent)
-        .join("agent-context.jsonl");
+    let dir = repo_tempdir("vb-deliver-proc-dotdot-")?;
     let actual_path = dir.path().join("agent-context.jsonl");
+    let deliver_path = proc_dotdot_alias(&actual_path)?;
     let target = format!("file:{}", path_text(&deliver_path)?);
 
     let output = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
@@ -397,16 +531,12 @@ fn agent_context_deliver_allows_proc_dotdot_tmp_path_when_resolved_parent_is_all
         .output()
         .map_err(|error| error.to_string())?;
 
-    assert!(
-        output.status.success(),
-        "agent-context --deliver must use resolved parent semantics for /proc/../tmp, stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, Vec::<u8>::new());
-
-    let (_, value) = read_single_jsonl_record(&actual_path)?;
-    assert_eq!(value.get("kind"), Some(&serde_json::json!("AgentContext")));
-    Ok(())
+    assert_successful_file_delivery(
+        &output,
+        &actual_path,
+        &["agent-context.jsonl"],
+        "agent-context --deliver must use resolved parent semantics for /proc/../<repo-path>",
+    )
 }
 
 #[cfg(unix)]
@@ -430,14 +560,15 @@ fn agent_context_deliver_rejects_symlink_alias_to_existing_real_file() -> Result
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("deliver failed: deliver file target already exists")
-    );
+    assert_stderr_line(
+        &output,
+        "deliver failed: deliver file target already exists",
+    )?;
     assert_eq!(
         std::fs::read_to_string(&actual_path).map_err(|error| error.to_string())?,
         String::from("already here\n")
     );
+    assert_directory_entries_exact(&real_parent, &["agent-context.jsonl"])?;
     Ok(())
 }
 
@@ -458,8 +589,20 @@ fn path_text(path: &std::path::Path) -> Result<String, String> {
 }
 
 fn run_agent_context_deliver(target: &str) -> Result<std::process::Output, String> {
+    agent_context_deliver_command(target)
+        .output()
+        .map_err(|error| error.to_string())
+}
+
+fn agent_context_deliver_command(target: &str) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"));
+    command.args(["agent-context", "--deliver", target]);
+    command
+}
+
+fn run_agent_context() -> Result<std::process::Output, String> {
     Command::new(env!("CARGO_BIN_EXE_velvet-ballistics"))
-        .args(["agent-context", "--deliver", target])
+        .arg("agent-context")
         .output()
         .map_err(|error| error.to_string())
 }
@@ -468,27 +611,168 @@ fn assert_deliver_validation_failure(target: &str, expected_message: &str) -> Re
     let output = run_agent_context_deliver(target)?;
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains(expected_message),
-        "expected `{expected_message}` in stderr, got {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert_stderr_line(&output, expected_message)?;
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
+fn assert_direct_blocked_root_rejection(parent: &Path, file_name: &str) -> Result<(), String> {
+    if !parent.is_dir() {
+        return Ok(());
+    }
+
+    let deliver_path = parent.join(file_name);
+    let output = run_agent_context_deliver(&format!("file:{}", path_text(&deliver_path)?))?;
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_stderr_line(
+        &output,
+        "deliver failed: deliver file path uses a blocked system root",
+    )
+}
+
 fn deliver_tempdir() -> Result<tempfile::TempDir, String> {
-    let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/deliver-sink-tmp");
+    repo_tempdir("vb-deliver-")
+}
+
+fn repo_temp_root() -> Result<PathBuf, String> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/deliver-sink-tmp");
     std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+    std::fs::canonicalize(&root).map_err(|error| error.to_string())
+}
+
+fn repo_tempdir(prefix: &str) -> Result<tempfile::TempDir, String> {
+    let root = repo_temp_root()?;
     tempfile::Builder::new()
-        .prefix("vb-deliver-")
+        .prefix(prefix)
         .tempdir_in(root)
         .map_err(|error| error.to_string())
 }
 
-fn read_single_jsonl_record(path: &Path) -> Result<(String, serde_json::Value), String> {
+fn assert_successful_file_delivery(
+    output: &std::process::Output,
+    deliver_path: &Path,
+    expected_parent_entries: &[&str],
+    label: &str,
+) -> Result<(), String> {
+    if !output.status.success() {
+        return Err(format!(
+            "{label} must succeed, stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    if output.stdout != Vec::<u8>::new() {
+        return Err(format!(
+            "{label} must not write stdout for file delivery, got {:?}",
+            output.stdout
+        ));
+    }
+    if output.stderr != Vec::<u8>::new() {
+        return Err(format!(
+            "{label} must not write stderr on success, got {:?}",
+            output.stderr
+        ));
+    }
+
+    assert_agent_context_jsonl_at_path(deliver_path)?;
+    #[cfg(unix)]
+    assert_owner_only_file_permissions(deliver_path)?;
+    let parent = deliver_path
+        .parent()
+        .ok_or_else(|| String::from("deliver path is missing parent"))?;
+    assert_directory_entries_exact(parent, expected_parent_entries)
+}
+
+#[cfg(unix)]
+fn assert_owner_only_file_permissions(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mode = std::fs::metadata(path)
+        .map_err(|error| error.to_string())?
+        .permissions()
+        .mode()
+        & 0o777;
+    if mode & 0o600 == 0o600 && mode & 0o077 == 0 {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected owner-only delivered file permissions at {}, got {mode:o}",
+            path.display()
+        ))
+    }
+}
+
+fn expected_agent_context_value() -> Result<serde_json::Value, String> {
+    let output = run_agent_context()?;
+    if !output.status.success() {
+        return Err(format!(
+            "agent-context must succeed when building expected value, stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    if output.stderr != Vec::<u8>::new() {
+        return Err(format!(
+            "agent-context must not write stderr when building expected value, got {:?}",
+            output.stderr
+        ));
+    }
+
+    serde_json::from_slice(&output.stdout).map_err(|error| error.to_string())
+}
+
+fn expected_agent_context_jsonl_bytes() -> Result<Vec<u8>, String> {
+    let mut bytes =
+        serde_json::to_vec(&expected_agent_context_value()?).map_err(|error| error.to_string())?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn assert_agent_context_jsonl_at_path(path: &Path) -> Result<(), String> {
     let bytes = std::fs::read(path).map_err(|error| error.to_string())?;
-    parse_single_jsonl_record_bytes(&bytes, &path.display().to_string())
+    assert_agent_context_jsonl_bytes(&bytes, &path.display().to_string())
+}
+
+fn assert_agent_context_jsonl_bytes(bytes: &[u8], location: &str) -> Result<(), String> {
+    let _ = parse_single_jsonl_record_bytes(bytes, location)?;
+    let expected = expected_agent_context_jsonl_bytes()?;
+    if bytes == expected.as_slice() {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected exact JSONL bytes {:?} at {location}, got {:?}",
+            expected, bytes
+        ))
+    }
+}
+
+fn assert_stderr_line(output: &std::process::Output, expected_line: &str) -> Result<(), String> {
+    let expected = format!("{expected_line}\n");
+    if output.stderr == expected.as_bytes() {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected stderr {:?}, got {:?}",
+            expected.as_bytes(),
+            output.stderr
+        ))
+    }
+}
+
+fn assert_stderr_starts_with_line(
+    output: &std::process::Output,
+    expected_line: &str,
+) -> Result<(), String> {
+    let expected = format!("{expected_line}\n");
+    if output.stderr.starts_with(expected.as_bytes()) {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected stderr to start with {:?}, got {:?}",
+            expected.as_bytes(),
+            output.stderr
+        ))
+    }
 }
 
 fn parse_single_jsonl_record_bytes(
@@ -524,67 +808,66 @@ fn parse_single_jsonl_record_bytes(
     Ok((text, value))
 }
 
-fn occupy_all_stage_names(path: &Path) -> Result<(), String> {
-    let parent = path
-        .parent()
-        .ok_or_else(|| String::from("deliver path is missing parent"))?;
-    let file_name = path
-        .file_name()
-        .ok_or_else(|| String::from("deliver path is missing file name"))?;
-    let resolved_parent = std::fs::canonicalize(parent).map_err(|error| error.to_string())?;
-    let resolved_path = resolved_parent.join(file_name);
-    let base_names = [
-        preferred_temp_name(file_name),
-        hashed_temp_name(&resolved_path),
-        OsString::from(".tmp"),
-        OsString::from(".t"),
-    ];
+fn assert_directory_entries_exact(directory: &Path, expected: &[&str]) -> Result<(), String> {
+    let mut actual_entries = Vec::new();
+    for entry_result in std::fs::read_dir(directory).map_err(|error| error.to_string())? {
+        let entry = entry_result.map_err(|error| error.to_string())?;
+        actual_entries.push(entry.file_name().to_string_lossy().into_owned());
+    }
+    actual_entries.sort();
 
-    for base_name in base_names {
-        for attempt in 0..MAX_TEMP_STAGE_ATTEMPTS {
-            let candidate = resolved_parent.join(temp_stage_name(&base_name, attempt));
-            std::fs::write(&candidate, b"occupied stage\n").map_err(|error| error.to_string())?;
+    let mut expected_entries = expected
+        .iter()
+        .map(|entry| String::from(*entry))
+        .collect::<Vec<_>>();
+    expected_entries.sort();
+
+    if actual_entries == expected_entries {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected directory entries {:?} at {}, got {:?}",
+            expected_entries,
+            directory.display(),
+            actual_entries
+        ))
+    }
+}
+
+fn repeated_file_name(byte_len: usize) -> String {
+    "f".repeat(byte_len)
+}
+
+fn probe_file_name_support(parent: &Path, file_name: &str) -> Result<bool, String> {
+    let probe_path = parent.join(file_name);
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&probe_path)
+    {
+        Ok(file) => {
+            drop(file);
+            std::fs::remove_file(&probe_path).map_err(|error| error.to_string())?;
+            Ok(true)
+        }
+        Err(error) => {
+            if error.raw_os_error() == Some(rustix::io::Errno::NAMETOOLONG.raw_os_error()) {
+                Ok(false)
+            } else {
+                Err(format!(
+                    "failed to probe file-name support for {}: {error}",
+                    probe_path.display()
+                ))
+            }
         }
     }
-
-    Ok(())
-}
-
-fn preferred_temp_name(file_name: &OsStr) -> OsString {
-    let mut temp_name = OsString::from(".");
-    temp_name.push(file_name);
-    temp_name.push(".tmp");
-    temp_name
-}
-
-fn hashed_temp_name(path: &Path) -> OsString {
-    let digest = blake3::hash(path.as_os_str().as_encoded_bytes());
-    let mut temp_name = String::from(".vb");
-    for byte in &digest.as_bytes()[..8] {
-        temp_name.push_str(&format!("{byte:02x}"));
-    }
-    OsString::from(temp_name)
-}
-
-fn temp_stage_name(base_name: &OsStr, attempt: usize) -> OsString {
-    if attempt == 0 {
-        return base_name.to_os_string();
-    }
-
-    let mut candidate_name = base_name.to_os_string();
-    candidate_name.push(".");
-    candidate_name.push(attempt.to_string());
-    candidate_name
 }
 
 fn actual_exact_path_target(
     total_bytes: usize,
     file_name: &str,
 ) -> Result<(tempfile::TempDir, PathBuf), String> {
-    let root = tempfile::Builder::new()
-        .prefix("vb-path-")
-        .tempdir_in("/tmp")
-        .map_err(|error| error.to_string())?;
+    let root = repo_tempdir("vb-path-")?;
     let separator_bytes = 1_usize;
     let target_parent_len = total_bytes
         .checked_sub(file_name.len())
@@ -635,4 +918,12 @@ fn grow_parent_to_len(root: &Path, target_len: usize) -> Result<PathBuf, String>
         ));
     }
     Ok(parent)
+}
+
+#[cfg(target_os = "linux")]
+fn proc_dotdot_alias(path: &Path) -> Result<PathBuf, String> {
+    let relative = path
+        .strip_prefix(Path::new("/"))
+        .map_err(|error| error.to_string())?;
+    Ok(Path::new("/proc").join("..").join(relative))
 }

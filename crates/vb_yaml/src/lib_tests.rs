@@ -868,7 +868,12 @@ fn adversarial_api_null_byte_in_source_rejected() {
 fn adversarial_api_null_byte_workflow_rejected() {
     let yaml = "version: velvet-ballistics/v1\nname: \x00bad\nwhen:\n  manual: {}\nsteps: []\n";
     let result = parse_workflow_source(yaml);
-    assert!(result.is_err(), "expected error for null byte in workflow");
+    assert_eq!(
+        result,
+        Err(YamlError::ForbiddenFeature {
+            detail: "null_byte_in_source"
+        })
+    );
 }
 
 #[test]
@@ -927,7 +932,13 @@ fn adversarial_api_workflow_with_missing_when_rejected() {
 fn adversarial_api_workflow_with_non_mapping_when_rejected() {
     let yaml = "version: velvet-ballistics/v1\nname: bad\nwhen: manual\nsteps: []\n";
     let result = parse_workflow_source(yaml);
-    assert!(result.is_err(), "expected error for non-mapping when");
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "when",
+            expected: "mapping",
+        })
+    );
 }
 
 #[test]
@@ -1205,7 +1216,7 @@ fn adversarial_api_oversized_source_rejected_immediately() {
 fn adversarial_api_only_whitespace_rejected() {
     let yaml = "   \t  \n  \n  ";
     let result = validate_yaml_profile(yaml);
-    assert!(result.is_err(), "expected error for whitespace-only YAML");
+    assert_eq!(result, Err(YamlError::EmptySource));
 }
 
 // ---------------------------------------------------------------------------
@@ -1215,9 +1226,10 @@ fn adversarial_api_only_whitespace_rejected() {
 #[test]
 fn build_source_map_returns_non_empty_for_valid_yaml() {
     let yaml = "key: value\n";
-    let result = build_source_map(yaml);
-    assert!(result.is_ok(), "build_source_map failed: {result:?}");
-    let map = result.unwrap();
+    let map = match build_source_map(yaml) {
+        Ok(v) => v,
+        Err(e) => panic!("build_source_map should succeed for valid YAML: {e:?}"),
+    };
     assert!(
         !map.is_empty(),
         "source map should not be empty for valid YAML"
@@ -1287,5 +1299,8 @@ fn load_fixture_source_parses_valid_workflow() {
               result: "done"
     "#};
     let result = load_fixture_source(yaml);
-    assert!(result.is_ok(), "load_fixture_source failed: {result:?}");
+    assert!(
+        matches!(result, Ok(_)),
+        "load_fixture_source should accept valid workflow, got {result:?}"
+    );
 }

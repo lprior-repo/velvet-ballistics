@@ -4,6 +4,7 @@
 mod ai_profile;
 mod benchmark_policy;
 mod cli;
+mod cold_adapter_isolation;
 mod contracts;
 mod evidence;
 mod forbidden_scan;
@@ -66,6 +67,15 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::ProofEvidence { bead } => cmd_proof_evidence(&bead),
         Commands::ProofDrift { sections } => cmd_proof_drift(sections.as_deref()),
         Commands::Loom { model } => loom::cmd_loom(&model),
+        Commands::ColdAdapterIsolation { targets } => {
+            match cold_adapter_isolation::cmd_cold_adapter_isolation(&targets) {
+                Ok(exit_code) => std::process::exit(exit_code),
+                Err(error) => {
+                    eprintln!("check-cold-adapter-isolation: {error}");
+                    std::process::exit(2);
+                }
+            }
+        }
         Commands::ForbiddenScan { crates, allowlist } => {
             forbidden_scan::cmd_forbidden_scan(crates.as_deref(), allowlist.as_deref())
         }

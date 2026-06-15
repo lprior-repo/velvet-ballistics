@@ -1186,7 +1186,17 @@ fn phase23_branch_failure_preserves_existing_accumulator_state() {
         Some(output),
     );
     // Then the error is returned (fail-fast)
-    assert!(result.is_err());
+    assert!(
+        result.is_err(),
+        "together_branch must return error when accumulator is corrupted"
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            assert_eq!(expected, "list");
+            assert_eq!(found, "boolean");
+        }
+        other => panic!("expected TypeMismatch, got {other:?}"),
+    }
     // And the output slot still holds the value from the last successful branch
     let output_val = *run
         .read_slot(output)
@@ -1322,7 +1332,6 @@ fn phase23_partial_failure_first_branch_succeeds_second_corrupt_accumulator() {
         Some(output),
     );
     // Then branch 2 returns TypeMismatch (partial failure)
-    assert!(result2.is_err());
     match result2 {
         Err(EngineError::TypeMismatch { expected, found }) => {
             assert_eq!(expected, "list");
@@ -1375,7 +1384,17 @@ fn phase23_partial_failure_output_preserved_after_branch_error() {
         accumulator,
         Some(output),
     );
-    assert!(fail_result.is_err());
+    assert!(
+        fail_result.is_err(),
+        "together_branch must error when accumulator is not a list"
+    );
+    match fail_result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            assert_eq!(expected, "list");
+            assert_eq!(found, "number");
+        }
+        other => panic!("expected TypeMismatch, got {other:?}"),
+    }
 
     // The output slot still holds Null from the last successful branch
     let output_val = *run

@@ -34,7 +34,7 @@ fn kani_f64_div_by_zero_returns_non_finite_float() {
     let dividend = match FiniteF64::new(dividend_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite non-zero dividend");
+            kani::assume(false);
             return;
         }
     };
@@ -43,7 +43,7 @@ fn kani_f64_div_by_zero_returns_non_finite_float() {
     let divisor = match FiniteF64::new(0.0_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new(0.0) should succeed — zero is finite");
+            kani::assume(false);
             return;
         }
     };
@@ -93,14 +93,14 @@ fn kani_f64_div_by_nonzero_finite_succeeds() {
     let dividend = match FiniteF64::new(dividend_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded dividend");
+            kani::assume(false);
             return;
         }
     };
     let divisor = match FiniteF64::new(divisor_f64) {
         Ok(v) => v,
         Err(_) => {
-            kani::assume(false, "FiniteF64::new should succeed with finite/bounded divisor");
+            kani::assume(false);
             return;
         }
     };

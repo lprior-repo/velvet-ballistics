@@ -32,7 +32,7 @@ fn kani_slot_from_text_closed() {
                 "valid slot_from_text must produce in-range SlotIdx",
             );
         }
-        Err(_) => {},
+        Err(_) => {}
     }
 }
 
@@ -130,6 +130,6 @@ fn kani_choose_slot_disjoint() {
 
     match result {
         Ok(()) => kani::cover!(builder.nodes.len() >= 2, "lowering produced body node"),
-        Err(_) => {},
+        Err(_) => {}
     }
 }

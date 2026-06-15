@@ -151,8 +151,7 @@ fn partition_plan_post_conditions() {
                 }
             }
 
-            if len > 1 {
-            }
+            if len > 1 {}
         }
         Err(_) => {}
     }

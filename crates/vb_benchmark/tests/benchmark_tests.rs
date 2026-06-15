@@ -2,6 +2,32 @@ use std::time::Duration;
 
 use vb_benchmark::*;
 
+// Helper to construct a valid BenchmarkMetadata for testing.
+// All three latency fields are set to 1ns (minimum non-zero) so
+// check_evidence_gate will not reject for zero latency.
+fn make_valid_metadata(
+    name: String,
+    baseline_us: Option<u64>,
+    result_us: u64,
+    command: String,
+    commit_hash: String,
+    environment: String,
+    budget_us: u64,
+) -> BenchmarkMetadata {
+    BenchmarkMetadata {
+        name,
+        baseline_us,
+        result_us,
+        command,
+        commit_hash,
+        environment,
+        budget_us,
+        fjall_write_latency_ns: 1,
+        direct_api_latency_ns: 1,
+        ipc_latency_ns: 1,
+    }
+}
+
 // These tests verify the public benchmark-helper API behaves per its contract.
 // Each test exercises a single boundary of the corresponding helper.
 
@@ -70,51 +96,51 @@ fn result_exceeds_threshold_false_when_within_threshold() {
 
 #[test]
 fn check_evidence_gate_rejects_missing_baseline() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: None,
-        result_us: 105_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        None,
+        105_000,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     let result = check_evidence_gate(&metadata, 20);
     assert!(matches!(result, Err(EvidenceError::MissingBaseline)));
 }
 
 #[test]
 fn check_evidence_gate_rejects_regression() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 130_000, // 30% regression
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        130_000, // 30% regression
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     let result = check_evidence_gate(&metadata, 20);
     match result {
         Err(EvidenceError::RegressionDetected { benchmark, delta }) => {
             assert_eq!(benchmark, "yaml_parse");
             assert_eq!(delta, 30_000);
         }
-        other => panic!("Expected RegressionDetected, got {:?}", other),
+        other => panic!("Expected RegressionDetected, got {other:?}"),
     }
 }
 
 #[test]
 fn check_evidence_gate_accepts_valid() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 105_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        105_000,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     match check_evidence_gate(&metadata, 20) {
         Ok(()) => {}
         Err(e) => panic!("evidence gate should pass for valid metadata: {e:?}"),
@@ -133,6 +159,9 @@ fn capture_metadata_rejects_empty_commit_hash() {
         "",
         "linux-x86_64",
         200_000,
+        100, // fjall_write_latency_ns
+        200, // direct_api_latency_ns
+        300, // ipc_latency_ns
     );
     assert!(matches!(result, Err(EvidenceError::MissingCommit)));
 }
@@ -147,6 +176,9 @@ fn capture_metadata_rejects_non_hex_commit_hash() {
         "xyz123!", // '!' is not hex
         "linux-x86_64",
         200_000,
+        100, // fjall_write_latency_ns
+        200, // direct_api_latency_ns
+        300, // ipc_latency_ns
     );
     assert!(matches!(result, Err(EvidenceError::MissingCommit)));
 }
@@ -161,6 +193,9 @@ fn capture_metadata_accepts_valid_inputs() {
         "abc123def",
         "linux-x86_64",
         200_000,
+        100, // fjall_write_latency_ns
+        200, // direct_api_latency_ns
+        300, // ipc_latency_ns
     );
     let meta = match result {
         Ok(meta) => meta,
@@ -173,6 +208,9 @@ fn capture_metadata_accepts_valid_inputs() {
     assert_eq!(meta.commit_hash, "abc123def");
     assert_eq!(meta.environment, "linux-x86_64");
     assert_eq!(meta.budget_us, 200_000);
+    assert_eq!(meta.fjall_write_latency_ns, 100);
+    assert_eq!(meta.direct_api_latency_ns, 200);
+    assert_eq!(meta.ipc_latency_ns, 300);
 }
 
 #[test]
@@ -185,6 +223,9 @@ fn capture_metadata_handles_none_baseline() {
         "abc123",
         "linux-x86_64",
         100_000,
+        100, // fjall_write_latency_ns
+        200, // direct_api_latency_ns
+        300, // ipc_latency_ns
     );
     let meta = match result {
         Ok(meta) => meta,
@@ -192,6 +233,9 @@ fn capture_metadata_handles_none_baseline() {
     };
     assert_eq!(meta.baseline_us, None);
     assert_eq!(meta.result_us, 50_000);
+    assert_eq!(meta.fjall_write_latency_ns, 100);
+    assert_eq!(meta.direct_api_latency_ns, 200);
+    assert_eq!(meta.ipc_latency_ns, 300);
 }
 
 // === result_exceeds_threshold boundary tests ===
@@ -225,6 +269,27 @@ fn result_exceeds_threshold_false_zero_threshold_pct() {
     // For no-regression (result NOT exceeds): result <= baseline
     assert!(!result_exceeds_threshold(
         Duration::from_micros(100_000),
+        Duration::from_micros(100_000),
+        0
+    ));
+}
+
+#[test]
+fn result_exceeds_threshold_true_with_zero_threshold_over_baseline() {
+    // threshold_pct=0 → any result over baseline is a regression
+    // result=100001 > baseline=100000 → true
+    assert!(result_exceeds_threshold(
+        Duration::from_micros(100_001),
+        Duration::from_micros(100_000),
+        0
+    ));
+}
+
+#[test]
+fn result_exceeds_threshold_false_with_zero_threshold_under_baseline() {
+    // result < baseline with 0% threshold → no regression
+    assert!(!result_exceeds_threshold(
+        Duration::from_micros(99_999),
         Duration::from_micros(100_000),
         0
     ));
@@ -318,60 +383,60 @@ fn budget_utilization_percent_50_percent() {
 
 #[test]
 fn check_evidence_gate_rejects_missing_environment() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 105_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "".to_string(), // empty environment
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        105_000,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "".to_string(), // empty environment
+        200_000,
+    );
     let result = check_evidence_gate(&metadata, 20);
     assert!(matches!(result, Err(EvidenceError::MissingEnvironment)));
 }
 
 #[test]
 fn check_evidence_gate_rejects_missing_command() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 105_000,
-        command: "".to_string(), // empty command
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        105_000,
+        "".to_string(), // empty command
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     let result = check_evidence_gate(&metadata, 20);
     assert!(matches!(result, Err(EvidenceError::MissingCommand)));
 }
 
 #[test]
 fn check_evidence_gate_rejects_missing_commit() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 105_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "".to_string(), // empty commit
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        105_000,
+        "cargo bench".to_string(),
+        "".to_string(), // empty commit
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     let result = check_evidence_gate(&metadata, 20);
     assert!(matches!(result, Err(EvidenceError::MissingCommit)));
 }
 
 #[test]
 fn check_evidence_gate_rejects_empty_budget() {
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 105_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 0, // zero budget
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        105_000,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        0, // zero budget
+    );
     let result = check_evidence_gate(&metadata, 20);
     assert!(matches!(result, Err(EvidenceError::EmptyBudget)));
 }
@@ -418,6 +483,9 @@ fn capture_metadata_rejects_single_non_hex_char() {
         "123g",
         "linux-x86_64",
         200_000,
+        100, // fjall_write_latency_ns
+        200, // direct_api_latency_ns
+        300, // ipc_latency_ns
     );
     assert!(matches!(result, Err(EvidenceError::MissingCommit)));
 }
@@ -433,12 +501,18 @@ fn capture_metadata_accepts_max_uint64_commit() {
         "ffffffffffffffff",
         "linux-x86_64",
         200_000,
+        100, // fjall_write_latency_ns
+        200, // direct_api_latency_ns
+        300, // ipc_latency_ns
     );
     let meta = match result {
         Ok(meta) => meta,
         Err(e) => panic!("expected valid metadata for max uint64 commit: {e:?}"),
     };
     assert_eq!(meta.commit_hash, "ffffffffffffffff");
+    assert_eq!(meta.fjall_write_latency_ns, 100);
+    assert_eq!(meta.direct_api_latency_ns, 200);
+    assert_eq!(meta.ipc_latency_ns, 300);
 }
 
 // === check_evidence_gate threshold boundary tests ===
@@ -447,15 +521,15 @@ fn capture_metadata_accepts_max_uint64_commit() {
 fn check_evidence_gate_accepts_exactly_at_threshold() {
     // baseline=100000, result=120000, threshold=20%
     // 120000 is NOT > 100000 + 20000 = 120000, so should pass
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 120_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        120_000,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     match check_evidence_gate(&metadata, 20) {
         Ok(()) => {}
         Err(e) => panic!("evidence gate should pass at threshold: {e:?}"),
@@ -465,15 +539,15 @@ fn check_evidence_gate_accepts_exactly_at_threshold() {
 #[test]
 fn check_evidence_gate_accepts_zero_threshold_within_baseline() {
     // threshold=0%, result=baseline
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 100_000,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        100_000,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     match check_evidence_gate(&metadata, 0) {
         Ok(()) => {}
         Err(e) => panic!("evidence gate should pass at zero threshold: {e:?}"),
@@ -484,15 +558,15 @@ fn check_evidence_gate_accepts_zero_threshold_within_baseline() {
 fn check_evidence_gate_rejects_one_micro_over_threshold() {
     // baseline=100000, result=120001, threshold=20%
     // 120001 > 100000 + 20000 = 120000, so regression
-    let metadata = BenchmarkMetadata {
-        name: "yaml_parse".to_string(),
-        baseline_us: Some(100_000),
-        result_us: 120_001,
-        command: "cargo bench".to_string(),
-        commit_hash: "abc123".to_string(),
-        environment: "linux-x86_64".to_string(),
-        budget_us: 200_000,
-    };
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        120_001,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
     let result = check_evidence_gate(&metadata, 20);
     // delta = result - baseline = 120001 - 100000 = 20001
     match result {
@@ -500,8 +574,228 @@ fn check_evidence_gate_rejects_one_micro_over_threshold() {
             assert_eq!(benchmark, "yaml_parse");
             assert_eq!(delta, 20_001);
         }
-        other => panic!("Expected RegressionDetected, got {:?}", other),
+        other => panic!("Expected RegressionDetected, got {other:?}"),
     }
+}
+
+#[test]
+fn check_evidence_gate_rejects_zero_threshold_over_baseline() {
+    // threshold=0%, result > baseline → regression detected
+    let metadata = make_valid_metadata(
+        "yaml_parse".to_string(),
+        Some(100_000),
+        100_001,
+        "cargo bench".to_string(),
+        "abc123".to_string(),
+        "linux-x86_64".to_string(),
+        200_000,
+    );
+    let result = check_evidence_gate(&metadata, 0);
+    match result {
+        Err(EvidenceError::RegressionDetected { benchmark, delta }) => {
+            assert_eq!(benchmark, "yaml_parse");
+            assert_eq!(delta, 1);
+        }
+        other => panic!("Expected RegressionDetected, got {other:?}"),
+    }
+}
+
+// === zero-latency field validation tests ===
+
+#[test]
+fn check_evidence_gate_rejects_zero_fjall_latency() {
+    let metadata = BenchmarkMetadata {
+        name: "yaml_parse".to_string(),
+        baseline_us: Some(100_000),
+        result_us: 105_000,
+        command: "cargo bench".to_string(),
+        commit_hash: "abc123".to_string(),
+        environment: "linux-x86_64".to_string(),
+        budget_us: 200_000,
+        fjall_write_latency_ns: 0,
+        direct_api_latency_ns: 100,
+        ipc_latency_ns: 200,
+    };
+    let result = check_evidence_gate(&metadata, 20);
+    assert!(
+        matches!(
+            result,
+            Err(EvidenceError::ZeroLatencyField {
+                field: LatencyFieldId::FjallWrite
+            })
+        ),
+        "zero fjall_write_latency_ns must return ZeroLatencyField(FjallWrite), got {result:?}"
+    );
+}
+
+#[test]
+fn check_evidence_gate_rejects_zero_direct_api_latency() {
+    let metadata = BenchmarkMetadata {
+        name: "yaml_parse".to_string(),
+        baseline_us: Some(100_000),
+        result_us: 105_000,
+        command: "cargo bench".to_string(),
+        commit_hash: "abc123".to_string(),
+        environment: "linux-x86_64".to_string(),
+        budget_us: 200_000,
+        fjall_write_latency_ns: 100,
+        direct_api_latency_ns: 0,
+        ipc_latency_ns: 200,
+    };
+    let result = check_evidence_gate(&metadata, 20);
+    assert!(
+        matches!(
+            result,
+            Err(EvidenceError::ZeroLatencyField {
+                field: LatencyFieldId::DirectApi
+            })
+        ),
+        "zero direct_api_latency_ns must return ZeroLatencyField(DirectApi), got {result:?}"
+    );
+}
+
+#[test]
+fn check_evidence_gate_rejects_zero_ipc_latency() {
+    let metadata = BenchmarkMetadata {
+        name: "yaml_parse".to_string(),
+        baseline_us: Some(100_000),
+        result_us: 105_000,
+        command: "cargo bench".to_string(),
+        commit_hash: "abc123".to_string(),
+        environment: "linux-x86_64".to_string(),
+        budget_us: 200_000,
+        fjall_write_latency_ns: 100,
+        direct_api_latency_ns: 200,
+        ipc_latency_ns: 0,
+    };
+    let result = check_evidence_gate(&metadata, 20);
+    assert!(
+        matches!(
+            result,
+            Err(EvidenceError::ZeroLatencyField {
+                field: LatencyFieldId::Ipc
+            })
+        ),
+        "zero ipc_latency_ns must return ZeroLatencyField(Ipc), got {result:?}"
+    );
+}
+
+#[test]
+fn check_evidence_gate_accepts_nonzero_latencies() {
+    let metadata = BenchmarkMetadata {
+        name: "yaml_parse".to_string(),
+        baseline_us: Some(100_000),
+        result_us: 105_000,
+        command: "cargo bench".to_string(),
+        commit_hash: "abc123".to_string(),
+        environment: "linux-x86_64".to_string(),
+        budget_us: 200_000,
+        fjall_write_latency_ns: 100,
+        direct_api_latency_ns: 200,
+        ipc_latency_ns: 300,
+    };
+    match check_evidence_gate(&metadata, 20) {
+        Ok(()) => {}
+        Err(e) => panic!("evidence gate should pass with nonzero latencies: {e:?}"),
+    }
+}
+
+#[test]
+fn capture_metadata_preserves_latencies() {
+    let result = capture_metadata(
+        "bench",
+        Some(Duration::from_micros(100_000)),
+        Duration::from_micros(105_000),
+        "cargo bench",
+        "abc123",
+        "linux-x86_64",
+        200_000,
+        1234, // fjall_write_latency_ns
+        5678, // direct_api_latency_ns
+        9012, // ipc_latency_ns
+    );
+    let meta = match result {
+        Ok(meta) => meta,
+        Err(e) => panic!("expected valid metadata: {e:?}"),
+    };
+    assert_eq!(meta.fjall_write_latency_ns, 1234);
+    assert_eq!(meta.direct_api_latency_ns, 5678);
+    assert_eq!(meta.ipc_latency_ns, 9012);
+}
+
+#[test]
+fn serialization_contains_latency_keys() {
+    let meta = capture_metadata(
+        "bench",
+        None,
+        Duration::from_micros(50_000),
+        "cargo bench",
+        "abc123",
+        "linux-x86_64",
+        100_000,
+        1000,
+        2000,
+        3000,
+    )
+    .expect("valid inputs should produce Ok(metadata)");
+
+    let json = serde_json::to_string(&meta).expect("serialization should succeed");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("JSON roundtrip should succeed");
+
+    if let serde_json::Value::Object(map) = parsed {
+        assert!(
+            map.contains_key("fjall_write_latency"),
+            "must contain fjall_write_latency key"
+        );
+        assert!(
+            map.contains_key("direct_api_latency"),
+            "must contain direct_api_latency key"
+        );
+        assert!(
+            map.contains_key("ipc_latency"),
+            "must contain ipc_latency key"
+        );
+        // Raw _ns field names should NOT be present (serde alias replaces them)
+        assert!(
+            !map.contains_key("fjall_write_latency_ns"),
+            "should not contain fjall_write_latency_ns"
+        );
+        assert!(
+            !map.contains_key("direct_api_latency_ns"),
+            "should not contain direct_api_latency_ns"
+        );
+        assert!(
+            !map.contains_key("ipc_latency_ns"),
+            "should not contain ipc_latency_ns"
+        );
+    } else {
+        panic!("serialized metadata should be a JSON object");
+    }
+}
+
+#[test]
+fn evidence_error_display_missing_latency_field() {
+    let err = EvidenceError::MissingLatencyField {
+        field: LatencyFieldId::FjallWrite,
+    };
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("fjall_write_latency_ns"),
+        "display should name the field"
+    );
+}
+
+#[test]
+fn evidence_error_display_zero_latency_field() {
+    let err = EvidenceError::ZeroLatencyField {
+        field: LatencyFieldId::Ipc,
+    };
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("ipc_latency_ns"),
+        "display should name the field"
+    );
 }
 
 // === regression shield: no STUB markers may remain in this test file ===

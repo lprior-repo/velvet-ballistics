@@ -340,3 +340,115 @@ check-removed-crate-residue: explicit target missing: /tmp/tmp.ulgWpTwmLG/does-n
 $ bash scripts/check-removed-crate-residue.sh
 summary: active=0 allowlisted=27 files_scanned=2414
 ```
+
+## 2026-06-14 shell-negation hardening update
+
+### Change summary
+
+- Removed `!` from the allowlist suppression path so shell negation lines
+  remain active findings.
+- Split `scan_text_line` and `collect_target_files` into smaller helpers to
+  stay under the audit-friendly function-size cap.
+- Added a self-test regression for the shell-negation probe.
+
+### Raw command evidence
+
+```
+$ bash scripts/test-check-removed-crate-residue.sh
+[1/6] positive fixture must PASS (exit 0, no active findings)
+  ok: exit 0
+  ok: summary reports active=0
+[2/6] negative fixture must FAIL (exit 1, all removed tokens fire)
+  ok: exit 1 with file:line finding
+  ok: summary reports active > 0
+  ok: every removed-token banner appears
+[3/6] negative makepad fixture must FAIL (exit 1, bare token)
+  ok: exit 1 with makepad finding
+[4/6] shell negation probe must FAIL (exit 1, no allowlist bypass)
+  ok: exit 1 with shell negation finding
+  ok: no allowlisted banner in output
+[5/6] real repository scan must PASS (exit 0, no active residue)
+  ok: exit 0
+  ok: summary reports active=0
+  ok: no REMOVED-CRATE line in output
+[6/6] typoed explicit path must FAIL CLOSED (exit 2, no false green)
+  ok: exit 2 for missing explicit path
+  ok: diagnostic names explicit target
+self-test PASSED
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh
+summary: active=0 allowlisted=27 files_scanned=2415
+```
+
+```
+$ TMPDIR=$(mktemp -d); cat > "$TMPDIR/shell-bypass.sh" <<'EOF'
+! vb_codegen
+EOF
+$ bash scripts/check-removed-crate-residue.sh "$TMPDIR/shell-bypass.sh"
+/tmp/tmp.e20gUuLfSy/shell-bypass.sh:1: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': ! vb_codegen
+summary: active=1 allowlisted=0 files_scanned=1
+```
+
+```
+$ cat > "$TMPDIR/missing.md" <<'EOF'
+exists
+EOF
+$ bash scripts/check-removed-crate-residue.sh "$TMPDIR/does-not-exist.md"
+check-removed-crate-residue: explicit target missing: /tmp/tmp.e20gUuLfSy/does-not-exist.md
+```
+
+## 2026-06-14 shape-cap cleanup
+
+### Change summary
+
+- Collapsed `push_finding` to a single `Finding` value argument.
+- Split `should_scan_file` into helper predicates so the top-level function
+  stays under the 25-line shape cap.
+- No behavior changes: allowlist bypass remains closed, shell negation stays
+  active, explicit missing targets remain fail-closed, and the real repo scan
+  still exits 0.
+
+### Raw command evidence
+
+```
+$ rustfmt --check --edition 2024 scripts/check-removed-crate-residue.rs
+(no output, exit 0)
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh
+summary: active=0 allowlisted=27 files_scanned=2416
+```
+
+```
+$ bash scripts/test-check-removed-crate-residue.sh
+[1/6] positive fixture must PASS (exit 0, no active findings)
+  ok: exit 0
+  ok: summary reports active=0
+[2/6] negative fixture must FAIL (exit 1, all removed tokens fire)
+  ok: exit 1 with file:line finding
+  ok: summary reports active > 0
+[3/6] negative makepad fixture must FAIL (exit 1, bare token)
+  ok: exit 1 with makepad finding
+[4/6] shell negation probe must FAIL (exit 1, no allowlist bypass)
+cat: write error: Disk quota exceeded
+```
+
+```
+$ env TMPDIR=/home/lewis/src/velvet-ballistics bash scripts/test-check-removed-crate-residue.sh
+...
+self-test PASSED
+```
+
+```
+$ env TMPDIR=/home/lewis/src/velvet-ballistics bash -lc 'TMPDIR=$(mktemp -d)
+cat > "$TMPDIR/shell-bypass.sh" <<'"'"'EOF'"'"'
+! vb_codegen
+EOF
+bash scripts/check-removed-crate-residue.sh "$TMPDIR/shell-bypass.sh"
+rm -rf "$TMPDIR"'
+tmp.7SNinT3sOJ/shell-bypass.sh:1: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': ! vb_codegen
+summary: active=1 allowlisted=0 files_scanned=1
+```

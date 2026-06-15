@@ -232,10 +232,20 @@ mod exit_code_tests {
         // - Exit 2: VerificationFailed (verify cannot complete without db)
         // - Exit 0: Verify passed (if config allows verify without db)
         // This test documents why BOTH are acceptable for verification workflow.
+        let code = output.status.code();
         assert!(
-            output.status.code() == Some(0) || output.status.code() == Some(2),
-            "expected exit 0 (verify passed) or 2 (verification failure), got: {:?}",
-            output.status.code()
+            code == Some(0) || code == Some(2),
+            "verify should exit 0 (passed) or 2 (verification failure), got: {code:?}"
+        );
+        // Additional: stderr must contain a verification-related message
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            combined.len() > 0,
+            "verify should produce some output, got empty"
         );
     }
 
@@ -277,10 +287,20 @@ steps:
         .unwrap();
         // Exit 3 means compile failed (semantic error). Exit 1 would mean validation
         // failure, which is also acceptable since compile = validate + generate IR.
+        let code = output.status.code();
         assert!(
-            output.status.code() == Some(3) || output.status.code() == Some(1),
-            "expected exit 1 (validation failure) or 3 (compile failed), got: {:?}",
-            output.status.code()
+            code == Some(3) || code == Some(1),
+            "expected exit 1 (validation failure) or 3 (compile failed), got: {code:?}"
+        );
+        // Verify stderr/stdout contains some diagnostic
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            !combined.is_empty(),
+            "compile failure should produce diagnostic output"
         );
     }
 
@@ -373,8 +393,17 @@ steps:
         let code = output.status.code();
         assert!(
             code == Some(0) || code == Some(1) || code == Some(2) || code == Some(7),
-            "expected exit 0, 1, 2, or 7, got: {:?}",
-            code
+            "expected exit 0, 1, 2, or 7, got: {code:?}"
+        );
+        // Verify the CLI produced some output (no silent panic-to-zero)
+        let combined = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            combined.len() > 0,
+            "run command should produce output, got none"
         );
     }
 

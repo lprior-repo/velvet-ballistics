@@ -59,7 +59,10 @@ fn idempotency_gate_parity() {
                     id: ActionId::new(0),
                     name: match ActionName::new("test-action") {
                         Ok(v) => v,
-                        Err(_) => { kani::assume(false); loop {}}
+                        Err(_) => {
+                            kani::assume(false);
+                            loop {}
+                        }
                     },
                     input_slot_count: 1,
                     output_slot_count: 1,

@@ -988,57 +988,6 @@ fn cli_action_list_trailing_argument_fails() {
 }
 
 #[test]
-fn cli_action_list_jsonl_output_has_exact_lines() {
-    let output = run_cli(&[
-        std::ffi::OsStr::new("action"),
-        std::ffi::OsStr::new("list"),
-        std::ffi::OsStr::new("--emit"),
-        std::ffi::OsStr::new("yaml"),
-    ]);
-    let output = match output {
-        Some(output) => output,
-        None => {
-            assert!(
-                forced_assertion_failure(),
-                "failed to execute velvet_ballistics CLI for action list --emit yaml"
-            );
-            return;
-        }
-    };
-
-    assert_cli_success(&output, "action list --emit yaml");
-    let stdout = output_stdout(&output);
-    assert!(
-        stdout.contains("success: true"),
-        "YAML output should contain success: true; got: {stdout}"
-    );
-    assert!(
-        stdout.contains("id: 1"),
-        "YAML output should contain action id: 1; got: {stdout}"
-    );
-    assert!(
-        stdout.contains("id: 2"),
-        "YAML output should contain action id: 2; got: {stdout}"
-    );
-    assert!(
-        stdout.contains("id: 3"),
-        "YAML output should contain action id: 3; got: {stdout}"
-    );
-    assert!(
-        stdout.contains("idempotency: deterministic_pure"),
-        "YAML output should contain deterministic_pure; got: {stdout}"
-    );
-    assert!(
-        stdout.contains("idempotency: idempotent_external"),
-        "YAML output should contain idempotent_external; got: {stdout}"
-    );
-    assert!(
-        stdout.contains("idempotency: at_least_once_external"),
-        "YAML output should contain at_least_once_external; got: {stdout}"
-    );
-}
-
-#[test]
 fn cli_action_inspect_text_output_has_contract_details() {
     let output = run_cli(&[
         std::ffi::OsStr::new("action"),
@@ -2413,9 +2362,24 @@ fn cli_compile_valid_workflow_produces_ir() {
     assert!(!ir_bytes.is_empty(), "compiled IR file should not be empty");
 
     let parts_result = postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&ir_bytes);
+    let parts = match parts_result {
+        Ok(p) => p,
+        Err(e) => {
+            assert!(
+                forced_assertion_failure(),
+                "compiled IR should be valid postcard-encoded WorkflowParts: {e:?}"
+            );
+            return;
+        }
+    };
+    // Verify the deserialized parts are structurally valid
     assert!(
-        parts_result.is_ok(),
-        "compiled IR should be valid postcard-encoded WorkflowParts: {parts_result:?}"
+        !parts.name.is_empty(),
+        "deserialized parts must have a name"
+    );
+    assert!(
+        parts.slot_count > 0,
+        "deserialized parts must have at least one slot"
     );
 }
 

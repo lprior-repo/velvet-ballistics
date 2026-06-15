@@ -62,7 +62,10 @@ fn arbitrary_accepted_artifact() -> (
     // Serialize to postcard envelope bytes
     let envelope = match postcard::to_allocvec(&artifact) {
         Ok(v) => v,
-        Err(_) => { kani::assume(false); loop {}}
+        Err(_) => {
+            kani::assume(false);
+            loop {}
+        }
     };
     (artifact, envelope)
 }
@@ -122,6 +125,5 @@ fn ps_002_correct_two_step_verification() {
     kani::assert(inner_matches, "Correct pattern: inner hash matches digest");
 
     // Structural proof: envelope hash != inner hash
-    if envelope_hash.as_bytes() != inner_hash.as_bytes() {
-    }
+    if envelope_hash.as_bytes() != inner_hash.as_bytes() {}
 }

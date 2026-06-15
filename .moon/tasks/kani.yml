@@ -25,12 +25,22 @@ tasks:
   verify-kani:
     script: |
       set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
+      run_kani_bounded() {
+        local target_dir="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR="$target_dir" RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani "$@"
+        )
+      }
       run_core_harness() {
         local harness="$1"
         printf 'verify-kani: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-core RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani --lib -p vb_core --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-core --lib -p vb_core --all-features --harness "$harness"
       }
       run_core_harness kani_budget_add_dim_zero
       run_core_harness kani_budget_sub_dim_zero
@@ -52,12 +62,22 @@ tasks:
   verify-kani-vb-validate:
     script: |
       set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
+      run_kani_bounded() {
+        local target_dir="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR="$target_dir" RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani "$@"
+        )
+      }
       run_validate_harness() {
         local harness="$1"
         printf 'verify-kani-vb-validate: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-validate RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_validate --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-validate -p vb_validate --all-features --harness "$harness"
       }
       run_validate_harness kani_gate_08_valid_zero_accessors_pass
       run_validate_harness kani_gate_08_valid_bounded_parts_pass
@@ -97,12 +117,22 @@ tasks:
     # Kani verification accounting.
     script: |
       set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
+      run_kani_bounded() {
+        local target_dir="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR="$target_dir" RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani "$@"
+        )
+      }
       run_runtime_shard_queue_harness() {
         local harness="$1"
         printf 'kani-model-smoke-shard-command-queue-standin: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-runtime-shard-command-queue RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_runtime --features kani-shard-command-queue --harness "$harness"
+        run_kani_bounded target/kani-vb-runtime-shard-command-queue -p vb_runtime --features kani-shard-command-queue --harness "$harness"
       }
       run_runtime_shard_queue_harness kani_shard_command_queue_bounded_invariant
       run_runtime_shard_queue_harness kani_shard_command_queue_push
@@ -127,12 +157,22 @@ tasks:
   verify-kani-vb-compile:
     script: |
       set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
+      run_kani_bounded() {
+        local target_dir="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR="$target_dir" RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani "$@"
+        )
+      }
       run_compile_harness() {
         local harness="$1"
         printf 'verify-kani-vb-compile: running %s\n' "$harness"
-        TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_TARGET_DIR=target/kani-vb-compile RUSTFLAGS="-Dwarnings" timeout 15m rustup run nightly-2026-04-28 cargo kani -p vb_compile --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-compile -p vb_compile --all-features --harness "$harness"
       }
       # foreach_parity: tests for_each lowering structure (just fixed GOD_RULE compliance)
       run_compile_harness foreach_body_setconst_next_edge

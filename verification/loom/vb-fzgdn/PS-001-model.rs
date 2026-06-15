@@ -12,10 +12,10 @@
 
 #![cfg(loom)]
 
-use std::collections::HashMap;
 use loom::sync::Arc;
 use loom::sync::Mutex;
 use loom::thread;
+use std::collections::HashMap;
 
 use vb_core::ids::RunId;
 use vb_runtime::shard::types::PendingTimerKind;

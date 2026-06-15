@@ -334,7 +334,7 @@ mod kani_harnesses {
 
         let mut budget = match YbTokenBudget::new(initial) {
             Ok(b) => b,
-            Err(_) => { kani::assume(false, "YbTokenBudget::new with initial > 0 must succeed"); return; },
+            Err(_) => { kani::assume(false); return; },
         };
 
         // Invariant: remaining never exceeds initial
@@ -410,7 +410,7 @@ mod kani_harnesses {
 
         let mut budget = match result {
             Ok(b) => b,
-            Err(_) => { kani::assume(false, "YbTokenBudget::new(u64::MAX) should succeed"); return; },
+            Err(_) => { kani::assume(false); return; },
         };
         kani::assert(budget.initial() == u64::MAX, "initial preserved at u64::MAX");
         kani::assert(budget.remaining() == u64::MAX, "remaining == initial at u64::MAX");
