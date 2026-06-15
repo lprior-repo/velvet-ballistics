@@ -4050,12 +4050,16 @@ fn capture_state_does_not_silently_drop_under_multiple_entries() -> Result<(), S
 
     // Insert 128 distinct entries to stress the dynamic map growth
     for i in 0..128u64 {
+        let rid = i.try_into().map_err(|_| format!("RunId overflow for {i}"))?;
+        let cid = i.try_into().map_err(|_| format!("collector_slot overflow for {i}"))?;
+        let sid = i.try_into().map_err(|_| format!("source ListId overflow for {i}"))?;
+        let pid = (i + 1000).try_into().map_err(|_| format!("page ListId overflow for {i}"))?;
         let state = CollectPaginationState {
-            run_id: RunId::new(i),
-            collector_slot: SlotIdx::new(i as u8),
-            source: ListId::new(i as u64),
-            current_page: ListId::new(i + 1000),
-            cursor: i as usize,
+            run_id: RunId::new(rid),
+            collector_slot: SlotIdx::new(cid),
+            source: ListId::new(sid),
+            current_page: ListId::new(pid),
+            cursor: (i % 100) as usize,
             page_size: 10,
             item_count: 100,
             limit: 1000,
@@ -4068,10 +4072,14 @@ fn capture_state_does_not_silently_drop_under_multiple_entries() -> Result<(), S
 
     // Verify all 128 entries are still recoverable
     for i in 0..128u64 {
+        let rid = i.try_into().map_err(|_| format!("RunId overflow for {i}"))?;
+        let cid = i.try_into().map_err(|_| format!("collector_slot overflow for {i}"))?;
+        let sid = i.try_into().map_err(|_| format!("source ListId overflow for {i}"))?;
+        let pid = (i + 1000).try_into().map_err(|_| format!("page ListId overflow for {i}"))?;
         let found = states.find(
-            RunId::new(i),
-            SlotIdx::new(i as u8),
-            ListId::new(i + 1000),
+            RunId::new(rid),
+            SlotIdx::new(cid),
+            ListId::new(pid),
         );
         ensure(
             found.is_some(),
@@ -4213,10 +4221,7 @@ fn collect_start_empty_source_writes_empty_collector_and_jumps_to_done() -> Resu
     match *run.read_slot(collector).expect("read must succeed") {
         SlotValue::List(id) => {
             let items = store.list(id).expect("list read must succeed");
-            ensure(
-                items.is_empty(),
-                "collector should be empty for empty source",
-            )
+            ensure(items.is_empty(), "collector should be empty for empty source")?;
         }
         other => return Err(format!("expected List in collector, got {other:?}")),
     }
