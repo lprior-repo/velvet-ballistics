@@ -25,6 +25,10 @@ harness = false
 name = "batched_atomicity"
 harness = false
 
+[[test]]
+name = "batched_atomicity_tests"
+path = "tests/batched_atomicity_tests.rs"
+
 [features]
 kani-harnesses = []
 

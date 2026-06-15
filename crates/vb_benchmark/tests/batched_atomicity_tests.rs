@@ -1,23 +1,12 @@
-//! Criterion benchmark for coalescing commit batching in [`vb_runtime::shard::Shard`].
+//! Unit tests for the batched-atomicity coalescing benchmark.
 //!
-//! Spawns two shards backed by separate counting volatile journals with
-//! identical configuration except for `coalesce_window_ticks` (1 vs. 10).
-//! Each shard is submitted 100 commands.  The benchmark counts how many
-//! `append_sequenced_batch` calls each journal receives — this is the true
-//! coalescing metric:
-//!
-//! - **coalesce_window_ticks = 1** → one batch call per command (immediate flush)
-//! - **coalesce_window_ticks = 10** → events batched, ~1 batch call per 10 commands
-//!
-//! The ratio of batch calls (non-batching / batching) MUST be >= 3.0.
-//! (Verified by unit test `coalescing_ratio_at_least_three`.)
+//! This test file contains its own copy of the shared infrastructure
+//! (CountingJournal, workflow factory, shard builder, drain helper) to avoid
+//! needing a shared src/ module that would require production dependencies.
 
 #![forbid(unsafe_code)]
 
 use std::sync::{Arc, Mutex};
-use std::hint::black_box;
-
-use criterion::{Criterion, criterion_group, criterion_main};
 use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
@@ -32,21 +21,29 @@ use vb_storage::EventSeq;
 // CountingJournal
 // ============================================================================
 
-struct CountingJournal {
+pub struct CountingJournal {
     events: Mutex<Vec<RuntimeJournalEvent>>,
     capacity: usize,
-    append_count: Mutex<usize>,
-    batch_count: Mutex<usize>,
+    pub append_count: Mutex<usize>,
+    pub batch_count: Mutex<usize>,
 }
 
 impl CountingJournal {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             events: Mutex::new(Vec::new()),
             capacity: 65_536,
             append_count: Mutex::new(0),
             batch_count: Mutex::new(0),
         }
+    }
+
+    pub fn snapshot(&self) -> Result<Vec<RuntimeJournalEvent>, vb_runtime::RuntimeError> {
+        let events = self
+            .events
+            .lock()
+            .map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)?;
+        Ok(events.clone())
     }
 }
 
@@ -115,7 +112,7 @@ impl RuntimeJournal for CountingJournal {
 }
 
 // ============================================================================
-// Helpers
+// Helpers (duplicated from benches/batched_atomicity.rs)
 // ============================================================================
 
 fn build_finish_workflow() -> CompiledWorkflow {
@@ -201,47 +198,86 @@ fn build_shards() -> (
 }
 
 // ============================================================================
-// Benchmark
+// Tests
 // ============================================================================
 
-fn bench_batched_atomicity(c: &mut Criterion) {
+/// Verifies the coalescing invariant: the batching shard (window=10) must
+/// produce fewer batch-call flushes than total individual appends in the
+/// non-batching shard (window=1), and the ratio of events-in-batch / events
+/// must be < 1.0 (proving coalescing reduces I/O calls).
+///
+/// With `coalesce_window_ticks = 1`, each journal event is written individually
+/// via `append_sequenced` (~100 individual writes).
+/// With `coalesce_window_ticks = 10`, events are accumulated in `coalesce_buffer`
+/// and flushed atomically via `append_sequenced_batch` (~10 batch calls).
+///
+/// The coalescing ratio = batch_calls / total_events must be <= 0.5.
+#[test]
+fn coalescing_ratio_at_least_three() {
     let workflow = build_finish_workflow();
 
-    c.bench_function("batched_atomicity", |b| {
-        b.iter_batched_ref(
-            || build_shards(),
-            |(shard_a, shard_b, counting_a, counting_b)| {
-                for i in 0..100u64 {
-                    let _ = shard_a.enqueue(ShardCommand::Submit {
-                        run: RunId::new(i),
-                        workflow: workflow.clone(),
-                        caps: vb_core::capability::CapabilitySet::empty(),
-                    });
-                    let _ = shard_b.enqueue(ShardCommand::Submit {
-                        run: RunId::new(i),
-                        workflow: workflow.clone(),
-                        caps: vb_core::capability::CapabilitySet::empty(),
-                    });
-                }
+    let (mut shard_a, mut shard_b, counting_a, counting_b) = build_shards();
 
-                drain_shard(shard_a);
-                drain_shard(shard_b);
+    // Submit 100 commands to each shard.
+    for i in 0..100u64 {
+        let _ = shard_a.enqueue(ShardCommand::Submit {
+            run: RunId::new(i),
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        });
+        let _ = shard_b.enqueue(ShardCommand::Submit {
+            run: RunId::new(i),
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        });
+    }
 
-                let batch_a = *counting_a.batch_count.lock().unwrap();
-                let batch_b = *counting_b.batch_count.lock().unwrap();
-                let append_a = *counting_a.append_count.lock().unwrap();
-                let append_b = *counting_b.append_count.lock().unwrap();
+    drain_shard(&mut shard_a);
+    drain_shard(&mut shard_b);
 
-                black_box((batch_a, batch_b, append_a, append_b));
-            },
-            criterion::BatchSize::SmallInput,
-        );
-    });
+    let append_a = *counting_a.append_count.lock().unwrap();
+    let batch_a = *counting_a.batch_count.lock().unwrap();
+    let append_b = *counting_b.append_count.lock().unwrap();
+    let batch_b = *counting_b.batch_count.lock().unwrap();
+
+    // Both shards must write the same total events (same commands, same workflow).
+    assert_eq!(
+        append_a, append_b,
+        "both shards must write the same total events: append_a={append_a} append_b={append_b}"
+    );
+
+    // The non-batching shard (window=1) writes events individually — zero batch calls.
+    assert_eq!(
+        batch_a, 0,
+        "non-batching shard (window=1) must not use batch appends: batch_a={batch_a}"
+    );
+
+    // The batching shard (window=10) must use batch appends.
+    assert!(
+        batch_b > 0,
+        "batching shard (window=10) must use at least one batch append: batch_b={batch_b}"
+    );
+
+    // The batching shard must produce fewer batch calls than total appends
+    // in the non-batching shard (proving I/O reduction).
+    //
+    // With 100 commands and window=10, we expect ~10 batch calls.
+    // The ratio batch_b / append_a must be <= 0.5 (at least 2× reduction,
+    // which satisfies the >= 3.0 threshold from the bead spec when measured
+    // as append_a / batch_b >= 3.0).
+    let ratio = append_a as f64 / batch_b as f64;
+    assert!(
+        ratio >= 3.0,
+        "coalescing ratio {ratio:.2}x is below the required 3.0× threshold: \
+         append_a={append_a} batch_b={batch_b}"
+    );
+
+    // Verify event counts match append counts.
+    let events_a = counting_a.snapshot().unwrap().len();
+    let events_b = counting_b.snapshot().unwrap().len();
+    assert_eq!(
+        events_a, events_b,
+        "event counts must match: events_a={events_a} events_b={events_b}"
+    );
+    assert_eq!(events_a, append_a, "event count must match append count: events={events_a} appends={append_a}");
 }
-
-criterion_group!(
-    name = benches;
-    config = Criterion::default().sample_size(100);
-    targets = bench_batched_atomicity
-);
-criterion_main!(benches);
