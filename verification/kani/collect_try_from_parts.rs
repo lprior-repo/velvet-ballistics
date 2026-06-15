@@ -81,19 +81,11 @@ fn kani_collect_try_from_parts() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: "test_collect".to_string(),
-        digest: vb_core::ids::WorkflowDigest::new(&[]),
-        nodes,
-        expressions: vec![],
-        accessors: vec![],
-        constants: vec![vb_core::value::ConstValue::I64(42)],
-        slot_count: 2,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: vb_core::policy::ResourceContract::default(),
-        step_names: vec![],
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 2;
+    parts.constants = vec![vb_core::value::ConstValue::I64(42)].into_boxed_slice();
+    parts.entry = StepIdx::new(0);
 
     // try_from_parts should not panic for valid Collect IR
     let result = CompiledWorkflow::try_from_parts(parts);
@@ -163,19 +155,11 @@ fn kani_collect_try_from_parts_budget() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: "test_budget".to_string(),
-        digest: vb_core::ids::WorkflowDigest::new(&[]),
-        nodes,
-        expressions: vec![],
-        accessors: vec![],
-        constants: vec![vb_core::value::ConstValue::I64(0)],
-        slot_count: 2,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: vb_core::policy::ResourceContract::default(),
-        step_names: vec![],
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 2;
+    parts.constants = vec![vb_core::value::ConstValue::I64(0)].into_boxed_slice();
+    parts.entry = StepIdx::new(0);
 
     let result = CompiledWorkflow::try_from_parts(parts);
 

@@ -17,18 +17,20 @@
 //
 // Per-line allowlist: a single true comment-start line containing
 // "# allow-removed-crate: <reason>" or a `//`/`//!`/`///` comment that
-// starts with `allow-removed-crate: <reason>`
-// suppresses the NEXT non-blank line only if that target line is itself
-// comment-like or doc-only/historical prose with an explicit historical or
-// negation marker. Active manifest entries, workspace members, and source
-// `use` / `extern crate` lines are always active even if preceded by an
-// allowlist marker.
+// starts with `allow-removed-crate: <reason>` suppresses the NEXT non-blank
+// line only if that target line is itself comment-like or doc-only/historical
+// prose with an explicit historical or negation marker. Active manifest
+// entries, workspace members, and source `use` / `extern crate` lines are
+// always active even if preceded by an allowlist marker.
 //
 // Output (all on stderr):
 //   <path>:<lineno>: REMOVED-CRATE: <token>: <line>      (active violation)
 //   <path>:<lineno>: allowlisted: <reason>: <line>       (suppressed by marker)
 // Final line: "summary: active=N allowlisted=M files_scanned=K"
-// Exit 0 if active == 0, exit 1 otherwise.
+// Exit 0 if active == 0 and the scan completed.
+// Exit 1 if active > 0.
+// Exit 2 on scan errors, including explicit missing/unreadable targets
+// or explicit inputs that yield zero readable files.
 
 #![forbid(unsafe_code)]
 #![deny(
@@ -51,6 +53,14 @@ const VB_UI_MAKEPAD: &str = "vb_ui_makepad";
 const MAKEPAD_WIDGETS: &str = "makepad-widgets";
 const MAKEPAD_DRAW: &str = "makepad-draw";
 const MAKEPAD_BARE: &str = "makepad";
+
+const EXACT_MATCHES: [(&str, &str); 5] = [
+    (VB_CODEGEN, "exact substring 'vb_codegen'"),
+    (VB_UI_MODEL, "exact substring 'vb_ui_model'"),
+    (VB_UI_MAKEPAD, "exact substring 'vb_ui_makepad'"),
+    (MAKEPAD_WIDGETS, "exact substring 'makepad-widgets'"),
+    (MAKEPAD_DRAW, "exact substring 'makepad-draw'"),
+];
 
 const SCAN_ROOTS: &[&str] = &[
     "Cargo.toml",
@@ -77,7 +87,6 @@ const ALLOWLIST_PREFIXES: &[&str] = &[
     "// allow-removed-crate:",
     "//! allow-removed-crate:",
     "/// allow-removed-crate:",
-    "! allow-removed-crate:",
     "; allow-removed-crate:",
     "<!-- allow-removed-crate:",
 ];
@@ -127,13 +136,19 @@ fn parse_allow_reason(line: &str) -> Option<String> {
     None
 }
 
-fn is_comment_line(line: &str) -> bool {
+fn is_comment_line(path: &Path, line: &str) -> bool {
     let trimmed = line.trim_start();
-    trimmed.starts_with('#')
-        || trimmed.starts_with("//")
-        || trimmed.starts_with('!')
-        || trimmed.starts_with(';')
-        || trimmed.starts_with("<!--")
+    if matches!(
+        path.extension().and_then(|ext| ext.to_str()),
+        Some("sh") | Some("bash")
+    ) {
+        return trimmed.starts_with('#');
+    }
+    trimmed.starts_with('#') || trimmed.starts_with("//") || trimmed.starts_with(';') || trimmed.starts_with("<!--")
+}
+
+fn is_allowlisted_target_line(path: &Path, line: &str) -> bool {
+    is_comment_line(path, line) || is_historical_doc_line(path, line)
 }
 
 fn is_doc_like(path: &Path) -> bool {
@@ -191,36 +206,7 @@ fn is_word_underscore_or_dash(c: char) -> bool {
 }
 
 fn check_line(line: &str, findings: &mut Vec<(String, String)>) {
-    if line.contains(VB_CODEGEN) {
-        findings.push((
-            VB_CODEGEN.to_owned(),
-            format!("exact substring '{VB_CODEGEN}'"),
-        ));
-    }
-    if line.contains(VB_UI_MODEL) {
-        findings.push((
-            VB_UI_MODEL.to_owned(),
-            format!("exact substring '{VB_UI_MODEL}'"),
-        ));
-    }
-    if line.contains(VB_UI_MAKEPAD) {
-        findings.push((
-            VB_UI_MAKEPAD.to_owned(),
-            format!("exact substring '{VB_UI_MAKEPAD}'"),
-        ));
-    }
-    if line.contains(MAKEPAD_WIDGETS) {
-        findings.push((
-            MAKEPAD_WIDGETS.to_owned(),
-            format!("exact substring '{MAKEPAD_WIDGETS}'"),
-        ));
-    }
-    if line.contains(MAKEPAD_DRAW) {
-        findings.push((
-            MAKEPAD_DRAW.to_owned(),
-            format!("exact substring '{MAKEPAD_DRAW}'"),
-        ));
-    }
+    push_exact_matches(line, findings);
     if is_standalone_makepad(line) {
         findings.push((
             MAKEPAD_BARE.to_owned(),
@@ -229,102 +215,170 @@ fn check_line(line: &str, findings: &mut Vec<(String, String)>) {
     }
 }
 
-#[derive(Debug)]
-enum ScanOutcome {
-    File(Vec<Finding>),
-    Unreadable(String),
+fn push_exact_matches(line: &str, findings: &mut Vec<(String, String)>) {
+    for &(token, context) in &EXACT_MATCHES {
+        if line.contains(token) {
+            findings.push((token.to_owned(), context.to_owned()));
+        }
+    }
+}
+
+fn push_finding(
+    findings: &mut Vec<Finding>,
+    line_no: usize,
+    line_text: &str,
+    token: String,
+    context: String,
+    allowlisted: bool,
+    reason: String,
+) {
+    findings.push(Finding {
+        line_no,
+        line_text: line_text.to_owned(),
+        token,
+        context,
+        allowlisted,
+        reason,
+    });
+}
+
+#[derive(Debug, Default)]
+struct ScanTotals {
+    active_total: usize,
+    allowlisted_total: usize,
+    files_scanned: usize,
 }
 
 fn scan_text(path: &Path, text: &str) -> Vec<Finding> {
     let mut findings: Vec<Finding> = Vec::new();
     let mut pending_reason: Option<String> = None;
     for (idx, raw_line) in text.lines().enumerate() {
-        let line_no = idx + 1;
-        if let Some(reason) = parse_allow_reason(raw_line) {
-            pending_reason = Some(reason);
-            continue;
-        }
-        if raw_line.trim().is_empty() {
-            continue;
-        }
-        if let Some(reason) = pending_reason.take()
-            && (is_comment_line(raw_line) || is_historical_doc_line(path, raw_line))
-        {
-            findings.push(Finding {
-                line_no,
-                line_text: (*raw_line).to_owned(),
-                token: "allowlisted".to_owned(),
-                context: "allowlist consumed".to_owned(),
-                allowlisted: true,
-                reason,
-            });
-            continue;
-        }
-        let mut line_findings: Vec<(String, String)> = Vec::new();
-        check_line(raw_line, &mut line_findings);
-        for (token, context) in line_findings {
-            findings.push(Finding {
-                line_no,
-                line_text: (*raw_line).to_owned(),
-                token,
-                context,
-                allowlisted: false,
-                reason: String::new(),
-            });
-        }
+        pending_reason = scan_text_line(path, idx + 1, raw_line, pending_reason, &mut findings);
     }
     findings
 }
 
-fn scan_file(path: &Path) -> ScanOutcome {
-    let text = match fs::read_to_string(path) {
-        Ok(t) => t,
-        Err(error) => {
-            return ScanOutcome::Unreadable(format!("{}: unreadable: {error}", path.display()));
-        }
-    };
-    ScanOutcome::File(scan_text(path, &text))
+fn scan_text_line(
+    path: &Path,
+    line_no: usize,
+    raw_line: &str,
+    pending_reason: Option<String>,
+    findings: &mut Vec<Finding>,
+) -> Option<String> {
+    if let Some(reason) = parse_allow_reason(raw_line) {
+        return Some(reason);
+    }
+    if raw_line.trim().is_empty() {
+        return pending_reason;
+    }
+    if let Some(reason) = pending_reason && is_allowlisted_target_line(path, raw_line) {
+        push_allowlisted_finding(findings, line_no, raw_line, reason);
+        return None;
+    }
+    push_scan_findings(line_no, raw_line, findings);
+    None
 }
 
-fn collect_scan_files(_root: &Path, target: &Path) -> io::Result<Vec<PathBuf>> {
-    if !target.exists() {
-        return Ok(Vec::new());
+fn push_allowlisted_finding(
+    findings: &mut Vec<Finding>,
+    line_no: usize,
+    line_text: &str,
+    reason: String,
+) {
+    push_finding(
+        findings,
+        line_no,
+        line_text,
+        "allowlisted".to_owned(),
+        "allowlist consumed".to_owned(),
+        true,
+        reason,
+    );
+}
+
+fn push_scan_findings(line_no: usize, raw_line: &str, findings: &mut Vec<Finding>) {
+    let mut line_findings: Vec<(String, String)> = Vec::new();
+    check_line(raw_line, &mut line_findings);
+    for (token, context) in line_findings {
+        push_finding(
+            findings,
+            line_no,
+            raw_line,
+            token,
+            context,
+            false,
+            String::new(),
+        );
     }
-    let mut out: Vec<PathBuf> = Vec::new();
+}
+
+fn scan_file(path: &Path) -> Result<Vec<Finding>, String> {
+    let text = fs::read_to_string(path)
+        .map_err(|error| format!("{}: unreadable: {error}", path.display()))?;
+    Ok(scan_text(path, &text))
+}
+
+fn collect_scan_files(targets: &[PathBuf], explicit_targets: bool) -> Result<Vec<PathBuf>, String> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    for target in targets {
+        collect_target_files(target, explicit_targets, &mut files)?;
+    }
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
+
+fn collect_target_files(target: &Path, explicit_targets: bool, files: &mut Vec<PathBuf>) -> Result<(), String> {
+    ensure_target_resolved(target, explicit_targets)?;
     if target.is_file() {
-        out.push(target.to_path_buf());
-        return Ok(out);
+        files.push(target.to_path_buf());
+        return Ok(());
     }
-    walk(target, &mut out)?;
-    out.sort();
-    Ok(out)
+    collect_target_directory(target, explicit_targets, files)
 }
 
-fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
+fn ensure_target_resolved(target: &Path, explicit_targets: bool) -> Result<(), String> {
+    match target.try_exists() {
+        Ok(true) => Ok(()),
+        Ok(false) if explicit_targets => Err(format!("explicit target missing: {}", target.display())),
+        Ok(false) => Ok(()),
+        Err(error) if explicit_targets => Err(format!("explicit target unreadable: {}: {error}", target.display())),
+        Err(_) => Ok(()),
+    }
+}
+
+fn collect_target_directory(target: &Path, explicit_targets: bool, files: &mut Vec<PathBuf>) -> Result<(), String> {
+    walk(target, files, explicit_targets).map_err(|error| format!("scan {}: {error}", target.display()))
+}
+
+fn walk(dir: &Path, out: &mut Vec<PathBuf>, explicit_targets: bool) -> io::Result<()> {
     let entries = match fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(_) => return Ok(()),
+        Ok(entries) => entries,
+        Err(error) => {
+            if explicit_targets {
+                return Err(error);
+            }
+            return Ok(());
+        }
     };
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or_default();
-        if name.starts_with('.') && name != ".moon" {
-            continue;
-        }
-        if SKIP_DIRS.contains(&name) {
+        if should_skip_walk_entry(&path) {
             continue;
         }
         if path.is_dir() {
-            walk(&path, out)?;
+            walk(&path, out, explicit_targets)?;
         } else if should_scan_file(&path) {
             out.push(path);
         }
     }
     Ok(())
+}
+
+fn should_skip_walk_entry(path: &Path) -> bool {
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+    (name.starts_with('.') && name != ".moon") || SKIP_DIRS.contains(&name)
 }
 
 fn should_scan_file(path: &Path) -> bool {
@@ -356,56 +410,58 @@ fn relative_label(root: &Path, path: &Path) -> String {
         .unwrap_or_else(|_| path.to_string_lossy().to_string())
 }
 
-fn run_scan(root: &Path, targets: &[PathBuf]) -> Result<u8, String> {
-    let mut files: Vec<PathBuf> = Vec::new();
-    for target in targets {
-        let collected = collect_scan_files(root, target)
-            .map_err(|e| format!("collect {}: {e}", target.display()))?;
-        files.extend(collected);
-    }
-    files.sort();
-    files.dedup();
-
-    let mut active_total: usize = 0;
-    let mut allowlisted_total: usize = 0;
-    let mut files_scanned: usize = 0;
-
-    for file in &files {
-        match scan_file(file) {
-            ScanOutcome::File(findings) => {
-                files_scanned = files_scanned.saturating_add(1);
-                let rel = relative_label(root, file);
-                for finding in findings {
-                    if finding.allowlisted {
-                        allowlisted_total = allowlisted_total.saturating_add(1);
-                        eprintln!(
-                            "{rel}:{}: allowlisted: {}: {}",
-                            finding.line_no, finding.reason, finding.line_text
-                        );
-                    } else {
-                        active_total = active_total.saturating_add(1);
-                        eprintln!(
-                            "{rel}:{}: REMOVED-CRATE: {}: {}: {}",
-                            finding.line_no, finding.token, finding.context, finding.line_text
-                        );
-                    }
-                }
-            }
-            ScanOutcome::Unreadable(message) => {
-                eprintln!("{message}");
-            }
-        }
-    }
-
+fn emit_summary(totals: &ScanTotals) {
     eprintln!(
-        "summary: active={active_total} allowlisted={allowlisted_total} files_scanned={files_scanned}"
+        "summary: active={} allowlisted={} files_scanned={}",
+        totals.active_total, totals.allowlisted_total, totals.files_scanned
     );
+}
 
-    if active_total == 0 {
-        Ok(0)
-    } else {
-        Ok(1)
+fn emit_finding(rel: &str, finding: Finding, totals: &mut ScanTotals) {
+    if finding.allowlisted {
+        totals.allowlisted_total = totals.allowlisted_total.saturating_add(1);
+        eprintln!(
+            "{rel}:{}: allowlisted: {}: {}",
+            finding.line_no, finding.reason, finding.line_text
+        );
+        return;
     }
+    totals.active_total = totals.active_total.saturating_add(1);
+    eprintln!(
+        "{rel}:{}: REMOVED-CRATE: {}: {}: {}",
+        finding.line_no, finding.token, finding.context, finding.line_text
+    );
+}
+
+fn emit_file_findings(root: &Path, file: &Path, findings: Vec<Finding>, totals: &mut ScanTotals) {
+    totals.files_scanned = totals.files_scanned.saturating_add(1);
+    let rel = relative_label(root, file);
+    for finding in findings {
+        emit_finding(&rel, finding, totals);
+    }
+}
+
+fn run_scan(root: &Path, targets: &[PathBuf], explicit_targets: bool) -> Result<u8, String> {
+    let files = collect_scan_files(targets, explicit_targets)?;
+    let mut totals = ScanTotals::default();
+    for file in &files {
+        let findings = match scan_file(file) {
+            Ok(findings) => findings,
+            Err(message) => {
+                if explicit_targets {
+                    return Err(message);
+                }
+                eprintln!("{message}");
+                continue;
+            }
+        };
+        emit_file_findings(root, file, findings, &mut totals);
+    }
+    if explicit_targets && totals.files_scanned == 0 {
+        return Err("no files successfully scanned from explicit targets".to_owned());
+    }
+    emit_summary(&totals);
+    Ok(if totals.active_total == 0 { 0 } else { 1 })
 }
 
 fn resolve_default_targets(root: &Path) -> Vec<PathBuf> {
@@ -414,6 +470,13 @@ fn resolve_default_targets(root: &Path) -> Vec<PathBuf> {
         .map(|name| root.join(name))
         .filter(|p| p.exists())
         .collect()
+}
+
+fn resolve_invocation_targets(root: &Path, args: &[String]) -> (Vec<PathBuf>, bool) {
+    if args.is_empty() {
+        return (resolve_default_targets(root), false);
+    }
+    (args.iter().map(PathBuf::from).collect(), true)
 }
 
 fn main() -> ExitCode {
@@ -425,16 +488,12 @@ fn main() -> ExitCode {
         }
     };
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let targets: Vec<PathBuf> = if args.is_empty() {
-        resolve_default_targets(&root)
-    } else {
-        args.iter().map(PathBuf::from).collect()
-    };
+    let (targets, explicit_targets) = resolve_invocation_targets(&root, &args);
     if targets.is_empty() {
         eprintln!("check-removed-crate-residue: no scan targets resolved");
         return ExitCode::from(2);
     }
-    match run_scan(&root, &targets) {
+    match run_scan(&root, &targets, explicit_targets) {
         Ok(0) => ExitCode::SUCCESS,
         Ok(_) => ExitCode::from(1),
         Err(e) => {

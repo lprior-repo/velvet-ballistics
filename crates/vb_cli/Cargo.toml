@@ -20,6 +20,7 @@ serde-saphyr = { workspace = true }
 chrono.workspace = true
 crc32fast.workspace = true
 blake3.workspace = true
+rustix.workspace = true
 
 [lib]
 name = "vb_cli"

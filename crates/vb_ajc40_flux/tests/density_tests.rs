@@ -85,7 +85,10 @@ fn validate_count_max_plus_one_rejected() {
 
 #[test]
 fn validate_count_very_large_rejected() {
-    assert!(validate_count(u64::MAX).is_err());
+    assert!(matches!(
+        validate_count(u64::MAX),
+        Err("count_exceeds_max")
+    ));
 }
 
 #[test]
@@ -102,7 +105,10 @@ fn validate_count_just_inside_boundary() {
 
 #[test]
 fn validate_count_rejects_doubly_over() {
-    assert!(validate_count(2 * VB_AJC40_MAX_COUNT).is_err());
+    assert!(matches!(
+        validate_count(2 * VB_AJC40_MAX_COUNT),
+        Err("count_exceeds_max")
+    ));
 }
 
 // ── validate_summary ───────────────────────────────────────────────────────
@@ -110,78 +116,93 @@ fn validate_count_rejects_doubly_over() {
 #[test]
 fn validate_summary_zero_all_accepted() {
     let r = validate_summary(0, 0, 0, 0, 0);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn validate_summary_balanced_zero_depth_accepted() {
     let r = validate_summary(0, 100, 100, 0, 200);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn validate_summary_max_depth_accepted() {
     let r = validate_summary(0, 0, 0, VB_AJC40_MAX_DEPTH, 0);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn validate_summary_max_depth_plus_one_rejected() {
     let r = validate_summary(0, 0, 0, VB_AJC40_MAX_DEPTH + 1, 0);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("depth_exceeds_max")));
 }
 
 #[test]
 fn validate_summary_recomputed_gt_declared_rejected() {
     let r = validate_summary(0, 100, 99, 0, 200);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("declared_recomputed_mismatch")));
 }
 
 #[test]
 fn validate_summary_recomputed_lt_declared_rejected() {
     let r = validate_summary(0, 50, 100, 0, 200);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("declared_recomputed_mismatch")));
 }
 
 #[test]
 fn validate_summary_recomputed_exceeds_budget_rejected() {
     let r = validate_summary(0, 300, 300, 0, 200);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("recomputed_exceeds_budget")));
 }
 
 #[test]
 fn validate_summary_recomputed_equals_budget_accepted() {
     let r = validate_summary(0, 200, 200, 0, 200);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn validate_summary_count_exceeds_max_rejected() {
     let r = validate_summary(VB_AJC40_MAX_COUNT + 1, 0, 0, 0, 0);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("count_exceeds_max")));
 }
 
 #[test]
 fn validate_summary_count_at_max_accepted() {
     let r = validate_summary(VB_AJC40_MAX_COUNT, 0, 0, 0, VB_AJC40_MAX_COUNT);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 // ── checked_pair_sum (mirrors src/positive.rs::checked_pair_sum) ─────────
 
 #[test]
 fn checked_pair_sum_zero_zero() {
-    assert_eq!(0u64.checked_add(0).unwrap(), 0);
+    let result = 0u64.checked_add(0);
+    if let Some(v) = result {
+        assert_eq!(v, 0);
+    } else {
+        panic!("0 + 0 must not overflow");
+    }
 }
 
 #[test]
 fn checked_pair_sum_zero_max() {
-    assert_eq!(0u64.checked_add(u64::MAX).unwrap(), u64::MAX);
+    let result = 0u64.checked_add(u64::MAX);
+    if let Some(v) = result {
+        assert_eq!(v, u64::MAX);
+    } else {
+        panic!("0 + u64::MAX must not overflow");
+    }
 }
 
 #[test]
 fn checked_pair_sum_max_zero() {
-    assert_eq!(u64::MAX.checked_add(0).unwrap(), u64::MAX);
+    let result = u64::MAX.checked_add(0);
+    if let Some(v) = result {
+        assert_eq!(v, u64::MAX);
+    } else {
+        panic!("u64::MAX + 0 must not overflow");
+    }
 }
 
 #[test]
@@ -191,17 +212,32 @@ fn checked_pair_sum_max_one_overflows() {
 
 #[test]
 fn checked_pair_sum_one_max_minus_one_accepted() {
-    assert_eq!(1u64.checked_add(u64::MAX - 1).unwrap(), u64::MAX);
+    let result = 1u64.checked_add(u64::MAX - 1);
+    if let Some(v) = result {
+        assert_eq!(v, u64::MAX);
+    } else {
+        panic!("1 + (u64::MAX - 1) must not overflow");
+    }
 }
 
 #[test]
 fn checked_pair_sum_typical_pair() {
-    assert_eq!(9u64.checked_add(12).unwrap(), 21);
+    let result = 9u64.checked_add(12);
+    if let Some(v) = result {
+        assert_eq!(v, 21);
+    } else {
+        panic!("9 + 12 must not overflow");
+    }
 }
 
 #[test]
 fn checked_pair_sum_pair_at_max_minus_one() {
-    assert_eq!((u64::MAX - 1).checked_add(1).unwrap(), u64::MAX);
+    let result = (u64::MAX - 1).checked_add(1);
+    if let Some(v) = result {
+        assert_eq!(v, u64::MAX);
+    } else {
+        panic!("(u64::MAX - 1) + 1 must not overflow");
+    }
 }
 
 #[test]
@@ -262,20 +298,20 @@ fn path_depth_within_max() {
 fn path_depth_above_max_fails_validation() {
     let d = VB_AJC40_MAX_DEPTH + 1;
     let r = validate_summary(0, 0, 0, d, 0);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("depth_exceeds_max")));
 }
 
 #[test]
 fn path_depth_exactly_max_passes() {
     let d = VB_AJC40_MAX_DEPTH;
     let r = validate_summary(0, 0, 0, d, 0);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn path_depth_zero_passes() {
     let r = validate_summary(0, 0, 0, 0, 0);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 // ── Count/Depth/Budget boundary triples ───────────────────────────────────
@@ -283,19 +319,19 @@ fn path_depth_zero_passes() {
 #[test]
 fn boundary_count_zero_depth_zero_budget_zero() {
     let r = validate_summary(0, 0, 0, 0, 0);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn boundary_count_max_depth_zero_budget_max() {
     let r = validate_summary(VB_AJC40_MAX_COUNT, 0, 0, 0, u64::MAX);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
 fn boundary_count_zero_depth_max_budget_max() {
     let r = validate_summary(0, 0, 0, VB_AJC40_MAX_DEPTH, u64::MAX);
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
@@ -307,7 +343,7 @@ fn boundary_count_max_depth_max_budget_max() {
         VB_AJC40_MAX_DEPTH,
         u64::MAX,
     );
-    assert!(r.is_ok());
+    assert_eq!(r, Ok(()));
 }
 
 #[test]
@@ -319,13 +355,13 @@ fn boundary_count_max_plus_one_fails() {
         0,
         u64::MAX,
     );
-    assert!(r.is_err());
+    assert!(matches!(r, Err("count_exceeds_max")));
 }
 
 #[test]
 fn boundary_depth_max_plus_one_fails() {
     let r = validate_summary(0, 0, 0, VB_AJC40_MAX_DEPTH + 1, u64::MAX);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("depth_exceeds_max")));
 }
 
 // ── Validator consistency ─────────────────────────────────────────────────
@@ -333,15 +369,15 @@ fn boundary_depth_max_plus_one_fails() {
 #[test]
 fn validator_5x_count_5x_depth_combined() {
     let r = validate_summary(5 * VB_AJC40_MAX_COUNT, 0, 0, 0, 0);
-    assert!(r.is_err());
+    assert!(matches!(r, Err("count_exceeds_max")));
 }
 
 #[test]
 fn validator_count_and_depth_independent_checks() {
     let r1 = validate_summary(0, 0, 0, VB_AJC40_MAX_DEPTH + 1, 0);
-    assert!(r1.is_err());
+    assert!(matches!(r1, Err("depth_exceeds_max")));
     let r2 = validate_summary(VB_AJC40_MAX_COUNT + 1, 0, 0, 0, 0);
-    assert!(r2.is_err());
+    assert!(matches!(r2, Err("count_exceeds_max")));
     let r3 = validate_summary(
         VB_AJC40_MAX_COUNT + 1,
         0,
@@ -349,14 +385,14 @@ fn validator_count_and_depth_independent_checks() {
         VB_AJC40_MAX_DEPTH + 1,
         0,
     );
-    assert!(r3.is_err());
+    assert!(matches!(r3, Err("count_exceeds_max")));
 }
 
 #[test]
 fn validator_recomputed_eq_declared_passes() {
     for v in [0u64, 1, 100, 1000, u64::MAX] {
         let r = validate_summary(0, v, v, 0, u64::MAX);
-        assert!(r.is_ok(), "recomputed=declared={} must pass", v);
+        assert_eq!(r, Ok(()), "recomputed=declared={} must pass", v);
     }
 }
 
@@ -364,7 +400,8 @@ fn validator_recomputed_eq_declared_passes() {
 fn validator_recomputed_ne_declared_fails() {
     for (a, b) in [(0u64, 1u64), (1, 0), (100, 99), (u64::MAX, 0)] {
         let r = validate_summary(0, a, b, 0, u64::MAX);
-        assert!(r.is_err(), "recomputed={} declared={} must fail", a, b);
+        assert!(matches!(r, Err("declared_recomputed_mismatch")), 
+                "recomputed={} declared={} must fail", a, b);
     }
 }
 
@@ -372,7 +409,7 @@ fn validator_recomputed_ne_declared_fails() {
 fn validator_recomputed_le_budget_passes() {
     for (used, max) in [(0u64, 0u64), (1, 1), (50, 100), (u64::MAX, u64::MAX)] {
         let r = validate_summary(0, used, used, 0, max);
-        assert!(r.is_ok(), "used={} max={} must pass", used, max);
+        assert_eq!(r, Ok(()), "used={} max={} must pass", used, max);
     }
 }
 
@@ -380,7 +417,8 @@ fn validator_recomputed_le_budget_passes() {
 fn validator_recomputed_gt_budget_fails() {
     for (used, max) in [(1u64, 0u64), (100, 99), (u64::MAX, u64::MAX - 1)] {
         let r = validate_summary(0, used, used, 0, max);
-        assert!(r.is_err(), "used={} max={} must fail", used, max);
+        assert!(matches!(r, Err("recomputed_exceeds_budget")), 
+                "used={} max={} must fail", used, max);
     }
 }
 
@@ -397,6 +435,3 @@ fn validator_iteration_count_for_summary_check_is_bounded() {
     let max_iterations_for_summary_check: u64 = 4;
     assert_eq!(max_iterations_for_summary_check, 4);
 }
-
-#[test]
-fn validator_no_dynamic_allocation() {}

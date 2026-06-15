@@ -2,23 +2,12 @@
 //! Binds to: crate::shard::helpers::timer_registration_required
 #![forbid(unsafe_code)]
 
-use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+use vb_core::ids::{ActionId, SlotIdx, StepIdx};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
 fn make_wf_with_node(node: CompiledNode) -> CompiledWorkflow {
-    let parts = WorkflowParts {
-        name: Box::from("test"),
-        digest: WorkflowDigest::from_bytes([0xDD; 32]),
-        nodes: Box::from([node]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        step_names: Box::from([]),
-        resource_contract: ResourceContract::DEFAULT,
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = vec![node].into_boxed_slice();
     match CompiledWorkflow::try_from_parts(parts) {
         Ok(v) => v,
         Err(_) => {

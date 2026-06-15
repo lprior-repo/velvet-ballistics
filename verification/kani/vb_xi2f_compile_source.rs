@@ -76,19 +76,14 @@ fn kani_compile_source_valid_parts_succeeds() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: Box::from("test"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![vb_core::value::ConstValue::I64(42)].into_boxed_slice(),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![Box::from("set"), Box::from("finish")].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.constants = vec![vb_core::value::ConstValue::I64(42)].into_boxed_slice();
+    parts.slot_count = 1;
+    parts.entry = StepIdx::new(0);
+    parts.resource_contract = ResourceContract::DEFAULT;
+    parts.expressions = vec![].into_boxed_slice();
+    parts.accessors = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 

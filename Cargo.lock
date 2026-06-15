@@ -2232,6 +2232,7 @@ dependencies = [
  "crc32fast",
  "postcard",
  "proptest",
+ "rustix",
  "serde",
  "serde-saphyr",
  "serde_json",

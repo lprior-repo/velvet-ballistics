@@ -22,19 +22,8 @@ use vb_core::workflow::{
 #[kani::proof]
 #[kani::unwind(8)]
 fn kani_try_from_parts_empty_nodes() {
-    let parts = WorkflowParts {
-        name: Box::from("empty"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: vec![].into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![].into_boxed_slice(),
-        slot_count: 0,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -62,19 +51,14 @@ fn kani_try_from_parts_entry_out_of_bounds() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: Box::from("entry_oob"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![].into_boxed_slice(),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(1), // Out of bounds: only node 0 exists
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![Box::from("finish")].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 1;
+    parts.entry = StepIdx::new(1);
+    parts.resource_contract = ResourceContract::DEFAULT;
+    parts.expressions = vec![].into_boxed_slice();
+    parts.accessors = vec![].into_boxed_slice();
+    parts.constants = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -100,19 +84,14 @@ fn kani_try_from_parts_step_out_of_bounds() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: Box::from("step_oob"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![].into_boxed_slice(),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![Box::from("nop")].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 1;
+    parts.entry = StepIdx::new(0);
+    parts.resource_contract = ResourceContract::DEFAULT;
+    parts.expressions = vec![].into_boxed_slice();
+    parts.accessors = vec![].into_boxed_slice();
+    parts.constants = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -138,19 +117,14 @@ fn kani_try_from_parts_slot_out_of_bounds() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: Box::from("slot_oob"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![].into_boxed_slice(),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![Box::from("nop")].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 1;
+    parts.entry = StepIdx::new(0);
+    parts.resource_contract = ResourceContract::DEFAULT;
+    parts.expressions = vec![].into_boxed_slice();
+    parts.accessors = vec![].into_boxed_slice();
+    parts.constants = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -187,19 +161,14 @@ fn kani_try_from_parts_unreachable_node() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: Box::from("unreachable"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![].into_boxed_slice(),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![Box::from("finish"), Box::from("unreachable")].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 1;
+    parts.entry = StepIdx::new(0);
+    parts.resource_contract = ResourceContract::DEFAULT;
+    parts.expressions = vec![].into_boxed_slice();
+    parts.accessors = vec![].into_boxed_slice();
+    parts.constants = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 
@@ -236,19 +205,14 @@ fn kani_try_from_parts_backward_edge() {
         },
     ];
 
-    let parts = WorkflowParts {
-        name: Box::from("backward"),
-        digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
-        nodes: nodes.into_boxed_slice(),
-        expressions: vec![].into_boxed_slice(),
-        accessors: vec![].into_boxed_slice(),
-        constants: vec![].into_boxed_slice(),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: vec![Box::from("nop"), Box::from("finish")].into_boxed_slice(),
-    };
+    let mut parts: WorkflowParts = kani::any();
+    parts.nodes = nodes.into_boxed_slice();
+    parts.slot_count = 1;
+    parts.entry = StepIdx::new(0);
+    parts.resource_contract = ResourceContract::DEFAULT;
+    parts.expressions = vec![].into_boxed_slice();
+    parts.accessors = vec![].into_boxed_slice();
+    parts.constants = vec![].into_boxed_slice();
 
     let result = CompiledWorkflow::try_from_parts(parts);
 

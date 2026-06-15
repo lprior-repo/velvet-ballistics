@@ -5,12 +5,12 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use crate::args::{DurabilityMode, LegacyJsonOutput, OutputFormat, VerifyProfile};
-use crate::commands_verify::{exit_code_for_error, run_verification, VerifyError, VerifyOk};
+use crate::commands_verify::{VerifyError, VerifyOk, exit_code_for_error, run_verification};
 use crate::exit_code::CliExitCode;
 use crate::file_io::read_file;
 use crate::output::{
-    json_error, json_out, output_error_exit, write_failure_message, write_legacy_json_stderr,
-    write_legacy_json_stdout, OutputError,
+    OutputError, json_error, json_out, output_error_exit, write_failure_message,
+    write_legacy_json_stderr, write_legacy_json_stdout,
 };
 
 /// Default durability profile used by the `verify` command.
@@ -407,6 +407,11 @@ pub(crate) fn cli_exit_code_number(code: CliExitCode) -> u8 {
 mod tests {
     use super::*;
 
+    const VERIFY_HELPER_ENV: &str = "VB_VERIFY_DURABILITY_HELPER";
+    const VERIFY_WORKFLOW_ENV: &str = "VB_VERIFY_DURABILITY_WORKFLOW";
+    const VERIFY_HELPER_TEST: &str =
+        "verify::tests::cmd_verify_with_durability_helper_emits_machine_report";
+
     fn sample_result_with_durability(
         checks: Vec<&'static str>,
         durability_mode: DurabilityMode,
@@ -423,6 +428,36 @@ mod tests {
 
     fn sample_result(checks: Vec<&'static str>) -> VerifyOk {
         sample_result_with_durability(checks, DurabilityMode::Journaled)
+    }
+
+    fn fixture_path(relative: &str) -> Result<std::path::PathBuf, String> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let root_fixture = root.join(relative);
+        if root_fixture.exists() {
+            return Ok(root_fixture);
+        }
+
+        let workspace_fixture = root.join("crates/workspace_tests").join(relative);
+        if workspace_fixture.exists() {
+            Ok(workspace_fixture)
+        } else {
+            Err(format!(
+                "missing fixture {relative} under {} or {}",
+                root_fixture.display(),
+                workspace_fixture.display()
+            ))
+        }
+    }
+
+    fn parse_machine_report_line(stdout: &str) -> Result<serde_json::Value, String> {
+        for line in stdout.lines() {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+                return Ok(value);
+            }
+        }
+        Err(format!(
+            "expected one JSON machine-report line in helper stdout, got:\n{stdout}"
+        ))
     }
 
     fn json_string_vec(value: &serde_json::Value, pointer: &str) -> Vec<String> {
@@ -557,6 +592,78 @@ mod tests {
             &sample_result_with_durability(vec!["profile"], DurabilityMode::Strict),
             VerifyProfile::Standard,
         );
+
+        assert_eq!(
+            report
+                .pointer("/durability/profile")
+                .and_then(serde_json::Value::as_str),
+            Some("strict")
+        );
+        assert_eq!(
+            report
+                .pointer("/durability/journal_written")
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn cmd_verify_with_durability_helper_emits_machine_report() {
+        if std::env::var_os(VERIFY_HELPER_ENV).is_none() {
+            return;
+        }
+
+        let workflow = match std::env::var_os(VERIFY_WORKFLOW_ENV) {
+            Some(path) => std::path::PathBuf::from(path),
+            None => panic!("missing {VERIFY_WORKFLOW_ENV}"),
+        };
+
+        let exit_code = cmd_verify_with_durability(
+            &workflow,
+            VerifyProfile::Standard,
+            DurabilityMode::Strict,
+            OutputFormat::Text,
+            LegacyJsonOutput::Jsonl,
+        );
+        assert_eq!(exit_code, ExitCode::SUCCESS);
+    }
+
+    #[test]
+    fn cmd_verify_with_durability_emits_non_default_report_for_real_workflow() {
+        let workflow = match fixture_path("tests/fixtures/valid/minimal.yaml") {
+            Ok(path) => path,
+            Err(error) => panic!("{error}"),
+        };
+        let current_exe = match std::env::current_exe() {
+            Ok(path) => path,
+            Err(error) => panic!("failed to locate current test binary: {error}"),
+        };
+
+        let output = match std::process::Command::new(current_exe)
+            .arg("--exact")
+            .arg(VERIFY_HELPER_TEST)
+            .arg("--quiet")
+            .arg("--nocapture")
+            .env(VERIFY_HELPER_ENV, "1")
+            .env(VERIFY_WORKFLOW_ENV, workflow.as_os_str())
+            .output()
+        {
+            Ok(output) => output,
+            Err(error) => panic!("failed to spawn durability helper test: {error}"),
+        };
+
+        assert!(
+            output.status.success(),
+            "durability helper failed: stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let report = match parse_machine_report_line(&stdout) {
+            Ok(report) => report,
+            Err(error) => panic!("{error}"),
+        };
 
         assert_eq!(
             report

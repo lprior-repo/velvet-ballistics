@@ -94,7 +94,11 @@ fn evidence_index_empty_creates_valid_index() {
         "Clean text.",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    let report = result.expect("empty evidence index should produce valid report");
+    assert!(report.unsupported_claims.is_empty());
+    assert_eq!(report.cited_claims, 0);
+    assert_eq!(report.pending_claims, 0);
+    assert!(report.forbidden_claims.is_empty());
 }
 
 #[test]
@@ -114,7 +118,11 @@ fn evidence_index_from_supports_works_with_join_claim() {
         "Clean text.",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    let report = result.expect("supports index should produce valid report");
+    assert_eq!(report.cited_claims, 0);
+    assert_eq!(report.pending_claims, 0);
+    assert!(report.unsupported_claims.is_empty());
+    assert!(report.forbidden_claims.is_empty());
 }
 
 // ============================================================================
@@ -130,10 +138,14 @@ fn evidence_support_cited_creates_valid_support() {
     // Then - used in validate_evidence_bounded_wording with matching claim succeeds
     let doc = MasterDocSnapshot::for_workspace_text(
         std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
-        "Clean < DerivedFromSecret < Secret.\nDRIFT-1 is verified",
+        "Clean < DerivedFromSecret < Secret.\nDRIFT-1 is verified report.md",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    let report = result.expect("cited support with matching sentence+artifact should succeed");
+    assert_eq!(report.cited_claims, 1);
+    assert_eq!(report.pending_claims, 0);
+    assert!(report.unsupported_claims.is_empty());
+    assert!(report.forbidden_claims.is_empty());
 }
 
 #[test]
@@ -148,7 +160,11 @@ fn evidence_support_pending_creates_valid_pending_support() {
         "Clean < DerivedFromSecret < Secret.\nruntime claim remains unverified",
     );
     let result = validate_evidence_bounded_wording(doc, index);
-    assert!(result.is_ok());
+    let report = result.expect("pending support with unverified text should succeed");
+    assert_eq!(report.cited_claims, 0);
+    assert_eq!(report.pending_claims, 1);
+    assert!(report.unsupported_claims.is_empty());
+    assert!(report.forbidden_claims.is_empty());
 }
 
 // ============================================================================
@@ -741,7 +757,13 @@ fn check_doc_taint_consistency_detects_stale_phrases() {
     let result = check_doc_taint_consistency(text);
 
     // Then
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::EvalExpr,
+            phrase: "No taint join".to_owned(),
+        })
+    );
 }
 
 // ============================================================================
@@ -1192,7 +1214,11 @@ proptest::proptest! {
             "Clean text.",
         );
         let result = validate_evidence_bounded_wording(doc, index);
-        assert!(result.is_ok());
+        let report = result.expect("proptest: evidence index should produce valid report");
+        assert_eq!(report.cited_claims, 0);
+        assert_eq!(report.pending_claims, 0);
+        assert!(report.unsupported_claims.is_empty());
+        assert!(report.forbidden_claims.is_empty());
     }
 }
 
@@ -1217,40 +1243,6 @@ fn scan_for_stale_clean_only_text_handles_empty_text() {
 }
 
 #[test]
-fn validate_taint_vocabulary_consistency_handles_unicode_text() {
-    // Given
-    let doc = MasterDocSnapshot::for_workspace_text(
-        std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
-        "Clean < DerivedFromSecret < 秘密.",
-    );
-
-    // When
-    let result = validate_taint_vocabulary_consistency(doc);
-
-    // Then
-    // Should not panic and should return a result
-    assert!(result.is_ok() || result.is_err()); // exhaustive
-}
-
-#[test]
-fn plan_taint_doc_reconciliation_handles_very_long_text() {
-    // Given
-    let long_text = "x".repeat(100_000);
-    let doc = MasterDocSnapshot::for_workspace_text(
-        std::path::PathBuf::from("/tmp/workspace/velvet-ballistics-MASTER.md"),
-        &long_text,
-    );
-    let policy = EvidencePolicy::strict_bounded(std::path::PathBuf::from("/tmp/workspace"));
-
-    // When
-    let result = plan_taint_doc_reconciliation(doc, policy);
-
-    // Then
-    // Should not panic - either Ok or Err is valid
-    assert!(result.is_ok() || result.is_err());
-}
-
-#[test]
 fn check_doc_taint_consistency_handles_multiline_text() {
     // Given
     let text = "Line 1: EvalExpr is Always Clean\n\
@@ -1260,8 +1252,14 @@ fn check_doc_taint_consistency_handles_multiline_text() {
     // When
     let result = check_doc_taint_consistency(text);
 
-    // Then
-    assert!(result.is_err()); // Contains stale phrases
+    // Then - first stale phrase detected (EvalExpr Always Clean)
+    assert_eq!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText {
+            node: ResolvedNode::EvalExpr,
+            phrase: "Always Clean".to_owned(),
+        })
+    );
 }
 
 #[test]
@@ -1280,5 +1278,12 @@ fn validate_evidence_bounded_wording_multiple_claims_counted() {
     let result = validate_evidence_bounded_wording(doc, evidence);
 
     // Then - first unsupported claim errors out
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(DocReconcileError::UnsupportedEvidenceClaim {
+            sentence: "Lean proves implementation parity".to_owned(),
+            claim_kind: ClaimKind::FormalEvidence,
+            required: RequiredEvidence::ConcreteArtifactOrPendingMarker,
+        })
+    );
 }

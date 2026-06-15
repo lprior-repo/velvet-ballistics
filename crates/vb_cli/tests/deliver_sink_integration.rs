@@ -85,8 +85,8 @@ fn agent_context_deliver_retries_after_preexisting_preferred_stage_file() -> Res
 }
 
 #[test]
-fn agent_context_deliver_file_succeeds_at_exact_max_path_bytes_4095_with_staging_room(
-) -> Result<(), String> {
+fn agent_context_deliver_file_succeeds_at_exact_max_path_bytes_4095_with_staging_room()
+-> Result<(), String> {
     let (_root, deliver_path) = actual_exact_path_target(4095, "four")?;
     let target = format!("file:{}", path_text(&deliver_path)?);
 
@@ -108,8 +108,8 @@ fn agent_context_deliver_file_succeeds_at_exact_max_path_bytes_4095_with_staging
 }
 
 #[test]
-fn agent_context_deliver_rejects_exact_4095_byte_path_without_staging_retry_room(
-) -> Result<(), String> {
+fn agent_context_deliver_rejects_exact_4095_byte_path_without_staging_retry_room()
+-> Result<(), String> {
     let (_root, deliver_path) = actual_exact_path_target(4095, "f")?;
     let target = format!("file:{}", path_text(&deliver_path)?);
 
@@ -120,8 +120,10 @@ fn agent_context_deliver_rejects_exact_4095_byte_path_without_staging_retry_room
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("deliver failed: deliver file path is too long"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("deliver failed: deliver file path is too long")
+    );
     assert!(!deliver_path.exists());
     Ok(())
 }
@@ -138,8 +140,10 @@ fn agent_context_deliver_rejects_path_just_above_4095_bytes() -> Result<(), Stri
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("deliver failed: deliver file path is too long"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("deliver failed: deliver file path is too long")
+    );
     assert!(!deliver_path.exists());
     Ok(())
 }
@@ -156,8 +160,10 @@ fn agent_context_deliver_rejects_unknown_flag_before_writing_file() -> Result<()
         .map_err(|error| error.to_string())?;
 
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("invalid agent-context argument: unknown flag --bogus"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("invalid agent-context argument: unknown flag --bogus")
+    );
     assert!(!deliver_path.exists());
     Ok(())
 }
@@ -170,8 +176,10 @@ fn agent_context_deliver_rejects_missing_target() -> Result<(), String> {
         .map_err(|error| error.to_string())?;
 
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("--deliver requires stdout, file:<absolute-path>, or webhook:<url>"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("--deliver requires stdout, file:<absolute-path>, or webhook:<url>")
+    );
     Ok(())
 }
 
@@ -196,7 +204,7 @@ fn agent_context_deliver_rejects_empty_file_target() -> Result<(), String> {
 #[test]
 fn agent_context_deliver_rejects_unsupported_webhook_target() -> Result<(), String> {
     assert_deliver_validation_failure(
-        "webhook:",
+        "webhook:https://example.invalid/agent-context",
         "deliver failed: deliver webhook target is not supported yet",
     )
 }
@@ -262,14 +270,16 @@ fn agent_context_deliver_rejects_symlink_alias_to_blocked_root() -> Result<(), S
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("deliver failed: deliver file path uses a blocked system root"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("deliver failed: deliver file path uses a blocked system root")
+    );
     Ok(())
 }
 
 #[test]
-fn agent_context_deliver_reports_staging_unavailable_when_all_stage_names_are_taken(
-) -> Result<(), String> {
+fn agent_context_deliver_reports_staging_unavailable_when_all_stage_names_are_taken()
+-> Result<(), String> {
     let dir = deliver_tempdir()?;
     let deliver_path = dir.path().join("agent-context.jsonl");
     occupy_all_stage_names(&deliver_path)?;
@@ -282,8 +292,10 @@ fn agent_context_deliver_reports_staging_unavailable_when_all_stage_names_are_ta
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("deliver failed: deliver temporary staging path is unavailable"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("deliver failed: deliver temporary staging path is unavailable")
+    );
     assert!(!deliver_path.exists());
     Ok(())
 }
@@ -362,8 +374,8 @@ fn agent_context_deliver_resolves_parent_as_written_before_collapsing_dotdot() -
 
 #[cfg(target_os = "linux")]
 #[test]
-fn agent_context_deliver_allows_proc_dotdot_tmp_path_when_resolved_parent_is_allowed(
-) -> Result<(), String> {
+fn agent_context_deliver_allows_proc_dotdot_tmp_path_when_resolved_parent_is_allowed()
+-> Result<(), String> {
     let dir = tempfile::Builder::new()
         .prefix("vb-deliver-proc-dotdot-")
         .tempdir_in("/tmp")
@@ -418,8 +430,10 @@ fn agent_context_deliver_rejects_symlink_alias_to_existing_real_file() -> Result
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert!(String::from_utf8_lossy(&output.stderr)
-        .contains("deliver failed: deliver file target already exists"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("deliver failed: deliver file target already exists")
+    );
     assert_eq!(
         std::fs::read_to_string(&actual_path).map_err(|error| error.to_string())?,
         String::from("already here\n")

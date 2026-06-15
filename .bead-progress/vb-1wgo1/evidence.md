@@ -276,3 +276,67 @@ The scanner also self-skips `target/`, `node_modules/`,
 `.moon/`. The full directory walks only `crates/`, `.moon/`,
 `docs/`, and `verification/`; the manifest, lock, and readme files
 are scanned as single files.
+
+## 2026-06-14 explicit-target fail-closed update
+
+### Change summary
+
+- Split `scripts/check-removed-crate-residue.rs` into smaller helpers so the
+  previously flagged functions stay under the audit-friendly size limit.
+- Explicit scan targets now fail closed on missing or unreadable inputs.
+- Explicit scan targets that resolve to zero readable files now return exit 2.
+- Added a self-test case for a typoed explicit path.
+
+### Raw command evidence
+
+```
+$ bash scripts/test-check-removed-crate-residue.sh
+[1/5] positive fixture must PASS (exit 0, no active findings)
+  ok: exit 0
+  ok: summary reports active=0
+[2/5] negative fixture must FAIL (exit 1, all removed tokens fire)
+  ok: exit 1 with file:line finding
+  ok: summary reports active > 0
+  ok: every removed-token banner appears
+[3/5] negative makepad fixture must FAIL (exit 1, bare token)
+  ok: exit 1 with makepad finding
+[4/5] real repository scan must PASS (exit 0, no active residue)
+  ok: exit 0
+  ok: summary reports active=0
+  ok: no REMOVED-CRATE line in output
+[5/5] typoed explicit path must FAIL CLOSED (exit 2, no false green)
+  ok: exit 2 for missing explicit path
+  ok: diagnostic names explicit target
+self-test PASSED
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh fixtures/removed-crate-residue/positive.md
+summary: active=0 allowlisted=0 files_scanned=1
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh fixtures/removed-crate-residue/negative.md
+fixtures/removed-crate-residue/negative.md:7: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': vb_codegen is still an active reference on this line.
+fixtures/removed-crate-residue/negative.md:8: REMOVED-CRATE: vb_ui_model: exact substring 'vb_ui_model': vb_ui_model remains an active reference on this line.
+fixtures/removed-crate-residue/negative.md:9: REMOVED-CRATE: vb_ui_makepad: exact substring 'vb_ui_makepad': vb_ui_makepad remains an active reference on this line.
+fixtures/removed-crate-residue/negative.md:10: REMOVED-CRATE: makepad-widgets: exact substring 'makepad-widgets': makepad-widgets remains an active reference on this line.
+fixtures/removed-crate-residue/negative.md:11: REMOVED-CRATE: makepad-draw: exact substring 'makepad-draw': makepad-draw remains an active reference on this line.
+summary: active=5 allowlisted=0 files_scanned=1
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh "$TMPDIR/cargo-bypass.toml"
+/tmp/tmp.ulgWpTwmLG/cargo-bypass.toml:3: REMOVED-CRATE: vb_codegen: exact substring 'vb_codegen': vb_codegen = { path = "../crates/vb_codegen", version = "0.1.0" }
+summary: active=1 allowlisted=0 files_scanned=1
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh "$TMPDIR/does-not-exist.md"
+check-removed-crate-residue: explicit target missing: /tmp/tmp.ulgWpTwmLG/does-not-exist.md
+```
+
+```
+$ bash scripts/check-removed-crate-residue.sh
+summary: active=0 allowlisted=27 files_scanned=2414
+```

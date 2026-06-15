@@ -77,7 +77,7 @@ fn minimal_valid_workflow() -> CompiledWorkflow {
 }
 
 #[kani::proof]
-#[kani::unwind(4)]
+#[kani::unwind(100)]
 fn submit_artifact_kani() {
     let workflow = minimal_valid_workflow();
     let policy = bounded_policy();
@@ -88,7 +88,7 @@ fn submit_artifact_kani() {
 }
 
 #[kani::proof]
-#[kani::unwind(4)]
+#[kani::unwind(100)]
 fn submit_artifact_with_contracts_kani() {
     let workflow = minimal_valid_workflow();
     let policy = bounded_policy();
@@ -99,7 +99,7 @@ fn submit_artifact_with_contracts_kani() {
 }
 
 #[kani::proof]
-#[kani::unwind(4)]
+#[kani::unwind(100)]
 fn admit_compiled_artifact_kani() {
     let workflow = minimal_valid_workflow();
 

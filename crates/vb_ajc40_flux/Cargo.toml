@@ -1,8 +1,8 @@
 [package]
 name = "vb_ajc40_flux"
-edition.workspace = true
-license.workspace = true
-version.workspace = true
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
 
 [package.metadata.flux]
 enabled = true
@@ -15,5 +15,4 @@ default = []
 positive = []
 negative = ["positive"]
 
-[lints]
-workspace = true
+

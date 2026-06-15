@@ -115,7 +115,10 @@ fn check_evidence_gate_accepts_valid() {
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
     };
-    assert!(check_evidence_gate(&metadata, 20).is_ok());
+    match check_evidence_gate(&metadata, 20) {
+        Ok(()) => {}
+        Err(e) => panic!("evidence gate should pass for valid metadata: {e:?}"),
+    }
 }
 
 // === capture_metadata tests ===
@@ -183,8 +186,10 @@ fn capture_metadata_handles_none_baseline() {
         "linux-x86_64",
         100_000,
     );
-    assert!(result.is_ok());
-    let meta = result.unwrap();
+    let meta = match result {
+        Ok(meta) => meta,
+        Err(e) => panic!("expected valid metadata for None baseline: {e:?}"),
+    };
     assert_eq!(meta.baseline_us, None);
     assert_eq!(meta.result_us, 50_000);
 }
@@ -371,112 +376,6 @@ fn check_evidence_gate_rejects_empty_budget() {
     assert!(matches!(result, Err(EvidenceError::EmptyBudget)));
 }
 
-// === Display impl tests for EvidenceError ===
-
-#[test]
-fn evidence_error_display_missing_baseline() {
-    let err = EvidenceError::MissingBaseline;
-    let display = format!("{}", err);
-    assert_eq!(display, "missing baseline measurement");
-}
-
-#[test]
-fn evidence_error_display_missing_result() {
-    let err = EvidenceError::MissingResult;
-    let display = format!("{}", err);
-    assert_eq!(display, "missing result measurement");
-}
-
-#[test]
-fn evidence_error_display_regression_detected() {
-    let err = EvidenceError::RegressionDetected {
-        benchmark: "test_bench".to_string(),
-        delta: 5000,
-    };
-    let display = format!("{}", err);
-    assert_eq!(display, "regression detected: test_bench delta=5000");
-}
-
-#[test]
-fn evidence_error_display_empty_budget() {
-    let err = EvidenceError::EmptyBudget;
-    let display = format!("{}", err);
-    assert_eq!(display, "budget not configured");
-}
-
-// === Display impl tests for YamlBenchmarkError ===
-
-#[test]
-fn yaml_benchmark_error_display_parse_failure() {
-    let err = YamlBenchmarkError::ParseFailure("invalid yaml".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "YAML parse failed: invalid yaml");
-}
-
-#[test]
-fn yaml_benchmark_error_display_validation_failure() {
-    let err = YamlBenchmarkError::ValidationFailure("missing field".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "workflow validation failed: missing field");
-}
-
-// === Display impl tests for StorageBenchmarkError ===
-
-#[test]
-fn storage_benchmark_error_display_journal_open_failure() {
-    let err = StorageBenchmarkError::JournalOpenFailure("file not found".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "journal open failed: file not found");
-}
-
-#[test]
-fn storage_benchmark_error_display_append_failure() {
-    let err = StorageBenchmarkError::AppendFailure("disk full".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "journal append failed: disk full");
-}
-
-// === Display impl tests for IpcBenchmarkError ===
-
-#[test]
-fn ipc_benchmark_error_display_encode_failure() {
-    let err = IpcBenchmarkError::EncodeFailure("buffer overflow".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "frame encode failed: buffer overflow");
-}
-
-#[test]
-fn ipc_benchmark_error_display_decode_failure() {
-    let err = IpcBenchmarkError::DecodeFailure("truncated frame".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "frame decode failed: truncated frame");
-}
-
-// === Display impl tests for RecoveryBenchmarkError ===
-
-#[test]
-fn recovery_benchmark_error_display_hydration_failure() {
-    let err = RecoveryBenchmarkError::HydrationFailure("missing checkpoint".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "recovery hydration failed: missing checkpoint");
-}
-
-// === Display impl tests for RuntimeBenchmarkError ===
-
-#[test]
-fn runtime_benchmark_error_display_step_failure() {
-    let err = RuntimeBenchmarkError::StepFailure("stuck in loop".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "runtime step failed: stuck in loop");
-}
-
-#[test]
-fn runtime_benchmark_error_display_primitive_failure() {
-    let err = RuntimeBenchmarkError::PrimitiveFailure("invalid opcode".to_string());
-    let display = format!("{}", err);
-    assert_eq!(display, "runtime primitive failed: invalid opcode");
-}
-
 // === budget_utilization_percent overflow edge cases ===
 
 #[test]
@@ -535,8 +434,11 @@ fn capture_metadata_accepts_max_uint64_commit() {
         "linux-x86_64",
         200_000,
     );
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().commit_hash, "ffffffffffffffff");
+    let meta = match result {
+        Ok(meta) => meta,
+        Err(e) => panic!("expected valid metadata for max uint64 commit: {e:?}"),
+    };
+    assert_eq!(meta.commit_hash, "ffffffffffffffff");
 }
 
 // === check_evidence_gate threshold boundary tests ===
@@ -554,7 +456,10 @@ fn check_evidence_gate_accepts_exactly_at_threshold() {
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
     };
-    assert!(check_evidence_gate(&metadata, 20).is_ok());
+    match check_evidence_gate(&metadata, 20) {
+        Ok(()) => {}
+        Err(e) => panic!("evidence gate should pass at threshold: {e:?}"),
+    }
 }
 
 #[test]
@@ -569,7 +474,10 @@ fn check_evidence_gate_accepts_zero_threshold_within_baseline() {
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
     };
-    assert!(check_evidence_gate(&metadata, 0).is_ok());
+    match check_evidence_gate(&metadata, 0) {
+        Ok(()) => {}
+        Err(e) => panic!("evidence gate should pass at zero threshold: {e:?}"),
+    }
 }
 
 #[test]

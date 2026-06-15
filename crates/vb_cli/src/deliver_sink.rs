@@ -1,9 +1,11 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::fs::{canonicalize, hard_link, remove_file, File, OpenOptions};
+use std::fs::{File, canonicalize};
 use std::io::{self, Write};
+use std::os::fd::OwnedFd;
 use std::path::{Path, PathBuf};
 
+use rustix::fs::{AtFlags, CWD, FileType, Mode, OFlags, fstat, linkat, openat, statat, unlinkat};
 use serde_json::Value;
 
 const STDOUT_TARGET: &str = "stdout";
@@ -16,15 +18,26 @@ const MAX_TEMP_STAGE_ATTEMPTS: usize = 8;
 const MINIMUM_STAGE_BASE_NAME: &str = ".t";
 
 enum TempStageCreation {
-    Created((PathBuf, File)),
+    Created((OsString, File)),
     Exhausted,
     NameTooLong,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DeliverFileTarget {
+    parent_dir: OwnedFd,
+    file_name: OsString,
+    delivery_path: PathBuf,
+}
+
+impl DeliverFileTarget {
+    fn delivery_path(&self) -> &Path {
+        &self.delivery_path
+    }
+}
+
 pub(crate) enum DeliverTarget {
     Stdout,
-    NewFile(PathBuf),
+    NewFile(DeliverFileTarget),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +48,7 @@ pub(crate) enum DeliverSinkError {
     UnsupportedWebhook,
     RelativePath,
     MissingParent,
+    ParentChanged,
     Directory,
     BlockedPath,
     StagingUnavailable,
@@ -54,6 +68,7 @@ impl fmt::Display for DeliverSinkError {
             Self::UnsupportedWebhook => f.write_str("deliver webhook target is not supported yet"),
             Self::RelativePath => f.write_str("deliver file path must be absolute"),
             Self::MissingParent => f.write_str("deliver file parent directory is missing"),
+            Self::ParentChanged => f.write_str("deliver file parent changed during validation"),
             Self::Directory => f.write_str("deliver file target is a directory"),
             Self::BlockedPath => f.write_str("deliver file path uses a blocked system root"),
             Self::StagingUnavailable => {
@@ -87,7 +102,7 @@ pub(crate) fn write_json_line(
 ) -> Result<(), DeliverSinkError> {
     match target {
         DeliverTarget::Stdout => write_json_line_to_writer(io::stdout().lock(), value),
-        DeliverTarget::NewFile(path) => write_json_line_to_new_file(path, value),
+        DeliverTarget::NewFile(target) => write_json_line_to_new_file(target, value),
     }
 }
 
@@ -96,8 +111,8 @@ fn parse_file_target(value: &str) -> Result<DeliverTarget, DeliverSinkError> {
         return Err(DeliverSinkError::MissingFilePath);
     }
     let requested_path = PathBuf::from(value);
-    let delivery_path = resolve_new_file_path(&requested_path)?;
-    Ok(DeliverTarget::NewFile(delivery_path))
+    let delivery_target = resolve_new_file_target(&requested_path)?;
+    Ok(DeliverTarget::NewFile(delivery_target))
 }
 
 fn validate_requested_file_path(path: &Path) -> Result<(), DeliverSinkError> {
@@ -110,7 +125,7 @@ fn validate_requested_file_path(path: &Path) -> Result<(), DeliverSinkError> {
     Ok(())
 }
 
-fn resolve_new_file_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
+fn resolve_new_file_target(path: &Path) -> Result<DeliverFileTarget, DeliverSinkError> {
     validate_requested_file_path(path)?;
     if path.is_dir() {
         return Err(DeliverSinkError::Directory);
@@ -119,25 +134,30 @@ fn resolve_new_file_path(path: &Path) -> Result<PathBuf, DeliverSinkError> {
     let Some(parent) = path.parent() else {
         return Err(DeliverSinkError::MissingParent);
     };
-    if !parent.is_dir() {
-        return Err(DeliverSinkError::MissingParent);
-    }
-    let resolved_parent = canonicalize(parent).map_err(to_io_error)?;
+    let parent_dir = open_parent_directory(parent)?;
+    let resolved_parent = canonicalize_parent_path(parent)?;
     if is_blocked_root(&resolved_parent) {
         return Err(DeliverSinkError::BlockedPath);
     }
+    ensure_parent_matches_path(&parent_dir, &resolved_parent)?;
 
     let Some(file_name) = path.file_name() else {
         return Err(DeliverSinkError::MissingFilePath);
     };
     let resolved_path = resolved_parent.join(file_name);
-    validate_resolved_file_path(&resolved_parent, &resolved_path)?;
+    validate_resolved_file_path(&parent_dir, &resolved_parent, file_name, &resolved_path)?;
 
-    Ok(resolved_path)
+    Ok(DeliverFileTarget {
+        parent_dir,
+        file_name: file_name.to_os_string(),
+        delivery_path: resolved_path,
+    })
 }
 
 fn validate_resolved_file_path(
+    parent_dir: &OwnedFd,
     resolved_parent: &Path,
+    file_name: &OsStr,
     resolved_path: &Path,
 ) -> Result<(), DeliverSinkError> {
     if resolved_path.as_os_str().as_encoded_bytes().len() > MAX_PATH_BYTES {
@@ -152,12 +172,7 @@ fn validate_resolved_file_path(
         return Err(DeliverSinkError::OverlongPath);
     }
 
-    if resolved_path.is_dir() {
-        return Err(DeliverSinkError::Directory);
-    }
-    if resolved_path.try_exists().map_err(to_io_error)? {
-        return Err(DeliverSinkError::ExistingFile);
-    }
+    validate_target_absent(parent_dir, file_name)?;
 
     Ok(())
 }
@@ -166,15 +181,18 @@ fn is_blocked_root(path: &Path) -> bool {
     path.starts_with("/dev") || path.starts_with("/proc") || path.starts_with("/sys")
 }
 
-fn write_json_line_to_new_file(path: &Path, value: &Value) -> Result<(), DeliverSinkError> {
-    let delivery_path = resolve_new_file_path(path)?;
-    let (temp_path, temp_file) = create_temp_stage_file(&delivery_path)?;
-    write_json_line_to_temp_file(&temp_path, temp_file, value)?;
-    persist_temp_file(&temp_path, &delivery_path)
+fn write_json_line_to_new_file(
+    target: &DeliverFileTarget,
+    value: &Value,
+) -> Result<(), DeliverSinkError> {
+    let (temp_name, temp_file) = create_temp_stage_file(target)?;
+    write_json_line_to_temp_file(target, &temp_name, temp_file, value)?;
+    persist_temp_file(target, &temp_name)
 }
 
 fn write_json_line_to_temp_file(
-    path: &Path,
+    target: &DeliverFileTarget,
+    temp_name: &OsStr,
     mut file: File,
     value: &Value,
 ) -> Result<(), DeliverSinkError> {
@@ -182,25 +200,35 @@ fn write_json_line_to_temp_file(
         .and_then(|()| file.sync_all().map_err(to_io_error));
     match write_result {
         Ok(()) => Ok(()),
-        Err(write_error) => match remove_file(path).map_err(to_io_error) {
+        Err(write_error) => match unlink_at(&target.parent_dir, temp_name) {
             Ok(()) => Err(write_error),
             Err(cleanup_error) => Err(cleanup_error),
         },
     }
 }
 
-fn persist_temp_file(temp_path: &Path, path: &Path) -> Result<(), DeliverSinkError> {
-    match hard_link(temp_path, path) {
+fn persist_temp_file(
+    target: &DeliverFileTarget,
+    temp_name: &OsStr,
+) -> Result<(), DeliverSinkError> {
+    match linkat(
+        &target.parent_dir,
+        temp_name,
+        &target.parent_dir,
+        &target.file_name,
+        AtFlags::empty(),
+    ) {
         Ok(()) => {
-            cleanup_temp_file_best_effort(temp_path);
+            cleanup_temp_file_best_effort(&target.parent_dir, temp_name);
             Ok(())
         }
         Err(error) => {
-            let delivery_error = match error.kind() {
-                io::ErrorKind::AlreadyExists => DeliverSinkError::ExistingFile,
-                kind => DeliverSinkError::Io(kind),
+            let delivery_error = if error == rustix::io::Errno::EXIST {
+                DeliverSinkError::ExistingFile
+            } else {
+                to_rustix_io_error(error)
             };
-            match remove_file(temp_path).map_err(to_io_error) {
+            match unlink_at(&target.parent_dir, temp_name) {
                 Ok(()) => Err(delivery_error),
                 Err(cleanup_error) => Err(cleanup_error),
             }
@@ -208,45 +236,44 @@ fn persist_temp_file(temp_path: &Path, path: &Path) -> Result<(), DeliverSinkErr
     }
 }
 
-fn cleanup_temp_file_best_effort(path: &Path) {
-    match remove_file(path) {
+fn cleanup_temp_file_best_effort(parent_dir: &OwnedFd, path: &OsStr) {
+    match unlinkat(parent_dir, path, AtFlags::empty()) {
         Ok(()) | Err(_) => {}
     }
 }
 
-fn create_temp_stage_file(path: &Path) -> Result<(PathBuf, File), DeliverSinkError> {
-    let Some(parent) = path.parent() else {
+fn create_temp_stage_file(
+    target: &DeliverFileTarget,
+) -> Result<(OsString, File), DeliverSinkError> {
+    let Some(parent) = target.delivery_path.parent() else {
         return Err(DeliverSinkError::MissingParent);
-    };
-    let Some(file_name) = path.file_name() else {
-        return Err(DeliverSinkError::MissingFilePath);
     };
 
     let mut exhausted_candidates = false;
 
-    let preferred = preferred_temp_name(file_name);
-    match create_temp_stage_file_from_base_name(parent, &preferred)? {
+    let preferred = preferred_temp_name(&target.file_name);
+    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &preferred)? {
         TempStageCreation::Created(stage_file) => return Ok(stage_file),
         TempStageCreation::Exhausted => exhausted_candidates = true,
         TempStageCreation::NameTooLong => {}
     }
 
-    let hashed = hashed_temp_name(path);
-    match create_temp_stage_file_from_base_name(parent, &hashed)? {
+    let hashed = hashed_temp_name(target.delivery_path());
+    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &hashed)? {
         TempStageCreation::Created(stage_file) => return Ok(stage_file),
         TempStageCreation::Exhausted => exhausted_candidates = true,
         TempStageCreation::NameTooLong => {}
     }
 
     let fallback = OsString::from(".tmp");
-    match create_temp_stage_file_from_base_name(parent, &fallback)? {
+    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &fallback)? {
         TempStageCreation::Created(stage_file) => return Ok(stage_file),
         TempStageCreation::Exhausted => exhausted_candidates = true,
         TempStageCreation::NameTooLong => {}
     }
 
     let minimal = OsString::from(MINIMUM_STAGE_BASE_NAME);
-    match create_temp_stage_file_from_base_name(parent, &minimal)? {
+    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &minimal)? {
         TempStageCreation::Created(stage_file) => return Ok(stage_file),
         TempStageCreation::Exhausted => exhausted_candidates = true,
         TempStageCreation::NameTooLong => {}
@@ -276,6 +303,7 @@ fn hashed_temp_name(path: &Path) -> OsString {
 }
 
 fn create_temp_stage_file_from_base_name(
+    parent_dir: &OwnedFd,
     parent: &Path,
     base_name: &OsStr,
 ) -> Result<TempStageCreation, DeliverSinkError> {
@@ -285,9 +313,8 @@ fn create_temp_stage_file_from_base_name(
             return Ok(TempStageCreation::NameTooLong);
         }
 
-        let candidate_path = parent.join(&candidate_name);
-        match create_new_file(&candidate_path) {
-            Ok(file) => return Ok(TempStageCreation::Created((candidate_path, file))),
+        match create_new_file_at(parent_dir, &candidate_name) {
+            Ok(file) => return Ok(TempStageCreation::Created((candidate_name, file))),
             Err(DeliverSinkError::ExistingFile) => {}
             Err(error) => return Err(error),
         }
@@ -322,15 +349,88 @@ fn path_with_name_len(parent: &Path, file_name: &OsStr) -> Result<usize, Deliver
         .ok_or(DeliverSinkError::OverlongPath)
 }
 
-fn create_new_file(path: &Path) -> Result<File, DeliverSinkError> {
-    OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|error| match error.kind() {
-            io::ErrorKind::AlreadyExists => DeliverSinkError::ExistingFile,
-            kind => DeliverSinkError::Io(kind),
-        })
+fn create_new_file_at(parent_dir: &OwnedFd, path: &OsStr) -> Result<File, DeliverSinkError> {
+    openat(
+        parent_dir,
+        path,
+        OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC,
+        created_file_mode(),
+    )
+    .map(File::from)
+    .map_err(|error| {
+        if error == rustix::io::Errno::EXIST {
+            DeliverSinkError::ExistingFile
+        } else {
+            to_rustix_io_error(error)
+        }
+    })
+}
+
+fn created_file_mode() -> Mode {
+    Mode::RUSR | Mode::WUSR | Mode::RGRP | Mode::WGRP | Mode::ROTH | Mode::WOTH
+}
+
+fn open_parent_directory(parent: &Path) -> Result<OwnedFd, DeliverSinkError> {
+    openat(
+        CWD,
+        parent,
+        OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC,
+        Mode::empty(),
+    )
+    .map_err(|error| match error {
+        rustix::io::Errno::NOENT | rustix::io::Errno::NOTDIR => DeliverSinkError::MissingParent,
+        other => to_rustix_io_error(other),
+    })
+}
+
+fn canonicalize_parent_path(parent: &Path) -> Result<PathBuf, DeliverSinkError> {
+    canonicalize(parent).map_err(|error| match error.kind() {
+        io::ErrorKind::NotFound => DeliverSinkError::ParentChanged,
+        kind => DeliverSinkError::Io(kind),
+    })
+}
+
+fn ensure_parent_matches_path(
+    parent_dir: &OwnedFd,
+    resolved_parent: &Path,
+) -> Result<(), DeliverSinkError> {
+    let parent_stat = fstat(parent_dir).map_err(to_rustix_io_error)?;
+    let resolved_stat = statat(CWD, resolved_parent, AtFlags::empty()).map_err(|error| {
+        if error == rustix::io::Errno::NOENT {
+            DeliverSinkError::ParentChanged
+        } else {
+            to_rustix_io_error(error)
+        }
+    })?;
+    if parent_stat.st_dev == resolved_stat.st_dev && parent_stat.st_ino == resolved_stat.st_ino {
+        Ok(())
+    } else {
+        Err(DeliverSinkError::ParentChanged)
+    }
+}
+
+fn validate_target_absent(parent_dir: &OwnedFd, file_name: &OsStr) -> Result<(), DeliverSinkError> {
+    match statat(parent_dir, file_name, AtFlags::SYMLINK_NOFOLLOW) {
+        Ok(stat) => {
+            let file_type = FileType::from_raw_mode(stat.st_mode);
+            if file_type.is_dir() {
+                Err(DeliverSinkError::Directory)
+            } else {
+                Err(DeliverSinkError::ExistingFile)
+            }
+        }
+        Err(error) => {
+            if error == rustix::io::Errno::NOENT {
+                Ok(())
+            } else {
+                Err(to_rustix_io_error(error))
+            }
+        }
+    }
+}
+
+fn unlink_at(parent_dir: &OwnedFd, path: &OsStr) -> Result<(), DeliverSinkError> {
+    unlinkat(parent_dir, path, AtFlags::empty()).map_err(to_rustix_io_error)
 }
 
 fn write_json_line_to_writer<W: Write>(
@@ -351,14 +451,18 @@ fn to_io_error(error: io::Error) -> DeliverSinkError {
     DeliverSinkError::Io(error.kind())
 }
 
+fn to_rustix_io_error(error: rustix::io::Errno) -> DeliverSinkError {
+    DeliverSinkError::Io(io::Error::from(error).kind())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{parse_deliver_target, DeliverTarget};
+    use super::{DeliverTarget, parse_deliver_target, write_json_line};
 
     #[cfg(unix)]
     #[test]
-    fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path(
-    ) -> Result<(), String> {
+    fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path()
+    -> Result<(), String> {
         let temp_dir = tempfile::tempdir().map_err(|error| error.to_string())?;
         let real_parent = temp_dir.path().join("real-parent");
         std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;
@@ -370,19 +474,66 @@ mod tests {
         let target = format!("file:{}", path_text(&requested_path)?);
 
         match parse_deliver_target(&target).map_err(|error| error.to_string())? {
-            DeliverTarget::NewFile(path) => {
+            DeliverTarget::NewFile(target) => {
                 let expected = real_parent.join("agent-context.jsonl");
-                if path == expected {
+                if target.delivery_path() == expected {
                     Ok(())
                 } else {
                     Err(format!(
                         "expected resolved delivery path {}, got {}",
                         expected.display(),
-                        path.display()
+                        target.delivery_path().display()
                     ))
                 }
             }
             DeliverTarget::Stdout => Err(String::from("expected file delivery target")),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_json_line_keeps_writes_on_validated_parent_inode_after_parent_path_swap()
+    -> Result<(), String> {
+        let temp_dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let real_parent = temp_dir.path().join("real-parent");
+        std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;
+        let alias_parent = temp_dir.path().join("alias-parent");
+        std::os::unix::fs::symlink(&real_parent, &alias_parent)
+            .map_err(|error| error.to_string())?;
+
+        let requested_path = alias_parent.join("agent-context.jsonl");
+        let target = parse_deliver_target(&format!("file:{}", path_text(&requested_path)?))
+            .map_err(|error| error.to_string())?;
+
+        let moved_parent = temp_dir.path().join("moved-parent");
+        std::fs::rename(&real_parent, &moved_parent).map_err(|error| error.to_string())?;
+        std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;
+
+        write_json_line(&target, &serde_json::json!({"kind": "AgentContext"}))
+            .map_err(|error| error.to_string())?;
+
+        let moved_file = moved_parent.join("agent-context.jsonl");
+        let replacement_file = real_parent.join("agent-context.jsonl");
+        if !moved_file.exists() {
+            return Err(format!(
+                "expected pinned delivery at {}, but file was missing",
+                moved_file.display()
+            ));
+        }
+        if replacement_file.exists() {
+            return Err(format!(
+                "replacement parent path unexpectedly received delivery at {}",
+                replacement_file.display()
+            ));
+        }
+
+        let written = std::fs::read_to_string(&moved_file).map_err(|error| error.to_string())?;
+        if written.contains("\"kind\":\"AgentContext\"") {
+            Ok(())
+        } else {
+            Err(format!(
+                "expected AgentContext payload in pinned file, got {written}"
+            ))
         }
     }
 
