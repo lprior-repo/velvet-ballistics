@@ -41,7 +41,21 @@ use vb_core::workflow::{LifecycleCommand, LifecycleState};
 /// - Duplicate cancel from Cancelled state returns LifecycleDuplicateRequest
 #[kani::proof]
 #[kani::unwind(4)]
-fn proof_cancel_duplicate_no_append(run: RunId, state: LifecycleState, duplicate_call: bool) {
+fn proof_cancel_duplicate_no_append() {
+    let run: RunId = kani::any();
+    let run_id_u8: u8 = kani::any();
+    kani::assume(run_id_u8 <= 5);
+    let state = match run_id_u8 {
+        0 => LifecycleState::Pending,
+        1 => LifecycleState::Active,
+        2 => LifecycleState::WaitingAnswer,
+        3 => LifecycleState::Cancelled,
+        4 => LifecycleState::Completed,
+        5 => LifecycleState::Failed,
+        _ => LifecycleState::Active,
+    };
+    let duplicate_call: bool = kani::any();
+
     // Precondition: state must be cancelable (Active or WaitingAnswer)
     kani::assume(state == LifecycleState::Active || state == LifecycleState::WaitingAnswer);
 
@@ -130,7 +144,15 @@ fn kani_lifecycle_duplicate_cancel() {
 /// where the command would be valid.
 #[kani::proof]
 #[kani::unwind(4)]
-fn proof_stale_no_append(state: LifecycleState) {
+fn proof_stale_no_append() {
+    let state_u8: u8 = kani::any();
+    kani::assume(state_u8 >= 4 && state_u8 <= 5); // 4=Completed, 5=Failed (terminal-ish)
+    // Use Completed or Cancelled as the terminal states
+    let state = if state_u8 == 4 {
+        LifecycleState::Completed
+    } else {
+        LifecycleState::Cancelled
+    };
     // Only terminal states are stale for cancel
     kani::assume(state == LifecycleState::Completed || state == LifecycleState::Cancelled);
 
@@ -160,7 +182,17 @@ fn proof_stale_no_append(state: LifecycleState) {
 #[kani::unwind(4)]
 fn kani_stale_cancel_harness() {
     let run: RunId = kani::any();
-    let state: LifecycleState = kani::any();
+    let state_u8: u8 = kani::any();
+    kani::assume(state_u8 <= 5);
+    let state = match state_u8 {
+        0 => LifecycleState::Pending,
+        1 => LifecycleState::Active,
+        2 => LifecycleState::WaitingAnswer,
+        3 => LifecycleState::Cancelled,
+        4 => LifecycleState::Completed,
+        5 => LifecycleState::Failed,
+        _ => LifecycleState::Active,
+    };
 
     // Stale states: Completed, Cancelled
     let is_stale = matches!(state, LifecycleState::Completed | LifecycleState::Cancelled);
