@@ -32,6 +32,9 @@ include!("tests/chunk_028.rs");
 include!("tests/chunk_029.rs");
 include!("tests/chunk_031.rs");
 include!("tests/chunk_032.rs");
+// vb-8tjk8: snapshot writer tests
+include!("tests/chunk_033.rs");
+include!("tests/chunk_034.rs");
 // PO-vb-pymh test coverage
 include!("tests/chunk_001_submit_frame_release.rs");
 include!("tests/chunk_002_payload_bounds.rs");
