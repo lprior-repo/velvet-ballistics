@@ -10,6 +10,7 @@ use std::num::{NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 
 use crate::budget::BoundednessPolicy;
 use crate::policy::profile_validation_error::ProfileValidationError;
+use crate::policy::ContractViolation;
 use crate::limits::*;
 use crate::policy::profile_name::ProfileName;
 use crate::workflow::types::ResourceContract;
@@ -66,8 +67,8 @@ impl RuntimeLimitsProfile {
         max_wait_duration_seconds: u64,
         ask_timeout_seconds: u64,
     ) -> Result<Self, ProfileValidationError> {
-        if active_runs == 0 || active_runs > MAX_QUEUE_DEPTH as usize {
-            return Err(ProfileValidationError::ExceedsHardLimit { field: "active_runs", value: active_runs as u64, limit: MAX_QUEUE_DEPTH as u64 });
+        if active_runs == 0 || active_runs > MAX_STEPS_PER_WORKFLOW {
+            return Err(ProfileValidationError::ExceedsHardLimit { field: "active_runs", value: active_runs as u64, limit: MAX_STEPS_PER_WORKFLOW as u64 });
         }
         if ready_queue_depth == 0 || ready_queue_depth > MAX_QUEUE_DEPTH {
             return Err(ProfileValidationError::ExceedsHardLimit { field: "ready_queue_depth", value: ready_queue_depth as u64, limit: MAX_QUEUE_DEPTH as u64 });
@@ -255,7 +256,7 @@ impl RuntimeLimitsProfile {
 impl BoundednessPolicy {
     /// Creates a boundedness policy from a runtime limits profile.
     #[must_use]
-    pub const fn from_profile(profile: &RuntimeLimitsProfile) -> Self {
+    pub fn from_profile(profile: &RuntimeLimitsProfile) -> Self {
         Self {
             max_total_steps: MAX_STEPS_PER_WORKFLOW as u64,
             max_total_slots: MAX_SLOTS_PER_WORKFLOW as u64,
@@ -265,13 +266,13 @@ impl BoundednessPolicy {
             absolute_max_parallel: profile.active_runs.get() as u16,
             absolute_max_run_time_seconds: profile.max_wait_duration_seconds.get() + profile.repeat_time_seconds.get(),
             absolute_max_result_bytes: profile.result_bytes.get(),
-            absolute_max_steps_executable: MAX_STEPS_PER_WORKFLOW as u32,
+            absolute_max_steps_executable: profile.active_runs.get() as u32,
             absolute_max_timer_entries: 256,
             absolute_max_trace_events: profile.trace_ring_capacity.get() as u64,
             absolute_max_journal_batch_bytes: profile.journal_writer_queue_capacity.get() as u32,
             absolute_max_queue_depth: profile.ready_queue_depth.get(),
             absolute_max_ipc_payload_bytes: profile.ipc_frame_bytes.get(),
-            absolute_max_blob_bytes: MAX_BLOB_BYTES,
+            absolute_max_blob_bytes: profile.journal_writer_queue_capacity.get() as u64,
             absolute_max_input_bytes: profile.action_input_bytes.get(),
         }
     }
@@ -304,42 +305,270 @@ impl ResourceContract {
     }
 
     /// Checks whether this resource contract fits within the given profile.
+    ///
+    /// Returns `Ok(())` when every field is within the profile's corresponding
+    /// limit, or the first `ContractViolation::ExceedsProfileLimit` when a
+    /// field exceeds that limit.  Fields that have no direct profile mapping
+    /// (steps, slots, constants, etc.) are validated against hard limits.
     #[must_use]
-    pub const fn fits_within_profile(&self, profile: &RuntimeLimitsProfile) -> bool {
-        self.max_input_bytes <= profile.action_input_bytes.get()
-            && self.max_output_bytes <= profile.action_output_bytes.get()
-            && self.max_ipc_payload_bytes <= profile.ipc_frame_bytes.get()
-            && self.max_retry_attempts <= profile.retry_attempts.get()
-            && self.max_fanout <= profile.together_branch_count.get()
-            && self.max_collect_items <= profile.collect_items.get()
-            && self.max_queue_depth <= profile.ready_queue_depth.get()
+    pub fn fits_within_profile(&self, profile: &RuntimeLimitsProfile) -> Result<(), ContractViolation> {
+        if self.max_input_bytes > profile.action_input_bytes.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_input_bytes",
+                actual: self.max_input_bytes as u64,
+                profile_limit: profile.action_input_bytes.get() as u64,
+            });
+        }
+        if self.max_output_bytes > profile.action_output_bytes.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_output_bytes",
+                actual: self.max_output_bytes as u64,
+                profile_limit: profile.action_output_bytes.get() as u64,
+            });
+        }
+        if self.max_ipc_payload_bytes > profile.ipc_frame_bytes.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_ipc_payload_bytes",
+                actual: self.max_ipc_payload_bytes as u64,
+                profile_limit: profile.ipc_frame_bytes.get() as u64,
+            });
+        }
+        if self.max_retry_attempts > profile.retry_attempts.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_retry_attempts",
+                actual: self.max_retry_attempts as u64,
+                profile_limit: profile.retry_attempts.get() as u64,
+            });
+        }
+        if self.max_fanout > profile.together_branch_count.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_fanout",
+                actual: self.max_fanout as u64,
+                profile_limit: profile.together_branch_count.get() as u64,
+            });
+        }
+        if self.max_collect_items > profile.collect_items.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_collect_items",
+                actual: self.max_collect_items as u64,
+                profile_limit: profile.collect_items.get() as u64,
+            });
+        }
+        if self.max_queue_depth > profile.ready_queue_depth.get() {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_queue_depth",
+                actual: self.max_queue_depth as u64,
+                profile_limit: profile.ready_queue_depth.get() as u64,
+            });
+        }
+        if self.max_journal_batch_bytes > profile.journal_writer_queue_capacity.get() as u32 {
+            return Err(ContractViolation::ExceedsProfileLimit {
+                field: "max_journal_batch_bytes",
+                actual: self.max_journal_batch_bytes as u64,
+                profile_limit: profile.journal_writer_queue_capacity.get() as u64,
+            });
+        }
+        // Fields without direct profile mapping → validated against hard limits.
+        if self.max_steps as usize > MAX_STEPS_PER_WORKFLOW {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_steps",
+                actual: self.max_steps as u64,
+                hard_limit: MAX_STEPS_PER_WORKFLOW as u64,
+            });
+        }
+        if self.max_slots as usize > MAX_SLOTS_PER_WORKFLOW {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_slots",
+                actual: self.max_slots as u64,
+                hard_limit: MAX_SLOTS_PER_WORKFLOW as u64,
+            });
+        }
+        if self.max_constants as usize > MAX_CONSTANTS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_constants",
+                actual: self.max_constants as u64,
+                hard_limit: MAX_CONSTANTS as u64,
+            });
+        }
+        if self.max_accessors as usize > MAX_ACCESSORS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_accessors",
+                actual: self.max_accessors as u64,
+                hard_limit: MAX_ACCESSORS as u64,
+            });
+        }
+        if self.max_expressions as usize > MAX_EXPRESSIONS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_expressions",
+                actual: self.max_expressions as u64,
+                hard_limit: MAX_EXPRESSIONS as u64,
+            });
+        }
+        if self.max_expr_stack as usize > MAX_EXPRESSION_STACK as usize {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_expr_stack",
+                actual: self.max_expr_stack as u64,
+                hard_limit: MAX_EXPRESSION_STACK as u64,
+            });
+        }
+        if self.max_step_budget_per_tick > MAX_STEP_BUDGET {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_step_budget_per_tick",
+                actual: self.max_step_budget_per_tick,
+                hard_limit: MAX_STEP_BUDGET,
+            });
+        }
+        if self.max_transitions_per_tick > MAX_STEP_BUDGET {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_transitions_per_tick",
+                actual: self.max_transitions_per_tick,
+                hard_limit: MAX_STEP_BUDGET,
+            });
+        }
+        if self.max_blob_bytes > MAX_BLOB_BYTES {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_blob_bytes",
+                actual: self.max_blob_bytes,
+                hard_limit: MAX_BLOB_BYTES,
+            });
+        }
+        Ok(())
     }
 
     /// Checks whether all fields are within hard limits.
+    ///
+    /// Returns `Ok(())` when every field stays within its hard limit, or the
+    /// first `ContractViolation::ExceedsHardLimit` for the field that exceeds
+    /// its limit.  Adds checks for `max_transitions_per_tick` and
+    /// `max_expr_stack` which were previously unvalidated.
     #[must_use]
-    pub const fn fits_within_hard_limits(&self) -> bool {
-        self.max_steps as usize <= MAX_STEPS_PER_WORKFLOW
-            && self.max_slots as usize <= MAX_SLOTS_PER_WORKFLOW
-            && self.max_constants as usize <= MAX_CONSTANTS
-            && self.max_accessors as usize <= MAX_ACCESSORS
-            && self.max_expressions as usize <= MAX_EXPRESSIONS
-            && self.max_step_budget_per_tick <= MAX_STEP_BUDGET
-            && self.max_input_bytes <= MAX_INPUT_BYTES
-            && self.max_output_bytes <= MAX_OUTPUT_BYTES
-            && self.max_blob_bytes <= MAX_BLOB_BYTES
-            && self.max_ipc_payload_bytes <= MAX_IPC_PAYLOAD_BYTES
-            && self.max_retry_attempts <= MAX_RETRY_ATTEMPTS
-            && self.max_fanout <= MAX_FANOUT
-            && self.max_collect_items <= MAX_COLLECT_ITEMS
-            && self.max_queue_depth <= MAX_QUEUE_DEPTH
-            && self.max_journal_batch_bytes <= MAX_JOURNAL_BATCH_BYTES
+    pub fn fits_within_hard_limits(&self) -> Result<(), ContractViolation> {
+        if self.max_steps as usize > MAX_STEPS_PER_WORKFLOW {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_steps",
+                actual: self.max_steps as u64,
+                hard_limit: MAX_STEPS_PER_WORKFLOW as u64,
+            });
+        }
+        if self.max_slots as usize > MAX_SLOTS_PER_WORKFLOW {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_slots",
+                actual: self.max_slots as u64,
+                hard_limit: MAX_SLOTS_PER_WORKFLOW as u64,
+            });
+        }
+        if self.max_constants as usize > MAX_CONSTANTS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_constants",
+                actual: self.max_constants as u64,
+                hard_limit: MAX_CONSTANTS as u64,
+            });
+        }
+        if self.max_accessors as usize > MAX_ACCESSORS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_accessors",
+                actual: self.max_accessors as u64,
+                hard_limit: MAX_ACCESSORS as u64,
+            });
+        }
+        if self.max_expressions as usize > MAX_EXPRESSIONS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_expressions",
+                actual: self.max_expressions as u64,
+                hard_limit: MAX_EXPRESSIONS as u64,
+            });
+        }
+        if self.max_expr_stack as usize > MAX_EXPRESSION_STACK as usize {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_expr_stack",
+                actual: self.max_expr_stack as u64,
+                hard_limit: MAX_EXPRESSION_STACK as u64,
+            });
+        }
+        if self.max_step_budget_per_tick > MAX_STEP_BUDGET {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_step_budget_per_tick",
+                actual: self.max_step_budget_per_tick,
+                hard_limit: MAX_STEP_BUDGET,
+            });
+        }
+        if self.max_transitions_per_tick > MAX_STEP_BUDGET {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_transitions_per_tick",
+                actual: self.max_transitions_per_tick,
+                hard_limit: MAX_STEP_BUDGET,
+            });
+        }
+        if self.max_input_bytes > MAX_INPUT_BYTES {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_input_bytes",
+                actual: self.max_input_bytes as u64,
+                hard_limit: MAX_INPUT_BYTES as u64,
+            });
+        }
+        if self.max_output_bytes > MAX_OUTPUT_BYTES {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_output_bytes",
+                actual: self.max_output_bytes as u64,
+                hard_limit: MAX_OUTPUT_BYTES as u64,
+            });
+        }
+        if self.max_blob_bytes > MAX_BLOB_BYTES {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_blob_bytes",
+                actual: self.max_blob_bytes,
+                hard_limit: MAX_BLOB_BYTES,
+            });
+        }
+        if self.max_ipc_payload_bytes > MAX_IPC_PAYLOAD_BYTES {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_ipc_payload_bytes",
+                actual: self.max_ipc_payload_bytes as u64,
+                hard_limit: MAX_IPC_PAYLOAD_BYTES as u64,
+            });
+        }
+        if self.max_retry_attempts > MAX_RETRY_ATTEMPTS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_retry_attempts",
+                actual: self.max_retry_attempts as u64,
+                hard_limit: MAX_RETRY_ATTEMPTS as u64,
+            });
+        }
+        if self.max_fanout > MAX_FANOUT {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_fanout",
+                actual: self.max_fanout as u64,
+                hard_limit: MAX_FANOUT as u64,
+            });
+        }
+        if self.max_collect_items > MAX_COLLECT_ITEMS {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_collect_items",
+                actual: self.max_collect_items as u64,
+                hard_limit: MAX_COLLECT_ITEMS as u64,
+            });
+        }
+        if self.max_queue_depth > MAX_QUEUE_DEPTH {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_queue_depth",
+                actual: self.max_queue_depth as u64,
+                hard_limit: MAX_QUEUE_DEPTH as u64,
+            });
+        }
+        if self.max_journal_batch_bytes > MAX_JOURNAL_BATCH_BYTES {
+            return Err(ContractViolation::ExceedsHardLimit {
+                field: "max_journal_batch_bytes",
+                actual: self.max_journal_batch_bytes as u64,
+                hard_limit: MAX_JOURNAL_BATCH_BYTES as u64,
+            });
+        }
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod profile_tests {
     use super::*;
-    use crate::budget::policy::BoundedNESS_POLICY_DEFAULT;
 
     #[test]
     fn test_strict_profile_exists() {
@@ -388,7 +617,7 @@ mod profile_tests {
     #[test]
     fn test_strict_within_hard_limits() {
         let p = RuntimeLimitsProfile::strict();
-        assert!(p.active_runs.get() <= MAX_QUEUE_DEPTH as usize);
+        assert!(p.active_runs.get() <= MAX_STEPS_PER_WORKFLOW);
         assert!(p.ready_queue_depth.get() <= MAX_QUEUE_DEPTH);
         assert!(p.ipc_frame_bytes.get() <= MAX_IPC_PAYLOAD_BYTES);
         assert!(p.action_input_bytes.get() <= MAX_INPUT_BYTES);
@@ -403,7 +632,7 @@ mod profile_tests {
     #[test]
     fn test_journaled_within_hard_limits() {
         let p = RuntimeLimitsProfile::journaled();
-        assert!(p.active_runs.get() <= MAX_QUEUE_DEPTH as usize);
+        assert!(p.active_runs.get() <= MAX_STEPS_PER_WORKFLOW);
         assert!(p.ready_queue_depth.get() <= MAX_QUEUE_DEPTH);
         assert!(p.ipc_frame_bytes.get() <= MAX_IPC_PAYLOAD_BYTES);
         assert!(p.action_input_bytes.get() <= MAX_INPUT_BYTES);
@@ -415,7 +644,7 @@ mod profile_tests {
     #[test]
     fn test_relaxed_within_hard_limits() {
         let p = RuntimeLimitsProfile::relaxed();
-        assert!(p.active_runs.get() <= MAX_QUEUE_DEPTH as usize);
+        assert!(p.active_runs.get() <= MAX_STEPS_PER_WORKFLOW);
         assert!(p.ready_queue_depth.get() <= MAX_QUEUE_DEPTH);
         assert!(p.ipc_frame_bytes.get() <= MAX_IPC_PAYLOAD_BYTES);
         assert!(p.action_input_bytes.get() <= MAX_INPUT_BYTES);
@@ -447,14 +676,22 @@ mod profile_tests {
     fn test_resource_contract_fits_within_hard_limits() {
         let p = RuntimeLimitsProfile::strict();
         let rc = p.to_resource_contract();
-        assert!(rc.fits_within_hard_limits());
+        assert!(
+            rc.fits_within_hard_limits().is_ok(),
+            "strict profile contract must fit hard limits: {:?}",
+            rc.fits_within_hard_limits()
+        );
     }
 
     #[test]
     fn test_resource_contract_fits_within_profile() {
         let p = RuntimeLimitsProfile::strict();
         let rc = p.to_resource_contract();
-        assert!(rc.fits_within_profile(&p));
+        assert!(
+            rc.fits_within_profile(&p).is_ok(),
+            "contract derived from profile must fit that profile: {:?}",
+            rc.fits_within_profile(&p)
+        );
     }
 
     #[test]

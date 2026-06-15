@@ -131,6 +131,11 @@ pub const MAX_QUEUE_DEPTH: u32 = 1_048_576;
 ///
 pub const MAX_JOURNAL_BATCH_BYTES: u32 = 16_777_216;
 
+/// Maximum trace ring capacity (hard limit).
+///
+/// This is the upper bound for the `trace_ring_capacity` profile field.
+pub const MAX_TRACE_RING_CAPACITY: usize = 1_048_576;
+
 #[cfg(test)]
 #[path = "limits/tests.rs"]
 mod tests;

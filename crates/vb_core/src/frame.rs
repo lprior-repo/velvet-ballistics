@@ -486,6 +486,7 @@ fn initialized_slot_entry(
     })
 }
 
+#[cfg(kani)]
 mod tests_and_verification;
 
 // Kani harnesses for PO-RUST-001-FRAME-KANI: validate_transition 64-pair proof.

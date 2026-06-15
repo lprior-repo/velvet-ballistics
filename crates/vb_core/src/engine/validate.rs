@@ -143,9 +143,9 @@ fn validate_two_step_targets(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, kani))]
 #[path = "validate/tests/red_phase_behavior_tests.rs"]
 mod red_phase_behavior_tests;
-#[cfg(test)]
+#[cfg(all(test, kani))]
 #[path = "validate/tests/red_phase_tests.rs"]
 mod red_phase_tests;

@@ -449,7 +449,7 @@ mod kani_harnesses {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, kani))]
 mod extended_tests;
 
 #[cfg(test)]

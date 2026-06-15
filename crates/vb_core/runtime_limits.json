@@ -70,7 +70,7 @@
   },
   "hard_limits": {
     "max_queue_depth": 1048576,
-    "max_ip_payload_bytes": 16777216,
+    "max_ipc_payload_bytes": 16777216,
     "max_input_bytes": 16777216,
     "max_output_bytes": 16777216,
     "max_fanout": 256,

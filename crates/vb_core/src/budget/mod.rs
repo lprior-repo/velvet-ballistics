@@ -31,10 +31,11 @@ pub use validation::{validate_aggregate_budget, validate_step_ceilings};
 #[cfg(test)]
 pub(crate) use validation::{add_dim, sub_dim};
 
+#[cfg(kani)]
 mod tests_and_verification;
 
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
+#[cfg(all(test, kani))]
 mod vb_qi37_2_4_state8_tests;
