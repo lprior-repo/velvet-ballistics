@@ -1,4 +1,23 @@
 #![forbid(unsafe_code)]
+//! End-to-end integration tests for the deliver-sink binary.
+//!
+//! These tests are the source of truth for behavior that must be verified
+//! through the real `velvet-ballistics` binary:
+//! - CLI argument parsing and validation (`--deliver`, missing/unknown flags)
+//! - Process exit codes and the `deliver failed: ...` stderr envelope
+//! - Real-path edge cases that depend on the host filesystem: exact 4094 /
+//!   4095 / 4096-byte delivery paths, blocked-root rejection (`/dev`, `/proc`,
+//!   `/sys` and their descendants), `/proc/../<allowed-parent>` resolution
+//! - The in-process debug hooks activated by the `VB_DELIVER_SINK_TEST_*_ENV`
+//!   variables are reachable only from the binary; this file exercises them
+//!   end-to-end.
+//!
+//! In-process library behavior (every `write_json_line` error branch,
+//! rollback and post-commit state contracts, internal helpers) lives in the
+//! `tests` module of `crates/vb_cli/src/deliver_sink.rs`, which uses the
+//! in-process `HookConfig` API. Scenarios that appear in both files are
+//! intentionally redundant only when the integration path adds CLI-specific
+//! evidence on top of the library path.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

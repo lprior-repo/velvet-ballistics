@@ -121,7 +121,7 @@ fn kani_dispatch_arm_count() {
         Ok(c) => c,
         Err(_) => {
             kani::assume(false);
-            return,
+            return;
         }
     };
     let header = make_header(command);

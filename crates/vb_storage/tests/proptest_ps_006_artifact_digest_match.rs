@@ -62,12 +62,11 @@ fn make_workflow() -> CompiledWorkflow {
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let hash_bytes = postcard::to_allocvec(&parts)
-        .expect("serialize workflow parts for digest computation");
+    let hash_bytes =
+        postcard::to_allocvec(&parts).expect("serialize workflow parts for digest computation");
     let computed = blake3::hash(&hash_bytes);
     parts.digest = WorkflowDigest::from_bytes(*computed.as_bytes());
-    CompiledWorkflow::try_from_parts(parts)
-        .expect("construct compiled workflow from valid parts")
+    CompiledWorkflow::try_from_parts(parts).expect("construct compiled workflow from valid parts")
 }
 
 proptest! {

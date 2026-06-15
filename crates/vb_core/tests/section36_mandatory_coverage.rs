@@ -1209,7 +1209,9 @@ fn validate_resource_contract_rejects_oversized_max_steps() {
     assert!(
         matches!(
             result,
-            Err(WorkflowError::ResourceContractTooLarge { resource: "max_steps" })
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_steps"
+            })
         ),
         "max_steps above the master cap ({} = 1000) must be rejected with ResourceContractTooLarge",
         MAX_STEPS_PER_WORKFLOW
@@ -1264,7 +1266,9 @@ fn validate_resource_contract_rejects_oversized_max_constants() {
     assert!(
         matches!(
             result,
-            Err(WorkflowError::ResourceContractTooLarge { resource: "max_constants" })
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_constants"
+            })
         ),
         "max_constants above the master cap ({} = 8192) must be rejected with ResourceContractTooLarge",
         MAX_CONSTANTS
@@ -1322,7 +1326,9 @@ fn validate_resource_contract_rejects_oversized_max_expressions() {
         assert!(
             matches!(
                 result,
-                Err(WorkflowError::ResourceContractTooLarge { resource: "max_expressions" })
+                Err(WorkflowError::ResourceContractTooLarge {
+                    resource: "max_expressions"
+                })
             ),
             "max_expressions over limit must be rejected with ResourceContractTooLarge"
         );
@@ -1341,7 +1347,9 @@ fn validate_resource_contract_rejects_oversized_max_expr_stack() {
     assert!(
         matches!(
             result,
-            Err(WorkflowError::ResourceContractTooLarge { resource: "max_expr_stack" })
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_expr_stack"
+            })
         ),
         "max_expr_stack over limit must be rejected with ResourceContractTooLarge"
     );
@@ -1379,7 +1387,9 @@ fn validate_resource_contract_rejects_each_resource_individually() {
         assert!(
             matches!(
                 vb_core::validate_resource_contract(&parts),
-                Err(WorkflowError::ResourceContractTooLarge { resource: "max_accessors" })
+                Err(WorkflowError::ResourceContractTooLarge {
+                    resource: "max_accessors"
+                })
             ),
             "max_accessors over limit must be rejected"
         );
@@ -1395,7 +1405,9 @@ fn validate_resource_contract_rejects_each_resource_individually() {
         assert!(
             matches!(
                 vb_core::validate_resource_contract(&parts),
-                Err(WorkflowError::ResourceContractTooLarge { resource: "max_expressions" })
+                Err(WorkflowError::ResourceContractTooLarge {
+                    resource: "max_expressions"
+                })
             ),
             "max_expressions over limit must be rejected"
         );
@@ -1410,7 +1422,9 @@ fn validate_resource_contract_rejects_each_resource_individually() {
     assert!(
         matches!(
             vb_core::validate_resource_contract(&parts),
-            Err(WorkflowError::ResourceContractTooLarge { resource: "max_expr_stack" })
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_expr_stack"
+            })
         ),
         "max_expr_stack over limit must be rejected"
     );
@@ -2440,7 +2454,12 @@ fn expression_rejects_program_exceeding_op_limit() {
         .collect();
     let result = ExprProgram::try_from_ops(ops.into_boxed_slice());
     assert!(
-        matches!(result, Err(CoreError::ResourceLimitExceeded { resource: "expression ops" })),
+        matches!(
+            result,
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "expression ops"
+            })
+        ),
         "expression exceeding max ops must be rejected with ResourceLimitExceeded"
     );
 }
@@ -2516,9 +2535,11 @@ fn accessor_validation_rejects_accessor_index_out_of_bounds() {
     assert!(
         matches!(
             result,
-            Err(WorkflowError::Expression(CoreError::InvalidCompiledWorkflow {
-                reason: "accessor index out of bounds",
-            }))
+            Err(WorkflowError::Expression(
+                CoreError::InvalidCompiledWorkflow {
+                    reason: "accessor index out of bounds",
+                }
+            ))
         ),
         "expression referencing out-of-bounds accessor must be rejected with accessor index out of bounds"
     );

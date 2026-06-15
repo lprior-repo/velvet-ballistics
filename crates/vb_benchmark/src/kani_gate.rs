@@ -20,11 +20,9 @@
 // Production code is implemented: check_evidence_gate has zero-latency checks,
 // EvidenceError::ZeroLatencyField variant exists, LatencyFieldId enum exists.
 
-use vb_benchmark::*;
-
 #[cfg(kani)]
 mod kani_harnesses {
-    use kani::Arbitrary;
+    use crate::*;
 
     /// Harness: any zero latency field causes check_evidence_gate to return Err(ZeroLatencyField).
     ///
@@ -35,16 +33,17 @@ mod kani_harnesses {
     #[kani::proof]
     fn proof_gate_rejects_zero_latency_fields() {
         let threshold_pct: u64 = kani::any();
+        let commit_hash: String = format!("{:016x}", kani::any::<u64>());
 
         // Case 1: fjall_write_latency_ns == 0
         {
             let metadata = BenchmarkMetadata {
-                name: kani::any(),
+                name: format!("bench_{}", kani::any::<u64>()),
                 baseline_us: kani::any(),
                 result_us: kani::any(),
-                command: kani::any(),
-                commit_hash: kani::any(),
-                environment: kani::any(),
+                command: format!("cmd_{}", kani::any::<u64>()),
+                commit_hash: commit_hash.clone(),
+                environment: format!("env_{}", kani::any::<u64>()),
                 budget_us: kani::any(),
                 fjall_write_latency_ns: 0,
                 direct_api_latency_ns: kani::any(),
@@ -52,7 +51,7 @@ mod kani_harnesses {
             };
             let result = check_evidence_gate(&metadata, threshold_pct);
             kani::assert(
-                matches!(result, Err(EvidenceError::ZeroLatencyField(_))),
+                matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
                 "zero fjall_write_latency_ns must return ZeroLatencyField error",
             );
         }
@@ -60,12 +59,12 @@ mod kani_harnesses {
         // Case 2: direct_api_latency_ns == 0
         {
             let metadata = BenchmarkMetadata {
-                name: kani::any(),
+                name: format!("bench_{}", kani::any::<u64>()),
                 baseline_us: kani::any(),
                 result_us: kani::any(),
-                command: kani::any(),
-                commit_hash: kani::any(),
-                environment: kani::any(),
+                command: format!("cmd_{}", kani::any::<u64>()),
+                commit_hash: commit_hash.clone(),
+                environment: format!("env_{}", kani::any::<u64>()),
                 budget_us: kani::any(),
                 fjall_write_latency_ns: kani::any(),
                 direct_api_latency_ns: 0,
@@ -73,7 +72,7 @@ mod kani_harnesses {
             };
             let result = check_evidence_gate(&metadata, threshold_pct);
             kani::assert(
-                matches!(result, Err(EvidenceError::ZeroLatencyField(_))),
+                matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
                 "zero direct_api_latency_ns must return ZeroLatencyField error",
             );
         }
@@ -81,12 +80,12 @@ mod kani_harnesses {
         // Case 3: ipc_latency_ns == 0
         {
             let metadata = BenchmarkMetadata {
-                name: kani::any(),
+                name: format!("bench_{}", kani::any::<u64>()),
                 baseline_us: kani::any(),
                 result_us: kani::any(),
-                command: kani::any(),
-                commit_hash: kani::any(),
-                environment: kani::any(),
+                command: format!("cmd_{}", kani::any::<u64>()),
+                commit_hash,
+                environment: format!("env_{}", kani::any::<u64>()),
                 budget_us: kani::any(),
                 fjall_write_latency_ns: kani::any(),
                 direct_api_latency_ns: kani::any(),
@@ -94,7 +93,7 @@ mod kani_harnesses {
             };
             let result = check_evidence_gate(&metadata, threshold_pct);
             kani::assert(
-                matches!(result, Err(EvidenceError::ZeroLatencyField(_))),
+                matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
                 "zero ipc_latency_ns must return ZeroLatencyField error",
             );
         }
@@ -107,6 +106,7 @@ mod kani_harnesses {
     #[kani::proof]
     fn proof_gate_allows_nonzero_latencies() {
         let threshold_pct: u64 = kani::any();
+        let commit_hash: String = format!("{:016x}", kani::any::<u64>());
 
         let fjall_ns: u64 = kani::any();
         let api_ns: u64 = kani::any();
@@ -116,12 +116,12 @@ mod kani_harnesses {
         kani::assume(ipc_ns > 0);
 
         let metadata = BenchmarkMetadata {
-            name: kani::any(),
+            name: format!("bench_{}", kani::any::<u64>()),
             baseline_us: kani::any(),
             result_us: kani::any(),
-            command: kani::any(),
-            commit_hash: kani::any(),
-            environment: kani::any(),
+            command: format!("cmd_{}", kani::any::<u64>()),
+            commit_hash,
+            environment: format!("env_{}", kani::any::<u64>()),
             budget_us: kani::any(),
             fjall_write_latency_ns: fjall_ns,
             direct_api_latency_ns: api_ns,
@@ -134,7 +134,7 @@ mod kani_harnesses {
         // It may be another error (MissingBaseline, EmptyBudget, etc.)
         // but not ZeroLatencyField since all latencies are non-zero.
         kani::assert(
-            !matches!(result, Err(EvidenceError::ZeroLatencyField(_))),
+            !matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
             "non-zero latencies should not trigger ZeroLatencyField error",
         );
     }

@@ -300,7 +300,10 @@ fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
     .map_err(|e| format!("workflow with zero digest should fail: {e}"))?;
     let result = submit_artifact(&journal, &bad_workflow, RuntimePolicy::Strict);
     assert!(
-        matches!(result, Err(vb_storage::JournalError::ArtifactChecksumMismatch)),
+        matches!(
+            result,
+            Err(vb_storage::JournalError::ArtifactChecksumMismatch)
+        ),
         "workflow with zero digest must be rejected with ArtifactChecksumMismatch, got {:?}",
         result
     );
@@ -313,8 +316,10 @@ fn submit_artifact_validates_workflow_structure() -> Result<(), String> {
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .expect("valid workflow should be accepted under Strict policy");
-    assert_eq!(artifact.verification.gate_count, 15,
-        "accepted workflow must have 15 gates");
+    assert_eq!(
+        artifact.verification.gate_count, 15,
+        "accepted workflow must have 15 gates"
+    );
     Ok(())
 }
 

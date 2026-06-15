@@ -218,10 +218,16 @@ fn write_json_line_to_temp_file(
         .and_then(|()| file.sync_all().map_err(to_io_error));
     match write_result {
         Ok(()) => published_path_identity_for_file(&file),
-        Err(write_error) => {
-            let _ = cleanup_unpublished_temp_file(&target.parent_dir, temp_name, write_error);
-            Err(DeliverSinkError::PublishStateUnknown)
-        }
+        // The write itself failed, so we no longer know the on-disk state.
+        // The original write error is intentionally collapsed to
+        // `PublishStateUnknown`; if the cleanup unlink also fails, the
+        // cleanup error is the more truthful signal and replaces the
+        // `PublishStateUnknown` mapping.
+        Err(_write_error) => Err(cleanup_unpublished_temp_file(
+            &target.parent_dir,
+            temp_name,
+            DeliverSinkError::PublishStateUnknown,
+        )),
     }
 }
 
@@ -230,10 +236,29 @@ fn persist_temp_file(
     temp_name: &OsStr,
     published_identity: PublishedPathIdentity,
 ) -> Result<(), DeliverSinkError> {
-    if let Err(error) = ensure_target_parent_current(target) {
-        return cleanup_unpublished_temp_file(&target.parent_dir, temp_name, error);
-    }
+    ensure_target_parent_current_or_cleanup(target, temp_name)?;
+    linkat_into_final_path(target, temp_name, published_identity)
+}
 
+fn ensure_target_parent_current_or_cleanup(
+    target: &DeliverFileTarget,
+    temp_name: &OsStr,
+) -> Result<(), DeliverSinkError> {
+    if let Err(error) = ensure_target_parent_current(target) {
+        return Err(cleanup_unpublished_temp_file(
+            &target.parent_dir,
+            temp_name,
+            error,
+        ));
+    }
+    Ok(())
+}
+
+fn linkat_into_final_path(
+    target: &DeliverFileTarget,
+    temp_name: &OsStr,
+    published_identity: PublishedPathIdentity,
+) -> Result<(), DeliverSinkError> {
     match linkat(
         &target.parent_dir,
         temp_name,
@@ -242,15 +267,21 @@ fn persist_temp_file(
         AtFlags::empty(),
     ) {
         Ok(()) => persist_linked_temp_file(target, temp_name, published_identity),
-        Err(error) => {
-            let delivery_error = if error == rustix::io::Errno::EXIST {
-                DeliverSinkError::ExistingFile
-            } else {
-                to_rustix_io_error(error)
-            };
-            cleanup_unpublished_temp_file(&target.parent_dir, temp_name, delivery_error)
-        }
+        Err(error) => Err(handle_linkat_failure(&target.parent_dir, temp_name, error)),
     }
+}
+
+fn handle_linkat_failure(
+    parent_dir: &OwnedFd,
+    temp_name: &OsStr,
+    error: rustix::io::Errno,
+) -> DeliverSinkError {
+    let delivery_error = if error == rustix::io::Errno::EXIST {
+        DeliverSinkError::ExistingFile
+    } else {
+        to_rustix_io_error(error)
+    };
+    cleanup_unpublished_temp_file(parent_dir, temp_name, delivery_error)
 }
 
 fn persist_linked_temp_file(
@@ -347,14 +378,19 @@ fn rollback_linked_publish(
     }
 }
 
+// `cleanup_unpublished_temp_file` never reports success: the unlink either
+// returns the original delivery error (cleanup succeeded) or surfaces its own
+// `unlinkat` error (cleanup failed). Returning `DeliverSinkError` directly
+// makes the type honest so call sites cannot accidentally mask a cleanup
+// failure with a `let _ = ...` discard.
 fn cleanup_unpublished_temp_file(
     parent_dir: &OwnedFd,
     temp_name: &OsStr,
     delivery_error: DeliverSinkError,
-) -> Result<(), DeliverSinkError> {
+) -> DeliverSinkError {
     match unlink_at(parent_dir, temp_name) {
-        Ok(()) => Err(delivery_error),
-        Err(cleanup_error) => Err(cleanup_error),
+        Ok(()) => delivery_error,
+        Err(cleanup_error) => cleanup_error,
     }
 }
 
@@ -444,43 +480,31 @@ fn create_temp_stage_file(
     };
 
     let mut exhausted_candidates = false;
-
-    let preferred = preferred_temp_name(&target.file_name);
-    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &preferred)? {
-        TempStageCreation::Created(stage_file) => return Ok(stage_file),
-        TempStageCreation::Exhausted => exhausted_candidates = true,
-        TempStageCreation::NameTooLong {
-            had_occupied_candidate,
-        } => exhausted_candidates |= had_occupied_candidate,
+    for base_name in stage_file_base_names(target) {
+        match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &base_name)? {
+            TempStageCreation::Created(stage_file) => return Ok(stage_file),
+            TempStageCreation::Exhausted => exhausted_candidates = true,
+            TempStageCreation::NameTooLong {
+                had_occupied_candidate,
+            } => exhausted_candidates |= had_occupied_candidate,
+        }
     }
 
-    let hashed = hashed_temp_name(target.delivery_path());
-    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &hashed)? {
-        TempStageCreation::Created(stage_file) => return Ok(stage_file),
-        TempStageCreation::Exhausted => exhausted_candidates = true,
-        TempStageCreation::NameTooLong {
-            had_occupied_candidate,
-        } => exhausted_candidates |= had_occupied_candidate,
-    }
+    stage_file_creation_error(exhausted_candidates)
+}
 
-    let fallback = OsString::from(".tmp");
-    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &fallback)? {
-        TempStageCreation::Created(stage_file) => return Ok(stage_file),
-        TempStageCreation::Exhausted => exhausted_candidates = true,
-        TempStageCreation::NameTooLong {
-            had_occupied_candidate,
-        } => exhausted_candidates |= had_occupied_candidate,
-    }
+fn stage_file_base_names(target: &DeliverFileTarget) -> [OsString; 4] {
+    [
+        preferred_temp_name(&target.file_name),
+        hashed_temp_name(target.delivery_path()),
+        OsString::from(".tmp"),
+        OsString::from(MINIMUM_STAGE_BASE_NAME),
+    ]
+}
 
-    let minimal = OsString::from(MINIMUM_STAGE_BASE_NAME);
-    match create_temp_stage_file_from_base_name(&target.parent_dir, parent, &minimal)? {
-        TempStageCreation::Created(stage_file) => return Ok(stage_file),
-        TempStageCreation::Exhausted => exhausted_candidates = true,
-        TempStageCreation::NameTooLong {
-            had_occupied_candidate,
-        } => exhausted_candidates |= had_occupied_candidate,
-    }
-
+fn stage_file_creation_error(
+    exhausted_candidates: bool,
+) -> Result<(OsString, File), DeliverSinkError> {
     if exhausted_candidates {
         Err(DeliverSinkError::StagingUnavailable)
     } else {
@@ -1061,6 +1085,24 @@ mod test_support {
 }
 
 #[cfg(test)]
+/// In-process unit tests for the deliver-sink library.
+///
+/// These tests are the source of truth for behavior that must be verified
+/// without spawning the binary:
+/// - Every `write_json_line` error branch (`ExistingFile`, `ParentChanged`,
+///   `StagingUnavailable`, `PublishStateUnknown` and its rollback/post-commit
+///   variants) using the in-process `HookConfig` API to install hooks
+/// - Cleanup, rollback, and post-commit state contracts
+/// - Internal helpers (`created_file_mode`, `temp_stage_name`,
+///   `preferred_temp_name`, `hashed_temp_name`)
+///
+/// End-to-end CLI invocation (process exit codes, the `deliver failed: ...`
+/// stderr envelope, real-path max-byte edge cases, blocked-root rejection,
+/// /proc/... resolution) lives in `tests/deliver_sink_integration.rs`, which
+/// uses the in-binary debug hooks driven by `VB_DELIVER_SINK_TEST_*_ENV` env
+/// vars. Scenarios that appear in both files are intentionally redundant
+/// only when the integration path adds CLI-specific evidence on top of the
+/// library path.
 mod tests {
     use std::collections::VecDeque;
     use std::ffi::OsString;
@@ -1204,15 +1246,10 @@ mod tests {
         std::fs::create_dir(&parent).map_err(|error| error.to_string())?;
         let moved_parent = temp_dir.path().join("moved-parent");
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
             parent_change: Some(ParentChange::ReplaceOpenedPathWithNewDirectory {
                 moved_to: moved_parent,
             }),
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
+            ..HookConfig::default()
         });
 
         let deliver_path = parent.join("agent-context.jsonl");
@@ -1238,13 +1275,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(sync_error), Ok(())]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1283,18 +1315,13 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
             before_link_parent_change: Some(
                 PostCommitParentChange::ReplaceResolvedPathWithSymlink {
                     moved_to: moved_parent.clone(),
                     replacement: replacement_parent.clone(),
                 },
             ),
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1330,18 +1357,13 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
             after_link_sync_parent_change: Some(
                 PostCommitParentChange::ReplaceResolvedPathWithSymlink {
                     moved_to: moved_parent.clone(),
                     replacement: replacement_parent.clone(),
                 },
             ),
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1382,13 +1404,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(sync_error), Err(sync_error)]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1421,12 +1438,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
             cleanup_failures: vec![OsString::from(".agent-context.jsonl.tmp")],
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Ok(())]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1495,13 +1508,9 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
             post_commit_final_path_change: Some(FinalPathChange::UnlinkFinalPath),
             sync_results: VecDeque::from([Ok(()), Ok(())]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1537,13 +1546,9 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
             post_commit_final_path_change: Some(FinalPathChange::ReplaceFinalPath),
             sync_results: VecDeque::from([Ok(()), Ok(())]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1582,12 +1587,8 @@ mod tests {
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
             cleanup_failures: vec![OsString::from(".agent-context.jsonl.tmp")],
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(sync_error), Ok(())]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1634,18 +1635,14 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
             post_commit_parent_change: Some(
                 PostCommitParentChange::ReplaceResolvedPathWithSymlink {
                     moved_to: moved_parent.clone(),
                     replacement: replacement_parent.clone(),
                 },
             ),
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Ok(()), Ok(())]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1685,14 +1682,10 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
             cleanup_failures: vec![OsString::from("agent-context.jsonl")],
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(DeliverSinkError::Io(
                 std::io::ErrorKind::PermissionDenied,
             ))]),
+            ..HookConfig::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {

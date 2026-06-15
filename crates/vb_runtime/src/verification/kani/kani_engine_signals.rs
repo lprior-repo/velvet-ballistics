@@ -206,8 +206,8 @@ fn kani_drive_continue_keeps_loop_running() {
             assert_eq!(*v, slot_value, "Final Finished must carry the correct slot value");
         }
         Ok(other) => {
-            assert!(!matches!(other, RuntimeSignal::Continue),
-                "drive must never return Continue to the caller");
+            kani::assert(!matches!(other, RuntimeSignal::Continue),
+                "drive must never return Continue to the caller"
         }
         Err(_e) => {
         }

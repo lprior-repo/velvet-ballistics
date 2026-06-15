@@ -77,7 +77,10 @@ fn deserialize_rejects_non_string_json_types() {
 #[test]
 fn deserialize_rejects_empty_json_string() {
     let result: Result<SymbolicCode, _> = serde_json::from_str("\"\"");
-    assert!(matches!(result, Err(_)), "deserialize should reject empty string");
+    assert!(
+        matches!(result, Err(_)),
+        "deserialize should reject empty string"
+    );
 }
 
 #[test]

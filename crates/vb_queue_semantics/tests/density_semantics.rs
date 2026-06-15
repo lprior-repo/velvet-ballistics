@@ -1002,3 +1002,72 @@ fn action_warning_transition_payload_absent_below_threshold() {
     );
     assert_eq!(transition.payload, None);
 }
+
+// ─── Verified edge-case gap fillers ────────────────────────────────────────────
+
+/// warning_payload must return None when depth exceeds capacity.
+/// The guard is `depth >= threshold && depth <= capacity`, so depth=2,
+/// capacity=1 cannot satisfy `depth <= capacity` even though depth >= threshold.
+#[test]
+fn warning_payload_none_when_depth_exceeds_capacity() {
+    // capacity=1 → threshold=1 (1*8/10=0, clamped to 1)
+    // depth=2 satisfies depth >= threshold but fails depth <= capacity
+    assert_eq!(warning_payload(1, 2), None);
+
+    // Same guard holds for larger over-capacity gaps
+    assert_eq!(warning_payload(5, 10), None);
+}
+
+/// remaining_capacity(usize::MAX, usize::MAX) must be exactly 0,
+/// not usize::MAX. The function uses saturating_sub, which correctly
+/// returns 0 when len == capacity even at the usize boundary.
+#[test]
+fn remaining_capacity_usize_max_eq_is_zero() {
+    assert_eq!(
+        remaining_capacity(usize::MAX, usize::MAX),
+        0,
+        "saturating_sub of equal usize::MAX values must be 0, not usize::MAX"
+    );
+}
+
+/// QueueState with capacity=1 is the minimum valid capacity and must
+/// exhibit correct enqueue rejection and dequeue semantics.
+#[test]
+fn queue_state_capacity_one_enqueue_dequeue() {
+    let mut state = empty_state(1);
+
+    // Empty, not full at start
+    assert!(state.is_empty());
+    assert!(!state.is_full());
+    assert_eq!(state.len(), 0);
+
+    // First enqueue succeeds
+    let (state, decision) = action_enqueue_transition(state, 42);
+    assert_eq!(decision, EnqueueDecision::Accepted);
+    assert_eq!(state.len(), 1);
+    assert!(state.is_full());
+
+    // Second enqueue is rejected, state preserved
+    let (state, decision) = action_enqueue_transition(state, 99);
+    assert_eq!(decision, EnqueueDecision::QueueFull { capacity: 1 });
+    assert_eq!(state.len(), 1);
+
+    // Dequeue returns the item, recovers the drained state
+    let PopTransition::Popped { state, item } = action_dequeue_transition(state) else {
+        panic!("expected Popped at capacity=1 with one item");
+    };
+    assert_eq!(item, 42);
+    assert!(state.is_empty());
+    assert!(!state.is_full());
+
+    // Enqueue again after dequeue
+    let (state, decision) = action_enqueue_transition(state, 7);
+    assert_eq!(decision, EnqueueDecision::Accepted);
+    assert_eq!(state.len(), 1);
+
+    // Dequeue the second item
+    let PopTransition::Popped { item, .. } = action_dequeue_transition(state) else {
+        panic!("expected Popped, got Empty");
+    };
+    assert_eq!(item, 7);
+}

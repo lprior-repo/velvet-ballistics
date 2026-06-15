@@ -148,7 +148,7 @@ fn terminal_state_failed_rejects_mark_succeeded() -> Result<(), String> {
     let result = frame.mark_succeeded(StepIdx::new(0));
     ensure(
         matches!(result, Err(CoreError::InternalInvariantViolation { .. })),
-        "failed step must reject mark_succeeded"
+        "failed step must reject mark_succeeded",
     )
 }
 
@@ -166,7 +166,7 @@ fn terminal_state_cancelled_rejects_mark_running() -> Result<(), String> {
     let result = frame.mark_running(StepIdx::new(0));
     ensure(
         matches!(result, Err(CoreError::InternalInvariantViolation { .. })),
-        "cancelled step must reject mark_running"
+        "cancelled step must reject mark_running",
     )
 }
 

@@ -8,8 +8,8 @@ use vb_storage::{FjallJournal, TrimError, TrimPolicy, TrimStatus};
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
     let temp = tempfile::tempdir().expect("temp_journal: tempdir creation must succeed");
-    let journal = FjallJournal::open(temp.path(), None)
-        .expect("temp_journal: journal open must succeed");
+    let journal =
+        FjallJournal::open(temp.path(), None).expect("temp_journal: journal open must succeed");
     (temp, journal)
 }
 
@@ -54,7 +54,8 @@ fn smoke_happy_path_trim() {
             }
         })
         .collect();
-    journal.append_strict_batch(&events)
+    journal
+        .append_strict_batch(&events)
         .expect("smoke_happy_path_trim: batch append must succeed");
 
     let snapshot = RunSnapshot {
@@ -64,7 +65,8 @@ fn smoke_happy_path_trim() {
         slots: vec![0u8],
         taint: vec![],
     };
-    journal.put_snapshot(&snapshot)
+    journal
+        .put_snapshot(&snapshot)
         .expect("smoke_happy_path_trim: put snapshot must succeed");
 
     let result = journal
@@ -74,7 +76,8 @@ fn smoke_happy_path_trim() {
     assert_eq!(result.status, TrimStatus::Trimmed);
     assert_eq!(result.deleted_count, 3);
 
-    let remaining = journal.events_for_run(run)
+    let remaining = journal
+        .events_for_run(run)
         .expect("smoke_happy_path_trim: events_for_run must succeed");
     println!("Remaining events after trim: {}", remaining.len());
     // Snapshot at seq 3 covers events 0..3; events 4,5 remain for replay
@@ -93,7 +96,8 @@ fn smoke_retention_policy_blocks() {
         make_step_started(run, 1, 0, 1),
         make_run_finished(run, 2, 1),
     ];
-    journal.append_strict_batch(&events)
+    journal
+        .append_strict_batch(&events)
         .expect("smoke_retention_policy_blocks: batch append must succeed");
 
     let header = RunHeaderRecord {
@@ -103,7 +107,8 @@ fn smoke_retention_policy_blocks() {
         status: 0,
         accepted_at_ms: 1000,
     };
-    journal.put_run_header(&header)
+    journal
+        .put_run_header(&header)
         .expect("smoke_retention_policy_blocks: put_run_header must succeed");
 
     let snapshot = RunSnapshot {
@@ -113,7 +118,8 @@ fn smoke_retention_policy_blocks() {
         slots: vec![0u8],
         taint: vec![],
     };
-    journal.put_snapshot(&snapshot)
+    journal
+        .put_snapshot(&snapshot)
         .expect("smoke_retention_policy_blocks: put_snapshot must succeed");
 
     let policy = TrimPolicy {
@@ -134,7 +140,8 @@ fn smoke_no_snapshot_fails_closed() {
     let run = RunId::new(200);
 
     let events = vec![make_event(run, 0), make_step_started(run, 1, 0, 1)];
-    journal.append_strict_batch(&events)
+    journal
+        .append_strict_batch(&events)
         .expect("smoke_no_snapshot_fails_closed: batch append must succeed");
 
     let result = journal.trim_events_for_run(run, TrimPolicy::default());
@@ -157,7 +164,8 @@ fn smoke_idempotency() {
             }
         })
         .collect();
-    journal.append_strict_batch(&events)
+    journal
+        .append_strict_batch(&events)
         .expect("smoke_idempotency: batch append must succeed");
 
     let snapshot = RunSnapshot {
@@ -167,7 +175,8 @@ fn smoke_idempotency() {
         slots: vec![0u8],
         taint: vec![],
     };
-    journal.put_snapshot(&snapshot)
+    journal
+        .put_snapshot(&snapshot)
         .expect("smoke_idempotency: put_snapshot must succeed");
 
     let r1 = journal

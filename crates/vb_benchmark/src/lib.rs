@@ -8,6 +8,13 @@
 
 pub mod aggregate_resource_budget;
 
+#[cfg(kani)]
+mod kani_capture;
+#[cfg(kani)]
+mod kani_enum;
+#[cfg(kani)]
+mod kani_gate;
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

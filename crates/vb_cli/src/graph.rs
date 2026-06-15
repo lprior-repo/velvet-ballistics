@@ -28,6 +28,7 @@ pub(crate) fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> Exi
     if output != OutputFormat::Text {
         crate::emit_json_or_return!(
             &serde_json::json!({
+                "kind": "WorkflowGraph",
                 "format": "dot",
                 "nodes": graph.node_count,
                 "edges": graph.edge_count,
