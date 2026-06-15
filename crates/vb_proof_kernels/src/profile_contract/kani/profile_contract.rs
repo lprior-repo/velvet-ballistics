@@ -61,15 +61,9 @@ fn release_profile_master_keys() {
         }
     }
 
-    kani::assert(
-        !has_release_gap,
-        "Release profile with all 4 master keys should produce zero release contract gaps",
-    );
+    kani::assert(!has_release_gap);
 
-    kani::assert(
-        gaps.is_empty(),
-        "Correct release + bench profiles should produce zero total contract gaps",
-    );
+    kani::assert(gaps.is_empty());
 }
 
 // ---------------------------------------------------------------------------
@@ -121,14 +115,8 @@ fn bench_profile_master_keys() {
         }
     }
 
-    kani::assert(
-        !has_bench_gap,
-        "Bench profile should produce zero bench contract gaps",
-    );
-    kani::assert(
-        gaps.is_empty(),
-        "Correct config should produce zero total gaps",
-    );
+    kani::assert(!has_bench_gap);
+    kani::assert(gaps.is_empty());
 }
 
 // ---------------------------------------------------------------------------
@@ -150,10 +138,7 @@ fn hardened_debug_assertions_enabled() {
 
     let gaps = validate_against_governance(&ws);
 
-    kani::assert(
-        gaps.is_empty(),
-        "Hardened with debug-assertions=true should produce zero governance gaps",
-    );
+    kani::assert(gaps.is_empty());
 }
 
 // ---------------------------------------------------------------------------
@@ -165,10 +150,7 @@ fn hardened_debug_assertions_enabled() {
 fn maxperf_rejected_by_construction() {
     // 1. Direct check
     let result = ProfileName::new("maxperf");
-    kani::assert(
-        result.is_err(),
-        "ProfileName::new('maxperf') must return Err",
-    );
+    kani::assert(result.is_err());
 
     // 2. Exhaustive: all valid ProfileName variants are not maxperf
     let name: ProfileName = kani::any();
@@ -180,7 +162,6 @@ fn maxperf_rejected_by_construction() {
             || name == ProfileName::Fuzz
             || name == ProfileName::Test
             || name == ProfileName::Dev,
-        "All valid ProfileName variants are non-maxperf",
     );
 
     // 3. Defense-in-depth: arbitrary workspace never has ForbiddenProfile gap
@@ -194,8 +175,5 @@ fn maxperf_rejected_by_construction() {
             has_forbidden = true;
         }
     }
-    kani::assert(
-        !has_forbidden,
-        "No ForbiddenProfile gap for valid workspaces",
-    );
+    kani::assert(!has_forbidden);
 }

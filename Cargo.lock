@@ -2087,6 +2087,7 @@ dependencies = [
  "chrono",
  "criterion",
  "indexmap",
+ "kani",
  "postcard",
  "proptest",
  "serde",

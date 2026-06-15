@@ -117,7 +117,10 @@ proptest! {
             "cargo bench",
             &commit,
             "test-env",
-            1000
+            1000,
+            0,
+            0,
+            0,
         );
 
         let metadata = metadata.map_err(|error| TestCaseError::fail(error.to_string()))?;
@@ -135,7 +138,10 @@ proptest! {
             "cargo bench",
             "abc123",
             &environment,
-            1000
+            1000,
+            0,
+            0,
+            0,
         );
 
         let metadata = metadata.map_err(|error| TestCaseError::fail(error.to_string()))?;
@@ -152,7 +158,10 @@ proptest! {
             &command,
             "abc123",
             "test-env",
-            1000
+            1000,
+            0,
+            0,
+            0,
         );
 
         let metadata = metadata.map_err(|error| TestCaseError::fail(error.to_string()))?;

@@ -23,6 +23,9 @@ fn complete_metadata() -> BenchmarkMetadata {
         commit_hash: String::from("c15d4f375af205fd2954a419a53c6450ea266699"),
         environment: String::from("linux-x86_64"),
         budget_us: 72,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     }
 }
 

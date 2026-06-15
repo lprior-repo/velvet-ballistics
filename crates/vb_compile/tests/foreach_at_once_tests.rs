@@ -19,7 +19,7 @@
 
 use vb_compile::{compile_source, compile_workflow};
 use vb_core::{CompiledNodeKind, StepIdx, WorkflowDigest};
-use vb_yaml::WorkflowSource;
+use vb_yaml::ast::WorkflowSource;
 
 // ─────────────────────────────────────────────────────────────────────
 // YAML templates
@@ -42,8 +42,6 @@ fn foreach_yaml_no_atonce() -> String {
     )
 }
 
-
-
 /// Extract the limit from the ForEachStart node at index 0.
 fn extract_foreach_start_limit(workflow: &vb_core::CompiledWorkflow) -> u32 {
     let parts = workflow.to_parts();
@@ -51,8 +49,7 @@ fn extract_foreach_start_limit(workflow: &vb_core::CompiledWorkflow) -> u32 {
         CompiledNodeKind::ForEachStart { limit, .. } => *limit,
         other => panic!(
             "node 0 expected ForEachStart, got {:?} for workflow '{}'",
-            other,
-            parts.name
+            other, parts.name
         ),
     }
 }
@@ -66,10 +63,9 @@ fn digest_from_yaml(yaml: &str) -> WorkflowDigest {
 
 /// Compute digest from compile_source (via YAML parse → compile_source).
 fn digest_from_source(yaml: &str) -> WorkflowDigest {
-    let source = vb_yaml::parse_workflow_source(yaml)
-        .expect("yaml must parse into WorkflowSource");
-    let workflow = compile_source(&source)
-        .unwrap_or_else(|e| panic!("compile_source failed: {e:?}"));
+    let source = vb_yaml::parse_workflow_source(yaml).expect("yaml must parse into WorkflowSource");
+    let workflow =
+        compile_source(&source).unwrap_or_else(|e| panic!("compile_source failed: {e:?}"));
     workflow.to_parts().digest
 }
 
@@ -80,22 +76,18 @@ fn digest_from_source(yaml: &str) -> WorkflowDigest {
 #[test]
 fn foreach_at_once_zero_compiles_and_limit_is_zero() {
     let yaml = foreach_yaml("0");
-    let workflow = compile_workflow(yaml.as_bytes())
-        .expect("YAML with at_once: 0 must compile");
+    let workflow = compile_workflow(yaml.as_bytes()).expect("YAML with at_once: 0 must compile");
     let limit = extract_foreach_start_limit(&workflow);
-    assert_eq!(
-        limit, 0,
-        "ForEachStart.limit must be 0 when at_once is 0"
-    );
+    assert_eq!(limit, 0, "ForEachStart.limit must be 0 when at_once is 0");
 }
 
 #[test]
 fn foreach_at_once_zero_source_path_limit_is_zero() {
     let yaml = foreach_yaml("0");
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow = compile_source(&source)
-        .expect("compile_source with at_once=Some(0) must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow =
+        compile_source(&source).expect("compile_source with at_once=Some(0) must succeed");
     let limit = extract_foreach_start_limit(&workflow);
     assert_eq!(
         limit, 0,
@@ -106,8 +98,7 @@ fn foreach_at_once_zero_source_path_limit_is_zero() {
 #[test]
 fn foreach_at_once_zero_node_kind_sequence() {
     let yaml = foreach_yaml("0");
-    let workflow = compile_workflow(yaml.as_bytes())
-        .expect("at_once=0 must compile");
+    let workflow = compile_workflow(yaml.as_bytes()).expect("at_once=0 must compile");
     let parts = workflow.to_parts();
 
     // Expected sequence: ForEachStart, SetConst, ForEachNext, Finish
@@ -138,8 +129,7 @@ fn foreach_at_once_zero_node_kind_sequence() {
 #[test]
 fn foreach_at_once_none_compiles_and_limit_is_one() {
     let yaml = foreach_yaml_no_atonce();
-    let workflow = compile_workflow(yaml.as_bytes())
-        .expect("YAML without at_once must compile");
+    let workflow = compile_workflow(yaml.as_bytes()).expect("YAML without at_once must compile");
     let limit = extract_foreach_start_limit(&workflow);
     assert_eq!(
         limit, 1,
@@ -150,10 +140,9 @@ fn foreach_at_once_none_compiles_and_limit_is_one() {
 #[test]
 fn foreach_at_once_none_source_path_limit_is_one() {
     let yaml = foreach_yaml_no_atonce();
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow = compile_source(&source)
-        .expect("compile_source with at_once=None must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow = compile_source(&source).expect("compile_source with at_once=None must succeed");
     let limit = extract_foreach_start_limit(&workflow);
     assert_eq!(
         limit, 1,
@@ -168,22 +157,18 @@ fn foreach_at_once_none_source_path_limit_is_one() {
 #[test]
 fn foreach_at_once_one_compiles_and_limit_is_one() {
     let yaml = foreach_yaml("1");
-    let workflow = compile_workflow(yaml.as_bytes())
-        .expect("YAML with at_once: 1 must compile");
+    let workflow = compile_workflow(yaml.as_bytes()).expect("YAML with at_once: 1 must compile");
     let limit = extract_foreach_start_limit(&workflow);
-    assert_eq!(
-        limit, 1,
-        "ForEachStart.limit must be 1 when at_once is 1"
-    );
+    assert_eq!(limit, 1, "ForEachStart.limit must be 1 when at_once is 1");
 }
 
 #[test]
 fn foreach_at_once_one_source_path_limit_is_one() {
     let yaml = foreach_yaml("1");
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow = compile_source(&source)
-        .expect("compile_source with at_once=Some(1) must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow =
+        compile_source(&source).expect("compile_source with at_once=Some(1) must succeed");
     let limit = extract_foreach_start_limit(&workflow);
     assert_eq!(
         limit, 1,
@@ -212,12 +197,8 @@ fn foreach_at_once_zero_and_one_produce_different_digests() {
 fn foreach_at_once_zero_and_one_source_digests_differ() {
     let yaml_zero = foreach_yaml("0");
     let yaml_one = foreach_yaml("1");
-    let source_zero = vb_yaml::parse_workflow_source(&yaml_zero)
-        .expect("yaml_zero must parse");
-    let source_one = vb_yaml::parse_workflow_source(&yaml_one)
-        .expect("yaml_one must parse");
-    let digest_zero = digest_from_source(&source_zero);
-    let digest_one = digest_from_source(&source_one);
+    let digest_zero = digest_from_source(&yaml_zero);
+    let digest_one = digest_from_source(&yaml_one);
 
     assert_ne!(
         digest_zero, digest_one,
@@ -246,12 +227,8 @@ fn foreach_at_once_none_and_one_produce_identical_digests() {
 fn foreach_at_once_none_and_one_source_digests_identical() {
     let yaml_none = foreach_yaml_no_atonce();
     let yaml_one = foreach_yaml("1");
-    let source_none = vb_yaml::parse_workflow_source(&yaml_none)
-        .expect("yaml_none must parse");
-    let source_one = vb_yaml::parse_workflow_source(&yaml_one)
-        .expect("yaml_one must parse");
-    let digest_none = digest_from_source(&source_none);
-    let digest_one = digest_from_source(&source_one);
+    let digest_none = digest_from_source(&yaml_none);
+    let digest_one = digest_from_source(&yaml_one);
 
     assert_eq!(
         digest_none, digest_one,
@@ -290,11 +267,12 @@ fn foreach_at_once_one_digest_is_deterministic() {
 #[test]
 fn foreach_at_once_zero_source_digest_is_deterministic() {
     let yaml = foreach_yaml("0");
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("yaml must parse");
-    let d1 = digest_from_source(&source);
-    let d2 = digest_from_source(&source);
-    assert_eq!(d1, d2, "at_once=Some(0) source digest must be deterministic");
+    let d1 = digest_from_source(&yaml);
+    let d2 = digest_from_source(&yaml);
+    assert_eq!(
+        d1, d2,
+        "at_once=Some(0) source digest must be deterministic"
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -304,15 +282,13 @@ fn foreach_at_once_zero_source_digest_is_deterministic() {
 #[test]
 fn foreach_at_once_zero_limit_agrees_across_apis() {
     let yaml = foreach_yaml("0");
-    let workflow_yaml =
-        compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
+    let workflow_yaml = compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
     let limit_yaml = extract_foreach_start_limit(&workflow_yaml);
 
     // Parse source from same YAML
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow_source = compile_source(&source)
-        .expect("compile_source must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow_source = compile_source(&source).expect("compile_source must succeed");
     let limit_source = extract_foreach_start_limit(&workflow_source);
 
     assert_eq!(
@@ -324,14 +300,12 @@ fn foreach_at_once_zero_limit_agrees_across_apis() {
 #[test]
 fn foreach_at_once_none_limit_agrees_across_apis() {
     let yaml = foreach_yaml_no_atonce();
-    let workflow_yaml =
-        compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
+    let workflow_yaml = compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
     let limit_yaml = extract_foreach_start_limit(&workflow_yaml);
 
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow_source = compile_source(&source)
-        .expect("compile_source must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow_source = compile_source(&source).expect("compile_source must succeed");
     let limit_source = extract_foreach_start_limit(&workflow_source);
 
     assert_eq!(
@@ -343,14 +317,12 @@ fn foreach_at_once_none_limit_agrees_across_apis() {
 #[test]
 fn foreach_at_once_zero_digest_agrees_across_apis() {
     let yaml = foreach_yaml("0");
-    let workflow_yaml =
-        compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
+    let workflow_yaml = compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
     let digest_yaml = workflow_yaml.to_parts().digest;
 
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow_source = compile_source(&source)
-        .expect("compile_source must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow_source = compile_source(&source).expect("compile_source must succeed");
     let digest_source = workflow_source.to_parts().digest;
 
     assert_eq!(
@@ -362,14 +334,12 @@ fn foreach_at_once_zero_digest_agrees_across_apis() {
 #[test]
 fn foreach_at_once_one_digest_agrees_across_apis() {
     let yaml = foreach_yaml("1");
-    let workflow_yaml =
-        compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
+    let workflow_yaml = compile_workflow(yaml.as_bytes()).expect("compile_workflow must succeed");
     let digest_yaml = workflow_yaml.to_parts().digest;
 
-    let source = vb_yaml::parse_workflow_source(&yaml)
-        .expect("YAML must parse into WorkflowSource");
-    let workflow_source = compile_source(&source)
-        .expect("compile_source must succeed");
+    let source =
+        vb_yaml::parse_workflow_source(&yaml).expect("YAML must parse into WorkflowSource");
+    let workflow_source = compile_source(&source).expect("compile_source must succeed");
     let digest_source = workflow_source.to_parts().digest;
 
     assert_eq!(
@@ -398,11 +368,7 @@ fn foreach_at_once_zero_and_two_produce_different_digests() {
 #[test]
 fn foreach_at_once_two_limit_is_two() {
     let yaml = foreach_yaml("2");
-    let workflow = compile_workflow(yaml.as_bytes())
-        .expect("at_once=2 must compile");
+    let workflow = compile_workflow(yaml.as_bytes()).expect("at_once=2 must compile");
     let limit = extract_foreach_start_limit(&workflow);
-    assert_eq!(
-        limit, 2,
-        "ForEachStart.limit must be 2 when at_once is 2"
-    );
+    assert_eq!(limit, 2, "ForEachStart.limit must be 2 when at_once is 2");
 }

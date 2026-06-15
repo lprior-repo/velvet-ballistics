@@ -133,26 +133,26 @@ mod tests {
     #[test]
     fn test_pending_valid_transitions() {
         let next = next_states(StepState::Pending);
-        kani::assert(next.contains(&StepState::Pending), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Running), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Succeeded), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Failed), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Cancelled), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Skipped), "kani harness assertion")
-        kani::assert_eq!(next.len(), 6)
+        assert!(next.contains(&StepState::Pending), "Pending should allow Pending->Pending");
+        assert!(next.contains(&StepState::Running), "Pending should transition to Running");
+        assert!(next.contains(&StepState::Succeeded), "Pending should transition to Succeeded");
+        assert!(next.contains(&StepState::Failed), "Pending should transition to Failed");
+        assert!(next.contains(&StepState::Cancelled), "Pending should transition to Cancelled");
+        assert!(next.contains(&StepState::Skipped), "Pending should transition to Skipped");
+        assert_eq!(next.len(), 6, "Pending should have exactly 6 valid next states");
     }
 
     #[test]
     fn test_running_valid_transitions() {
         let next = next_states(StepState::Running);
-        kani::assert(next.contains(&StepState::Running), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Succeeded), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Failed), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Waiting), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Asking), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Cancelled), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Skipped), "kani harness assertion")
-        kani::assert_eq!(next.len(), 7)
+        assert!(next.contains(&StepState::Running), "Running should allow Running->Running");
+        assert!(next.contains(&StepState::Succeeded), "Running should transition to Succeeded");
+        assert!(next.contains(&StepState::Failed), "Running should transition to Failed");
+        assert!(next.contains(&StepState::Waiting), "Running should transition to Waiting");
+        assert!(next.contains(&StepState::Asking), "Running should transition to Asking");
+        assert!(next.contains(&StepState::Cancelled), "Running should transition to Cancelled");
+        assert!(next.contains(&StepState::Skipped), "Running should transition to Skipped");
+        assert_eq!(next.len(), 7, "Running should have exactly 7 valid next states");
     }
 
     #[test]
@@ -167,64 +167,64 @@ mod tests {
             StepState::Cancelled,
             StepState::Skipped,
         ] {
-            kani::assert(is_valid_transition(state, state))
+            assert!(is_valid_transition(state, state));
         }
     }
 
     #[test]
     fn test_waiting_to_running() {
-        kani::assert(is_valid_transition(StepState::Waiting, StepState::Running))
+        assert!(is_valid_transition(StepState::Waiting, StepState::Running));
     }
 
     #[test]
     fn test_asking_to_running() {
-        kani::assert(is_valid_transition(StepState::Asking, StepState::Running))
+        assert!(is_valid_transition(StepState::Asking, StepState::Running));
     }
 
     #[test]
     fn test_terminal_self_transition() {
-        kani::assert(is_valid_transition(
+        assert!(is_valid_transition(
             StepState::Succeeded, StepState::Succeeded
         ))
-        kani::assert(is_valid_transition(StepState::Failed, StepState::Failed))
-        kani::assert(is_valid_transition(
+        assert!(is_valid_transition(StepState::Failed, StepState::Failed));
+        assert!(is_valid_transition(
             StepState::Cancelled, StepState::Cancelled
         ))
-        kani::assert(is_valid_transition(StepState::Skipped, StepState::Skipped))
+        assert!(is_valid_transition(StepState::Skipped, StepState::Skipped));
     }
 
     #[test]
     fn test_invalid_transitions() {
-        kani::assert(!is_valid_transition(StepState::Running, StepState::Pending));
+        assert!(!is_valid_transition(StepState::Running, StepState::Pending));
         // No terminal state may transition back to Running. Loop body reentry
         // uses the explicit Succeeded->Pending admission path; the direct
         // Succeeded->Running edge is invalid.
-        kani::assert(!is_valid_transition(
+        assert!(!is_valid_transition(
             StepState::Succeeded, StepState::Running
         ));
-        kani::assert(!is_valid_transition(StepState::Failed, StepState::Running));
+        assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
     #[test]
     fn test_terminal_immutable() {
-        kani::assert(terminal_cannot_transition_to_non_terminal(), "kani harness assertion");
+        assert!(terminal_cannot_transition_to_non_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_terminal_states() {
         let terminals = terminal_states();
-        kani::assert_eq!(terminals.len(), 4)
+        assert_eq!(terminals.len(), 4);
         for t in terminals {
-            kani::assert(t.is_terminal(), "kani harness assertion")
+            assert!(t.is_terminal(), "kani harness assertion");
         }
     }
 
     #[test]
     fn test_non_terminal_states() {
         let non_terminals = non_terminal_states();
-        kani::assert_eq!(non_terminals.len(), 4)
+        assert_eq!(non_terminals.len(), 4);
         for t in non_terminals {
-            kani::assert(!t.is_terminal(), "kani harness assertion")
+            assert!(!t.is_terminal(), "kani harness assertion");
         }
     }
 
@@ -232,42 +232,42 @@ mod tests {
 
     #[test]
     fn test_is_terminal_pending() {
-        kani::assert(!StepState::Pending.is_terminal(), "kani harness assertion")
+        assert!(!StepState::Pending.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_running() {
-        kani::assert(!StepState::Running.is_terminal(), "kani harness assertion")
+        assert!(!StepState::Running.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_waiting() {
-        kani::assert(!StepState::Waiting.is_terminal(), "kani harness assertion")
+        assert!(!StepState::Waiting.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_asking() {
-        kani::assert(!StepState::Asking.is_terminal(), "kani harness assertion")
+        assert!(!StepState::Asking.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_succeeded() {
-        kani::assert(StepState::Succeeded.is_terminal(), "kani harness assertion")
+        assert!(StepState::Succeeded.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_failed() {
-        kani::assert(StepState::Failed.is_terminal(), "kani harness assertion")
+        assert!(StepState::Failed.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_cancelled() {
-        kani::assert(StepState::Cancelled.is_terminal(), "kani harness assertion")
+        assert!(StepState::Cancelled.is_terminal(), "kani harness assertion");
     }
 
     #[test]
     fn test_is_terminal_skipped() {
-        kani::assert(StepState::Skipped.is_terminal(), "kani harness assertion")
+        assert!(StepState::Skipped.is_terminal(), "kani harness assertion");
     }
 
     // ── validate_transition ───────────────────────────────────────────────
@@ -275,94 +275,94 @@ mod tests {
     #[test]
     fn test_validate_transition_pending_to_running_ok() {
         let result = validate_transition(StepState::Pending, StepState::Running);
-        kani::assert_eq!(result.unwrap(), StepState::Running)
+        assert_eq!(result.unwrap(), StepState::Running);
     }
 
     #[test]
     fn test_validate_transition_pending_to_succeeded_ok() {
         let result = validate_transition(StepState::Pending, StepState::Succeeded);
-        kani::assert_eq!(result.unwrap(), StepState::Succeeded)
+        assert_eq!(result.unwrap(), StepState::Succeeded);
     }
 
     #[test]
     fn test_validate_transition_pending_to_failed_ok() {
         let result = validate_transition(StepState::Pending, StepState::Failed);
-        kani::assert_eq!(result.unwrap(), StepState::Failed)
+        assert_eq!(result.unwrap(), StepState::Failed);
     }
 
     #[test]
     fn test_validate_transition_running_to_waiting_ok() {
         let result = validate_transition(StepState::Running, StepState::Waiting);
-        kani::assert_eq!(result.unwrap(), StepState::Waiting)
+        assert_eq!(result.unwrap(), StepState::Waiting);
     }
 
     #[test]
     fn test_validate_transition_running_to_asking_ok() {
         let result = validate_transition(StepState::Running, StepState::Asking);
-        kani::assert_eq!(result.unwrap(), StepState::Asking)
+        assert_eq!(result.unwrap(), StepState::Asking);
     }
 
     #[test]
     fn test_validate_transition_waiting_to_running_ok() {
         let result = validate_transition(StepState::Waiting, StepState::Running);
-        kani::assert_eq!(result.unwrap(), StepState::Running)
+        assert_eq!(result.unwrap(), StepState::Running);
     }
 
     #[test]
     fn test_validate_transition_asking_to_running_ok() {
         let result = validate_transition(StepState::Asking, StepState::Running);
-        kani::assert_eq!(result.unwrap(), StepState::Running)
+        assert_eq!(result.unwrap(), StepState::Running);
     }
 
     #[test]
     fn test_validate_transition_terminal_idempotent() {
-        kani::assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
+        assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
             StepState::Succeeded)
-        kani::assert_eq!(validate_transition(StepState::Failed, StepState::Failed).unwrap(),
+        assert_eq!(validate_transition(StepState::Failed, StepState::Failed).unwrap(),
             StepState::Failed)
-        kani::assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
+        assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
             StepState::Cancelled)
-        kani::assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
+        assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
             StepState::Skipped)
     }
 
     #[test]
     fn test_validate_transition_invalid_pending_to_waiting() {
         let result = validate_transition(StepState::Pending, StepState::Waiting);
-        kani::assert(result.is_err(), "kani harness assertion")
+        assert!(result.is_err(), "kani harness assertion");
         let err = result.unwrap_err();
-        kani::assert_eq!(err, "invalid_state_transition")
+        assert_eq!(err, "invalid_state_transition");
     }
 
     #[test]
     fn test_validate_transition_invalid_running_to_pending() {
         let result = validate_transition(StepState::Running, StepState::Pending);
-        kani::assert(result.is_err(), "kani harness assertion")
+        assert!(result.is_err(), "kani harness assertion");
         let err = result.unwrap_err();
-        kani::assert_eq!(err, "invalid_state_transition")
+        assert_eq!(err, "invalid_state_transition");
     }
 
     #[test]
     fn test_validate_transition_invalid_waiting_to_succeeded() {
         let result = validate_transition(StepState::Waiting, StepState::Succeeded);
-        kani::assert(result.is_err(), "kani harness assertion")
+        assert!(result.is_err(), "kani harness assertion");
         let err = result.unwrap_err();
-        kani::assert_eq!(err, "invalid_state_transition")
+        assert_eq!(err, "invalid_state_transition");
     }
 
     #[test]
     fn test_validate_transition_invalid_asking_to_failed() {
         let result = validate_transition(StepState::Asking, StepState::Failed);
-        kani::assert(result.is_err(), "kani harness assertion")
+        assert!(result.is_err(), "kani harness assertion");
         let err = result.unwrap_err();
-        kani::assert_eq!(err, "invalid_state_transition")
+        assert_eq!(err, "invalid_state_transition");
     }
 
     // ── all_transitions_exhaustive ───────────────────────────────────────
 
     #[test]
     fn test_all_transitions_exhaustive_returns_true() {
-        kani::assert(all_transitions_exhaustive(), "kani harness assertion")
+        assert!(all_transitions_exhaustive(), "kani harness assertion");
     }
 
     // ── StepState derived traits ───────────────────────────────────────────
@@ -371,54 +371,54 @@ mod tests {
     fn test_step_state_debug() {
         let state = StepState::Pending;
         let debug = format!("{:?}", state);
-        kani::assert_eq!(debug, "Pending")
+        assert_eq!(debug, "Pending");
 
         let state = StepState::Succeeded;
-        kani::assert_eq!(format!("{:?}", state), "Succeeded")
+        assert_eq!(format!("{:?}", state), "Succeeded");
 
         let state = StepState::Failed;
-        kani::assert_eq!(format!("{:?}", state), "Failed")
+        assert_eq!(format!("{:?}", state), "Failed");
 
         let state = StepState::Cancelled;
-        kani::assert_eq!(format!("{:?}", state), "Cancelled")
+        assert_eq!(format!("{:?}", state), "Cancelled");
 
         let state = StepState::Skipped;
-        kani::assert_eq!(format!("{:?}", state), "Skipped")
+        assert_eq!(format!("{:?}", state), "Skipped");
 
         let state = StepState::Waiting;
-        kani::assert_eq!(format!("{:?}", state), "Waiting")
+        assert_eq!(format!("{:?}", state), "Waiting");
 
         let state = StepState::Asking;
-        kani::assert_eq!(format!("{:?}", state), "Asking")
+        assert_eq!(format!("{:?}", state), "Asking");
 
         let state = StepState::Running;
-        kani::assert_eq!(format!("{:?}", state), "Running")
+        assert_eq!(format!("{:?}", state), "Running");
     }
 
     #[test]
     fn test_step_state_clone() {
         let state = StepState::Running;
         let cloned = state.clone();
-        kani::assert_eq!(cloned, state)
+        assert_eq!(cloned, state);
     }
 
     #[test]
     fn test_step_state_copy() {
         let state = StepState::Waiting;
         let _copied: StepState = state;
-        kani::assert_eq!(state, StepState::Waiting)
+        assert_eq!(state, StepState::Waiting);
     }
 
     #[test]
     fn test_step_state_partial_eq_positive() {
-        kani::assert_eq!(StepState::Pending, StepState::Pending)
-        kani::assert_eq!(StepState::Running, StepState::Running)
-        kani::assert_eq!(StepState::Waiting, StepState::Waiting)
-        kani::assert_eq!(StepState::Asking, StepState::Asking)
-        kani::assert_eq!(StepState::Succeeded, StepState::Succeeded)
-        kani::assert_eq!(StepState::Failed, StepState::Failed)
-        kani::assert_eq!(StepState::Cancelled, StepState::Cancelled)
-        kani::assert_eq!(StepState::Skipped, StepState::Skipped)
+        assert_eq!(StepState::Pending, StepState::Pending);
+        assert_eq!(StepState::Running, StepState::Running);
+        assert_eq!(StepState::Waiting, StepState::Waiting);
+        assert_eq!(StepState::Asking, StepState::Asking);
+        assert_eq!(StepState::Succeeded, StepState::Succeeded);
+        assert_eq!(StepState::Failed, StepState::Failed);
+        assert_eq!(StepState::Cancelled, StepState::Cancelled);
+        assert_eq!(StepState::Skipped, StepState::Skipped);
     }
 
     #[test]
@@ -432,25 +432,25 @@ mod tests {
 
     #[test]
     fn test_step_state_eq() {
-        kani::assert(StepState::Pending == StepState::Pending, "kani harness assertion")
-        kani::assert(StepState::Running != StepState::Pending, "kani harness assertion")
-        kani::assert(StepState::Failed == StepState::Failed, "kani harness assertion")
+        assert!(StepState::Pending == StepState::Pending, "kani harness assertion");
+        assert!(StepState::Running != StepState::Pending, "kani harness assertion");
+        assert!(StepState::Failed == StepState::Failed, "kani harness assertion");
     }
 
     // ── is_valid_transition exhaustive idempotent ───────────────────────────
 
     #[test]
     fn test_is_valid_transition_all_idempotent() {
-        kani::assert(is_valid_transition(StepState::Pending, StepState::Pending))
-        kani::assert(is_valid_transition(StepState::Waiting, StepState::Waiting))
-        kani::assert(is_valid_transition(StepState::Asking, StepState::Asking))
-        kani::assert(is_valid_transition(StepState::Running, StepState::Running))
+        assert!(is_valid_transition(StepState::Pending, StepState::Pending));
+        assert!(is_valid_transition(StepState::Waiting, StepState::Waiting));
+        assert!(is_valid_transition(StepState::Asking, StepState::Asking));
+        assert!(is_valid_transition(StepState::Running, StepState::Running));
     }
 
     #[test]
     fn test_is_valid_transition_waiting_asking_self() {
-        kani::assert(is_valid_transition(StepState::Waiting, StepState::Waiting))
-        kani::assert(is_valid_transition(StepState::Asking, StepState::Asking))
+        assert!(is_valid_transition(StepState::Waiting, StepState::Waiting));
+        assert!(is_valid_transition(StepState::Asking, StepState::Asking));
     }
 
     // ── next_states coverage ────────────────────────────────────────────────
@@ -458,17 +458,17 @@ mod tests {
     #[test]
     fn test_next_states_waiting() {
         let next = next_states(StepState::Waiting);
-        kani::assert(next.contains(&StepState::Waiting), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Running), "kani harness assertion")
-        kani::assert_eq!(next.len(), 2)
+        assert!(next.contains(&StepState::Waiting), "kani harness assertion");
+        assert!(next.contains(&StepState::Running), "kani harness assertion");
+        assert_eq!(next.len(), 2);
     }
 
     #[test]
     fn test_next_states_asking() {
         let next = next_states(StepState::Asking);
-        kani::assert(next.contains(&StepState::Asking), "kani harness assertion")
-        kani::assert(next.contains(&StepState::Running), "kani harness assertion")
-        kani::assert_eq!(next.len(), 2)
+        assert!(next.contains(&StepState::Asking), "kani harness assertion");
+        assert!(next.contains(&StepState::Running), "kani harness assertion");
+        assert_eq!(next.len(), 2);
     }
 
     #[test]
@@ -476,8 +476,8 @@ mod tests {
         for terminal in terminal_states() {
             let next = next_states(terminal);
             // All terminal states are self-only; no non-self transitions.
-            kani::assert_eq!(next.len(), 1)
-            kani::assert_eq!(next[0], terminal)
+            assert_eq!(next.len(), 1);
+            assert_eq!(next[0], terminal);
         }
     }
 }
@@ -499,7 +499,7 @@ mod kani_step_state_harnesses {
     fn terminal_cannot_transition_to_non_terminal_kani() {
         // Verify the top-level function returns true
         let result = terminal_cannot_transition_to_non_terminal();
-        kani::assert(
+        assert!(
             result,
             "terminal_cannot_transition_to_non_terminal must hold (all terminal states absorbing)",
         );
@@ -526,19 +526,19 @@ mod kani_step_state_harnesses {
         // For all terminal t and all s != t, the transition must be invalid.
         if t != s {
             let valid = is_valid_transition(t, s);
-            kani::assert(!valid, "terminal->other transition must be invalid");
+            assert!(!valid, "terminal->other transition must be invalid");
         } else {
             // Self-transition is always valid (idempotent)
             let valid = is_valid_transition(t, t);
-            kani::assert(valid, "terminal->self must always be valid");
+            assert!(valid, "terminal->self must always be valid");
         }
 
         // Also verify terminal next-state shape: every terminal has exactly
         // one next state (itself).
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            kani::assert(next.len() == 1, "all terminal states are self-only");
-            kani::assert(
+            assert!(next.len() == 1, "all terminal states are self-only");
+            assert!(
                 next.contains(&terminal),
                 "terminal should be in its own next_states",
             );

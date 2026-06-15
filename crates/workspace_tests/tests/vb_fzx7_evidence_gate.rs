@@ -35,6 +35,9 @@ fn eg_001_evidence_gate_accepts_complete_metadata_within_threshold() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -58,6 +61,9 @@ fn eg_002_evidence_gate_rejects_missing_baseline() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -80,6 +86,9 @@ fn eg_003_evidence_gate_rejects_missing_result() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let _result = check_evidence_gate(&metadata, 20);
@@ -100,6 +109,9 @@ fn eg_004_evidence_gate_rejects_missing_environment() {
         commit_hash: "abc123def456".to_string(),
         environment: "".to_string(), // Empty!
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -122,6 +134,9 @@ fn eg_005_evidence_gate_rejects_missing_command() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -144,6 +159,9 @@ fn eg_006_evidence_gate_rejects_missing_commit_hash() {
         commit_hash: "".to_string(), // Empty!
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -166,6 +184,9 @@ fn eg_007_evidence_gate_detects_regression_above_threshold() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -191,6 +212,9 @@ fn eg_008_evidence_gate_rejects_zero_budget() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 0, // Zero budget!
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -214,6 +238,9 @@ fn eg_regression_at_threshold_boundary() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -237,6 +264,9 @@ fn eg_regression_just_over_threshold() {
         commit_hash: "abc123def456".to_string(),
         environment: "linux-x86_64".to_string(),
         budget_us: 200_000,
+        direct_api_latency_ns: 0,
+        fjall_write_latency_ns: 0,
+        ipc_latency_ns: 0,
     };
 
     let result = check_evidence_gate(&metadata, 20);
@@ -265,6 +295,9 @@ fn mc_001_capture_metadata_produces_complete_record() {
         "abc123def456789",
         "linux-x86_64",
         100_000,
+        0,
+        0,
+        0,
     ));
 
     assert_eq!(metadata.name, "yaml_parse_small");
@@ -287,6 +320,9 @@ fn mc_002_capture_metadata_accepts_none_baseline() {
         "abc123def456789",
         "linux-x86_64",
         10_000_000,
+        0,
+        0,
+        0,
     ));
 
     assert_eq!(metadata.baseline_us, None);
@@ -305,6 +341,9 @@ fn mc_003_capture_metadata_rejects_empty_commit_hash() {
             "",
             "linux-x86_64",
             100_000,
+            0,
+            0,
+            0,
         ),
         Err(EvidenceError::MissingCommit)
     );

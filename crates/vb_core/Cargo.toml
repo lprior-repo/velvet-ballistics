@@ -15,6 +15,7 @@ thiserror.workspace = true
 [dev-dependencies]
 blake3.workspace = true
 criterion.workspace = true
+kani = "0.0.1"
 postcard.workspace = true
 proptest = { workspace = true }
 # allow-cold-adapter: dev-dep test-only, used by serde_json round-trip tests under src/action/tests.rs and src/diagnostic/tests_and_verification.rs; never linked into runtime
