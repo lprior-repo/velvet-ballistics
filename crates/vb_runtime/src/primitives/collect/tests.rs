@@ -4050,15 +4050,11 @@ fn capture_state_does_not_silently_drop_under_multiple_entries() -> Result<(), S
 
     // Insert 128 distinct entries to stress the dynamic map growth
     for i in 0..128u64 {
-        let rid = i.try_into().map_err(|_| format!("RunId overflow for {i}"))?;
-        let cid = i.try_into().map_err(|_| format!("collector_slot overflow for {i}"))?;
-        let sid = i.try_into().map_err(|_| format!("source ListId overflow for {i}"))?;
-        let pid = (i + 1000).try_into().map_err(|_| format!("page ListId overflow for {i}"))?;
         let state = CollectPaginationState {
-            run_id: RunId::new(rid),
-            collector_slot: SlotIdx::new(cid),
-            source: ListId::new(sid),
-            current_page: ListId::new(pid),
+            run_id: RunId::new(i),
+            collector_slot: SlotIdx::new(i as u16),
+            source: ListId::new(i as u32),
+            current_page: ListId::new((i + 1000) as u32),
             cursor: (i % 100) as usize,
             page_size: 10,
             item_count: 100,
@@ -4072,14 +4068,10 @@ fn capture_state_does_not_silently_drop_under_multiple_entries() -> Result<(), S
 
     // Verify all 128 entries are still recoverable
     for i in 0..128u64 {
-        let rid = i.try_into().map_err(|_| format!("RunId overflow for {i}"))?;
-        let cid = i.try_into().map_err(|_| format!("collector_slot overflow for {i}"))?;
-        let sid = i.try_into().map_err(|_| format!("source ListId overflow for {i}"))?;
-        let pid = (i + 1000).try_into().map_err(|_| format!("page ListId overflow for {i}"))?;
         let found = states.find(
-            RunId::new(rid),
-            SlotIdx::new(cid),
-            ListId::new(pid),
+            RunId::new(i),
+            SlotIdx::new(i as u16),
+            ListId::new((i + 1000) as u32),
         );
         ensure(
             found.is_some(),
@@ -4257,7 +4249,7 @@ fn collect_start_limit_exceeds_source_collects_all_in_one_page() -> Result<(), S
         &mut states,
         source,
         100, // limit >> source size
-        2,   // page_size
+        10,  // page_size >= source size, all items fit in first page
         StepIdx::new(1),
         done,
         Some(collector),
@@ -4402,15 +4394,15 @@ fn collect_start_with_bool_source_returns_type_mismatch() -> Result<(), String> 
     }
 }
 
-/// When the source slot holds a string, `collect_start` returns
-/// `TypeMismatch(expected="list", found="string")`.
+/// When the source slot holds a Symbol, `collect_start` returns
+/// `TypeMismatch(expected="list", found="symbol")`.
 #[test]
-fn collect_start_with_string_source_returns_type_mismatch() -> Result<(), String> {
+fn collect_start_with_symbol_source_returns_type_mismatch() -> Result<(), String> {
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
-    run.write_slot(source, SlotValue::Str("hello".into()))
+    run.write_slot(source, SlotValue::Symbol(vb_core::ids::SymbolId::new(1)))
         .expect("write must succeed");
     let result = collect_start(
         &mut run,
@@ -4431,25 +4423,25 @@ fn collect_start_with_string_source_returns_type_mismatch() -> Result<(), String
                 format!("expected 'list', got: {expected}"),
             )?;
             ensure(
-                found == "string",
-                format!("expected 'string', got: {found}"),
+                found == "symbol",
+                format!("expected 'symbol', got: {found}"),
             )
         }
         other => Err(format!(
-            "expected TypeMismatch for string source, got {other:?}"
+            "expected TypeMismatch for symbol source, got {other:?}"
         )),
     }
 }
 
-/// When the source slot holds a map, `collect_start` returns
-/// `TypeMismatch(expected="list", found="map")`.
+/// When the source slot holds an Object, `collect_start` returns
+/// `TypeMismatch(expected="list", found="object")`.
 #[test]
-fn collect_start_with_map_source_returns_type_mismatch() -> Result<(), String> {
+fn collect_start_with_object_source_returns_type_mismatch() -> Result<(), String> {
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
-    run.write_slot(source, SlotValue::Map(Default::default()))
+    run.write_slot(source, SlotValue::Object(vb_core::ids::ObjectId::new(1)))
         .expect("write must succeed");
     let result = collect_start(
         &mut run,
@@ -4470,12 +4462,51 @@ fn collect_start_with_map_source_returns_type_mismatch() -> Result<(), String> {
                 format!("expected 'list', got: {expected}"),
             )?;
             ensure(
-                found == "map",
-                format!("expected 'map', got: {found}"),
+                found == "object",
+                format!("expected 'object', got: {found}"),
             )
         }
         other => Err(format!(
-            "expected TypeMismatch for map source, got {other:?}"
+            "expected TypeMismatch for object source, got {other:?}"
+        )),
+    }
+}
+
+/// When the source slot holds a Blob, `collect_start` returns
+/// `TypeMismatch(expected="list", found="blob")`.
+#[test]
+fn collect_start_with_blob_source_returns_type_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    run.write_slot(source, SlotValue::Blob(vb_core::ids::BlobId::new(1)))
+        .expect("write must succeed");
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            ensure(
+                expected == "list",
+                format!("expected 'list', got: {expected}"),
+            )?;
+            ensure(
+                found == "blob",
+                format!("expected 'blob', got: {found}"),
+            )
+        }
+        other => Err(format!(
+            "expected TypeMismatch for blob source, got {other:?}"
         )),
     }
 }
