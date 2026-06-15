@@ -94,9 +94,9 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     let result = replay_step(node, &mut run, &mut store, &plan);
 
     if !slot_a && !slot_b && !has_otherwise {
-        assert!(result.is_err());
+        kani::assert(result.is_err(), "kani harness assertion")
     } else {
-        assert!(result.is_ok());
+        kani::assert(result.is_ok(), "kani harness assertion")
     }
 }
 
@@ -153,7 +153,7 @@ fn verify_choose_slot_output_in_input_set() {
         Ok(ReplayAction::Continue(target)) => {
             let valid =
                 target == StepIdx::new(1) || target == StepIdx::new(2) || target == StepIdx::new(3);
-            assert!(valid);
+            kani::assert(valid, "kani harness assertion")
         }
         Ok(_) => {
             kani::assume(false); loop {}
@@ -199,7 +199,7 @@ fn verify_replay_deterministic_for_same_input() {
 
     match (result_a, result_b) {
         (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-            assert_eq!(a, b);
+            kani::assert_eq!(a, b)
         }
         (Err(_), Err(_)) => {}
         _ => {

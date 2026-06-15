@@ -27,7 +27,7 @@ fn const_fold_expr_folds_arithmetic() -> crate::ExprResult<()> {
     let tokens = lex_expr("10 * 4")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::I64(40)));
+    kani::assert_eq!(folded, Some(ConstValue::I64(40)))
     Ok(())
 }
 
@@ -39,7 +39,7 @@ fn compile_expr_returns_invalid_reference_for_unknown_ref() -> crate::ExprResult
             token: "expected InvalidReference".into(),
         });
     };
-    assert_eq!(reference, "$missing");
+    kani::assert_eq!(reference, "$missing")
     Ok(())
 }
 
@@ -48,7 +48,7 @@ fn const_fold_expr_rejects_i64_max_overflow_addition() -> crate::ExprResult<()> 
     let tokens = lex_expr("9223372036854775807 + 1")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "i64::MAX + 1 should not fold (overflow)");
+    kani::assert_eq!(folded, None, "i64::MAX + 1 should not fold (overflow)")
     Ok(())
 }
 
@@ -57,7 +57,7 @@ fn const_fold_expr_folds_boundary_subtraction_to_i64_min() -> crate::ExprResult<
     let tokens = lex_expr("0 - 9223372036854775807 - 1")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::I64(i64::MIN)));
+    kani::assert_eq!(folded, Some(ConstValue::I64(i64::MIN)))
     Ok(())
 }
 
@@ -66,7 +66,7 @@ fn const_fold_expr_rejects_i64_max_overflow_multiplication() -> crate::ExprResul
     let tokens = lex_expr("9223372036854775807 * 2")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "i64::MAX * 2 should not fold (overflow)");
+    kani::assert_eq!(folded, None, "i64::MAX * 2 should not fold (overflow)")
     Ok(())
 }
 
@@ -75,7 +75,7 @@ fn const_fold_expr_rejects_division_by_zero() -> crate::ExprResult<()> {
     let tokens = lex_expr("1 / 0")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "1 / 0 should not fold (division by zero)");
+    kani::assert_eq!(folded, None, "1 / 0 should not fold (division by zero)")
     Ok(())
 }
 
@@ -84,18 +84,18 @@ fn const_fold_expr_folds_valid_division() -> crate::ExprResult<()> {
     let tokens = lex_expr("10 / 2")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::I64(5)));
+    kani::assert_eq!(folded, Some(ConstValue::I64(5)))
     Ok(())
 }
 
 #[test]
 fn const_fold_expr_rejects_negation_of_negated_max() -> crate::ExprResult<()> {
     let neg_result = i64::MIN.checked_neg();
-    assert_eq!(neg_result, None, "negating i64::MIN should overflow");
+    kani::assert_eq!(neg_result, None, "negating i64::MIN should overflow")
     let tokens = lex_expr("0 + 9223372036854775807 + 1")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "0 + MAX + 1 should not fold (overflow)");
+    kani::assert_eq!(folded, None, "0 + MAX + 1 should not fold (overflow)")
     Ok(())
 }
 
@@ -103,10 +103,7 @@ fn const_fold_expr_rejects_negation_of_negated_max() -> crate::ExprResult<()> {
 fn check_expr_stack_bound_rejects_empty_ops() -> crate::ExprResult<()> {
     let ops: Vec<ExprOp> = vec![];
     let result = check_expr_stack_bound(&ops);
-    assert!(
-        result.is_err(),
-        "empty ops should fail stack validation (nothing to return)"
-    );
+    kani::assert(result.is_err(), "empty ops should fail stack validation (nothing to return)")
     Ok(())
 }
 
@@ -118,7 +115,7 @@ fn compile_expr_with_resolver_rejects_text_literal() -> crate::ExprResult<()> {
             token: "expected UnsupportedLiteral".into(),
         });
     };
-    assert_eq!(literal, "text");
+    kani::assert_eq!(literal, "text")
     Ok(())
 }
 
@@ -128,12 +125,9 @@ fn push_constant_returns_overflow_on_max_constants() -> crate::ExprResult<()> {
     for i in 0u16..65_535 {
         constants.push(ConstValue::I64(i64::from(i)));
     }
-    assert_eq!(constants.len(), 65_535);
+    kani::assert_eq!(constants.len(), 65_535)
     let result = push_constant(ConstValue::I64(0), &mut constants);
-    assert!(
-        matches!(result, Err(crate::ExprError::ConstantPoolOverflow)),
-        "pushing beyond MAX_CONSTANTS should overflow"
-    );
+    kani::assert(matches!(result, Err(crate::ExprError::ConstantPoolOverflow)), "pushing beyond MAX_CONSTANTS should overflow")
     Ok(())
 }
 
@@ -148,8 +142,8 @@ fn compile_expr_to_bytecode_produces_correct_negation_ops() -> crate::ExprResult
         ExprOp::LoadConst(ConstIdx::new(1)),
         ExprOp::Sub,
     ];
-    assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
-    assert_eq!(constants, vec![ConstValue::I64(0), ConstValue::I64(5)]);
+    kani::assert_eq!(program.ops.as_ref(), expected_ops.as_slice())
+    kani::assert_eq!(constants, vec![ConstValue::I64(0), ConstValue::I64(5)])
     Ok(())
 }
 
@@ -163,7 +157,7 @@ fn blackhat_bc_001_fold_rejects_overflow_add() -> crate::ExprResult<()> {
     let tokens = lex_expr("9223372036854775807 + 1")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BH-BC-001: overflow should not fold");
+    kani::assert_eq!(folded, None, "BH-BC-001: overflow should not fold")
     Ok(())
 }
 
@@ -173,7 +167,7 @@ fn blackhat_bc_002_fold_rejects_overflow_mul() -> crate::ExprResult<()> {
     let tokens = lex_expr("9223372036854775807 * 2")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BH-BC-002: overflow should not fold");
+    kani::assert_eq!(folded, None, "BH-BC-002: overflow should not fold")
     Ok(())
 }
 
@@ -183,7 +177,7 @@ fn blackhat_bc_003_fold_rejects_div_by_zero() -> crate::ExprResult<()> {
     let tokens = lex_expr("1 / 0")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BH-BC-003: div by zero should not fold");
+    kani::assert_eq!(folded, None, "BH-BC-003: div by zero should not fold")
     Ok(())
 }
 
@@ -193,7 +187,7 @@ fn blackhat_bc_004_fold_accepts_valid_div() -> crate::ExprResult<()> {
     let tokens = lex_expr("10 / 2")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::I64(5)));
+    kani::assert_eq!(folded, Some(ConstValue::I64(5)))
     Ok(())
 }
 
@@ -211,7 +205,7 @@ fn blackhat_bc_005_fold_rejects_neg_i64_min() -> crate::ExprResult<()> {
         )),
     };
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BH-BC-005: -i64::MIN should not fold");
+    kani::assert_eq!(folded, None, "BH-BC-005: -i64::MIN should not fold")
     Ok(())
 }
 
@@ -223,10 +217,7 @@ fn blackhat_bc_006_constant_pool_overflow() -> crate::ExprResult<()> {
         constants.push(ConstValue::I64(i64::from(i)));
     }
     let r = push_constant(ConstValue::I64(0), &mut constants);
-    assert!(
-        matches!(r, Err(crate::ExprError::ConstantPoolOverflow)),
-        "BH-BC-006: constant pool overflow at 65535"
-    );
+    kani::assert(matches!(r, Err(crate::ExprError::ConstantPoolOverflow)), "BH-BC-006: constant pool overflow at 65535")
     Ok(())
 }
 
@@ -235,10 +226,7 @@ fn blackhat_bc_006_constant_pool_overflow() -> crate::ExprResult<()> {
 fn blackhat_bc_007_stack_bound_rejects_empty() -> crate::ExprResult<()> {
     let ops: Vec<ExprOp> = vec![];
     let r = check_expr_stack_bound(&ops);
-    assert!(
-        r.is_err(),
-        "BH-BC-007: empty ops should fail stack validation"
-    );
+    kani::assert(r.is_err(), "BH-BC-007: empty ops should fail stack validation")
     Ok(())
 }
 
@@ -254,7 +242,7 @@ fn blackhat_bc_008_unresolved_reference() -> crate::ExprResult<()> {
             token: "BH-BC-008: expected InvalidReference".into(),
         });
     };
-    assert_eq!(reference, "$missing");
+    kani::assert_eq!(reference, "$missing")
     Ok(())
 }
 
@@ -270,7 +258,7 @@ fn blackhat_bc_009_text_literal_rejected() -> crate::ExprResult<()> {
             token: "BH-BC-009: expected UnsupportedLiteral".into(),
         });
     };
-    assert_eq!(literal, "text");
+    kani::assert_eq!(literal, "text")
     Ok(())
 }
 
@@ -335,9 +323,9 @@ fn blackhat_ev_002_add_overflow_boundary() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     let r = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     Ok(())
 }
 
@@ -350,9 +338,9 @@ fn blackhat_ev_003_sub_overflow_boundary() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     let r = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MAX), SlotValue::I64(-1));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     Ok(())
 }
 
@@ -365,11 +353,11 @@ fn blackhat_ev_004_mul_overflow_boundary() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(2));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     let r = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MIN), SlotValue::I64(2));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     let r = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     Ok(())
 }
 
@@ -382,7 +370,7 @@ fn blackhat_ev_005_neg_overflow_i64_min() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
-    assert!(matches!(r, Err(ExprError::IntegerOverflow)));
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)))
     Ok(())
 }
 
@@ -411,22 +399,18 @@ fn blackhat_ev_007_type_confusion_rejected() -> crate::ExprResult<()> {
     use crate::lexer::{BinaryOp, UnaryOp};
     use vb_core::SlotValue;
 
-    assert!(matches!(
-        eval_binary_op(BinaryOp::Add, SlotValue::Bool(true), SlotValue::I64(1)),
-        Err(ExprError::TypeMismatch { .. })
-    ));
-    assert!(matches!(
-        eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::I64(0)),
-        Err(ExprError::TypeMismatch { .. })
-    ));
-    assert!(matches!(
-        eval_unary_op(UnaryOp::Not, SlotValue::I64(1)),
-        Err(ExprError::TypeMismatch { .. })
-    ));
-    assert!(matches!(
-        eval_unary_op(UnaryOp::Neg, SlotValue::Bool(false)),
-        Err(ExprError::TypeMismatch { .. })
-    ));
+    kani::assert(matches!(
+        eval_binary_op(BinaryOp::Add, SlotValue::Bool(true), SlotValue::I64(1)), Err(ExprError::TypeMismatch { .. })
+    ))
+    kani::assert(matches!(
+        eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::I64(0)), Err(ExprError::TypeMismatch { .. })
+    ))
+    kani::assert(matches!(
+        eval_unary_op(UnaryOp::Not, SlotValue::I64(1)), Err(ExprError::TypeMismatch { .. })
+    ))
+    kani::assert(matches!(
+        eval_unary_op(UnaryOp::Neg, SlotValue::Bool(false)), Err(ExprError::TypeMismatch { .. })
+    ))
     Ok(())
 }
 
@@ -461,13 +445,13 @@ fn blackhat_ev_009_oob_access_no_panic() -> crate::ExprResult<()> {
         max_stack: 1,
     };
     let r = eval_expr_program(&program, &[], &[]);
-    assert!(r.is_err(), "BH-EV-009a: OOB slot should error");
+    kani::assert(r.is_err(), "BH-EV-009a: OOB slot should error")
     let program = ExprProgram {
         ops: vec![ExprOp::LoadConst(ConstIdx::new(255))].into_boxed_slice(),
         max_stack: 1,
     };
     let r = eval_expr_program(&program, &[], &[]);
-    assert!(r.is_err(), "BH-EV-009b: OOB const should error");
+    kani::assert(r.is_err(), "BH-EV-009b: OOB const should error")
     Ok(())
 }
 
@@ -479,13 +463,13 @@ fn blackhat_ev_010_division_truncation() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(7), SlotValue::I64(2))?;
-    assert_eq!(r, SlotValue::I64(3));
+    kani::assert_eq!(r, SlotValue::I64(3))
     let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(-7), SlotValue::I64(2))?;
-    assert_eq!(r, SlotValue::I64(-3));
+    kani::assert_eq!(r, SlotValue::I64(-3))
     let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(7), SlotValue::I64(-2))?;
-    assert_eq!(r, SlotValue::I64(-3));
+    kani::assert_eq!(r, SlotValue::I64(-3))
     let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(-7), SlotValue::I64(-2))?;
-    assert_eq!(r, SlotValue::I64(3));
+    kani::assert_eq!(r, SlotValue::I64(3))
     Ok(())
 }
 
@@ -501,10 +485,7 @@ fn blackhat_ev_011_e2e_overflow_nested() -> crate::ExprResult<()> {
     let mut constants = Vec::new();
     let program = compile_expr_with_pool(&ast, &mut constants)?;
     let r = eval_expr_program(&program, &[], &constants);
-    assert!(
-        matches!(r, Err(ExprError::IntegerOverflow)),
-        "BH-EV-011: deeply nested overflow must be detected"
-    );
+    kani::assert(matches!(r, Err(ExprError::IntegerOverflow)), "BH-EV-011: deeply nested overflow must be detected")
     Ok(())
 }
 
@@ -520,7 +501,7 @@ fn blackhat_ev_012_e2e_large_value_no_wrap() -> crate::ExprResult<()> {
     let mut constants = Vec::new();
     let program = compile_expr_with_pool(&ast, &mut constants)?;
     let r = eval_expr_program(&program, &[], &constants)?;
-    assert_eq!(r, SlotValue::I64(1_000_000_000_000_000_000i64));
+    kani::assert_eq!(r, SlotValue::I64(1_000_000_000_000_000_000i64))
     Ok(())
 }
 
@@ -532,11 +513,11 @@ fn blackhat_ev_013_cross_type_equality_no_panic() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Eq, SlotValue::Null, SlotValue::I64(1))?;
-    assert_eq!(r, SlotValue::Bool(false));
+    kani::assert_eq!(r, SlotValue::Bool(false))
     let r = eval_binary_op(BinaryOp::NotEq, SlotValue::Null, SlotValue::I64(1))?;
-    assert_eq!(r, SlotValue::Bool(true));
+    kani::assert_eq!(r, SlotValue::Bool(true))
     let r = eval_binary_op(BinaryOp::Eq, SlotValue::Null, SlotValue::Null)?;
-    assert_eq!(r, SlotValue::Bool(true));
+    kani::assert_eq!(r, SlotValue::Bool(true))
     Ok(())
 }
 
@@ -548,11 +529,11 @@ fn blackhat_ev_014_neg_zero_no_overflow() -> crate::ExprResult<()> {
     use vb_core::SlotValue;
 
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(0))?;
-    assert_eq!(r, SlotValue::I64(0));
+    kani::assert_eq!(r, SlotValue::I64(0))
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(42))?;
-    assert_eq!(r, SlotValue::I64(-42));
+    kani::assert_eq!(r, SlotValue::I64(-42))
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(-42))?;
-    assert_eq!(r, SlotValue::I64(42));
+    kani::assert_eq!(r, SlotValue::I64(42))
     Ok(())
 }
 
@@ -573,7 +554,7 @@ fn bcm_adv_001_fold_rejects_sub_overflow() -> crate::ExprResult<()> {
         )),
     };
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BC-ADV-001: i64::MIN - 1 should not fold");
+    kani::assert_eq!(folded, None, "BC-ADV-001: i64::MIN - 1 should not fold")
     Ok(())
 }
 
@@ -590,10 +571,8 @@ fn bcm_adv_002_fold_rejects_mul_overflow_negative() -> crate::ExprResult<()> {
         )),
     };
     let folded = const_fold_expr(&ast);
-    assert_eq!(
-        folded, None,
-        "BC-ADV-002: i64::MIN * -1 should not fold (overflow)"
-    );
+    kani::assert_eq!(folded, None,
+        "BC-ADV-002: i64::MIN * -1 should not fold (overflow)")
     Ok(())
 }
 
@@ -603,7 +582,7 @@ fn bcm_adv_003_fold_bool_and_true_false() -> crate::ExprResult<()> {
     let tokens = lex_expr("true and false")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::Bool(false)));
+    kani::assert_eq!(folded, Some(ConstValue::Bool(false)))
     Ok(())
 }
 
@@ -613,7 +592,7 @@ fn bcm_adv_004_fold_bool_or_true_false() -> crate::ExprResult<()> {
     let tokens = lex_expr("true or false")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    kani::assert_eq!(folded, Some(ConstValue::Bool(true)))
     Ok(())
 }
 
@@ -623,7 +602,7 @@ fn bcm_adv_005_fold_nested_bool() -> crate::ExprResult<()> {
     let tokens = lex_expr("(true and false) or true")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    kani::assert_eq!(folded, Some(ConstValue::Bool(true)))
     Ok(())
 }
 
@@ -633,7 +612,7 @@ fn bcm_adv_006_fold_bool_and_i64_returns_none() -> crate::ExprResult<()> {
     let tokens = lex_expr("true and 1")?;
     let ast = parse_expr(&tokens)?;
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BC-ADV-006: bool and I64 should not fold");
+    kani::assert_eq!(folded, None, "BC-ADV-006: bool and I64 should not fold")
     Ok(())
 }
 
@@ -650,7 +629,7 @@ fn bcm_adv_007_fold_i64_min_mul_neg_one() -> crate::ExprResult<()> {
         )),
     };
     let folded = const_fold_expr(&ast);
-    assert_eq!(folded, None, "BC-ADV-007: i64::MIN * -1 should not fold");
+    kani::assert_eq!(folded, None, "BC-ADV-007: i64::MIN * -1 should not fold")
     Ok(())
 }
 
@@ -667,12 +646,12 @@ fn bcm_adv_008_compile_exactly_max_ops_succeeds() -> crate::ExprResult<()> {
         ops.push(ExprOp::LoadConst(ConstIdx::new(0)));
         ops.push(ExprOp::Add);
     }
-    assert_eq!(ops.len(), 255);
+    kani::assert_eq!(ops.len(), 255)
     ops.push(ExprOp::Not);
-    assert_eq!(ops.len(), 256);
+    kani::assert_eq!(ops.len(), 256)
     let program = vb_core::ExprProgram::try_from_ops(ops.into_boxed_slice())
         .map_err(|_| crate::ExprError::BytecodeTooLong { len: 256, max: 256 })?;
-    assert_eq!(program.ops.len(), 256);
+    kani::assert_eq!(program.ops.len(), 256)
     Ok(())
 }
 
@@ -691,10 +670,8 @@ fn blackhat_ev_015_f64_add_zero() -> crate::ExprResult<()> {
     let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let r = eval_binary_op(BinaryOp::Add, val, zero)?;
-    assert_eq!(
-        r,
-        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?)
-    );
+    kani::assert_eq!(r,
+        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?))
     Ok(())
 }
 
@@ -709,10 +686,8 @@ fn blackhat_ev_016_f64_sub_zero() -> crate::ExprResult<()> {
     let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
     let r = eval_binary_op(BinaryOp::Sub, val, zero)?;
-    assert_eq!(
-        r,
-        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?)
-    );
+    kani::assert_eq!(r,
+        SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?))
     Ok(())
 }
 

@@ -139,19 +139,13 @@ fn sequence_bounds_verification() {
 
     if future_violation {
         // Future sequence must be rejected
-        assert!(result.is_err(), "Future accepted_at_seq must be rejected");
+        kani::assert(result.is_err(), "Future accepted_at_seq must be rejected")
     } else if window_violation {
         // Too old must be rejected
-        assert!(
-            result.is_err(),
-            "Sequence outside replay window must be rejected"
-        );
+        kani::assert(result.is_err(), "Sequence outside replay window must be rejected")
     } else if zero_violation {
         // Zero seq when current_seq > 0 must be rejected
-        assert!(
-            result.is_err(),
-            "Zero accepted_at_seq with non-empty journal must be rejected"
-        );
+        kani::assert(result.is_err(), "Zero accepted_at_seq with non-empty journal must be rejected")
     } else {
         // Within bounds - should pass (but other checks may fail on arbitrary data)
         match result {

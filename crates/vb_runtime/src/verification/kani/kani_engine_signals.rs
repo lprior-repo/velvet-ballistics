@@ -104,7 +104,7 @@ fn kani_drive_finished_signal_terminates_loop() {
     let is_ok = result.is_ok();
     match &result {
         Ok(RuntimeSignal::Finished(v)) => {
-            assert_eq!(*v, slot_value, "Finished must carry the slot value written before the drive");
+            kani::assert_eq!(*v, slot_value, "Finished must carry the slot value written before the drive")
         }
         Ok(_other) => {
         }
@@ -203,7 +203,7 @@ fn kani_drive_continue_keeps_loop_running() {
     let is_ok = result.is_ok();
     match &result {
         Ok(RuntimeSignal::Finished(v)) => {
-            assert_eq!(*v, slot_value, "Final Finished must carry the correct slot value");
+            kani::assert_eq!(*v, slot_value, "Final Finished must carry the correct slot value")
         }
         Ok(other) => {
             kani::assert(!matches!(other, RuntimeSignal::Continue),

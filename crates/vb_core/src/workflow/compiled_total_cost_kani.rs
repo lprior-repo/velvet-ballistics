@@ -44,25 +44,24 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
             declared,
             recomputed,
         }) => {
-            assert_eq!(declared, 0);
-            assert_eq!(recomputed, 1);
+            kani::assert_eq!(declared, 0)
+            kani::assert_eq!(recomputed, 1)
         }
-        _ => assert!(false),
+        _ => kani::assert(false),
     }
 
     match validate_compiled_queries(
         CompiledQueries {
             queries: vec![empty_path_query(1)].into_boxed_slice(),
-            total_yield_cost: 0,
-        },
+            total_yield_cost: 0, },
         1,
     ) {
         Err(QueryParseError::TotalYieldCostMismatch {
             declared,
             recomputed,
         }) => {
-            assert_eq!(declared, 0);
-            assert_eq!(recomputed, 1);
+            kani::assert_eq!(declared, 0)
+            assert_eq!(recomputed, 1)
         }
         _ => assert!(false),
     }

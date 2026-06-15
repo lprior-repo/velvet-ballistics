@@ -18,7 +18,7 @@ fn proof_check_evidence_has_baseline() {
     // has_baseline should return whether baseline_us is Some
     let has_baseline = evidence.has_baseline();
     let has_some = evidence.baseline_us.is_some();
-    assert_eq!(has_baseline, has_some);
+    kani::assert_eq!(has_baseline, has_some)
 }
 
 /// Kani harness for CheckEvidence::threshold_delta.
@@ -30,10 +30,10 @@ fn proof_check_evidence_threshold_delta() {
     match evidence.baseline_us {
         Some(baseline) => {
             let expected = baseline * evidence.threshold_pct / 100;
-            assert_eq!(delta, expected);
+            kani::assert_eq!(delta, expected)
         }
         None => {
-            assert_eq!(delta, 0);
+            kani::assert_eq!(delta, 0)
         }
     }
 }
@@ -57,13 +57,10 @@ fn proof_check_evidence_validation() {
         let max_allowed = baseline + threshold_delta;
         if evidence.result_us <= max_allowed {
             // Within threshold - should pass
-            assert!(
-                result.is_ok()
+            kani::assert(result.is_ok()
                     || matches!(
-                        result,
-                        Err(crate::check::CheckEvidenceError::RegressionDetected { .. })
-                    )
-            );
+                        result, Err(crate::check::CheckEvidenceError::RegressionDetected { .. })
+                    ))
         }
     }
 }

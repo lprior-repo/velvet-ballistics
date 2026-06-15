@@ -228,10 +228,9 @@ fn forbidden_runtime_format_dependency_fails_target_crate() -> TestResult {
 
 #[test]
 fn renamed_forbidden_ui_dependency_fails_target_crate() -> TestResult {
-    let workspace = workspace_with_dependency_line(concat!(
-        "ui = { package = \"",
-        REMOVED_UI_MAKEPAD,
-        "\" }\n",
+    let workspace = workspace_with_dependency_line(format!(
+        "ui = {{ package = \"{}\" }}\n",
+        REMOVED_UI_MAKEPAD
     ))?;
     let output = run_assertions(workspace.path())?;
     let stderr = stderr_text(&output);
@@ -258,10 +257,9 @@ fn renamed_forbidden_runtime_format_dependency_fails_target_crate() -> TestResul
 
 #[test]
 fn path_aliased_forbidden_ui_dependency_fails_target_crate() -> TestResult {
-    let workspace = workspace_with_dependency_line(concat!(
-        "ui = { path = \"../",
-        REMOVED_UI_MAKEPAD,
-        "\" }\n",
+    let workspace = workspace_with_dependency_line(format!(
+        "ui = {{ path = \"../{}\" }}\n",
+        REMOVED_UI_MAKEPAD
     ))?;
     let output = run_assertions(workspace.path())?;
     let stderr = stderr_text(&output);

@@ -179,13 +179,13 @@ fn check_action_ticket_serialization() {
     };
 
     // Verify all 7 fields round-trip correctly.
-    assert_eq!(deserialized.run.get(), ticket.run.get());
-    assert_eq!(deserialized.step.get(), ticket.step.get());
-    assert_eq!(deserialized.seq.get(), ticket.seq.get());
-    assert_eq!(deserialized.action.get(), ticket.action.get());
-    assert_eq!(deserialized.attempt, ticket.attempt);
-    assert_eq!(deserialized.idempotency_key, ticket.idempotency_key);
-    assert_eq!(deserialized.capacity, ticket.capacity);
+    kani::assert_eq!(deserialized.run.get(), ticket.run.get())
+    kani::assert_eq!(deserialized.step.get(), ticket.step.get())
+    kani::assert_eq!(deserialized.seq.get(), ticket.seq.get())
+    kani::assert_eq!(deserialized.action.get(), ticket.action.get())
+    kani::assert_eq!(deserialized.attempt, ticket.attempt)
+    kani::assert_eq!(deserialized.idempotency_key, ticket.idempotency_key)
+    kani::assert_eq!(deserialized.capacity, ticket.capacity)
 }
 
 // ─── OBL-013 extended: Serialization of edge-case values ────────────────────────
@@ -229,5 +229,5 @@ fn check_action_ticket_serialization_edge_cases() {
         }
     };
 
-    assert_eq!(deserialized, ticket, "All fields must round-trip correctly");
+    kani::assert_eq!(deserialized, ticket, "All fields must round-trip correctly")
 }

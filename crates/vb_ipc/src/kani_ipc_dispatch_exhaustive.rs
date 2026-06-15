@@ -54,11 +54,8 @@ fn kani_unknown_command_returns_bad_request() {
     kani::assume(value == 0 || value >= 12);
 
     let command = IpcCommand::from_u16(value);
-    assert!(
-        command.is_ok(),
-        "from_u16({}) must return Ok for unknown values",
-        value
-    );
+    kani::assert(command.is_ok(),
+        "from_u16({}) must return Ok for unknown values", value)
     let command = match command {
         Ok(v) => v,
         Err(_) => {
@@ -68,13 +65,11 @@ fn kani_unknown_command_returns_bad_request() {
     };
 
     // Verify the decoding produced the expected variant.
-    assert_eq!(
-        command,
+    kani::assert_eq!(command,
         IpcCommand::UnknownCommand(value),
         "Value {} must decode to UnknownCommand({})",
         value,
-        value
-    );
+        value)
 
     // Exercise the production dispatch function.
     let header = make_header(command);
@@ -84,13 +79,11 @@ fn kani_unknown_command_returns_bad_request() {
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
     // Invariant: UnknownCommand MUST return BadRequest.
-    assert_eq!(
-        response,
+    kani::assert_eq!(response,
         IpcResponse::BadRequest,
         "UnknownCommand({}) must dispatch to BadRequest, got {:?}",
         value,
-        response
-    );
+        response)
 }
 
 /// PO-KANI-005: Dispatch match has exactly 12 arms and routes correctly.
@@ -108,11 +101,9 @@ fn kani_dispatch_arm_count() {
     let mut runtime = make_runtime();
 
     // Verify count is exactly 11.
-    assert_eq!(
+    kani::assert_eq!(11,
         11,
-        11,
-        "Exactly 11 semantic command variants must exist"
-    );
+        "Exactly 11 semantic command variants must exist")
 
     // Verify a single symbolic semantic command dispatches without panicking.
     let cmd_raw: u16 = kani::any();
@@ -139,11 +130,9 @@ fn kani_dispatch_arm_count() {
     let payload: &[u8] = &[];
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
-    assert_eq!(
-        response,
+    kani::assert_eq!(response,
         IpcResponse::BadRequest,
-        "UnknownCommand must dispatch to BadRequest"
-    );
+        "UnknownCommand must dispatch to BadRequest")
 
     // Coverage note: the semantic command and UnknownCommand arms
     // have been exercised. The Rust compiler enforces exhaustiveness of

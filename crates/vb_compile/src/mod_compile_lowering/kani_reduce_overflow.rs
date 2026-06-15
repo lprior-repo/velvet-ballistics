@@ -60,11 +60,8 @@ fn check_reduce_body_width_overflow() {
     let result = body_width(&body, 3);
     match result {
         Ok(w) => {
-            assert!(
-                w <= usize::from(u16::MAX),
-                "body_width Ok implies width <= u16::MAX"
-            );
-            assert!(w >= 3, "width must be >= overhead");
+            kani::assert(w <= usize::from(u16::MAX), "body_width Ok implies width <= u16::MAX")
+            kani::assert(w >= 3, "width must be >= overhead")
         }
         Err(_) => {}
     }
@@ -80,8 +77,8 @@ fn check_reduce_checked_step_offset_boundary() {
     let result = checked_step_offset(id, offset, "reduce", "body");
     match result {
         Ok(step) => {
-            assert!(step.get() >= id_val, "Ok result must be >= input id");
-            assert!(step.get() <= u16::MAX, "Ok result must be <= u16::MAX");
+            kani::assert(step.get() >= id_val, "Ok result must be >= input id")
+            kani::assert(step.get() <= u16::MAX, "Ok result must be <= u16::MAX")
         }
         Err(_) => {}
     }

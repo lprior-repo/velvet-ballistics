@@ -41,7 +41,7 @@ fn kani_foreach_digest_step_deterministic() {
     let mut h2 = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut h1, &foreach);
     super::super::digest_step_primitive(&mut h2, &foreach);
-    assert_eq!(h1.finalize().as_bytes(), h2.finalize().as_bytes());
+    kani::assert_eq!(h1.finalize().as_bytes(), h2.finalize().as_bytes())
 }
 
 /// PO-K-FE-05 H2: digest_step_primitive is deterministic for Set.
@@ -59,7 +59,7 @@ fn kani_set_digest_step_deterministic() {
     let mut h2 = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut h1, &set_prim);
     super::super::digest_step_primitive(&mut h2, &set_prim);
-    assert_eq!(h1.finalize().as_bytes(), h2.finalize().as_bytes());
+    kani::assert_eq!(h1.finalize().as_bytes(), h2.finalize().as_bytes())
 }
 
 // NOTE: H3 (kani_canonical_digest_deterministic) removed — GOD RULE 1 violation

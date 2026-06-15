@@ -43,17 +43,17 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let intent = generated_intent_kind();
     let required = mrwe6_required_intent_kind_for_class(class);
     let kernel_required = mrwe6_kernel_required_intent_kind_for_class(class);
-    assert_eq!(required, kernel_required);
+    kani::assert_eq!(required, kernel_required)
     let valid_match = mrwe6_intent_kind_matches_event_class(class, intent);
     let kernel_valid_match = mrwe6_kernel_intent_kind_matches_event_class(class, intent);
-    assert_eq!(valid_match, kernel_valid_match);
-    assert_eq!(valid_match, required == intent);
+    kani::assert_eq!(valid_match, kernel_valid_match)
+    kani::assert_eq!(valid_match, required == intent)
 
     let atom = mrwe6_validated_atom(class, intent);
     if valid_match {
-        assert!(atom.is_ok());
+        kani::assert(atom.is_ok(), "kani harness assertion")
     } else {
-        assert!(atom.is_err());
+        kani::assert(atom.is_err(), "kani harness assertion")
     }
 
     let scheduled_atom = mrwe6_valid_scheduled_atom(class, intent);
@@ -62,24 +62,23 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         (class, intent),
         (Mrwe6EventClass::Scheduled, Mrwe6IntentKind::PutPending)
     ) {
-        assert!(matches!(
-            scheduled_atom.map(|validated| validated.atom_kind()),
-            Ok(Mrwe6AtomKind::EventAndPutPending)
-        ));
-        assert_eq!(kernel_scheduled_atom, Ok(Mrwe6AtomKind::EventAndPutPending));
+        kani::assert(matches!(
+            scheduled_atom.map(|validated| validated.atom_kind()), Ok(Mrwe6AtomKind::EventAndPutPending)
+        ))
+        kani::assert_eq!(kernel_scheduled_atom, Ok(Mrwe6AtomKind::EventAndPutPending))
     } else {
-        assert!(scheduled_atom.is_err());
-        assert!(kernel_scheduled_atom.is_err());
+        kani::assert(scheduled_atom.is_err(), "kani harness assertion")
+        kani::assert(kernel_scheduled_atom.is_err(), "kani harness assertion")
     }
 
     let queued_relevant = mrwe6_valid_queued_relevant_intent(class, intent);
     let kernel_queued_relevant = mrwe6_kernel_checked_queued_relevant_atom_kind(class, intent);
     if valid_match && !matches!(intent, Mrwe6IntentKind::None) {
-        assert!(queued_relevant.is_ok());
-        assert!(kernel_queued_relevant.is_ok());
+        kani::assert(queued_relevant.is_ok(), "kani harness assertion")
+        kani::assert(kernel_queued_relevant.is_ok(), "kani harness assertion")
     } else {
-        assert!(queued_relevant.is_err());
-        assert!(kernel_queued_relevant.is_err());
+        kani::assert(queued_relevant.is_err(), "kani harness assertion")
+        kani::assert(kernel_queued_relevant.is_err(), "kani harness assertion")
     }
 
     let equal_payload = kani::any::<bool>();
@@ -87,18 +86,14 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let duplicate = mrwe6_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
     let kernel_duplicate =
         mrwe6_kernel_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
-    assert_eq!(duplicate, kernel_duplicate);
+    kani::assert_eq!(duplicate, kernel_duplicate)
     if !equal_payload {
-        assert_eq!(
-            duplicate,
-            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict
-        );
+        kani::assert_eq!(duplicate,
+            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict)
     }
     if equal_payload && !matches!(class, Mrwe6EventClass::Scheduled) {
-        assert_eq!(
-            duplicate,
-            Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
-        );
+        kani::assert_eq!(duplicate,
+            Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected)
     }
 
     let is_resolution_event = kani::any::<bool>();
@@ -114,12 +109,10 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         key_matches_pending,
         commit_success,
     );
-    assert_eq!(resolution, kernel_resolution);
+    kani::assert_eq!(resolution, kernel_resolution)
     if !is_resolution_event {
-        assert_eq!(
-            resolution,
-            Mrwe6ResolutionCommitDecision::NonResolutionRejected
-        );
+        kani::assert_eq!(resolution,
+            Mrwe6ResolutionCommitDecision::NonResolutionRejected)
     }
     let committed = mrwe6_committed_resolution_from_facts(
         is_resolution_event,
@@ -130,9 +123,9 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         resolution,
         Mrwe6ResolutionCommitDecision::CommittedAndMarkerRemoved
     ) {
-        assert!(committed.is_ok());
+        kani::assert(committed.is_ok(), "kani harness assertion")
     } else {
-        assert!(committed.is_err());
+        kani::assert(committed.is_err(), "kani harness assertion")
     }
 
     let resolution_present = kani::any::<bool>();
@@ -152,7 +145,7 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         false,
     );
     if matches!(kernel_recovery, Mrwe6RecoveryOutcome::PendingInventory) {
-        assert!(marker_present);
+        kani::assert(marker_present, "kani harness assertion")
     }
     if matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory) {
         let pending = mrwe6_pending_inventory_from_facts(
@@ -162,8 +155,8 @@ fn vb_mrwe6_architecture_binding_all_domains() {
             marker_present,
             false,
         );
-        assert!(pending.is_ok());
+        kani::assert(pending.is_ok(), "kani harness assertion")
     } else {
-        assert!(!matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory));
+        kani::assert(!matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory))
     }
 }

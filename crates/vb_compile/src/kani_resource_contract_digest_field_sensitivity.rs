@@ -175,21 +175,17 @@ fn prove_single_field_changes_digest() {
     let encoded_base = encode_contract_bytes(&base);
     let encoded_modified = encode_contract_bytes(&modified);
 
-    assert_ne!(
-        encoded_base, encoded_modified,
+    kani::assert_ne!(encoded_base, encoded_modified,
         "Changing any single field must change the encoding (field_idx={})",
-        field_idx
-    );
+        field_idx)
 
     // Level 2: Digest must differ
     let source = representative_source();
     let digest_base = crate::mod_compile_lowering::canonical_digest(&source, base);
     let digest_modified = crate::mod_compile_lowering::canonical_digest(&source, modified);
-    assert_ne!(
-        digest_base, digest_modified,
+    kani::assert_ne!(digest_base, digest_modified,
         "canonical_digest must be field-sensitive (field_idx={})",
-        field_idx
-    );
+        field_idx)
 
     kani::cover!(field_idx < 17);
 }
@@ -204,27 +200,21 @@ fn prove_secret_results_changes_digest() {
     let mut contract_false = base_contract();
     contract_false.allows_secret_results = false;
 
-    assert_ne!(
-        contract_true.allows_secret_results, contract_false.allows_secret_results,
-        "Precondition: contracts must differ in allows_secret_results"
-    );
+    kani::assert_ne!(contract_true.allows_secret_results, contract_false.allows_secret_results,
+        "Precondition: contracts must differ in allows_secret_results")
 
     // Encoding must differ
     let encoded_true = encode_contract_bytes(&contract_true);
     let encoded_false = encode_contract_bytes(&contract_false);
-    assert_ne!(
-        encoded_true, encoded_false,
-        "allows_secret_results: true vs false must produce different encodings"
-    );
+    kani::assert_ne!(encoded_true, encoded_false,
+        "allows_secret_results: true vs false must produce different encodings")
 
     // Digest must differ
     let source = representative_source();
     let digest_true = crate::mod_compile_lowering::canonical_digest(&source, contract_true);
     let digest_false = crate::mod_compile_lowering::canonical_digest(&source, contract_false);
-    assert_ne!(
-        digest_true, digest_false,
-        "canonical_digest must change when allows_secret_results changes"
-    );
+    kani::assert_ne!(digest_true, digest_false,
+        "canonical_digest must change when allows_secret_results changes")
 
     kani::cover!(digest_true != digest_false);
 }

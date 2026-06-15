@@ -13,7 +13,7 @@ fn harness_new_valid_capacity() {
     kani::assume(usize::from(capacity) <= MAX_EXPRESSION_STACK_USIZE);
 
     let result = ExprStack::new(capacity);
-    assert!(result.is_ok());
+    kani::assert(result.is_ok(), "kani harness assertion")
 
     let stack = match result {
         Ok(v) => v,
@@ -22,7 +22,7 @@ fn harness_new_valid_capacity() {
             loop {}
         }
     };
-    assert_eq!(stack.len(), 0);
+    kani::assert_eq!(stack.len(), 0)
 }
 
 #[kani::proof]
@@ -32,11 +32,11 @@ fn harness_new_invalid_capacity() {
     kani::assume(usize::from(capacity) > MAX_EXPRESSION_STACK_USIZE);
 
     let result = ExprStack::new(capacity);
-    assert!(result.is_err());
+    kani::assert(result.is_err(), "kani harness assertion")
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
-            assert_eq!(max, capacity);
+            kani::assert_eq!(max, capacity)
         }
         _ => {
             kani::assume(false);
@@ -61,8 +61,8 @@ fn harness_push_with_room() {
     };
 
     let result = stack.push(SlotValue::Null);
-    assert!(result.is_ok());
-    assert_eq!(stack.len(), 1);
+    kani::assert(result.is_ok(), "kani harness assertion")
+    kani::assert_eq!(stack.len(), 1)
 }
 
 #[kani::proof]
@@ -82,14 +82,14 @@ fn harness_push_overflow_returns_error() {
             loop {}
         }
     };
-    assert_eq!(stack.len(), 1);
+    kani::assert_eq!(stack.len(), 1)
 
     let result = stack.push(SlotValue::Null);
-    assert!(result.is_err());
+    kani::assert(result.is_err(), "kani harness assertion")
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
-            assert_eq!(max, 1);
+            kani::assert_eq!(max, 1)
         }
         _ => {
             kani::assume(false);
@@ -123,8 +123,8 @@ fn harness_pop_with_items() {
     }
 
     let result = stack.pop();
-    assert!(result.is_ok());
-    assert_eq!(stack.len(), initial_len - 1);
+    kani::assert(result.is_ok(), "kani harness assertion")
+    kani::assert_eq!(stack.len(), initial_len - 1)
 }
 
 #[kani::proof]
@@ -137,11 +137,11 @@ fn harness_pop_empty_returns_underflow() {
             loop {}
         }
     };
-    assert_eq!(stack.len(), 0);
+    kani::assert_eq!(stack.len(), 0)
     let mut stack = stack;
 
     let result = stack.pop();
-    assert!(result.is_err());
+    kani::assert(result.is_err(), "kani harness assertion")
 
     match result {
         Err(EngineError::ExpressionStackUnderflow) => {}
@@ -181,7 +181,7 @@ fn harness_push_pop_roundtrip() {
             loop {}
         }
     };
-    assert_eq!(popped, SlotValue::Null);
+    kani::assert_eq!(popped, SlotValue::Null)
 }
 
 #[kani::proof]
@@ -201,14 +201,14 @@ fn harness_pop_pair_underflow() {
             loop {}
         }
     };
-    assert_eq!(stack.len(), 1);
+    kani::assert_eq!(stack.len(), 1)
 
     let result = pop_value(&mut stack);
-    assert!(result.is_ok());
-    assert_eq!(stack.len(), 0);
+    kani::assert(result.is_ok(), "kani harness assertion")
+    kani::assert_eq!(stack.len(), 0)
 
     let result2 = pop_value(&mut stack);
-    assert!(result2.is_err());
+    kani::assert(result2.is_err(), "kani harness assertion")
     match result2 {
         Err(EngineError::ExpressionStackUnderflow) => {}
         _ => {
@@ -260,5 +260,5 @@ fn harness_push_to_capacity_then_overflow() {
     }
 
     let result = stack.push(SlotValue::Null);
-    assert!(result.is_err());
+    kani::assert(result.is_err(), "kani harness assertion")
 }

@@ -433,21 +433,19 @@ mod kani_harnesses {
 
         match store.insert_blob(bytes::Bytes::new()) {
             Ok(_) => {}
-            Err(_) => assert!(false),
-        }
-        assert!(store.total_arena_count() == 1);
+            Err(_) => kani::assert(false), }
+        assert!(store.total_arena_count() == 1)
 
         let result = store.insert_blob(bytes::Bytes::new());
         match &result {
             Err(super::CoreError::BudgetExceeded { budget, limit }) => {
-                assert!(same_static_str(budget, "max_slots"));
-                assert!(*limit == 1);
+                kani::assert(same_static_str(budget, "max_slots"))
+                kani::assert(*limit == 1, "kani harness assertion")
             }
-            Ok(_) => assert!(false),
-            Err(_) => assert!(false),
-        }
-        core::mem::forget(result);
-        assert!(store.total_arena_count() == 1);
+            Ok(_) => kani::assert(false),
+            Err(_) => assert!(false), }
+        core::mem::forget(result)
+        kani::assert(store.total_arena_count() == 1, "kani harness assertion")
     }
 }
 

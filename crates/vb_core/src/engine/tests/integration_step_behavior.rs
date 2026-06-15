@@ -1368,26 +1368,23 @@ fn mark_failed_twice_is_idempotent() -> Result<(), String> {
 
 #[test]
 fn pending_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Pending,
-        StepState::Waiting
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Pending, StepState::Waiting
+    ))
 }
 
 #[test]
 fn pending_to_asking_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Pending,
-        StepState::Asking
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Pending, StepState::Asking
+    ))
 }
 
 #[test]
 fn running_to_pending_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Running,
-        StepState::Pending
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Running, StepState::Pending
+    ))
 }
 
 #[test]
@@ -1396,99 +1393,87 @@ fn succeeded_to_running_is_invalid_transition() {
     // transitions back to running. Loop body reentry uses the explicit
     // Succeeded->Pending admission path in RunFrame::mark_pending before
     // mark_running; the direct Succeeded->Running edge is invalid.
-    assert!(!is_valid_step_state_transition(
-        StepState::Succeeded,
-        StepState::Running
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Succeeded, StepState::Running
+    ))
 }
 
 #[test]
 fn succeeded_to_pending_is_invalid_direct_transition() {
     // Succeeded -> Pending is admitted only by RunFrame::mark_pending.
-    assert!(!is_valid_step_state_transition(
-        StepState::Succeeded,
-        StepState::Pending
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Succeeded, StepState::Pending
+    ))
 }
 
 #[test]
 fn succeeded_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Succeeded,
-        StepState::Waiting
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Succeeded, StepState::Waiting
+    ))
 }
 
 #[test]
 fn failed_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Failed,
-        StepState::Running
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Failed, StepState::Running
+    ))
 }
 
 #[test]
 fn failed_to_waiting_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Failed,
-        StepState::Waiting
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Failed, StepState::Waiting
+    ))
 }
 
 #[test]
 fn waiting_to_pending_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Waiting,
-        StepState::Pending
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Waiting, StepState::Pending
+    ))
 }
 
 #[test]
 fn cancelled_to_running_is_invalid_transition() {
-    assert!(!is_valid_step_state_transition(
-        StepState::Cancelled,
-        StepState::Running
-    ));
+    kani::assert(!is_valid_step_state_transition(
+        StepState::Cancelled, StepState::Running
+    ))
 }
 
 #[test]
 fn pending_to_running_is_valid_transition() {
-    assert!(is_valid_step_state_transition(
-        StepState::Pending,
-        StepState::Running
-    ));
+    kani::assert(is_valid_step_state_transition(
+        StepState::Pending, StepState::Running
+    ))
 }
 
 #[test]
 fn running_to_succeeded_is_valid_transition() {
-    assert!(is_valid_step_state_transition(
-        StepState::Running,
-        StepState::Succeeded
-    ));
+    kani::assert(is_valid_step_state_transition(
+        StepState::Running, StepState::Succeeded
+    ))
 }
 
 #[test]
 fn running_to_failed_is_valid_transition() {
-    assert!(is_valid_step_state_transition(
-        StepState::Running,
-        StepState::Failed
-    ));
+    kani::assert(is_valid_step_state_transition(
+        StepState::Running, StepState::Failed
+    ))
 }
 
 #[test]
 fn running_to_waiting_is_valid_transition() {
-    assert!(is_valid_step_state_transition(
-        StepState::Running,
-        StepState::Waiting
-    ));
+    kani::assert(is_valid_step_state_transition(
+        StepState::Running, StepState::Waiting
+    ))
 }
 
 #[test]
 fn running_to_asking_is_valid_transition() {
-    assert!(is_valid_step_state_transition(
-        StepState::Running,
-        StepState::Asking
-    ));
+    kani::assert(is_valid_step_state_transition(
+        StepState::Running, StepState::Asking
+    ))
 }
 
 #[test]
@@ -1504,10 +1489,7 @@ fn same_state_idempotent_is_always_valid() {
         StepState::Cancelled,
     ];
     for state in all_states {
-        assert!(
-            is_valid_step_state_transition(state, state),
-            "idempotent transition should be valid for {state:?}"
-        );
+        kani::assert(is_valid_step_state_transition(state, state), "idempotent transition should be valid for {state:?}")
     }
 }
 
@@ -1968,6 +1950,6 @@ mod kani_boundedness {
         let result = crate::frame::is_valid_step_state_transition(current, next);
         // kani::assert is used to force the solver to explore all paths;
         // the property we want is that execution reaches this point (no panic).
-        assert!(result || !result);
+        kani::assert(result || !result, "kani harness assertion")
     }
 }

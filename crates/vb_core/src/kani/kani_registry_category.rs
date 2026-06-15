@@ -61,16 +61,14 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let high_byte = (entry.numeric >> 8) & 0xFF;
             let expected = expected_high_byte(entry.category);
-            assert_eq!(
-                high_byte,
+            kani::assert_eq!(high_byte,
                 expected,
                 "Entry '{}' (code {:04X}, category {:?}): high byte {:02X} != expected {:02X}",
                 entry.symbolic,
                 entry.numeric,
                 category_name(entry.category),
                 high_byte,
-                expected
-            );
+                expected)
         }
     }
 
@@ -83,11 +81,8 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let low_byte = entry.numeric & 0xFF;
             // Low byte must be non-zero for all categories
-            assert!(
-                low_byte != 0,
-                "Entry '{}': low byte must be non-zero (reserved for sentinel)",
-                entry.symbolic
-            );
+            kani::assert(low_byte != 0,
+                "Entry '{}': low byte must be non-zero (reserved for sentinel)", entry.symbolic)
         }
     }
 }

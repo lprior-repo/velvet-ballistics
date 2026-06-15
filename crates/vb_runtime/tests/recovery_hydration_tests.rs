@@ -157,16 +157,12 @@ fn clean_shutdown_recovery_reads_all_events_in_exact_order() {
         .events_for_run(run)
         .expect("events_for_run should succeed after clean shutdown");
 
-    assert_eq!(
-        recovered.len(),
+    kani::assert_eq!(recovered.len(),
         original.len(),
-        "recovered event count must match after clean shutdown"
-    );
+        "recovered event count must match after clean shutdown")
     for (i, (orig, rec)) in original.iter().zip(recovered.iter()).enumerate() {
-        assert_eq!(
-            orig, rec,
-            "event at index {i} must match after clean shutdown"
-        );
+        kani::assert_eq!(orig, rec,
+            "event at index {i} must match after clean shutdown")
     }
 }
 
@@ -190,17 +186,15 @@ fn clean_shutdown_recovery_reconstructs_exact_summary_counts() {
         .expect("recover_runtime_summary should succeed after clean shutdown");
     let summary = hydration.summary();
 
-    assert_eq!(summary.run, run);
-    assert_eq!(summary.workflow, Some(digest));
-    assert_eq!(summary.steps_started, 2);
-    assert_eq!(summary.steps_succeeded, 2);
-    assert_eq!(summary.slots_written, 2);
-    assert_eq!(
-        summary.terminal,
+    kani::assert_eq!(summary.run, run)
+    kani::assert_eq!(summary.workflow, Some(digest))
+    kani::assert_eq!(summary.steps_started, 2)
+    kani::assert_eq!(summary.steps_succeeded, 2)
+    kani::assert_eq!(summary.slots_written, 2)
+    kani::assert_eq!(summary.terminal,
         Some(RecoveryTerminalState::Finished {
             result: SlotIdx::new(1)
-        })
-    );
+        }))
 }
 
 /// Given a journal with a finished run
@@ -231,11 +225,11 @@ fn clean_shutdown_recovery_is_deterministic_across_reopens() {
             .summary()
     };
 
-    assert_eq!(summary_a.run, summary_b.run);
-    assert_eq!(summary_a.steps_started, summary_b.steps_started);
-    assert_eq!(summary_a.steps_succeeded, summary_b.steps_succeeded);
-    assert_eq!(summary_a.slots_written, summary_b.slots_written);
-    assert_eq!(summary_a.terminal, summary_b.terminal);
+    kani::assert_eq!(summary_a.run, summary_b.run)
+    kani::assert_eq!(summary_a.steps_started, summary_b.steps_started)
+    kani::assert_eq!(summary_a.steps_succeeded, summary_b.steps_succeeded)
+    kani::assert_eq!(summary_a.slots_written, summary_b.slots_written)
+    kani::assert_eq!(summary_a.terminal, summary_b.terminal)
 }
 
 // ============================================================================
@@ -283,9 +277,9 @@ fn crash_recovery_reads_partial_events_written_before_crash() {
         .events_for_run(run)
         .expect("events_for_run should succeed for partial run");
 
-    assert_eq!(recovered.len(), partial.len());
+    kani::assert_eq!(recovered.len(), partial.len())
     for (i, (orig, rec)) in partial.iter().zip(recovered.iter()).enumerate() {
-        assert_eq!(orig, rec, "partial event {i} must survive crash");
+        kani::assert_eq!(orig, rec, "partial event {i} must survive crash")
     }
 }
 
@@ -322,12 +316,9 @@ fn crash_recovery_detects_no_terminal_state_for_incomplete_run() {
         .expect("recover_runtime_summary should succeed for incomplete run");
     let summary = hydration.summary();
 
-    assert!(
-        summary.terminal.is_none(),
-        "partial run must not have a terminal state"
-    );
-    assert_eq!(summary.steps_started, 1);
-    assert_eq!(summary.steps_succeeded, 0);
+    kani::assert(summary.terminal.is_none(), "partial run must not have a terminal state")
+    kani::assert_eq!(summary.steps_started, 1)
+    kani::assert_eq!(summary.steps_succeeded, 0)
 }
 
 /// Given only a RunAccepted event (maximally partial)
@@ -355,11 +346,11 @@ fn crash_recovery_run_accepted_only_returns_minimal_summary() {
         .expect("summary recovery should succeed for RunAccepted-only run");
     let summary = hydration.summary();
 
-    assert_eq!(summary.run, run);
-    assert_eq!(summary.workflow, Some(digest));
-    assert_eq!(summary.steps_started, 0);
-    assert_eq!(summary.steps_succeeded, 0);
-    assert_eq!(summary.terminal, None);
+    kani::assert_eq!(summary.run, run)
+    kani::assert_eq!(summary.workflow, Some(digest))
+    kani::assert_eq!(summary.steps_started, 0)
+    kani::assert_eq!(summary.steps_succeeded, 0)
+    kani::assert_eq!(summary.terminal, None)
 }
 
 // ============================================================================
@@ -402,13 +393,13 @@ fn hydration_from_events_reconstructs_exact_pc_and_dimensions() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "hydration should succeed: {result:?}");
+    kani::assert(result.is_ok(), "hydration should succeed: {result:?}")
 
     let frame = result.unwrap();
-    assert_eq!(frame.run_id(), run);
-    assert_eq!(frame.pc(), StepIdx::new(3));
-    assert_eq!(frame.step_count(), 4);
-    assert_eq!(frame.slot_count(), 6);
+    kani::assert_eq!(frame.run_id(), run)
+    kani::assert_eq!(frame.pc(), StepIdx::new(3))
+    kani::assert_eq!(frame.step_count(), 4)
+    kani::assert_eq!(frame.slot_count(), 6)
 }
 
 /// Given a journal with slot writes containing values
@@ -458,13 +449,13 @@ fn hydration_from_frame_seed_reconstructs_slot_values_and_taint() {
         .iter()
         .find(|s| s.slot == SlotIdx::ZERO)
         .expect("slot 0 must be in recovered slots");
-    assert_eq!(slot.value, SlotValue::I64(77));
+    kani::assert_eq!(slot.value, SlotValue::I64(77))
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let frame = boundary
         .hydrate_run_frame()
         .expect("boundary hydration should succeed");
-    assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(77)));
+    kani::assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(77)))
 }
 
 /// Given a journal with WaitScheduled and AskScheduled events
@@ -524,27 +515,23 @@ fn hydration_reconstructs_waiting_and_asking_step_states() {
         .iter()
         .find(|s| s.step == StepIdx::ZERO)
         .expect("step 0 must be in recovered steps");
-    assert_eq!(step0.state, RecoveredStepState::Waiting);
+    kani::assert_eq!(step0.state, RecoveredStepState::Waiting)
 
     let step1 = seed
         .steps
         .iter()
         .find(|s| s.step == StepIdx::new(1))
         .expect("step 1 must be in recovered steps");
-    assert_eq!(step1.state, RecoveredStepState::Asking);
+    kani::assert_eq!(step1.state, RecoveredStepState::Asking)
 
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     let frame = boundary
         .hydrate_run_frame()
         .expect("boundary hydration should succeed");
-    assert_eq!(
-        frame.step_state(StepIdx::ZERO),
-        Ok(vb_core::frame::StepState::Waiting)
-    );
-    assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(vb_core::frame::StepState::Asking)
-    );
+    kani::assert_eq!(frame.step_state(StepIdx::ZERO),
+        Ok(vb_core::frame::StepState::Waiting))
+    kani::assert_eq!(frame.step_state(StepIdx::new(1)),
+        Ok(vb_core::frame::StepState::Asking))
 }
 
 /// Given a journal with a RunFailed event
@@ -574,10 +561,7 @@ fn hydration_reconstructs_failed_terminal_state() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration should succeed for failed run: {result:?}"
-    );
+    kani::assert(result.is_ok(), "hydration should succeed for failed run: {result:?}")
 }
 
 // ============================================================================
@@ -617,10 +601,7 @@ fn hydration_rejects_sequence_gap_in_events() {
     // strictly enforcing continuity. Sequence gap detection is the caller's
     // responsibility. With events at seq 0, 1, 3, the function hydrates from
     // what it has (seq 0, 1) and ignores the gap.
-    assert!(
-        result.is_ok(),
-        "hydration should succeed with gapped-but-present events, got: {result:?}"
-    );
+    kani::assert(result.is_ok(), "hydration should succeed with gapped-but-present events, got: {result:?}")
 }
 
 /// Given an empty event list
@@ -632,7 +613,7 @@ fn hydration_returns_no_recovery_data_for_empty_events() {
     let Err(RecoveryError::NoRecoveryData { run }) = result else {
         panic!("expected NoRecoveryData for empty events, got: {result:?}");
     };
-    assert_eq!(run, RunId::new(10401));
+    kani::assert_eq!(run, RunId::new(10401))
 }
 
 /// Given a journal with events for a different run only
@@ -660,7 +641,7 @@ fn hydration_returns_no_recovery_data_for_wrong_run() {
     let Err(RecoveryError::NoRecoveryData { run }) = result else {
         panic!("expected NoRecoveryData for missing run, got: {result:?}");
     };
-    assert_eq!(run, missing_run);
+    kani::assert_eq!(run, missing_run)
 }
 
 // ============================================================================
@@ -716,10 +697,7 @@ fn corrupt_snapshot_missing_taint_for_non_empty_slots_fails_closed() {
     let tail = vec![];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_err(),
-        "should fail when taint is missing for non-empty slots"
-    );
+    kani::assert(result.is_err(), "should fail when taint is missing for non-empty slots")
 }
 
 /// Given a snapshot with empty slots and empty taint
@@ -754,10 +732,7 @@ fn snapshot_empty_slots_empty_taint_hydrates_successfully() {
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_ok(),
-        "empty taint + empty slots should succeed: {result:?}"
-    );
+    kani::assert(result.is_ok(), "empty taint + empty slots should succeed: {result:?}")
 }
 
 // ============================================================================
@@ -793,11 +768,11 @@ fn checkpoint_snapshot_roundtrip_preserves_all_fields() {
         .expect("snapshot load should succeed")
         .expect("snapshot should exist");
 
-    assert_eq!(loaded.run, original.run);
-    assert_eq!(loaded.seq, original.seq);
-    assert_eq!(loaded.workflow, original.workflow);
-    assert_eq!(loaded.slots, original.slots);
-    assert_eq!(loaded.taint, original.taint);
+    kani::assert_eq!(loaded.run, original.run)
+    kani::assert_eq!(loaded.seq, original.seq)
+    kani::assert_eq!(loaded.workflow, original.workflow)
+    kani::assert_eq!(loaded.slots, original.slots)
+    kani::assert_eq!(loaded.taint, original.taint)
 }
 
 /// Given a journal with events AND a snapshot at seq 2
@@ -852,10 +827,7 @@ fn checkpoint_snapshot_plus_tail_hydrates_using_snapshot_watermark() {
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_ok(),
-        "snapshot + tail hydration should succeed: {result:?}"
-    );
+    kani::assert(result.is_ok(), "snapshot + tail hydration should succeed: {result:?}")
 }
 
 // ============================================================================
@@ -896,14 +868,11 @@ fn incremental_recovery_snapshot_plus_tail_applies_only_events_after_watermark()
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(
-        result.is_ok(),
-        "incremental recovery should succeed: {result:?}"
-    );
+    kani::assert(result.is_ok(), "incremental recovery should succeed: {result:?}")
 
     let frame = result.unwrap();
-    assert_eq!(frame.pc(), StepIdx::new(2));
-    assert_eq!(frame.step_count(), 3);
+    kani::assert_eq!(frame.pc(), StepIdx::new(2))
+    kani::assert_eq!(frame.step_count(), 3)
 }
 
 /// Given snapshot at seq 2 and tail containing an event at seq 1 (before watermark)
@@ -930,10 +899,9 @@ fn incremental_recovery_rejects_tail_event_before_watermark() {
     }];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(matches!(
-        result,
-        Err(RecoveryError::ReplayDivergence { .. })
-    ));
+    kani::assert(matches!(
+        result, Err(RecoveryError::ReplayDivergence { .. })
+    ))
 }
 
 // ============================================================================
@@ -967,8 +935,8 @@ fn recovery_idempotency_full_journal_replayed_twice_identical() {
         recover_full_journal(&j, run, &mut tracker, &[], &[]).expect("second replay should succeed")
     };
 
-    assert_eq!(replay_a, replay_b);
-    assert_eq!(replay_a.len(), events.len());
+    kani::assert_eq!(replay_a, replay_b)
+    kani::assert_eq!(replay_a.len(), events.len())
 }
 
 /// Given snapshot + tail events
@@ -1008,10 +976,10 @@ fn recovery_idempotency_snapshot_tail_hydrated_twice_identical() {
     let frame_a = result_a.expect("first hydration should succeed");
     let frame_b = result_b.expect("second hydration should succeed");
 
-    assert_eq!(frame_a.run_id(), frame_b.run_id());
-    assert_eq!(frame_a.pc(), frame_b.pc());
-    assert_eq!(frame_a.step_count(), frame_b.step_count());
-    assert_eq!(frame_a.slot_count(), frame_b.slot_count());
+    kani::assert_eq!(frame_a.run_id(), frame_b.run_id())
+    kani::assert_eq!(frame_a.pc(), frame_b.pc())
+    kani::assert_eq!(frame_a.step_count(), frame_b.step_count())
+    kani::assert_eq!(frame_a.slot_count(), frame_b.slot_count())
 }
 
 /// Given a journal with events, when recovered twice to Summary
@@ -1041,12 +1009,12 @@ fn recovery_idempotency_summary_recovered_twice_identical() {
             .summary()
     };
 
-    assert_eq!(s1.run, s2.run);
-    assert_eq!(s1.steps_started, s2.steps_started);
-    assert_eq!(s1.steps_succeeded, s2.steps_succeeded);
-    assert_eq!(s1.slots_written, s2.slots_written);
-    assert_eq!(s1.terminal, s2.terminal);
-    assert_eq!(s1.suspensions, s2.suspensions);
+    kani::assert_eq!(s1.run, s2.run)
+    kani::assert_eq!(s1.steps_started, s2.steps_started)
+    kani::assert_eq!(s1.steps_succeeded, s2.steps_succeeded)
+    kani::assert_eq!(s1.slots_written, s2.slots_written)
+    kani::assert_eq!(s1.terminal, s2.terminal)
+    kani::assert_eq!(s1.suspensions, s2.suspensions)
 }
 
 // ============================================================================
@@ -1093,10 +1061,7 @@ fn max_size_journal_near_max_seq_events_recoverable() {
     // only contains seq u64::MAX-3..u64::MAX, nothing below). This is correct
     // behavior: the journal detects the missing low-range events.
     let recovered = journal.events_for_run(run);
-    assert!(
-        matches!(recovered, Err(vb_storage::JournalError::SequenceGap { .. })),
-        "events_for_run at near-u64::MAX seq should report SequenceGap due to missing low-range events, got: {recovered:?}"
-    );
+    kani::assert(matches!(recovered, Err(vb_storage::JournalError::SequenceGap { .. })), "events_for_run at near-u64::MAX seq should report SequenceGap due to missing low-range events, got: {recovered:?}")
 }
 
 /// Given 100 events for a single run
@@ -1148,14 +1113,12 @@ fn max_size_journal_many_events_recoverable_in_order() {
         .events_for_run(run)
         .expect("events_for_run should succeed for many events");
 
-    assert_eq!(
-        recovered.len(),
+    kani::assert_eq!(recovered.len(),
         events.len(),
         "all {n} events should be recoverable",
-        n = events.len()
-    );
+        n = events.len())
     for (i, (orig, rec)) in events.iter().zip(recovered.iter()).enumerate() {
-        assert_eq!(orig, rec, "event {i} must match");
+        kani::assert_eq!(orig, rec, "event {i} must match")
     }
 }
 
@@ -1210,10 +1173,10 @@ fn multiple_noncontiguous_slot_writes_derive_correct_slot_count() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "noncontiguous slots should succeed");
+    kani::assert(result.is_ok(), "noncontiguous slots should succeed")
 
     let frame = result.unwrap();
-    assert_eq!(frame.slot_count(), 8);
+    kani::assert_eq!(frame.slot_count(), 8)
 }
 
 /// Given events with actions scheduled and then completed
@@ -1265,10 +1228,7 @@ fn action_scheduled_then_completed_is_resolved_after_recovery() {
     recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("full journal recovery should succeed");
 
-    assert!(
-        tracker.is_resolved(action, StepIdx::new(2)),
-        "action should be resolved after recovery"
-    );
+    kani::assert(tracker.is_resolved(action, StepIdx::new(2)), "action should be resolved after recovery")
 }
 
 /// Given events where an action is scheduled, completed, then re-scheduled
@@ -1333,8 +1293,8 @@ fn non_idempotent_action_rescheduled_after_completion_is_blocked() {
     else {
         panic!("expected NonIdempotentActionBlocked, got: {result:?}");
     };
-    assert_eq!(found_action, action);
-    assert_eq!(found_step, StepIdx::ZERO);
+    kani::assert_eq!(found_action, action)
+    kani::assert_eq!(found_step, StepIdx::ZERO)
 }
 
 /// Given a journal with RunCancelled
@@ -1371,7 +1331,7 @@ fn run_cancelled_produces_cancelled_terminal_state() {
         .expect("summary recovery should succeed")
         .summary();
 
-    assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+    kani::assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled))
 }
 
 /// Given events with RunAdmission events
@@ -1414,9 +1374,9 @@ fn run_admission_metadata_preserved_in_summary() {
         .expect("summary recovery should succeed")
         .summary();
 
-    assert_eq!(summary.run, run);
-    assert_eq!(summary.steps_started, 1);
-    assert_eq!(summary.steps_succeeded, 1);
+    kani::assert_eq!(summary.run, run)
+    kani::assert_eq!(summary.steps_started, 1)
+    kani::assert_eq!(summary.steps_succeeded, 1)
 }
 
 /// Given a journal with a single run and valid terminal state
@@ -1467,10 +1427,7 @@ fn recover_runtime_summary_with_expected_terminal_matches() {
             result: SlotIdx::ZERO,
         },
     );
-    assert!(
-        result.is_ok(),
-        "matching terminal should succeed: {result:?}"
-    );
+    kani::assert(result.is_ok(), "matching terminal should succeed: {result:?}")
 }
 
 /// Given a journal with RunCancelled as terminal
@@ -1512,8 +1469,8 @@ fn recover_runtime_summary_with_expected_terminal_mismatch() {
     let Err(RecoveryError::TerminalStateMismatch { expected, found }) = result else {
         panic!("expected TerminalStateMismatch, got: {result:?}");
     };
-    assert_eq!(expected.as_str(), "Finished");
-    assert_eq!(found.as_str(), "Cancelled");
+    kani::assert_eq!(expected.as_str(), "Finished")
+    kani::assert_eq!(found.as_str(), "Cancelled")
 }
 
 /// Given multiple runs in a journal
@@ -1572,12 +1529,12 @@ fn recovery_across_multiple_runs_is_isolated() {
     let recovered_a = journal
         .events_for_run(run_a)
         .expect("run A events should exist");
-    assert_eq!(recovered_a.len(), events_a.len());
+    kani::assert_eq!(recovered_a.len(), events_a.len())
 
     let recovered_b = journal
         .events_for_run(run_b)
         .expect("run B events should exist");
-    assert_eq!(recovered_b.len(), events_b.len());
+    kani::assert_eq!(recovered_b.len(), events_b.len())
 
     let summary_a = recover_runtime_summary(&journal, run_a)
         .expect("summary A should succeed")
@@ -1586,11 +1543,10 @@ fn recovery_across_multiple_runs_is_isolated() {
         .expect("summary B should succeed")
         .summary();
 
-    assert!(matches!(
-        summary_a.terminal,
-        Some(RecoveryTerminalState::Finished { .. })
-    ));
-    assert_eq!(summary_b.terminal, Some(RecoveryTerminalState::Cancelled));
+    kani::assert(matches!(
+        summary_a.terminal, Some(RecoveryTerminalState::Finished { .. })
+    ))
+    kani::assert_eq!(summary_b.terminal, Some(RecoveryTerminalState::Cancelled))
 }
 
 /// Given a journal with events and a matching digest
@@ -1624,10 +1580,7 @@ fn verify_digests_workflow_source_only_level_passes() {
         DigestCheck::WorkflowSourceOnly,
         None,
     );
-    assert!(
-        result.is_ok(),
-        "WorkflowSourceOnly should only check workflow digest"
-    );
+    kani::assert(result.is_ok(), "WorkflowSourceOnly should only check workflow digest")
 }
 
 /// Given a journal with events and a mismatched IR digest
@@ -1664,8 +1617,8 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
     let Err(RecoveryError::CompiledIrDigestMismatch { expected, found }) = result else {
         panic!("expected CompiledIrDigestMismatch, got: {result:?}");
     };
-    assert_eq!(expected, test_digest(0x24));
-    assert_eq!(found, test_digest(0x25));
+    kani::assert_eq!(expected, test_digest(0x24))
+    kani::assert_eq!(found, test_digest(0x25))
 }
 
 // ============================================================================
@@ -1717,10 +1670,7 @@ fn runtime_boundary_accepts_pending_actions_as_supported() {
     let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
     // After fix: pending_actions alone does NOT block hydration
     let result = boundary.hydrate_run_frame();
-    assert!(
-        result.is_ok(),
-        "expected Ok for supported pending_actions recovery, got: {result:?}"
-    );
+    kani::assert(result.is_ok(), "expected Ok for supported pending_actions recovery, got: {result:?}")
 }
 
 /// Given a RecoveryHydration::FrameSeed with unsupported slot_taint
@@ -1769,12 +1719,9 @@ fn runtime_boundary_exposes_unsupported_state() {
     let hydration = RecoveryHydration::FrameSeed(seed);
     let boundary = vb_runtime::recovery::recovery_boundary_from_hydration(hydration);
 
-    assert_eq!(boundary.summary(), summary);
+    kani::assert_eq!(boundary.summary(), summary)
     let result = boundary.hydrate_run_frame();
-    assert!(
-        result.is_err(),
-        "slot_taint unsupported should fail hydration"
-    );
+    kani::assert(result.is_err(), "slot_taint unsupported should fail hydration")
 }
 
 /// Given an empty journal
@@ -1794,7 +1741,7 @@ fn empty_journal_returns_no_recovery_data_for_any_run() {
     let Err(RecoveryError::NoRecoveryData { run: found }) = result else {
         panic!("expected NoRecoveryData, got: {result:?}");
     };
-    assert_eq!(found, run);
+    kani::assert_eq!(found, run)
 }
 
 // ============================================================================
@@ -1838,10 +1785,7 @@ fn slot_written_with_none_value_hydrates_successfully() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration with None slot value should succeed: {result:?}"
-    );
+    kani::assert(result.is_ok(), "hydration with None slot value should succeed: {result:?}")
 }
 
 /// Given a full run with SlotWrittenEvent having None values
@@ -1887,7 +1831,7 @@ fn slot_written_presence_counted_in_summary_even_with_none_value() {
         .expect("summary recovery should succeed")
         .summary();
 
-    assert_eq!(summary.slots_written, 2);
+    kani::assert_eq!(summary.slots_written, 2)
 }
 
 /// Given a run with a RetryScheduled event
@@ -1931,10 +1875,7 @@ fn retry_scheduled_event_reconstructed_in_hydration() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(
-        result.is_ok(),
-        "hydration with retry should succeed: {result:?}"
-    );
+    kani::assert(result.is_ok(), "hydration with retry should succeed: {result:?}")
 }
 
 // ============================================================================
@@ -1968,10 +1909,10 @@ mod kani_recovery {
 
         let a = RecoveryHydration::Summary(summary).summary();
         let b = RecoveryHydration::Summary(summary).summary();
-        assert!(a == b);
+        kani::assert(a == b, "kani harness assertion")
 
         let summary_run = a.run;
-        assert!(summary_run.get() == run_id);
+        kani::assert(summary_run.get() == run_id, "kani harness assertion")
     }
 
     #[kani::proof]
@@ -2004,8 +1945,8 @@ mod kani_recovery {
             kani::assume(false);
             return;
         };
-        assert!(err_expected == expected);
-        assert!(err_found == found);
+        kani::assert(err_expected == expected, "kani harness assertion")
+        kani::assert(err_found == found, "kani harness assertion")
     }
 
     #[kani::proof]
@@ -2030,7 +1971,7 @@ mod kani_recovery {
         let step_idx: u16 = kani::any();
 
         let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
-        assert!(!resolved);
+        kani::assert(!resolved, "kani harness assertion")
     }
 
     #[kani::proof]
@@ -2043,7 +1984,7 @@ mod kani_recovery {
         tracker.mark_completed(ActionId::new(action_id), StepIdx::new(step_idx));
 
         let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
-        assert!(resolved);
+        kani::assert(resolved, "kani harness assertion")
     }
 
     #[kani::proof]
@@ -2055,7 +1996,7 @@ mod kani_recovery {
         tracker.mark_failed(ActionId::new(action_id), StepIdx::new(step_idx));
 
         let resolved = tracker.is_resolved(ActionId::new(action_id), StepIdx::new(step_idx));
-        assert!(resolved);
+        kani::assert(resolved, "kani harness assertion")
     }
 
     #[kani::proof]
@@ -2082,7 +2023,7 @@ mod kani_recovery {
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, RunId::new(correct_run_id));
-        assert!(result.is_err());
+        kani::assert(result.is_err(), "kani harness assertion")
     }
 
     #[kani::proof]
@@ -2096,7 +2037,7 @@ mod kani_recovery {
         };
 
         let result = hydrate_run_frame(&snapshot, &[], RunId::new(1));
-        assert!(result.is_err());
+        kani::assert(result.is_err(), "kani harness assertion")
     }
 
     #[kani::proof]

@@ -47,10 +47,8 @@ fn prove_contract_survives_compilation() {
 
     // Verify it's actually different from DEFAULT
     let default = ResourceContract::DEFAULT;
-    assert_ne!(
-        contract, default,
-        "Non-DEFAULT contract must differ from DEFAULT"
-    );
+    kani::assert_ne!(contract, default,
+        "Non-DEFAULT contract must differ from DEFAULT")
 
     // Compile with the non-DEFAULT contract
     let source = representative_source();
@@ -60,11 +58,9 @@ fn prove_contract_survives_compilation() {
     };
 
     // Verify contract identity survived compilation
-    assert_eq!(
-        workflow.resource_contract(),
+    kani::assert_eq!(workflow.resource_contract(),
         contract,
-        "CompiledWorkflow.resource_contract() must equal the input contract after compilation"
-    );
+        "CompiledWorkflow.resource_contract() must equal the input contract after compilation")
 
     // Verify digest changed (contract is part of digest)
     let workflow_default = match crate::mod_compile_lowering::compile_source(&source, default) {
@@ -72,11 +68,9 @@ fn prove_contract_survives_compilation() {
         Err(_) => { kani::assume(false); loop {}}
     };
 
-    assert_ne!(
-        workflow.digest(),
+    kani::assert_ne!(workflow.digest(),
         workflow_default.digest(),
-        "CompiledWorkflow digest must differ when contracts differ"
-    );
+        "CompiledWorkflow digest must differ when contracts differ")
 
     kani::cover!(workflow.resource_contract() == contract);
 }
@@ -94,15 +88,13 @@ fn prove_non_default_contract_encoding_differs() {
     modified.max_steps = max_steps;
     modified.allows_secret_results = true;
 
-    assert_ne!(default, modified);
+    kani::assert_ne!(default, modified)
 
     let enc_default = encode_contract_bytes(&default);
     let enc_modified = encode_contract_bytes(&modified);
 
-    assert_ne!(
-        enc_default, enc_modified,
-        "Non-DEFAULT contract encoding must differ from DEFAULT contract encoding"
-    );
+    kani::assert_ne!(enc_default, enc_modified,
+        "Non-DEFAULT contract encoding must differ from DEFAULT contract encoding")
 
     kani::cover!(enc_default != enc_modified);
 }

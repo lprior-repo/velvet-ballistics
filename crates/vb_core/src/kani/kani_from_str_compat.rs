@@ -113,11 +113,9 @@ mod harnesses {
             let result = from_str_diagnostic_code(&e_str);
             match result {
                 Ok(parsed) => {
-                    assert_eq!(
-                        parsed.code(),
+                    kani::assert_eq!(parsed.code(),
                         code,
-                        "Parsed code must match the registry numeric value"
-                    );
+                        "Parsed code must match the registry numeric value")
                 }
                 Err(_) => {
                     // If is_supported_code accepts it, from_str must succeed
@@ -137,22 +135,19 @@ mod harnesses {
         for code in 0x0501u16..=0x0513 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            assert!(result.is_ok(), "New Gate code {:04X} must parse", code);
+            kani::assert(result.is_ok(), "New Gate code {:04X} must parse", code)
         }
         // Contract discovery range
         for code in 0x0601u16..=0x0603 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            assert!(
-                result.is_ok(),
-                "New ContractDiscovery code {:04X} must parse",
-                code
-            );
+            kani::assert(result.is_ok(),
+                "New ContractDiscovery code {:04X} must parse", code)
         }
         // Extended boundary code
         let e_str = format_e_code(0x401C);
         let result = from_str_diagnostic_code(&e_str);
-        assert!(result.is_ok(), "Extended boundary code 0x401C must parse");
+        kani::assert(result.is_ok(), "Extended boundary code 0x401C must parse")
     }
 
     /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).
@@ -168,12 +163,10 @@ mod harnesses {
         for code in unsupported.iter() {
             let e_str = format_e_code(*code);
             let result = from_str_diagnostic_code(&e_str);
-            assert_eq!(
-                result,
+            kani::assert_eq!(result,
                 Err(DiagnosticCodeParseError::UnsupportedCode),
                 "Code {:04X} should be unsupported",
-                code
-            );
+                code)
         }
     }
 }

@@ -65,11 +65,8 @@ fn check_reduce_body_width_parity() {
     let result = body_width(&body, 3);
     match result {
         Ok(w) => {
-            assert!(w >= 3, "body_width must be at least overhead of 3");
-            assert!(
-                w <= usize::from(u16::MAX),
-                "body_width must not exceed u16::MAX"
-            );
+            kani::assert(w >= 3, "body_width must be at least overhead of 3")
+            kani::assert(w <= usize::from(u16::MAX), "body_width must not exceed u16::MAX")
         }
         Err(_) => {}
     }
@@ -88,7 +85,7 @@ fn check_individual_step_widths_consistent() {
         let step_width = canonical_body_step_width(&step.primitive);
         match step_width {
             Ok(sw) => {
-                assert!(sw >= 1, "supported body step width must be at least 1");
+                kani::assert(sw >= 1, "supported body step width must be at least 1")
                 total_individual = total_individual.saturating_add(sw);
             }
             Err(_) => {}
@@ -97,9 +94,6 @@ fn check_individual_step_widths_consistent() {
 
     let body_w = body_width(&body, 0);
     if let Ok(bw) = body_w {
-        assert!(
-            bw == total_individual,
-            "body_width with overhead 0 must equal sum of individual step widths"
-        );
+        kani::assert(bw == total_individual, "body_width with overhead 0 must equal sum of individual step widths")
     }
 }

@@ -87,27 +87,21 @@ fn kani_for_each_ordering() {
             EngineSignal::Continue => {
                 if item_count == 0 {
                     // Empty list: pc should now be at done
-                    assert_eq!(
-                        run.pc(), done_step,
-                        "empty list must jump to done"
-                    );
+                    kani::assert_eq!(run.pc(), done_step,
+                        "empty list must jump to done")
                 } else {
                     // Non-empty list: pc should be at body
-                    assert_eq!(
-                        run.pc(), body_step,
-                        "non-empty list must jump to body"
-                    );
+                    kani::assert_eq!(run.pc(), body_step,
+                        "non-empty list must jump to body")
 
                     // First item should be bound to item_slot
                     let bound = match run.read_slot(item_slot) {
                         Ok(v) => v,
                         Err(_) => { kani::assume(false); loop {}}
                     };
-                    assert_eq!(
-                        *bound,
+                    kani::assert_eq!(*bound,
                         SlotValue::I64(0),
-                        "first item must be I64(0)"
-                    );
+                        "first item must be I64(0)")
                 }
             }
             _ => {
@@ -196,12 +190,10 @@ fn kani_for_each_next_progression() {
                             Ok(v) => v,
                             Err(_) => { kani::assume(false); loop {}}
                         };
-                        assert_eq!(
-                            *bound,
+                        kani::assert_eq!(*bound,
                             SlotValue::I64(expected_item),
                             "for_each_next must bind item {} in order",
-                            expected_item
-                        );
+                            expected_item)
                         expected_item += 1;
                         remaining -= 1;
                     }
@@ -253,19 +245,15 @@ fn kani_for_each_join_passthrough() {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
                 // join must continue to next step
-                assert_eq!(
-                    run.pc(), next_step,
-                    "join must continue to next step"
-                );
+                kani::assert_eq!(run.pc(), next_step,
+                    "join must continue to next step")
                 // The output slot should hold the materialized value
                 let output = match run.read_slot(output_slot) {
                     Ok(v) => v,
                     Err(_) => { kani::assume(false); loop {}}
                 };
-                assert_eq!(
-                    *output, output_value,
-                    "join must pass through the materialized list"
-                );
+                kani::assert_eq!(*output, output_value,
+                    "join must pass through the materialized list")
             }
             _ => {
                 // Other signals — ok

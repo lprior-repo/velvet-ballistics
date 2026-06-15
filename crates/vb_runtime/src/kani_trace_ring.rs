@@ -136,7 +136,7 @@ fn verify_drain_for_run_correctness() {
 
     // All drained events must belong to target run.
     for event in &drained {
-        assert_eq!(event.run_id(), target_run);
+        kani::assert_eq!(event.run_id(), target_run)
     }
 
     // Order preservation: target events appear in FIFO order.
@@ -149,7 +149,7 @@ fn verify_drain_for_run_correctness() {
         }
     }
     // We pushed 2 events for target_run.
-    assert_eq!(drained.len(), seen_target_count);
+    kani::assert_eq!(drained.len(), seen_target_count)
 }
 
 /// OBL-TRC-004: Terminal event (RunFinished/RunFailed/RunCancelled) detection.

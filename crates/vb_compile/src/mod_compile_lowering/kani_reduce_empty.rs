@@ -31,10 +31,10 @@ fn check_reduce_empty_body_rejection() {
 
     match result {
         Ok(w) => {
-            assert!(w == 3, "empty body width must be exactly overhead (3)",);
+            kani::assert(w == 3, "empty body width must be exactly overhead (3)", )
         }
         Err(_) => {
-            assert!(false, "empty body width should never overflow");
+            kani::assert(false, "empty body width should never overflow")
         }
     }
 }
@@ -47,10 +47,10 @@ fn check_reduce_empty_body_width_zero() {
 
     match result {
         Ok(w) => {
-            assert!(w == 0, "empty body width with overhead 0 must be 0");
+            kani::assert(w == 0, "empty body width with overhead 0 must be 0")
         }
         Err(_) => {
-            assert!(false, "empty body should not overflow");
+            kani::assert(false, "empty body should not overflow")
         }
     }
 }
@@ -78,8 +78,6 @@ fn check_reduce_emit_single_body_set_empty() {
     );
 
     kani::cover!(result.is_err(), "empty body rejection path reached");
-    assert!(
-        result.is_err(),
-        "emit_single_body_set must reject empty body",
-    );
+    kani::assert(result.is_err(),
+        "emit_single_body_set must reject empty body", )
 }

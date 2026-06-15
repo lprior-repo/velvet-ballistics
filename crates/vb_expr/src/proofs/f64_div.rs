@@ -55,18 +55,12 @@ fn kani_f64_div_by_zero_returns_non_finite_float() {
     );
 
     // PO-002: Result must be Err with NonFiniteFloat
-    assert!(
-        result.is_err(),
-        "F64/non-zero-finite/0 must return an error (Inf from IEEE 754 → NonFiniteFloat)"
-    );
+    kani::assert(result.is_err(), "F64/non-zero-finite/0 must return an error (Inf from IEEE 754 → NonFiniteFloat)")
     let Err(e) = result else { return };
 
     // The error MUST be NonFiniteFloat, NOT DivisionByZero
-    assert!(
-        matches!(e, ExprError::NonFiniteFloat),
-        "F64/0 must return NonFiniteFloat, not DivisionByZero. Got: {:?}",
-        e
-    );
+    kani::assert(matches!(e, ExprError::NonFiniteFloat),
+        "F64/0 must return NonFiniteFloat, not DivisionByZero. Got: {:?}", e)
 }
 
 /// Kani harness for PO-002: F64/non-zero-finite returns finite quotient.
@@ -112,21 +106,15 @@ fn kani_f64_div_by_nonzero_finite_succeeds() {
     );
 
     // F64/non-zero must succeed
-    assert!(
-        result.is_ok(),
-        "F64/non-zero-finite must succeed. Got: {:?}",
-        result
-    );
+    kani::assert(result.is_ok(),
+        "F64/non-zero-finite must succeed. Got: {:?}", result)
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
 
     // The quotient must be finite
-    assert!(
-        f.get().is_finite(),
-        "F64/non-zero-finite quotient must be finite. Got: {:?}",
-        f.get()
-    );
+    kani::assert(f.get().is_finite(),
+        "F64/non-zero-finite quotient must be finite. Got: {:?}", f.get())
 }
 
 /// Kani harness for PO-002: I64/0 still returns DivisionByZero (not NonFiniteFloat).
@@ -147,11 +135,8 @@ fn kani_i64_div_by_zero_returns_division_by_zero() {
     );
 
     // I64/0 must be DivisionByZero
-    assert!(result.is_err(), "I64/0 must return an error");
+    kani::assert(result.is_err(), "I64/0 must return an error")
     let Err(e) = result else { return };
-    assert!(
-        matches!(e, ExprError::DivisionByZero),
-        "I64/0 must return DivisionByZero, not NonFiniteFloat. Got: {:?}",
-        e
-    );
+    kani::assert(matches!(e, ExprError::DivisionByZero),
+        "I64/0 must return DivisionByZero, not NonFiniteFloat. Got: {:?}", e)
 }

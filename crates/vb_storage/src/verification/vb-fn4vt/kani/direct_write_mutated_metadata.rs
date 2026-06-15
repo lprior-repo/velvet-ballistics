@@ -136,10 +136,7 @@ fn direct_write_mutated_metadata() {
     }
 
     // Core assertion: mutated record must fail validation
-    assert!(
-        result.is_err(),
-        "Mutated metadata must cause validation failure"
-    );
+    kani::assert(result.is_err(), "Mutated metadata must cause validation failure")
 }
 
 /// PO-006b: Verify that source_digest = digest invariant holds for valid artifacts.
