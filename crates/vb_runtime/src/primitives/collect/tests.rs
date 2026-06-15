@@ -3945,3 +3945,571 @@ fn collect_page_succeeds_with_heterogeneous_list_items() {
     let result = collect_page(&mut run, &mut store, &mut states, collector, body, done);
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
 }
+
+// =========================================================================
+// Verified collect edge-case gap tests.
+// Each test targets a specific gap identified in the collect state machine.
+// =========================================================================
+
+// ── Gap 1: CollectStates default capacity ───────────────────────────
+
+/// Verify that `CollectStates::new()` produces a properly initialized side
+/// table. The inner `entries` map must be a valid, usable collection — not
+/// a null or dangling structure — and `find` must not panic on an empty
+/// instance.
+#[test]
+fn collect_states_new_produces_valid_initialized_container() -> Result<(), String> {
+    let states = CollectStates::new();
+    let entry_count = states.entries.len();
+    ensure(
+        entry_count == 0,
+        format!("new CollectStates should have 0 entries, got {entry_count}"),
+    )?;
+    // The container is usable: find must not panic and should return None.
+    let found = states.find(RunId::new(0), SlotIdx::new(0), ListId::new(0));
+    ensure(found.is_none(), "find on new CollectStates should return None")?;
+    Ok(())
+}
+
+// ── Gap 2: CollectStates capture_state with zero capacity (empty map) ─
+
+/// When the side table has no entries (zero capacity effectively),
+/// `capture_state` must return `None` gracefully — never panic or return
+/// a phantom value.
+#[test]
+fn capture_state_on_empty_states_returns_none() -> Result<(), String> {
+    let states = CollectStates::new();
+    let result = states.capture_state(RunId::new(1), SlotIdx::new(0));
+    ensure(
+        result.is_none(),
+        "capture_state on empty CollectStates should return None",
+    )?;
+    Ok(())
+}
+
+// ── Gap 3: CollectStates drain and re-use ───────────────────────────
+
+/// State removed via `remove()` (drained) can be re-inserted at the same
+/// `(RunId, SlotIdx)` key. This proves the side table supports drain-and-
+/// re-use for the full collect lifecycle (start → finish → start).
+#[test]
+fn collect_states_drain_and_reuse_at_same_key() -> Result<(), String> {
+    let mut states = CollectStates::new();
+
+    // Insert first state
+    let v1 = CollectPaginationState {
+        run_id: RunId::new(1),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(10),
+        current_page: ListId::new(20),
+        cursor: 5,
+        page_size: 10,
+        item_count: 30,
+        limit: 100,
+        time_limit_ms: None,
+        start_millis: 1000,
+        from_journal: false,
+    };
+    states.upsert(v1).map_err(|e| format!("upsert v1: {e:?}"))?;
+    let captured = states
+        .capture_state(RunId::new(1), SlotIdx::new(0))
+        .ok_or("v1 state missing after upsert")?;
+    ensure(captured.cursor == 5, "v1 cursor should be 5")?;
+
+    // Remove (drain) the state
+    states.remove(RunId::new(1), SlotIdx::new(0));
+    ensure(
+        states.capture_state(RunId::new(1), SlotIdx::new(0)).is_none(),
+        "state should be None after remove",
+    )?;
+
+    // Re-insert at the same key with different data
+    let v2 = CollectPaginationState { cursor: 10, ..v1 };
+    states.upsert(v2).map_err(|e| format!("upsert v2: {e:?}"))?;
+    let re_captured = states
+        .capture_state(RunId::new(1), SlotIdx::new(0))
+        .ok_or("v2 state missing after re-insert")?;
+    ensure(
+        re_captured.cursor == 10,
+        format!(
+            "re-inserted cursor should be 10, got {}",
+            re_captured.cursor
+        ),
+    )?;
+    Ok(())
+}
+
+// ── Gap 4: CollectStates capacity enforcement (no silent drop) ──────
+
+/// The side table grows dynamically; inserting many entries must never
+/// cause silent data loss. Verify that all entries survive a bulk insert
+/// and are recoverable via `find`.
+#[test]
+fn capture_state_does_not_silently_drop_under_multiple_entries() -> Result<(), String> {
+    let mut states = CollectStates::new();
+
+    // Insert 128 distinct entries to stress the dynamic map growth
+    for i in 0..128u64 {
+        let state = CollectPaginationState {
+            run_id: RunId::new(i),
+            collector_slot: SlotIdx::new(i as u8),
+            source: ListId::new(i as u64),
+            current_page: ListId::new(i + 1000),
+            cursor: i as usize,
+            page_size: 10,
+            item_count: 100,
+            limit: 1000,
+            time_limit_ms: None,
+            start_millis: 0,
+            from_journal: false,
+        };
+        states.upsert(state).map_err(|e| format!("upsert entry {i}: {e:?}"))?;
+    }
+
+    // Verify all 128 entries are still recoverable
+    for i in 0..128u64 {
+        let found = states.find(
+            RunId::new(i),
+            SlotIdx::new(i as u8),
+            ListId::new(i + 1000),
+        );
+        ensure(
+            found.is_some(),
+            format!("entry {i} should be found after bulk insert"),
+        )?;
+    }
+    Ok(())
+}
+
+// ── Gap 5: collect_start with limit=0 ──────────────────────────────
+
+/// When limit=0 and page_size>=1, `validate_page_bound` rejects because
+/// page_size (>= 1) exceeds the limit (0). This returns
+/// `CollectPageLimitExceeded` before any source list is touched.
+#[test]
+fn collect_start_with_zero_limit_on_nonempty_source_fails() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2)],
+    );
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        0,   // limit = 0
+        1,   // page_size = 1
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::CollectPageLimitExceeded) => Ok(()),
+        other => Err(format!(
+            "expected CollectPageLimitExceeded for limit=0, got {other:?}"
+        )),
+    }
+}
+
+/// When limit=0 and the source list is empty, the page_size validation
+/// still fires first (page_size=1 > limit=0), producing
+/// `CollectPageLimitExceeded` rather than routing to done.
+#[test]
+fn collect_start_with_zero_limit_and_empty_source_fails() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    list_in_slot(&mut run, &mut store, source, vec![]);
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        0,   // limit = 0
+        1,   // page_size = 1
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::CollectPageLimitExceeded) => Ok(()),
+        other => Err(format!(
+            "expected CollectPageLimitExceeded for empty source + limit=0, got {other:?}"
+        )),
+    }
+}
+
+/// When both limit=0 and page_size=0, the page_size validator rejects
+/// first with `InvalidCompiledWorkflow`.
+#[test]
+fn collect_start_with_zero_limit_and_zero_page_size_fails() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    list_in_slot(&mut run, &mut store, source, vec![]);
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        0, // limit = 0
+        0, // page_size = 0 (also invalid)
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
+            ensure(
+                reason == "collect page_size must be nonzero",
+                format!("expected 'page_size must be nonzero', got: {reason}"),
+            )
+        }
+        other => Err(format!(
+            "expected InvalidCompiledWorkflow for page_size=0, got {other:?}"
+        )),
+    }
+}
+
+// ── Gap 6: collect_start with empty source list ─────────────────────
+
+/// When the source list is empty, `collect_start` writes an empty page to
+/// the collector and routes PC directly to `done`.
+#[test]
+fn collect_start_empty_source_writes_empty_collector_and_jumps_to_done() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let done = StepIdx::new(5);
+    list_in_slot(&mut run, &mut store, source, vec![]);
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        done,
+        Some(collector),
+        None,
+    );
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done, "empty source should jump to done");
+    // Collector should have been written with an empty list
+    match *run.read_slot(collector).expect("read must succeed") {
+        SlotValue::List(id) => {
+            let items = store.list(id).expect("list read must succeed");
+            ensure(
+                items.is_empty(),
+                "collector should be empty for empty source",
+            )
+        }
+        other => return Err(format!("expected List in collector, got {other:?}")),
+    }
+    // No pagination state should be stored
+    ensure(
+        states.capture_state(run.run_id(), collector).is_none(),
+        "state should be removed for empty source",
+    )?;
+    Ok(())
+}
+
+// ── Gap 7: collect_start with limit > source list size ──────────────
+
+/// When limit is greater than the source list size, all items fit in the
+/// first page and `collect_start` routes to `done` without error.
+#[test]
+fn collect_start_limit_exceeds_source_collects_all_in_one_page() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100, // limit >> source size
+        2,   // page_size
+        StepIdx::new(1),
+        done,
+        Some(collector),
+        None,
+    );
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done, "all items fit in first page, should route to done");
+    // Collector should contain all 3 items
+    match *run.read_slot(collector).expect("read must succeed") {
+        SlotValue::List(id) => {
+            let items = store.list(id).expect("list read must succeed");
+            ensure(
+                items.len() == 3,
+                format!("expected 3 items, got {}", items.len()),
+            )?;
+            ensure(
+                items[0] == SlotValue::I64(1),
+                "first item mismatch",
+            )?;
+            ensure(
+                items[1] == SlotValue::I64(2),
+                "second item mismatch",
+            )?;
+            ensure(
+                items[2] == SlotValue::I64(3),
+                "third item mismatch",
+            )
+        }
+        other => Err(format!("expected List in collector, got {other:?}")),
+    }
+}
+
+/// When limit is 1000× the source size, the same all-in-one-page behavior
+/// holds. This tests an extreme ratio boundary.
+#[test]
+fn collect_start_limit_huge_exceeds_source() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(42)],
+    );
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        1000, // limit >> source size
+        1,
+        StepIdx::new(1),
+        done,
+        Some(collector),
+        None,
+    );
+    assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
+    assert_eq!(run.pc(), done);
+    Ok(())
+}
+
+// ── Gap 8: collect_start with non-list source ───────────────────────
+
+/// When the source slot holds `null`, `collect_start` returns
+/// `TypeMismatch(expected="list", found="null")`.
+#[test]
+fn collect_start_with_null_source_returns_type_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    run.write_slot(source, SlotValue::Null).expect("write must succeed");
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            ensure(
+                expected == "list",
+                format!("expected 'list', got: {expected}"),
+            )?;
+            ensure(
+                found == "null",
+                format!("expected 'null', got: {found}"),
+            )
+        }
+        other => Err(format!(
+            "expected TypeMismatch for null source, got {other:?}"
+        )),
+    }
+}
+
+/// When the source slot holds a boolean, `collect_start` returns
+/// `TypeMismatch(expected="list", found="boolean")`.
+#[test]
+fn collect_start_with_bool_source_returns_type_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    run.write_slot(source, SlotValue::Bool(true))
+        .expect("write must succeed");
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            ensure(
+                expected == "list",
+                format!("expected 'list', got: {expected}"),
+            )?;
+            ensure(
+                found == "boolean",
+                format!("expected 'boolean', got: {found}"),
+            )
+        }
+        other => Err(format!(
+            "expected TypeMismatch for bool source, got {other:?}"
+        )),
+    }
+}
+
+/// When the source slot holds a string, `collect_start` returns
+/// `TypeMismatch(expected="list", found="string")`.
+#[test]
+fn collect_start_with_string_source_returns_type_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    run.write_slot(source, SlotValue::Str("hello".into()))
+        .expect("write must succeed");
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            ensure(
+                expected == "list",
+                format!("expected 'list', got: {expected}"),
+            )?;
+            ensure(
+                found == "string",
+                format!("expected 'string', got: {found}"),
+            )
+        }
+        other => Err(format!(
+            "expected TypeMismatch for string source, got {other:?}"
+        )),
+    }
+}
+
+/// When the source slot holds a map, `collect_start` returns
+/// `TypeMismatch(expected="list", found="map")`.
+#[test]
+fn collect_start_with_map_source_returns_type_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    run.write_slot(source, SlotValue::Map(Default::default()))
+        .expect("write must succeed");
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            ensure(
+                expected == "list",
+                format!("expected 'list', got: {expected}"),
+            )?;
+            ensure(
+                found == "map",
+                format!("expected 'map', got: {found}"),
+            )
+        }
+        other => Err(format!(
+            "expected TypeMismatch for map source, got {other:?}"
+        )),
+    }
+}
+
+/// When the source slot holds an I64, `collect_start` returns
+/// `TypeMismatch(expected="list", found="number")`.
+#[test]
+fn collect_start_with_i64_source_returns_type_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    run.write_slot(source, SlotValue::I64(999))
+        .expect("write must succeed");
+    let result = collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(SlotIdx::new(1)),
+        None,
+    );
+    match result {
+        Err(EngineError::TypeMismatch { expected, found }) => {
+            ensure(
+                expected == "list",
+                format!("expected 'list', got: {expected}"),
+            )?;
+            ensure(
+                found == "number",
+                format!("expected 'number', got: {found}"),
+            )
+        }
+        other => Err(format!(
+            "expected TypeMismatch for I64 source, got {other:?}"
+        )),
+    }
+}

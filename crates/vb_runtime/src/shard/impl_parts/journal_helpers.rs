@@ -156,8 +156,8 @@ impl Shard {
                 // Sequence overflow is a structural invariant violation.
                 // Log and return Failed so the run continues.
                 tracing::warn!(
-                    "snapshot_write_failed run=? seq_overflow",
-                    run.0
+                    "snapshot_write_failed seq_overflow run={}",
+                    run.as_u64()
                 );
                 return SnapshotWriteOutcome::Failed;
             }
@@ -169,9 +169,9 @@ impl Shard {
             Ok(bytes) => bytes,
             Err(_) => {
                 tracing::warn!(
-                    "snapshot_write_failed run=? seq=? reason=postcard_encode_failed_slots",
-                    run.0,
-                    snapshot_seq.0
+                    "snapshot_write_failed postcard_encode_failed_slots run={} seq={}",
+                    run.as_u64(),
+                    snapshot_seq.get()
                 );
                 return SnapshotWriteOutcome::Failed;
             }
@@ -180,9 +180,9 @@ impl Shard {
             Ok(bytes) => bytes,
             Err(_) => {
                 tracing::warn!(
-                    "snapshot_write_failed run=? seq=? reason=postcard_encode_failed_taint",
-                    run.0,
-                    snapshot_seq.0
+                    "snapshot_write_failed postcard_encode_failed_taint run={} seq={}",
+                    run.as_u64(),
+                    snapshot_seq.get()
                 );
                 return SnapshotWriteOutcome::Failed;
             }
@@ -213,9 +213,9 @@ impl Shard {
                 // Log the error per C-2 contract requirement.
                 // The run continues without snapshot.
                 tracing::warn!(
-                    "snapshot_write_failed run=? seq=? reason=storage_write_error",
-                    run.0,
-                    snapshot_seq.0
+                    "snapshot_write_failed storage_write_error run={} seq={}",
+                    run.as_u64(),
+                    snapshot_seq.get()
                 );
                 SnapshotWriteOutcome::Failed
             }
