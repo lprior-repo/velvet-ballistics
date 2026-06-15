@@ -185,11 +185,11 @@ mod tests {
     fn test_terminal_self_transition() {
         assert!(is_valid_transition(
             StepState::Succeeded, StepState::Succeeded
-        ))
+        ));
         assert!(is_valid_transition(StepState::Failed, StepState::Failed));
         assert!(is_valid_transition(
             StepState::Cancelled, StepState::Cancelled
-        ))
+        ));
         assert!(is_valid_transition(StepState::Skipped, StepState::Skipped));
     }
 
@@ -317,13 +317,13 @@ mod tests {
     #[test]
     fn test_validate_transition_terminal_idempotent() {
         assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
-            StepState::Succeeded)
+            StepState::Succeeded);
         assert_eq!(validate_transition(StepState::Failed, StepState::Failed).unwrap(),
-            StepState::Failed)
+            StepState::Failed);
         assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
-            StepState::Cancelled)
+            StepState::Cancelled);
         assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
-            StepState::Skipped)
+            StepState::Skipped);
     }
 
     #[test]
@@ -423,11 +423,11 @@ mod tests {
 
     #[test]
     fn test_step_state_partial_eq_negative() {
-        kani::assert_ne!(StepState::Pending, StepState::Running)
-        kani::assert_ne!(StepState::Running, StepState::Succeeded)
-        kani::assert_ne!(StepState::Waiting, StepState::Asking)
-        kani::assert_ne!(StepState::Succeeded, StepState::Failed)
-        kani::assert_ne!(StepState::Cancelled, StepState::Skipped)
+        assert_ne!(StepState::Pending, StepState::Running);
+        assert_ne!(StepState::Running, StepState::Succeeded);
+        assert_ne!(StepState::Waiting, StepState::Asking);
+        assert_ne!(StepState::Succeeded, StepState::Failed);
+        assert_ne!(StepState::Cancelled, StepState::Skipped);
     }
 
     #[test]
@@ -495,6 +495,7 @@ mod kani_step_state_harnesses {
 
     /// PO-KANI-006: Verify terminal_cannot_transition_to_non_terminal()
     /// returns true and that no terminal state may transition to Running.
+    #[cfg(kani)]
     #[kani::proof]
     fn terminal_cannot_transition_to_non_terminal_kani() {
         // Verify the top-level function returns true
