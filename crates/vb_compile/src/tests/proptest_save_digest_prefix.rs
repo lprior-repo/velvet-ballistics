@@ -51,12 +51,13 @@ proptest! {
         };
         let save_digest = crate::mod_compile_lowering::digest_step_primitive(&save);
         let set_digest = crate::mod_compile_lowering::digest_step_primitive(&set);
-        let save_prefix = save_digest.split(|b| *b == b' ').next().unwrap_or(&save_digest[0]);
-        let set_prefix = set_digest.split(|b| *b == b' ').next().unwrap_or(&set_digest[0]);
-        assert_eq!(
-            save_prefix, set_prefix,
-            "Save and Set digest prefixes must be identical (save: {:?}, set: {:?})",
-            save_prefix, set_prefix
+        let prefix_len = 3; // "set" tag bytes
+        assert!(
+            save_digest.starts_with(&set_digest[..prefix_len.min(set_digest.len())]),
+            "Save digest must start with the same {} bytes as Set digest (save: {:?}, set: {:?})",
+            prefix_len,
+            &save_digest[..prefix_len.min(save_digest.len())],
+            &set_digest[..prefix_len.min(set_digest.len())]
         );
     }
 

@@ -23,7 +23,7 @@ fn bounded_string(max_len: usize) -> String {
         kani::assume(byte.is_ascii_alphanumeric() || byte == b'_');
         buf.push(byte);
     }
-    String::from_utf8(buf).unwrap_or_default()
+    String::from_utf8_lossy(&buf).into_owned()
 }
 
 /// PO-KANI-001: canonical_primitive_name(Save{v}) == "set" for bounded symbolic Save.
