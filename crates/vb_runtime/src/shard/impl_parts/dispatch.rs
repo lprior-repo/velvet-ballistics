@@ -13,6 +13,11 @@ impl Shard {
     /// should shut down.
     pub fn tick(&mut self) -> RuntimeResult<bool> {
         if self.shutting_down {
+            // H5 mitigation: drain coalesce buffer before shutdown to prevent
+            // journal data loss on the final tick.
+            if !self.coalesce_buffer.is_empty() {
+                self.flush_coalesce_buffer()?;
+            }
             return Ok(false);
         }
 
@@ -24,10 +29,13 @@ impl Shard {
         }
 
         let Some(cmd) = self.command_queue.pop() else {
-            // Queue is empty; no work to do.
-            // If we started a coalesce window that is now idle, flush it
-            // (the buffer is empty so this is a no-op).
-            if self.current_coalesce_window_remaining < self.coalesce_window_ticks {
+            // Decrement the coalesce window counter on empty ticks
+            // so the window expires based on elapsed time, not command volume.
+            if self.current_coalesce_window_remaining > 0 {
+                self.current_coalesce_window_remaining -= 1;
+            }
+            // Window expired: flush buffered events atomically.
+            if self.current_coalesce_window_remaining == 0 {
                 self.flush_coalesce_buffer()?;
             }
             return Ok(true);
@@ -35,10 +43,16 @@ impl Shard {
 
         self.dispatch_command(cmd)?;
         if self.shutting_down {
+            // H5 mitigation: flush remaining buffer before shutdown.
+            if !self.coalesce_buffer.is_empty() {
+                self.flush_coalesce_buffer()?;
+            }
             return Ok(false);
         }
 
-        // Decrement the coalesce window counter.
+        // Decrement the coalesce window counter every tick, including
+        // empty-queue ticks, so the window can expire regardless of
+        // command throughput.
         if self.current_coalesce_window_remaining > 0 {
             self.current_coalesce_window_remaining -= 1;
         }
