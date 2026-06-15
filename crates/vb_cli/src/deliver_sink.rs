@@ -854,6 +854,7 @@ mod test_support {
     use std::cell::RefCell;
     use std::collections::VecDeque;
     use std::ffi::{OsStr, OsString};
+    use std::io;
     use std::path::{Path, PathBuf};
 
     use super::DeliverSinkError;
