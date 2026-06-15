@@ -87,6 +87,15 @@ tasks:
       cache: false
       runInCI: true
 
+  check-ai-pr-contract:
+    command: 'bash scripts/check-ai-pr-contract.sh'
+    inputs:
+      - 'scripts/check-ai-pr-contract.sh'
+      - 'fixtures/ai-pr-contract/**/*'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   check:
     script: |
       set -euo pipefail
@@ -98,9 +107,12 @@ tasks:
       - 'nightly-feature-gate'
       - 'agent-cli-contract'
       - 'beads-server-mode'
+      - 'check-ai-pr-contract'
       - 'hot-cold-forbidden-apis'
       - 'check-no-dead-ir-duplicates'
       - 'nightly-update-template'
+      - 'check-removed-crate-residue'
+      - 'check-removed-feature-residue'
     toolchains:
       - rust
     inputs:
@@ -229,6 +241,32 @@ tasks:
     inputs:
       - 'scripts/check-no-dead-ir-duplicates.sh'
       - 'crates/vb_core/src/**/*'
+    options:
+      runInCI: true
+
+  # === vb-x9879 (codegen-residue-and-locking) ===
+
+  check-removed-crate-residue:
+    command: 'bash scripts/check-removed-crate-residue.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/check-removed-crate-residue.sh'
+      - 'scripts/check-removed-crate-residue.rs'
+      - 'fixtures/removed-crate-residue/**/*'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  check-removed-feature-residue:
+    command: 'bash scripts/check-removed-feature-residue.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/check-removed-feature-residue.sh'
+      - 'scripts/check-removed-feature-residue.rs'
+      - 'fixtures/removed-feature-residue/**/*'
+      - '.moon/tasks/all.yml'
     options:
       runInCI: true
 
