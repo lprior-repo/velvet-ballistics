@@ -62,18 +62,16 @@ fn vb_mrwe6_completion_policy_all_cases() {
     let event = resolution(kind, run, seq, step, resolved_action);
     let intent = verification_action_index_intent(&event);
 
-    assert!(matches!(
+    kani::assert(matches!(
         intent,
         VerificationActionIndexIntent::Delete {
             action: a,
             run: r,
             step: s,
-        } if a == resolved_action && r == run && s == step
-    ));
-    assert!(matches!(
+        } if a == resolved_action && r == run && s == step);
+    kani::assert(matches!(
         verification_event_and_index_keys_exist(&event),
-        Ok(true)
-    ));
+        Ok(true));
 
     let commit_success = kani::any::<bool>();
     let same_key = !mismatched_key;
@@ -86,25 +84,25 @@ fn vb_mrwe6_completion_policy_all_cases() {
             Err(_) => true,
         };
     if commit_success && same_key {
-        assert!(matches!(
+        kani::assert(matches!(
             decision,
             Ok(VerificationResolutionCommitDecision::CommittedAndMarkerRemoved)
-        ));
-        assert!(!marker_present_after_commit);
+   );
+        kani::assert(!marker_present_after_);
     }
     if !commit_success && same_key {
-        assert!(matches!(
+        kani::assert(matches!(
             decision,
             Ok(VerificationResolutionCommitDecision::CommitFailedMarkerRetained)
-        ));
-        assert!(marker_present_after_commit);
+   );
+        kani::assert(marker_present_after_);
     }
     if mismatched_key {
-        assert!(matches!(
+        kani::assert(matches!(
             decision,
             Ok(VerificationResolutionCommitDecision::MismatchedResolutionRejected)
-        ));
-        assert!(marker_present_after_commit);
+   );
+        kani::assert(marker_present_after_);
     }
 
     core::mem::forget(event);

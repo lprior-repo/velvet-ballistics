@@ -22,12 +22,11 @@ fn kani_from_u16_exhaustive() {
 
     // Invariant 1: from_u16 must never panic or return Err for any u16.
     let result = IpcCommand::from_u16(value);
-    assert!(
+    kani::assert(
         result.is_ok(),
         "from_u16({}) must return Ok; got {:?}",
         value,
-        result
-    );
+        resul);
 
     let command = match result {
         Ok(v) => v,
@@ -134,11 +133,11 @@ fn kani_command_count_and_discriminants() {
     // Verify discriminant range 1..=11 for each variant.
     for cmd in &variants {
         let id = cmd.as_u16();
-        assert!(
+        kani::assert(
             id >= 1 && id <= 11,
             "IpcCommand discriminant {} is outside 1..=11",
             id
-        );
+  );
     }
 
     // Verify each declared discriminant matches as_u16().
@@ -218,14 +217,14 @@ fn kani_command_count_and_discriminants() {
     // We verify that each declared discriminant has the expected value.
     for i in 0..ids.len() {
         for j in (i + 1)..ids.len() {
-            assert!(
+            kani::assert(
                 ids[i] != ids[j],
                 "Duplicate discriminant detected: variant at index {} \
                  and {} both have discriminant {}",
                 i,
                 j,
                 ids[i]
-            );
+      );
         }
     }
 }
@@ -267,11 +266,11 @@ fn kani_roundtrip_identity() {
     // semantic variant through the encoder (i.e., as_u16 is injective).
     for i in 0..commands.len() {
         for j in (i + 1)..commands.len() {
-            assert!(
+            kani::assert(
                 commands[i].as_u16() != commands[j].as_u16(),
                 "as_u16() must be injective: two different variants share wire ID {}",
                 commands[i].as_u16()
-            );
+      );
         }
     }
 }

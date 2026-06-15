@@ -92,18 +92,16 @@ fn vb_mrwe6_atomic_index_all_cases() {
     };
 
     let intent = verification_action_index_intent(&event);
-    assert!(matches!(
+    kani::assert(matches!(
         intent,
         VerificationActionIndexIntent::Put {
             action: classified_action,
             run: classified_run,
             step: classified_step,
-        } if classified_action == action && classified_run == run && classified_step == step
-    ));
-    assert!(matches!(
+        } if classified_action == action && classified_run == run && classified_step == step);
+    kani::assert(matches!(
         verification_event_and_index_keys_exist(&event),
-        Ok(true)
-    ));
+        Ok(true));
 
     let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
     let index_staged = matches!(verification_event_and_index_keys_exist(&event), Ok(true));
@@ -114,15 +112,15 @@ fn vb_mrwe6_atomic_index_all_cases() {
     assert_eq!(event_committed, index_committed);
 
     match variant {
-        ScheduleVariant::Legacy => assert!(matches!(event, JournalEvent::ActionScheduled { .. })),
+        ScheduleVariant::Legacy => kani::assert(matches!(event, JournalEvent::ActionScheduled {);,
         ScheduleVariant::Ticketed => {
-            assert!(matches!(event, JournalEvent::ActionScheduledTicket { .. }));
+            kani::assert(matches!(event, JournalEvent::ActionScheduledTicket {);
         }
     }
 
     if matches!(commit, CommitResult::Failure) {
-        assert!(!event_committed);
-        assert!(!index_committed);
+        kani::assert(!event_com);
+        kani::assert(!index_com);
     }
 
     core::mem::forget(event);

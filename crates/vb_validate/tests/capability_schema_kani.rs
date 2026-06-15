@@ -110,10 +110,10 @@ proptest! {
         prop_assume!(version != "velvet-ballistics/v1");
         let doc = make_doc(vec![("version", FieldValue::String(version.clone()))]);
         let result = validate_version(&doc);
-        prop_assert!(
+        prop_kani::assert(
             matches!(result, Err(ValidationError::InvalidVersion { version: ref v }) if *v == version),
             "expected InvalidVersion for non-canonical version, got {result:?}"
-        );
+  );
     }
 
     #[test]
@@ -189,9 +189,9 @@ proptest! {
         let doc = WorkflowDoc::from_pairs(pairs);
 
         for name in &all_names {
-            prop_assert!(doc.has_field(name));
+            prop_kani::assert(doc.has_field);
         }
-        prop_assert!(!doc.has_field("nonexistent_field_xyz"));
+        prop_kani::assert(!doc.has_field("nonexistent_field);
     }
 
     #[test]
@@ -649,8 +649,8 @@ fn kani_integration_has_field_positive_and_negative() {
         "version",
         FieldValue::String("velvet-ballistics/v1".to_owned()),
     )]);
-    assert!(doc.has_field("version"));
-    assert!(!doc.has_field("name"));
+    kani::assert(doc.has_field("ver);
+    kani::assert(!doc.has_field(");
 }
 
 #[test]

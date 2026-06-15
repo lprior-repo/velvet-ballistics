@@ -47,7 +47,7 @@ fn check_action_registry_panic_free() {
 
     // Register first action — must not panic.
     let reg_result = registry.register(contract);
-    assert!(reg_result.is_ok(), "First registration must succeed");
+    kani::assert(reg_result.is_ok(), "First registration must su);
 
     // Register duplicate ID — must return error, not panic.
     let different_name = match ActionName::new("different_action") {
@@ -72,20 +72,19 @@ fn check_action_registry_panic_free() {
     };
 
     let dup_result = registry.register(contract2);
-    assert!(
+    kani::assert(
         dup_result.is_err(),
-        "Duplicate ID registration must return error"
-    );
+        "Duplicate ID registration must return error);
 
     // Resolve the registered action — must not panic.
     let resolved = registry.resolve_compile_time(ActionId::new(id));
-    assert!(resolved.is_ok(), "Resolved action must be found");
+    kani::assert(resolved.is_ok(), "Resolved action must be );
 
     // Resolve an unknown action — must return error, not panic.
     let unknown_id: u64 = kani::any();
     kani::assume(unknown_id > id);
     let unknown = registry.resolve_compile_time(ActionId::new(unknown_id));
-    assert!(unknown.is_err(), "Unknown action must return error");
+    kani::assert(unknown.is_err(), "Unknown action must return );
 }
 
 // ─── OBL-010 extended: ActionRegistry resolves by name ──────────────────────────

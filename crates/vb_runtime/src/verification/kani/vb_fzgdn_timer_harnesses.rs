@@ -38,7 +38,7 @@ mod harnesses {
         let now = Instant::now();
         // First insertion starts generation at 1
         let result = wheel.insert(run, now, crate::shard::PendingTimerKind::Wait);
-        assert!(result.is_ok());
+        kani::assert(result.i);
         // Verify generation is 1 via get_entry
         let entry = wheel.get_entry(run);
         match entry {
@@ -60,7 +60,7 @@ mod harnesses {
         let future = now + std::time::Duration::from_secs(1);
 
         // Insert first timer
-        assert!(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).i);
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
             None => {
@@ -70,7 +70,7 @@ mod harnesses {
         }
 
         // Replace — generation should be 2
-        assert!(wheel.insert(run, future, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(run, future, crate::shard::PendingTimerKind::Ask).i);
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 2, "expected generation 2"),
             None => {
@@ -111,7 +111,7 @@ mod harnesses {
         // We verify the pattern by direct arithmetic:
         let gen: u64 = u64::MAX;
         let next = gen.checked_add(1);
-        assert!(next.is_none(), "MAX generation + 1 must overflow to None");
+        kani::assert(next.is_none(), "MAX generation + 1 must overflow to);
     }
 
     // =========================================================================
@@ -153,18 +153,18 @@ mod harnesses {
         };
 
         // Exact match
-        assert!(timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Wait));
+        kani::assert(timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind:);
 
         // Wrong generation
-        assert!(!timer.matches_authority(4, timer.deadline, crate::shard::PendingTimerKind::Wait));
-        assert!(!timer.matches_authority(6, timer.deadline, crate::shard::PendingTimerKind::Wait));
+        kani::assert(!timer.matches_authority(4, timer.deadline, crate::shard::PendingTimerKind:);
+        kani::assert(!timer.matches_authority(6, timer.deadline, crate::shard::PendingTimerKind:);
 
         // Wrong kind
-        assert!(!timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Ask));
+        kani::assert(!timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind);
 
         // Wrong deadline
         let other_deadline = timer.deadline + std::time::Duration::from_secs(1);
-        assert!(!timer.matches_authority(5, other_deadline, crate::shard::PendingTimerKind::Wait));
+        kani::assert(!timer.matches_authority(5, other_deadline, crate::shard::PendingTimerKind:);
     }
 
     // =========================================================================
@@ -185,7 +185,7 @@ mod harnesses {
         // Any generation != 42 must fail
         let gen: u64 = kani::any();
         kani::assume(gen != 42);
-        assert!(!timer.matches_authority(gen, timer.deadline, crate::shard::PendingTimerKind::Wait));
+        kani::assert(!timer.matches_authority(gen, timer.deadline, crate::shard::PendingTimerKind:);
     }
 
     /// PS-003-H2: PendingTimer::matches_authority rejects wrong kind.
@@ -198,7 +198,7 @@ mod harnesses {
             deadline: Instant::now(),
         };
         // Ask kind must fail against Wait timer
-        assert!(!timer.matches_authority(1, timer.deadline, crate::shard::PendingTimerKind::Ask));
+        kani::assert(!timer.matches_authority(1, timer.deadline, crate::shard::PendingTimerKind);
     }
 
     /// PS-003-H3: PendingTimer::matches_authority rejects wrong deadline.
@@ -211,7 +211,7 @@ mod harnesses {
             deadline: Instant::now(),
         };
         let different_deadline = timer.deadline + std::time::Duration::from_nanos(1);
-        assert!(!timer.matches_authority(1, different_deadline, crate::shard::PendingTimerKind::Wait));
+        kani::assert(!timer.matches_authority(1, different_deadline, crate::shard::PendingTimerKind:);
     }
 
     // =========================================================================
@@ -239,7 +239,7 @@ mod harnesses {
     fn ps_004_checked_add_at_max_returns_none() {
         let gen: u64 = u64::MAX;
         let next = gen.checked_add(1);
-        assert!(next.is_none());
+        kani::assert(next.is_);
     }
 
     // =========================================================================
@@ -257,12 +257,12 @@ mod harnesses {
         let later = now + std::time::Duration::from_secs(10);
 
         // Insert Wait timer
-        assert!(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).i);
         assert_eq!(wheel.len(), 1);
         assert_eq!(wheel.get_kind(run), Some(crate::shard::PendingTimerKind::Wait));
 
         // Insert with same run but different kind and deadline — replaces
-        assert!(wheel.insert(run, later, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(run, later, crate::shard::PendingTimerKind::Ask).i);
         assert_eq!(wheel.len(), 1);
         assert_eq!(wheel.get_kind(run), Some(crate::shard::PendingTimerKind::Ask));
     }
@@ -275,19 +275,19 @@ mod harnesses {
         let run = RunId::new(1);
         let now = Instant::now();
 
-        assert!(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).i);
         assert_eq!(wheel.len(), 1);
 
-        assert!(wheel.cancel(run));
+        kani::assert(wheel.cance);
         assert_eq!(wheel.len(), 0);
-        assert!(wheel.is_empty());
+        kani::assert(wheel.is_e);
     }
 
     /// PS-005-H3: TimerWheel::cancel on nonexistent returns false.
     #[kani::proof]
     fn ps_005_cancel_nonexistent_returns_false() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        assert!(!wheel.cancel(RunId::new(99)));
+        kani::assert(!wheel.cancel(RunId::ne);
     }
 
     // =========================================================================
@@ -347,7 +347,7 @@ mod harnesses {
             collect_states: crate::primitives::collect::CollectStates::new(),
             action_contracts: Box::new([]),
         };
-        assert!(crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO));
+        kani::assert(crate::shard::helpers::timer_registration_required(&state, StepIdx:);
     }
 
     /// PS-006-H2: timer_registration_required returns false for Do node.
@@ -403,7 +403,7 @@ mod harnesses {
             collect_states: crate::primitives::collect::CollectStates::new(),
             action_contracts: Box::new([]),
         };
-        assert!(!crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO));
+        kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx:);
     }
 
     /// PS-006-H3: timer_registration_required returns false for missing step.
@@ -460,7 +460,7 @@ mod harnesses {
             action_contracts: Box::new([]),
         };
         // Step 99 doesn't exist
-        assert!(!crate::shard::helpers::timer_registration_required(&state, StepIdx::new(99)));
+        kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::ne);
     }
 
     // =========================================================================
@@ -477,8 +477,8 @@ mod harnesses {
         let past = now - std::time::Duration::from_millis(100);
         let future = now + std::time::Duration::from_secs(60);
 
-        assert!(wheel.insert(RunId::new(1), past, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert!(wheel.insert(RunId::new(2), future, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), past, crate::shard::PendingTimerKind::Wait).i);
+        kani::assert(wheel.insert(RunId::new(2), future, crate::shard::PendingTimerKind::Ask).i);
 
         let fired = wheel.fire_expired(now);
         assert_eq!(fired.len(), 1);
@@ -496,12 +496,12 @@ mod harnesses {
         let d1 = now - std::time::Duration::from_millis(200);
         let d2 = now - std::time::Duration::from_millis(100);
 
-        assert!(wheel.insert(RunId::new(1), d1, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert!(wheel.insert(RunId::new(2), d2, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), d1, crate::shard::PendingTimerKind::Wait).i);
+        kani::assert(wheel.insert(RunId::new(2), d2, crate::shard::PendingTimerKind::Ask).i);
 
         let fired = wheel.fire_expired(now);
         assert_eq!(fired.len(), 2);
-        assert!(wheel.is_empty());
+        kani::assert(wheel.is_e);
     }
 
     /// PS-007-H3: TimerWheel::next_deadline returns earliest pending deadline.
@@ -513,11 +513,11 @@ mod harnesses {
         let early = now + std::time::Duration::from_millis(10);
         let late = now + std::time::Duration::from_millis(100);
 
-        assert!(wheel.insert(RunId::new(1), late, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert!(wheel.insert(RunId::new(2), early, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), late, crate::shard::PendingTimerKind::Wait).i);
+        kani::assert(wheel.insert(RunId::new(2), early, crate::shard::PendingTimerKind::Ask).i);
 
         let next = wheel.next_deadline();
-        assert!(next.is_some());
+        kani::assert(next.is_);
         // Due to BTreeMap ordering, earliest deadline comes first
         assert_eq!(next, Some(early));
     }
@@ -535,10 +535,10 @@ mod harnesses {
         assert_eq!(wheel.len(), 0);
 
         let now = Instant::now();
-        assert!(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).i);
         assert_eq!(wheel.len(), 1);
 
-        assert!(wheel.insert(RunId::new(2), now, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(RunId::new(2), now, crate::shard::PendingTimerKind::Ask).i);
         assert_eq!(wheel.len(), 2);
 
         wheel.cancel(RunId::new(1));
@@ -549,14 +549,14 @@ mod harnesses {
     #[kani::proof]
     fn ps_008_is_empty_reflects_state() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        assert!(wheel.is_empty());
+        kani::assert(wheel.is_e);
 
         let now = Instant::now();
-        assert!(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert!(!wheel.is_empty());
+        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).i);
+        kani::assert(!wheel.is_e);
 
         wheel.cancel(RunId::new(1));
-        assert!(wheel.is_empty());
+        kani::assert(wheel.is_e);
     }
 
     // =========================================================================
@@ -571,10 +571,10 @@ mod harnesses {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let deadline = Instant::now();
 
-        assert!(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait).i);
         let fired = wheel.fire_expired(deadline);
         assert_eq!(fired.len(), 1);
-        assert!(wheel.is_empty());
+        kani::assert(wheel.is_e);
     }
 
     /// PS-009-H2: Timer just after Instant::now() does not fire.
@@ -585,7 +585,7 @@ mod harnesses {
         let now = Instant::now();
         let future = now + std::time::Duration::from_millis(1);
 
-        assert!(wheel.insert(RunId::new(1), future, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), future, crate::shard::PendingTimerKind::Wait).i);
         let fired = wheel.fire_expired(now);
         assert_eq!(fired.len(), 0);
         assert_eq!(wheel.len(), 1);
@@ -603,13 +603,13 @@ mod harnesses {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let deadline = Instant::now();
 
-        assert!(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert!(wheel.insert(RunId::new(2), deadline, crate::shard::PendingTimerKind::Ask).is_ok());
-        assert!(wheel.insert(RunId::new(3), deadline, crate::shard::PendingTimerKind::Wait).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait).i);
+        kani::assert(wheel.insert(RunId::new(2), deadline, crate::shard::PendingTimerKind::Ask).i);
+        kani::assert(wheel.insert(RunId::new(3), deadline, crate::shard::PendingTimerKind::Wait).i);
 
         let fired = wheel.fire_expired(deadline);
         assert_eq!(fired.len(), 3);
-        assert!(wheel.is_empty());
+        kani::assert(wheel.is_e);
     }
 
     /// PS-010-H2: Replacement preserves correct entry after insert.
@@ -620,8 +620,8 @@ mod harnesses {
         let now = Instant::now();
         let later = now + std::time::Duration::from_secs(5);
 
-        assert!(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).is_ok());
-        assert!(wheel.insert(RunId::new(1), later, crate::shard::PendingTimerKind::Ask).is_ok());
+        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).i);
+        kani::assert(wheel.insert(RunId::new(1), later, crate::shard::PendingTimerKind::Ask).i);
 
         assert_eq!(wheel.len(), 1);
         let entry = wheel.get_entry(RunId::new(1));

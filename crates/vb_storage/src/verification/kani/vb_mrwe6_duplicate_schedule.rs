@@ -56,5 +56,5 @@ fn vb_mrwe6_duplicate_arbitrary_facts() {
             Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict
         );
     }
-    assert!(unsupported_never_idempotent(retry_class, decision));
+    kani::assert(unsupported_never_idempotent(retry_class, dec);
 }

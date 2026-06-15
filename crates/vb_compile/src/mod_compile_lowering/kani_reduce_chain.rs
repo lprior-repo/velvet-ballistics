@@ -45,10 +45,10 @@ fn check_chain_integrity() {
             Ok(step_idx) => {
                 let current_id = step_idx.get();
                 if let Some(prev) = prev_step_id {
-                    assert!(
+                    kani::assert(
                         prev < current_id,
                         "step IDs must be strictly increasing (production checked_step_offset)",
-                    );
+              );
                 }
                 prev_step_id = Some(current_id);
             }
@@ -64,10 +64,10 @@ fn check_chain_integrity() {
     match next_result {
         Ok(next_idx) => {
             if let Some(last_id) = prev_step_id {
-                assert!(
+                kani::assert(
                     last_id < next_idx.get(),
                     "last body step ID must be less than next_step",
-                );
+          );
             }
         }
         Err(_) => {
@@ -117,7 +117,7 @@ fn check_body_step_width_chain() {
         let result = canonical_body_step_width(&_step.primitive);
         match result {
             Ok(w) => {
-                assert!(w >= 1, "body step width must be at least 1");
+                kani::assert(w >= 1, "body step width must be at le);
                 total_width = total_width.saturating_add(w);
             }
             Err(_) => {
@@ -127,8 +127,7 @@ fn check_body_step_width_chain() {
     }
 
     // total_width for Set/Do (width=1 each) should be exactly body_len
-    assert!(
+    kani::assert(
         total_width <= body_len as usize,
-        "Set/Do steps each contribute width 1",
-    );
+        "Set/Do steps each contribute width 1");
 }

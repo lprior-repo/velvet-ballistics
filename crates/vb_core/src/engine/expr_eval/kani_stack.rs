@@ -13,7 +13,7 @@ fn harness_new_valid_capacity() {
     kani::assume(usize::from(capacity) <= MAX_EXPRESSION_STACK_USIZE);
 
     let result = ExprStack::new(capacity);
-    assert!(result.is_ok());
+    kani::assert(result.i);
 
     let stack = match result {
         Ok(v) => v,
@@ -32,7 +32,7 @@ fn harness_new_invalid_capacity() {
     kani::assume(usize::from(capacity) > MAX_EXPRESSION_STACK_USIZE);
 
     let result = ExprStack::new(capacity);
-    assert!(result.is_err());
+    kani::assert(result.is);
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
@@ -61,7 +61,7 @@ fn harness_push_with_room() {
     };
 
     let result = stack.push(SlotValue::Null);
-    assert!(result.is_ok());
+    kani::assert(result.i);
     assert_eq!(stack.len(), 1);
 }
 
@@ -85,7 +85,7 @@ fn harness_push_overflow_returns_error() {
     assert_eq!(stack.len(), 1);
 
     let result = stack.push(SlotValue::Null);
-    assert!(result.is_err());
+    kani::assert(result.is);
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
@@ -123,7 +123,7 @@ fn harness_pop_with_items() {
     }
 
     let result = stack.pop();
-    assert!(result.is_ok());
+    kani::assert(result.i);
     assert_eq!(stack.len(), initial_len - 1);
 }
 
@@ -141,7 +141,7 @@ fn harness_pop_empty_returns_underflow() {
     let mut stack = stack;
 
     let result = stack.pop();
-    assert!(result.is_err());
+    kani::assert(result.is);
 
     match result {
         Err(EngineError::ExpressionStackUnderflow) => {}
@@ -204,11 +204,11 @@ fn harness_pop_pair_underflow() {
     assert_eq!(stack.len(), 1);
 
     let result = pop_value(&mut stack);
-    assert!(result.is_ok());
+    kani::assert(result.i);
     assert_eq!(stack.len(), 0);
 
     let result2 = pop_value(&mut stack);
-    assert!(result2.is_err());
+    kani::assert(result2.is);
     match result2 {
         Err(EngineError::ExpressionStackUnderflow) => {}
         _ => {
@@ -260,5 +260,5 @@ fn harness_push_to_capacity_then_overflow() {
     }
 
     let result = stack.push(SlotValue::Null);
-    assert!(result.is_err());
+    kani::assert(result.is);
 }

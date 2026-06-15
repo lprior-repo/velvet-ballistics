@@ -27,8 +27,8 @@ fn check_compute_action_idempotency_key_panic_free() {
 
     // Verify the key is always a valid u128 (no overflow panics).
     // The wrapping arithmetic guarantees the result is in [0, u128::MAX].
-    assert!(key >= 0, "Idempotency key must be non-negative");
-    assert!(key <= u128::MAX, "Idempotency key must fit in u128");
+    kani::assert(key >= 0, "Idempotency key must be non-neg);
+    kani::assert(key <= u128::MAX, "Idempotency key must fit in);
 }
 
 // ─── OBL-005: Panic freedom for action_ticket_has_valid_key ─────────────────────
@@ -90,7 +90,7 @@ fn check_is_retry_safe_with_key_panic_free() {
     let result = crate::action::is_retry_safe_with_key(safety_enum, key_present);
 
     // Verify the result is a valid boolean.
-    assert!(result == true || result == false, "Result must be boolean");
+    kani::assert(result == true || result == false, "Result must be bo);
 }
 
 // ─── OBL-013: Serialization round-trip bounds (7 fields, pre-MockMarker) ────────
@@ -134,14 +134,12 @@ fn check_action_ticket_serialization_size() {
     //   u16 fields (2): max 3 bytes each = 6
     //   u128 (1): max 17 bytes
     //   Total: 59 bytes (with postcard overhead)
-    assert!(
+    kani::assert(
         serialized.len() >= 7,
-        "Serialized ticket must contain at least 7 bytes (7 fields minimum)"
-    );
-    assert!(
+        "Serialized ticket must contain at least 7 bytes (7 fields minimum));
+    kani::assert(
         serialized.len() <= 64,
-        "Serialized ticket must fit within 64 bytes (7 fields with max varint overhead)"
-    );
+        "Serialized ticket must fit within 64 bytes (7 fields with max varint overhead));
 }
 
 // ─── OBL-005 extended: Valid key check — ticket with computed key is valid ──────
@@ -176,6 +174,6 @@ fn check_action_ticket_has_valid_key_with_computed_key() {
     };
 
     // The validation check must return true.
-    assert!(crate::action::action_ticket_has_valid_key(ticket),
-        "Ticket with computed key must pass validation");
+    kani::assert(crate::action::action_ticket_has_valid_key(ticket),
+        "Ticket with computed key must pass valid);
 }

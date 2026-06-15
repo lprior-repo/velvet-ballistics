@@ -43,10 +43,10 @@ mod harnesses {
         if let Some(sym) = result1 {
             // The symbolic string must actually be in the registry
             let found_in_registry = CODE_REGISTRY.iter().any(|e| e.symbolic == sym.as_str());
-            assert!(
+            kani::assert(
                 found_in_registry,
                 "Returned SymbolicCode must be in the registry"
-            );
+      );
 
             // And the registry entry's numeric code must match
             let entry_numeric = CODE_REGISTRY
@@ -69,7 +69,7 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let dc = DiagnosticCode::new(entry.numeric);
             let result = dc.symbolic_code();
-            assert!(result.is_some(), "Registered code must resolve");
+            kani::assert(result.is_some(), "Registered code must re);
             let result2 = dc.symbolic_code();
             assert_eq!(result, result2, "Must be consistent");
         }

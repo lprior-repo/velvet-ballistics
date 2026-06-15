@@ -216,37 +216,35 @@ fn vt2f_runtime_facade_semantics() {
     let mut strict_state = FacadeKernelState::seeded(selector);
     let before = strict_state.queue_depth;
     let strict_result = strict_state.submit_direct(RuntimePolicy::Strict, StoreMode::Missing);
-    assert!(matches!(
+    kani::assert(matches!(
         strict_result,
-        Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-    ));
+        Err(KernelRuntimeError::AdmissionArtifactNotFound { .. }));
     assert_eq!(before, strict_state.queue_depth);
 
     let mut admitted_state = FacadeKernelState::seeded(selector);
     let admitted_before = admitted_state.queue_depth;
     let admitted_result = admitted_state.submit_direct(policy, store);
     if policy == RuntimePolicy::Relaxed || store == StoreMode::Accepted {
-        assert!(admitted_result.is_ok());
+        kani::assert(admitted_result.i);
         assert_eq!(
             admitted_state.queue_depth,
             admitted_before.saturating_add(1)
         );
     } else {
-        assert!(matches!(
+        kani::assert(matches!(
             admitted_result,
             Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-        ));
+   );
         assert_eq!(admitted_state.queue_depth, admitted_before);
     }
 
     let fail_state = FacadeKernelState::seeded(selector);
     let unrelated_before = fail_state.snapshot_other(100);
     let ticket_run = shape.run(fail_state.target, fail_state.other, selector);
-    assert!(fail_state.fail_action_enqueue(ticket_run).is_ok());
-    assert!(matches!(
+    kani::assert(fail_state.fail_action_enqueue(ticket_run).i);
+    kani::assert(matches!(
         fail_state.tick_after_facade_fail_action(ticket_run),
-        Err(KernelRuntimeError::InvalidActionCompletion)
-    ));
+        Err(KernelRuntimeError::InvalidActionCompletion));
     assert_eq!(unrelated_before, fail_state.snapshot_other(100));
 
     let mut ask_state = FacadeKernelState::seeded(selector);
@@ -257,19 +255,19 @@ fn vt2f_runtime_facade_semantics() {
     // ERR-004 / LETHAL-001 fix: Stale ask MUST return RunNotFound (matching is Ok).
     // The else branch now correctly covers Stale, WrongRun, and AbsentRun.
     if matches!(shape, TicketShape::Matching) {
-        assert!(answer_result.is_ok());
-        assert!(tick_result.is_ok());
+        kani::assert(answer_result.i);
+        kani::assert(tick_result.i);
         assert_eq!(ask_state.answer_value, Some(value));
         assert_eq!(ask_state.answer_taint, Taint::Clean);
     } else {
         // Stale/WrongRun/AbsentRun all return RunNotFound per ERR-004 contract.
-        assert!(matches!(
+        kani::assert(matches!(
             answer_result,
             Err(KernelRuntimeError::RunNotFound)
-        ));
-        assert!(matches!(tick_result, Err(KernelRuntimeError::RunNotFound)));
+   );
+        kani::assert(matches!(tick_result, Err(KernelRuntimeError::RunNotF);
         assert_eq!(ask_state.answer_value, None);
-        assert!(ask_state.target_active);
+        kani::assert(ask_state.target_);
     }
     assert_eq!(ask_unrelated_before, ask_state.snapshot_other(200));
 }

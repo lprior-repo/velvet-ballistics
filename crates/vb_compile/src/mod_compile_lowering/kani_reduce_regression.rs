@@ -78,19 +78,19 @@ fn check_single_step_reference_behavior() {
 
     match result {
         Ok(()) => {
-            assert!(
+            kani::assert(
                 builder.nodes.len() == 1,
                 "single-step body must emit exactly 1 node"
-            );
+      );
             if let Some(node) = builder.nodes.first() {
-                assert!(
+                kani::assert(
                     node.id.get() == id_val,
                     "emitted node ID must match body_step id"
-                );
-                assert!(
+          );
+                kani::assert(
                     node.next.is_some(),
                     "emitted node must have next pointer set"
-                );
+          );
             }
         }
         Err(_) => {}
@@ -107,8 +107,8 @@ fn check_single_step_body_width_contract() {
 
     match result {
         Ok(w) => {
-            assert!(w >= 4, "reduce width with single body step >= 4");
-            assert!(w <= usize::from(u16::MAX), "width within u16::MAX");
+            kani::assert(w >= 4, "reduce width with single body step);
+            kani::assert(w <= usize::from(u16::MAX), "width within u16);
         }
         Err(_) => {}
     }
@@ -132,8 +132,8 @@ fn check_single_step_equivalence_contract() {
     let width_result = body_width(&body, 3);
     match width_result {
         Ok(w) => {
-            assert!(w >= 4, "single-step body width >= 4");
-            assert!(w <= usize::from(u16::MAX), "width within bounds");
+            kani::assert(w >= 4, "single-step body width);
+            kani::assert(w <= usize::from(u16::MAX), "width within b);
         }
         Err(_) => {}
     }
@@ -162,12 +162,12 @@ fn check_single_step_equivalence_contract() {
     match (&result_a, &result_b) {
         (Ok(()), Ok(())) => {
             // Node count must match
-            assert!(
+            kani::assert(
                 builder_a.nodes.len() == builder_b.nodes.len(),
                 "both dispatchers must emit same node count: a={}, b={}",
                 builder_a.nodes.len(),
                 builder_b.nodes.len()
-            );
+      );
 
             // Per-node comparison: IDs and next pointers must match
             for (i, (node_a, node_b)) in builder_a
@@ -176,35 +176,35 @@ fn check_single_step_equivalence_contract() {
                 .zip(builder_b.nodes.iter())
                 .enumerate()
             {
-                assert!(
+                kani::assert(
                     node_a.id == node_b.id,
                     "node {}: ID mismatch: a={:?}, b={:?}",
                     i,
                     node_a.id,
                     node_b.id
-                );
-                assert!(
+          );
+                kani::assert(
                     node_a.next == node_b.next,
                     "node {}: next link mismatch: a={:?}, b={:?}",
                     i,
                     node_a.next,
                     node_b.next
-                );
-                assert!(
+          );
+                kani::assert(
                     node_a.error_slot == node_b.error_slot,
                     "node {}: error_slot mismatch: a={:?}, b={:?}",
                     i,
                     node_a.error_slot,
                     node_b.error_slot
-                );
+          );
             }
 
             // For single-step body: exactly 1 node expected
-            assert!(
+            kani::assert(
                 builder_a.nodes.len() == 1,
                 "single-step body must produce exactly 1 node, got {}",
                 builder_a.nodes.len()
-            );
+      );
         }
         (Err(_), Err(_)) => {
             kani::cover!(

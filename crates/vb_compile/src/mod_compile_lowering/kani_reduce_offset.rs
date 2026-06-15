@@ -44,10 +44,10 @@ fn check_offset_distinctness() {
         let result = checked_step_offset(id, offset, "reduce", "body");
         match result {
             Ok(step_idx) => {
-                assert!(
+                kani::assert(
                     step_idx.get() >= base_id.saturating_add(offset),
                     "step index must be >= id + offset",
-                );
+          );
                 offsets.push(step_idx.get());
             }
             Err(_) => {
@@ -59,10 +59,10 @@ fn check_offset_distinctness() {
 
     // All emitted offsets must be distinct and strictly increasing
     for i in 1..offsets.len() {
-        assert!(
+        kani::assert(
             offsets[i] > offsets[i - 1],
             "production checked_step_offset produces strictly increasing IDs",
-        );
+  );
     }
     kani::cover!(offsets.len() > 1, "multi-step offset chain processed");
 }
@@ -81,10 +81,10 @@ fn check_offset_overflow_detected() {
     let result = checked_step_offset(id, large_offset, "reduce", "body");
     match result {
         Ok(step_idx) => {
-            assert!(
+            kani::assert(
                 step_idx.get() <= u16::MAX,
                 "production never returns step index > u16::MAX",
-            );
+      );
         }
         Err(_) => {}
     }

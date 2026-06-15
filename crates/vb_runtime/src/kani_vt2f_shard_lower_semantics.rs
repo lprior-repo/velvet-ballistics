@@ -170,18 +170,16 @@ fn vt2f_shard_lower_semantics() {
     );
 
     let absent_lower = ShardKernelState::explicit(RuntimePolicy::Relaxed, StoreMode::AlwaysPresent);
-    assert!(matches!(
+    kani::assert(matches!(
         absent_lower.action_failed_lower(run),
-        Err(KernelRuntimeError::RunNotFound)
-    ));
+        Err(KernelRuntimeError::RunNotFound));
 
     let active_lower = ShardKernelState::with_active_run(RuntimePolicy::Relaxed, run);
     let ticket_run = if selector & 1 == 0 { run } else { other };
     let facade_result = active_lower.runtime_action_failed(ticket_run);
-    assert!(matches!(
+    kani::assert(matches!(
         facade_result,
-        Err(KernelRuntimeError::InvalidActionCompletion)
-    ));
+        Err(KernelRuntimeError::InvalidActionCompletion));
 
     let explicit = ShardKernelState::explicit(selected_policy, selected_store);
     assert_eq!(explicit.runtime_policy, selected_policy);
@@ -204,10 +202,10 @@ fn vt2f_shard_lower_semantics() {
     let executed_before = frame.executed;
     let ask_result = frame.ask();
     if matches!(prompt_value(selector), SlotValue::Bool(_)) {
-        assert!(ask_result.is_err());
+        kani::assert(ask_result.is);
         assert_eq!(frame.executed, executed_before);
     } else {
-        assert!(ask_result.is_ok());
+        kani::assert(ask_result.i);
         assert_eq!(frame.executed, executed_before.saturating_add(1));
     }
 }

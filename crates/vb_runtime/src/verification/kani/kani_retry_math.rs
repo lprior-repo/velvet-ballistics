@@ -115,19 +115,19 @@ fn kani_retry_cursor_bounds() {
 
             if !next.exhausted {
                 // Non-exhausted: attempt must be ≤ max_attempts
-                assert!(
+                kani::assert(
                     next.attempt <= policy.max_attempts,
                     "next cursor attempt {} must not exceed max_attempts {}",
                     next.attempt,
                     policy.max_attempts
-                );
+          );
                 // delay must be ≤ max_interval
-                assert!(
+                kani::assert(
                     next.delay_ms <= max_interval,
                     "next cursor delay {} must not exceed max_interval {}",
                     next.delay_ms,
                     max_interval
-                );
+          );
                 // remaining must have decreased or be 0
                 if cursor.remaining > 1 {
                     assert_eq!(
@@ -146,10 +146,10 @@ fn kani_retry_cursor_bounds() {
         Err(e) => {
             // Errors should only occur for invalid cursors outside our assumes
             let msg = format!("{:?}", e);
-            assert!(
+            kani::assert(
                 msg.contains("exceeded") || msg.contains("nonzero") || msg.contains("zero"),
                 "only expected validation errors"
-            );
+      );
         }
     }
 
@@ -169,21 +169,21 @@ fn kani_retry_cursor_bounds() {
     kani::assume(attempt >= 1);
     kani::assume(attempt <= policy.max_attempts);
     if let Ok(delay) = policy.delay_for_attempt(max_interval, attempt) {
-        assert!(
+        kani::assert(
             delay <= max_interval,
             "delay_for_attempt must not exceed max_interval"
-        );
+  );
     }
 
     // --- Negative tests: validate_attempt rejects invalid inputs ---
     // Reject attempt 0
-    assert!(policy.delay_for_attempt(max_interval, 0).is_err());
+    kani::assert(policy.delay_for_attempt(max_interval, 0).is);
 
     // Reject attempt > max_attempts
     if policy.max_attempts < 10 {
-        assert!(policy
+        kani::assert(policy
             .delay_for_attempt(max_interval, policy.max_attempts + 1)
-            .is_err());
+            .is);
     }
 
     // Cover key states

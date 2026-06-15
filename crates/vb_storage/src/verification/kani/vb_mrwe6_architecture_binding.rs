@@ -51,9 +51,9 @@ fn vb_mrwe6_architecture_binding_all_domains() {
 
     let atom = mrwe6_validated_atom(class, intent);
     if valid_match {
-        assert!(atom.is_ok());
+        kani::assert(atom.i);
     } else {
-        assert!(atom.is_err());
+        kani::assert(atom.is);
     }
 
     let scheduled_atom = mrwe6_valid_scheduled_atom(class, intent);
@@ -62,24 +62,24 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         (class, intent),
         (Mrwe6EventClass::Scheduled, Mrwe6IntentKind::PutPending)
     ) {
-        assert!(matches!(
+        kani::assert(matches!(
             scheduled_atom.map(|validated| validated.atom_kind()),
             Ok(Mrwe6AtomKind::EventAndPutPending)
-        ));
+   );
         assert_eq!(kernel_scheduled_atom, Ok(Mrwe6AtomKind::EventAndPutPending));
     } else {
-        assert!(scheduled_atom.is_err());
-        assert!(kernel_scheduled_atom.is_err());
+        kani::assert(scheduled_atom.is);
+        kani::assert(kernel_scheduled_atom.is);
     }
 
     let queued_relevant = mrwe6_valid_queued_relevant_intent(class, intent);
     let kernel_queued_relevant = mrwe6_kernel_checked_queued_relevant_atom_kind(class, intent);
     if valid_match && !matches!(intent, Mrwe6IntentKind::None) {
-        assert!(queued_relevant.is_ok());
-        assert!(kernel_queued_relevant.is_ok());
+        kani::assert(queued_relevant.i);
+        kani::assert(kernel_queued_relevant.i);
     } else {
-        assert!(queued_relevant.is_err());
-        assert!(kernel_queued_relevant.is_err());
+        kani::assert(queued_relevant.is);
+        kani::assert(kernel_queued_relevant.is);
     }
 
     let equal_payload = kani::any::<bool>();
@@ -130,9 +130,9 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         resolution,
         Mrwe6ResolutionCommitDecision::CommittedAndMarkerRemoved
     ) {
-        assert!(committed.is_ok());
+        kani::assert(committed.i);
     } else {
-        assert!(committed.is_err());
+        kani::assert(committed.is);
     }
 
     let resolution_present = kani::any::<bool>();
@@ -152,7 +152,7 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         false,
     );
     if matches!(kernel_recovery, Mrwe6RecoveryOutcome::PendingInventory) {
-        assert!(marker_present);
+        kani::assert(marker_p);
     }
     if matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory) {
         let pending = mrwe6_pending_inventory_from_facts(
@@ -162,8 +162,8 @@ fn vb_mrwe6_architecture_binding_all_domains() {
             marker_present,
             false,
         );
-        assert!(pending.is_ok());
+        kani::assert(pending.i);
     } else {
-        assert!(!matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory));
+        kani::assert(!matches!(recovery, Mrwe6RecoveryOutcome::PendingInve);
     }
 }

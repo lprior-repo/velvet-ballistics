@@ -74,19 +74,18 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
         }
     };
 
-    assert!(matches!(
+    kani::assert(matches!(
         verification_action_index_intent(&scheduled),
         VerificationActionIndexIntent::Put {
             action: classified_action,
             run: classified_run,
             step: classified_step,
-        } if classified_action == action && classified_run == run && classified_step == step
-    ));
+        } if classified_action == action && classified_run == run && classified_step == step);
     if let Some(resolution) = &resolution_event {
-        assert!(matches!(
+        kani::assert(matches!(
             verification_action_index_intent(resolution),
             VerificationActionIndexIntent::Delete { .. }
-        ));
+   );
     }
 
     let outcome = verification_recovery_outcome(
@@ -98,52 +97,52 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
 
     match resolution_shape {
         ResolutionShape::None if marker_present => {
-            assert!(matches!(
+            kani::assert(matches!(
                 outcome,
                 Ok(VerificationRecoveryOutcome::PendingInventory)
-            ));
+       );
         }
         ResolutionShape::None if legacy_profile => {
-            assert!(matches!(
+            kani::assert(matches!(
                 outcome,
                 Ok(VerificationRecoveryOutcome::LegacyFallback)
-            ));
+       );
         }
         ResolutionShape::None => {
-            assert!(matches!(
+            kani::assert(matches!(
                 outcome,
                 Ok(VerificationRecoveryOutcome::ParityDefect)
-            ));
+       );
         }
         ResolutionShape::SameKey => {
-            assert!(matches!(
+            kani::assert(matches!(
                 outcome,
                 Ok(VerificationRecoveryOutcome::ResolvedNoPending)
-            ));
+       );
         }
         ResolutionShape::MismatchedKey => {
-            assert!(matches!(
+            kani::assert(matches!(
                 outcome,
                 Ok(VerificationRecoveryOutcome::ParityDefect)
-            ));
+       );
         }
     }
 
     if !legacy_profile && !marker_present && matches!(resolution_shape, ResolutionShape::None) {
-        assert!(!matches!(
+        kani::assert(!matches!(
             outcome,
             Ok(VerificationRecoveryOutcome::PendingInventory)
-        ));
+   );
     }
     if matches!(resolution_shape, ResolutionShape::MismatchedKey) {
-        assert!(!matches!(
+        kani::assert(!matches!(
             outcome,
             Ok(VerificationRecoveryOutcome::PendingInventory)
-        ));
-        assert!(!matches!(
+   );
+        kani::assert(!matches!(
             outcome,
             Ok(VerificationRecoveryOutcome::LegacyFallback)
-        ));
+   );
     }
 
     core::mem::forget(scheduled);

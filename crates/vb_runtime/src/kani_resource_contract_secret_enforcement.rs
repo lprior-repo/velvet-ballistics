@@ -65,8 +65,8 @@ fn prove_secret_result_not_allowed_enforcement() {
 
     // Conservative default check
     let default = ResourceContract::DEFAULT;
-    assert!(!default.allows_secret_results,
-        "DEFAULT contract must have allows_secret_results=false (conservative)");
+    kani::assert(!default.allows_secret_results,
+        "DEFAULT contract must have allows_secret_results=false (conserva);
 
     kani::cover!(contract.allows_secret_results != contract_opposite.allows_secret_results);
 }

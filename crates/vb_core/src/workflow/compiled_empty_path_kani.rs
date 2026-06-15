@@ -38,9 +38,9 @@ fn vb_ajc40_empty_path_root_accessor() {
     ) {
         Ok(admitted) => {
             assert_eq!(admitted.len(), 1);
-            assert!(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0));
+            kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth());
         }
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 
     match validate_compiled_queries(
@@ -52,8 +52,8 @@ fn vb_ajc40_empty_path_root_accessor() {
     ) {
         Ok(admitted) => {
             assert_eq!(admitted.len(), 1);
-            assert!(matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0));
+            kani::assert(matches!(admitted.queries().first(), Some(item) if item.path_depth());
         }
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 }

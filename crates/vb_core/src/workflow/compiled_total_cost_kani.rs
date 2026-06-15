@@ -47,7 +47,7 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
             assert_eq!(declared, 0);
             assert_eq!(recomputed, 1);
         }
-        _ => assert!(false),
+        _ => kani::assert();,
     }
 
     match validate_compiled_queries(
@@ -64,6 +64,6 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
             assert_eq!(declared, 0);
             assert_eq!(recomputed, 1);
         }
-        _ => assert!(false),
+        _ => kani::assert();,
     }
 }

@@ -94,9 +94,9 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     let result = replay_step(node, &mut run, &mut store, &plan);
 
     if !slot_a && !slot_b && !has_otherwise {
-        assert!(result.is_err());
+        kani::assert(result.is);
     } else {
-        assert!(result.is_ok());
+        kani::assert(result.i);
     }
 }
 
@@ -153,7 +153,7 @@ fn verify_choose_slot_output_in_input_set() {
         Ok(ReplayAction::Continue(target)) => {
             let valid =
                 target == StepIdx::new(1) || target == StepIdx::new(2) || target == StepIdx::new(3);
-            assert!(valid);
+            kani::assert();
         }
         Ok(_) => {
             kani::assume(false); loop {}

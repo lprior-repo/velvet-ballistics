@@ -26,7 +26,7 @@ fn kani_foreach_delimiter_no_collision_possible() {
     let byte_val: u8 = kani::any();
     let is_delimiter = byte_val == b':';
     let is_yaml_id = byte_val.is_ascii_alphanumeric() || byte_val == b'_' || byte_val == b'-';
-    assert!(!(is_delimiter && is_yaml_id));
+    kani::assert(!(is_delimiter && is_ya);
 }
 
 /// H3: Boundary collision prevention — delimiters prevent ambiguous concatenation.

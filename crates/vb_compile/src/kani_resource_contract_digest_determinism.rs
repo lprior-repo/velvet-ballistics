@@ -98,14 +98,14 @@ fn representative_yaml_source() -> String {
     for b in name_bytes.iter_mut() {
         kani::assume(*b >= b'a' && *b <= b'z');
     }
-    let name = String::from_utf8(name_bytes).unwrap();
+    let name = String::from_utf8(name_bytes).unwrap_or_else(|| kani::any());
 
     let mut step_id_bytes: Vec<u8> = kani::any();
     kani::assume(step_id_bytes.len() >= 1 && step_id_bytes.len() <= 16);
     for b in step_id_bytes.iter_mut() {
         kani::assume(*b >= b'a' && *b <= b'z');
     }
-    let step_id = String::from_utf8(step_id_bytes).unwrap();
+    let step_id = String::from_utf8(step_id_bytes).unwrap_or_else(|| kani::any());
 
     format!(
         "version: velvet-ballastics/v1\nname: {name}\n\

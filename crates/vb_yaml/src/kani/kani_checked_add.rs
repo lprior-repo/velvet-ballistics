@@ -61,7 +61,7 @@ fn check_checked_add_counters_depth() {
 
     match result {
         Ok(new_depth) => {
-            assert!(new_depth > depth);
+            kani::assert(new_depth >);
             // Cover: production branch where depth exceeds limit (lines 97-102, 113-118)
             if new_depth > max_depth {
                 kani::cover!(new_depth > max_depth, "depth_exceeded_max");
@@ -94,7 +94,7 @@ fn check_checked_add_counters_node_count() {
 
     match result {
         Ok(new_count) => {
-            assert!(new_count > node_count);
+            kani::assert(new_count > node);
             if new_count > max_nodes {
                 kani::cover!(new_count > max_nodes, "node_count_exceeded_max");
             }
@@ -118,7 +118,7 @@ fn check_checked_add_counters_document_count() {
 
     match result {
         Ok(new_count) => {
-            assert!(new_count > document_count);
+            kani::assert(new_count > document);
         }
         Err(_) => {
             kani::cover!(document_count == usize::MAX, "document_count_overflow");
@@ -150,7 +150,7 @@ fn check_checked_add_counters_sequence() {
 
     match result {
         Ok(new_count) => {
-            assert!(new_count > count);
+            kani::assert(new_count >);
             if new_count > limits.max_sequence_len {
                 kani::cover!(
                     new_count > limits.max_sequence_len,
@@ -188,7 +188,7 @@ fn check_checked_add_counters_mapping() {
 
     match result {
         Ok(new_count) => {
-            assert!(new_count > count);
+            kani::assert(new_count >);
             if new_count > limits.max_mapping_entries {
                 kani::cover!(
                     new_count > limits.max_mapping_entries,
@@ -231,13 +231,13 @@ fn check_checked_add_counters_merge() {
 
     match result {
         Ok(sum) => {
-            assert!(sum >= parent);
-            assert!(sum >= child);
+            kani::assert(sum >= );
+            kani::assert(sum >=);
         }
         Err(_) => {
             kani::cover!(parent > usize::MAX - child, "merge_overflow");
             // Overflow: parent + child > usize::MAX.
-            assert!(parent > usize::MAX - child);
+            kani::assert(parent > usize::MAX -);
         }
     }
 }

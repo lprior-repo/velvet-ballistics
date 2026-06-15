@@ -83,11 +83,11 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let low_byte = entry.numeric & 0xFF;
             // Low byte must be non-zero for all categories
-            assert!(
+            kani::assert(
                 low_byte != 0,
                 "Entry '{}': low byte must be non-zero (reserved for sentinel)",
                 entry.symbolic
-            );
+      );
         }
     }
 }

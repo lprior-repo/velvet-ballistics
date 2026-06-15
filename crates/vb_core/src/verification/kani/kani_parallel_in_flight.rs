@@ -64,23 +64,23 @@ fn kani_parallel_in_flight_lifecycle() {
                         // - be within [1, max_pif]
                         // - not exceed max
                         let pif = frame.parallel_in_flight();
-                        assert!(
+                        kani::assert(
                             pif <= max_pif,
                             "PIF {} must not exceed max {}",
                             pif,
                             max_pif
-                        );
-                        assert!(
+                  );
+                        kani::assert(
                             frame.max_parallel_in_flight() >= pif,
                             "tracked max {} must be >= current PIF {}",
                             frame.max_parallel_in_flight(),
                             pif
-                        );
+                  );
                     }
                     Err(_) => {
                         // Overflow is OK; PIF must remain valid
                         let pif = frame.parallel_in_flight();
-                        assert!(pif <= max_pif, "PIF must remain ≤ max after failed add");
+                        kani::assert(pif <= max_pif, "PIF must remain ≤ max after faile);
                     }
                 }
             }
@@ -90,7 +90,7 @@ fn kani_parallel_in_flight_lifecycle() {
                     Ok(()) => {
                         // PIF must be ≥ 0 after successful sub
                         let pif = frame.parallel_in_flight();
-                        assert!(pif <= max_pif, "PIF {} must be ≤ max {}", pif, max_pif);
+                        kani::assert(pif <= max_pif, "PIF {} must be ≤ max {}", pif, m);
                     }
                     Err(_) => {
                         // Underflow is OK; PIF must not go below 0
@@ -102,12 +102,12 @@ fn kani_parallel_in_flight_lifecycle() {
 
         // Invariant: 0 ≤ PIF ≤ max_PIF holds after every operation
         let pif = frame.parallel_in_flight();
-        assert!(
+        kani::assert(
             pif <= max_pif,
             "PIF invariant: {} must be ≤ max_PIF {}",
             pif,
             max_pif
-        );
+  );
     }
 
     kani::cover!(frame.parallel_in_flight() > 0);
@@ -135,7 +135,7 @@ fn kani_parallel_in_flight_overflow_rejection() {
         Ok(()) => {
             // If ok, the checked_add prevented overflow
             let pif = frame.parallel_in_flight();
-            assert!(pif >= pif_before);
+            kani::assert(pif >= pif_);
         }
         Err(_) => {
             // Overflow rejected — PIF must be unchanged
@@ -161,10 +161,9 @@ fn kani_parallel_in_flight_underflow_rejection() {
 
     // PIF starts at 0; subtracting anything should underflow
     let result = frame.sub_parallel_in_flight(1);
-    assert!(
+    kani::assert(
         result.is_err(),
-        "sub_parallel_in_flight(1) from PIF=0 must return error"
-    );
+        "sub_parallel_in_flight(1) from PIF=0 must return error);
     assert_eq!(
         frame.parallel_in_flight(),
         0,

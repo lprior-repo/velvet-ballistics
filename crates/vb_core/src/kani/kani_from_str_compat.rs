@@ -137,22 +137,22 @@ mod harnesses {
         for code in 0x0501u16..=0x0513 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            assert!(result.is_ok(), "New Gate code {:04X} must parse", code);
+            kani::assert(result.is_ok(), "New Gate code {:04X} must parse");
         }
         // Contract discovery range
         for code in 0x0601u16..=0x0603 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            assert!(
+            kani::assert(
                 result.is_ok(),
                 "New ContractDiscovery code {:04X} must parse",
                 code
-            );
+      );
         }
         // Extended boundary code
         let e_str = format_e_code(0x401C);
         let result = from_str_diagnostic_code(&e_str);
-        assert!(result.is_ok(), "Extended boundary code 0x401C must parse");
+        kani::assert(result.is_ok(), "Extended boundary code 0x401C must );
     }
 
     /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).

@@ -17,7 +17,8 @@ use std::time::Duration;
 /// `EvidenceError::ZeroLatencyField` to distinguish which latency
 /// measurement was absent or zero.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
+/// This enum is closed: all three variants are known at compile time.
+/// External code MUST match exhaustively (no `#[non_exhaustive]`).
 pub enum LatencyFieldId {
     /// The Fjall LSM-tree write path latency.
     FjallWrite,

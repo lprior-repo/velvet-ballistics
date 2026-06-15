@@ -54,11 +54,10 @@ fn kani_unknown_command_returns_bad_request() {
     kani::assume(value == 0 || value >= 12);
 
     let command = IpcCommand::from_u16(value);
-    assert!(
+    kani::assert(
         command.is_ok(),
         "from_u16({}) must return Ok for unknown values",
-        value
-    );
+        valu);
     let command = match command {
         Ok(v) => v,
         Err(_) => {

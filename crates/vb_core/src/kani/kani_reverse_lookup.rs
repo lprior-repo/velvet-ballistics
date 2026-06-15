@@ -26,11 +26,11 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let dc = DiagnosticCode::new(entry.numeric);
             let result = dc.symbolic_code();
-            assert!(
+            kani::assert(
                 result.is_some(),
                 "Registered numeric code {:04X} must resolve via symbolic_code()",
                 entry.numeric
-            );
+      );
             if let Some(sym) = result {
                 assert_eq!(
                     sym.as_str(),
@@ -54,11 +54,11 @@ mod harnesses {
             if !is_registered_numeric(*code) {
                 let dc = DiagnosticCode::new(*code);
                 let result = dc.symbolic_code();
-                assert!(
+                kani::assert(
                     result.is_none(),
                     "Unregistered numeric code {:04X} must return None",
                     code
-                );
+          );
             }
         }
     }

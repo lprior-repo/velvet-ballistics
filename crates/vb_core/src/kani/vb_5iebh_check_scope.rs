@@ -57,13 +57,13 @@ fn proof_check_evidence_validation() {
         let max_allowed = baseline + threshold_delta;
         if evidence.result_us <= max_allowed {
             // Within threshold - should pass
-            assert!(
+            kani::assert(
                 result.is_ok()
                     || matches!(
                         result,
                         Err(crate::check::CheckEvidenceError::RegressionDetected { .. })
                     )
-            );
+      );
         }
     }
 }

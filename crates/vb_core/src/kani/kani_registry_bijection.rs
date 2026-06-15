@@ -33,10 +33,10 @@ mod harnesses {
     fn kani_registry_bijection_unique_symbolic() {
         for i in 0..CODE_REGISTRY.len() {
             for j in (i + 1)..CODE_REGISTRY.len() {
-                assert!(
+                kani::assert(
                     CODE_REGISTRY[i].symbolic != CODE_REGISTRY[j].symbolic,
                     "Duplicate symbolic name detected"
-                );
+          );
             }
         }
     }
@@ -47,10 +47,10 @@ mod harnesses {
     fn kani_registry_bijection_unique_numeric() {
         for i in 0..CODE_REGISTRY.len() {
             for j in (i + 1)..CODE_REGISTRY.len() {
-                assert!(
+                kani::assert(
                     CODE_REGISTRY[i].numeric != CODE_REGISTRY[j].numeric,
                     "Duplicate numeric code detected"
-                );
+          );
             }
         }
     }
@@ -66,10 +66,10 @@ mod harnesses {
             // This is verified by construction — the const function scans the registry.
             let found =
                 super::super::kani_symbolic_code_validation::symbolic_to_numeric(entry.symbolic);
-            assert!(
+            kani::assert(
                 found.is_some(),
                 "Every registered symbolic name must resolve"
-            );
+      );
             assert_eq!(found, Some(entry.numeric), "Symbolic→numeric mismatch");
 
             // And the numeric→symbolic lookup should also find it
@@ -95,10 +95,10 @@ mod harnesses {
     #[kani::unwind(100)]
     fn kani_registry_nonzero() {
         for i in 0..CODE_REGISTRY.len() {
-            assert!(
+            kani::assert(
                 CODE_REGISTRY[i].numeric != 0,
                 "No diagnostic code may have numeric value 0x0000"
-            );
+      );
         }
     }
 }

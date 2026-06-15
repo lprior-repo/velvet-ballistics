@@ -19,10 +19,10 @@ mod harnesses {
     fn kani_is_supported_code_all_constants() {
         for i in 0..CODE_REGISTRY.len() {
             let code = CODE_REGISTRY[i].numeric;
-            assert!(
+            kani::assert(
                 is_supported_code(code),
                 "Every registry entry's numeric code must be accepted by is_supported_code"
-            );
+      );
         }
     }
 
@@ -31,46 +31,46 @@ mod harnesses {
     #[kani::unwind(20)]
     fn kani_is_supported_code_rejects_gaps() {
         // Edge values just outside supported ranges
-        assert!(!is_supported_code(0x0000), "Zero should be unsupported");
-        assert!(!is_supported_code(0x0100), "E0100 should be unsupported");
-        assert!(
+        kani::assert(!is_supported_code(0x0000), "Zero should be unsupp);
+        kani::assert(!is_supported_code(0x0100), "E0100 should be unsupp);
+        kani::assert(
             !is_supported_code(0x010C),
             "E010C should be unsupported (gap)"
-        );
-        assert!(!is_supported_code(0x0200), "E0200 should be unsupported");
-        assert!(
+  );
+        kani::assert(!is_supported_code(0x0200), "E0200 should be unsupp);
+        kani::assert(
             !is_supported_code(0x0205),
             "E0205 should be unsupported (gap)"
-        );
-        assert!(!is_supported_code(0x0300), "E0300 should be unsupported");
-        assert!(
+  );
+        kani::assert(!is_supported_code(0x0300), "E0300 should be unsupp);
+        kani::assert(
             !is_supported_code(0x030A),
             "E030A should be unsupported (gap)"
-        );
-        assert!(!is_supported_code(0x0400), "E0400 should be unsupported");
-        assert!(
+  );
+        kani::assert(!is_supported_code(0x0400), "E0400 should be unsupp);
+        kani::assert(
             !is_supported_code(0x040D),
             "E040D should be unsupported (gap)"
-        );
-        assert!(!is_supported_code(0x0500), "E0500 should be unsupported");
-        assert!(!is_supported_code(0x0600), "E0600 should be unsupported");
-        assert!(
+  );
+        kani::assert(!is_supported_code(0x0500), "E0500 should be unsupp);
+        kani::assert(!is_supported_code(0x0600), "E0600 should be unsupp);
+        kani::assert(
             !is_supported_code(0x0604),
             "E0604 should be unsupported (gap)"
-        );
-        assert!(
+  );
+        kani::assert(
             !is_supported_code(0x09FF),
             "E09FF should be unsupported (gap)"
-        );
-        assert!(
+  );
+        kani::assert(
             !is_supported_code(0x0FFF),
             "E0FFF should be unsupported (gap)"
-        );
-        assert!(
+  );
+        kani::assert(
             !is_supported_code(0x401D),
             "E401D should be unsupported (gap above 0x401C)"
-        );
-        assert!(!is_supported_code(0xFFFF), "EFFFF should be unsupported");
+  );
+        kani::assert(!is_supported_code(0xFFFF), "EFFFF should be unsupp);
     }
 
     /// Verify that representative values in each supported range are accepted.
@@ -78,37 +78,37 @@ mod harnesses {
     #[kani::unwind(30)]
     fn kani_is_supported_code_accepts_ranges() {
         // One value from each supported range
-        assert!(is_supported_code(0x0101)); // Schema first
-        assert!(is_supported_code(0x010B)); // Schema last
-        assert!(is_supported_code(0x0201)); // Reference first
-        assert!(is_supported_code(0x0204)); // Reference last
-        assert!(is_supported_code(0x0301)); // Control Flow first
-        assert!(is_supported_code(0x0309)); // Control Flow last
-        assert!(is_supported_code(0x0401)); // Type/Taint first
-        assert!(is_supported_code(0x040C)); // Type/Taint last
-        assert!(is_supported_code(0x0501)); // Gate first
-        assert!(is_supported_code(0x0513)); // Gate last
-        assert!(is_supported_code(0x0601)); // Contract Discovery first
-        assert!(is_supported_code(0x0603)); // Contract Discovery last
-        assert!(is_supported_code(0x1001)); // Compilation first
-        assert!(is_supported_code(0x1002)); // Compilation second
-        assert!(is_supported_code(0x1011)); // Compilation (canonical)
-        assert!(is_supported_code(0x1013)); // Compilation (canonical last)
-        assert!(is_supported_code(0x1101)); // Workflow IR first
-        assert!(is_supported_code(0x1104)); // Workflow IR last
-        assert!(is_supported_code(0x1201)); // Expression first
-        assert!(is_supported_code(0x1202)); // Expression last
-        assert!(is_supported_code(0x1301)); // Accessor first
-        assert!(is_supported_code(0x130D)); // Accessor mid
-        assert!(is_supported_code(0x1311)); // Accessor idempotency
-        assert!(is_supported_code(0x1314)); // Accessor last
-        assert!(is_supported_code(0x1401)); // Lowering first
-        assert!(is_supported_code(0x1407)); // Lowering last
-        assert!(is_supported_code(0x2001)); // Storage first
-        assert!(is_supported_code(0x200F)); // Storage last
-        assert!(is_supported_code(0x3001)); // Runtime first
-        assert!(is_supported_code(0x300E)); // Runtime last
-        assert!(is_supported_code(0x4001)); // Boundary first
-        assert!(is_supported_code(0x401C)); // Boundary last (extended from 0x401B)
+        kani::assert(is_supported_code(0); // Schema first
+        kani::assert(is_supported_code(0); // Schema last
+        kani::assert(is_supported_code(0); // Reference first
+        kani::assert(is_supported_code(0); // Reference last
+        kani::assert(is_supported_code(0); // Control Flow first
+        kani::assert(is_supported_code(0); // Control Flow last
+        kani::assert(is_supported_code(0); // Type/Taint first
+        kani::assert(is_supported_code(0); // Type/Taint last
+        kani::assert(is_supported_code(0); // Gate first
+        kani::assert(is_supported_code(0); // Gate last
+        kani::assert(is_supported_code(0); // Contract Discovery first
+        kani::assert(is_supported_code(0); // Contract Discovery last
+        kani::assert(is_supported_code(0); // Compilation first
+        kani::assert(is_supported_code(0); // Compilation second
+        kani::assert(is_supported_code(0); // Compilation (canonical)
+        kani::assert(is_supported_code(0); // Compilation (canonical last)
+        kani::assert(is_supported_code(0); // Workflow IR first
+        kani::assert(is_supported_code(0); // Workflow IR last
+        kani::assert(is_supported_code(0); // Expression first
+        kani::assert(is_supported_code(0); // Expression last
+        kani::assert(is_supported_code(0); // Accessor first
+        kani::assert(is_supported_code(0); // Accessor mid
+        kani::assert(is_supported_code(0); // Accessor idempotency
+        kani::assert(is_supported_code(0); // Accessor last
+        kani::assert(is_supported_code(0); // Lowering first
+        kani::assert(is_supported_code(0); // Lowering last
+        kani::assert(is_supported_code(0); // Storage first
+        kani::assert(is_supported_code(0); // Storage last
+        kani::assert(is_supported_code(0); // Runtime first
+        kani::assert(is_supported_code(0); // Runtime last
+        kani::assert(is_supported_code(0); // Boundary first
+        kani::assert(is_supported_code(0); // Boundary last (extended from 0x401B)
     }
 }

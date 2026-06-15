@@ -41,7 +41,7 @@ fn vb_ajc40_slug_decode_smoke_cases() {
     // propagated as Decode and must not construct an admitted value.
     match from_bytes_compiled_slugs(&[0xff], budget) {
         Err(SlugParseError::Decode(_)) => {}
-        _ => assert!(false),
+        _ => kani::assert();,
     }
 
     // Canonical decoded-public-shape cases are checked through the production
@@ -55,11 +55,11 @@ fn vb_ajc40_slug_decode_smoke_cases() {
         budget,
     ) {
         Ok(admitted) => {
-            assert!(admitted.is_empty());
+            kani::assert(admitted.is_e);
             assert_eq!(admitted.len(), 0);
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 
     match validate_compiled_slugs(
@@ -73,7 +73,7 @@ fn vb_ajc40_slug_decode_smoke_cases() {
             assert_eq!(admitted.len(), 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 }
 
@@ -108,9 +108,9 @@ fn vb_ajc40_slug_post_decode_semantics() {
         budget,
     ) {
         Ok(remaining_budget) => {
-            assert!(len <= MAX_SLUGS_PER_WORKFLOW);
-            assert!(remaining_budget <= budget);
-            assert!(max_path_depth <= MAX_SLUG_PATH_SEGMENTS);
+            kani::assert(len <= MAX_SLUGS_PER_WO);
+            kani::assert(remaining_budget <= );
+            kani::assert(max_path_depth <= MAX_SLUG_PATH_SE);
         }
         Err(SlugParseError::Decode(_))
         | Err(SlugParseError::YbBudgetExceeded { .. })
@@ -139,7 +139,7 @@ fn vb_ajc40_slug_budget_boundaries() {
             assert_eq!(admitted.len(), 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 
     match validate_compiled_slugs(
@@ -153,7 +153,7 @@ fn vb_ajc40_slug_budget_boundaries() {
             assert_eq!(admitted.len(), 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 
     match validate_compiled_slugs(
@@ -167,7 +167,7 @@ fn vb_ajc40_slug_budget_boundaries() {
             assert_eq!(total, 1);
             assert_eq!(max, 0);
         }
-        _ => assert!(false),
+        _ => kani::assert();,
     }
 }
 
@@ -183,7 +183,7 @@ fn vb_ajc40_slug_path_depth_16_17() {
         0,
     ) {
         Ok(admitted) => assert_eq!(admitted.len(), 1),
-        Err(_) => assert!(false),
+        Err(_) => kani::assert();,
     }
 
     match validate_compiled_slugs(
@@ -197,7 +197,7 @@ fn vb_ajc40_slug_path_depth_16_17() {
             assert_eq!(depth, MAX_SLUG_PATH_SEGMENTS + 1);
             assert_eq!(max, MAX_SLUG_PATH_SEGMENTS);
         }
-        _ => assert!(false),
+        _ => kani::assert();,
     }
 }
 
@@ -208,13 +208,13 @@ fn vb_ajc40_slug_path_depth_16_17() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn vb_ajc40_slug_count_65535_65536() {
-    assert!(validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW).is_ok());
+    kani::assert(validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW).i);
 
     match validate_compiled_slug_count(SLUG_COUNT_OVER_LIMIT) {
         Err(SlugParseError::TooManySlugs { count, max }) => {
             assert_eq!(count, SLUG_COUNT_OVER_LIMIT);
             assert_eq!(max, MAX_SLUGS_PER_WORKFLOW);
         }
-        _ => assert!(false),
+        _ => kani::assert();,
     }
 }

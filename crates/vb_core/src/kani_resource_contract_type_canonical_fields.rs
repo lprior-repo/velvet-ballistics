@@ -71,25 +71,25 @@ fn prove_default_contract_has_18_fields() {
 
     // All 18 fields of DEFAULT must be accessible.
     // Compilation ensures this; we verify the values are sensible.
-    assert!(default.max_steps > 0);
-    assert!(default.max_slots > 0);
-    assert!(default.max_constants > 0);
-    assert!(default.max_accessors > 0);
-    assert!(default.max_expressions > 0);
-    assert!(default.max_expr_stack > 0);
-    assert!(default.max_step_budget_per_tick > 0);
-    assert!(default.max_transitions_per_tick > 0); // Critical field
-    assert!(default.max_input_bytes > 0);
-    assert!(default.max_output_bytes > 0);
-    assert!(default.max_blob_bytes > 0);
-    assert!(default.max_ipc_payload_bytes > 0);
-    assert!(default.max_retry_attempts > 0);
-    assert!(default.max_fanout > 0);
-    assert!(default.max_collect_items > 0);
-    assert!(default.max_queue_depth > 0);
-    assert!(default.max_journal_batch_bytes > 0);
+    kani::assert(default.max_ste);
+    kani::assert(default.max_slo);
+    kani::assert(default.max_constan);
+    kani::assert(default.max_accesso);
+    kani::assert(default.max_expressio);
+    kani::assert(default.max_expr_sta);
+    kani::assert(default.max_step_budget_per_ti);
+    kani::assert(default.max_transitions_per_ti); // Critical field
+    kani::assert(default.max_input_byt);
+    kani::assert(default.max_output_byt);
+    kani::assert(default.max_blob_byt);
+    kani::assert(default.max_ipc_payload_byt);
+    kani::assert(default.max_retry_attemp);
+    kani::assert(default.max_fano);
+    kani::assert(default.max_collect_ite);
+    kani::assert(default.max_queue_dep);
+    kani::assert(default.max_journal_batch_byt);
     // allows_secret_results is false by default (conservative)
-    assert!(!default.allows_secret_results);
+    kani::assert(!default.allows_secret_r);
 
     kani::cover!(default.max_transitions_per_tick > 0);
 }

@@ -107,10 +107,10 @@ mod harnesses {
             );
             // The invariant: numeric_code reverse-lookups to the original code
             let reversed = diagnostic.numeric_code.symbolic_code();
-            assert!(
+            kani::assert(
                 reversed.is_some(),
                 "numeric_code must resolve to a SymbolicCode"
-            );
+      );
             assert_eq!(
                 reversed,
                 Some(sym),
