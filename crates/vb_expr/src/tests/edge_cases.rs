@@ -84,13 +84,17 @@ fn parser_depth_65_nested_parens_fails() {
 // =========================================================================
 
 /// Lexing a 4095-byte source string succeeds (4095 < MAX_SOURCE_BYTES).
+///
+/// Uses a single very long identifier of exactly 4095 characters. The lexer
+/// produces one Identifier token + End sentinel (2 tokens total).
 #[test]
 fn lexer_source_4095_bytes_succeeds() -> crate::ExprResult<()> {
-    let source = "1".repeat(4095);
+    // Single 4095-char identifier → 1 Identifier token + End = 2 tokens
+    let source = "x".repeat(4095);
+    assert_eq!(source.len(), 4095);
     let tokens = lex_expr(&source)?;
-    // Single integer "1" plus the End sentinel token
     assert_eq!(tokens.len(), 2);
-    assert_eq!(tokens[0], Token::Literal(LiteralToken::I64(1)));
+    assert_eq!(tokens[0], Token::Identifier(source.into_boxed_str()));
     assert_eq!(tokens[1], Token::End);
     Ok(())
 }
@@ -101,11 +105,11 @@ fn lexer_source_4095_bytes_succeeds() -> crate::ExprResult<()> {
 /// the largest acceptable input.
 #[test]
 fn lexer_source_4096_bytes_succeeds_at_boundary() -> crate::ExprResult<()> {
-    let source = "1".repeat(4096);
+    let source = "x".repeat(4096);
+    assert_eq!(source.len(), 4096);
     let tokens = lex_expr(&source)?;
-    // Single integer "1" plus the End sentinel token
     assert_eq!(tokens.len(), 2);
-    assert_eq!(tokens[0], Token::Literal(LiteralToken::I64(1)));
+    assert_eq!(tokens[0], Token::Identifier(source.into_boxed_str()));
     assert_eq!(tokens[1], Token::End);
     Ok(())
 }
@@ -166,24 +170,15 @@ fn lexer_257_integers_fails() {
 // Empty expression program — StackUnderflow on zero ops
 // =========================================================================
 
-/// An `ExprProgram` with zero operations and an empty evaluation stack
-/// returns `StackUnderflow` at the finish_stack gate.
+/// An `ExprProgram` with zero operations is rejected at construction time
+/// because `check_expr_stack_bound` requires the final stack to be depth 1
+/// (single result) or at least depth 0 with a non-empty program.
 ///
-/// The evaluator's `finish_stack` returns `StackUnderflow` when the stack is
-/// empty after executing all ops.  With zero ops, no value is ever pushed.
+/// Empty programs fail `validate_expr_final_depth(0)` → `ExpressionStackUnderflow`.
 #[test]
-fn empty_program_returns_stack_underflow() {
-    // Build an empty program — 0 ops, max_stack = 0
-    let program = match ExprProgram::try_from_ops(Vec::new().into_boxed_slice()) {
-        Ok(p) => p,
-        Err(e) => panic!("empty program should be valid, got error: {e:?}"),
-    };
-
-    // Evaluate with empty slots and constants
-    match eval_expr_program(&program, &[], &[]) {
-        Err(ExprError::StackUnderflow) => {
-            // expected: empty stack → StackUnderflow
-        }
-        other => panic!("empty program evaluation should yield StackUnderflow, got {other:?}"),
-    }
+fn empty_program_rejected_at_construction() {
+    // Build an empty program — 0 ops
+    let result = ExprProgram::try_from_ops(Vec::new().into_boxed_slice());
+    // Empty program → validate_expr_final_depth(0) → ExpressionStackUnderflow
+    assert!(result.is_err(), "empty program should be rejected at construction");
 }

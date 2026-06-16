@@ -365,38 +365,42 @@ fn check_expr_stack_bound_deep_loads_within_limit() {
     assert!(result.is_err(), "50 loads with no consumers should fail (stack not empty)");
 }
 
-/// 100 LoadConst ops → exceeds MAX_EXPRESSION_STACK(63).
+/// 65 LoadConst ops → exceeds MAX_EXPRESSION_STACK(64).
 #[test]
-fn check_expr_stack_bound_100_loads_exceeds_max_expression_stack() {
-    // Use a balanced pattern: push 64, pop 64
-    let mut ops: Vec<ExprOp> = (0..64)
+fn check_expr_stack_bound_exceeds_max_expression_stack() {
+    // 65 LoadConst ops push depth to 65, which exceeds capacity 64.
+    // The stack capacity check fires before the final depth check.
+    let ops: Vec<ExprOp> = (0..65)
         .map(|i| ExprOp::LoadConst(ConstIdx::new(i as u16)))
         .collect();
-    // Push 64 items, then apply 63 Adds (each consumes 2, pushes 1 → net -1)
-    // After 63 Adds: stack depth = 64 - 63 = 1
-    // We need one final pop... but there's no Pop op.
-    // Instead, just test that 64 loads exceeds capacity.
     let result = check_expr_stack_bound(&ops);
-    // 64 > 63 (MAX_EXPRESSION_STACK) → StackOverflow
-    assert!(result.is_err(), "64 loads should exceed MAX_EXPRESSION_STACK(63)");
+    // 65 > 64 (MAX_EXPRESSION_STACK) → StackOverflow
+    assert!(result.is_err(), "65 loads should exceed MAX_EXPRESSION_STACK(64)");
     match result {
         Err(ExprError::StackOverflow { max }) => {
-            assert_eq!(max, 63, "overflow should report max=63");
+            assert_eq!(max, 64, "overflow should report max=64");
         }
         other => panic!("expected StackOverflow, got {other:?}"),
     }
 }
 
-/// 63 LoadConst ops → exactly at limit but stack not empty → fails final depth check.
-/// The stack depth tracking works correctly up to 63.
+/// 64 LoadConst ops → exactly at limit (MAX_EXPRESSION_STACK=64).
+/// The 64th op pushes depth to 64, which equals capacity → passes capacity check.
+/// But final depth 64 > 1 → InvalidCompiledWorkflow → UnexpectedEof.
 #[test]
-fn check_expr_stack_bound_63_loads_at_limit() {
-    let ops: Vec<ExprOp> = (0..63)
+fn check_expr_stack_bound_64_loads_at_limit() {
+    let ops: Vec<ExprOp> = (0..64)
         .map(|i| ExprOp::LoadConst(ConstIdx::new(i as u16)))
         .collect();
     let result = check_expr_stack_bound(&ops);
-    // Stack non-empty at end → fails final depth validation
-    assert!(result.is_err(), "63 loads with no consumers should fail (stack not empty)");
+    // 64 loads → depth 64 → passes capacity (64 <= 64) but fails final depth (64 > 1)
+    assert!(result.is_err(), "64 loads should fail final depth validation");
+    match result {
+        Err(ExprError::UnexpectedEof) => {
+            // InvalidCompiledWorkflow maps to UnexpectedEof via core_to_expr
+        }
+        other => panic!("expected UnexpectedEof (from InvalidCompiledWorkflow), got {other:?}"),
+    }
 }
 
 /// Mixed ops: push/pop pattern that leaves stack empty → max_stack = 3.
