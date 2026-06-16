@@ -112,6 +112,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rival_replaces_final_path_
 #[test]
 fn agent_context_deliver_reports_unknown_publish_when_rollback_leaves_temp_link()
 -> Result<(), String> {
+    assert_test_hooks_active()?;
     let dir = deliver_tempdir()?;
     let deliver_path = dir.path().join("agent-context.jsonl");
     let temp_stage_path = dir.path().join(".agent-context.jsonl.tmp");
