@@ -568,6 +568,26 @@ obligations:
       - cargo nextest run -p vb_ipc ipc_format
     note: "Spec contradiction DRIFT-IPC-FORMAT - Section 18 vs Section 21"
 
+  - id: VB-BOUNDED-001
+    section: [44, 45, 46, 47]
+    statement: |
+      Buffer extent types enforce non-negative bounds, length ≤ end, and
+      saturating arithmetic for end position. Payload construction accepts
+      when within limit, rejects when exceeding. Queue length and empty
+      semantics are correct.
+    proof_level: L4
+    crate: vb_ipc
+    files:
+      - crates/vb_ipc/src/bounded.rs
+      - crates/vb_ipc/src/ingress.rs
+      - crates/vb_ipc/src/frame_types.rs
+    required:
+      verus: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+    commands:
+      - verus crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+    verified:
+      vb_5iebh: deductively_verified
+
   # ============================================================
   # RECORD ENVELOPE DECODE (Section 18, 49)
   # ============================================================
@@ -1290,9 +1310,9 @@ proof_matrix:
     primary_level: L3
     secondary_level: L4
   vb_ipc:
-    proof_strategy: "Kani + fuzz. The key property is 'reject before allocation'."
+    proof_strategy: "Verus for buffer extent arithmetic (L4). Kani + fuzz for IPC decode, length checks, and reject-before-allocation."
     primary_level: L3
-    secondary_level: L2
+    secondary_level: L4
   vb_ui_model:
     proof_strategy: "Schema tests, redaction tests, bounded-list tests."
     primary_level: L1
@@ -1305,3 +1325,5 @@ proof_matrix:
     proof_strategy: "cargo audit, cargo deny, cargo vet, cargo geiger, dependency-scope beads."
     primary_level: L0
     secondary_level: L6
+
+verus: crates/vb_ipc/src/verification/verus/vb_5iebh.rs

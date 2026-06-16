@@ -75,7 +75,7 @@ suspicious = { level = "deny", priority = -1 }
 perf = { level = "deny", priority = -1 }
 complexity = { level = "deny", priority = -1 }
 unwrap_used = "forbid"
-expect_used = "forbid"
+expect_used = "deny"
 panic = "forbid"
 panic_in_result_fn = "forbid"
 todo = "forbid"
