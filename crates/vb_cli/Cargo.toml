@@ -36,5 +36,13 @@ bytes = { workspace = true }
 proptest = { workspace = true }
 tempfile.workspace = true
 
+[features]
+# Opt-in: enables the `debug_test_support` module that honors the
+# `VB_DELIVER_SINK_TEST_*` env vars from the velvet-ballistics binary. Plain
+# `cargo build` must not compile this module so debug binaries do not expose a
+# test-only attack surface.
+default = []
+instrumented-cli = []
+
 [lints]
 workspace = true

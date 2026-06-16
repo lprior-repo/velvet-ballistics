@@ -10,10 +10,12 @@
 //!   `/sys` and their descendants), `/proc/../<allowed-parent>` resolution
 //! - The in-process debug hooks activated by the `VB_DELIVER_SINK_TEST_*_ENV`
 //!   variables are reachable only from the binary; this file exercises them
-//!   end-to-end. They are honored only when the binary is built with
-//!   `debug_assertions` (the default for `cargo test -p velvet-ballistics`,
-//!   not `cargo build --release`); `assert_test_hooks_active` below probes
-//!   and fails loudly if the binary under test does not honor them.
+//!   end-to-end. They are honored only when the binary is built with the
+//!   `instrumented-cli` Cargo feature (e.g. via
+//!   `cargo test -p velvet-ballistics --features instrumented-cli`, not a
+//!   plain `cargo build` or `cargo build --release`); `assert_test_hooks_active`
+//!   below probes and fails loudly if the binary under test does not honor
+//!   them.
 //!
 //! In-process library behavior (every `write_json_line` error branch,
 //! rollback and post-commit state contracts, internal helpers) lives in the
@@ -27,11 +29,16 @@ use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
 
+use vb_cli::deliver_sink::PUBLISH_STATE_UNKNOWN_MESSAGE;
+
 const TEST_CLEANUP_FAILURES_ENV: &str = "VB_DELIVER_SINK_TEST_CLEANUP_FAILURES";
 const TEST_POST_COMMIT_FINAL_ACTION_ENV: &str = "VB_DELIVER_SINK_TEST_POST_COMMIT_FINAL_ACTION";
 const TEST_SYNC_RESULTS_ENV: &str = "VB_DELIVER_SINK_TEST_SYNC_RESULTS";
-const PUBLISH_STATE_UNKNOWN_MESSAGE: &str = "deliver failed: deliver publish outcome is unknown after post-commit state could not be confirmed";
 const RIVAL_REPLACEMENT_TEXT: &str = "rival replacement\n";
+
+fn publish_state_unknown_line() -> String {
+    format!("deliver failed: {PUBLISH_STATE_UNKNOWN_MESSAGE}")
+}
 
 #[test]
 fn agent_context_deliver_stdout_writes_single_json_line() -> Result<(), String> {
@@ -80,7 +87,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rival_unlinks_final_path_a
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert_stderr_line(&output, PUBLISH_STATE_UNKNOWN_MESSAGE)?;
+    assert_stderr_line(&output, &publish_state_unknown_line())?;
     assert!(!deliver_path.exists());
     assert_directory_entries_exact(dir.path(), &[])?;
     Ok(())
@@ -101,7 +108,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rival_replaces_final_path_
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert_stderr_line(&output, PUBLISH_STATE_UNKNOWN_MESSAGE)?;
+    assert_stderr_line(&output, &publish_state_unknown_line())?;
     assert_eq!(
         std::fs::read_to_string(&deliver_path).map_err(|error| error.to_string())?,
         String::from(RIVAL_REPLACEMENT_TEXT)
@@ -127,7 +134,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rollback_leaves_temp_link(
 
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(output.stdout, Vec::<u8>::new());
-    assert_stderr_line(&output, PUBLISH_STATE_UNKNOWN_MESSAGE)?;
+    assert_stderr_line(&output, &publish_state_unknown_line())?;
     assert!(!deliver_path.exists());
     assert_agent_context_jsonl_at_path(&temp_stage_path)?;
     assert_directory_entries_exact(dir.path(), &[".agent-context.jsonl.tmp"])?;
@@ -386,6 +393,19 @@ fn agent_context_deliver_rejects_unsupported_webhook_target() -> Result<(), Stri
 }
 
 #[test]
+fn agent_context_deliver_rejects_stdout_with_trailing_colon() -> Result<(), String> {
+    // Contract decision: the only canonical stdout form is the bare token
+    // `stdout`. A colon-suffixed variant (`stdout:`) is parsed as the unknown
+    // scheme `stdout` with an empty value, so it must surface
+    // `UnknownScheme` rather than silently route to stdout or fall through
+    // to `MissingFilePath`.
+    assert_deliver_validation_failure(
+        "stdout:",
+        "deliver failed: deliver target scheme is unknown",
+    )
+}
+
+#[test]
 fn agent_context_deliver_rejects_unknown_target_scheme() -> Result<(), String> {
     assert_deliver_validation_failure(
         "ftp:/absolute/agent-context.jsonl",
@@ -425,7 +445,7 @@ fn agent_context_deliver_rejects_directory_target() -> Result<(), String> {
     )
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn agent_context_deliver_rejects_symlink_alias_to_blocked_root() -> Result<(), String> {
     let Some(blocked_root) = blocked_root_symlink_target() else {
@@ -599,10 +619,10 @@ fn agent_context_deliver_rejects_symlink_alias_to_existing_real_file() -> Result
     Ok(())
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn blocked_root_symlink_target() -> Option<&'static std::path::Path> {
     let candidate = std::path::Path::new("/proc");
-    if cfg!(target_os = "linux") && candidate.is_dir() {
+    if candidate.is_dir() {
         Some(candidate)
     } else {
         None
@@ -694,16 +714,16 @@ fn probe_test_hooks_active() -> Result<(), String> {
             ));
         }
     };
-    let expected_stderr = format!("{PUBLISH_STATE_UNKNOWN_MESSAGE}\n");
+    let expected_stderr = format!("deliver failed: {PUBLISH_STATE_UNKNOWN_MESSAGE}\n");
     if output.status.code() == Some(2) && output.stderr == expected_stderr.as_bytes() {
         Ok(())
     } else {
         Err(String::from(
             "VB_DELIVER_SINK_TEST_* env vars are not honored by the velvet-ballistics binary under test: \
              the `debug_test_support` module in crates/vb_cli/src/deliver_sink.rs is gated by \
-             `#[cfg(all(not(test), debug_assertions))]`, so the hooks are only compiled when the binary \
-             is built with `debug_assertions` (the default for `cargo test -p velvet-ballistics`, not \
-             `cargo build --release`); rebuild with `cargo test -p velvet-ballistics` to enable the hooks.",
+             `#[cfg(all(not(test), feature = \"instrumented-cli\"))]`, so the hooks are only compiled when \
+             the binary is built with the `instrumented-cli` Cargo feature. Rebuild with \
+             `cargo test -p velvet-ballistics --features instrumented-cli` to enable the hooks.",
         ))
     }
 }

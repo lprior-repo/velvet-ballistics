@@ -18,9 +18,15 @@ const WEBHOOK_SCHEME: &str = "webhook";
 const MAX_PATH_BYTES: usize = 4095;
 const MAX_TEMP_STAGE_ATTEMPTS: usize = 8;
 const MINIMUM_STAGE_BASE_NAME: &str = ".t";
+// Bare (no envelope) message returned by `Display` for `PublishStateUnknown`;
+// the binary prefixes `deliver failed: ` before writing it to stderr. Exposed
+// as `pub` so the integration test can assert against the single source of
+// truth instead of duplicating the literal.
+pub const PUBLISH_STATE_UNKNOWN_MESSAGE: &str =
+    "deliver publish outcome is unknown after post-commit state could not be confirmed";
 // Owner-only read+write mode for newly created delivery files. Computed via
-// `bitflags::union` (a `const fn`) so the value is constructed at compile
-// time and avoids a runtime call.
+// `Mode::RUSR.union(Mode::WUSR)` at compile time so the value avoids a runtime
+// call and the per-bit assembly stays in the constant evaluator.
 const MODE: Mode = Mode::RUSR.union(Mode::WUSR);
 
 enum TempStageCreation {
@@ -95,9 +101,7 @@ impl fmt::Display for DeliverSinkError {
             }
             Self::ExistingFile => f.write_str("deliver file target already exists"),
             Self::OverlongPath => f.write_str("deliver file path is too long"),
-            Self::PublishStateUnknown => f.write_str(
-                "deliver publish outcome is unknown after post-commit state could not be confirmed",
-            ),
+            Self::PublishStateUnknown => f.write_str(PUBLISH_STATE_UNKNOWN_MESSAGE),
             Self::Io(kind) => write!(f, "deliver I/O failed: {kind:?}"),
         }
     }
@@ -323,14 +327,14 @@ fn maybe_change_final_path_after_final_sync(
 }
 
 // Only the final-path hook gets an `instrumented-cli` arm: `deliver_sink_integration.rs` drives the real binary with `VB_DELIVER_SINK_TEST_POST_COMMIT_FINAL_ACTION` to cover the post-publish `confirm_published_final_path` path end-to-end.
-#[cfg(all(not(test), debug_assertions))]
+#[cfg(all(not(test), feature = "instrumented-cli"))]
 fn maybe_change_final_path_after_final_sync(
     target: &DeliverFileTarget,
 ) -> Result<(), DeliverSinkError> {
     debug_test_support::maybe_change_final_path_after_final_sync(target.delivery_path())
 }
 
-#[cfg(all(not(test), not(debug_assertions)))]
+#[cfg(all(not(test), not(feature = "instrumented-cli")))]
 fn maybe_change_final_path_after_final_sync(
     _target: &DeliverFileTarget,
 ) -> Result<(), DeliverSinkError> {
@@ -362,10 +366,12 @@ fn cleanup_unpublished_temp_file(
     temp_name: &OsStr,
     delivery_error: DeliverSinkError,
 ) -> Result<(), DeliverSinkError> {
-    match unlink_at(parent_dir, temp_name) {
-        Ok(()) => Err(delivery_error),
-        Err(cleanup_error) => Err(cleanup_error),
-    }
+    // Best-effort cleanup; the original semantic error (e.g. `ExistingFile`
+    // for the linkat-EXIST branch) is what the caller actually needs to
+    // surface, so we always return it regardless of whether the unlinkat
+    // succeeded, failed, or was forced to fail by the test/debug hooks.
+    let _ = cleanup_link_path(parent_dir, temp_name);
+    Err(delivery_error)
 }
 
 fn cleanup_link_path(parent_dir: &OwnedFd, path: &OsStr) -> bool {
@@ -374,7 +380,7 @@ fn cleanup_link_path(parent_dir: &OwnedFd, path: &OsStr) -> bool {
         return false;
     }
 
-    #[cfg(all(not(test), debug_assertions))]
+    #[cfg(all(not(test), feature = "instrumented-cli"))]
     if debug_test_support::should_fail_cleanup(path) {
         return false;
     }
@@ -438,7 +444,7 @@ fn sync_parent_directory(parent_dir: &OwnedFd) -> Result<(), DeliverSinkError> {
         return result;
     }
 
-    #[cfg(all(not(test), debug_assertions))]
+    #[cfg(all(not(test), feature = "instrumented-cli"))]
     if let Some(result) = debug_test_support::next_sync_result() {
         return result;
     }
@@ -494,10 +500,12 @@ fn preferred_temp_name(file_name: &OsStr) -> OsString {
 }
 
 fn hashed_temp_name(path: &Path) -> OsString {
+    use std::fmt::Write as _;
     let digest = blake3::hash(path.as_os_str().as_encoded_bytes());
-    let mut temp_name = String::from(".vb");
+    let mut temp_name = String::with_capacity(".vb".len() + 16);
+    temp_name.push_str(".vb");
     for byte in &digest.as_bytes()[..8] {
-        temp_name.push_str(&format!("{byte:02x}"));
+        let _ = write!(&mut temp_name, "{byte:02x}");
     }
     OsString::from(temp_name)
 }
@@ -578,11 +586,7 @@ fn temp_stage_name(base_name: &OsStr, attempt: usize) -> OsString {
 }
 
 fn path_with_name_len(parent: &Path, file_name: &OsStr) -> Result<usize, DeliverSinkError> {
-    let separator = if parent == Path::new("/") {
-        0_usize
-    } else {
-        1_usize
-    };
+    let separator = if parent == Path::new("/") { 0 } else { 1 };
     parent
         .as_os_str()
         .as_encoded_bytes()
@@ -698,7 +702,7 @@ fn to_rustix_io_error(error: rustix::io::Errno) -> DeliverSinkError {
     }
 }
 
-#[cfg(all(not(test), debug_assertions))]
+#[cfg(all(not(test), feature = "instrumented-cli"))]
 mod debug_test_support {
     use std::cell::RefCell;
     use std::collections::VecDeque;
@@ -1135,6 +1139,49 @@ mod tests {
 
         assert_directory_entries_exact(temp_dir.path(), &["agent-context.jsonl"])?;
         assert_no_stage_name_exists(&deliver_path)
+    }
+
+    #[test]
+    fn write_json_line_surfaces_existing_file_after_linkat_exist_when_temp_unlink_also_fails()
+    -> Result<(), String> {
+        // Covers the cleanup-failure-after-linkat-EXIST branch:
+        // `linkat(parent, temp, parent, final)` returns EXIST because the
+        // rival pre-created the final file, then `cleanup_unpublished_temp_file`
+        // is forced to fail its unlinkat via the test hook. The contract is
+        // that the *original* semantic error (`ExistingFile`) is surfaced
+        // rather than the unlinkat error.
+        let temp_dir = repo_tempdir("vb-deliver-rival-file-cleanup-fail-")?;
+        let deliver_path = temp_dir.path().join("agent-context.jsonl");
+        let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
+            .map_err(|error| error.to_string())?;
+        std::fs::write(&deliver_path, "rival file\n").map_err(|error| error.to_string())?;
+        let _hooks = test_support::install(HookConfig {
+            cleanup_failures: vec![OsString::from(".agent-context.jsonl.tmp")],
+            ..Default::default()
+        });
+
+        match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
+            Err(DeliverSinkError::ExistingFile) => {}
+            Err(error) => {
+                return Err(format!(
+                    "expected ExistingFile surfaced after cleanup failure, got {error}"
+                ));
+            }
+            Ok(()) => {
+                return Err(String::from(
+                    "expected ExistingFile surfaced after cleanup failure",
+                ));
+            }
+        }
+
+        let rival_contents =
+            std::fs::read_to_string(&deliver_path).map_err(|error| error.to_string())?;
+        if rival_contents != String::from("rival file\n") {
+            return Err(format!(
+                "expected rival file contents to remain unchanged, got {rival_contents:?}"
+            ));
+        }
+        Ok(())
     }
 
     #[test]
@@ -1639,11 +1686,40 @@ mod tests {
     }
 
     #[test]
-    fn created_file_mode_is_owner_only() {
-        assert_eq!(
+    fn created_file_mode_is_owner_only() -> Result<(), String> {
+        // Drives the production `openat(... OFlags::CREATE | OFlags::EXCL,
+        // MODE)` path on a real file, then `fstat`s the resulting descriptor
+        // to confirm the kernel-observed mode is owner-only.
+        let temp_dir = repo_tempdir("vb-deliver-mode-")?;
+        let parent_fd = rustix::fs::openat(
+            rustix::fs::CWD,
+            temp_dir.path(),
+            rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::DIRECTORY,
+            rustix::fs::Mode::empty(),
+        )
+        .map_err(|error| error.to_string())?;
+        let file_name = std::ffi::OsStr::new("vb-deliver-mode-probe");
+        let file = rustix::fs::openat(
+            &parent_fd,
+            file_name,
+            rustix::fs::OFlags::WRONLY
+                | rustix::fs::OFlags::CREATE
+                | rustix::fs::OFlags::EXCL
+                | rustix::fs::OFlags::CLOEXEC,
             super::MODE,
-            rustix::fs::Mode::RUSR.union(rustix::fs::Mode::WUSR)
-        );
+        )
+        .map(std::fs::File::from)
+        .map_err(|error| error.to_string())?;
+        let stat = rustix::fs::fstat(&file).map_err(|error| error.to_string())?;
+        let mode = stat.st_mode & 0o777;
+        if mode & 0o600 == 0o600 && mode & 0o077 == 0 {
+            Ok(())
+        } else {
+            Err(format!(
+                "expected owner-only mode 0o600, got {mode:o} (full mode 0o{:o})",
+                stat.st_mode & 0o7777
+            ))
+        }
     }
 
     fn path_text(path: &std::path::Path) -> Result<String, String> {
