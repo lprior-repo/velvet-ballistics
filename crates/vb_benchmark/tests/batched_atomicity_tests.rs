@@ -59,14 +59,20 @@ impl RuntimeJournal for CountingJournal {
                 capacity: self.capacity,
             });
         }
-        events.try_reserve(1).map_err(|_| vb_runtime::RuntimeError::JournalFull {
-            capacity: self.capacity,
-        })?;
+        events
+            .try_reserve(1)
+            .map_err(|_| vb_runtime::RuntimeError::JournalFull {
+                capacity: self.capacity,
+            })?;
         events.push(event);
         Ok(())
     }
 
-    fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: EventSeq) -> vb_runtime::RuntimeResult<()> {
+    fn append_sequenced(
+        &self,
+        event: RuntimeJournalEvent,
+        _seq: EventSeq,
+    ) -> vb_runtime::RuntimeResult<()> {
         *self.append_count.lock().unwrap() += 1;
         let mut events = self
             .events
@@ -77,9 +83,11 @@ impl RuntimeJournal for CountingJournal {
                 capacity: self.capacity,
             });
         }
-        events.try_reserve(1).map_err(|_| vb_runtime::RuntimeError::JournalFull {
-            capacity: self.capacity,
-        })?;
+        events
+            .try_reserve(1)
+            .map_err(|_| vb_runtime::RuntimeError::JournalFull {
+                capacity: self.capacity,
+            })?;
         events.push(event);
         Ok(())
     }
@@ -91,7 +99,8 @@ impl RuntimeJournal for CountingJournal {
     ) -> vb_runtime::RuntimeResult<()> {
         *self.batch_count.lock().unwrap() += 1;
         for (offset, event) in events.iter().enumerate() {
-            let offset_u64 = u64::try_from(offset).map_err(|_| vb_runtime::RuntimeError::EncodeFailed)?;
+            let offset_u64 =
+                u64::try_from(offset).map_err(|_| vb_runtime::RuntimeError::EncodeFailed)?;
             let seq = EventSeq::new(seq_start.get().saturating_add(offset_u64));
             self.append_sequenced(event.clone(), seq)?;
         }
@@ -160,12 +169,7 @@ fn drain_shard(shard: &mut Shard) {
     while shard.tick().expect("shard tick") {}
 }
 
-fn build_shards() -> (
-    Shard,
-    Shard,
-    Arc<CountingJournal>,
-    Arc<CountingJournal>,
-) {
+fn build_shards() -> (Shard, Shard, Arc<CountingJournal>, Arc<CountingJournal>) {
     let config_a = ShardConfig {
         coalesce_window_ticks: 1,
         ..ShardConfig::default()
@@ -183,16 +187,9 @@ fn build_shards() -> (
     let journal_b: SharedRuntimeJournal = counting_b.clone();
 
     let artifact_store: SharedAcceptedArtifactStore = AlwaysPresentArtifactStore::shared();
-    let shard_a = Shard::new_with_journal_and_artifact_store(
-        config_a,
-        journal_a,
-        artifact_store.clone(),
-    );
-    let shard_b = Shard::new_with_journal_and_artifact_store(
-        config_b,
-        journal_b,
-        artifact_store,
-    );
+    let shard_a =
+        Shard::new_with_journal_and_artifact_store(config_a, journal_a, artifact_store.clone());
+    let shard_b = Shard::new_with_journal_and_artifact_store(config_b, journal_b, artifact_store);
 
     (shard_a, shard_b, counting_a, counting_b)
 }
@@ -279,5 +276,8 @@ fn coalescing_ratio_at_least_three() {
         events_a, events_b,
         "event counts must match: events_a={events_a} events_b={events_b}"
     );
-    assert_eq!(events_a, append_a, "event count must match append count: events={events_a} appends={append_a}");
+    assert_eq!(
+        events_a, append_a,
+        "event count must match append count: events={events_a} appends={append_a}"
+    );
 }

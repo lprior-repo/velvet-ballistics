@@ -22,34 +22,40 @@ use std::time::Duration;
 #[test]
 fn capture_metadata_empty_name_and_command() {
     let result = capture_metadata(
-        "",                              // name
-        None,                            // baseline (new benchmark)
-        Duration::ZERO,                  // result
-        "",                              // command
-        "abc123",                        // commit_hash
-        "linux-x86_64",                  // environment
-        200_000,                         // budget_us
-        1,                               // fjall_write_latency_ns
-        1,                               // direct_api_latency_ns
-        1,                               // ipc_latency_ns
+        "",             // name
+        None,           // baseline (new benchmark)
+        Duration::ZERO, // result
+        "",             // command
+        "abc123",       // commit_hash
+        "linux-x86_64", // environment
+        200_000,        // budget_us
+        1,              // fjall_write_latency_ns
+        1,              // direct_api_latency_ns
+        1,              // ipc_latency_ns
     );
 
     match result {
         Ok(meta) => {
             assert!(
                 meta.name.is_empty(),
-                "name should be empty string, got '{}'", meta.name
+                "name should be empty string, got '{}'",
+                meta.name
             );
             assert!(
                 meta.command.is_empty(),
-                "command should be empty string, got '{}'", meta.command
+                "command should be empty string, got '{}'",
+                meta.command
             );
-            assert_eq!(meta.baseline_us, None, "baseline should be None for new benchmark");
-            assert_eq!(meta.result_us, 0, "result_us should be 0 for Duration::ZERO");
+            assert_eq!(
+                meta.baseline_us, None,
+                "baseline should be None for new benchmark"
+            );
+            assert_eq!(
+                meta.result_us, 0,
+                "result_us should be 0 for Duration::ZERO"
+            );
         }
-        Err(e) => panic!(
-            "capture_metadata with empty name/command must return Ok, got Err({e:?})"
-        ),
+        Err(e) => panic!("capture_metadata with empty name/command must return Ok, got Err({e:?})"),
     }
 }
 
@@ -87,14 +93,11 @@ fn capture_metadata_duration_overflow_baseline() {
             // result_us is 0 because Duration::ZERO was passed (not the overflow duration).
             // This test verifies the overflow guard on the *baseline* path.
             assert_eq!(
-                meta.result_us,
-                0,
+                meta.result_us, 0,
                 "result_us should be 0 for Duration::ZERO (non-overflowing path)"
             );
         }
-        Err(e) => panic!(
-            "capture_metadata with overflow baseline must return Ok, got Err({e:?})"
-        ),
+        Err(e) => panic!("capture_metadata with overflow baseline must return Ok, got Err({e:?})"),
     }
 }
 
@@ -124,9 +127,7 @@ fn capture_metadata_result_duration_overflow() {
                 "result_us should be u64::MAX on result Duration overflow"
             );
         }
-        Err(e) => panic!(
-            "capture_metadata with overflow result must return Ok, got Err({e:?})"
-        ),
+        Err(e) => panic!("capture_metadata with overflow result must return Ok, got Err({e:?})"),
     }
 }
 
@@ -149,7 +150,8 @@ fn budget_utilization_percent_max_budget_returns_zero() {
 fn budget_utilization_percent_zero_budget_returns_max() {
     let pct = budget_utilization_percent(Duration::from_micros(1), 0);
     assert_eq!(
-        pct, u128::MAX,
+        pct,
+        u128::MAX,
         "zero budget must return u128::MAX sentinel, got {pct}"
     );
 }
@@ -271,9 +273,7 @@ fn capture_metadata_empty_environment_passes_gate_rejection() {
     // capture_metadata must succeed — it does not validate semantic content.
     let meta = match meta {
         Ok(m) => m,
-        Err(e) => panic!(
-            "capture_metadata with empty environment must return Ok, got Err({e:?})"
-        ),
+        Err(e) => panic!("capture_metadata with empty environment must return Ok, got Err({e:?})"),
     };
 
     assert!(
