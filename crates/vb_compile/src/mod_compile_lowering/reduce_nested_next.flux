@@ -16,7 +16,7 @@
 #[flux_rs::extern_spec]
 impl crate::mod_compile_lowering::part_01 {
     // canonical_body_step_width with refinement
-    #[flux_rs::sig(fn(&vb_yaml::ast::StepPrimitive) -> Result<usize[w: int | w >= 1 && w <= 65535], CompileError>)]
+    #[flux_rs::sig(fn(primitive: &vb_yaml::ast::StepPrimitive) -> Result<usize[w: int | w >= 1 && w <= 65535], CompileError>)]
     fn canonical_body_step_width(
         primitive: &vb_yaml::ast::StepPrimitive,
     ) -> Result<usize, CompileError>;

@@ -22,6 +22,14 @@ mod part_14;
 #[cfg(verus)]
 mod verus_reduce_proofs;
 
+// Verus production-bound proofs for Together width/parity/ordering.
+// GOD RULE 2: All spec functions model actual production behavior in
+// part_01 (body_width, together_width, canonical_body_step_width) and
+// part_04 (emit_single_body_set, emit_single_body_together).
+// No external_body, no toy types, no vacuous proofs.
+#[cfg(verus)]
+mod proofs;
+
 // ============================================================
 // Kani harnesses for nested reduce body lowering (vb-xi2f.24).
 // 11 harnesses covering width parity, offset monotonicity, chain integrity,

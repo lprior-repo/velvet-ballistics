@@ -11,16 +11,17 @@
 //   - canonical_body_step_width returns Ok(n) where n >= 1 for supported primitives
 
 // Extern spec for body_width with post-condition refinement
+// The 'overhead' parameter in the sig must be named so the post-condition can reference it.
 #[flux_rs::extern_spec]
 impl crate::mod_compile_lowering::part_01 {
-    #[flux_rs::sig(fn(&[vb_yaml::ast::StepAst], usize) -> Result<usize[n: int | n >= overhead && n <= 65535], CompileError>)]
+    #[flux_rs::sig(fn(body: &[vb_yaml::ast::StepAst], overhead: usize) -> Result<usize[n: int | n >= overhead && n <= 65535], CompileError>)]
     fn body_width(body: &[vb_yaml::ast::StepAst], overhead: usize) -> Result<usize, CompileError>;
 }
 
 // Extern spec for canonical_body_step_width with post-condition refinement
 #[flux_rs::extern_spec]
 impl crate::mod_compile_lowering::part_01 {
-    #[flux_rs::sig(fn(&vb_yaml::ast::StepPrimitive) -> Result<usize[n: int | n >= 1], CompileError>)]
+    #[flux_rs::sig(fn(primitive: &vb_yaml::ast::StepPrimitive) -> Result<usize[n: int | n >= 1], CompileError>)]
     fn canonical_body_step_width(primitive: &vb_yaml::ast::StepPrimitive) -> Result<usize, CompileError>;
 }
 
@@ -34,9 +35,10 @@ fn reject_invalid_width_zero() {
 
 // Refinement lemma: body_width(body, 0) >= 0 (always true, verifies trivial case)
 // This checks that Flux can actually detect violations when given wrong sigs.
+// NOTE: This trusted stub is a placeholder — a proper lemma would verify
+// that for any non-empty body with overhead >= 1, body_width returns >= 1.
 #[flux_rs::trusted]
 #[flux_rs::sig(fn(x: usize) -> usize[x + 1])]
 fn identity(x: usize) -> usize {
-    x
-    SYNTAX ERROR
+    x + 1
 }

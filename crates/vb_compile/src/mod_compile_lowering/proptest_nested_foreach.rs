@@ -12,7 +12,6 @@
 
 #![cfg(test)]
 #![forbid(unsafe_code)]
-#![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
 use proptest::prelude::*;

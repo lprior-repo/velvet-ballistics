@@ -212,6 +212,20 @@ pub(super) fn lower_canonical_ask(
     Ok(())
 }
 
+/// Emits a single body step (Set, Do, ForEach, or Together).
+///
+/// Specification:
+/// - `body.len() == 1` required, otherwise `Err(StepFieldShape)`
+/// - `Set` ⇒ emits 1 node (lower_set)
+/// - `Do` ⇒ emits 1 node (CompiledNode::Do)
+/// - `ForEach` ⇒ calls lower_canonical_for_each (recursive, width >= 2)
+/// - `Together` ⇒ calls emit_single_body_together (recursive, width = 2 + body_width_sum)
+/// - Other ⇒ Err(UnsupportedStepPrimitive)
+///
+/// # Node Count Property
+/// For Set and Do, exactly 1 node is emitted. For ForEach, width >= 2.
+/// For Together, emitted nodes == together_width(branches).
+/// The `debug_assert_eq!` at line ~308 verifies this parity in debug builds.
 pub(crate) fn emit_single_body_set(
     body: &[vb_yaml::ast::StepAst],
     id: StepIdx,
@@ -468,8 +482,29 @@ pub(super) fn emit_reduce_body_steps(
 
 /// Lowers a nested `Together` primitive appearing inside a compound body position.
 ///
-/// Emits: TogetherStart → (TogetherBranch + branch body)* → TogetherJoin.
-/// Uses the caller-provided accumulator `slot` and forwards `next` to the join node.
+/// Specification:
+/// 1. `branches` must be non-empty, otherwise `Err(StepFieldShape)`
+/// 2. Emits exactly `together_width(branches)` nodes:
+///    - 1 TogetherStart node
+///    - For each branch: 1 TogetherBranch node + body_width(branch.steps, 1) nodes
+///    - 1 TogetherJoin node
+/// 3. Total emitted = 2 + sum(body_width(b.steps, 1) for b in branches)
+/// 4. Branch target StepIdx values are strictly increasing from `id`
+/// 5. TogetherJoin has StepIdx = id + width - 1
+/// 6. Inner Together nodes are contiguous (depth-first recursion, no interleaving)
+///
+/// # Width-Node Parity (TH-1 defense)
+/// The emitted node count equals the value returned by `canonical_body_step_width(Together{..})`.
+/// This is verified by the debug_assert_eq! in the caller (`emit_single_body_set`).
+///
+/// # Ordering Invariant
+/// TogetherStart < TogetherBranch[0] < ... < TogetherBranch[n-1] < TogetherJoin
+/// This is guaranteed by sequential for-loop emission with monotonically increasing StepIdx.
+///
+/// # Recursion Depth
+/// Nested Together primitives recurse through emit_single_body_set → emit_single_body_together.
+/// Each nested Together reduces the remaining YAML depth by at least 1.
+/// Termination is guaranteed by YAML parser's depth limit (default 128).
 pub(super) fn emit_single_body_together(
     branches: &[vb_yaml::ast::TogetherBranch],
     id: StepIdx,

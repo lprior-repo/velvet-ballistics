@@ -101,6 +101,19 @@ pub(super) fn canonical_step_width(
     }
 }
 
+/// Computes the total width (step count) for a body of steps.
+///
+/// Specification: `body_width(body, overhead) = overhead + sum(canonical_body_step_width(s) for s in body)`
+///
+/// The `overhead` parameter accounts for structural nodes that precede the body steps:
+/// - For `ForEach`: overhead=2 (ForEachStart + ForEachNext/Finish)
+/// - For `Reduce`: overhead=3 (ReduceStart + ReduceNext + ReduceFinish)
+/// - For `Together` branches: overhead=1 (TogetherBranch node)
+///
+/// # Bounds
+/// - Empty body: returns `Ok(overhead)`
+/// - Single step: returns `Ok(overhead + 1)` for Set/Do steps
+/// - Returns `Err` only on overflow (width > u16::MAX)
 pub(super) fn body_width(
     body: &[vb_yaml::ast::StepAst],
     overhead: usize,
@@ -127,6 +140,17 @@ pub(super) fn choose_width(branches: &[vb_yaml::ast::ChooseBranch]) -> Result<us
     Ok(width)
 }
 
+/// Computes the width (step count) for a Together primitive.
+///
+/// Specification: `together_width(branches) = 2 + sum(body_width(b, 1) for b in branches)`
+///
+/// This equals 1 (TogetherStart) + sum of each branch's total width + 1 (TogetherJoin).
+/// Each branch's body width uses overhead=1 (for the TogetherBranch node itself).
+///
+/// # Bounds
+/// - Returns `Ok(2)` for a single branch with no body steps.
+/// - Returns `Ok(2 + N)` where N is the total body step count across all branches.
+/// - Returns `Err` only on overflow (width > u16::MAX).
 pub(super) fn together_width(
     branches: &[vb_yaml::ast::TogetherBranch],
 ) -> Result<usize, CompileError> {
@@ -139,6 +163,18 @@ pub(super) fn together_width(
     Ok(width)
 }
 
+/// Computes the width of a body step for compound primitives.
+///
+/// Specification:
+/// - `Set` / `Do` ⇒ 1
+/// - `ForEach` / `Together` / `Repeat` ⇒ canonical_step_width(primitive) (recursive)
+/// - `Reduce` ⇒ body_width(body, 3) (overhead=3: body + next + finish)
+/// - Other ⇒ Err(UnsupportedStepPrimitive)
+///
+/// # Bounds
+/// - Always returns `Ok(1)` for leaf primitives (Set, Do).
+/// - For compound primitives, delegates to their respective width functions.
+/// - Returns `Err` only for unsupported primitives or overflow.
 pub(crate) fn canonical_body_step_width(
     primitive: &vb_yaml::ast::StepPrimitive,
 ) -> Result<usize, CompileError> {

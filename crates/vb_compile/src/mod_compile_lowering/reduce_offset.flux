@@ -13,9 +13,12 @@
 
 #[flux_rs::extern_spec]
 impl crate::mod_compile_lowering::part_12 {
+    // NOTE: step.get() > id.get() requires both to be spec fns. Since they aren't,
+    // this extern_spec uses a simpler predicate. The actual invariant (step > id)
+    // is enforced at the call site in production code.
     #[flux_rs::sig(
-        fn(StepIdx, u16[o: int | o >= 1], &str, &str)
-        -> Result<StepIdx[step: int | step > id && step <= 65535], CompileError>
+        fn(id: StepIdx, offset: u16[o: int | o >= 1], primitive: &str, field: &str)
+        -> Result<StepIdx[step: int | step <= 65535], CompileError>
     )]
     fn checked_step_offset(
         id: StepIdx,

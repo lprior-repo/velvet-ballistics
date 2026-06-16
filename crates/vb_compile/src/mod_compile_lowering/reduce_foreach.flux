@@ -13,7 +13,7 @@
 // ForEach extern_spec: width >= 2 for non-empty body
 #[flux_rs::extern_spec]
 impl crate::mod_compile_lowering::part_01 {
-    #[flux_rs::sig(fn(&vb_yaml::ast::StepPrimitive) -> Result<usize[w: int | w >= 1], CompileError>)]
+    #[flux_rs::sig(fn(primitive: &vb_yaml::ast::StepPrimitive) -> Result<usize[w: int | w >= 1], CompileError>)]
     fn canonical_body_step_width(
         primitive: &vb_yaml::ast::StepPrimitive,
     ) -> Result<usize, CompileError>;

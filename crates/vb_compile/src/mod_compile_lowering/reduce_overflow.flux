@@ -14,7 +14,7 @@
 #[flux_rs::extern_spec]
 impl crate::mod_compile_lowering::part_01 {
     #[flux_rs::sig(
-        fn(&[vb_yaml::ast::StepAst], usize[overhead: int | overhead <= 65535])
+        fn(body: &[vb_yaml::ast::StepAst], overhead: usize[overhead: int | overhead <= 65535])
         -> Result<usize[n: int | n >= overhead && n <= 65535], CompileError>
     )]
     fn body_width(body: &[vb_yaml::ast::StepAst], overhead: usize) -> Result<usize, CompileError>;
