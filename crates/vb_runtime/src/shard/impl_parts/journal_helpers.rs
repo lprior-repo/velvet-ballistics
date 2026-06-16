@@ -157,7 +157,7 @@ impl Shard {
                 // Log and return Failed so the run continues.
                 tracing::warn!(
                     "snapshot_write_failed seq_overflow run={}",
-                    run.as_u64()
+                    run.get()
                 );
                 return SnapshotWriteOutcome::Failed;
             }
@@ -170,7 +170,7 @@ impl Shard {
             Err(_) => {
                 tracing::warn!(
                     "snapshot_write_failed postcard_encode_failed_slots run={} seq={}",
-                    run.as_u64(),
+                    run.get(),
                     snapshot_seq.get()
                 );
                 return SnapshotWriteOutcome::Failed;
@@ -181,7 +181,7 @@ impl Shard {
             Err(_) => {
                 tracing::warn!(
                     "snapshot_write_failed postcard_encode_failed_taint run={} seq={}",
-                    run.as_u64(),
+                    run.get(),
                     snapshot_seq.get()
                 );
                 return SnapshotWriteOutcome::Failed;
@@ -214,7 +214,7 @@ impl Shard {
                 // The run continues without snapshot.
                 tracing::warn!(
                     "snapshot_write_failed storage_write_error run={} seq={}",
-                    run.as_u64(),
+                    run.get(),
                     snapshot_seq.get()
                 );
                 SnapshotWriteOutcome::Failed
