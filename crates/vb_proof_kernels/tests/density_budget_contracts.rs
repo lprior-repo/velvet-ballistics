@@ -177,9 +177,10 @@ ktest!(
     #[test]
     budget_policy_rejects_runtime_over_limit,
     {
+        let policy = Policy::default_policy();
         let mut budget = Budget::new();
-        budget.run_time_secs = Policy::default_policy().max_run_time + 1;
-        assert_eq!(Policy::default_policy().within(&budget), vec!["run_time"]);
+        budget.run_time_secs = policy.max_run_time.saturating_add(1);
+        assert_eq!(policy.within(&budget), vec!["run_time"]);
     }
 );
 
@@ -187,12 +188,10 @@ ktest!(
     #[test]
     budget_policy_rejects_result_bytes_over_limit,
     {
+        let policy = Policy::default_policy();
         let mut budget = Budget::new();
-        budget.result_bytes = Policy::default_policy().max_result_bytes + 1;
-        assert_eq!(
-            Policy::default_policy().within(&budget),
-            vec!["result_bytes"]
-        );
+        budget.result_bytes = policy.max_result_bytes.saturating_add(1);
+        assert_eq!(policy.within(&budget), vec!["result_bytes"]);
     }
 );
 

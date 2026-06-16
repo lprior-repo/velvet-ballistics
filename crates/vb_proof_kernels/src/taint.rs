@@ -3,69 +3,247 @@
 //! This is a tiny, pure, sequential Rust kernel for taint lattice verification.
 //! Suitable for Verus/Aeneas extraction to Lean.
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Taint {
-    Clean,
-    DerivedFromSecret,
-    Secret,
-}
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
 
-impl Taint {
-    pub fn rank(&self) -> u8 {
-        match self {
+// ── Verus verified layer ────────────────────────────────────────────────────
+#[cfg(verus_keep_ghost)]
+verus! {
+
+    // ── Taint enum ─────────────────────────────────────────────────────────
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum Taint {
+        Clean,
+        DerivedFromSecret,
+        Secret,
+    }
+
+    // ── Spec: rank ─────────────────────────────────────────────────────────
+    pub open spec fn spec_rank(t: Taint) -> nat {
+        match t {
             Taint::Clean => 0,
             Taint::DerivedFromSecret => 1,
             Taint::Secret => 2,
         }
     }
-}
 
-pub fn join_taint(a: Taint, b: Taint) -> Taint {
-    if a.rank() >= b.rank() { a } else { b }
-}
-
-pub fn join_many(taints: &[Taint]) -> Taint {
-    let mut result = Taint::Clean;
-    for &t in taints {
-        result = join_taint(result, t);
+    // ── Spec: join (lattice supremum) ──────────────────────────────────────
+    pub open spec fn spec_join(a: Taint, b: Taint) -> Taint {
+        if spec_rank(a) >= spec_rank(b) { a } else { b }
     }
-    result
-}
 
-pub fn is_commutative(a: Taint, b: Taint) -> bool {
-    join_taint(a, b) == join_taint(b, a)
-}
+    // ── Spec: is_clean ─────────────────────────────────────────────────────
+    pub open spec fn spec_is_clean(t: Taint) -> bool {
+        spec_rank(t) == 0
+    }
 
-pub fn is_associative(a: Taint, b: Taint, c: Taint) -> bool {
-    join_taint(join_taint(a, b), c) == join_taint(a, join_taint(b, c))
-}
+    // ── Spec: is_derived ───────────────────────────────────────────────────
+    pub open spec fn spec_is_derived(t: Taint) -> bool {
+        spec_rank(t) == 1
+    }
 
-pub fn is_idempotent(a: Taint) -> bool {
-    join_taint(a, a) == a
-}
+    // ── Spec: is_secret ────────────────────────────────────────────────────
+    pub open spec fn spec_is_secret(t: Taint) -> bool {
+        spec_rank(t) == 2
+    }
 
-pub fn has_identity(a: Taint) -> bool {
-    join_taint(a, Taint::Clean) == a
-}
+    // ── Lemma: join is commutative ─────────────────────────────────────────
+    proof fn lemma_join_is_commutative(
+        a: Taint,
+        b: Taint,
+    )
+        ensures
+            spec_join(a, b) == spec_join(b, a),
+    {
+        // join picks the maximum of two ranks. max(a, b) == max(b, a).
+        assert(spec_rank(a) >= spec_rank(b) || spec_rank(b) >= spec_rank(a));
+    }
 
-pub fn secret_never_downgrades() -> bool {
-    join_taint(Taint::Clean, Taint::Secret) == Taint::Secret
-}
+    // ── Lemma: join is associative ─────────────────────────────────────────
+    proof fn lemma_join_is_associative(
+        a: Taint,
+        b: Taint,
+        c: Taint,
+    )
+        ensures
+            spec_join(spec_join(a, b), c) == spec_join(a, spec_join(b, c)),
+    {
+        // max(max(a, b), c) == max(a, max(b, c))
+        // All ranks are 0, 1, or 2 — a finite totally ordered set.
+    }
 
-pub fn derived_never_downgrades() -> bool {
-    join_taint(Taint::Clean, Taint::DerivedFromSecret) == Taint::DerivedFromSecret
-}
+    // ── Lemma: join is idempotent ──────────────────────────────────────────
+    proof fn lemma_join_is_idempotent(a: Taint)
+        ensures
+            spec_join(a, a) == a,
+    {
+        // max(a, a) == a
+    }
 
-pub fn all_lattice_laws(a: Taint, b: Taint, c: Taint) -> bool {
-    is_commutative(a, b)
-        && is_associative(a, b, c)
-        && is_idempotent(a)
-        && has_identity(a)
-        && secret_never_downgrades()
-        && derived_never_downgrades()
-}
+    // ── Lemma: Clean is the bottom element ─────────────────────────────────
+    proof fn lemma_clean_is_bottom()
+        ensures
+            spec_is_clean(Taint::Clean),
+            forall|t: Taint| spec_is_clean(t) ==> t == Taint::Clean,
+    {
+        // Only Clean has rank 0.
+    }
 
+    // ── Lemma: Secret is the top element ───────────────────────────────────
+    proof fn lemma_secret_is_top()
+        ensures
+            spec_is_secret(Taint::Secret),
+            forall|t: Taint| spec_is_secret(t) ==> t == Taint::Secret,
+    {
+        // Only Secret has rank 2.
+    }
+
+    // ── Lemma: Clean join any equals the other ─────────────────────────────
+    proof fn lemma_clean_join(a: Taint)
+        ensures
+            spec_join(Taint::Clean, a) == a,
+    {
+        // rank(Clean) = 0 <= rank(a) for any a, so join(Clean, a) = a.
+    }
+
+    // ── Lemma: Secret join any equals Secret ───────────────────────────────
+    proof fn lemma_secret_join(a: Taint)
+        ensures
+            spec_join(Taint::Secret, a) == Taint::Secret,
+    {
+        // rank(Secret) = 2 >= rank(a) for any a, so join(Secret, a) = Secret.
+    }
+
+    // ── Lemma: no downgrades from secret ───────────────────────────────────
+    proof fn lemma_no_secret_downgrade()
+        ensures
+            spec_join(Taint::Clean, Taint::Secret) == Taint::Secret,
+    {
+        // rank(Clean) = 0 < rank(Secret) = 2, so join picks Secret.
+    }
+
+    // ── Lemma: no downgrades from derived ──────────────────────────────────
+    proof fn lemma_no_derived_downgrade()
+        ensures
+            spec_join(Taint::Clean, Taint::DerivedFromSecret) == Taint::DerivedFromSecret,
+    {
+        // rank(Clean) = 0 < rank(Derived) = 1, so join picks Derived.
+    }
+
+    // ── Lemma: join is monotone in first argument ──────────────────────────
+    proof fn lemma_join_monotone_first(a1: Taint, a2: Taint, b: Taint)
+        requires
+            spec_rank(a1) <= spec_rank(a2),
+        ensures
+            spec_rank(spec_join(a1, b)) <= spec_rank(spec_join(a2, b)),
+    {
+        // If a1 <= a2, then max(a1, b) <= max(a2, b).
+    }
+
+    // ── Lemma: join is monotone in second argument ─────────────────────────
+    proof fn lemma_join_monotone_second(a: Taint, b1: Taint, b2: Taint)
+        requires
+            spec_rank(b1) <= spec_rank(b2),
+        ensures
+            spec_rank(spec_join(a, b1)) <= spec_rank(spec_join(a, b2)),
+    {
+        // If b1 <= b2, then max(a, b1) <= max(a, b2).
+    }
+
+    // ── Lemma: rank is strictly ordered ────────────────────────────────────
+    proof fn lemma_rank_strict_order()
+        ensures
+            spec_rank(Taint::Clean) < spec_rank(Taint::DerivedFromSecret),
+            spec_rank(Taint::DerivedFromSecret) < spec_rank(Taint::Secret),
+            spec_rank(Taint::Clean) < spec_rank(Taint::Secret),
+    {
+        // 0 < 1 < 2
+    }
+
+    // ── Lemma: exactly three distinct elements ─────────────────────────────
+    proof fn lemma_exactly_three_elements()
+        ensures
+            Taint::Clean != Taint::DerivedFromSecret,
+            Taint::Clean != Taint::Secret,
+            Taint::DerivedFromSecret != Taint::Secret,
+    {
+        // Different variants of a non-exhaustive enum.
+    }
+
+} // verus!
+
+// ── Regular Rust implementation (non-Verus compilation) ─────────────────────
+#[cfg(not(verus_keep_ghost))]
+mod cargo_kernel {
+    /// Taint classification for values in the proof kernel.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub enum Taint {
+        Clean,
+        DerivedFromSecret,
+        Secret,
+    }
+
+    impl Taint {
+        #[must_use]
+        pub fn rank(&self) -> u8 {
+            match self {
+                Taint::Clean => 0,
+                Taint::DerivedFromSecret => 1,
+                Taint::Secret => 2,
+            }
+        }
+    }
+
+    pub fn join_taint(a: Taint, b: Taint) -> Taint {
+        if a.rank() >= b.rank() { a } else { b }
+    }
+
+    pub fn join_many(taints: &[Taint]) -> Taint {
+        let mut result = Taint::Clean;
+        for &t in taints {
+            result = join_taint(result, t);
+        }
+        result
+    }
+
+    pub fn is_commutative(a: Taint, b: Taint) -> bool {
+        join_taint(a, b) == join_taint(b, a)
+    }
+
+    pub fn is_associative(a: Taint, b: Taint, c: Taint) -> bool {
+        join_taint(join_taint(a, b), c) == join_taint(a, join_taint(b, c))
+    }
+
+    pub fn is_idempotent(a: Taint) -> bool {
+        join_taint(a, a) == a
+    }
+
+    pub fn has_identity(a: Taint) -> bool {
+        join_taint(a, Taint::Clean) == a
+    }
+
+    pub fn secret_never_downgrades() -> bool {
+        join_taint(Taint::Clean, Taint::Secret) == Taint::Secret
+    }
+
+    pub fn derived_never_downgrades() -> bool {
+        join_taint(Taint::Clean, Taint::DerivedFromSecret) == Taint::DerivedFromSecret
+    }
+
+    pub fn all_lattice_laws(a: Taint, b: Taint, c: Taint) -> bool {
+        is_commutative(a, b)
+            && is_associative(a, b, c)
+            && is_idempotent(a)
+            && has_identity(a)
+            && secret_never_downgrades()
+            && derived_never_downgrades()
+    }
+}
+#[cfg(not(verus_keep_ghost))]
+pub use cargo_kernel::*;
+
+// ── Tests (compiled in both modes) ──────────────────────────────────────────
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -418,5 +596,41 @@ mod tests {
             Taint::DerivedFromSecret
         );
         assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
+    }
+}
+
+// ── Kani harness (runs under cfg(kani)) ─────────────────────────────────────
+#[cfg(kani)]
+mod kani_taint_harnesses {
+    use super::*;
+
+    /// PO-KANI-007: Verify lattice laws for all combinations of Taint.
+    #[cfg(kani)]
+    #[kani::proof]
+    fn taint_lattice_laws_kani() {
+        let a_raw: u8 = kani::any();
+        let b_raw: u8 = kani::any();
+        let c_raw: u8 = kani::any();
+
+        let a = match a_raw % 3 {
+            0 => Taint::Clean,
+            1 => Taint::DerivedFromSecret,
+            _ => Taint::Secret,
+        };
+        let b = match b_raw % 3 {
+            0 => Taint::Clean,
+            1 => Taint::DerivedFromSecret,
+            _ => Taint::Secret,
+        };
+        let c = match c_raw % 3 {
+            0 => Taint::Clean,
+            1 => Taint::DerivedFromSecret,
+            _ => Taint::Secret,
+        };
+
+        assert!(is_commutative(a, b), "join must be commutative");
+        assert!(is_associative(a, b, c), "join must be associative");
+        assert!(is_idempotent(a), "join must be idempotent");
+        assert!(has_identity(a), "Clean must be identity");
     }
 }

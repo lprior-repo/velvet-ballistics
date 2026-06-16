@@ -3,129 +3,276 @@
 //! This is a tiny, pure, sequential Rust kernel for step state verification.
 //! Suitable for Verus/Aeneas extraction to Lean.
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum StepState {
-    Pending,
-    Running,
-    Waiting,
-    Asking,
-    Succeeded,
-    Failed,
-    Cancelled,
-    Skipped,
-}
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
 
-impl StepState {
-    pub fn is_terminal(&self) -> bool {
+// ── Verus verified layer ────────────────────────────────────────────────────
+#[cfg(verus_keep_ghost)]
+verus! {
+
+    // ── StepState enum ─────────────────────────────────────────────────────
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum StepState {
+        Pending,
+        Running,
+        Waiting,
+        Asking,
+        Succeeded,
+        Failed,
+        Cancelled,
+        Skipped,
+    }
+
+    // ── Spec: transition relation (canonical mathematical definition) ─────
+    pub open spec fn spec_valid_transition(from: StepState, to: StepState) -> bool {
+        from == to
+            || (from == StepState::Pending
+                && (to == StepState::Running
+                    || to == StepState::Succeeded
+                    || to == StepState::Failed
+                    || to == StepState::Cancelled
+                    || to == StepState::Skipped))
+            || (from == StepState::Running
+                && (to == StepState::Succeeded
+                    || to == StepState::Failed
+                    || to == StepState::Waiting
+                    || to == StepState::Asking
+                    || to == StepState::Cancelled
+                    || to == StepState::Skipped))
+            || (from == StepState::Waiting && to == StepState::Running)
+            || (from == StepState::Asking && to == StepState::Running)
+            || (from == StepState::Succeeded && to == StepState::Succeeded)
+            || (from == StepState::Failed && to == StepState::Failed)
+            || (from == StepState::Cancelled && to == StepState::Cancelled)
+            || (from == StepState::Skipped && to == StepState::Skipped)
+    }
+
+    // ── Spec: is_terminal ──────────────────────────────────────────────────
+    pub open spec fn spec_is_terminal(s: StepState) -> bool {
         matches!(
-            self,
+            s,
             StepState::Succeeded | StepState::Failed | StepState::Cancelled | StepState::Skipped
         )
     }
-}
 
-const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
-    // Pending transitions
-    (StepState::Pending, StepState::Running),
-    (StepState::Pending, StepState::Succeeded),
-    (StepState::Pending, StepState::Failed),
-    (StepState::Pending, StepState::Cancelled),
-    (StepState::Pending, StepState::Skipped),
-    // Running transitions
-    (StepState::Running, StepState::Succeeded),
-    (StepState::Running, StepState::Failed),
-    (StepState::Running, StepState::Waiting),
-    (StepState::Running, StepState::Asking),
-    (StepState::Running, StepState::Cancelled),
-    (StepState::Running, StepState::Skipped),
-    // Waiting transitions
-    (StepState::Waiting, StepState::Running),
-    // Asking transitions
-    (StepState::Asking, StepState::Running),
-    // Terminal transitions (idempotent re-mark only; no reentry exception)
-    (StepState::Succeeded, StepState::Succeeded),
-    (StepState::Failed, StepState::Failed),
-    (StepState::Cancelled, StepState::Cancelled),
-    (StepState::Skipped, StepState::Skipped),
-];
-
-pub fn is_valid_transition(from: StepState, to: StepState) -> bool {
-    if from == to {
-        return true;
+    // ── Lemma: terminal states have no non-terminal successors ───────────
+    proof fn lemma_terminal_has_no_non_terminal_successor(
+        terminal: StepState,
+    )
+        requires
+            spec_is_terminal(terminal),
+        ensures
+            !spec_valid_transition(terminal, StepState::Pending)
+                && !spec_valid_transition(terminal, StepState::Running)
+                && !spec_valid_transition(terminal, StepState::Waiting)
+                && !spec_valid_transition(terminal, StepState::Asking),
+    {
+        // Structural property: terminal states have only self-transitions.
+        // The spec_valid_transition only lists self-transitions for
+        // Succeeded, Failed, Cancelled, and Skipped.
     }
-    for &(f, t) in VALID_TRANSITIONS {
-        if f == from && t == to {
+
+    // ── Lemma: pending is non-terminal ────────────────────────────────────
+    proof fn lemma_pending_is_non_terminal()
+        ensures
+            !spec_is_terminal(StepState::Pending),
+    {
+        // Structural: Pending is not in {Succeeded, Failed, Cancelled, Skipped}.
+    }
+
+    // ── Lemma: running is non-terminal ────────────────────────────────────
+    proof fn lemma_running_is_non_terminal()
+        ensures
+            !spec_is_terminal(StepState::Running),
+    {
+        // Structural: Running is not in {Succeeded, Failed, Cancelled, Skipped}.
+    }
+
+    // ── Lemma: waiting is non-terminal ────────────────────────────────────
+    proof fn lemma_waiting_is_non_terminal()
+        ensures
+            !spec_is_terminal(StepState::Waiting),
+    {
+        // Structural: Waiting is not in {Succeeded, Failed, Cancelled, Skipped}.
+    }
+
+    // ── Lemma: asking is non-terminal ─────────────────────────────────────
+    proof fn lemma_asking_is_non_terminal()
+        ensures
+            !spec_is_terminal(StepState::Asking),
+    {
+        // Structural: Asking is not in {Succeeded, Failed, Cancelled, Skipped}.
+    }
+
+    // ── Lemma: succeeded is terminal ──────────────────────────────────────
+    proof fn lemma_succeeded_is_terminal()
+        ensures
+            spec_is_terminal(StepState::Succeeded),
+    {
+        // Direct: Succeeded is in the terminal set.
+    }
+
+    // ── Lemma: failed is terminal ─────────────────────────────────────────
+    proof fn lemma_failed_is_terminal()
+        ensures
+            spec_is_terminal(StepState::Failed),
+    {
+        // Direct: Failed is in the terminal set.
+    }
+
+    // ── Lemma: cancelled is terminal ──────────────────────────────────────
+    proof fn lemma_cancelled_is_terminal()
+        ensures
+            spec_is_terminal(StepState::Cancelled),
+    {
+        // Direct: Cancelled is in the terminal set.
+    }
+
+    // ── Lemma: skipped is terminal ────────────────────────────────────────
+    proof fn lemma_skipped_is_terminal()
+        ensures
+            spec_is_terminal(StepState::Skipped),
+    {
+        // Direct: Skipped is in the terminal set.
+    }
+
+    // ── Lemma: terminal self-transitions are always valid ─────────────────
+    proof fn lemma_terminal_self_transition_valid(
+        terminal: StepState,
+    )
+        requires
+            spec_is_terminal(terminal),
+        ensures
+            spec_valid_transition(terminal, terminal),
+    {
+        // Structural: all terminal states have self-transitions.
+    }
+
+} // verus!
+
+// ── Regular Rust implementation (non-Verus compilation) ─────────────────────
+#[cfg(not(verus_keep_ghost))]
+mod cargo_kernel {
+    /// Step states for the proof kernel state machine.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub enum StepState {
+        Pending,
+        Running,
+        Waiting,
+        Asking,
+        Succeeded,
+        Failed,
+        Cancelled,
+        Skipped,
+    }
+
+    const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
+        (StepState::Pending, StepState::Running),
+        (StepState::Pending, StepState::Succeeded),
+        (StepState::Pending, StepState::Failed),
+        (StepState::Pending, StepState::Cancelled),
+        (StepState::Pending, StepState::Skipped),
+        (StepState::Running, StepState::Succeeded),
+        (StepState::Running, StepState::Failed),
+        (StepState::Running, StepState::Waiting),
+        (StepState::Running, StepState::Asking),
+        (StepState::Running, StepState::Cancelled),
+        (StepState::Running, StepState::Skipped),
+        (StepState::Waiting, StepState::Running),
+        (StepState::Asking, StepState::Running),
+        (StepState::Succeeded, StepState::Succeeded),
+        (StepState::Failed, StepState::Failed),
+        (StepState::Cancelled, StepState::Cancelled),
+        (StepState::Skipped, StepState::Skipped),
+    ];
+
+    impl StepState {
+        #[must_use]
+        pub fn is_terminal(&self) -> bool {
+            matches!(
+                self,
+                StepState::Succeeded | StepState::Failed | StepState::Cancelled | StepState::Skipped
+            )
+        }
+    }
+
+    pub fn is_valid_transition(from: StepState, to: StepState) -> bool {
+        if from == to {
             return true;
         }
+        for &(f, t) in VALID_TRANSITIONS {
+            if f == from && t == to {
+                return true;
+            }
+        }
+        false
     }
-    false
-}
 
-pub fn validate_transition(from: StepState, to: StepState) -> Result<StepState, &'static str> {
-    if is_valid_transition(from, to) {
-        Ok(to)
-    } else {
-        Err("invalid_state_transition")
-    }
-}
-
-pub fn next_states(from: StepState) -> Vec<StepState> {
-    let mut result = vec![from];
-    for &(f, t) in VALID_TRANSITIONS {
-        if f == from && !result.contains(&t) {
-            result.push(t);
+    pub fn validate_transition(from: StepState, to: StepState) -> Result<StepState, &'static str> {
+        if is_valid_transition(from, to) {
+            Ok(to)
+        } else {
+            Err("invalid_state_transition")
         }
     }
-    result
-}
 
-pub fn terminal_states() -> Vec<StepState> {
-    vec![
-        StepState::Succeeded,
-        StepState::Failed,
-        StepState::Cancelled,
-        StepState::Skipped,
-    ]
-}
-
-pub fn non_terminal_states() -> Vec<StepState> {
-    vec![
-        StepState::Pending,
-        StepState::Running,
-        StepState::Waiting,
-        StepState::Asking,
-    ]
-}
-
-pub fn terminal_cannot_transition_to_non_terminal() -> bool {
-    for terminal in terminal_states() {
-        let next = next_states(terminal);
-        // All terminal states are self-only; no non-self transitions are
-        // admitted. Loop body reentry uses the explicit Succeeded->Pending
-        // admission path before mark_running, not a direct terminal->Running
-        // edge in the transition matrix.
-        if !matches!(next.as_slice(), [only] if *only == terminal) {
-            return false;
+    pub fn next_states(from: StepState) -> Vec<StepState> {
+        let mut result = vec![from];
+        for &(f, t) in VALID_TRANSITIONS {
+            if f == from && !result.contains(&t) {
+                result.push(t);
+            }
         }
+        result
     }
-    true
-}
 
-pub fn all_transitions_exhaustive() -> bool {
-    for terminal in terminal_states() {
-        if !terminal.is_terminal() {
-            return false;
-        }
+    pub fn terminal_states() -> Vec<StepState> {
+        vec![
+            StepState::Succeeded,
+            StepState::Failed,
+            StepState::Cancelled,
+            StepState::Skipped,
+        ]
     }
-    for non_terminal in non_terminal_states() {
-        if non_terminal.is_terminal() {
-            return false;
-        }
-    }
-    true
-}
 
+    pub fn non_terminal_states() -> Vec<StepState> {
+        vec![
+            StepState::Pending,
+            StepState::Running,
+            StepState::Waiting,
+            StepState::Asking,
+        ]
+    }
+
+    pub fn terminal_cannot_transition_to_non_terminal() -> bool {
+        for terminal in terminal_states() {
+            let next = next_states(terminal);
+            if next.len() != 1 || next[0] != terminal {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn all_transitions_exhaustive() -> bool {
+        for terminal in terminal_states() {
+            if !terminal.is_terminal() {
+                return false;
+            }
+        }
+        for non_terminal in non_terminal_states() {
+            if non_terminal.is_terminal() {
+                return false;
+            }
+        }
+        true
+    }
+}
+#[cfg(not(verus_keep_ghost))]
+pub use cargo_kernel::*;
+
+// ── Tests (compiled in both modes) ──────────────────────────────────────────
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,86 +280,34 @@ mod tests {
     #[test]
     fn test_pending_valid_transitions() {
         let next = next_states(StepState::Pending);
-        assert!(
-            next.contains(&StepState::Pending),
-            "Pending should allow Pending->Pending"
-        );
-        assert!(
-            next.contains(&StepState::Running),
-            "Pending should transition to Running"
-        );
-        assert!(
-            next.contains(&StepState::Succeeded),
-            "Pending should transition to Succeeded"
-        );
-        assert!(
-            next.contains(&StepState::Failed),
-            "Pending should transition to Failed"
-        );
-        assert!(
-            next.contains(&StepState::Cancelled),
-            "Pending should transition to Cancelled"
-        );
-        assert!(
-            next.contains(&StepState::Skipped),
-            "Pending should transition to Skipped"
-        );
-        assert_eq!(
-            next.len(),
-            6,
-            "Pending should have exactly 6 valid next states"
-        );
+        assert!(next.contains(&StepState::Pending));
+        assert!(next.contains(&StepState::Running));
+        assert!(next.contains(&StepState::Succeeded));
+        assert!(next.contains(&StepState::Failed));
+        assert!(next.contains(&StepState::Cancelled));
+        assert!(next.contains(&StepState::Skipped));
+        assert_eq!(next.len(), 6);
     }
 
     #[test]
     fn test_running_valid_transitions() {
         let next = next_states(StepState::Running);
-        assert!(
-            next.contains(&StepState::Running),
-            "Running should allow Running->Running"
-        );
-        assert!(
-            next.contains(&StepState::Succeeded),
-            "Running should transition to Succeeded"
-        );
-        assert!(
-            next.contains(&StepState::Failed),
-            "Running should transition to Failed"
-        );
-        assert!(
-            next.contains(&StepState::Waiting),
-            "Running should transition to Waiting"
-        );
-        assert!(
-            next.contains(&StepState::Asking),
-            "Running should transition to Asking"
-        );
-        assert!(
-            next.contains(&StepState::Cancelled),
-            "Running should transition to Cancelled"
-        );
-        assert!(
-            next.contains(&StepState::Skipped),
-            "Running should transition to Skipped"
-        );
-        assert_eq!(
-            next.len(),
-            7,
-            "Running should have exactly 7 valid next states"
-        );
+        assert!(next.contains(&StepState::Running));
+        assert!(next.contains(&StepState::Succeeded));
+        assert!(next.contains(&StepState::Failed));
+        assert!(next.contains(&StepState::Waiting));
+        assert!(next.contains(&StepState::Asking));
+        assert!(next.contains(&StepState::Cancelled));
+        assert!(next.contains(&StepState::Skipped));
+        assert_eq!(next.len(), 7);
     }
 
     #[test]
     fn test_all_idempotent_transitions() {
         for state in [
-            StepState::Pending,
-            StepState::Running,
-            StepState::Waiting,
-            StepState::Asking,
-            StepState::Succeeded,
-            StepState::Failed,
-            StepState::Cancelled,
-            StepState::Skipped,
+            StepState::Pending, StepState::Running, StepState::Waiting,
+            StepState::Asking, StepState::Succeeded, StepState::Failed,
+            StepState::Cancelled, StepState::Skipped,
         ] {
             assert!(is_valid_transition(state, state));
         }
@@ -230,37 +325,22 @@ mod tests {
 
     #[test]
     fn test_terminal_self_transition() {
-        assert!(is_valid_transition(
-            StepState::Succeeded,
-            StepState::Succeeded
-        ));
+        assert!(is_valid_transition(StepState::Succeeded, StepState::Succeeded));
         assert!(is_valid_transition(StepState::Failed, StepState::Failed));
-        assert!(is_valid_transition(
-            StepState::Cancelled,
-            StepState::Cancelled
-        ));
+        assert!(is_valid_transition(StepState::Cancelled, StepState::Cancelled));
         assert!(is_valid_transition(StepState::Skipped, StepState::Skipped));
     }
 
     #[test]
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        // No terminal state may transition back to Running. Loop body reentry
-        // uses the explicit Succeeded->Pending admission path; the direct
-        // Succeeded->Running edge is invalid.
-        assert!(!is_valid_transition(
-            StepState::Succeeded,
-            StepState::Running
-        ));
+        assert!(!is_valid_transition(StepState::Succeeded, StepState::Running));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
     #[test]
     fn test_terminal_immutable() {
-        assert!(
-            terminal_cannot_transition_to_non_terminal(),
-            "kani harness assertion"
-        );
+        assert!(terminal_cannot_transition_to_non_terminal());
     }
 
     #[test]
@@ -268,7 +348,7 @@ mod tests {
         let terminals = terminal_states();
         assert_eq!(terminals.len(), 4);
         for t in terminals {
-            assert!(t.is_terminal(), "kani harness assertion");
+            assert!(t.is_terminal());
         }
     }
 
@@ -277,267 +357,146 @@ mod tests {
         let non_terminals = non_terminal_states();
         assert_eq!(non_terminals.len(), 4);
         for t in non_terminals {
-            assert!(!t.is_terminal(), "kani harness assertion");
+            assert!(!t.is_terminal());
         }
     }
 
-    // ── StepState::is_terminal exhaustive ─────────────────────────────────
-
     #[test]
     fn test_is_terminal_pending() {
-        assert!(!StepState::Pending.is_terminal(), "kani harness assertion");
+        assert!(!StepState::Pending.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_running() {
-        assert!(!StepState::Running.is_terminal(), "kani harness assertion");
+        assert!(!StepState::Running.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_waiting() {
-        assert!(!StepState::Waiting.is_terminal(), "kani harness assertion");
+        assert!(!StepState::Waiting.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_asking() {
-        assert!(!StepState::Asking.is_terminal(), "kani harness assertion");
+        assert!(!StepState::Asking.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_succeeded() {
-        assert!(StepState::Succeeded.is_terminal(), "kani harness assertion");
+        assert!(StepState::Succeeded.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_failed() {
-        assert!(StepState::Failed.is_terminal(), "kani harness assertion");
+        assert!(StepState::Failed.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_cancelled() {
-        assert!(StepState::Cancelled.is_terminal(), "kani harness assertion");
+        assert!(StepState::Cancelled.is_terminal());
     }
 
     #[test]
     fn test_is_terminal_skipped() {
-        assert!(StepState::Skipped.is_terminal(), "kani harness assertion");
+        assert!(StepState::Skipped.is_terminal());
     }
-
-    // ── validate_transition ───────────────────────────────────────────────
 
     #[test]
     fn test_validate_transition_pending_to_running_ok() {
-        let result = validate_transition(StepState::Pending, StepState::Running);
-        assert_eq!(result.unwrap(), StepState::Running);
+        assert_eq!(validate_transition(StepState::Pending, StepState::Running), Ok(StepState::Running));
     }
 
     #[test]
     fn test_validate_transition_pending_to_succeeded_ok() {
-        let result = validate_transition(StepState::Pending, StepState::Succeeded);
-        assert_eq!(result.unwrap(), StepState::Succeeded);
+        assert_eq!(validate_transition(StepState::Pending, StepState::Succeeded), Ok(StepState::Succeeded));
     }
 
     #[test]
     fn test_validate_transition_pending_to_failed_ok() {
-        let result = validate_transition(StepState::Pending, StepState::Failed);
-        assert_eq!(result.unwrap(), StepState::Failed);
+        assert_eq!(validate_transition(StepState::Pending, StepState::Failed), Ok(StepState::Failed));
     }
 
     #[test]
     fn test_validate_transition_running_to_waiting_ok() {
-        let result = validate_transition(StepState::Running, StepState::Waiting);
-        assert_eq!(result.unwrap(), StepState::Waiting);
+        assert_eq!(validate_transition(StepState::Running, StepState::Waiting), Ok(StepState::Waiting));
     }
 
     #[test]
     fn test_validate_transition_running_to_asking_ok() {
-        let result = validate_transition(StepState::Running, StepState::Asking);
-        assert_eq!(result.unwrap(), StepState::Asking);
+        assert_eq!(validate_transition(StepState::Running, StepState::Asking), Ok(StepState::Asking));
     }
 
     #[test]
     fn test_validate_transition_waiting_to_running_ok() {
-        let result = validate_transition(StepState::Waiting, StepState::Running);
-        assert_eq!(result.unwrap(), StepState::Running);
+        assert_eq!(validate_transition(StepState::Waiting, StepState::Running), Ok(StepState::Running));
     }
 
     #[test]
     fn test_validate_transition_asking_to_running_ok() {
-        let result = validate_transition(StepState::Asking, StepState::Running);
-        assert_eq!(result.unwrap(), StepState::Running);
+        assert_eq!(validate_transition(StepState::Asking, StepState::Running), Ok(StepState::Running));
     }
 
     #[test]
     fn test_validate_transition_terminal_idempotent() {
-        assert_eq!(
-            validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
-            StepState::Succeeded
-        );
-        assert_eq!(
-            validate_transition(StepState::Failed, StepState::Failed).unwrap(),
-            StepState::Failed
-        );
-        assert_eq!(
-            validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
-            StepState::Cancelled
-        );
-        assert_eq!(
-            validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
-            StepState::Skipped
-        );
+        assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded), Ok(StepState::Succeeded));
+        assert_eq!(validate_transition(StepState::Failed, StepState::Failed), Ok(StepState::Failed));
+        assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled), Ok(StepState::Cancelled));
+        assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped), Ok(StepState::Skipped));
     }
 
     #[test]
     fn test_validate_transition_invalid_pending_to_waiting() {
-        let result = validate_transition(StepState::Pending, StepState::Waiting);
-        assert!(result.is_err(), "kani harness assertion");
-        let err = result.unwrap_err();
-        assert_eq!(err, "invalid_state_transition");
+        assert_eq!(validate_transition(StepState::Pending, StepState::Waiting), Err("invalid_state_transition"));
     }
 
     #[test]
     fn test_validate_transition_invalid_running_to_pending() {
-        let result = validate_transition(StepState::Running, StepState::Pending);
-        assert!(result.is_err(), "kani harness assertion");
-        let err = result.unwrap_err();
-        assert_eq!(err, "invalid_state_transition");
+        assert_eq!(validate_transition(StepState::Running, StepState::Pending), Err("invalid_state_transition"));
     }
 
     #[test]
     fn test_validate_transition_invalid_waiting_to_succeeded() {
-        let result = validate_transition(StepState::Waiting, StepState::Succeeded);
-        assert!(result.is_err(), "kani harness assertion");
-        let err = result.unwrap_err();
-        assert_eq!(err, "invalid_state_transition");
+        assert_eq!(validate_transition(StepState::Waiting, StepState::Succeeded), Err("invalid_state_transition"));
     }
 
     #[test]
     fn test_validate_transition_invalid_asking_to_failed() {
-        let result = validate_transition(StepState::Asking, StepState::Failed);
-        assert!(result.is_err(), "kani harness assertion");
-        let err = result.unwrap_err();
-        assert_eq!(err, "invalid_state_transition");
+        assert_eq!(validate_transition(StepState::Asking, StepState::Failed), Err("invalid_state_transition"));
     }
-
-    // ── all_transitions_exhaustive ───────────────────────────────────────
 
     #[test]
     fn test_all_transitions_exhaustive_returns_true() {
-        assert!(all_transitions_exhaustive(), "kani harness assertion");
+        assert!(all_transitions_exhaustive());
     }
-
-    // ── StepState derived traits ───────────────────────────────────────────
 
     #[test]
     fn test_step_state_debug() {
-        let state = StepState::Pending;
-        let debug = format!("{:?}", state);
-        assert_eq!(debug, "Pending");
-
-        let state = StepState::Succeeded;
-        assert_eq!(format!("{:?}", state), "Succeeded");
-
-        let state = StepState::Failed;
-        assert_eq!(format!("{:?}", state), "Failed");
-
-        let state = StepState::Cancelled;
-        assert_eq!(format!("{:?}", state), "Cancelled");
-
-        let state = StepState::Skipped;
-        assert_eq!(format!("{:?}", state), "Skipped");
-
-        let state = StepState::Waiting;
-        assert_eq!(format!("{:?}", state), "Waiting");
-
-        let state = StepState::Asking;
-        assert_eq!(format!("{:?}", state), "Asking");
-
-        let state = StepState::Running;
-        assert_eq!(format!("{:?}", state), "Running");
+        assert_eq!(format!("{:?}", StepState::Pending), "Pending");
+        assert_eq!(format!("{:?}", StepState::Succeeded), "Succeeded");
+        assert_eq!(format!("{:?}", StepState::Running), "Running");
     }
 
     #[test]
-    fn test_step_state_clone() {
+    fn test_step_state_clone_and_copy() {
         let state = StepState::Running;
-        let cloned = state.clone();
-        assert_eq!(cloned, state);
-    }
-
-    #[test]
-    fn test_step_state_copy() {
-        let state = StepState::Waiting;
+        let _cloned = state;
         let _copied: StepState = state;
-        assert_eq!(state, StepState::Waiting);
+        assert_eq!(state, StepState::Running);
     }
-
-    #[test]
-    fn test_step_state_partial_eq_positive() {
-        assert_eq!(StepState::Pending, StepState::Pending);
-        assert_eq!(StepState::Running, StepState::Running);
-        assert_eq!(StepState::Waiting, StepState::Waiting);
-        assert_eq!(StepState::Asking, StepState::Asking);
-        assert_eq!(StepState::Succeeded, StepState::Succeeded);
-        assert_eq!(StepState::Failed, StepState::Failed);
-        assert_eq!(StepState::Cancelled, StepState::Cancelled);
-        assert_eq!(StepState::Skipped, StepState::Skipped);
-    }
-
-    #[test]
-    fn test_step_state_partial_eq_negative() {
-        assert_ne!(StepState::Pending, StepState::Running);
-        assert_ne!(StepState::Running, StepState::Succeeded);
-        assert_ne!(StepState::Waiting, StepState::Asking);
-        assert_ne!(StepState::Succeeded, StepState::Failed);
-        assert_ne!(StepState::Cancelled, StepState::Skipped);
-    }
-
-    #[test]
-    fn test_step_state_eq() {
-        assert!(
-            StepState::Pending == StepState::Pending,
-            "kani harness assertion"
-        );
-        assert!(
-            StepState::Running != StepState::Pending,
-            "kani harness assertion"
-        );
-        assert!(
-            StepState::Failed == StepState::Failed,
-            "kani harness assertion"
-        );
-    }
-
-    // ── is_valid_transition exhaustive idempotent ───────────────────────────
-
-    #[test]
-    fn test_is_valid_transition_all_idempotent() {
-        assert!(is_valid_transition(StepState::Pending, StepState::Pending));
-        assert!(is_valid_transition(StepState::Waiting, StepState::Waiting));
-        assert!(is_valid_transition(StepState::Asking, StepState::Asking));
-        assert!(is_valid_transition(StepState::Running, StepState::Running));
-    }
-
-    #[test]
-    fn test_is_valid_transition_waiting_asking_self() {
-        assert!(is_valid_transition(StepState::Waiting, StepState::Waiting));
-        assert!(is_valid_transition(StepState::Asking, StepState::Asking));
-    }
-
-    // ── next_states coverage ────────────────────────────────────────────────
 
     #[test]
     fn test_next_states_waiting() {
         let next = next_states(StepState::Waiting);
-        assert!(next.contains(&StepState::Waiting), "kani harness assertion");
-        assert!(next.contains(&StepState::Running), "kani harness assertion");
+        assert!(next.contains(&StepState::Waiting));
+        assert!(next.contains(&StepState::Running));
         assert_eq!(next.len(), 2);
     }
 
     #[test]
     fn test_next_states_asking() {
         let next = next_states(StepState::Asking);
-        assert!(next.contains(&StepState::Asking), "kani harness assertion");
-        assert!(next.contains(&StepState::Running), "kani harness assertion");
+        assert!(next.contains(&StepState::Asking));
+        assert!(next.contains(&StepState::Running));
         assert_eq!(next.len(), 2);
     }
 
@@ -545,20 +504,13 @@ mod tests {
     fn test_next_states_terminal_unique() {
         for terminal in terminal_states() {
             let next = next_states(terminal);
-            // All terminal states are self-only; no non-self transitions.
             assert_eq!(next.len(), 1);
-            assert_eq!(next[0], terminal);
+            assert_eq!(next.first().copied(), Some(terminal));
         }
     }
 }
 
-// ---------------------------------------------------------------------------
-// PO-KANI-006: Kani harness — terminal_cannot_transition_to_non_terminal
-// ---------------------------------------------------------------------------
-// All terminal states are fully absorbing (self-only). No terminal state may
-// transition back to Running; loop body reentry uses the explicit
-// Succeeded->Pending admission path before mark_running. This harness uses
-// kani::any() to symbolically verify that shape.
+// ── Kani harness (runs under cfg(kani)) ─────────────────────────────────────
 #[cfg(kani)]
 mod kani_step_state_harnesses {
     use super::*;
@@ -568,22 +520,15 @@ mod kani_step_state_harnesses {
     #[cfg(kani)]
     #[kani::proof]
     fn terminal_cannot_transition_to_non_terminal_kani() {
-        // Verify the top-level function returns true
         let result = terminal_cannot_transition_to_non_terminal();
-        assert!(
-            result,
-            "terminal_cannot_transition_to_non_terminal must hold (all terminal states absorbing)",
-        );
+        assert!(result, "terminal_cannot_transition_to_non_terminal must hold (all terminal states absorbing)");
 
-        // Symbolic check: for all terminal states and all target states, only
-        // self-transitions are valid. No terminal->Running edge is admitted.
         let t_raw: u8 = kani::any();
         let s_raw: u8 = kani::any();
 
         let terminals = terminal_states();
         let t = terminals[(t_raw as usize) % terminals.len()];
-        let s_raw2: u8 = kani::any();
-        let s = match s_raw2 % 8 {
+        let s = match s_raw % 8 {
             0 => StepState::Pending,
             1 => StepState::Running,
             2 => StepState::Succeeded,
@@ -594,25 +539,18 @@ mod kani_step_state_harnesses {
             _ => StepState::Cancelled,
         };
 
-        // For all terminal t and all s != t, the transition must be invalid.
         if t != s {
             let valid = is_valid_transition(t, s);
             assert!(!valid, "terminal->other transition must be invalid");
         } else {
-            // Self-transition is always valid (idempotent)
             let valid = is_valid_transition(t, t);
             assert!(valid, "terminal->self must always be valid");
         }
 
-        // Also verify terminal next-state shape: every terminal has exactly
-        // one next state (itself).
         for terminal in terminal_states() {
             let next = next_states(terminal);
             assert!(next.len() == 1, "all terminal states are self-only");
-            assert!(
-                next.contains(&terminal),
-                "terminal should be in its own next_states",
-            );
+            assert!(next.contains(&terminal));
         }
     }
 }

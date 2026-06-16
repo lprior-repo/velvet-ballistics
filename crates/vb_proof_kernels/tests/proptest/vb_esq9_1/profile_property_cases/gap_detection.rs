@@ -33,10 +33,10 @@ proptest! {
             assert_release_lto_gap(release.get(ProfileKey::Lto), &gaps);
         }
         let gov_gaps = validate_against_governance(&ws);
-        if let Some(hardened) = ws.find(ProfileName::Hardened) {
-            if hardened.get(ProfileKey::DebugAssertions) != Some(&SettingValue::Bool(true)) {
-                assert!(!gov_gaps.is_empty(), "Hardened without debug-assertions=true must produce governance gap");
-            }
+        if let Some(hardened) = ws.find(ProfileName::Hardened)
+            && hardened.get(ProfileKey::DebugAssertions) != Some(&SettingValue::Bool(true))
+        {
+            assert!(!gov_gaps.is_empty(), "Hardened without debug-assertions=true must produce governance gap");
         }
     }
 

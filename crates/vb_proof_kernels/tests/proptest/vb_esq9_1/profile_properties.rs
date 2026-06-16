@@ -8,90 +8,12 @@
 
 use proptest::prelude::*;
 use vb_proof_kernels::profile_contract::{
-    ContractGap, DebugMode, MASTER_PROFILE_CONTRACT, ProfileConfig, ProfileKey, ProfileName,
-    SettingValue, StrVal,
+    ContractGap, MASTER_PROFILE_CONTRACT, ProfileKey, ProfileName, SettingValue, StrVal,
     binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
     validate_against_governance, validate_against_master,
 };
 
 use super::profile_property_cases::strategies::{arb_correct_workspace, arb_workspace_profile_set};
-
-// =========================================================================
-// Strategy: Generate arbitrary ProfileName (6 valid variants)
-// =========================================================================
-
-fn arb_profile_name() -> impl Strategy<Value = ProfileName> {
-    prop_oneof![
-        Just(ProfileName::Release),
-        Just(ProfileName::Bench),
-        Just(ProfileName::Hardened),
-        Just(ProfileName::Fuzz),
-        Just(ProfileName::Test),
-        Just(ProfileName::Dev),
-    ]
-}
-
-// =========================================================================
-// Strategy: Generate arbitrary ProfileKey
-// =========================================================================
-
-fn arb_profile_key() -> impl Strategy<Value = ProfileKey> {
-    prop_oneof![
-        Just(ProfileKey::OptLevel),
-        Just(ProfileKey::Lto),
-        Just(ProfileKey::CodegenUnits),
-        Just(ProfileKey::Strip),
-        Just(ProfileKey::Debug),
-        Just(ProfileKey::DebugAssertions),
-        Just(ProfileKey::OverflowChecks),
-        Just(ProfileKey::Panic),
-        Just(ProfileKey::Inherits),
-    ]
-}
-
-// =========================================================================
-// Strategy: Generate arbitrary SettingValue
-// =========================================================================
-
-fn arb_setting_value() -> impl Strategy<Value = SettingValue> {
-    prop_oneof![
-        any::<bool>().prop_map(SettingValue::Bool),
-        prop_oneof![
-            Just(StrVal::Thin),
-            Just(StrVal::Fat),
-            Just(StrVal::Off),
-            Just(StrVal::True),
-            Just(StrVal::False),
-            Just(StrVal::None_),
-            Just(StrVal::Symbols),
-            Just(StrVal::Debuginfo),
-            Just(StrVal::Release),
-            Just(StrVal::Unwind),
-            Just(StrVal::Abort),
-        ]
-        .prop_map(SettingValue::String),
-        any::<u8>().prop_map(SettingValue::U8),
-        any::<u16>().prop_map(SettingValue::U16),
-        prop_oneof![
-            Just(DebugMode::False),
-            Just(DebugMode::True),
-            Just(DebugMode::LineTablesOnly),
-        ]
-        .prop_map(SettingValue::DebugMode),
-    ]
-}
-
-// =========================================================================
-// Strategy: Generate arbitrary ProfileConfig
-// =========================================================================
-
-fn arb_profile_config() -> impl Strategy<Value = ProfileConfig> {
-    (
-        arb_profile_name(),
-        proptest::collection::vec((arb_profile_key(), arb_setting_value()), 0..12),
-    )
-        .prop_map(|(name, settings)| ProfileConfig::new(name, settings))
-}
 
 // =========================================================================
 // PO-P-001: Forbidden states produce correct errors
@@ -158,13 +80,13 @@ proptest! {
 
         // 4. Governance gaps: if hardened exists without debug-assertions
         let gov_gaps = validate_against_governance(&ws);
-        if let Some(hardened) = ws.find(ProfileName::Hardened) {
-            if hardened.get(ProfileKey::DebugAssertions) != Some(&SettingValue::Bool(true)) {
-                assert!(
-                    !gov_gaps.is_empty(),
-                    "Hardened without debug-assertions=true must produce governance gap"
-                );
-            }
+        if let Some(hardened) = ws.find(ProfileName::Hardened)
+            && hardened.get(ProfileKey::DebugAssertions) != Some(&SettingValue::Bool(true))
+        {
+            assert!(
+                !gov_gaps.is_empty(),
+                "Hardened without debug-assertions=true must produce governance gap"
+            );
         }
     }
 }
