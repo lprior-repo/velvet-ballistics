@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Tests for nested `do` primitive body lowering.
 //!
 //! These tests verify that `do` primitives inside scoped primitive bodies
@@ -11,11 +12,11 @@ const HEADER: &str =
 
 /// Tests that a `repeat` primitive with a `do` body lowers to final IR.
 #[test]
-fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
+fn nested_do_in_repeat_body_lowers_to_final_ir() {
     let yaml = workflow_yaml(
         "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: action_step\n          do:\n            action: \"0\"\n            input: \"0\"\n  - id: done\n    finish:\n      result: 0\n",
     );
-    let workflow = compile_yaml(&yaml)?;
+    let workflow = compile_yaml(&yaml).expect("compile_yaml must succeed for test fixture");
     let parts = workflow.to_parts();
 
     // The expected structure:
@@ -33,7 +34,8 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
     assert_eq!(parts.entry, StepIdx::new(0), "entry must be dense zero");
 
     // Verify RepeatStart at node 0
-    match &parts.nodes[0].kind {
+    let node0 = parts.nodes.get(0).expect("node 0 must exist");
+    match &node0.kind {
         CompiledNodeKind::RepeatStart {
             max_attempts,
             body,
@@ -43,20 +45,24 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "RepeatStart body");
             assert_eq!(done.get(), 3, "RepeatStart done");
         }
-        other => return Err(format!("expected RepeatStart at node 0, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::RepeatStart { .. }),
+            "expected RepeatStart at node 0, got {other:?}"),
     }
 
     // Verify Do at node 1
-    match &parts.nodes[1].kind {
+    let node1 = parts.nodes.get(1).expect("node 1 must exist");
+    match &node1.kind {
         CompiledNodeKind::Do { action, input } => {
             assert_eq!(action.get(), 0, "Do action id"); // First registered action
             assert_eq!(input.get(), 0, "Do input slot");
         }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"),
     }
 
     // Verify RepeatAttempt at node 2
-    match &parts.nodes[2].kind {
+    let node2 = parts.nodes.get(2).expect("node 2 must exist");
+    match &node2.kind {
         CompiledNodeKind::RepeatAttempt {
             attempt_slot,
             body,
@@ -66,35 +72,38 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "RepeatAttempt body");
             assert_eq!(done.get(), 3, "RepeatAttempt done");
         }
-        other => return Err(format!("expected RepeatAttempt at node 2, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::RepeatAttempt { .. }),
+            "expected RepeatAttempt at node 2, got {other:?}"),
     }
 
     // Verify RepeatFinish at node 3
-    match &parts.nodes[3].kind {
+    let node3 = parts.nodes.get(3).expect("node 3 must exist");
+    match &node3.kind {
         CompiledNodeKind::RepeatFinish { result } => {
             assert_eq!(result.get(), 1, "RepeatFinish result");
         }
-        other => return Err(format!("expected RepeatFinish at node 3, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::RepeatFinish { .. }),
+            "expected RepeatFinish at node 3, got {other:?}"),
     }
 
     // Verify Finish at node 4
-    match &parts.nodes[4].kind {
+    let node4 = parts.nodes.get(4).expect("node 4 must exist");
+    match &node4.kind {
         CompiledNodeKind::Finish { result } => {
             assert_eq!(result.get(), 0, "Finish result slot");
         }
-        other => return Err(format!("expected Finish at node 4, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Finish { .. }),
+            "expected Finish at node 4, got {other:?}"),
     }
-
-    Ok(())
 }
 
 /// Tests that a `collect` primitive with a `do` body lowers to final IR.
 #[test]
-fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
+fn nested_do_in_collect_body_lowers_to_final_ir() {
     let yaml = workflow_yaml(
         "  - id: collect_pages\n    collect:\n      variable: page\n      source: \"0\"\n      pages: 3\n      items: 5\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
     );
-    let workflow = compile_yaml(&yaml)?;
+    let workflow = compile_yaml(&yaml).expect("compile_yaml must succeed for test fixture");
     let parts = workflow.to_parts();
 
     // Expected structure:
@@ -111,7 +120,8 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
     );
 
     // Verify CollectStart at node 0
-    match &parts.nodes[0].kind {
+    let node0 = parts.nodes.get(0).expect("node 0 must exist");
+    match &node0.kind {
         CompiledNodeKind::CollectStart {
             source, body, done, ..
         } => {
@@ -119,19 +129,23 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "CollectStart body");
             assert_eq!(done.get(), 3, "CollectStart done");
         }
-        other => return Err(format!("expected CollectStart at node 0, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::CollectStart { .. }),
+            "expected CollectStart at node 0, got {other:?}"),
     }
 
     // Verify Do at node 1
-    match &parts.nodes[1].kind {
+    let node1 = parts.nodes.get(1).expect("node 1 must exist");
+    match &node1.kind {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "Do input slot");
         }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"),
     }
 
     // Verify CollectPage at node 2
-    match &parts.nodes[2].kind {
+    let node2 = parts.nodes.get(2).expect("node 2 must exist");
+    match &node2.kind {
         CompiledNodeKind::CollectPage {
             collector_slot,
             body,
@@ -141,27 +155,28 @@ fn nested_do_in_collect_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "CollectPage body");
             assert_eq!(done.get(), 3, "CollectPage done");
         }
-        other => return Err(format!("expected CollectPage at node 2, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::CollectPage { .. }),
+            "expected CollectPage at node 2, got {other:?}"),
     }
 
     // Verify CollectFinish at node 3
-    match &parts.nodes[3].kind {
+    let node3 = parts.nodes.get(3).expect("node 3 must exist");
+    match &node3.kind {
         CompiledNodeKind::CollectFinish { collector_slot } => {
             assert_eq!(collector_slot.get(), 0, "CollectFinish collector_slot");
         }
-        other => return Err(format!("expected CollectFinish at node 3, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::CollectFinish { .. }),
+            "expected CollectFinish at node 3, got {other:?}"),
     }
-
-    Ok(())
 }
 
 /// Tests that a `for_each` primitive with a `do` body lowers to final IR.
 #[test]
-fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
+fn nested_do_in_for_each_body_lowers_to_final_ir() {
     let yaml = workflow_yaml(
         "  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      at_once: 2\n      steps:\n        - id: process\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
     );
-    let workflow = compile_yaml(&yaml)?;
+    let workflow = compile_yaml(&yaml).expect("compile_yaml must succeed for test fixture");
     let parts = workflow.to_parts();
 
     // Expected structure:
@@ -177,7 +192,8 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
     );
 
     // Verify ForEachStart at node 0
-    match &parts.nodes[0].kind {
+    let node0 = parts.nodes.get(0).expect("node 0 must exist");
+    match &node0.kind {
         CompiledNodeKind::ForEachStart {
             input,
             item_slot,
@@ -190,21 +206,25 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "ForEachStart body");
             assert_eq!(done.get(), 3, "ForEachStart done");
         }
-        other => return Err(format!("expected ForEachStart at node 0, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::ForEachStart { .. }),
+            "expected ForEachStart at node 0, got {other:?}"),
     }
 
     // Verify Do at node 1 (body step)
-    match &parts.nodes[1].kind {
+    let node1 = parts.nodes.get(1).expect("node 1 must exist");
+    match &node1.kind {
         CompiledNodeKind::Do { action, input } => {
             let _ = action; // suppress unused warning in test
             assert_eq!(action.get(), 0, "Do action id");
             assert_eq!(input.get(), 1, "Do input slot");
         }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"),
     }
 
     // Verify ForEachNext at node 2
-    match &parts.nodes[2].kind {
+    let node2 = parts.nodes.get(2).expect("node 2 must exist");
+    match &node2.kind {
         CompiledNodeKind::ForEachNext {
             iterator_slot,
             body,
@@ -214,20 +234,19 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "ForEachNext body");
             assert_eq!(done.get(), 3, "ForEachNext done");
         }
-        other => return Err(format!("expected ForEachNext at node 2, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::ForEachNext { .. }),
+            "expected ForEachNext at node 2, got {other:?}"),
     }
-
-    Ok(())
 }
 
 /// Tests that a `reduce` primitive with a `do` body lowers to final IR.
 /// Re-enabled by vb-em8xu (vb-budget-reduce).
 #[test]
-fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
+fn nested_do_in_reduce_body_lowers_to_final_ir() {
     let yaml = workflow_yaml(
         "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add\n          do:\n            action: \"0\"\n            input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
     );
-    let workflow = compile_yaml(&yaml)?;
+    let workflow = compile_yaml(&yaml).expect("compile_yaml must succeed for test fixture");
     let parts = workflow.to_parts();
 
     // Expected structure:
@@ -244,7 +263,8 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
     );
 
     // Verify ReduceStart at node 0
-    match &parts.nodes[0].kind {
+    let node0 = parts.nodes.get(0).expect("node 0 must exist");
+    match &node0.kind {
         CompiledNodeKind::ReduceStart {
             input,
             accumulator,
@@ -257,19 +277,23 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "ReduceStart body");
             assert_eq!(done.get(), 3, "ReduceStart done");
         }
-        other => return Err(format!("expected ReduceStart at node 0, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::ReduceStart { .. }),
+            "expected ReduceStart at node 0, got {other:?}"),
     }
 
     // Verify Do at node 1
-    match &parts.nodes[1].kind {
+    let node1 = parts.nodes.get(1).expect("node 1 must exist");
+    match &node1.kind {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "Do input slot");
         }
-        other => return Err(format!("expected Do at node 1, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"),
     }
 
     // Verify ReduceNext at node 2
-    match &parts.nodes[2].kind {
+    let node2 = parts.nodes.get(2).expect("node 2 must exist");
+    match &node2.kind {
         CompiledNodeKind::ReduceNext {
             iterator_slot,
             accumulator,
@@ -281,23 +305,24 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(body.get(), 1, "ReduceNext body");
             assert_eq!(done.get(), 3, "ReduceNext done");
         }
-        other => return Err(format!("expected ReduceNext at node 2, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::ReduceNext { .. }),
+            "expected ReduceNext at node 2, got {other:?}"),
     }
 
     // Verify ReduceFinish at node 3
-    match &parts.nodes[3].kind {
+    let node3 = parts.nodes.get(3).expect("node 3 must exist");
+    match &node3.kind {
         CompiledNodeKind::ReduceFinish { accumulator } => {
             assert_eq!(accumulator.get(), 1, "ReduceFinish accumulator");
         }
-        other => return Err(format!("expected ReduceFinish at node 3, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::ReduceFinish { .. }),
+            "expected ReduceFinish at node 3, got {other:?}"),
     }
-
-    Ok(())
 }
 
 /// Tests that nested do body with invalid input slot reference returns appropriate error.
 #[test]
-fn nested_do_with_invalid_input_slot_returns_error() -> Result<(), String> {
+fn nested_do_with_invalid_input_slot_returns_error() {
     // The input "99999" is out of range for slot index
     let yaml = workflow_yaml(
         "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: action_step\n          do:\n            action: \"0\"\n            input: \"99999\"\n  - id: done\n    finish:\n      result: 0\n",
@@ -307,30 +332,32 @@ fn nested_do_with_invalid_input_slot_returns_error() -> Result<(), String> {
         result.is_err(),
         "nested do with out-of-range input slot should fail"
     );
-    let errors = result.err().unwrap();
+    let errors = result
+        .err()
+        .expect("compile_workflow failed as expected (verified by is_err above)");
     let first = errors
         .first()
-        .ok_or_else(|| String::from("expected at least one error"))?;
+        .expect("expected at least one error from compile_workflow");
     match first {
         CompileError::SlotIndexOutOfRange { value } => {
             assert_eq!(*value, 99999, "should report exact out-of-range value");
         }
         other => {
-            return Err(format!(
+            assert!(
+                matches!(other, CompileError::SlotIndexOutOfRange { .. }),
                 "expected SlotIndexOutOfRange error for invalid input, got {other:?}"
-            ));
+            );
         }
     }
-    Ok(())
 }
 
 /// Tests that together branches can contain do primitives.
 #[test]
-fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
+fn nested_do_in_together_branch_lowers_to_final_ir() {
     let yaml = workflow_yaml(
         "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_action\n              do:\n                action: \"0\"\n                input: \"0\"\n        - label: right\n          steps:\n            - id: right_action\n              do:\n                action: \"1\"\n                input: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
     );
-    let workflow = compile_yaml(&yaml)?;
+    let workflow = compile_yaml(&yaml).expect("compile_yaml must succeed for test fixture");
     let parts = workflow.to_parts();
 
     // Expected structure:
@@ -349,17 +376,20 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
     );
 
     // Verify TogetherStart at node 0
-    match &parts.nodes[0].kind {
+    let node0 = parts.nodes.get(0).expect("node 0 must exist");
+    match &node0.kind {
         CompiledNodeKind::TogetherStart { branches, join } => {
             let actual: Vec<u16> = branches.iter().map(|b| b.get()).collect();
             assert_eq!(actual, [1, 3], "TogetherStart branches");
             assert_eq!(join.get(), 5, "TogetherStart join");
         }
-        other => return Err(format!("expected TogetherStart at node 0, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::TogetherStart { .. }),
+            "expected TogetherStart at node 0, got {other:?}"),
     }
 
     // Verify first TogetherBranch at node 1
-    match &parts.nodes[1].kind {
+    let node1 = parts.nodes.get(1).expect("node 1 must exist");
+    match &node1.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
             entry,
@@ -370,23 +400,23 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(entry.get(), 2, "first TogetherBranch entry");
             assert_eq!(join.get(), 5, "first TogetherBranch join");
         }
-        other => {
-            return Err(format!(
-                "expected first TogetherBranch at node 1, got {other:?}"
-            ));
-        }
+        other => assert!(matches!(other, CompiledNodeKind::TogetherBranch { .. }),
+            "expected first TogetherBranch at node 1, got {other:?}"),
     }
 
     // Verify Do at node 2 (left action)
-    match &parts.nodes[2].kind {
+    let node2 = parts.nodes.get(2).expect("node 2 must exist");
+    match &node2.kind {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 0, "left Do input slot");
         }
-        other => return Err(format!("expected left Do at node 2, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
+            "expected left Do at node 2, got {other:?}"),
     }
 
     // Verify second TogetherBranch at node 3
-    match &parts.nodes[3].kind {
+    let node3 = parts.nodes.get(3).expect("node 3 must exist");
+    match &node3.kind {
         CompiledNodeKind::TogetherBranch {
             branch,
             entry,
@@ -397,23 +427,23 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(entry.get(), 4, "second TogetherBranch entry");
             assert_eq!(join.get(), 5, "second TogetherBranch join");
         }
-        other => {
-            return Err(format!(
-                "expected second TogetherBranch at node 3, got {other:?}"
-            ));
-        }
+        other => assert!(matches!(other, CompiledNodeKind::TogetherBranch { .. }),
+            "expected second TogetherBranch at node 3, got {other:?}"),
     }
 
     // Verify Do at node 4 (right action)
-    match &parts.nodes[4].kind {
+    let node4 = parts.nodes.get(4).expect("node 4 must exist");
+    match &node4.kind {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "right Do input slot");
         }
-        other => return Err(format!("expected right Do at node 4, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
+            "expected right Do at node 4, got {other:?}"),
     }
 
     // Verify TogetherJoin at node 5
-    match &parts.nodes[5].kind {
+    let node5 = parts.nodes.get(5).expect("node 5 must exist");
+    match &node5.kind {
         CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
@@ -421,10 +451,9 @@ fn nested_do_in_together_branch_lowers_to_final_ir() -> Result<(), String> {
             assert_eq!(*branch_count, 2, "TogetherJoin branch_count");
             assert_eq!(accumulator.get(), 0, "TogetherJoin accumulator");
         }
-        other => return Err(format!("expected TogetherJoin at node 5, got {other:?}")),
+        other => assert!(matches!(other, CompiledNodeKind::TogetherJoin { .. }),
+            "expected TogetherJoin at node 5, got {other:?}"),
     }
-
-    Ok(())
 }
 
 // =============================================================================

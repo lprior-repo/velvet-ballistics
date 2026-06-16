@@ -6,6 +6,7 @@
 // Verifies POST-002 and POST-005.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::ask_source;

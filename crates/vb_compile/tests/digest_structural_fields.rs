@@ -10,6 +10,7 @@
 // Verifies POST-006, WF-INV-001, WF-INV-002, WF-INV-004.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::{

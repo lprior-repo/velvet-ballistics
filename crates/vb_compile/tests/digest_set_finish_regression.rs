@@ -6,6 +6,7 @@
 // Verifies TC-005: Finish and Set arms continue to hash correctly.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::{finish_source_integer, finish_source_string, set_finish_source, set_source};

@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Proptest for Repeat digest coverage (bead vb-xi2f.31).
 //!
 //! Proof obligations: PROP-REPEAT-001 through PROP-REPEAT-004.

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 //! Proptest property tests for try_from_parts error variant correctness.
 //!
 //! PO: PO-007 (try_from_parts error paths for invalid WorkflowParts)
@@ -85,7 +86,8 @@ fn entry_out_of_bounds_returns_error() {
 fn step_out_of_bounds_returns_error() {
     let mut parts = minimal_valid_parts();
     let mut nodes = parts.nodes.to_vec();
-    nodes[0] = CompiledNode {
+    let first_node = nodes.first_mut().expect("minimal_valid_parts must have at least one node");
+    *first_node = CompiledNode {
         id: StepIdx::new(0),
         output: None,
         next: Some(StepIdx::new(99)), // Out of bounds
@@ -108,7 +110,8 @@ fn step_out_of_bounds_returns_error() {
 fn slot_out_of_bounds_returns_error() {
     let mut parts = minimal_valid_parts();
     let mut nodes = parts.nodes.to_vec();
-    nodes[0] = CompiledNode {
+    let first_node = nodes.first_mut().expect("minimal_valid_parts must have at least one node");
+    *first_node = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(99)), // Out of bounds: slot_count is 1
         next: None,
@@ -255,7 +258,8 @@ proptest! {
     fn arbitrary_invalid_slot_returns_slot_error(slot_idx in 10u16..=100u16) {
         let mut parts = minimal_valid_parts();
         let mut nodes = parts.nodes.to_vec();
-        nodes[0] = CompiledNode {
+        let first_node = nodes.first_mut().expect("minimal_valid_parts must have at least one node");
+        *first_node = CompiledNode {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(slot_idx)),
             next: None,

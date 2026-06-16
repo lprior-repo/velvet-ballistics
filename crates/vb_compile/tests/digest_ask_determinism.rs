@@ -6,6 +6,7 @@
 // Verifies POST-003.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::{ask_source, set_finish_source};

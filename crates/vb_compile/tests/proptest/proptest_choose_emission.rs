@@ -7,6 +7,7 @@
 // GOD RULE 2: Binds to compile_workflow.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_core::{CompiledNodeKind, StepIdx};
@@ -47,7 +48,7 @@ proptest! {
 
         if let Ok(workflow) = result {
             let total_body: u16 = body_counts.iter().map(|&c| u16::from(c)).sum();
-            let expected = 3u16 + total_body; // Setup + ChooseSlot + body + Finish
+            let expected = 3u16.checked_add(total_body).expect("3 + total_body fits u16 (total_body bounded by 6*4=24)"); // Setup + ChooseSlot + body + Finish
             prop_assert_eq!(
                 workflow.node_count(), expected,
                 "node_count must equal Setup + ChooseSlot + sum(body) + Finish"

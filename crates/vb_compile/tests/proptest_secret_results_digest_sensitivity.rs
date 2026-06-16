@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 // Verification artifact: proptest_secret_results_digest_sensitivity.rs
 // PO: PO-P03
 // Bead: vb-xi2f.35

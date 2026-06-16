@@ -7,6 +7,7 @@
 // GOD RULE 2: Binds to compile_workflow.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 

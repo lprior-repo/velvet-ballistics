@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Proptest properties for Together digest sensitivity (vb-xi2f.29).
 //!
 //! These property tests prove that the compiled workflow digest is sensitive to
@@ -115,7 +116,7 @@ proptest! {
             (&l2, &o2, &v2),
         ]);
         let yaml_2 = together_workflow_yaml(&branches_2);
-        let d2 = compile_and_digest(&yaml_2).map_err(|e| TestCaseError::fail(e))?;
+        let d2 = compile_and_digest(&yaml_2).map_err(TestCaseError::fail)?;
 
         // 3-branch together
         let branches_3 = together_branch_yaml(&[
@@ -124,7 +125,7 @@ proptest! {
             (&l3, &o3, &v3),
         ]);
         let yaml_3 = together_workflow_yaml(&branches_3);
-        let d3 = compile_and_digest(&yaml_3).map_err(|e| TestCaseError::fail(e))?;
+        let d3 = compile_and_digest(&yaml_3).map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(d2, d3,
             "2-branch and 3-branch together workflows must produce different digests");
@@ -159,9 +160,9 @@ proptest! {
         ]);
 
         let da = compile_and_digest(&together_workflow_yaml(&branches_a))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         let db = compile_and_digest(&together_workflow_yaml(&branches_b))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(da, db,
             "different branch labels must produce different digests");
@@ -192,9 +193,9 @@ proptest! {
         ]);
 
         let da = compile_and_digest(&together_workflow_yaml(&branches_a))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         let db = compile_and_digest(&together_workflow_yaml(&branches_b))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(da, db,
             "different sub-step set values must produce different digests");
@@ -221,9 +222,9 @@ proptest! {
         ]);
 
         let da = compile_and_digest(&together_workflow_yaml(&branches_a))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         let db = compile_and_digest(&together_workflow_yaml(&branches_b))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(da, db,
             "different sub-step output names must produce different digests");
@@ -255,9 +256,9 @@ proptest! {
         ]);
 
         let dab = compile_and_digest(&together_workflow_yaml(&branches_ab))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         let dba = compile_and_digest(&together_workflow_yaml(&branches_ba))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(dab, dba,
             "reordered branches must produce different digests");
@@ -283,8 +284,8 @@ proptest! {
         ]);
         let yaml = together_workflow_yaml(&branches);
 
-        let d1 = compile_and_digest(&yaml).map_err(|e| TestCaseError::fail(e))?;
-        let d2 = compile_and_digest(&yaml).map_err(|e| TestCaseError::fail(e))?;
+        let d1 = compile_and_digest(&yaml).map_err(TestCaseError::fail)?;
+        let d2 = compile_and_digest(&yaml).map_err(TestCaseError::fail)?;
 
         prop_assert_eq!(d1, d2,
             "same together workflow must produce same digest (determinism)");
@@ -313,7 +314,7 @@ proptest! {
             ));
         }
         let yaml = together_workflow_yaml(&branches_yaml);
-        let d1 = compile_and_digest(&yaml).map_err(|e| TestCaseError::fail(e))?;
+        let d1 = compile_and_digest(&yaml).map_err(TestCaseError::fail)?;
 
         // Verify non-zero
         let is_all_zero = d1.as_bytes().iter().all(|&b| b == 0);
@@ -321,7 +322,7 @@ proptest! {
             "digest for {}-branch together must not be all zeros", count);
 
         // Deterministic
-        let d2 = compile_and_digest(&yaml).map_err(|e| TestCaseError::fail(e))?;
+        let d2 = compile_and_digest(&yaml).map_err(TestCaseError::fail)?;
         prop_assert_eq!(d1, d2,
             "digest for {}-branch together must be deterministic", count);
 
@@ -329,14 +330,14 @@ proptest! {
         let mut more_yaml = String::from(
             "  - id: fanout\n    together:\n      branches:\n"
         );
-        for i in 0..(count + 1) {
+        for i in 0..count.checked_add(1).expect("count+1 fits in u16 (count bounded by proptest strategy)") {
             more_yaml.push_str(&format!(
                 "        - label: \"br{i}\"\n          steps:\n            - id: set_{i}\n              set:\n                output: \"o{i}\"\n                value: \"{i}\"\n"
             ));
         }
         let yaml_more = together_workflow_yaml(&more_yaml);
-        let d_more = compile_and_digest(&yaml_more).map_err(|e| TestCaseError::fail(e))?;
-        let more_count = count + 1;
+        let d_more = compile_and_digest(&yaml_more).map_err(TestCaseError::fail)?;
+        let more_count = count.checked_add(1).expect("count+1 fits in u16 (count bounded by proptest strategy)");
         prop_assert_ne!(d1, d_more,
             "{}-branch and {}-branch digests must differ", count, more_count);
     }
@@ -373,9 +374,9 @@ proptest! {
         ]);
 
         let da = compile_and_digest(&together_workflow_yaml(&branches_a))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
         let db = compile_and_digest(&together_workflow_yaml(&branches_b))
-            .map_err(|e| TestCaseError::fail(e))?;
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(da, db,
             "workflows with different branch label sets (long labels) must produce different digests");

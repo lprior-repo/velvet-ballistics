@@ -634,13 +634,7 @@ steps:
             // The slot index is non-numeric (either empty string from YAML parsing
             // or "-1"), so we expect UnknownReferenceName.
             assert!(
-                matches!(
-                    err,
-                    CompileError::UnknownReferenceName {
-                        kind: "slot",
-                        ..
-                    }
-                ),
+                matches!(err, CompileError::UnknownReferenceName { kind: "slot", .. }),
                 "expected UnknownReferenceName for negative slot, got: {err:?}"
             );
         }

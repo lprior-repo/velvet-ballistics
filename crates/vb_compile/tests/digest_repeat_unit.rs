@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Unit tests for Repeat digest coverage (bead vb-xi2f.31).
 //!
 //! Proof obligations: PO-008, PO-009, PO-010.

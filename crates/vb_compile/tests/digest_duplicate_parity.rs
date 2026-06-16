@@ -10,6 +10,7 @@
 // compile and run without depending on the unmounted compile/mod.rs module.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use vb_compile::canonical_digest as public_canonical_digest;

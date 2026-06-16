@@ -9,6 +9,7 @@
 // Verifies TC-001, TC-003, TC-004, TC-007.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::{
@@ -159,7 +160,9 @@ fn digest_step_primitive_does_not_panic_for_ask_large_prompt() {
 #[test]
 fn digest_step_primitive_does_not_panic_for_ask_prompt_with_all_visible_controls() {
     // Test all printable ASCII including control-looking chars
-    let prompt: String = (0u8..=127).map(|c| c as char).collect();
+    let prompt: String = (0u8..=127)
+        .map(|c| char::from_u32(c.into()).expect("0u8..=127 are valid Unicode scalar values"))
+        .collect();
     let source = ask_source(&prompt, None);
     let _ = canonical_digest(&source).expect("valid test input");
 }

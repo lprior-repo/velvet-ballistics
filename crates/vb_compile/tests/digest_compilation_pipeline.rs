@@ -6,6 +6,7 @@
 // They treat the crate as a black box and test through the public API.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use vb_compile::canonical_digest;
 use vb_yaml::{ast::WorkflowSource, parse_workflow_source};

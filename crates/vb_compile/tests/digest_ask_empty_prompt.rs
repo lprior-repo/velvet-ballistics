@@ -5,6 +5,7 @@
 // distinct from any non-empty prompt. Also verifies POST-004.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::ask_source;

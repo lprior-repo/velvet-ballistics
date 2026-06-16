@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 // Verification artifact: proptest_digest_foreach.rs
 // Bead: vb-xi2f.28 | State: 5 (proof-writer)
 // Proptest extensions for ForEach digest coverage.
@@ -286,10 +287,11 @@ proptest! {
             .map(|_| canonical_digest_part05(&source))
             .collect();
 
-        let first = &digests[0];
+        let first = digests.first().expect("digests must be non-empty (5 compilations)");
         for (i, d) in digests.iter().enumerate().skip(1) {
+            let n = i.checked_add(1).expect("i < digests.len() so i+1 fits usize");
             prop_assert_eq!(first, d,
-                "Compilation {} produced different digest than compilation 1", i + 1);
+                "Compilation {n} produced different digest than compilation 1", n = n);
         }
     }
 }

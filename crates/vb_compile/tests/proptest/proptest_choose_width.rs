@@ -7,6 +7,7 @@
 // GOD RULE 2: Binds to production compile_workflow (public API).
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 
@@ -55,7 +56,7 @@ proptest! {
             let nc = workflow.node_count();
             // Expected nodes: 1 Setup + 1 ChooseSlot + sum(body steps) + 1 Finish
             let total_body: u16 = body_counts.iter().map(|&c| u16::from(c)).sum();
-            let expected = 3u16 + total_body;
+            let expected = 3u16.checked_add(total_body).expect("3 + total_body fits u16 (total_body bounded by 4*4=16)");
             prop_assert_eq!(nc, expected,
                 "node_count {} must equal expected {} (Setup + ChooseSlot + body + Finish)",
                 nc, expected);

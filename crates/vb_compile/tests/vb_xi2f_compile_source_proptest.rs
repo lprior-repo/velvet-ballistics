@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 //! Proptest property tests for compile_source try_from_parts integration.
 //!
 //! PO: PO-003 (compile_source and YamlCompiler::compile public APIs never panic)

@@ -12,6 +12,7 @@
 // digest_ask_empty_prompt.rs and digest_ask_explicit_arm.rs.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use vb_compile::canonical_digest;
 use vb_yaml::parse_workflow_source;

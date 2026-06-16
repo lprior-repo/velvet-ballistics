@@ -12,6 +12,7 @@
 // GOD RULE 2: Binds to actual Rust canonical_digest() implementation.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest;
@@ -50,7 +51,7 @@ fn workflow_source_strategy() -> BoxedStrategy<WorkflowSource> {
                     } else {
                         StepPrimitive::Set {
                             output: format!("out_{i}"),
-                            value: (i as i64).to_string(),
+                            value: i64::try_from(i).expect("i < 5 in num_steps=1..=5 strategy").to_string(),
                         }
                     },
                     with: None,

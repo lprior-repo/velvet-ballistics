@@ -5,6 +5,7 @@
 // Verifies POST-001: Different prompts produce semantically distinct digests.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 mod common;
 use common::ask_source;

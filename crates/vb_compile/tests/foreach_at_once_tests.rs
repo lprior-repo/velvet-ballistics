@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 //! ForEach at_once gap tests (YAML → AST → CompiledWorkflow → digest).
 //!
 //! Bead: vb-xi2f.28 | State: 9 (test-writer)
@@ -18,8 +19,7 @@
 //!   +    Multi-API: compile_workflow vs compile_source agree on limit
 
 use vb_compile::{compile_source, compile_workflow};
-use vb_core::{CompiledNodeKind, StepIdx, WorkflowDigest};
-use vb_yaml::ast::WorkflowSource;
+use vb_core::{CompiledNodeKind, WorkflowDigest};
 
 // ─────────────────────────────────────────────────────────────────────
 // YAML templates
@@ -45,28 +45,31 @@ fn foreach_yaml_no_atonce() -> String {
 /// Extract the limit from the ForEachStart node at index 0.
 fn extract_foreach_start_limit(workflow: &vb_core::CompiledWorkflow) -> u32 {
     let parts = workflow.to_parts();
-    match &parts.nodes[0].kind {
+    let node0 = parts.nodes.first().expect("workflow must have at least one node");
+    match &node0.kind {
         CompiledNodeKind::ForEachStart { limit, .. } => *limit,
-        other => panic!(
-            "node 0 expected ForEachStart, got {:?} for workflow '{}'",
-            other, parts.name
-        ),
+        other => {
+            assert!(
+                matches!(other, CompiledNodeKind::ForEachStart { .. }),
+                "node 0 expected ForEachStart, got {other:?} for workflow '{}'",
+                parts.name
+            );
+            0 // unreachable: assert! above would have panicked
+        }
     }
 }
 
 /// Compute digest from compile_workflow.
-fn digest_from_yaml(yaml: &str) -> WorkflowDigest {
-    let workflow = compile_workflow(yaml.as_bytes())
-        .unwrap_or_else(|e| panic!("compile_workflow failed: {e:?}"));
-    workflow.to_parts().digest
+fn digest_from_yaml(yaml: &str) -> Option<WorkflowDigest> {
+    compile_workflow(yaml.as_bytes())
+        .ok()
+        .map(|w| w.to_parts().digest)
 }
 
 /// Compute digest from compile_source (via YAML parse → compile_source).
-fn digest_from_source(yaml: &str) -> WorkflowDigest {
-    let source = vb_yaml::parse_workflow_source(yaml).expect("yaml must parse into WorkflowSource");
-    let workflow =
-        compile_source(&source).unwrap_or_else(|e| panic!("compile_source failed: {e:?}"));
-    workflow.to_parts().digest
+fn digest_from_source(yaml: &str) -> Option<WorkflowDigest> {
+    let source = vb_yaml::parse_workflow_source(yaml).ok()?;
+    compile_source(&source).ok().map(|w| w.to_parts().digest)
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -104,20 +107,24 @@ fn foreach_at_once_zero_node_kind_sequence() {
     // Expected sequence: ForEachStart, SetConst, ForEachNext, Finish
     assert_eq!(parts.nodes.len(), 4, "at_once=0 must produce 4 nodes");
 
+    let node0 = parts.nodes.first().expect("node 0 must exist");
+    let node1 = parts.nodes.get(1).expect("node 1 must exist");
+    let node2 = parts.nodes.get(2).expect("node 2 must exist");
+    let node3 = parts.nodes.get(3).expect("node 3 must exist");
     assert!(
-        matches!(&parts.nodes[0].kind, CompiledNodeKind::ForEachStart { .. }),
+        matches!(&node0.kind, CompiledNodeKind::ForEachStart { .. }),
         "node 0 must be ForEachStart"
     );
     assert!(
-        matches!(&parts.nodes[1].kind, CompiledNodeKind::SetConst { .. }),
+        matches!(&node1.kind, CompiledNodeKind::SetConst { .. }),
         "node 1 must be SetConst (body)"
     );
     assert!(
-        matches!(&parts.nodes[2].kind, CompiledNodeKind::ForEachNext { .. }),
+        matches!(&node2.kind, CompiledNodeKind::ForEachNext { .. }),
         "node 2 must be ForEachNext"
     );
     assert!(
-        matches!(&parts.nodes[3].kind, CompiledNodeKind::Finish { .. }),
+        matches!(&node3.kind, CompiledNodeKind::Finish { .. }),
         "node 3 must be Finish"
     );
 }
@@ -184,8 +191,8 @@ fn foreach_at_once_one_source_path_limit_is_one() {
 fn foreach_at_once_zero_and_one_produce_different_digests() {
     let yaml_zero = foreach_yaml("0");
     let yaml_one = foreach_yaml("1");
-    let digest_zero = digest_from_yaml(&yaml_zero);
-    let digest_one = digest_from_yaml(&yaml_one);
+    let digest_zero = digest_from_yaml(&yaml_zero).expect("compile_workflow must succeed for test fixture");
+    let digest_one = digest_from_yaml(&yaml_one).expect("compile_workflow must succeed for test fixture");
 
     assert_ne!(
         digest_zero, digest_one,
@@ -197,8 +204,8 @@ fn foreach_at_once_zero_and_one_produce_different_digests() {
 fn foreach_at_once_zero_and_one_source_digests_differ() {
     let yaml_zero = foreach_yaml("0");
     let yaml_one = foreach_yaml("1");
-    let digest_zero = digest_from_source(&yaml_zero);
-    let digest_one = digest_from_source(&yaml_one);
+    let digest_zero = digest_from_source(&yaml_zero).expect("compile_source must succeed for test fixture");
+    let digest_one = digest_from_source(&yaml_one).expect("compile_source must succeed for test fixture");
 
     assert_ne!(
         digest_zero, digest_one,
@@ -214,8 +221,8 @@ fn foreach_at_once_zero_and_one_source_digests_differ() {
 fn foreach_at_once_none_and_one_produce_identical_digests() {
     let yaml_none = foreach_yaml_no_atonce();
     let yaml_one = foreach_yaml("1");
-    let digest_none = digest_from_yaml(&yaml_none);
-    let digest_one = digest_from_yaml(&yaml_one);
+    let digest_none = digest_from_yaml(&yaml_none).expect("compile_workflow must succeed for test fixture");
+    let digest_one = digest_from_yaml(&yaml_one).expect("compile_workflow must succeed for test fixture");
 
     assert_eq!(
         digest_none, digest_one,
@@ -227,8 +234,8 @@ fn foreach_at_once_none_and_one_produce_identical_digests() {
 fn foreach_at_once_none_and_one_source_digests_identical() {
     let yaml_none = foreach_yaml_no_atonce();
     let yaml_one = foreach_yaml("1");
-    let digest_none = digest_from_source(&yaml_none);
-    let digest_one = digest_from_source(&yaml_one);
+    let digest_none = digest_from_source(&yaml_none).expect("compile_source must succeed for test fixture");
+    let digest_one = digest_from_source(&yaml_one).expect("compile_source must succeed for test fixture");
 
     assert_eq!(
         digest_none, digest_one,
@@ -243,32 +250,32 @@ fn foreach_at_once_none_and_one_source_digests_identical() {
 #[test]
 fn foreach_at_once_zero_digest_is_deterministic() {
     let yaml = foreach_yaml("0");
-    let d1 = digest_from_yaml(&yaml);
-    let d2 = digest_from_yaml(&yaml);
+    let d1 = digest_from_yaml(&yaml).expect("compile_workflow must succeed for test fixture");
+    let d2 = digest_from_yaml(&yaml).expect("compile_workflow must succeed for test fixture");
     assert_eq!(d1, d2, "at_once=0 digest must be deterministic");
 }
 
 #[test]
 fn foreach_at_once_none_digest_is_deterministic() {
     let yaml = foreach_yaml_no_atonce();
-    let d1 = digest_from_yaml(&yaml);
-    let d2 = digest_from_yaml(&yaml);
+    let d1 = digest_from_yaml(&yaml).expect("compile_workflow must succeed for test fixture");
+    let d2 = digest_from_yaml(&yaml).expect("compile_workflow must succeed for test fixture");
     assert_eq!(d1, d2, "at_once=None digest must be deterministic");
 }
 
 #[test]
 fn foreach_at_once_one_digest_is_deterministic() {
     let yaml = foreach_yaml("1");
-    let d1 = digest_from_yaml(&yaml);
-    let d2 = digest_from_yaml(&yaml);
+    let d1 = digest_from_yaml(&yaml).expect("compile_workflow must succeed for test fixture");
+    let d2 = digest_from_yaml(&yaml).expect("compile_workflow must succeed for test fixture");
     assert_eq!(d1, d2, "at_once=1 digest must be deterministic");
 }
 
 #[test]
 fn foreach_at_once_zero_source_digest_is_deterministic() {
     let yaml = foreach_yaml("0");
-    let d1 = digest_from_source(&yaml);
-    let d2 = digest_from_source(&yaml);
+    let d1 = digest_from_source(&yaml).expect("compile_source must succeed for test fixture");
+    let d2 = digest_from_source(&yaml).expect("compile_source must succeed for test fixture");
     assert_eq!(
         d1, d2,
         "at_once=Some(0) source digest must be deterministic"
@@ -356,8 +363,8 @@ fn foreach_at_once_one_digest_agrees_across_apis() {
 fn foreach_at_once_zero_and_two_produce_different_digests() {
     let yaml_zero = foreach_yaml("0");
     let yaml_two = foreach_yaml("2");
-    let digest_zero = digest_from_yaml(&yaml_zero);
-    let digest_two = digest_from_yaml(&yaml_two);
+    let digest_zero = digest_from_yaml(&yaml_zero).expect("compile_workflow must succeed for test fixture");
+    let digest_two = digest_from_yaml(&yaml_two).expect("compile_workflow must succeed for test fixture");
 
     assert_ne!(
         digest_zero, digest_two,

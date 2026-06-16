@@ -16,6 +16,7 @@
 // GOD RULE 2: Binds to actual compile_source() and CompiledWorkflow::digest() APIs.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use vb_compile::compile_source;
 use vb_core::ids::WorkflowDigest;

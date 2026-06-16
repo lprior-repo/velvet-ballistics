@@ -5,11 +5,11 @@
 //! canonical primitive name.
 //!
 //! The bug (pre-fix): Save fell through to the `other =>` catch-all
-//! which only hashed `canonical_primitive_name(other)` (e.g. b"save"),
+//! which only hashed `canonical_primitive_name(other)` (e.g. b"set"),
 //! ignoring the semantic `value` field entirely.
 //!
 //! The fix: explicit match arm for Save (part_05.rs:374-381) that hashes
-//! `b"save" + value` where `value` is encoded as UTF-8 bytes for
+//! `b"set" + value` where `value` is encoded as UTF-8 bytes for
 //! `ScalarValue::String` and `i64::to_le_bytes()` for `ScalarValue::Integer`.
 
 #![forbid(unsafe_code)]
@@ -56,15 +56,15 @@ fn hash_primitive(primitive: &StepPrimitive) -> [u8; 32] {
 fn save_value_field_affects_digest() {
     let save_step = save_integer(42);
 
-    // The explicit Save arm hashes b"save" + 42_i64.to_le_bytes()
+    // The explicit Save arm hashes b"set" + 42_i64.to_le_bytes()
     let actual = hash_primitive(&save_step);
 
-    // Simulate the pre-fix catch-all: only hash the primitive name "save"
+    // Simulate the pre-fix catch-all: only hash the primitive name "set"
     let catch_all_only_name = hash_bytes(&[b"set"]);
 
     assert_ne!(
         actual, catch_all_only_name,
-        "Save arm must hash field bytes beyond just the primitive name 'save'; \
+        "Save arm must hash field bytes beyond just the primitive name 'set'; \
          pre-fix catch-all hash checked only the name"
     );
 }
@@ -128,11 +128,11 @@ fn save_string_encoding_matches_save_plus_utf8_bytes() {
 
     assert_eq!(
         actual, expected,
-        "Save String must hash b\"save\" + raw UTF-8 bytes"
+        "Save String must hash b\"set\" + raw UTF-8 bytes"
     );
 }
 
-/// Verify that the explicit Save Integer encoding is `b"save" + i64 LE bytes`.
+/// Verify that the explicit Save Integer encoding is `b"set" + i64 LE bytes`.
 #[test]
 fn save_integer_encoding_matches_save_plus_le_bytes() {
     let save_step = save_integer(42);
@@ -142,7 +142,7 @@ fn save_integer_encoding_matches_save_plus_le_bytes() {
 
     assert_eq!(
         actual, expected,
-        "Save Integer must hash b\"save\" + i64 LE bytes"
+        "Save Integer must hash b\"set\" + i64 LE bytes"
     );
 }
 

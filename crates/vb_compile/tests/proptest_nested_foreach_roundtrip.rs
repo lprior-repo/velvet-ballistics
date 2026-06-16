@@ -15,6 +15,7 @@
 
 #![cfg(test)]
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_compile::mod_compile_lowering::compile_source;
@@ -103,10 +104,7 @@ proptest! {
             "PO-013: both compilations must have the same Ok/Err outcome"
         );
 
-        if result1.is_ok() && result2.is_ok() {
-            let workflow1 = result1.unwrap();
-            let workflow2 = result2.unwrap();
-
+        if let (Ok(workflow1), Ok(workflow2)) = (&result1, &result2) {
             let parts1 = workflow1.to_parts();
             let parts2 = workflow2.to_parts();
 

@@ -14,6 +14,7 @@
 // The reproduction is a direct copy of the production match arms.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_yaml::ast::{ScalarValue, StepPrimitive};

@@ -12,6 +12,7 @@
 // GOD RULE 2: Binds to actual Rust canonical_digest() implementation.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_compile::canonical_digest;

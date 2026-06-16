@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Integration tests for Repeat digest coverage (bead vb-xi2f.31).
 //!
 //! Proof obligations: PO-011, PO-012.

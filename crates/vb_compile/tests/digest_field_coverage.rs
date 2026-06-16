@@ -1,6 +1,7 @@
 //! Digest field coverage proptest for Together and Reduce (PO-009).
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_core::WorkflowDigest;
@@ -52,8 +53,10 @@ proptest! {
             ));
         }
 
-        let digest_a = compile_and_digest(&together_workflow_yaml(&yaml_a)).unwrap();
-        let digest_b = compile_and_digest(&together_workflow_yaml(&yaml_b)).unwrap();
+        let digest_a = compile_and_digest(&together_workflow_yaml(&yaml_a))
+            .map_err(TestCaseError::fail)?;
+        let digest_b = compile_and_digest(&together_workflow_yaml(&yaml_b))
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(digest_a, digest_b,
             "Different branch counts ({}, {}) must produce different digests", count_a, count_b);
@@ -77,8 +80,10 @@ proptest! {
             label_b
         );
 
-        let digest_a = compile_and_digest(&together_workflow_yaml(&yaml_a)).unwrap();
-        let digest_b = compile_and_digest(&together_workflow_yaml(&yaml_b)).unwrap();
+        let digest_a = compile_and_digest(&together_workflow_yaml(&yaml_a))
+            .map_err(TestCaseError::fail)?;
+        let digest_b = compile_and_digest(&together_workflow_yaml(&yaml_b))
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(digest_a, digest_b,
             "Different labels ('{}', '{}') must produce different digests", label_a, label_b);
@@ -106,8 +111,10 @@ proptest! {
             "            - id: set_acc\n              set:\n                output: acc\n                value: \"1\"\n"
         );
 
-        let digest_a = compile_and_digest(&yaml_a).unwrap();
-        let digest_b = compile_and_digest(&yaml_b).unwrap();
+        let digest_a = compile_and_digest(&yaml_a)
+            .map_err(TestCaseError::fail)?;
+        let digest_b = compile_and_digest(&yaml_b)
+            .map_err(TestCaseError::fail)?;
 
         prop_assert_ne!(digest_a, digest_b,
             "Different reduce variables ('{}', '{}') must produce different digests", var_a, var_b);
@@ -142,8 +149,10 @@ steps:
       result: 0
 "#;
 
-    let digest_a = compile_and_digest(yaml).unwrap();
-    let digest_b = compile_and_digest(yaml).unwrap();
+    let digest_a = compile_and_digest(yaml)
+        .expect("together workflow must compile and digest");
+    let digest_b = compile_and_digest(yaml)
+        .expect("together workflow must compile and digest (second call)");
 
     assert_eq!(
         digest_a, digest_b,

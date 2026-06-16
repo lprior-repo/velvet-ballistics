@@ -8,6 +8,7 @@
 // Uses only public API (avoids pub(crate) types not accessible from tests/).
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use vb_core::ids::WorkflowDigest;
 use vb_yaml::ast::ScalarValue;
@@ -43,42 +44,37 @@ fn scalarvalue_exhaustiveness_in_digest() {
 
     // Variant 1: String
     let sv_string = ScalarValue::String("test_output".to_string());
+    let mut matched_string = false;
     match &sv_string {
         ScalarValue::String(s) => {
             // String encoding: hasher.update(s.as_bytes()) — part_05.rs:153
             assert!(!s.is_empty(), "String variant exists and is usable");
+            matched_string = true;
         }
-        ScalarValue::Integer(_) => {
-            panic!("expected String variant");
-        }
-        _ => {
-            // Future unknown variant would fall through to the `_` arm
-            // in digest_step_primitive (part_05.rs:155 → b"unsupported")
-            // This is forward-compatible but must be explicitly addressed.
-            panic!(
-                "Unknown ScalarValue variant encountered. \
-                 Update digest_step_primitive to handle this variant."
-            );
-        }
+        ScalarValue::Integer(_) => {}
+        _ => {}
     }
+    assert!(
+        matched_string,
+        "expected String variant, got {sv_string:?}"
+    );
 
     // Variant 2: Integer
     let sv_integer = ScalarValue::Integer(42);
+    let mut matched_integer = false;
     match &sv_integer {
-        ScalarValue::String(_) => {
-            panic!("expected Integer variant");
-        }
+        ScalarValue::String(_) => {}
         ScalarValue::Integer(i) => {
             // Integer encoding: hasher.update(&i.to_le_bytes()) — part_05.rs:154
             assert_eq!(*i, 42, "Integer variant exists and is usable");
+            matched_integer = true;
         }
-        _ => {
-            panic!(
-                "Unknown ScalarValue variant encountered. \
-                 Update digest_step_primitive to handle this variant."
-            );
-        }
+        _ => {}
     }
+    assert!(
+        matched_integer,
+        "expected Integer variant, got {sv_integer:?}"
+    );
 
     // Verify both variants actually compile through digest:
     // Compile workflows with String and Integer Finish results.

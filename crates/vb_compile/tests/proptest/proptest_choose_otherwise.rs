@@ -7,6 +7,7 @@
 // GOD RULE 2: Binds to compile_workflow.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_core::{CompiledNodeKind, StepIdx};
@@ -58,16 +59,16 @@ proptest! {
             let nc = workflow.node_count();
             let mut found_choose = false;
             for i in 0..nc {
-                if let Some(node) = workflow.node(StepIdx::new(i)) {
-                    if let CompiledNodeKind::ChooseSlot { otherwise, .. } = &node.kind {
-                        found_choose = true;
-                        prop_assert!(otherwise.is_some(), "otherwise must be set");
-                        if let Some(target) = otherwise {
-                            prop_assert!(
-                                workflow.node(*target).is_some(),
-                                "otherwise target must be a valid node"
-                            );
-                        }
+                if let Some(node) = workflow.node(StepIdx::new(i))
+                    && let CompiledNodeKind::ChooseSlot { otherwise, .. } = &node.kind
+                {
+                    found_choose = true;
+                    prop_assert!(otherwise.is_some(), "otherwise must be set");
+                    if let Some(target) = otherwise {
+                        prop_assert!(
+                            workflow.node(*target).is_some(),
+                            "otherwise target must be a valid node"
+                        );
                     }
                 }
             }

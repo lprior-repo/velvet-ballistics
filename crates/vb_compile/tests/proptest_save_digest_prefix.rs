@@ -14,6 +14,7 @@
 // production match arms with the post-fix "set" literal.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_yaml::ast::{ScalarValue, StepPrimitive};

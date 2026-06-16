@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 use vb_compile::check_idempotency_gates;
 use vb_core::action::{ActionContract, ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
@@ -11,7 +12,7 @@ fn contract(
 ) -> ActionContract {
     ActionContract {
         id: ActionId::new(id),
-        name: ActionName::new("test-action").unwrap(),
+        name: ActionName::new("test-action").expect("test-action name is valid ASCII"),
         input_slot_count: 1,
         output_slot_count: 1,
         max_input_bytes: 1024,
@@ -29,7 +30,7 @@ fn static_ok(c: &ActionContract) -> bool {
 }
 
 fn compile_ok(c: &ActionContract) -> bool {
-    check_idempotency_gates(&[c.clone()]).is_ok()
+    check_idempotency_gates(std::slice::from_ref(c)).is_ok()
 }
 
 #[test]
@@ -553,7 +554,9 @@ fn is_compile_idempotency_gate_accepted_exhaustive_60_cells() {
                 Idempotency::IdempotentExternal,
                 Idempotency::AtLeastOnceExternal,
             ] {
-                let c = contract(7000 + total as u16, side_effect, idempotency, retry_safety);
+                let id = u16::try_from(total).expect("exhaustive table bounded to 60 cells")
+                    .checked_add(7000).expect("id + 7000 fits u16 for table of 60 cells");
+                let c = contract(id, side_effect, idempotency, retry_safety);
                 let accepted = vb_compile::is_compile_idempotency_gate_accepted(&c);
                 let expected = expected_acceptance(side_effect, retry_safety, idempotency);
                 assert_eq!(
