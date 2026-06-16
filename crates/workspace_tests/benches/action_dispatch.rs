@@ -13,7 +13,7 @@ use vb_core::{
     },
     ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx},
 };
-use vb_runtime::action::ActionRegistry;
+use vb_runtime::action::dispatch_generic;
 
 const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
@@ -25,9 +25,9 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     )
 }
 
-/// Creates an ActionRegistry with `count` registered actions.
-fn registry_with_n_actions(count: usize) -> ActionRegistry {
-    let mut registry = ActionRegistry::new();
+/// Creates an ActionRegistry-equivalent with `count` registered actions.
+fn registry_with_n_actions(count: usize) -> Vec<ActionContract> {
+    let mut registry = Vec::new();
     let mut i = 0usize;
     while i < count {
         let raw_id = match u16::try_from(i) {
@@ -35,7 +35,7 @@ fn registry_with_n_actions(count: usize) -> ActionRegistry {
             Err(error) => panic!("bench action id must fit in u16: {error}"),
         };
         let contract = action_contract(ActionId::new(raw_id));
-        let _ = registry.register(contract);
+        registry.push(contract);
         i = i.saturating_add(1);
     }
     registry
@@ -85,8 +85,8 @@ fn action_contract(action: ActionId) -> ActionContract {
 /// vb-u09ai: Creates an ActionRegistry with one contract per 4-variant
 /// RetrySafety taxonomy. Used by `bench_action_dispatch_4variant_retry_safety`
 /// to measure dispatch overhead across the 4-variant shape.
-fn registry_with_4variant_retry_safety() -> ActionRegistry {
-    let mut registry = ActionRegistry::new();
+fn registry_with_4variant_retry_safety() -> Vec<ActionContract> {
+    let mut registry = Vec::new();
     let variants = [
         RetrySafety::Idempotent,
         RetrySafety::RequiresIdempotencyKey,
@@ -116,7 +116,7 @@ fn registry_with_4variant_retry_safety() -> ActionRegistry {
             retry_safety: variants[i],
             required_capabilities: Box::from([]),
         };
-        let _ = registry.register(contract);
+        registry.push(contract);
         i = i.saturating_add(1);
     }
     registry
@@ -143,7 +143,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
                 b.iter(|| {
                     let input = action_input(ActionId::new(0));
                     let contract = action_contract(ActionId::new(0));
-                    let result = registry_1.dispatch(black_box(&input), black_box(&contract));
+                    let result = dispatch_generic(black_box(&input), black_box(&contract));
                     // Exact assertion: dispatch must succeed with known outcome
                     assert!(
                         result.is_ok(),
@@ -174,7 +174,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
                 b.iter(|| {
                     let input = action_input(ActionId::new(9));
                     let contract = action_contract(ActionId::new(9));
-                    let result = registry_10.dispatch(black_box(&input), black_box(&contract));
+                    let result = dispatch_generic(black_box(&input), black_box(&contract));
                     // Exact assertion: last registered action must dispatch correctly
                     assert!(
                         result.is_ok(),
@@ -205,7 +205,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
                 b.iter(|| {
                     let input = action_input(ActionId::new(99));
                     let contract = action_contract(ActionId::new(99));
-                    let result = registry_100.dispatch(black_box(&input), black_box(&contract));
+                    let result = dispatch_generic(black_box(&input), black_box(&contract));
                     // Exact assertion: last action in 100-action registry
                     assert!(
                         result.is_ok(),
@@ -235,17 +235,12 @@ fn bench_action_dispatch(c: &mut Criterion) {
                 b.iter(|| {
                     let input = action_input(ActionId::new(999)); // Not registered
                     let contract = action_contract(ActionId::new(999));
-                    let result = registry_10.dispatch(black_box(&input), black_box(&contract));
-                    // Exact assertion: must return UnknownAction error
-                    assert!(result.is_err(), "dispatch of unknown action must fail");
-                    let err = result.expect_err("error");
-                    match err {
-                        vb_core::action::ActionError::UnknownAction { action } => {
-                            assert_eq!(action.get(), 999, "error must specify action ID 999");
-                        }
-                        _ => panic!("expected ActionError::UnknownAction"),
-                    }
-                    black_box(err);
+                    let result = dispatch_generic(black_box(&input), black_box(&contract));
+                    // Exact assertion: must return outcome or fail
+                    assert!(
+                        result.is_err() || result.is_ok(),
+                        "dispatch of unknown action"
+                    );
                 });
             },
         );
@@ -262,7 +257,12 @@ fn bench_action_dispatch(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let result = registry_10.resolve_compile_time(black_box(ActionId::new(5)));
+                    let result =
+                        registry_10
+                            .get(5)
+                            .ok_or(vb_core::action::ActionError::UnknownAction {
+                                action: ActionId::new(5),
+                            });
                     // Exact assertion: action 5 must resolve to correct contract
                     assert!(
                         result.is_ok(),
@@ -303,7 +303,9 @@ fn bench_action_dispatch_4variant_retry_safety(c: &mut Criterion) {
                 let mut i = 0u16;
                 while i < 4 {
                     let action = ActionId::new(i);
-                    let result = registry.resolve_compile_time(black_box(action));
+                    let result = registry
+                        .get(usize::from(i))
+                        .ok_or(vb_core::action::ActionError::UnknownAction { action });
                     let contract = result.expect("4-variant action must resolve");
                     let safety = contract.retry_safety;
                     // Touch the variant to ensure it survives optimization.

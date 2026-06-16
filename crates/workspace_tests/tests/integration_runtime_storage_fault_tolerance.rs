@@ -67,7 +67,6 @@ fn recovery_from_corrupt_snapshot_sequence_is_detected() {
         pc: StepIdx::ZERO,
         steps: Vec::new(),
         slots: Vec::new(),
-        pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     };
 
@@ -86,19 +85,16 @@ fn unsupported_recovery_state_union_combines_flags() {
         slot_values: true,
         slot_taint: false,
         action_payloads: false,
-        pending_actions: false,
     };
     let b = UnsupportedRecoveryState {
         slot_values: false,
         slot_taint: true,
         action_payloads: false,
-        pending_actions: false,
     };
     let combined = a.union(b);
     assert!(combined.slot_values);
     assert!(combined.slot_taint);
     assert!(!combined.action_payloads);
-    assert!(!combined.pending_actions);
 }
 
 /// UnsupportedRecoveryState::event_slot_taint_unsupported helper.
@@ -108,7 +104,6 @@ fn event_slot_taint_unsupported_sets_only_taint_flag() {
     assert!(!unsupported.slot_values);
     assert!(unsupported.slot_taint);
     assert!(!unsupported.action_payloads);
-    assert!(!unsupported.pending_actions);
 }
 
 /// ActionReplayTracker: completed and failed actions both block replay.
@@ -217,7 +212,6 @@ fn durable_frame_boundary_summary_matches_seed() {
             value: SlotValue::I64(42),
             taint: Taint::Clean,
         }],
-        pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     };
 

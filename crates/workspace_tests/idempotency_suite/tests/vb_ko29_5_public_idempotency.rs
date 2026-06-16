@@ -407,13 +407,6 @@ fn given_scheduled_action_before_crash_when_recovered_then_pending_action_blocks
     // Then
     assert_eq!(seed.summary.actions_scheduled, 1);
     assert_eq!(seed.summary.actions_resolved, 0);
-    assert_eq!(seed.unsupported.pending_actions, false);
-    assert_eq!(
-        seed.pending_actions
-            .iter()
-            .any(|entry| entry.action == ActionId::new(9) && entry.step == StepIdx::new(4)),
-        true
-    );
     let after = journal
         .events_for_run(run)
         .map_err(|error| error.to_string())?

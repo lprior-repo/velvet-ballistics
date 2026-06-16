@@ -254,12 +254,10 @@ fn recovery_detects_unsupported_slot_taint() {
         pc: StepIdx::ZERO,
         steps: Vec::new(),
         slots: Vec::new(),
-        pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: true, // Marked as unsupported
             action_payloads: false,
-            pending_actions: false,
         },
     };
 

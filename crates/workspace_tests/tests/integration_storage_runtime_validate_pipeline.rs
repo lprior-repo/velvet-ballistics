@@ -203,12 +203,10 @@ fn runtime_boundary_rejects_unsupported_slot_taint_in_pipeline() {
             value: SlotValue::I64(86),
             taint: Taint::Secret,
         }],
-        pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: true, // Unsupported
             action_payloads: false,
-            pending_actions: false,
         },
     };
 

@@ -124,7 +124,6 @@ fn supported_seed_with_slot(taint: Taint) -> RecoveryFrameSeed {
             value: SlotValue::I64(99),
             taint,
         }],
-        pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     }
 }
@@ -266,7 +265,6 @@ fn corrupt_slot_value_blocks_both_values_and_taint() {
         slot_values: true,
         slot_taint: false,
         action_payloads: false,
-        pending_actions: false,
     };
 
     assert_eq!(unsupported_for(&events), Ok(expected));
@@ -287,7 +285,6 @@ fn missing_slot_value_blocks_both_values_and_taint() {
         slot_values: true,
         slot_taint: false,
         action_payloads: false,
-        pending_actions: false,
     };
 
     assert_eq!(unsupported_for(&events), Ok(expected));

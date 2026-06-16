@@ -4519,7 +4519,8 @@ fn missing_direct_api_submit_to_finish(c: &mut Criterion) {
                         }
                     }
                     Err(e) => {
-                        let _ = black_box(Err::<vb_core::EngineSignal, vb_compile::CompileErrors>(e));
+                        let _ =
+                            black_box(Err::<vb_core::EngineSignal, vb_compile::CompileErrors>(e));
                         Err(vb_core::CoreError::InternalInvariantViolation {
                             reason: "frame error".into(),
                         })
@@ -4537,7 +4538,6 @@ fn missing_direct_api_submit_to_finish(c: &mut Criterion) {
 /// Benchmark ask/answer/resume async primitive pattern.
 fn missing_ask_answer_resume(c: &mut Criterion) {
     use std::hint::black_box;
-    use vb_core::action::ActionTicket;
     use vb_runtime::shard::ask::AskAnswer;
 
     let mut group = c.benchmark_group("section39_missing");
@@ -4550,16 +4550,6 @@ fn missing_ask_answer_resume(c: &mut Criterion) {
         ),
         |b| {
             checked_iter(b, "ask_answer_resume", || {
-                let ticket = vb_core::action::ActionTicket {
-                    run: RunId::new(900),
-                    step: StepIdx::new(0),
-                    seq: vb_core::ids::SeqNo::new(0),
-                    action: ActionId::new(0),
-                    attempt: 1,
-                    idempotency_key: 0,
-                    capacity: 3,
-                    mock: vb_core::action::MockMarker::default(),
-                };
                 let ask_ticket = vb_runtime::shard::AskTicket {
                     run: RunId::new(900),
                     ask_step: StepIdx::new(0),
