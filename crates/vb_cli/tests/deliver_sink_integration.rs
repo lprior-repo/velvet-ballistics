@@ -67,6 +67,7 @@ fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String>
 #[test]
 fn agent_context_deliver_reports_unknown_publish_when_rival_unlinks_final_path_after_publish()
 -> Result<(), String> {
+    assert_test_hooks_active()?;
     let dir = deliver_tempdir()?;
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
@@ -87,6 +88,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rival_unlinks_final_path_a
 #[test]
 fn agent_context_deliver_reports_unknown_publish_when_rival_replaces_final_path_after_publish()
 -> Result<(), String> {
+    assert_test_hooks_active()?;
     let dir = deliver_tempdir()?;
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
@@ -628,6 +630,56 @@ fn run_agent_context() -> Result<std::process::Output, String> {
         .arg("agent-context")
         .output()
         .map_err(|error| error.to_string())
+}
+
+fn assert_test_hooks_active() -> Result<(), String> {
+    static PROBE: OnceLock<Result<(), String>> = OnceLock::new();
+    let cached = PROBE.get_or_init(|| {
+        let dir = match deliver_tempdir() {
+            Ok(d) => d,
+            Err(error) => {
+                return Err(format!(
+                    "deliver-sink test-hook probe could not create tempdir: {error}"
+                ));
+            }
+        };
+        let deliver_path = dir.path().join("agent-context.jsonl");
+        let target = match path_text(&deliver_path) {
+            Ok(text) => format!("file:{text}"),
+            Err(error) => {
+                return Err(format!(
+                    "deliver-sink test-hook probe could not format target: {error}"
+                ));
+            }
+        };
+        let output = match agent_context_deliver_command(&target)
+            .env(TEST_POST_COMMIT_FINAL_ACTION_ENV, "unlink-final")
+            .output()
+        {
+            Ok(output) => output,
+            Err(error) => {
+                return Err(format!(
+                    "deliver-sink test-hook probe could not invoke binary: {error}"
+                ));
+            }
+        };
+        let expected_stderr = format!("{PUBLISH_STATE_UNKNOWN_MESSAGE}\n");
+        if output.status.code() == Some(2) && output.stderr == expected_stderr.as_bytes() {
+            Ok(())
+        } else {
+            Err(String::from(
+                "VB_DELIVER_SINK_TEST_* env vars are not honored by the velvet-ballistics binary under test: \
+                 the `debug_test_support` module in crates/vb_cli/src/deliver_sink.rs is gated by \
+                 `#[cfg(all(not(test), debug_assertions))]`, so the hooks are only compiled when the binary \
+                 is built with `debug_assertions` (the default for `cargo test -p velvet-ballistics`, not \
+                 `cargo build --release`); rebuild with `cargo test -p velvet-ballistics` to enable the hooks."
+            ))
+        }
+    });
+    match cached {
+        Ok(()) => Ok(()),
+        Err(message) => Err(message.clone()),
+    }
 }
 
 fn assert_deliver_validation_failure(target: &str, expected_message: &str) -> Result<(), String> {
