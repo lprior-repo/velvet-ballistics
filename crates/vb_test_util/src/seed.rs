@@ -26,20 +26,25 @@ impl<const N: usize> SeededBytes<N> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
 
     #[test]
     fn seeded_bytes_determinism() {
-        let a = SeededBytes::<32>::new(42).unwrap();
-        let b = SeededBytes::<32>::new(42).unwrap();
+        let a = SeededBytes::<32>::new(42)
+            .expect("SeededBytes::<32>::new(42) should succeed for non-zero N");
+        let b = SeededBytes::<32>::new(42)
+            .expect("SeededBytes::<32>::new(42) should succeed for non-zero N");
         assert_eq!(a.bytes, b.bytes);
     }
 
     #[test]
     fn seeded_bytes_different_seeds() {
-        let a = SeededBytes::<32>::new(42).unwrap();
-        let b = SeededBytes::<32>::new(43).unwrap();
+        let a = SeededBytes::<32>::new(42)
+            .expect("SeededBytes::<32>::new(42) should succeed for non-zero N");
+        let b = SeededBytes::<32>::new(43)
+            .expect("SeededBytes::<32>::new(43) should succeed for non-zero N");
         assert_ne!(a.bytes, b.bytes);
     }
 

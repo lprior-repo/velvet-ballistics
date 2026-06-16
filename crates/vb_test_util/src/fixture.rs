@@ -61,6 +61,7 @@ impl FixtureBuilder {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
 
@@ -72,15 +73,15 @@ mod tests {
 
     #[test]
     fn valid_capacity_accepted() {
-        let result = FixtureCapacity::new(100);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().value, 100);
+        let result = FixtureCapacity::new(100).expect("FixtureCapacity::new(100) should succeed");
+        assert_eq!(result.value, 100);
     }
 
     #[test]
     fn max_capacity_boundary() {
-        let result = FixtureCapacity::new(FixtureCapacity::MAX_CAPACITY);
-        assert!(result.is_ok());
+        let result = FixtureCapacity::new(FixtureCapacity::MAX_CAPACITY)
+            .expect("FixtureCapacity::new(MAX_CAPACITY) should succeed");
+        assert_eq!(result.value, FixtureCapacity::MAX_CAPACITY);
     }
 
     #[test]

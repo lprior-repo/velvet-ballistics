@@ -48,13 +48,14 @@ impl TempKeyspace {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
     use std::collections::HashSet;
 
     #[test]
     fn temp_keyspace_cleanup() {
-        let temp = TempKeyspace::open().unwrap();
+        let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
         let path = temp.path().to_path_buf();
         drop(temp);
         assert!(!path.exists());
@@ -64,7 +65,7 @@ mod tests {
     fn temp_keyspace_uniqueness() {
         let mut paths = HashSet::new();
         for _ in 0..100 {
-            let temp = TempKeyspace::open().unwrap();
+            let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
             let path = temp.path().to_path_buf();
             assert!(paths.insert(path));
         }
@@ -79,7 +80,8 @@ mod tests {
                 thread::spawn(|| {
                     let mut paths = HashSet::new();
                     for _ in 0..10 {
-                        let temp = TempKeyspace::open().unwrap();
+                        let temp =
+                            TempKeyspace::open().expect("TempKeyspace::open() should succeed");
                         let path = temp.path().to_path_buf();
                         assert!(paths.insert(path));
                     }
@@ -90,7 +92,7 @@ mod tests {
 
         let mut all_paths = HashSet::new();
         for h in handles {
-            let paths = h.join().unwrap();
+            let paths = h.join().expect("worker thread should not panic");
             for p in paths {
                 assert!(all_paths.insert(p));
             }

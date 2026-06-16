@@ -2,6 +2,9 @@
 //! the 5x test-density contract (vb-tdst) and to act as behavior
 //! tests for the deterministic fixture, seed, and Fjall test harness.
 
+#![forbid(unsafe_code)]
+#![allow(clippy::expect_used, clippy::indexing_slicing, clippy::clone_on_copy)]
+
 use vb_test_util::TestSetupError;
 use vb_test_util::fixture::{FixtureBuilder, FixtureCapacity};
 use vb_test_util::seed::SeededBytes;
@@ -98,29 +101,20 @@ fn fixture_capacity_max_value_is_one_mib() {
 
 #[test]
 fn fixture_capacity_value_field_accessible() {
-    let cap = match FixtureCapacity::new(128) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(128) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(128).expect("FixtureCapacity::new(128) should succeed");
     assert_eq!(cap.value, 128);
 }
 
 #[test]
 fn fixture_capacity_clone_eq() {
-    let a = match FixtureCapacity::new(256) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(256) should succeed: {e:?}"),
-    };
+    let a = FixtureCapacity::new(256).expect("FixtureCapacity::new(256) should succeed");
     let b = a.clone();
     assert_eq!(a, b);
 }
 
 #[test]
 fn fixture_capacity_debug_includes_value() {
-    let cap = match FixtureCapacity::new(64) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(64) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(64).expect("FixtureCapacity::new(64) should succeed");
     let s = format!("{:?}", cap);
     assert!(s.contains("FixtureCapacity"));
     assert!(s.contains("64"));
@@ -130,14 +124,9 @@ fn fixture_capacity_debug_includes_value() {
 
 #[test]
 fn fixture_builder_with_capacity_accepts_valid() {
-    let cap = match FixtureCapacity::new(64) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(64) should succeed: {e:?}"),
-    };
-    let builder = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(64).expect("FixtureCapacity::new(64) should succeed");
+    let builder = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     // Verify the builder produces output of the expected capacity
     let bytes = builder.build_bytes(0);
     assert_eq!(bytes.len(), 64);
@@ -145,46 +134,29 @@ fn fixture_builder_with_capacity_accepts_valid() {
 
 #[test]
 fn fixture_builder_build_bytes_returns_capacity_length() {
-    let cap = match FixtureCapacity::new(100) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(100) should succeed: {e:?}"),
-    };
-    let builder = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(100).expect("FixtureCapacity::new(100) should succeed");
+    let builder = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     let bytes = builder.build_bytes(1);
     assert_eq!(bytes.len(), 100);
 }
 
 #[test]
 fn fixture_builder_build_bytes_zero_seed_nonempty() {
-    let cap = match FixtureCapacity::new(32) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(32) should succeed: {e:?}"),
-    };
-    let builder = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(32).expect("FixtureCapacity::new(32) should succeed");
+    let builder = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     let bytes = builder.build_bytes(0);
     assert_eq!(bytes.len(), 32);
 }
 
 #[test]
 fn fixture_builder_build_bytes_determinism_same_seed() {
-    let cap = match FixtureCapacity::new(64) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(64) should succeed: {e:?}"),
-    };
-    let b1 = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
-    let b2 = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(64).expect("FixtureCapacity::new(64) should succeed");
+    let b1 = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
+    let b2 = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     let bytes_a = b1.build_bytes(7);
     let bytes_b = b2.build_bytes(7);
     assert_eq!(bytes_a, bytes_b);
@@ -192,18 +164,11 @@ fn fixture_builder_build_bytes_determinism_same_seed() {
 
 #[test]
 fn fixture_builder_build_bytes_different_seeds_diverge() {
-    let cap = match FixtureCapacity::new(64) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(64) should succeed: {e:?}"),
-    };
-    let b1 = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
-    let b2 = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(64).expect("FixtureCapacity::new(64) should succeed");
+    let b1 = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
+    let b2 = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     let bytes_a = b1.build_bytes(1);
     let bytes_b = b2.build_bytes(2);
     assert_ne!(bytes_a, bytes_b);
@@ -211,28 +176,19 @@ fn fixture_builder_build_bytes_different_seeds_diverge() {
 
 #[test]
 fn fixture_builder_build_bytes_max_capacity() {
-    let cap = match FixtureCapacity::new(FixtureCapacity::MAX_CAPACITY) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(MAX) should succeed: {e:?}"),
-    };
-    let builder = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(FixtureCapacity::MAX_CAPACITY)
+        .expect("FixtureCapacity::new(MAX) should succeed");
+    let builder = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     let bytes = builder.build_bytes(42);
     assert_eq!(bytes.len(), FixtureCapacity::MAX_CAPACITY);
 }
 
 #[test]
 fn fixture_builder_with_capacity_minimum_one_byte() {
-    let cap = match FixtureCapacity::new(1) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureCapacity::new(1) should succeed: {e:?}"),
-    };
-    let builder = match FixtureBuilder::with_capacity(cap) {
-        Ok(v) => v,
-        Err(e) => panic!("FixtureBuilder::with_capacity(cap) should succeed: {e:?}"),
-    };
+    let cap = FixtureCapacity::new(1).expect("FixtureCapacity::new(1) should succeed");
+    let builder = FixtureBuilder::with_capacity(cap)
+        .expect("FixtureBuilder::with_capacity(cap) should succeed");
     let bytes = builder.build_bytes(0);
     assert_eq!(bytes.len(), 1);
 }
@@ -241,27 +197,15 @@ fn fixture_builder_with_capacity_minimum_one_byte() {
 
 #[test]
 fn seeded_bytes_determinism_across_calls() {
-    let a = match SeededBytes::<32>::new(42) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<32>::new(42) should succeed"),
-    };
-    let b = match SeededBytes::<32>::new(42) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<32>::new(42) should succeed"),
-    };
+    let a = SeededBytes::<32>::new(42).expect("SeededBytes::<32>::new(42) should succeed");
+    let b = SeededBytes::<32>::new(42).expect("SeededBytes::<32>::new(42) should succeed");
     assert_eq!(a, b);
 }
 
 #[test]
 fn seeded_bytes_different_seeds_produce_different_bytes() {
-    let a = match SeededBytes::<32>::new(1) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<32>::new(1) should succeed"),
-    };
-    let b = match SeededBytes::<32>::new(2) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<32>::new(2) should succeed"),
-    };
+    let a = SeededBytes::<32>::new(1).expect("SeededBytes::<32>::new(1) should succeed");
+    let b = SeededBytes::<32>::new(2).expect("SeededBytes::<32>::new(2) should succeed");
     assert_ne!(a, b);
 }
 
@@ -273,43 +217,28 @@ fn seeded_bytes_zero_size_returns_none() {
 
 #[test]
 fn seeded_bytes_field_accessible() {
-    let s = match SeededBytes::<8>::new(0) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<8>::new(0) should succeed"),
-    };
+    let s = SeededBytes::<8>::new(0).expect("SeededBytes::<8>::new(0) should succeed");
     assert_eq!(s.bytes.len(), 8);
 }
 
 #[test]
 fn seeded_bytes_clone_eq() {
-    let a = match SeededBytes::<16>::new(99) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<16>::new(99) should succeed"),
-    };
+    let a = SeededBytes::<16>::new(99).expect("SeededBytes::<16>::new(99) should succeed");
     let b = a.clone();
     assert_eq!(a, b);
 }
 
 #[test]
 fn seeded_bytes_debug_includes_struct_name() {
-    let s = match SeededBytes::<4>::new(0) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<4>::new(0) should succeed"),
-    };
+    let s = SeededBytes::<4>::new(0).expect("SeededBytes::<4>::new(0) should succeed");
     let debug = format!("{:?}", s);
     assert!(debug.contains("SeededBytes"));
 }
 
 #[test]
 fn seeded_bytes_partial_eq_negative() {
-    let a = match SeededBytes::<8>::new(1) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<8>::new(1) should succeed"),
-    };
-    let b = match SeededBytes::<8>::new(2) {
-        Some(v) => v,
-        None => panic!("SeededBytes::<8>::new(2) should succeed"),
-    };
+    let a = SeededBytes::<8>::new(1).expect("SeededBytes::<8>::new(1) should succeed");
+    let b = SeededBytes::<8>::new(2).expect("SeededBytes::<8>::new(2) should succeed");
     assert_ne!(a, b);
 }
 
@@ -317,10 +246,7 @@ fn seeded_bytes_partial_eq_negative() {
 
 #[test]
 fn temp_keyspace_open_succeeds() {
-    let temp = match TempKeyspace::open() {
-        Ok(v) => v,
-        Err(e) => panic!("TempKeyspace::open() should succeed: {e:?}"),
-    };
+    let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
     let path = temp.path();
     assert!(path.exists());
     assert!(path.is_dir());
@@ -328,29 +254,20 @@ fn temp_keyspace_open_succeeds() {
 
 #[test]
 fn temp_keyspace_path_is_directory() {
-    let temp = match TempKeyspace::open() {
-        Ok(v) => v,
-        Err(e) => panic!("TempKeyspace::open() should succeed: {e:?}"),
-    };
+    let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
     assert!(temp.path().is_dir());
 }
 
 #[test]
 fn temp_keyspace_database_handle_accessible() {
-    let temp = match TempKeyspace::open() {
-        Ok(v) => v,
-        Err(e) => panic!("TempKeyspace::open() should succeed: {e:?}"),
-    };
+    let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
     let _db = temp.database();
     let _path = temp.path();
 }
 
 #[test]
 fn temp_keyspace_cleanup_on_drop() {
-    let temp = match TempKeyspace::open() {
-        Ok(v) => v,
-        Err(e) => panic!("TempKeyspace::open() should succeed: {e:?}"),
-    };
+    let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
     let path = temp.path().to_path_buf();
     assert!(path.exists());
     drop(temp);
@@ -362,10 +279,7 @@ fn temp_keyspace_uniqueness_sequential() {
     use std::collections::HashSet;
     let mut paths = HashSet::new();
     for _ in 0..5 {
-        let temp = match TempKeyspace::open() {
-            Ok(v) => v,
-            Err(e) => panic!("TempKeyspace::open() should succeed: {e:?}"),
-        };
+        let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
         let path = temp.path().to_path_buf();
         assert!(paths.insert(path));
     }
@@ -373,10 +287,7 @@ fn temp_keyspace_uniqueness_sequential() {
 
 #[test]
 fn temp_keyspace_path_preserved_across_database_access() {
-    let temp = match TempKeyspace::open() {
-        Ok(v) => v,
-        Err(e) => panic!("TempKeyspace::open() should succeed: {e:?}"),
-    };
+    let temp = TempKeyspace::open().expect("TempKeyspace::open() should succeed");
     let p1 = temp.path().to_path_buf();
     let _db = temp.database();
     let p2 = temp.path().to_path_buf();
