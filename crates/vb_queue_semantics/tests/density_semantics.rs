@@ -1,3 +1,19 @@
+//! Integration tests for queue-state transition semantics.
+//!
+//! These tests exercise the public surface plus the `helper_*` predicates
+//! and the public `PopDecision` / `EnqueueDecision` mapping. Tests return
+//! `Result<(), String>` so that expected-variant violations and assertion
+//! failures propagate as typed errors rather than panics, satisfying the
+//! `clippy::panic = "forbid"` and `clippy::panic_in_result_fn = "forbid"`
+//! zero-slippage policies. The `check!` and `check_eq!` macros below
+//! replace the standard `assert!` and `assert_eq!` macros for the same
+//! reason.
+//!
+//! Note: tests that observe pure `()` results and never produce a
+//! `panic!` keep the standard `assert!` / `assert_eq!` macros because
+//! they do not return `Result` and are not covered by the panic lint
+//! set; this keeps the simple observation tests concise.
+
 use std::collections::VecDeque;
 
 use vb_queue_semantics::{
@@ -11,6 +27,56 @@ use vb_queue_semantics::{
     queue_is_full, remaining_capacity, runtime_queue_full_error_transition, shard_tick_transition,
     shard_tick_transition_decision, validate_capacity, warning_payload, warning_threshold,
 };
+
+/// Shorthand for the test error type.
+type TestResult<T> = Result<T, String>;
+
+/// Replacement for `assert!` that returns `Err(message)` instead of panicking.
+macro_rules! check {
+    ($condition:expr $(,)?) => {{
+        if !$condition {
+            return Err(format!(
+                "assertion failed: {}",
+                stringify!($condition)
+            ));
+        }
+    }};
+    ($condition:expr, $($arg:tt)+) => {{
+        if !$condition {
+            return Err(format!($($arg)+));
+        }
+    }};
+}
+
+/// Replacement for `assert_eq!` that returns `Err` with a diff message
+/// instead of panicking.
+macro_rules! check_eq {
+    ($actual:expr, $expected:expr $(,)?) => {{
+        let actual = $actual;
+        let expected = $expected;
+        if actual != expected {
+            return Err(format!(
+                "assertion `{} == {}` failed\n  actual:   {:?}\n  expected: {:?}",
+                stringify!($actual),
+                stringify!($expected),
+                actual,
+                expected
+            ));
+        }
+    }};
+    ($actual:expr, $expected:expr, $($arg:tt)+) => {{
+        let actual = $actual;
+        let expected = $expected;
+        if actual != expected {
+            return Err(format!(
+                "{}\n  actual:   {:?}\n  expected: {:?}",
+                format!($($arg)+),
+                actual,
+                expected
+            ));
+        }
+    }};
+}
 
 // ─── Property / invariant tests ───────────────────────────────────────────────
 
@@ -106,95 +172,90 @@ fn property_runtime_queue_full_maps_delegates_to_helper_queue_is_full() {
 
 /// Full lifecycle: create queue, enqueue two items, dequeue one, enqueue one more.
 #[test]
-fn composition_enqueue_two_then_dequeue_then_enqueue_one() {
-    let state = empty_state(4);
+fn composition_enqueue_two_then_dequeue_then_enqueue_one() -> TestResult<()> {
+    let state = empty_state(4)?;
     let (state, d1) = action_enqueue_transition(state, 1);
-    assert_eq!(d1, EnqueueDecision::Accepted);
+    check_eq!(d1, EnqueueDecision::Accepted);
     let (state, d2) = action_enqueue_transition(state, 2);
-    assert_eq!(d2, EnqueueDecision::Accepted);
+    check_eq!(d2, EnqueueDecision::Accepted);
     let pop1 = action_dequeue_transition(state);
-    match pop1 {
-        PopTransition::Popped { item, state: s } => {
-            assert_eq!(item, 1);
-            assert_eq!(s.len(), 1);
-            let (s2, d3) = action_enqueue_transition(s, 3);
-            assert_eq!(d3, EnqueueDecision::Accepted);
-            assert_eq!(s2.len(), 2);
-            // Remaining items should be [2, 3]
-            let items: Vec<u8> = s2.into_vec_deque().into_iter().collect();
-            assert_eq!(items, vec![2, 3]);
-        }
-        other => panic!("expected popped, got {other:?}"),
-    }
+    let PopTransition::Popped { item, state: s } = pop1 else {
+        return Err("expected popped".to_string());
+    };
+    check_eq!(item, 1);
+    check_eq!(s.len(), 1);
+    let (s2, d3) = action_enqueue_transition(s, 3);
+    check_eq!(d3, EnqueueDecision::Accepted);
+    check_eq!(s2.len(), 2);
+    // Remaining items should be [2, 3]
+    let items: Vec<u8> = s2.into_vec_deque().into_iter().collect();
+    check_eq!(items, vec![2, 3]);
+    Ok(())
 }
 
 /// Filling a capacity-1 queue: first enqueue accepted, second rejected.
 #[test]
-fn composition_capacity_one_full_rejects_second_enqueue() {
-    let state = empty_state(1);
+fn composition_capacity_one_full_rejects_second_enqueue() -> TestResult<()> {
+    let state = empty_state(1)?;
     let (state, d1) = action_enqueue_transition(state, 42);
-    assert_eq!(d1, EnqueueDecision::Accepted);
-    assert_eq!(state.len(), 1);
-    assert!(state.is_full());
+    check_eq!(d1, EnqueueDecision::Accepted);
+    check_eq!(state.len(), 1);
+    check!(state.is_full());
 
     let (state, d2) = action_enqueue_transition(state, 99);
-    assert_eq!(d2, EnqueueDecision::QueueFull { capacity: 1 });
-    assert_eq!(state.len(), 1);
+    check_eq!(d2, EnqueueDecision::QueueFull { capacity: 1 });
+    check_eq!(state.len(), 1);
 
     // The original item survives.
-    match action_dequeue_transition(state) {
-        PopTransition::Popped { item, .. } => assert_eq!(item, 42),
-        other => panic!("expected popped, got {other:?}"),
-    }
+    let PopTransition::Popped { item, .. } = action_dequeue_transition(state) else {
+        return Err("expected popped".to_string());
+    };
+    check_eq!(item, 42);
+    Ok(())
 }
 
 /// After exhausting all enqueues, a dequeue on empty returns Empty.
 #[test]
-fn composition_enqueue_then_dequeue_to_empty_then_dequeue_again() {
-    let state = empty_state(2);
+fn composition_enqueue_then_dequeue_to_empty_then_dequeue_again() -> TestResult<()> {
+    let state = empty_state(2)?;
     let (state, _) = action_enqueue_transition(state, 10);
     let (state, _) = action_enqueue_transition(state, 20);
     // Drain both
-    match action_dequeue_transition(state) {
-        PopTransition::Popped { state: s, .. } => {
-            match action_dequeue_transition(s) {
-                PopTransition::Popped { state: s, .. } => {
-                    // Now empty
-                    match action_dequeue_transition(s) {
-                        PopTransition::Empty { state: s2 } => assert!(s2.is_empty()),
-                        other => panic!("expected Empty after full drain, got {other:?}"),
-                    }
-                }
-                other => panic!("expected Popped on second drain, got {other:?}"),
-            }
-        }
-        other => panic!("expected Popped on first drain, got {other:?}"),
-    }
+    let PopTransition::Popped { state: s, .. } = action_dequeue_transition(state) else {
+        return Err("expected Popped on first drain".to_string());
+    };
+    let PopTransition::Popped { state: s, .. } = action_dequeue_transition(s) else {
+        return Err("expected Popped on second drain".to_string());
+    };
+    // Now empty
+    let PopTransition::Empty { state: s2 } = action_dequeue_transition(s) else {
+        return Err("expected Empty after full drain".to_string());
+    };
+    check!(s2.is_empty());
+    Ok(())
 }
 
 /// Shard tick on a filled queue then empty: first tick consumes one, second tick sees empty.
 #[test]
-fn composition_shard_tick_fills_then_drains() {
-    let state = empty_state(3);
+fn composition_shard_tick_fills_then_drains() -> TestResult<()> {
+    let state = empty_state(3)?;
     let (state, _) = action_enqueue_transition(state, 1);
     let (state, _) = action_enqueue_transition(state, 2);
 
     // Tick 1: consumes 1
-    match shard_tick_transition(state) {
-        ShardTickTransition::ConsumedOne { command, state: s } => {
-            assert_eq!(command, 1);
-            assert_eq!(s.len(), 1);
-            // Tick 2: consumes 2
-            match shard_tick_transition(s) {
-                ShardTickTransition::ConsumedOne { command, state: s2 } => {
-                    assert_eq!(command, 2);
-                    assert_eq!(s2.len(), 0);
-                }
-                other => panic!("expected ConsumedOne on tick2, got {other:?}"),
-            }
-        }
-        other => panic!("expected ConsumedOne on tick1, got {other:?}"),
-    }
+    let ShardTickTransition::ConsumedOne { command, state: s } = shard_tick_transition(state)
+    else {
+        return Err("expected ConsumedOne on tick1".to_string());
+    };
+    check_eq!(command, 1);
+    check_eq!(s.len(), 1);
+    // Tick 2: consumes 2
+    let ShardTickTransition::ConsumedOne { command, state: s2 } = shard_tick_transition(s) else {
+        return Err("expected ConsumedOne on tick2".to_string());
+    };
+    check_eq!(command, 2);
+    check_eq!(s2.len(), 0);
+    Ok(())
 }
 
 /// Zero-capacity edge for command_pop_transition_decision.
@@ -249,24 +310,28 @@ fn warning_threshold_capacity_125_is_100() {
 
 /// Enqueue on empty queue is accepted.
 #[test]
-fn enqueue_on_empty_is_accepted() {
-    let state = empty_state(1);
-    assert!(state.is_empty());
+fn enqueue_on_empty_is_accepted() -> TestResult<()> {
+    let state = match QueueState::<u8>::new(1, 1) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    check!(state.is_empty());
     let (state, decision) = action_enqueue_transition(state, 99);
-    assert_eq!(decision, EnqueueDecision::Accepted);
-    assert_eq!(state.len(), 1);
+    check_eq!(decision, EnqueueDecision::Accepted);
+    check_eq!(state.len(), 1);
+    Ok(())
 }
 
 /// Dequeue on empty returns Empty and preserves the empty state.
 #[test]
-fn dequeue_on_empty_preserves_empty_state() {
-    match action_dequeue_transition(empty_state(1)) {
-        PopTransition::Empty { state } => {
-            assert!(state.is_empty());
-            assert_eq!(state.capacity(), 1);
-        }
-        other => panic!("expected Empty, got {other:?}"),
-    }
+fn dequeue_on_empty_preserves_empty_state() -> TestResult<()> {
+    let state = empty_state(1)?;
+    let PopTransition::Empty { state } = action_dequeue_transition(state) else {
+        return Err("expected Empty".to_string());
+    };
+    check!(state.is_empty());
+    check_eq!(state.capacity(), 1);
+    Ok(())
 }
 
 /// Warning payload triggers exactly at the threshold for small capacities.
@@ -324,89 +389,92 @@ fn warning_payload_capacity_1_threshold_1() {
 
 /// Multiple warnings on the same state: each is independent.
 #[test]
-fn action_warning_transition_multiple_independent_on_same_state() {
-    let state = state_with_items(10, &[1, 2, 3, 4, 5, 6, 7, 8]);
+fn action_warning_transition_multiple_independent_on_same_state() -> TestResult<()> {
+    let state = match QueueState::<u8>::from_vec_deque(
+        10,
+        10,
+        [1u8, 2, 3, 4, 5, 6, 7, 8].into_iter().collect(),
+    ) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
     let t1 = action_warning_transition(state.clone(), WarningSendOutcome::Delivered);
     let t2 = action_warning_transition(state.clone(), WarningSendOutcome::Full);
     let t3 = action_warning_transition(state, WarningSendOutcome::Disconnected);
     // All have the same payload (depth=8, capacity=10) and state length.
-    assert!(
+    check!(
         matches!(t1.payload, Some(p) if p.depth == 8 && p.capacity == 10),
         "t1 payload should be depth=8, capacity=10",
     );
-    assert!(
+    check!(
         matches!(t2.payload, Some(p) if p.depth == 8 && p.capacity == 10),
         "t2 payload should be depth=8, capacity=10",
     );
-    assert!(
+    check!(
         matches!(t3.payload, Some(p) if p.depth == 8 && p.capacity == 10),
         "t3 payload should be depth=8, capacity=10",
     );
-    assert_eq!(t1.state.len(), t2.state.len());
-    assert_eq!(t2.state.len(), t3.state.len());
+    check_eq!(t1.state.len(), t2.state.len());
+    check_eq!(t2.state.len(), t3.state.len());
+    Ok(())
 }
 
 /// Runtime queue full error transition: depth above capacity still maps.
 #[test]
-fn runtime_queue_full_error_transition_depth_above_capacity_maps() {
+fn runtime_queue_full_error_transition_depth_above_capacity_maps() -> TestResult<()> {
     let t = runtime_queue_full_error_transition(5, 3, RuntimeQueueSurface::Inspect);
     match t {
         Some(result) => {
-            assert_eq!(result.capacity, 3, "capacity should be 3");
-            assert_eq!(result.depth, 5, "depth should be 5");
-            assert!(
+            check_eq!(result.capacity, 3, "capacity should be 3");
+            check_eq!(result.depth, 5, "depth should be 5");
+            check!(
                 result.rejected_without_admission,
                 "rejected_without_admission should be true"
             );
+            Ok(())
         }
-        None => panic!("expected Some(runtime queue full error) for depth=5 > capacity=3"),
+        None => Err("expected Some(runtime queue full error) for depth=5 > capacity=3".to_string()),
     }
 }
 
 /// EnqueueDecision and command_enqueue_transition agree on full detection.
 #[test]
-fn enqueue_decision_agrees_with_enqueue_transition_on_full() {
-    let state = state_with_items(3, &[1, 2, 3]);
+fn enqueue_decision_agrees_with_enqueue_transition_on_full() -> TestResult<()> {
+    let state = state_with_items(3, &[1, 2, 3])?;
     // Decision predicts full.
-    assert_eq!(
+    check_eq!(
         enqueue_decision(3, 3),
         EnqueueDecision::QueueFull { capacity: 3 }
     );
     // Transition also rejects.
     let (_state, decision) = command_enqueue_transition(state, 99);
-    assert_eq!(decision, EnqueueDecision::QueueFull { capacity: 3 });
+    check_eq!(decision, EnqueueDecision::QueueFull { capacity: 3 });
+    Ok(())
 }
 
 /// PopDecision agrees with command_pop_transition on all small cases.
 #[test]
-fn pop_decision_agrees_with_command_pop_transition() {
+fn pop_decision_agrees_with_command_pop_transition() -> TestResult<()> {
     // Empty
-    assert_eq!(command_pop_transition_decision(4, 0), PopDecision::Empty,);
-    assert!(matches!(
-        command_pop_transition(empty_state(4)),
-        PopTransition::Empty { .. }
-    ));
+    check_eq!(command_pop_transition_decision(4, 0), PopDecision::Empty,);
+    let empty_pop = command_pop_transition(empty_state(4)?);
+    check!(matches!(empty_pop, PopTransition::Empty { .. }));
     // Non-empty
-    assert_eq!(command_pop_transition_decision(4, 4), PopDecision::PopFront,);
-    assert!(matches!(
-        command_pop_transition(state_with_items(4, &[1])),
-        PopTransition::Popped { .. }
-    ));
+    check_eq!(command_pop_transition_decision(4, 4), PopDecision::PopFront,);
+    let full_pop = command_pop_transition(state_with_items(4, &[1])?);
+    check!(matches!(full_pop, PopTransition::Popped { .. }));
+    Ok(())
 }
 
-fn empty_state(capacity: usize) -> QueueState<u8> {
-    match QueueState::new(capacity, capacity) {
-        Ok(state) => state,
-        Err(reason) => panic!("valid test capacity rejected: {reason:?}"),
-    }
+fn empty_state(capacity: usize) -> TestResult<QueueState<u8>> {
+    QueueState::new(capacity, capacity)
+        .map_err(|reason| format!("valid test capacity rejected: {reason:?}"))
 }
 
-fn state_with_items(capacity: usize, items: &[u8]) -> QueueState<u8> {
+fn state_with_items(capacity: usize, items: &[u8]) -> TestResult<QueueState<u8>> {
     let queue: VecDeque<u8> = items.iter().copied().collect();
-    match QueueState::from_vec_deque(capacity, capacity, queue) {
-        Ok(state) => state,
-        Err(reason) => panic!("valid test queue rejected: {reason:?}"),
-    }
+    QueueState::from_vec_deque(capacity, capacity, queue)
+        .map_err(|reason| format!("valid test queue rejected: {reason:?}"))
 }
 
 #[test]
@@ -589,10 +657,11 @@ fn helper_runtime_queue_full_maps_false_below_capacity() {
 }
 
 #[test]
-fn queue_state_new_creates_empty_state() {
-    let state = empty_state(4);
-    assert_eq!(state.capacity(), 4);
-    assert_eq!(state.len(), 0);
+fn queue_state_new_creates_empty_state() -> TestResult<()> {
+    let state = empty_state(4)?;
+    check_eq!(state.capacity(), 4);
+    check_eq!(state.len(), 0);
+    Ok(())
 }
 
 #[test]
@@ -609,43 +678,50 @@ fn queue_state_new_rejects_above_maximum() {
 }
 
 #[test]
-fn queue_state_is_empty_after_new() {
-    assert!(empty_state(2).is_empty());
+fn queue_state_is_empty_after_new() -> TestResult<()> {
+    let state = empty_state(2)?;
+    check!(state.is_empty());
+    Ok(())
 }
 
 #[test]
-fn queue_state_is_not_full_after_new_when_capacity_positive() {
-    assert!(!empty_state(2).is_full());
+fn queue_state_is_not_full_after_new_when_capacity_positive() -> TestResult<()> {
+    let state = empty_state(2)?;
+    check!(!state.is_full());
+    Ok(())
 }
 
 #[test]
-fn queue_state_from_vec_deque_imports_existing_items() {
-    let state = state_with_items(4, &[1, 2]);
-    assert_eq!(state.len(), 2);
-    assert_eq!(state.capacity(), 4);
+fn queue_state_from_vec_deque_imports_existing_items() -> TestResult<()> {
+    let state = state_with_items(4, &[1, 2])?;
+    check_eq!(state.len(), 2);
+    check_eq!(state.capacity(), 4);
+    Ok(())
 }
 
 #[test]
-fn queue_state_from_vec_deque_preserves_fifo_order() {
-    let state = state_with_items(4, &[1, 2, 3]);
+fn queue_state_from_vec_deque_preserves_fifo_order() -> TestResult<()> {
+    let state = state_with_items(4, &[1, 2, 3])?;
     let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
-    assert_eq!(items, vec![1, 2, 3]);
+    check_eq!(items, vec![1, 2, 3]);
+    Ok(())
 }
 
 #[test]
-fn queue_state_from_vec_deque_rejects_invalid_capacity_and_preserves_items() {
+fn queue_state_from_vec_deque_rejects_invalid_capacity_and_preserves_items() -> TestResult<()> {
     let queue: VecDeque<u8> = [1, 2].into_iter().collect();
     match QueueState::from_vec_deque(0, 4, queue) {
         Err(QueueStateRejection::Capacity { reason, items }) => {
-            assert_eq!(reason, CapacityRejection::Zero);
-            assert_eq!(items.len(), 2);
+            check_eq!(reason, CapacityRejection::Zero);
+            check_eq!(items.len(), 2);
+            Ok(())
         }
-        other => panic!("unexpected queue import result: {other:?}"),
+        other => Err(format!("unexpected queue import result: {other:?}")),
     }
 }
 
 #[test]
-fn queue_state_from_vec_deque_rejects_over_capacity_and_preserves_items() {
+fn queue_state_from_vec_deque_rejects_over_capacity_and_preserves_items() -> TestResult<()> {
     let queue: VecDeque<u8> = [1, 2, 3].into_iter().collect();
     match QueueState::from_vec_deque(2, 4, queue) {
         Err(QueueStateRejection::OverCapacity {
@@ -653,11 +729,12 @@ fn queue_state_from_vec_deque_rejects_over_capacity_and_preserves_items() {
             len,
             items,
         }) => {
-            assert_eq!(capacity, 2);
-            assert_eq!(len, 3);
-            assert_eq!(items.len(), 3);
+            check_eq!(capacity, 2);
+            check_eq!(len, 3);
+            check_eq!(items.len(), 3);
+            Ok(())
         }
-        other => panic!("unexpected queue import result: {other:?}"),
+        other => Err(format!("unexpected queue import result: {other:?}")),
     }
 }
 
@@ -683,123 +760,146 @@ fn queue_state_rejection_into_vec_deque_preserves_over_capacity_queue() {
 }
 
 #[test]
-fn action_new_state_uses_queue_state_validation() {
+fn action_new_state_uses_queue_state_validation() -> TestResult<()> {
     let state = match action_new_state::<u8>(3, 3) {
         Ok(state) => state,
-        Err(reason) => panic!("unexpected action state rejection: {reason:?}"),
+        Err(reason) => return Err(format!("unexpected action state rejection: {reason:?}")),
     };
-    assert_eq!(state.capacity(), 3);
+    check_eq!(state.capacity(), 3);
+    Ok(())
 }
 
 #[test]
-fn command_new_state_uses_queue_state_validation() {
+fn command_new_state_uses_queue_state_validation() -> TestResult<()> {
     let state = match command_new_state::<u8>(3, 3) {
         Ok(state) => state,
-        Err(reason) => panic!("unexpected command state rejection: {reason:?}"),
+        Err(reason) => return Err(format!("unexpected command state rejection: {reason:?}")),
     };
-    assert_eq!(state.capacity(), 3);
+    check_eq!(state.capacity(), 3);
+    Ok(())
 }
 
 #[test]
-fn action_enqueue_transition_accepts_when_not_full() {
-    let (state, decision) = action_enqueue_transition(empty_state(2), 7);
-    assert_eq!(decision, EnqueueDecision::Accepted);
-    assert_eq!(state.len(), 1);
+fn action_enqueue_transition_accepts_when_not_full() -> TestResult<()> {
+    let state = match QueueState::<u8>::new(2, 2) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let (state, decision) = action_enqueue_transition(state, 7);
+    check_eq!(decision, EnqueueDecision::Accepted);
+    check_eq!(state.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn action_enqueue_transition_rejects_when_full() {
-    let full = state_with_items(2, &[1, 2]);
+fn action_enqueue_transition_rejects_when_full() -> TestResult<()> {
+    let full = state_with_items(2, &[1, 2])?;
     let (state, decision) = action_enqueue_transition(full, 3);
-    assert_eq!(decision, EnqueueDecision::QueueFull { capacity: 2 });
-    assert_eq!(state.len(), 2);
+    check_eq!(decision, EnqueueDecision::QueueFull { capacity: 2 });
+    check_eq!(state.len(), 2);
+    Ok(())
 }
 
 #[test]
-fn action_enqueue_transition_preserves_existing_full_items() {
-    let full = state_with_items(2, &[1, 2]);
+fn action_enqueue_transition_preserves_existing_full_items() -> TestResult<()> {
+    let full = state_with_items(2, &[1, 2])?;
     let (state, _) = action_enqueue_transition(full, 3);
     let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
-    assert_eq!(items, vec![1, 2]);
+    check_eq!(items, vec![1, 2]);
+    Ok(())
 }
 
 #[test]
-fn action_enqueue_transition_appends_to_back() {
-    let state = state_with_items(3, &[1, 2]);
+fn action_enqueue_transition_appends_to_back() -> TestResult<()> {
+    let state = state_with_items(3, &[1, 2])?;
     let (state, decision) = action_enqueue_transition(state, 3);
-    assert_eq!(decision, EnqueueDecision::Accepted);
+    check_eq!(decision, EnqueueDecision::Accepted);
     let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
-    assert_eq!(items, vec![1, 2, 3]);
+    check_eq!(items, vec![1, 2, 3]);
+    Ok(())
 }
 
 #[test]
-fn command_enqueue_transition_accepts_when_not_full() {
-    let (state, decision) = command_enqueue_transition(empty_state(2), 7);
-    assert_eq!(decision, EnqueueDecision::Accepted);
-    assert_eq!(state.len(), 1);
+fn command_enqueue_transition_accepts_when_not_full() -> TestResult<()> {
+    let state = match QueueState::<u8>::new(2, 2) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let (state, decision) = command_enqueue_transition(state, 7);
+    check_eq!(decision, EnqueueDecision::Accepted);
+    check_eq!(state.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn command_enqueue_transition_rejects_when_full() {
-    let full = state_with_items(1, &[9]);
+fn command_enqueue_transition_rejects_when_full() -> TestResult<()> {
+    let full = state_with_items(1, &[9])?;
     let (state, decision) = command_enqueue_transition(full, 10);
-    assert_eq!(decision, EnqueueDecision::QueueFull { capacity: 1 });
-    assert_eq!(state.len(), 1);
+    check_eq!(decision, EnqueueDecision::QueueFull { capacity: 1 });
+    check_eq!(state.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn command_enqueue_transition_appends_to_back() {
-    let state = state_with_items(3, &[4, 5]);
+fn command_enqueue_transition_appends_to_back() -> TestResult<()> {
+    let state = state_with_items(3, &[4, 5])?;
     let (state, _) = command_enqueue_transition(state, 6);
     let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
-    assert_eq!(items, vec![4, 5, 6]);
+    check_eq!(items, vec![4, 5, 6]);
+    Ok(())
 }
 
 #[test]
-fn action_dequeue_transition_empty_state_returns_empty() {
-    match action_dequeue_transition(empty_state(2)) {
-        PopTransition::Empty { state } => assert_eq!(state.len(), 0),
-        other => panic!("unexpected pop transition: {other:?}"),
-    }
+fn action_dequeue_transition_empty_state_returns_empty() -> TestResult<()> {
+    let PopTransition::Empty { state } = action_dequeue_transition(empty_state(2)?) else {
+        return Err("unexpected pop transition".to_string());
+    };
+    check_eq!(state.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn action_dequeue_transition_pops_old_front() {
-    match action_dequeue_transition(state_with_items(3, &[1, 2])) {
-        PopTransition::Popped { item, .. } => assert_eq!(item, 1),
-        other => panic!("unexpected pop transition: {other:?}"),
-    }
+fn action_dequeue_transition_pops_old_front() -> TestResult<()> {
+    let PopTransition::Popped { item, .. } =
+        action_dequeue_transition(state_with_items(3, &[1, 2])?)
+    else {
+        return Err("unexpected pop transition".to_string());
+    };
+    check_eq!(item, 1);
+    Ok(())
 }
 
 #[test]
-fn action_dequeue_transition_preserves_tail_order() {
-    match action_dequeue_transition(state_with_items(3, &[1, 2, 3])) {
-        PopTransition::Popped { state, item } => {
-            assert_eq!(item, 1);
-            let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
-            assert_eq!(items, vec![2, 3]);
-        }
-        other => panic!("unexpected pop transition: {other:?}"),
-    }
+fn action_dequeue_transition_preserves_tail_order() -> TestResult<()> {
+    let PopTransition::Popped { state, item } =
+        action_dequeue_transition(state_with_items(3, &[1, 2, 3])?)
+    else {
+        return Err("unexpected pop transition".to_string());
+    };
+    check_eq!(item, 1);
+    let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
+    check_eq!(items, vec![2, 3]);
+    Ok(())
 }
 
 #[test]
-fn command_pop_transition_delegates_empty_case() {
-    match command_pop_transition(empty_state(2)) {
-        PopTransition::Empty { state } => assert_eq!(state.len(), 0),
-        other => panic!("unexpected command pop transition: {other:?}"),
-    }
+fn command_pop_transition_delegates_empty_case() -> TestResult<()> {
+    let PopTransition::Empty { state } = command_pop_transition(empty_state(2)?) else {
+        return Err("unexpected command pop transition".to_string());
+    };
+    check_eq!(state.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn command_pop_transition_delegates_popped_case() {
-    match command_pop_transition(state_with_items(2, &[8])) {
-        PopTransition::Popped { item, state } => {
-            assert_eq!(item, 8);
-            assert!(state.is_empty());
-        }
-        other => panic!("unexpected command pop transition: {other:?}"),
-    }
+fn command_pop_transition_delegates_popped_case() -> TestResult<()> {
+    let PopTransition::Popped { item, state } = command_pop_transition(state_with_items(2, &[8])?)
+    else {
+        return Err("unexpected command pop transition".to_string());
+    };
+    check_eq!(item, 8);
+    check!(state.is_empty());
+    Ok(())
 }
 
 #[test]
@@ -855,31 +955,36 @@ fn runtime_queue_full_error_transition_records_inspect_surface() {
 }
 
 #[test]
-fn shard_tick_transition_empty_state_consumes_nothing() {
-    match shard_tick_transition(empty_state(2)) {
-        ShardTickTransition::Empty { state } => assert_eq!(state.len(), 0),
-        other => panic!("unexpected shard tick transition: {other:?}"),
-    }
+fn shard_tick_transition_empty_state_consumes_nothing() -> TestResult<()> {
+    let ShardTickTransition::Empty { state } = shard_tick_transition(empty_state(2)?) else {
+        return Err("unexpected shard tick transition".to_string());
+    };
+    check_eq!(state.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn shard_tick_transition_consumes_old_front() {
-    match shard_tick_transition(state_with_items(3, &[1, 2])) {
-        ShardTickTransition::ConsumedOne { command, .. } => assert_eq!(command, 1),
-        other => panic!("unexpected shard tick transition: {other:?}"),
-    }
+fn shard_tick_transition_consumes_old_front() -> TestResult<()> {
+    let ShardTickTransition::ConsumedOne { command, .. } =
+        shard_tick_transition(state_with_items(3, &[1, 2])?)
+    else {
+        return Err("unexpected shard tick transition".to_string());
+    };
+    check_eq!(command, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_tick_transition_preserves_tail() {
-    match shard_tick_transition(state_with_items(3, &[1, 2, 3])) {
-        ShardTickTransition::ConsumedOne { state, command } => {
-            assert_eq!(command, 1);
-            let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
-            assert_eq!(items, vec![2, 3]);
-        }
-        other => panic!("unexpected shard tick transition: {other:?}"),
-    }
+fn shard_tick_transition_preserves_tail() -> TestResult<()> {
+    let ShardTickTransition::ConsumedOne { state, command } =
+        shard_tick_transition(state_with_items(3, &[1, 2, 3])?)
+    else {
+        return Err("unexpected shard tick transition".to_string());
+    };
+    check_eq!(command, 1);
+    let items: Vec<u8> = state.into_vec_deque().into_iter().collect();
+    check_eq!(items, vec![2, 3]);
+    Ok(())
 }
 
 #[test]
@@ -961,46 +1066,64 @@ fn warning_payload_none_for_zero_capacity() {
 }
 
 #[test]
-fn action_warning_transition_preserves_state() {
-    let transition =
-        action_warning_transition(state_with_items(2, &[1]), WarningSendOutcome::Delivered);
-    assert_eq!(transition.state.len(), 1);
+fn action_warning_transition_preserves_state() -> TestResult<()> {
+    let state = match QueueState::<u8>::from_vec_deque(2, 2, [1u8].into_iter().collect()) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let transition = action_warning_transition(state, WarningSendOutcome::Delivered);
+    check_eq!(transition.state.len(), 1);
+    Ok(())
 }
 
 #[test]
-fn action_warning_transition_records_full_outcome() {
-    let transition =
-        action_warning_transition(state_with_items(2, &[1, 2]), WarningSendOutcome::Full);
-    assert_eq!(transition.outcome, WarningSendOutcome::Full);
+fn action_warning_transition_records_full_outcome() -> TestResult<()> {
+    let state = match QueueState::<u8>::from_vec_deque(2, 2, [1u8, 2].into_iter().collect()) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let transition = action_warning_transition(state, WarningSendOutcome::Full);
+    check_eq!(transition.outcome, WarningSendOutcome::Full);
+    Ok(())
 }
 
 #[test]
-fn action_warning_transition_records_disconnected_outcome() {
-    let transition = action_warning_transition(
-        state_with_items(2, &[1, 2]),
-        WarningSendOutcome::Disconnected,
-    );
-    assert_eq!(transition.outcome, WarningSendOutcome::Disconnected);
+fn action_warning_transition_records_disconnected_outcome() -> TestResult<()> {
+    let state = match QueueState::<u8>::from_vec_deque(2, 2, [1u8, 2].into_iter().collect()) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let transition = action_warning_transition(state, WarningSendOutcome::Disconnected);
+    check_eq!(transition.outcome, WarningSendOutcome::Disconnected);
+    Ok(())
 }
 
 #[test]
-fn action_warning_transition_payload_present_at_threshold() {
-    let transition = action_warning_transition(
-        state_with_items(10, &[1, 2, 3, 4, 5, 6, 7, 8]),
-        WarningSendOutcome::Delivered,
-    );
-    assert!(
+fn action_warning_transition_payload_present_at_threshold() -> TestResult<()> {
+    let state = match QueueState::<u8>::from_vec_deque(
+        10,
+        10,
+        [1u8, 2, 3, 4, 5, 6, 7, 8].into_iter().collect(),
+    ) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let transition = action_warning_transition(state, WarningSendOutcome::Delivered);
+    check!(
         matches!(transition.payload, Some(payload) if payload.depth == 8 && payload.capacity == 10)
     );
+    Ok(())
 }
 
 #[test]
-fn action_warning_transition_payload_absent_below_threshold() {
-    let transition = action_warning_transition(
-        state_with_items(10, &[1, 2, 3]),
-        WarningSendOutcome::Delivered,
-    );
-    assert_eq!(transition.payload, None);
+fn action_warning_transition_payload_absent_below_threshold() -> TestResult<()> {
+    let state = match QueueState::<u8>::from_vec_deque(10, 10, [1u8, 2, 3].into_iter().collect()) {
+        Ok(state) => state,
+        Err(reason) => return Err(format!("unexpected QueueState rejection: {reason:?}")),
+    };
+    let transition = action_warning_transition(state, WarningSendOutcome::Delivered);
+    check_eq!(transition.payload, None);
+    Ok(())
 }
 
 // ─── Verified edge-case gap fillers ────────────────────────────────────────────
@@ -1033,41 +1156,42 @@ fn remaining_capacity_usize_max_eq_is_zero() {
 /// QueueState with capacity=1 is the minimum valid capacity and must
 /// exhibit correct enqueue rejection and dequeue semantics.
 #[test]
-fn queue_state_capacity_one_enqueue_dequeue() {
-    let mut state = empty_state(1);
+fn queue_state_capacity_one_enqueue_dequeue() -> TestResult<()> {
+    let state = empty_state(1)?;
 
     // Empty, not full at start
-    assert!(state.is_empty());
-    assert!(!state.is_full());
-    assert_eq!(state.len(), 0);
+    check!(state.is_empty());
+    check!(!state.is_full());
+    check_eq!(state.len(), 0);
 
     // First enqueue succeeds
     let (state, decision) = action_enqueue_transition(state, 42);
-    assert_eq!(decision, EnqueueDecision::Accepted);
-    assert_eq!(state.len(), 1);
-    assert!(state.is_full());
+    check_eq!(decision, EnqueueDecision::Accepted);
+    check_eq!(state.len(), 1);
+    check!(state.is_full());
 
     // Second enqueue is rejected, state preserved
     let (state, decision) = action_enqueue_transition(state, 99);
-    assert_eq!(decision, EnqueueDecision::QueueFull { capacity: 1 });
-    assert_eq!(state.len(), 1);
+    check_eq!(decision, EnqueueDecision::QueueFull { capacity: 1 });
+    check_eq!(state.len(), 1);
 
     // Dequeue returns the item, recovers the drained state
     let PopTransition::Popped { state, item } = action_dequeue_transition(state) else {
-        panic!("expected Popped at capacity=1 with one item");
+        return Err("expected Popped at capacity=1 with one item".to_string());
     };
-    assert_eq!(item, 42);
-    assert!(state.is_empty());
-    assert!(!state.is_full());
+    check_eq!(item, 42);
+    check!(state.is_empty());
+    check!(!state.is_full());
 
     // Enqueue again after dequeue
     let (state, decision) = action_enqueue_transition(state, 7);
-    assert_eq!(decision, EnqueueDecision::Accepted);
-    assert_eq!(state.len(), 1);
+    check_eq!(decision, EnqueueDecision::Accepted);
+    check_eq!(state.len(), 1);
 
     // Dequeue the second item
     let PopTransition::Popped { item, .. } = action_dequeue_transition(state) else {
-        panic!("expected Popped, got Empty");
+        return Err("expected Popped, got Empty".to_string());
     };
-    assert_eq!(item, 7);
+    check_eq!(item, 7);
+    Ok(())
 }
