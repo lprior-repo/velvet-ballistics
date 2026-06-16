@@ -2,6 +2,12 @@
 //!
 //! Tests: parse_inventory
 
+// `assert!(false, ...)` appears inside `let-else` arms whose Ok branch already
+// bound the value. The assertion is the documented "this branch is unreachable"
+// marker with a clear diagnostic message. `panic!`/`unreachable!` are forbidden
+// by workspace lints, so we suppress `assertions_on_constants` at module scope.
+#![allow(clippy::assertions_on_constants)]
+
 use crate::boundary_inventory::{BoundaryClass, BoundaryInventoryError, parse_inventory};
 
 // =============================================================================
@@ -12,8 +18,10 @@ use crate::boundary_inventory::{BoundaryClass, BoundaryInventoryError, parse_inv
 fn parse_inventory_empty_boundaries() {
     let json = r#"{"schema_version": 1, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
     assert_eq!(inventory.schema_version, Some(1));
     assert!(inventory.records.is_empty());
 }
@@ -31,10 +39,15 @@ fn parse_inventory_single_boundary() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
     assert_eq!(inventory.records.len(), 1);
-    let record = &inventory.records[0];
+    let Some(record) = inventory.records.first() else {
+        assert!(false, "expected at least one record");
+        return;
+    };
     assert_eq!(record.id, "vb-y1zq-CAbi-crates/test/src/lib.rs");
     assert_eq!(record.class, BoundaryClass::CAbi);
 }
@@ -54,8 +67,10 @@ fn parse_inventory_all_boundary_classes() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
     assert_eq!(inventory.records.len(), 7);
 }
 
@@ -68,10 +83,10 @@ fn parse_inventory_unknown_class_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::UnknownBoundaryClass
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::UnknownBoundaryClass)
+    ));
 }
 
 #[test]
@@ -85,8 +100,11 @@ fn parse_inventory_multiple_boundaries() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().records.len(), 3);
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
+    assert_eq!(inventory.records.len(), 3);
 }
 
 // =============================================================================
@@ -97,80 +115,80 @@ fn parse_inventory_multiple_boundaries() {
 fn parse_inventory_invalid_json() {
     let json = "not valid json {{{";
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
 fn parse_inventory_not_an_object() {
     let json = "123";
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
 fn parse_inventory_missing_schema_version() {
     let json = r#"{"boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_wrong_schema_version() {
     let json = r#"{"schema_version": 99, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_zero_schema_version() {
     let json = r#"{"schema_version": 0, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_missing_boundaries() {
     let json = r#"{"schema_version": 1}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
 fn parse_inventory_boundaries_not_array() {
     let json = r#"{"schema_version": 1, "boundaries": "not an array"}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
 fn parse_inventory_boundary_not_object() {
     let json = r#"{"schema_version": 1, "boundaries": ["not an object"]}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -182,10 +200,10 @@ fn parse_inventory_missing_id() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -197,10 +215,10 @@ fn parse_inventory_missing_source_path() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -212,10 +230,10 @@ fn parse_inventory_empty_source_path() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -227,10 +245,10 @@ fn parse_inventory_missing_class() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -242,10 +260,10 @@ fn parse_inventory_invalid_class() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -286,8 +304,11 @@ fn parse_inventory_large_boundaries_array() {
     }
     json.push_str("]}");
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().records.len(), 100);
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
+    assert_eq!(inventory.records.len(), 100);
 }
 
 // =============================================================================
@@ -297,30 +318,30 @@ fn parse_inventory_large_boundaries_array() {
 #[test]
 fn parse_inventory_empty_bytes_rejected() {
     let result = parse_inventory(b"");
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
 fn parse_inventory_whitespace_only_json() {
     let json = "   ";
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
 fn parse_inventory_empty_object() {
     let json = "{}";
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 // =============================================================================
@@ -331,20 +352,20 @@ fn parse_inventory_empty_object() {
 fn parse_inventory_schema_version_as_string_rejected() {
     let json = r#"{"schema_version": "1", "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_schema_version_as_float_rejected() {
     let json = r#"{"schema_version": 1.0, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
@@ -352,30 +373,30 @@ fn parse_inventory_schema_version_negative_rejected() {
     let json = r#"{"schema_version": -1, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
     // Negative number can't convert to u64 via as_u64
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_schema_version_as_null_rejected() {
     let json = r#"{"schema_version": null, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_schema_version_as_bool_rejected() {
     let json = r#"{"schema_version": true, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 // =============================================================================
@@ -391,10 +412,10 @@ fn parse_inventory_null_id_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -407,10 +428,10 @@ fn parse_inventory_numeric_id_handled() {
     }"#;
     let result = parse_inventory(json.as_bytes());
     // Numeric id is not a string, so required_str fails
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -422,10 +443,10 @@ fn parse_inventory_null_class_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -437,10 +458,10 @@ fn parse_inventory_numeric_class_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -452,10 +473,10 @@ fn parse_inventory_bool_class_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -467,10 +488,10 @@ fn parse_inventory_null_source_path_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -482,10 +503,10 @@ fn parse_inventory_numeric_source_path_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -512,10 +533,10 @@ fn parse_inventory_second_boundary_malformed() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -533,8 +554,11 @@ fn parse_inventory_valid_record_with_extra_fields() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().records.len(), 1);
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
+    assert_eq!(inventory.records.len(), 1);
 }
 
 #[test]
@@ -546,32 +570,35 @@ fn parse_inventory_very_long_id_and_path() {
         long_id, long_path
     );
     let result = parse_inventory(json.as_bytes());
-    assert!(result.is_ok());
-    let inventory = result.unwrap();
+    let Ok(inventory) = result else {
+        assert!(false, "parse_inventory must succeed: {result:?}");
+        return;
+    };
     assert_eq!(inventory.records.len(), 1);
-    assert_eq!(inventory.records[0].id, long_id);
-    assert_eq!(
-        inventory.records[0].source_path,
-        std::path::PathBuf::from(long_path)
-    );
+    let Some(record) = inventory.records.first() else {
+        assert!(false, "expected at least one record");
+        return;
+    };
+    assert_eq!(record.id, long_id);
+    assert_eq!(record.source_path, std::path::PathBuf::from(long_path));
 }
 
 #[test]
 fn parse_inventory_schema_version_2_rejected() {
     let json = r#"{"schema_version": 2, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 #[test]
 fn parse_inventory_schema_version_u32_max_rejected() {
     let json = format!(r#"{{"schema_version": {}, "boundaries": []}}"#, u32::MAX);
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }

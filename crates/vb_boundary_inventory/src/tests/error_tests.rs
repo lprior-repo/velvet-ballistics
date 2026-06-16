@@ -52,8 +52,10 @@ fn error_eq_all_variants_unique() {
 #[test]
 fn error_clone() {
     let err = BoundaryInventoryError::WorkspaceNotDiscoverable;
-    let cloned = err.clone();
-    assert_eq!(err, cloned);
+    // BoundaryInventoryError is `Copy`, so a plain assignment produces an equivalent
+    // value. The original is preserved because the type implements `Copy`.
+    let copied = err;
+    assert_eq!(err, copied);
 }
 
 #[test]
@@ -140,10 +142,10 @@ fn error_in_result_workspace_not_discoverable() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::WorkspaceNotDiscoverable);
     assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::WorkspaceNotDiscoverable
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::WorkspaceNotDiscoverable)
+    ));
 }
 
 #[test]
@@ -151,10 +153,10 @@ fn error_in_result_inventory_parse_failure() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::InventoryParseFailure);
     assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::InventoryParseFailure
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::InventoryParseFailure)
+    ));
 }
 
 #[test]
@@ -162,10 +164,10 @@ fn error_in_result_schema_version_unsupported() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::SchemaVersionUnsupported);
     assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err(),
-        BoundaryInventoryError::SchemaVersionUnsupported
-    );
+    assert!(matches!(
+        result,
+        Err(BoundaryInventoryError::SchemaVersionUnsupported)
+    ));
 }
 
 // =============================================================================
