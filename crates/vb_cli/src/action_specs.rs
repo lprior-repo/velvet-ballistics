@@ -5,7 +5,6 @@ use crate::exit_code::CliExitCode;
 use std::process::ExitCode;
 
 use crate::output::json_error;
-use vb_runtime::action::ActionRegistry;
 
 pub(crate) struct ActionContractDetail {
     pub(crate) id: u16,
@@ -60,9 +59,10 @@ pub(crate) struct ActionTableRow {
     pub(crate) timeout_ms: u64,
 }
 
-pub(crate) fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
-    registry
-        .registered_contracts()
+pub(crate) fn action_table_rows(
+    contracts: &[vb_core::action::ActionContract],
+) -> Vec<ActionTableRow> {
+    contracts
         .iter()
         .map(|contract| ActionTableRow {
             id: contract.id.get(),
@@ -138,13 +138,12 @@ pub(crate) fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
     }
 }
 
-pub(crate) fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRegistry> {
+pub(crate) fn registered_cli_actions()
+-> vb_core::action::ActionResult<Vec<vb_core::action::ActionContract>> {
     cli_action_specs()
         .iter()
-        .try_fold(ActionRegistry::new(), |mut registry, spec| {
-            registry.register(action_contract(*spec)?)?;
-            Ok(registry)
-        })
+        .map(|spec| action_contract(*spec))
+        .collect()
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -318,10 +317,10 @@ pub(crate) fn write_action_registry_uninitialized(output: OutputFormat) {
 }
 
 pub(crate) fn write_action_registry(
-    registry: &ActionRegistry,
+    contracts: &[vb_core::action::ActionContract],
     output: OutputFormat,
 ) -> std::process::ExitCode {
-    let rows = action_table_rows(registry);
+    let rows = action_table_rows(contracts);
     if rows.is_empty() {
         return write_no_registered_actions(output);
     }
@@ -356,13 +355,19 @@ pub(crate) fn write_action_registry(
 }
 
 pub(crate) fn write_action_inspect(
-    registry: &ActionRegistry,
+    contracts: &[vb_core::action::ActionContract],
     action_name: &vb_core::action::ActionName,
     output: OutputFormat,
 ) -> std::process::ExitCode {
-    match registry.resolve_by_name(action_name) {
-        Ok(contract) => write_action_contract_json(contract, output),
-        Err(error) => write_action_inspect_error(action_name.as_str(), &error, output),
+    match contracts.iter().find(|c| c.name == *action_name) {
+        Some(contract) => write_action_contract_json(contract, output),
+        None => write_action_inspect_error(
+            action_name.as_str(),
+            &vb_core::action::ActionError::UnknownAction {
+                action: vb_core::ids::ActionId::new(0),
+            },
+            output,
+        ),
     }
 }
 

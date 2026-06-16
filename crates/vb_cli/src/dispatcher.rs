@@ -44,7 +44,6 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
-use vb_runtime::action::ActionRegistry;
 
 pub fn run_from_env() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();

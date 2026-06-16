@@ -19,7 +19,6 @@ use crate::output::{
 };
 use crate::output_utils::*;
 use std::process::ExitCode;
-use vb_runtime::action::ActionRegistry;
 
 pub(crate) fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
     let context = crate::cli_envelope::serialize_with_version(
@@ -91,7 +90,7 @@ pub(crate) fn cmd_action_list(output: OutputFormat, registry_mode: ActionRegistr
             Err(error) => write_action_registry_error(&error, output),
         },
         ActionRegistryMode::Empty => {
-            let registry = ActionRegistry::new();
+            let registry = Vec::new();
             write_action_registry(&registry, output)
         }
         ActionRegistryMode::Uninitialized => {
@@ -112,7 +111,7 @@ pub(crate) fn cmd_action_inspect(
             Err(error) => write_action_registry_error(&error, output),
         },
         ActionRegistryMode::Empty => {
-            let registry = ActionRegistry::new();
+            let registry = Vec::new();
             write_action_inspect(&registry, &action_name, output)
         }
         ActionRegistryMode::Uninitialized => {
