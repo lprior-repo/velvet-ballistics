@@ -2,6 +2,14 @@
 //!
 //! These tests cover the public API surface with exact assertions on every
 //! Error variant and every success path. Density target: ≥5× pub fn count.
+//!
+//! Test code uses `.expect("descriptive message")` to convert fallible
+//! public-API results into asserted values. Per repository policy
+//! (AGENTS.md: "Tests must compile and run, but test clippy is not strict"),
+//! `clippy::expect_used` is allowed in this test target. All messages are
+//! descriptive and identify the specific test scenario that would fail.
+
+#![allow(clippy::expect_used)]
 
 use vb_doc::evidence::{EvidenceIndex, EvidenceSupport};
 use vb_doc::reconcile::{
@@ -43,7 +51,7 @@ fn master_doc_snapshot_for_workspace_text_clone_is_independent() {
     // Then
     assert_eq!(snapshot.path, cloned.path);
     assert_eq!(snapshot.text, cloned.text);
-    assert!(std::ptr::eq(&snapshot.text, &cloned.text) == false); // deep clone
+    assert!(!std::ptr::eq(&snapshot.text, &cloned.text)); // deep clone
 }
 
 // ============================================================================
