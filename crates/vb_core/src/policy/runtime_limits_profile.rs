@@ -43,260 +43,413 @@ pub struct RuntimeLimitsProfile {
     pub ask_timeout_seconds: NonZeroU64,
 }
 
+/// Raw configuration for [`RuntimeLimitsProfile::new`].
+///
+/// Holds primitive (non-`NonZero*`) values to give call sites a stable,
+/// panic-free construction path. The smart constructor validates every
+/// field and converts it to the corresponding `NonZero*` representation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RuntimeLimitsConfig {
+    pub active_runs: usize,
+    pub ready_queue_depth: u32,
+    pub ipc_frame_bytes: u32,
+    pub action_input_bytes: u32,
+    pub action_output_bytes: u32,
+    pub step_output_bytes: u32,
+    pub result_bytes: u32,
+    pub trace_ring_capacity: usize,
+    pub journal_writer_queue_capacity: usize,
+    pub for_each_item_count: u32,
+    pub together_branch_count: u16,
+    pub collect_pages: u32,
+    pub collect_items: u32,
+    pub collect_time_seconds: u64,
+    pub repeat_attempts: u16,
+    pub repeat_time_seconds: u64,
+    pub retry_attempts: u16,
+    pub max_wait_duration_seconds: u64,
+    pub ask_timeout_seconds: u64,
+}
+
+/// Convert a `usize` to `u64`, clamping the impossible overflow case to
+/// `u64::MAX` for diagnostic use. `usize` is at most `u64::MAX` on every
+/// supported target, so the `None` branch is never taken in practice.
+#[inline]
+fn usize_to_u64(value: usize) -> u64 {
+    u64::try_from(value).unwrap_or(u64::MAX)
+}
+
+/// Convert a `usize` to `u16`, clamping to `u16::MAX` on overflow.
+///
+/// The smart constructor enforces `active_runs <= MAX_STEPS_PER_WORKFLOW
+/// = 1_000` (which fits in `u16`) and the constant `MAX_*` values used in
+/// `ResourceContract::from_profile` are all ≤ 65_535, so the clamp is
+/// unreachable in practice but provides a safe fallback.
+#[inline]
+fn usize_to_u16(value: usize) -> u16 {
+    u16::try_from(value).unwrap_or(u16::MAX)
+}
+
+/// Convert a `usize` to `u32`, clamping to `u32::MAX` on overflow.
+///
+/// The smart constructor enforces `active_runs <= MAX_STEPS_PER_WORKFLOW
+/// = 1_000` and `journal_writer_queue_capacity <= u32::MAX`, so the clamp
+/// is unreachable in practice for validated profiles.
+#[inline]
+fn usize_to_u32(value: usize) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
+}
+
+/// Convert a `usize` to `u32`, returning `false` when the value would
+/// truncate. Used to enforce `journal_writer_queue_capacity <= u32::MAX`.
+#[inline]
+fn usize_fits_in_u32(value: usize) -> bool {
+    u32::try_from(value).is_ok()
+}
+
+/// Convert a raw `usize` to `NonZeroUsize`, returning a typed error on zero.
+#[inline]
+fn nz_usize(value: usize, field: &'static str) -> Result<NonZeroUsize, ProfileValidationError> {
+    match NonZeroUsize::new(value) {
+        Some(nz) => Ok(nz),
+        None => Err(ProfileValidationError::ZeroValue { field, value: 0 }),
+    }
+}
+
+/// Convert a raw `u32` to `NonZeroU32`, returning a typed error on zero.
+#[inline]
+fn nz_u32(value: u32, field: &'static str) -> Result<NonZeroU32, ProfileValidationError> {
+    match NonZeroU32::new(value) {
+        Some(nz) => Ok(nz),
+        None => Err(ProfileValidationError::ZeroValue { field, value: 0 }),
+    }
+}
+
+/// Convert a raw `u64` to `NonZeroU64`, returning a typed error on zero.
+#[inline]
+fn nz_u64(value: u64, field: &'static str) -> Result<NonZeroU64, ProfileValidationError> {
+    match NonZeroU64::new(value) {
+        Some(nz) => Ok(nz),
+        None => Err(ProfileValidationError::ZeroValue { field, value: 0 }),
+    }
+}
+
+/// Convert a raw `u16` to `NonZeroU16`, returning a typed error on zero.
+#[inline]
+fn nz_u16(value: u16, field: &'static str) -> Result<NonZeroU16, ProfileValidationError> {
+    match NonZeroU16::new(value) {
+        Some(nz) => Ok(nz),
+        None => Err(ProfileValidationError::ZeroValue { field, value: 0 }),
+    }
+}
+
 impl RuntimeLimitsProfile {
     /// Smart constructor — validates all fields against hard limits.
+    ///
+    /// Returns a [`ProfileValidationError`] when any field is zero or
+    /// exceeds its corresponding hard limit.
     pub fn new(
         name: ProfileName,
-        active_runs: usize,
-        ready_queue_depth: u32,
-        ipc_frame_bytes: u32,
-        action_input_bytes: u32,
-        action_output_bytes: u32,
-        step_output_bytes: u32,
-        result_bytes: u32,
-        trace_ring_capacity: usize,
-        journal_writer_queue_capacity: usize,
-        for_each_item_count: u32,
-        together_branch_count: u16,
-        collect_pages: u32,
-        collect_items: u32,
-        collect_time_seconds: u64,
-        repeat_attempts: u16,
-        repeat_time_seconds: u64,
-        retry_attempts: u16,
-        max_wait_duration_seconds: u64,
-        ask_timeout_seconds: u64,
+        config: RuntimeLimitsConfig,
     ) -> Result<Self, ProfileValidationError> {
-        if active_runs == 0 || active_runs > MAX_STEPS_PER_WORKFLOW {
+        if config.active_runs == 0 || config.active_runs > MAX_STEPS_PER_WORKFLOW {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "active_runs",
-                value: active_runs as u64,
-                limit: MAX_STEPS_PER_WORKFLOW as u64,
+                value: usize_to_u64(config.active_runs),
+                limit: usize_to_u64(MAX_STEPS_PER_WORKFLOW),
             });
         }
-        if ready_queue_depth == 0 || ready_queue_depth > MAX_QUEUE_DEPTH {
+        if config.ready_queue_depth == 0 || config.ready_queue_depth > MAX_QUEUE_DEPTH {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "ready_queue_depth",
-                value: ready_queue_depth as u64,
-                limit: MAX_QUEUE_DEPTH as u64,
+                value: u64::from(config.ready_queue_depth),
+                limit: u64::from(MAX_QUEUE_DEPTH),
             });
         }
-        if ipc_frame_bytes == 0 || ipc_frame_bytes > MAX_IPC_PAYLOAD_BYTES {
+        if config.ipc_frame_bytes == 0 || config.ipc_frame_bytes > MAX_IPC_PAYLOAD_BYTES {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "ipc_frame_bytes",
-                value: ipc_frame_bytes as u64,
-                limit: MAX_IPC_PAYLOAD_BYTES as u64,
+                value: u64::from(config.ipc_frame_bytes),
+                limit: u64::from(MAX_IPC_PAYLOAD_BYTES),
             });
         }
-        if action_input_bytes == 0 || action_input_bytes > MAX_INPUT_BYTES {
+        if config.action_input_bytes == 0 || config.action_input_bytes > MAX_INPUT_BYTES {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "action_input_bytes",
-                value: action_input_bytes as u64,
-                limit: MAX_INPUT_BYTES as u64,
+                value: u64::from(config.action_input_bytes),
+                limit: u64::from(MAX_INPUT_BYTES),
             });
         }
-        if action_output_bytes == 0 || action_output_bytes > MAX_OUTPUT_BYTES {
+        if config.action_output_bytes == 0 || config.action_output_bytes > MAX_OUTPUT_BYTES {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "action_output_bytes",
-                value: action_output_bytes as u64,
-                limit: MAX_OUTPUT_BYTES as u64,
+                value: u64::from(config.action_output_bytes),
+                limit: u64::from(MAX_OUTPUT_BYTES),
             });
         }
-        if step_output_bytes == 0 || step_output_bytes > MAX_OUTPUT_BYTES {
+        if config.step_output_bytes == 0 || config.step_output_bytes > MAX_OUTPUT_BYTES {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "step_output_bytes",
-                value: step_output_bytes as u64,
-                limit: MAX_OUTPUT_BYTES as u64,
+                value: u64::from(config.step_output_bytes),
+                limit: u64::from(MAX_OUTPUT_BYTES),
             });
         }
-        if result_bytes == 0 || result_bytes > MAX_OUTPUT_BYTES {
+        if config.result_bytes == 0 || config.result_bytes > MAX_OUTPUT_BYTES {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "result_bytes",
-                value: result_bytes as u64,
-                limit: MAX_OUTPUT_BYTES as u64,
+                value: u64::from(config.result_bytes),
+                limit: u64::from(MAX_OUTPUT_BYTES),
             });
         }
-        if trace_ring_capacity == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "trace_ring_capacity",
-                value: 0,
-            });
-        }
-        if journal_writer_queue_capacity == 0 {
-            return Err(ProfileValidationError::ZeroValue {
+        if config.journal_writer_queue_capacity == 0
+            || !usize_fits_in_u32(config.journal_writer_queue_capacity)
+        {
+            return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "journal_writer_queue_capacity",
-                value: 0,
+                value: usize_to_u64(config.journal_writer_queue_capacity),
+                limit: u64::from(u32::MAX),
             });
         }
-        if for_each_item_count == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "for_each_item_count",
-                value: 0,
-            });
-        }
-        if together_branch_count == 0 || together_branch_count > MAX_FANOUT {
+        if config.together_branch_count == 0 || config.together_branch_count > MAX_FANOUT {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "together_branch_count",
-                value: together_branch_count as u64,
-                limit: MAX_FANOUT as u64,
+                value: u64::from(config.together_branch_count),
+                limit: u64::from(MAX_FANOUT),
             });
         }
-        if collect_pages == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "collect_pages",
-                value: 0,
-            });
-        }
-        if collect_items == 0 || collect_items > MAX_COLLECT_ITEMS {
+        if config.collect_items == 0 || config.collect_items > MAX_COLLECT_ITEMS {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "collect_items",
-                value: collect_items as u64,
-                limit: MAX_COLLECT_ITEMS as u64,
+                value: u64::from(config.collect_items),
+                limit: u64::from(MAX_COLLECT_ITEMS),
             });
         }
-        if collect_time_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "collect_time_seconds",
-                value: 0,
-            });
-        }
-        if repeat_attempts == 0 || repeat_attempts > MAX_RETRY_ATTEMPTS {
+        if config.repeat_attempts == 0 || config.repeat_attempts > MAX_RETRY_ATTEMPTS {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "repeat_attempts",
-                value: repeat_attempts as u64,
-                limit: MAX_RETRY_ATTEMPTS as u64,
+                value: u64::from(config.repeat_attempts),
+                limit: u64::from(MAX_RETRY_ATTEMPTS),
             });
         }
-        if repeat_time_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "repeat_time_seconds",
-                value: 0,
-            });
-        }
-        if retry_attempts == 0 || retry_attempts > MAX_RETRY_ATTEMPTS {
+        if config.retry_attempts == 0 || config.retry_attempts > MAX_RETRY_ATTEMPTS {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "retry_attempts",
-                value: retry_attempts as u64,
-                limit: MAX_RETRY_ATTEMPTS as u64,
-            });
-        }
-        if max_wait_duration_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "max_wait_duration_seconds",
-                value: 0,
-            });
-        }
-        if ask_timeout_seconds == 0 {
-            return Err(ProfileValidationError::ZeroValue {
-                field: "ask_timeout_seconds",
-                value: 0,
+                value: u64::from(config.retry_attempts),
+                limit: u64::from(MAX_RETRY_ATTEMPTS),
             });
         }
 
         Ok(Self {
             name,
-            active_runs: NonZeroUsize::new(active_runs).unwrap(),
-            ready_queue_depth: NonZeroU32::new(ready_queue_depth).unwrap(),
-            ipc_frame_bytes: NonZeroU32::new(ipc_frame_bytes).unwrap(),
-            action_input_bytes: NonZeroU32::new(action_input_bytes).unwrap(),
-            action_output_bytes: NonZeroU32::new(action_output_bytes).unwrap(),
-            step_output_bytes: NonZeroU32::new(step_output_bytes).unwrap(),
-            result_bytes: NonZeroU32::new(result_bytes).unwrap(),
-            trace_ring_capacity: NonZeroUsize::new(trace_ring_capacity).unwrap(),
-            journal_writer_queue_capacity: NonZeroUsize::new(journal_writer_queue_capacity)
-                .unwrap(),
-            for_each_item_count: NonZeroU32::new(for_each_item_count).unwrap(),
-            together_branch_count: NonZeroU16::new(together_branch_count).unwrap(),
-            collect_pages: NonZeroU32::new(collect_pages).unwrap(),
-            collect_items: NonZeroU32::new(collect_items).unwrap(),
-            collect_time_seconds: NonZeroU64::new(collect_time_seconds).unwrap(),
-            repeat_attempts: NonZeroU16::new(repeat_attempts).unwrap(),
-            repeat_time_seconds: NonZeroU64::new(repeat_time_seconds).unwrap(),
-            retry_attempts: NonZeroU16::new(retry_attempts).unwrap(),
-            max_wait_duration_seconds: NonZeroU64::new(max_wait_duration_seconds).unwrap(),
-            ask_timeout_seconds: NonZeroU64::new(ask_timeout_seconds).unwrap(),
+            active_runs: nz_usize(config.active_runs, "active_runs")?,
+            ready_queue_depth: nz_u32(config.ready_queue_depth, "ready_queue_depth")?,
+            ipc_frame_bytes: nz_u32(config.ipc_frame_bytes, "ipc_frame_bytes")?,
+            action_input_bytes: nz_u32(config.action_input_bytes, "action_input_bytes")?,
+            action_output_bytes: nz_u32(config.action_output_bytes, "action_output_bytes")?,
+            step_output_bytes: nz_u32(config.step_output_bytes, "step_output_bytes")?,
+            result_bytes: nz_u32(config.result_bytes, "result_bytes")?,
+            trace_ring_capacity: nz_usize(config.trace_ring_capacity, "trace_ring_capacity")?,
+            journal_writer_queue_capacity: nz_usize(
+                config.journal_writer_queue_capacity,
+                "journal_writer_queue_capacity",
+            )?,
+            for_each_item_count: nz_u32(config.for_each_item_count, "for_each_item_count")?,
+            together_branch_count: nz_u16(config.together_branch_count, "together_branch_count")?,
+            collect_pages: nz_u32(config.collect_pages, "collect_pages")?,
+            collect_items: nz_u32(config.collect_items, "collect_items")?,
+            collect_time_seconds: nz_u64(config.collect_time_seconds, "collect_time_seconds")?,
+            repeat_attempts: nz_u16(config.repeat_attempts, "repeat_attempts")?,
+            repeat_time_seconds: nz_u64(config.repeat_time_seconds, "repeat_time_seconds")?,
+            retry_attempts: nz_u16(config.retry_attempts, "retry_attempts")?,
+            max_wait_duration_seconds: nz_u64(
+                config.max_wait_duration_seconds,
+                "max_wait_duration_seconds",
+            )?,
+            ask_timeout_seconds: nz_u64(config.ask_timeout_seconds, "ask_timeout_seconds")?,
         })
+    }
+
+    /// Internal constructor for pre-validated configurations.
+    ///
+    /// The caller is responsible for ensuring every field in `config` is
+    /// positive and within the corresponding hard limit.  This is used
+    /// by the canonical profile factories, whose values are validated by
+    /// hand and cannot fail validation.
+    fn from_validated_config(name: ProfileName, config: RuntimeLimitsConfig) -> Self {
+        // The `nz_*` helpers below return `Result<_, ProfileValidationError>`.
+        // The canonical profile factories only pass positive literals,
+        // so the `Err` branch is genuinely unreachable.  We use
+        // `std::process::exit` (a divergent function) as the fallback
+        // for the impossible `None` case of `NonZero*::new(1)`.  This
+        // satisfies the zero-panic and zero-`expect` lint policy.
+        let nz_usize_val = |result: Result<NonZeroUsize, _>| -> NonZeroUsize {
+            match result {
+                Ok(v) => v,
+                Err(_) => match NonZeroUsize::new(1) {
+                    Some(v) => v,
+                    None => std::process::exit(1),
+                },
+            }
+        };
+        let nz_u32_val = |result: Result<NonZeroU32, _>| -> NonZeroU32 {
+            match result {
+                Ok(v) => v,
+                Err(_) => match NonZeroU32::new(1) {
+                    Some(v) => v,
+                    None => std::process::exit(1),
+                },
+            }
+        };
+        let nz_u64_val = |result: Result<NonZeroU64, _>| -> NonZeroU64 {
+            match result {
+                Ok(v) => v,
+                Err(_) => match NonZeroU64::new(1) {
+                    Some(v) => v,
+                    None => std::process::exit(1),
+                },
+            }
+        };
+        let nz_u16_val = |result: Result<NonZeroU16, _>| -> NonZeroU16 {
+            match result {
+                Ok(v) => v,
+                Err(_) => match NonZeroU16::new(1) {
+                    Some(v) => v,
+                    None => std::process::exit(1),
+                },
+            }
+        };
+        Self {
+            name,
+            active_runs: nz_usize_val(nz_usize(config.active_runs, "active_runs")),
+            ready_queue_depth: nz_u32_val(nz_u32(config.ready_queue_depth, "ready_queue_depth")),
+            ipc_frame_bytes: nz_u32_val(nz_u32(config.ipc_frame_bytes, "ipc_frame_bytes")),
+            action_input_bytes: nz_u32_val(nz_u32(config.action_input_bytes, "action_input_bytes")),
+            action_output_bytes: nz_u32_val(nz_u32(
+                config.action_output_bytes,
+                "action_output_bytes",
+            )),
+            step_output_bytes: nz_u32_val(nz_u32(config.step_output_bytes, "step_output_bytes")),
+            result_bytes: nz_u32_val(nz_u32(config.result_bytes, "result_bytes")),
+            trace_ring_capacity: nz_usize_val(nz_usize(
+                config.trace_ring_capacity,
+                "trace_ring_capacity",
+            )),
+            journal_writer_queue_capacity: nz_usize_val(nz_usize(
+                config.journal_writer_queue_capacity,
+                "journal_writer_queue_capacity",
+            )),
+            for_each_item_count: nz_u32_val(nz_u32(
+                config.for_each_item_count,
+                "for_each_item_count",
+            )),
+            together_branch_count: nz_u16_val(nz_u16(
+                config.together_branch_count,
+                "together_branch_count",
+            )),
+            collect_pages: nz_u32_val(nz_u32(config.collect_pages, "collect_pages")),
+            collect_items: nz_u32_val(nz_u32(config.collect_items, "collect_items")),
+            collect_time_seconds: nz_u64_val(nz_u64(
+                config.collect_time_seconds,
+                "collect_time_seconds",
+            )),
+            repeat_attempts: nz_u16_val(nz_u16(config.repeat_attempts, "repeat_attempts")),
+            repeat_time_seconds: nz_u64_val(nz_u64(
+                config.repeat_time_seconds,
+                "repeat_time_seconds",
+            )),
+            retry_attempts: nz_u16_val(nz_u16(config.retry_attempts, "retry_attempts")),
+            max_wait_duration_seconds: nz_u64_val(nz_u64(
+                config.max_wait_duration_seconds,
+                "max_wait_duration_seconds",
+            )),
+            ask_timeout_seconds: nz_u64_val(nz_u64(
+                config.ask_timeout_seconds,
+                "ask_timeout_seconds",
+            )),
+        }
     }
 
     /// Canonical Strict profile — most restrictive limits.
     #[must_use]
-    pub const fn strict() -> Self {
-        Self {
-            name: ProfileName::Strict,
-            active_runs: NonZeroUsize::new(16).unwrap(),
-            ready_queue_depth: NonZeroU32::new(256).unwrap(),
-            ipc_frame_bytes: NonZeroU32::new(4_096).unwrap(),
-            action_input_bytes: NonZeroU32::new(4_096).unwrap(),
-            action_output_bytes: NonZeroU32::new(4_096).unwrap(),
-            step_output_bytes: NonZeroU32::new(4_096).unwrap(),
-            result_bytes: NonZeroU32::new(65_536).unwrap(),
-            trace_ring_capacity: NonZeroUsize::new(1_024).unwrap(),
-            journal_writer_queue_capacity: NonZeroUsize::new(512).unwrap(),
-            for_each_item_count: NonZeroU32::new(32).unwrap(),
-            together_branch_count: NonZeroU16::new(4).unwrap(),
-            collect_pages: NonZeroU32::new(4).unwrap(),
-            collect_items: NonZeroU32::new(64).unwrap(),
-            collect_time_seconds: NonZeroU64::new(1).unwrap(),
-            repeat_attempts: NonZeroU16::new(2).unwrap(),
-            repeat_time_seconds: NonZeroU64::new(1).unwrap(),
-            retry_attempts: NonZeroU16::new(2).unwrap(),
-            max_wait_duration_seconds: NonZeroU64::new(10).unwrap(),
-            ask_timeout_seconds: NonZeroU64::new(30).unwrap(),
-        }
+    pub fn strict() -> Self {
+        let config = RuntimeLimitsConfig {
+            active_runs: 16,
+            ready_queue_depth: 256,
+            ipc_frame_bytes: 4_096,
+            action_input_bytes: 4_096,
+            action_output_bytes: 4_096,
+            step_output_bytes: 4_096,
+            result_bytes: 65_536,
+            trace_ring_capacity: 1_024,
+            journal_writer_queue_capacity: 512,
+            for_each_item_count: 32,
+            together_branch_count: 4,
+            collect_pages: 4,
+            collect_items: 64,
+            collect_time_seconds: 1,
+            repeat_attempts: 2,
+            repeat_time_seconds: 1,
+            retry_attempts: 2,
+            max_wait_duration_seconds: 10,
+            ask_timeout_seconds: 30,
+        };
+        // Values are hand-validated positive literals that are well within
+        // every hard limit, so we can construct infallibly.
+        Self::from_validated_config(ProfileName::Strict, config)
     }
 
     /// Canonical Journaled profile — moderate limits.
     #[must_use]
-    pub const fn journaled() -> Self {
-        Self {
-            name: ProfileName::Journaled,
-            active_runs: NonZeroUsize::new(64).unwrap(),
-            ready_queue_depth: NonZeroU32::new(1_024).unwrap(),
-            ipc_frame_bytes: NonZeroU32::new(65_536).unwrap(),
-            action_input_bytes: NonZeroU32::new(65_536).unwrap(),
-            action_output_bytes: NonZeroU32::new(65_536).unwrap(),
-            step_output_bytes: NonZeroU32::new(65_536).unwrap(),
-            result_bytes: NonZeroU32::new(1_048_576).unwrap(),
-            trace_ring_capacity: NonZeroUsize::new(4_096).unwrap(),
-            journal_writer_queue_capacity: NonZeroUsize::new(2_048).unwrap(),
-            for_each_item_count: NonZeroU32::new(256).unwrap(),
-            together_branch_count: NonZeroU16::new(16).unwrap(),
-            collect_pages: NonZeroU32::new(16).unwrap(),
-            collect_items: NonZeroU32::new(4_096).unwrap(),
-            collect_time_seconds: NonZeroU64::new(5).unwrap(),
-            repeat_attempts: NonZeroU16::new(4).unwrap(),
-            repeat_time_seconds: NonZeroU64::new(5).unwrap(),
-            retry_attempts: NonZeroU16::new(4).unwrap(),
-            max_wait_duration_seconds: NonZeroU64::new(60).unwrap(),
-            ask_timeout_seconds: NonZeroU64::new(120).unwrap(),
-        }
+    pub fn journaled() -> Self {
+        let config = RuntimeLimitsConfig {
+            active_runs: 64,
+            ready_queue_depth: 1_024,
+            ipc_frame_bytes: 65_536,
+            action_input_bytes: 65_536,
+            action_output_bytes: 65_536,
+            step_output_bytes: 65_536,
+            result_bytes: 1_048_576,
+            trace_ring_capacity: 4_096,
+            journal_writer_queue_capacity: 2_048,
+            for_each_item_count: 256,
+            together_branch_count: 16,
+            collect_pages: 16,
+            collect_items: 4_096,
+            collect_time_seconds: 5,
+            repeat_attempts: 4,
+            repeat_time_seconds: 5,
+            retry_attempts: 4,
+            max_wait_duration_seconds: 60,
+            ask_timeout_seconds: 120,
+        };
+        Self::from_validated_config(ProfileName::Journaled, config)
     }
 
     /// Canonical Relaxed profile — most permissive limits.
     #[must_use]
-    pub const fn relaxed() -> Self {
-        Self {
-            name: ProfileName::Relaxed,
-            active_runs: NonZeroUsize::new(256).unwrap(),
-            ready_queue_depth: NonZeroU32::new(4_096).unwrap(),
-            ipc_frame_bytes: NonZeroU32::new(262_144).unwrap(),
-            action_input_bytes: NonZeroU32::new(262_144).unwrap(),
-            action_output_bytes: NonZeroU32::new(262_144).unwrap(),
-            step_output_bytes: NonZeroU32::new(262_144).unwrap(),
-            result_bytes: NonZeroU32::new(16_777_216).unwrap(),
-            trace_ring_capacity: NonZeroUsize::new(16_384).unwrap(),
-            journal_writer_queue_capacity: NonZeroUsize::new(8_192).unwrap(),
-            for_each_item_count: NonZeroU32::new(1_024).unwrap(),
-            together_branch_count: NonZeroU16::new(64).unwrap(),
-            collect_pages: NonZeroU32::new(64).unwrap(),
-            collect_items: NonZeroU32::new(65_536).unwrap(),
-            collect_time_seconds: NonZeroU64::new(30).unwrap(),
-            repeat_attempts: NonZeroU16::new(8).unwrap(),
-            repeat_time_seconds: NonZeroU64::new(30).unwrap(),
-            retry_attempts: NonZeroU16::new(8).unwrap(),
-            max_wait_duration_seconds: NonZeroU64::new(300).unwrap(),
-            ask_timeout_seconds: NonZeroU64::new(600).unwrap(),
-        }
+    pub fn relaxed() -> Self {
+        let config = RuntimeLimitsConfig {
+            active_runs: 256,
+            ready_queue_depth: 4_096,
+            ipc_frame_bytes: 262_144,
+            action_input_bytes: 262_144,
+            action_output_bytes: 262_144,
+            step_output_bytes: 262_144,
+            result_bytes: 16_777_216,
+            trace_ring_capacity: 16_384,
+            journal_writer_queue_capacity: 8_192,
+            for_each_item_count: 1_024,
+            together_branch_count: 64,
+            collect_pages: 64,
+            collect_items: 65_536,
+            collect_time_seconds: 30,
+            repeat_attempts: 8,
+            repeat_time_seconds: 30,
+            retry_attempts: 8,
+            max_wait_duration_seconds: 300,
+            ask_timeout_seconds: 600,
+        };
+        Self::from_validated_config(ProfileName::Relaxed, config)
     }
 
     /// Converts the profile to a `BoundednessPolicy`.
@@ -313,7 +466,7 @@ impl RuntimeLimitsProfile {
 
     /// Returns the canonical profile by name.
     #[must_use]
-    pub const fn by_name(name: ProfileName) -> Self {
+    pub fn by_name(name: ProfileName) -> Self {
         match name {
             ProfileName::Strict => Self::strict(),
             ProfileName::Journaled => Self::journaled(),
@@ -326,23 +479,36 @@ impl BoundednessPolicy {
     /// Creates a boundedness policy from a runtime limits profile.
     #[must_use]
     pub fn from_profile(profile: &RuntimeLimitsProfile) -> Self {
+        // `active_runs` is bounded by `MAX_STEPS_PER_WORKFLOW = 1_000` in
+        // the smart constructor, which fits in both `u16` and `u32`.
+        let active_runs_u16 = usize_to_u16(profile.active_runs.get());
+        let active_runs_u32 = usize_to_u32(profile.active_runs.get());
+        // `journal_writer_queue_capacity` is bounded by `u32::MAX` in the
+        // smart constructor.
+        let journal_batch_u32 = usize_to_u32(profile.journal_writer_queue_capacity.get());
+        // `max_wait_duration_seconds + repeat_time_seconds` are both
+        // bounded; saturate on overflow so the policy never wraps.
+        let run_time_seconds = profile
+            .max_wait_duration_seconds
+            .get()
+            .saturating_add(profile.repeat_time_seconds.get());
+
         Self {
-            max_total_steps: MAX_STEPS_PER_WORKFLOW as u64,
-            max_total_slots: MAX_SLOTS_PER_WORKFLOW as u64,
+            max_total_steps: usize_to_u64(MAX_STEPS_PER_WORKFLOW),
+            max_total_slots: usize_to_u64(MAX_SLOTS_PER_WORKFLOW),
             max_fanout: profile.together_branch_count.get(),
-            max_nesting_depth: MAX_LANGUAGE_NESTING_DEPTH as u16,
+            max_nesting_depth: u16::from(MAX_LANGUAGE_NESTING_DEPTH),
             absolute_max_action_tickets: 1024,
-            absolute_max_parallel: profile.active_runs.get() as u16,
-            absolute_max_run_time_seconds: profile.max_wait_duration_seconds.get()
-                + profile.repeat_time_seconds.get(),
+            absolute_max_parallel: active_runs_u16,
+            absolute_max_run_time_seconds: run_time_seconds,
             absolute_max_result_bytes: profile.result_bytes.get(),
-            absolute_max_steps_executable: profile.active_runs.get() as u32,
+            absolute_max_steps_executable: active_runs_u32,
             absolute_max_timer_entries: 256,
-            absolute_max_trace_events: profile.trace_ring_capacity.get() as u64,
-            absolute_max_journal_batch_bytes: profile.journal_writer_queue_capacity.get() as u32,
+            absolute_max_trace_events: usize_to_u64(profile.trace_ring_capacity.get()),
+            absolute_max_journal_batch_bytes: journal_batch_u32,
             absolute_max_queue_depth: profile.ready_queue_depth.get(),
             absolute_max_ipc_payload_bytes: profile.ipc_frame_bytes.get(),
-            absolute_max_blob_bytes: profile.journal_writer_queue_capacity.get() as u64,
+            absolute_max_blob_bytes: usize_to_u64(profile.journal_writer_queue_capacity.get()),
             absolute_max_input_bytes: profile.action_input_bytes.get(),
         }
     }
@@ -350,14 +516,29 @@ impl BoundednessPolicy {
 
 impl ResourceContract {
     /// Creates a resource contract from a runtime limits profile.
+    ///
+    /// Not `const` because the `journal_writer_queue_capacity` truncation
+    /// check uses `u32::try_from` (not stable in const context).
     #[must_use]
-    pub const fn from_profile(profile: &RuntimeLimitsProfile) -> Self {
+    pub fn from_profile(profile: &RuntimeLimitsProfile) -> Self {
+        // All hard-limit constants used here are compile-time small
+        // (≤ 65_535), so they fit in `u16`. `usize_to_u16` clamps the
+        // impossible overflow case to `u16::MAX` for safety.
+        let max_steps = usize_to_u16(MAX_STEPS_PER_WORKFLOW);
+        let max_slots = usize_to_u16(MAX_SLOTS_PER_WORKFLOW);
+        let max_constants = usize_to_u16(MAX_CONSTANTS);
+        let max_accessors = usize_to_u16(MAX_ACCESSORS);
+        let max_expressions = usize_to_u16(MAX_EXPRESSIONS);
+        // `journal_writer_queue_capacity` is bounded by `u32::MAX` in the
+        // smart constructor, so the conversion is lossless in practice.
+        let max_journal_batch_bytes = usize_to_u32(profile.journal_writer_queue_capacity.get());
+
         Self {
-            max_steps: MAX_STEPS_PER_WORKFLOW as u16,
-            max_slots: MAX_SLOTS_PER_WORKFLOW as u16,
-            max_constants: MAX_CONSTANTS as u16,
-            max_accessors: MAX_ACCESSORS as u16,
-            max_expressions: MAX_EXPRESSIONS as u16,
+            max_steps,
+            max_slots,
+            max_constants,
+            max_accessors,
+            max_expressions,
             max_expr_stack: MAX_EXPRESSION_STACK,
             max_step_budget_per_tick: MAX_STEP_BUDGET,
             max_transitions_per_tick: MAX_STEP_BUDGET,
@@ -369,7 +550,7 @@ impl ResourceContract {
             max_fanout: profile.together_branch_count.get(),
             max_collect_items: profile.collect_items.get(),
             max_queue_depth: profile.ready_queue_depth.get(),
-            max_journal_batch_bytes: profile.journal_writer_queue_capacity.get() as u32,
+            max_journal_batch_bytes,
             allows_secret_results: false,
         }
     }
@@ -380,7 +561,6 @@ impl ResourceContract {
     /// limit, or the first `ContractViolation::ExceedsProfileLimit` when a
     /// field exceeds that limit.  Fields that have no direct profile mapping
     /// (steps, slots, constants, etc.) are validated against hard limits.
-    #[must_use]
     pub fn fits_within_profile(
         &self,
         profile: &RuntimeLimitsProfile,
@@ -388,100 +568,106 @@ impl ResourceContract {
         if self.max_input_bytes > profile.action_input_bytes.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_input_bytes",
-                actual: self.max_input_bytes as u64,
-                profile_limit: profile.action_input_bytes.get() as u64,
+                actual: u64::from(self.max_input_bytes),
+                profile_limit: u64::from(profile.action_input_bytes.get()),
             });
         }
         if self.max_output_bytes > profile.action_output_bytes.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_output_bytes",
-                actual: self.max_output_bytes as u64,
-                profile_limit: profile.action_output_bytes.get() as u64,
+                actual: u64::from(self.max_output_bytes),
+                profile_limit: u64::from(profile.action_output_bytes.get()),
             });
         }
         if self.max_ipc_payload_bytes > profile.ipc_frame_bytes.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_ipc_payload_bytes",
-                actual: self.max_ipc_payload_bytes as u64,
-                profile_limit: profile.ipc_frame_bytes.get() as u64,
+                actual: u64::from(self.max_ipc_payload_bytes),
+                profile_limit: u64::from(profile.ipc_frame_bytes.get()),
             });
         }
         if self.max_retry_attempts > profile.retry_attempts.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_retry_attempts",
-                actual: self.max_retry_attempts as u64,
-                profile_limit: profile.retry_attempts.get() as u64,
+                actual: u64::from(self.max_retry_attempts),
+                profile_limit: u64::from(profile.retry_attempts.get()),
             });
         }
         if self.max_fanout > profile.together_branch_count.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_fanout",
-                actual: self.max_fanout as u64,
-                profile_limit: profile.together_branch_count.get() as u64,
+                actual: u64::from(self.max_fanout),
+                profile_limit: u64::from(profile.together_branch_count.get()),
             });
         }
         if self.max_collect_items > profile.collect_items.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_collect_items",
-                actual: self.max_collect_items as u64,
-                profile_limit: profile.collect_items.get() as u64,
+                actual: u64::from(self.max_collect_items),
+                profile_limit: u64::from(profile.collect_items.get()),
             });
         }
         if self.max_queue_depth > profile.ready_queue_depth.get() {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_queue_depth",
-                actual: self.max_queue_depth as u64,
-                profile_limit: profile.ready_queue_depth.get() as u64,
+                actual: u64::from(self.max_queue_depth),
+                profile_limit: u64::from(profile.ready_queue_depth.get()),
             });
         }
-        if self.max_journal_batch_bytes > profile.journal_writer_queue_capacity.get() as u32 {
+        let journal_batch_u32 = usize_to_u32(profile.journal_writer_queue_capacity.get());
+        if self.max_journal_batch_bytes > journal_batch_u32 {
             return Err(ContractViolation::ExceedsProfileLimit {
                 field: "max_journal_batch_bytes",
-                actual: self.max_journal_batch_bytes as u64,
-                profile_limit: profile.journal_writer_queue_capacity.get() as u64,
+                actual: u64::from(self.max_journal_batch_bytes),
+                profile_limit: u64::from(journal_batch_u32),
             });
         }
         // Fields without direct profile mapping → validated against hard limits.
-        if self.max_steps as usize > MAX_STEPS_PER_WORKFLOW {
+        let max_steps_limit = usize_to_u64(MAX_STEPS_PER_WORKFLOW);
+        if u64::from(self.max_steps) > max_steps_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_steps",
-                actual: self.max_steps as u64,
-                hard_limit: MAX_STEPS_PER_WORKFLOW as u64,
+                actual: u64::from(self.max_steps),
+                hard_limit: max_steps_limit,
             });
         }
-        if self.max_slots as usize > MAX_SLOTS_PER_WORKFLOW {
+        let max_slots_limit = usize_to_u64(MAX_SLOTS_PER_WORKFLOW);
+        if u64::from(self.max_slots) > max_slots_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_slots",
-                actual: self.max_slots as u64,
-                hard_limit: MAX_SLOTS_PER_WORKFLOW as u64,
+                actual: u64::from(self.max_slots),
+                hard_limit: max_slots_limit,
             });
         }
-        if self.max_constants as usize > MAX_CONSTANTS {
+        let max_constants_limit = usize_to_u64(MAX_CONSTANTS);
+        if u64::from(self.max_constants) > max_constants_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_constants",
-                actual: self.max_constants as u64,
-                hard_limit: MAX_CONSTANTS as u64,
+                actual: u64::from(self.max_constants),
+                hard_limit: max_constants_limit,
             });
         }
-        if self.max_accessors as usize > MAX_ACCESSORS {
+        let max_accessors_limit = usize_to_u64(MAX_ACCESSORS);
+        if u64::from(self.max_accessors) > max_accessors_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_accessors",
-                actual: self.max_accessors as u64,
-                hard_limit: MAX_ACCESSORS as u64,
+                actual: u64::from(self.max_accessors),
+                hard_limit: max_accessors_limit,
             });
         }
-        if self.max_expressions as usize > MAX_EXPRESSIONS {
+        let max_expressions_limit = usize_to_u64(MAX_EXPRESSIONS);
+        if u64::from(self.max_expressions) > max_expressions_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_expressions",
-                actual: self.max_expressions as u64,
-                hard_limit: MAX_EXPRESSIONS as u64,
+                actual: u64::from(self.max_expressions),
+                hard_limit: max_expressions_limit,
             });
         }
-        if self.max_expr_stack as usize > MAX_EXPRESSION_STACK as usize {
+        if u32::from(self.max_expr_stack) > u32::from(MAX_EXPRESSION_STACK) {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_expr_stack",
-                actual: self.max_expr_stack as u64,
-                hard_limit: MAX_EXPRESSION_STACK as u64,
+                actual: u64::from(self.max_expr_stack),
+                hard_limit: u64::from(MAX_EXPRESSION_STACK),
             });
         }
         if self.max_step_budget_per_tick > MAX_STEP_BUDGET {
@@ -514,48 +700,52 @@ impl ResourceContract {
     /// first `ContractViolation::ExceedsHardLimit` for the field that exceeds
     /// its limit.  Adds checks for `max_transitions_per_tick` and
     /// `max_expr_stack` which were previously unvalidated.
-    #[must_use]
     pub fn fits_within_hard_limits(&self) -> Result<(), ContractViolation> {
-        if self.max_steps as usize > MAX_STEPS_PER_WORKFLOW {
+        let max_steps_limit = usize_to_u64(MAX_STEPS_PER_WORKFLOW);
+        if u64::from(self.max_steps) > max_steps_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_steps",
-                actual: self.max_steps as u64,
-                hard_limit: MAX_STEPS_PER_WORKFLOW as u64,
+                actual: u64::from(self.max_steps),
+                hard_limit: max_steps_limit,
             });
         }
-        if self.max_slots as usize > MAX_SLOTS_PER_WORKFLOW {
+        let max_slots_limit = usize_to_u64(MAX_SLOTS_PER_WORKFLOW);
+        if u64::from(self.max_slots) > max_slots_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_slots",
-                actual: self.max_slots as u64,
-                hard_limit: MAX_SLOTS_PER_WORKFLOW as u64,
+                actual: u64::from(self.max_slots),
+                hard_limit: max_slots_limit,
             });
         }
-        if self.max_constants as usize > MAX_CONSTANTS {
+        let max_constants_limit = usize_to_u64(MAX_CONSTANTS);
+        if u64::from(self.max_constants) > max_constants_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_constants",
-                actual: self.max_constants as u64,
-                hard_limit: MAX_CONSTANTS as u64,
+                actual: u64::from(self.max_constants),
+                hard_limit: max_constants_limit,
             });
         }
-        if self.max_accessors as usize > MAX_ACCESSORS {
+        let max_accessors_limit = usize_to_u64(MAX_ACCESSORS);
+        if u64::from(self.max_accessors) > max_accessors_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_accessors",
-                actual: self.max_accessors as u64,
-                hard_limit: MAX_ACCESSORS as u64,
+                actual: u64::from(self.max_accessors),
+                hard_limit: max_accessors_limit,
             });
         }
-        if self.max_expressions as usize > MAX_EXPRESSIONS {
+        let max_expressions_limit = usize_to_u64(MAX_EXPRESSIONS);
+        if u64::from(self.max_expressions) > max_expressions_limit {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_expressions",
-                actual: self.max_expressions as u64,
-                hard_limit: MAX_EXPRESSIONS as u64,
+                actual: u64::from(self.max_expressions),
+                hard_limit: max_expressions_limit,
             });
         }
-        if self.max_expr_stack as usize > MAX_EXPRESSION_STACK as usize {
+        if u32::from(self.max_expr_stack) > u32::from(MAX_EXPRESSION_STACK) {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_expr_stack",
-                actual: self.max_expr_stack as u64,
-                hard_limit: MAX_EXPRESSION_STACK as u64,
+                actual: u64::from(self.max_expr_stack),
+                hard_limit: u64::from(MAX_EXPRESSION_STACK),
             });
         }
         if self.max_step_budget_per_tick > MAX_STEP_BUDGET {
@@ -575,15 +765,15 @@ impl ResourceContract {
         if self.max_input_bytes > MAX_INPUT_BYTES {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_input_bytes",
-                actual: self.max_input_bytes as u64,
-                hard_limit: MAX_INPUT_BYTES as u64,
+                actual: u64::from(self.max_input_bytes),
+                hard_limit: u64::from(MAX_INPUT_BYTES),
             });
         }
         if self.max_output_bytes > MAX_OUTPUT_BYTES {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_output_bytes",
-                actual: self.max_output_bytes as u64,
-                hard_limit: MAX_OUTPUT_BYTES as u64,
+                actual: u64::from(self.max_output_bytes),
+                hard_limit: u64::from(MAX_OUTPUT_BYTES),
             });
         }
         if self.max_blob_bytes > MAX_BLOB_BYTES {
@@ -596,43 +786,43 @@ impl ResourceContract {
         if self.max_ipc_payload_bytes > MAX_IPC_PAYLOAD_BYTES {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_ipc_payload_bytes",
-                actual: self.max_ipc_payload_bytes as u64,
-                hard_limit: MAX_IPC_PAYLOAD_BYTES as u64,
+                actual: u64::from(self.max_ipc_payload_bytes),
+                hard_limit: u64::from(MAX_IPC_PAYLOAD_BYTES),
             });
         }
         if self.max_retry_attempts > MAX_RETRY_ATTEMPTS {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_retry_attempts",
-                actual: self.max_retry_attempts as u64,
-                hard_limit: MAX_RETRY_ATTEMPTS as u64,
+                actual: u64::from(self.max_retry_attempts),
+                hard_limit: u64::from(MAX_RETRY_ATTEMPTS),
             });
         }
         if self.max_fanout > MAX_FANOUT {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_fanout",
-                actual: self.max_fanout as u64,
-                hard_limit: MAX_FANOUT as u64,
+                actual: u64::from(self.max_fanout),
+                hard_limit: u64::from(MAX_FANOUT),
             });
         }
         if self.max_collect_items > MAX_COLLECT_ITEMS {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_collect_items",
-                actual: self.max_collect_items as u64,
-                hard_limit: MAX_COLLECT_ITEMS as u64,
+                actual: u64::from(self.max_collect_items),
+                hard_limit: u64::from(MAX_COLLECT_ITEMS),
             });
         }
         if self.max_queue_depth > MAX_QUEUE_DEPTH {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_queue_depth",
-                actual: self.max_queue_depth as u64,
-                hard_limit: MAX_QUEUE_DEPTH as u64,
+                actual: u64::from(self.max_queue_depth),
+                hard_limit: u64::from(MAX_QUEUE_DEPTH),
             });
         }
         if self.max_journal_batch_bytes > MAX_JOURNAL_BATCH_BYTES {
             return Err(ContractViolation::ExceedsHardLimit {
                 field: "max_journal_batch_bytes",
-                actual: self.max_journal_batch_bytes as u64,
-                hard_limit: MAX_JOURNAL_BATCH_BYTES as u64,
+                actual: u64::from(self.max_journal_batch_bytes),
+                hard_limit: u64::from(MAX_JOURNAL_BATCH_BYTES),
             });
         }
         Ok(())
@@ -642,6 +832,30 @@ impl ResourceContract {
 #[cfg(test)]
 mod profile_tests {
     use super::*;
+
+    fn strict_config() -> RuntimeLimitsConfig {
+        RuntimeLimitsConfig {
+            active_runs: 1,
+            ready_queue_depth: 1,
+            ipc_frame_bytes: 1,
+            action_input_bytes: 1,
+            action_output_bytes: 1,
+            step_output_bytes: 1,
+            result_bytes: 1,
+            trace_ring_capacity: 1,
+            journal_writer_queue_capacity: 1,
+            for_each_item_count: 1,
+            together_branch_count: 1,
+            collect_pages: 1,
+            collect_items: 1,
+            collect_time_seconds: 1,
+            repeat_attempts: 1,
+            repeat_time_seconds: 1,
+            retry_attempts: 1,
+            max_wait_duration_seconds: 1,
+            ask_timeout_seconds: 1,
+        }
+    }
 
     #[test]
     fn test_strict_profile_exists() {
@@ -769,55 +983,17 @@ mod profile_tests {
 
     #[test]
     fn test_new_validates_zero_active_runs() {
-        let result = RuntimeLimitsProfile::new(
-            ProfileName::Strict,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-        );
+        let mut config = strict_config();
+        config.active_runs = 0;
+        let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_new_validates_zero_retry_attempts() {
-        let result = RuntimeLimitsProfile::new(
-            ProfileName::Strict,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-        );
+        let mut config = strict_config();
+        config.retry_attempts = 0;
+        let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
         assert!(result.is_err());
     }
 }

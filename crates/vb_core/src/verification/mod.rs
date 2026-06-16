@@ -18,5 +18,7 @@ pub(crate) mod proptest {
 // Verus proof modules (compiled with verus toolchain)
 #[cfg(verus)]
 pub mod verus {
+    pub mod run_frame_new_exec_proofs;
+    pub mod step_state_absorbing_proofs;
     pub mod vb_rxru0_action_specs;
 }

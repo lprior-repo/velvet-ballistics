@@ -6,6 +6,8 @@ mod profile_name;
 mod profile_validation_error;
 mod runtime_limits_profile;
 
+pub use runtime_limits_profile::RuntimeLimitsConfig;
+
 // Re-export sub-modules
 pub use contract_violation::ContractViolation;
 pub use profile_name::ProfileName;
@@ -79,7 +81,7 @@ mod tests {
 mod profile_tests {
     use crate::budget::BoundednessPolicy;
     use crate::limits;
-    use crate::policy::{ProfileName, RuntimeLimitsProfile};
+    use crate::policy::{ProfileName, RuntimeLimitsConfig, RuntimeLimitsProfile};
     use crate::workflow::ResourceContract;
 
     /// C1: Three canonical profiles exist and are pairwise distinct.
@@ -480,56 +482,56 @@ mod profile_tests {
     /// Profile smart constructor rejects zero values.
     #[test]
     fn profile_new_rejects_zero_values() {
-        let result = RuntimeLimitsProfile::new(
-            ProfileName::Strict,
-            0, // zero active_runs
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-        );
+        let config = RuntimeLimitsConfig {
+            active_runs: 0, // zero active_runs
+            ready_queue_depth: 1,
+            ipc_frame_bytes: 1,
+            action_input_bytes: 1,
+            action_output_bytes: 1,
+            step_output_bytes: 1,
+            result_bytes: 1,
+            trace_ring_capacity: 1,
+            journal_writer_queue_capacity: 1,
+            for_each_item_count: 1,
+            together_branch_count: 1,
+            collect_pages: 1,
+            collect_items: 1,
+            collect_time_seconds: 1,
+            repeat_attempts: 1,
+            repeat_time_seconds: 1,
+            retry_attempts: 1,
+            max_wait_duration_seconds: 1,
+            ask_timeout_seconds: 1,
+        };
+        let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
         assert!(result.is_err(), "zero active_runs should be rejected");
     }
 
     /// Profile smart constructor rejects values exceeding hard limits.
     #[test]
     fn profile_new_rejects_exceeding_hard_limits() {
-        let result = RuntimeLimitsProfile::new(
-            ProfileName::Relaxed,
-            1,
-            limits::MAX_QUEUE_DEPTH as u32 + 1, // exceeds MAX_QUEUE_DEPTH
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-        );
+        let config = RuntimeLimitsConfig {
+            active_runs: 1,
+            ready_queue_depth: limits::MAX_QUEUE_DEPTH + 1, // exceeds MAX_QUEUE_DEPTH
+            ipc_frame_bytes: 1,
+            action_input_bytes: 1,
+            action_output_bytes: 1,
+            step_output_bytes: 1,
+            result_bytes: 1,
+            trace_ring_capacity: 1,
+            journal_writer_queue_capacity: 1,
+            for_each_item_count: 1,
+            together_branch_count: 1,
+            collect_pages: 1,
+            collect_items: 1,
+            collect_time_seconds: 1,
+            repeat_attempts: 1,
+            repeat_time_seconds: 1,
+            retry_attempts: 1,
+            max_wait_duration_seconds: 1,
+            ask_timeout_seconds: 1,
+        };
+        let result = RuntimeLimitsProfile::new(ProfileName::Relaxed, config);
         assert!(
             result.is_err(),
             "exceeding MAX_QUEUE_DEPTH should be rejected"
@@ -539,28 +541,28 @@ mod profile_tests {
     /// Profile new() accepts boundary values exactly at hard limits.
     #[test]
     fn profile_new_accepts_boundary_values() {
-        let result = RuntimeLimitsProfile::new(
-            ProfileName::Relaxed,
-            1,
-            limits::MAX_QUEUE_DEPTH.min(u32::MAX), // at boundary
-            limits::MAX_IPC_PAYLOAD_BYTES.min(u32::MAX),
-            limits::MAX_INPUT_BYTES.min(u32::MAX),
-            limits::MAX_OUTPUT_BYTES.min(u32::MAX),
-            limits::MAX_OUTPUT_BYTES.min(u32::MAX),
-            limits::MAX_OUTPUT_BYTES.min(u32::MAX),
-            1,
-            1,
-            1,
-            1,
-            1,
-            limits::MAX_COLLECT_ITEMS.min(u32::MAX),
-            1,
-            1,
-            1,
-            1,
-            limits::MAX_RETRY_ATTEMPTS as u64,
-            limits::MAX_RETRY_ATTEMPTS as u64,
-        );
+        let config = RuntimeLimitsConfig {
+            active_runs: 1,
+            ready_queue_depth: limits::MAX_QUEUE_DEPTH, // at boundary
+            ipc_frame_bytes: limits::MAX_IPC_PAYLOAD_BYTES,
+            action_input_bytes: limits::MAX_INPUT_BYTES,
+            action_output_bytes: limits::MAX_OUTPUT_BYTES,
+            step_output_bytes: limits::MAX_OUTPUT_BYTES,
+            result_bytes: limits::MAX_OUTPUT_BYTES,
+            trace_ring_capacity: 1,
+            journal_writer_queue_capacity: 1,
+            for_each_item_count: 1,
+            together_branch_count: 1,
+            collect_pages: 1,
+            collect_items: limits::MAX_COLLECT_ITEMS,
+            collect_time_seconds: 1,
+            repeat_attempts: 1,
+            repeat_time_seconds: 1,
+            retry_attempts: 1,
+            max_wait_duration_seconds: 1,
+            ask_timeout_seconds: 1,
+        };
+        let result = RuntimeLimitsProfile::new(ProfileName::Relaxed, config);
         assert!(result.is_ok(), "boundary values should be accepted");
     }
 }

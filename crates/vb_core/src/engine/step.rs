@@ -27,40 +27,39 @@ pub fn step_once(
         .node(pc)
         .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
 
-    // Loop body re-entry: when a step is already in a terminal state
-    // (Succeeded from a previous iteration), skip mark_running so the
-    // absorbing terminal-state invariant is preserved. The step stays
-    // in its terminal state across re-execution.
+    // Loop body re-entry: when a step is already Succeeded, preserve it.
     let is_reentry = matches!(run.step_state(pc)?, StepState::Succeeded);
-
     if !is_reentry {
         run.mark_running(pc)?;
     }
+
     let signal = match execute_node(plan, run, node, store) {
         Ok(signal) => signal,
-        Err(error) => {
-            // On re-entry, the step stays in its terminal state; do not
-            // attempt to mark it Failed (which would violate the absorbing
-            // invariant). The error propagates to the caller.
-            if !is_reentry {
-                run.mark_failed(pc)?;
-            }
-            // Check if this step has an error handler.
-            match route_error_handler(plan, run, pc, &error)? {
-                ErrorHandlerOutcome::Routed => {
-                    return Ok(EngineSignal::Continue);
-                }
-                ErrorHandlerOutcome::NoHandler => {
-                    return Err(error);
-                }
-            }
-        }
+        Err(error) => return handle_step_error(plan, run, pc, is_reentry, error),
     };
-    // On re-entry, the step already carries its terminal state.
+
     if !is_reentry {
         mark_step_after_signal(run, pc, &signal)?;
     }
     Ok(signal)
+}
+
+#[inline]
+fn handle_step_error(
+    plan: &CompiledWorkflow,
+    run: &mut RunFrame,
+    pc: StepIdx,
+    is_reentry: bool,
+    error: EngineError,
+) -> Result<EngineSignal, EngineError> {
+    // On re-entry, the step stays in its terminal state.
+    if !is_reentry {
+        run.mark_failed(pc)?;
+    }
+    match route_error_handler(plan, run, pc, &error)? {
+        ErrorHandlerOutcome::Routed => Ok(EngineSignal::Continue),
+        ErrorHandlerOutcome::NoHandler => Err(error),
+    }
 }
 
 #[inline]
@@ -95,12 +94,17 @@ fn execute_boundary_node(
     kind: &CompiledNodeKind,
 ) -> Result<EngineSignal, EngineError> {
     match kind {
-        CompiledNodeKind::Do { .. } => {
-            // Engine suspends on Do nodes. The caller receives AwaitingAction
-            // and must issue a ticket, dispatch to the action handler, and
-            // later call resume_action_completion or resume_action_failure.
-            Ok(EngineSignal::AwaitingAction)
-        }
+        CompiledNodeKind::Jump { target } => node_helpers::jump_to(run, *target),
+        CompiledNodeKind::Finish { result } => node_helpers::finish_run(run, *result),
+        CompiledNodeKind::ErrorHandler { body, .. } => node_helpers::jump_to(run, *body),
+        other => execute_suspension_node(other),
+    }
+}
+
+#[inline]
+fn execute_suspension_node(kind: &CompiledNodeKind) -> Result<EngineSignal, EngineError> {
+    match kind {
+        CompiledNodeKind::Do { .. } => Ok(EngineSignal::AwaitingAction),
         CompiledNodeKind::WaitUntil { deadline_slot } => Ok(EngineSignal::AwaitingWait {
             deadline_slot: *deadline_slot,
         }),
@@ -113,14 +117,6 @@ fn execute_boundary_node(
         CompiledNodeKind::Ask { timeout_slot, .. } => Ok(EngineSignal::AwaitingAsk {
             timeout_slot: *timeout_slot,
         }),
-        CompiledNodeKind::Jump { target } => node_helpers::jump_to(run, *target),
-        CompiledNodeKind::Finish { result } => node_helpers::finish_run(run, *result),
-        CompiledNodeKind::ErrorHandler { body, .. } => {
-            // ErrorHandler node routes PC to its body step.
-            // If the body fails, the engine's error routing will catch it
-            // via the body node's on_error field and route to the handler.
-            node_helpers::jump_to(run, *body)
-        }
         _ => Err(EngineError::UnsupportedPrimitive {
             primitive: "not_yet_implemented",
         }),
