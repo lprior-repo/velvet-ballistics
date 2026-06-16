@@ -15,9 +15,9 @@ use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledNode;
 
 use crate::engine::{
+    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
     compute_idempotency_key, drive_deterministic_full, execute_do, execute_do_without_contract,
     execute_error_handler, execute_retry_check, resolve_contract, resume_action_outcome,
-    EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
 };
 use vb_core::action::ActionFailure;
 use vb_core::action::ActionFailureCode;
@@ -1589,10 +1589,10 @@ mod blackhat_engine {
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     use crate::engine::{
+        EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
         compute_idempotency_key, drive_deterministic_full, drive_with_actions, execute_do,
         execute_do_without_contract, execute_error_handler, execute_node_full, execute_retry_check,
-        resume_action_outcome, runtime_from_core, EvidenceCollector, EvidenceEvent, RetryPolicy,
-        RuntimeEngineError, RuntimeSignal,
+        resume_action_outcome, runtime_from_core,
     };
     use crate::primitives::collect::CollectStates;
 

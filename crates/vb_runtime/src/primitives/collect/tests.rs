@@ -3967,7 +3967,10 @@ fn collect_states_new_produces_valid_initialized_container() -> Result<(), Strin
     )?;
     // The container is usable: find must not panic and should return None.
     let found = states.find(RunId::new(0), SlotIdx::new(0), ListId::new(0));
-    ensure(found.is_none(), "find on new CollectStates should return None")?;
+    ensure(
+        found.is_none(),
+        "find on new CollectStates should return None",
+    )?;
     Ok(())
 }
 
@@ -4019,7 +4022,9 @@ fn collect_states_drain_and_reuse_at_same_key() -> Result<(), String> {
     // Remove (drain) the state
     states.remove(RunId::new(1), SlotIdx::new(0));
     ensure(
-        states.capture_state(RunId::new(1), SlotIdx::new(0)).is_none(),
+        states
+            .capture_state(RunId::new(1), SlotIdx::new(0))
+            .is_none(),
         "state should be None after remove",
     )?;
 
@@ -4063,7 +4068,9 @@ fn capture_state_does_not_silently_drop_under_multiple_entries() -> Result<(), S
             start_millis: 0,
             from_journal: false,
         };
-        states.upsert(state).map_err(|e| format!("upsert entry {i}: {e:?}"))?;
+        states
+            .upsert(state)
+            .map_err(|e| format!("upsert entry {i}: {e:?}"))?;
     }
 
     // Verify all 128 entries are still recoverable
@@ -4103,8 +4110,8 @@ fn collect_start_with_zero_limit_on_nonempty_source_fails() -> Result<(), String
         &mut store,
         &mut states,
         source,
-        0,   // limit = 0
-        1,   // page_size = 1
+        0, // limit = 0
+        1, // page_size = 1
         StepIdx::new(1),
         StepIdx::new(2),
         Some(SlotIdx::new(1)),
@@ -4133,8 +4140,8 @@ fn collect_start_with_zero_limit_and_empty_source_fails() -> Result<(), String> 
         &mut store,
         &mut states,
         source,
-        0,   // limit = 0
-        1,   // page_size = 1
+        0, // limit = 0
+        1, // page_size = 1
         StepIdx::new(1),
         StepIdx::new(2),
         Some(SlotIdx::new(1)),
@@ -4170,12 +4177,10 @@ fn collect_start_with_zero_limit_and_zero_page_size_fails() -> Result<(), String
         None,
     );
     match result {
-        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
-            ensure(
-                reason == "collect page_size must be nonzero",
-                format!("expected 'page_size must be nonzero', got: {reason}"),
-            )
-        }
+        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+            reason == "collect page_size must be nonzero",
+            format!("expected 'page_size must be nonzero', got: {reason}"),
+        ),
         other => Err(format!(
             "expected InvalidCompiledWorkflow for page_size=0, got {other:?}"
         )),
@@ -4213,7 +4218,10 @@ fn collect_start_empty_source_writes_empty_collector_and_jumps_to_done() -> Resu
     match *run.read_slot(collector).expect("read must succeed") {
         SlotValue::List(id) => {
             let items = store.list(id).expect("list read must succeed");
-            ensure(items.is_empty(), "collector should be empty for empty source")?;
+            ensure(
+                items.is_empty(),
+                "collector should be empty for empty source",
+            )?;
         }
         other => return Err(format!("expected List in collector, got {other:?}")),
     }
@@ -4256,7 +4264,11 @@ fn collect_start_limit_exceeds_source_collects_all_in_one_page() -> Result<(), S
         None,
     );
     assert_eq!(result, Ok(vb_core::EngineSignal::Continue));
-    assert_eq!(run.pc(), done, "all items fit in first page, should route to done");
+    assert_eq!(
+        run.pc(),
+        done,
+        "all items fit in first page, should route to done"
+    );
     // Collector should contain all 3 items
     match *run.read_slot(collector).expect("read must succeed") {
         SlotValue::List(id) => {
@@ -4265,18 +4277,9 @@ fn collect_start_limit_exceeds_source_collects_all_in_one_page() -> Result<(), S
                 items.len() == 3,
                 format!("expected 3 items, got {}", items.len()),
             )?;
-            ensure(
-                items[0] == SlotValue::I64(1),
-                "first item mismatch",
-            )?;
-            ensure(
-                items[1] == SlotValue::I64(2),
-                "second item mismatch",
-            )?;
-            ensure(
-                items[2] == SlotValue::I64(3),
-                "third item mismatch",
-            )
+            ensure(items[0] == SlotValue::I64(1), "first item mismatch")?;
+            ensure(items[1] == SlotValue::I64(2), "second item mismatch")?;
+            ensure(items[2] == SlotValue::I64(3), "third item mismatch")
         }
         other => Err(format!("expected List in collector, got {other:?}")),
     }
@@ -4292,12 +4295,7 @@ fn collect_start_limit_huge_exceeds_source() -> Result<(), String> {
     let source = SlotIdx::new(0);
     let collector = SlotIdx::new(1);
     let done = StepIdx::new(2);
-    list_in_slot(
-        &mut run,
-        &mut store,
-        source,
-        vec![SlotValue::I64(42)],
-    );
+    list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(42)]);
     let result = collect_start(
         &mut run,
         &mut store,
@@ -4325,7 +4323,8 @@ fn collect_start_with_null_source_returns_type_mismatch() -> Result<(), String> 
     let mut store = ValueStore::new();
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
-    run.write_slot(source, SlotValue::Null).expect("write must succeed");
+    run.write_slot(source, SlotValue::Null)
+        .expect("write must succeed");
     let result = collect_start(
         &mut run,
         &mut store,
@@ -4344,10 +4343,7 @@ fn collect_start_with_null_source_returns_type_mismatch() -> Result<(), String> 
                 expected == "list",
                 format!("expected 'list', got: {expected}"),
             )?;
-            ensure(
-                found == "null",
-                format!("expected 'null', got: {found}"),
-            )
+            ensure(found == "null", format!("expected 'null', got: {found}"))
         }
         other => Err(format!(
             "expected TypeMismatch for null source, got {other:?}"
@@ -4500,10 +4496,7 @@ fn collect_start_with_blob_source_returns_type_mismatch() -> Result<(), String> 
                 expected == "list",
                 format!("expected 'list', got: {expected}"),
             )?;
-            ensure(
-                found == "blob",
-                format!("expected 'blob', got: {found}"),
-            )
+            ensure(found == "blob", format!("expected 'blob', got: {found}"))
         }
         other => Err(format!(
             "expected TypeMismatch for blob source, got {other:?}"

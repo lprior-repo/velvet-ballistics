@@ -1,5 +1,12 @@
 //! Tests for the shard module.
-#![allow(dead_code, unused_imports)]
+#![allow(
+    dead_code,
+    unused_imports,
+    clippy::expect_used,
+    clippy::let_underscore_must_use,
+    clippy::as_conversions,
+    clippy::indexing_slicing
+)]
 
 include!("tests/chunk_001.rs");
 include!("tests/chunk_002.rs");

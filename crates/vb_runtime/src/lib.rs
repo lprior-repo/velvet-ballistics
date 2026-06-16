@@ -10,6 +10,14 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::comparison_chain)]
+// Test-only lint relaxation. The three E0453 entries below
+// (`clippy::panic`, `clippy::panic_in_result_fn`, `clippy::unwrap_used`)
+// trigger rustc E0453 because the workspace Cargo.toml forbids those
+// lints at the highest level; a `forbid` cannot be locally allowed.
+// The cfg_attr remain as documentation of intent and to allow the
+// remaining 23 lints for test code; the production lib is unaffected
+// by `cfg(test)` so the unallowed entries are dead code at the lib root
+// but they remain inert for the test build of the lib target.
 #![cfg_attr(
     test,
     allow(

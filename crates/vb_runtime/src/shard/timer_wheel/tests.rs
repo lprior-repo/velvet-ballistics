@@ -177,3 +177,20 @@ fn default_is_empty() {
     let wheel = TimerWheel::default();
     assert!(wheel.is_empty());
 }
+
+#[test]
+fn capacity_exceeded_returns_error() {
+    let mut wheel = TimerWheel::with_capacity(2);
+    let now = Instant::now();
+    assert_eq!(wheel.insert(run(1), now, PendingTimerKind::Wait), Ok(()));
+    assert_eq!(wheel.insert(run(2), now, PendingTimerKind::Wait), Ok(()));
+    // At capacity
+    assert_eq!(
+        wheel.insert(run(3), now, PendingTimerKind::Wait),
+        Err(TimerWheelError::CapacityExceeded)
+    );
+    // Replacing an existing timer should still work
+    let replace_time = now + std::time::Duration::from_millis(10);
+    assert_eq!(wheel.insert(run(2), replace_time, PendingTimerKind::Ask), Ok(()));
+    assert_eq!(wheel.len(), 2);
+}

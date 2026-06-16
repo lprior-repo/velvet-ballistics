@@ -112,8 +112,7 @@ impl Shard {
         // Attempt periodic snapshot if enabled.
         // write_snapshot_for_run is non-blocking: serialization and storage
         // errors return SnapshotWriteOutcome::Failed rather than propagating.
-        let outcome =
-            self.write_snapshot_for_run(run, &state, interval, executed, last_executed);
+        let outcome = self.write_snapshot_for_run(run, &state, interval, executed, last_executed);
 
         if matches!(outcome, self::SnapshotWriteOutcome::Written) {
             state.last_snapshot_executed = executed;

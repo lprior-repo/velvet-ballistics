@@ -32,7 +32,8 @@ impl Shard {
             // Decrement the coalesce window counter on empty ticks
             // so the window expires based on elapsed time, not command volume.
             if self.current_coalesce_window_remaining > 0 {
-                self.current_coalesce_window_remaining -= 1;
+                self.current_coalesce_window_remaining =
+                    self.current_coalesce_window_remaining.saturating_sub(1);
             }
             // Window expired: flush buffered events atomically.
             if self.current_coalesce_window_remaining == 0 {
@@ -54,7 +55,8 @@ impl Shard {
         // empty-queue ticks, so the window can expire regardless of
         // command throughput.
         if self.current_coalesce_window_remaining > 0 {
-            self.current_coalesce_window_remaining -= 1;
+            self.current_coalesce_window_remaining =
+                self.current_coalesce_window_remaining.saturating_sub(1);
         }
 
         // Window expired: flush buffered events atomically.

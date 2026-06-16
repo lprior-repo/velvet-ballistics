@@ -34,6 +34,8 @@ pub struct TimerEntry {
 pub enum TimerWheelError {
     /// Replacing this run's timer would overflow the freshness generation.
     GenerationExhausted,
+    /// The timer wheel has reached its maximum capacity.
+    CapacityExceeded,
 }
 
 /// Dual-index timer data structure for O(log n) operations.
@@ -43,15 +45,24 @@ pub struct TimerWheel {
     by_deadline: BTreeMap<Instant, Vec<TimerEntry>>,
     /// Run-indexed entries for O(1) cancel/lookup.
     by_run: Map<RunId, TimerEntry>,
+    /// Maximum number of timers allowed.
+    capacity: usize,
 }
 
 impl TimerWheel {
-    /// Creates an empty timer wheel.
+    /// Creates an empty timer wheel with a default capacity of 65536.
     #[must_use]
     pub fn new() -> Self {
+        Self::with_capacity(65_536)
+    }
+
+    /// Creates an empty timer wheel with the specified maximum capacity.
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
             by_deadline: BTreeMap::new(),
             by_run: Map::new(),
+            capacity,
         }
     }
 
@@ -64,6 +75,9 @@ impl TimerWheel {
         deadline: Instant,
         kind: PendingTimerKind,
     ) -> Result<(), TimerWheelError> {
+        if self.by_run.len() >= self.capacity && !self.by_run.contains_key(&run) {
+            return Err(TimerWheelError::CapacityExceeded);
+        }
         let generation = self.next_generation(run)?;
         self.cancel(run);
         let entry = TimerEntry {
