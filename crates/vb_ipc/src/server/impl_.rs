@@ -6,7 +6,6 @@
 use arrayvec::ArrayVec;
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Token};
-use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -36,14 +35,12 @@ use crate::{
 
 use super::helpers::{AWAITING_MAGIC_MAX_BYTES, MagicValidationState, validate_magic_early};
 use super::{
-    ClientConnection, IpcResponse, IpcServer, WorkflowResolutionError, WorkflowResolver,
-    append_read_bytes, borrow_workflow_resolver, extract_payload, frame_error_response,
-    frame_total_len, read_buffer_header, send_response,
+    ClientConnection, IpcResponse, IpcServer, MAX_CLIENTS, WorkflowResolutionError,
+    WorkflowResolver, append_read_bytes, borrow_workflow_resolver, extract_payload,
+    frame_error_response, frame_total_len, read_buffer_header, send_response,
 };
 
 const SERVER_TOKEN: Token = Token(0);
-const FIRST_CLIENT_TOKEN: usize = 1;
-pub(crate) const MAX_CLIENTS: usize = 256;
 const READ_CHUNK_BYTES: usize = 4096;
 
 impl IpcServer {
@@ -65,12 +62,13 @@ impl IpcServer {
 
         let events = Events::with_capacity(MAX_CLIENTS);
 
+        const NONE_CONN: Option<ClientConnection> = None;
+
         Ok(Self {
             poll,
             listener,
             events,
-            clients: HashMap::new(),
-            next_token: FIRST_CLIENT_TOKEN,
+            clients: [NONE_CONN; MAX_CLIENTS],
             #[cfg(test)]
             test_poll_result: None,
         })
@@ -136,35 +134,34 @@ impl IpcServer {
     }
 
     pub(crate) fn accept_client(&mut self) -> Result<(), IpcServerError> {
-        if self.clients.len() >= MAX_CLIENTS {
-            return Err(IpcServerError::TooManyClients);
-        }
-
         let (stream, _addr) = self
             .listener
             .accept()
             .map_err(|source| IpcServerError::AcceptFailed { source })?;
 
-        let token_val = self
-            .next_token
-            .checked_add(1)
-            .ok_or(IpcServerError::TooManyClients)?;
-        let token = Token(self.next_token);
-        self.next_token = token_val;
+        let free_slot = self.clients.iter().position(|c| c.is_none());
 
-        let mut client = ClientConnection {
-            stream,
-            read_buffer: Vec::new(),
-            write_buffer: Vec::new(),
-            magic_state: MagicValidationState::AwaitingMagic,
-        };
+        if let Some(index) = free_slot {
+            let token = Token(index + 1);
 
-        self.poll
-            .registry()
-            .register(&mut client.stream, token, Interest::READABLE)
-            .map_err(|source| IpcServerError::PollFailed { source })?;
+            let mut client = ClientConnection {
+                stream,
+                read_buffer: Vec::new(),
+                write_buffer: Vec::new(),
+                magic_state: MagicValidationState::AwaitingMagic,
+            };
 
-        drop(self.clients.insert(token.0, client));
+            self.poll
+                .registry()
+                .register(&mut client.stream, token, Interest::READABLE)
+                .map_err(|source| IpcServerError::PollFailed { source })?;
+
+            self.clients[index] = Some(client);
+        } else {
+            // Drop connection to enforce concurrent client limit.
+            drop(stream);
+        }
+
         Ok(())
     }
 
@@ -181,7 +178,10 @@ impl IpcServer {
             .map_err(|source| IpcServerError::PollFailed { source })?;
         let token = Token(token_index);
 
-        let Some(client) = self.clients.get_mut(&token_index) else {
+        let Some(index) = token_index.checked_sub(1) else {
+            return Ok(true);
+        };
+        let Some(client) = self.clients.get_mut(index).and_then(|c| c.as_mut()) else {
             return Ok(true);
         };
         let mut resolver = resolver;
@@ -299,7 +299,10 @@ impl IpcServer {
     }
 
     pub(crate) fn handle_writable(&mut self, token_index: usize) -> Result<bool, IpcServerError> {
-        let Some(client) = self.clients.get_mut(&token_index) else {
+        let Some(index) = token_index.checked_sub(1) else {
+            return Ok(true);
+        };
+        let Some(client) = self.clients.get_mut(index).and_then(|c| c.as_mut()) else {
             return Ok(true);
         };
 
@@ -327,8 +330,10 @@ impl IpcServer {
     }
 
     pub(crate) fn remove_client(&mut self, token_index: usize) {
-        if let Some(mut client) = self.clients.remove(&token_index) {
-            drop(self.poll.registry().deregister(&mut client.stream));
+        if let Some(index) = token_index.checked_sub(1) {
+            if let Some(mut client) = self.clients.get_mut(index).and_then(|c| c.take()) {
+                drop(self.poll.registry().deregister(&mut client.stream));
+            }
         }
     }
 }

@@ -349,11 +349,11 @@ fn slow_client_partial_frame_keeps_read_buffer_bounded() {
         .expect("server should retain bounded partial frame");
 
     assert_eq!(
-        server.clients.len(),
+        server.client_count(),
         1,
         "slow client with partial bounded frame should remain connected"
     );
-    let Some(connection) = server.clients.values().next() else {
+    let Some(connection) = server.clients.iter().filter_map(|c| c.as_ref()).next() else {
         return;
     };
     assert_eq!(
@@ -400,7 +400,7 @@ fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
         .expect("server should reject oversized frame");
 
     assert!(
-        server.clients.is_empty(),
+        server.client_count() == 0,
         "oversized slow-client frame must be rejected by disconnecting the client"
     );
 }
@@ -437,7 +437,7 @@ fn server_disconnects_invalid_magic_without_response() {
         .expect("process poll should succeed");
 
     assert!(
-        server.clients.is_empty(),
+        server.client_count() == 0,
         "invalid magic frame must disconnect the client without allocating a response"
     );
 }
@@ -1557,7 +1557,7 @@ fn ipc_response_roundtrip_workflow_digest_mismatch() {
 // Coverage tests for impl_.rs branches
 // ══════════════════════════════════════════════════════════════════════════════
 
-use super::impl_::MAX_CLIENTS;
+use crate::server::MAX_CLIENTS;
 
 // ── 1. accept_client when max clients reached ────────────────────────────────
 
@@ -1576,12 +1576,21 @@ fn accept_client_returns_too_many_clients_when_at_capacity() {
             .expect("accept should succeed");
     }
 
-    let _extra = make_client(&path);
+    let mut extra = make_client(&path);
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
     assert_eq!(
         result,
-        Err(IpcServerError::TooManyClients),
-        "should fail when max clients reached"
+        Ok(true),
+        "should accept and drop connection when max clients reached without failing poll_once"
+    );
+
+    // Verify the extra client was disconnected
+    use std::io::Read;
+    let mut buf = [0u8; 10];
+    let read_result = extra.read(&mut buf);
+    assert!(
+        matches!(read_result, Ok(0) | Err(_)),
+        "extra client should have been disconnected by the server"
     );
 }
 

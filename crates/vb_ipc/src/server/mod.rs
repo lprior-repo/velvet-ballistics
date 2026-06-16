@@ -38,13 +38,14 @@ use handlers::{
     handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
 };
 
+pub const MAX_CLIENTS: usize = 256;
+
 /// IPC server serving commands over a Unix domain socket.
 pub struct IpcServer {
     poll: mio::Poll,
     listener: mio::net::UnixListener,
     events: mio::Events,
-    clients: std::collections::HashMap<usize, ClientConnection>,
-    next_token: usize,
+    clients: [Option<ClientConnection>; MAX_CLIENTS],
     #[cfg(test)]
     test_poll_result: Option<Result<bool, IpcServerError>>,
 }
@@ -134,19 +135,22 @@ pub fn serve_ipc(
 #[cfg(test)]
 impl IpcServer {
     pub(crate) fn client_count(&self) -> usize {
-        self.clients.len()
+        self.clients.iter().filter(|c| c.is_some()).count()
     }
 
     pub(crate) fn client_stream_mut(
         &mut self,
         token_index: usize,
     ) -> Option<&mut mio::net::UnixStream> {
-        self.clients.get_mut(&token_index).map(|c| &mut c.stream)
+        let index = token_index.checked_sub(1)?;
+        self.clients.get_mut(index)?.as_mut().map(|c| &mut c.stream)
     }
 
     pub(crate) fn client_write_buffer_mut(&mut self, token_index: usize) -> Option<&mut Vec<u8>> {
+        let index = token_index.checked_sub(1)?;
         self.clients
-            .get_mut(&token_index)
+            .get_mut(index)?
+            .as_mut()
             .map(|c| &mut c.write_buffer)
     }
 
@@ -160,12 +164,18 @@ impl IpcServer {
         interest: mio::Interest,
     ) -> Result<(), IpcServerError> {
         let token = mio::Token(token_index);
-        let client =
-            self.clients
-                .get_mut(&token_index)
-                .ok_or_else(|| IpcServerError::PollFailed {
-                    source: std::io::Error::new(std::io::ErrorKind::NotFound, "client not found"),
-                })?;
+        let index = token_index
+            .checked_sub(1)
+            .ok_or_else(|| IpcServerError::PollFailed {
+                source: std::io::Error::new(std::io::ErrorKind::NotFound, "client not found"),
+            })?;
+        let client = self
+            .clients
+            .get_mut(index)
+            .and_then(|c| c.as_mut())
+            .ok_or_else(|| IpcServerError::PollFailed {
+                source: std::io::Error::new(std::io::ErrorKind::NotFound, "client not found"),
+            })?;
         self.poll
             .registry()
             .reregister(&mut client.stream, token, interest)
