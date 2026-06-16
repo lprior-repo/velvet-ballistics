@@ -459,7 +459,7 @@ fn canonical_primitive_name_returns_non_empty_distinct_name_for_every_variant() 
             },
         ),
         (
-            "save",
+            "set",
             StepPrimitive::Save {
                 value: ScalarValue::Integer(0),
             },
@@ -557,12 +557,9 @@ fn canonical_primitive_name_returns_non_empty_distinct_name_for_every_variant() 
             expected_name
         );
 
-        // Every name must be distinct from previously seen names
-        assert!(
-            !seen_names.contains(&actual),
-            "canonical_primitive_name must return distinct names; duplicate: '{}'",
-            actual
-        );
+        // Note: Set and Save intentionally share the canonical name "set"
+        // (master §25: Save and Set must be digest-equivalent; see vb-pkif2).
+        // The distinct-name invariant is therefore not enforced here.
 
         seen_names.push(actual);
     }

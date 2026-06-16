@@ -511,6 +511,18 @@ fn check_accessor_path(
 /// a `CompileError` with source-location context.
 fn map_validation_error(reference: &str, error: &vb_validate::ValidationError) -> CompileError {
     match error {
+        vb_validate::ValidationError::SecretNotDeclared { secret } => {
+            // The shared vb_validate layer reports undeclared secret references
+            // as `SecretNotDeclared { secret }`. The compile layer surfaces
+            // these to users as `UnknownReferenceName { kind: "secrets", .. }`
+            // so the error type and reference-kind reporting are uniform with
+            // other unknown-reference cases.
+            CompileError::UnknownReferenceName {
+                kind: "secrets",
+                reference: Box::from(reference),
+                name: Box::from(secret.as_str()),
+            }
+        }
         vb_validate::ValidationError::UnknownReference { .. } => {
             let Some(body) = reference.strip_prefix('$') else {
                 return CompileError::UnknownReferenceRoot {

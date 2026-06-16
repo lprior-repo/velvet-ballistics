@@ -24,7 +24,8 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
+use std::time::SystemTime;
 
 const TEST_CLEANUP_FAILURES_ENV: &str = "VB_DELIVER_SINK_TEST_CLEANUP_FAILURES";
 const TEST_POST_COMMIT_FINAL_ACTION_ENV: &str = "VB_DELIVER_SINK_TEST_POST_COMMIT_FINAL_ACTION";
@@ -633,54 +634,101 @@ fn run_agent_context() -> Result<std::process::Output, String> {
         .map_err(|error| error.to_string())
 }
 
-fn assert_test_hooks_active() -> Result<(), String> {
-    static PROBE: OnceLock<Result<(), String>> = OnceLock::new();
-    let cached = PROBE.get_or_init(|| {
-        let dir = match deliver_tempdir() {
-            Ok(d) => d,
-            Err(error) => {
-                return Err(format!(
-                    "deliver-sink test-hook probe could not create tempdir: {error}"
-                ));
-            }
-        };
-        let deliver_path = dir.path().join("agent-context.jsonl");
-        let target = match path_text(&deliver_path) {
-            Ok(text) => format!("file:{text}"),
-            Err(error) => {
-                return Err(format!(
-                    "deliver-sink test-hook probe could not format target: {error}"
-                ));
-            }
-        };
-        let output = match agent_context_deliver_command(&target)
-            .env(TEST_POST_COMMIT_FINAL_ACTION_ENV, "unlink-final")
-            .output()
-        {
-            Ok(output) => output,
-            Err(error) => {
-                return Err(format!(
-                    "deliver-sink test-hook probe could not invoke binary: {error}"
-                ));
-            }
-        };
-        let expected_stderr = format!("{PUBLISH_STATE_UNKNOWN_MESSAGE}\n");
-        if output.status.code() == Some(2) && output.stderr == expected_stderr.as_bytes() {
-            Ok(())
-        } else {
-            Err(String::from(
-                "VB_DELIVER_SINK_TEST_* env vars are not honored by the velvet-ballistics binary under test: \
-                 the `debug_test_support` module in crates/vb_cli/src/deliver_sink.rs is gated by \
-                 `#[cfg(all(not(test), debug_assertions))]`, so the hooks are only compiled when the binary \
-                 is built with `debug_assertions` (the default for `cargo test -p velvet-ballistics`, not \
-                 `cargo build --release`); rebuild with `cargo test -p velvet-ballistics` to enable the hooks."
-            ))
+#[derive(Clone, PartialEq, Eq)]
+struct BinaryFingerprint {
+    resolved_path: PathBuf,
+    mtime: SystemTime,
+    size: u64,
+}
+
+fn binary_fingerprint() -> Result<BinaryFingerprint, String> {
+    let raw = Path::new(env!("CARGO_BIN_EXE_velvet-ballistics"));
+    let resolved = std::fs::canonicalize(raw).map_err(|error| {
+        format!("deliver-sink test-hook probe could not canonicalize {raw:?}: {error}")
+    })?;
+    let metadata = std::fs::metadata(&resolved).map_err(|error| {
+        format!(
+            "deliver-sink test-hook probe could not stat {}: {error}",
+            resolved.display()
+        )
+    })?;
+    let mtime = metadata.modified().map_err(|error| {
+        format!(
+            "deliver-sink test-hook probe could not read mtime of {}: {error}",
+            resolved.display()
+        )
+    })?;
+    Ok(BinaryFingerprint {
+        resolved_path: resolved,
+        mtime,
+        size: metadata.len(),
+    })
+}
+
+fn probe_test_hooks_active() -> Result<(), String> {
+    let dir = match deliver_tempdir() {
+        Ok(d) => d,
+        Err(error) => {
+            return Err(format!(
+                "deliver-sink test-hook probe could not create tempdir: {error}"
+            ));
         }
-    });
-    match cached {
-        Ok(()) => Ok(()),
-        Err(message) => Err(message.clone()),
+    };
+    let deliver_path = dir.path().join("agent-context.jsonl");
+    let target = match path_text(&deliver_path) {
+        Ok(text) => format!("file:{text}"),
+        Err(error) => {
+            return Err(format!(
+                "deliver-sink test-hook probe could not format target: {error}"
+            ));
+        }
+    };
+    let output = match agent_context_deliver_command(&target)
+        .env(TEST_POST_COMMIT_FINAL_ACTION_ENV, "unlink-final")
+        .output()
+    {
+        Ok(output) => output,
+        Err(error) => {
+            return Err(format!(
+                "deliver-sink test-hook probe could not invoke binary: {error}"
+            ));
+        }
+    };
+    let expected_stderr = format!("{PUBLISH_STATE_UNKNOWN_MESSAGE}\n");
+    if output.status.code() == Some(2) && output.stderr == expected_stderr.as_bytes() {
+        Ok(())
+    } else {
+        Err(String::from(
+            "VB_DELIVER_SINK_TEST_* env vars are not honored by the velvet-ballistics binary under test: \
+             the `debug_test_support` module in crates/vb_cli/src/deliver_sink.rs is gated by \
+             `#[cfg(all(not(test), debug_assertions))]`, so the hooks are only compiled when the binary \
+             is built with `debug_assertions` (the default for `cargo test -p velvet-ballistics`, not \
+             `cargo build --release`); rebuild with `cargo test -p velvet-ballistics` to enable the hooks.",
+        ))
     }
+}
+
+fn assert_test_hooks_active() -> Result<(), String> {
+    // The probe is cached so subsequent tests skip the binary invocation, but
+    // a `cargo build` between tests would replace the binary on disk and the
+    // old cached verdict would silently apply to the new binary. The cache
+    // is therefore keyed by a binary fingerprint (resolved path + mtime +
+    // size) so a rebuild invalidates the entry and forces a fresh probe.
+    static PROBE: OnceLock<Mutex<Option<(BinaryFingerprint, Result<(), String>)>>> =
+        OnceLock::new();
+    let current = binary_fingerprint()?;
+    let cell = PROBE.get_or_init(|| Mutex::new(None));
+    let mut guard = cell
+        .lock()
+        .map_err(|error| format!("deliver-sink test-hook probe lock poisoned: {error}"))?;
+    if let Some((fingerprint, result)) = guard.as_ref() {
+        if *fingerprint == current {
+            return result.clone();
+        }
+    }
+    let result = probe_test_hooks_active();
+    *guard = Some((current, result.clone()));
+    result
 }
 
 fn assert_deliver_validation_failure(target: &str, expected_message: &str) -> Result<(), String> {
@@ -693,8 +741,20 @@ fn assert_deliver_validation_failure(target: &str, expected_message: &str) -> Re
 
 #[cfg(target_os = "linux")]
 fn assert_direct_blocked_root_rejection(parent: &Path, file_name: &str) -> Result<(), String> {
+    // The helper is `#[cfg(target_os = "linux")]`-gated because the deliver
+    // sink's blocked-root rejection only makes sense on Linux. Fail loudly
+    // when the host is Linux but the expected path is missing (e.g. running
+    // inside a stripped container) so the skipped test is not mistaken for a
+    // passing one.
     if !parent.is_dir() {
-        return Ok(());
+        return Err(format!(
+            "blocked-root precondition unmet: {} must be an existing directory to verify \
+             deliver-sink rejection of {}/{}; the helper is gated by `#[cfg(target_os = \"linux\")]` \
+             and is only meaningful on Linux hosts where the path is present",
+            parent.display(),
+            parent.display(),
+            file_name,
+        ));
     }
 
     let deliver_path = parent.join(file_name);

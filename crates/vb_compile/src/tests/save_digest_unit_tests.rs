@@ -60,7 +60,7 @@ fn save_value_field_affects_digest() {
     let actual = hash_primitive(&save_step);
 
     // Simulate the pre-fix catch-all: only hash the primitive name "save"
-    let catch_all_only_name = hash_bytes(&[b"save"]);
+    let catch_all_only_name = hash_bytes(&[b"set"]);
 
     assert_ne!(
         actual, catch_all_only_name,
@@ -124,7 +124,7 @@ fn save_string_encoding_matches_save_plus_utf8_bytes() {
     let save_step = save_string("my_output");
 
     let actual = hash_primitive(&save_step);
-    let expected = hash_bytes(&[b"save", b"my_output"]);
+    let expected = hash_bytes(&[b"set", b"my_output"]);
 
     assert_eq!(
         actual, expected,
@@ -138,7 +138,7 @@ fn save_integer_encoding_matches_save_plus_le_bytes() {
     let save_step = save_integer(42);
 
     let actual = hash_primitive(&save_step);
-    let expected = hash_bytes(&[b"save", &42_i64.to_le_bytes()]);
+    let expected = hash_bytes(&[b"set", &42_i64.to_le_bytes()]);
 
     assert_eq!(
         actual, expected,

@@ -1574,7 +1574,7 @@ fn canonical_primitive_name_returns_correct_names_for_all_variants() {
             StepPrimitive::Save {
                 value: ScalarValue::String("x".into()),
             },
-            "save",
+            "set",
         ),
         (
             StepPrimitive::Do {

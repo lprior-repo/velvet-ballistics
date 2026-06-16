@@ -18,6 +18,10 @@ const WEBHOOK_SCHEME: &str = "webhook";
 const MAX_PATH_BYTES: usize = 4095;
 const MAX_TEMP_STAGE_ATTEMPTS: usize = 8;
 const MINIMUM_STAGE_BASE_NAME: &str = ".t";
+// Owner-only read+write mode for newly created delivery files. Computed via
+// `bitflags::union` (a `const fn`) so the value is constructed at compile
+// time and avoids a runtime call.
+const MODE: Mode = Mode::RUSR.union(Mode::WUSR);
 
 enum TempStageCreation {
     Created((OsString, File)),
@@ -593,7 +597,7 @@ fn create_new_file_at(parent_dir: &OwnedFd, path: &OsStr) -> Result<File, Delive
         parent_dir,
         path,
         OFlags::WRONLY | OFlags::CREATE | OFlags::EXCL | OFlags::CLOEXEC,
-        created_file_mode(),
+        MODE,
     )
     .map(File::from)
     .map_err(|error| {
@@ -603,10 +607,6 @@ fn create_new_file_at(parent_dir: &OwnedFd, path: &OsStr) -> Result<File, Delive
             to_rustix_io_error(error)
         }
     })
-}
-
-fn created_file_mode() -> Mode {
-    Mode::RUSR | Mode::WUSR
 }
 
 fn open_parent_directory(parent: &Path) -> Result<OwnedFd, DeliverSinkError> {
@@ -1038,7 +1038,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use super::{
-        DeliverSinkError, DeliverTarget, created_file_mode, hashed_temp_name, parse_deliver_target,
+        DeliverSinkError, DeliverTarget, hashed_temp_name, parse_deliver_target,
         preferred_temp_name, temp_stage_name, test_support, write_json_line,
     };
 
@@ -1175,15 +1175,10 @@ mod tests {
         std::fs::create_dir(&parent).map_err(|error| error.to_string())?;
         let moved_parent = temp_dir.path().join("moved-parent");
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
             parent_change: Some(ParentChange::ReplaceOpenedPathWithNewDirectory {
                 moved_to: moved_parent,
             }),
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
+            ..Default::default()
         });
 
         let deliver_path = parent.join("agent-context.jsonl");
@@ -1209,13 +1204,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(sync_error), Ok(())]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1254,18 +1244,13 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
             before_link_parent_change: Some(
                 PostCommitParentChange::ReplaceResolvedPathWithSymlink {
                     moved_to: moved_parent.clone(),
                     replacement: replacement_parent.clone(),
                 },
             ),
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1301,18 +1286,13 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
             after_link_sync_parent_change: Some(
                 PostCommitParentChange::ReplaceResolvedPathWithSymlink {
                     moved_to: moved_parent.clone(),
                     replacement: replacement_parent.clone(),
                 },
             ),
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1353,13 +1333,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(sync_error), Err(sync_error)]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1392,12 +1367,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
             cleanup_failures: vec![OsString::from(".agent-context.jsonl.tmp")],
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Ok(())]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1430,13 +1401,8 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Ok(()), Err(sync_error)]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1466,13 +1432,9 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
             post_commit_final_path_change: Some(FinalPathChange::UnlinkFinalPath),
             sync_results: VecDeque::from([Ok(()), Ok(())]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1508,13 +1470,9 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
             post_commit_final_path_change: Some(FinalPathChange::ReplaceFinalPath),
             sync_results: VecDeque::from([Ok(()), Ok(())]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1553,12 +1511,8 @@ mod tests {
         let sync_error = DeliverSinkError::Io(std::io::ErrorKind::PermissionDenied);
         let _hooks = test_support::install(HookConfig {
             cleanup_failures: vec![OsString::from(".agent-context.jsonl.tmp")],
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(sync_error), Ok(())]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1605,18 +1559,14 @@ mod tests {
         let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
-            cleanup_failures: Vec::new(),
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
             post_commit_parent_change: Some(
                 PostCommitParentChange::ReplaceResolvedPathWithSymlink {
                     moved_to: moved_parent.clone(),
                     replacement: replacement_parent.clone(),
                 },
             ),
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Ok(()), Ok(())]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1656,14 +1606,10 @@ mod tests {
             .map_err(|error| error.to_string())?;
         let _hooks = test_support::install(HookConfig {
             cleanup_failures: vec![OsString::from("agent-context.jsonl")],
-            parent_change: None,
-            before_link_parent_change: None,
-            after_link_sync_parent_change: None,
-            post_commit_parent_change: None,
-            post_commit_final_path_change: None,
             sync_results: VecDeque::from([Err(DeliverSinkError::Io(
                 std::io::ErrorKind::PermissionDenied,
             ))]),
+            ..Default::default()
         });
 
         match write_json_line(&target, &serde_json::json!({"kind": "AgentContext"})) {
@@ -1695,8 +1641,8 @@ mod tests {
     #[test]
     fn created_file_mode_is_owner_only() {
         assert_eq!(
-            created_file_mode(),
-            rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR
+            super::MODE,
+            rustix::fs::Mode::RUSR.union(rustix::fs::Mode::WUSR)
         );
     }
 
