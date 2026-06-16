@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=21
+VERUS_TARGET_COUNT=22
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -19,6 +19,7 @@ PASS verus verification/verus/taint_lattice.rs
 PASS verus verification/verus/step_state_machine.rs
 PASS verus verification/verus/step_budget.rs
 PASS verus verification/verus/resource_budget.rs
+PASS verus crates/vb_ipc/src/verification/verus/vb_5iebh.rs
 PASS verus verification/verus/vb_jpq724_events_for_run_production.rs
 PASS verus verification/verus/signals_invariant.rs
 PASS verus verification/verus/run_loop_termination.rs
