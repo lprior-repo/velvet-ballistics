@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::EventSeq;
@@ -45,7 +47,14 @@ proptest! {
         for i in 0u64..5u64 {
             let event = make_event(run, i);
             match batch.append_event(&event) {
-                Ok(()) => { prop_assert_eq!(batch.len(), (i + 1) as usize); }
+                Ok(()) => {
+                    // i + 1 fits in usize for the loop range 0..5; use checked to satisfy lint.
+                    let expected = i
+                        .checked_add(1)
+                        .and_then(|v| usize::try_from(v).ok())
+                        .expect("loop counter fits in usize");
+                    prop_assert_eq!(batch.len(), expected);
+                }
                 Err(_) => break,
             }
         }

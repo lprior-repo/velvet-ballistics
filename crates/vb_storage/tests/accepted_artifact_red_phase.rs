@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 
 use vb_core::value::ConstValue;
 use vb_core::workflow::{ResourceContract, WorkflowParts};
@@ -75,13 +76,13 @@ fn warning_at(gate: u8) -> VerificationWarning {
 #[test]
 fn accepted_artifact_validator_accepts_warning_gate_fifteen() {
     let warning = warning_at(15);
-    assert_eq!(warning.is_valid(), true);
+    assert!(warning.is_valid());
 }
 
 #[test]
 fn accepted_artifact_validator_rejects_warning_gate_sixteen() {
     let warning = warning_at(16);
-    assert_eq!(warning.is_valid(), false);
+    assert!(!warning.is_valid());
 }
 
 #[test]
@@ -98,7 +99,12 @@ fn accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound() {
 fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled()
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
-    assert_eq!(artifact.verification.gate_count, 15);
+    if artifact.verification.gate_count != 15 {
+        return Err(format!(
+            "Journaled must have 15 gates, got {}",
+            artifact.verification.gate_count
+        ));
+    }
     Ok(())
 }
 
@@ -106,7 +112,12 @@ fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
 fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict() -> Result<(), String>
 {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert_eq!(artifact.verification.gate_count, 15);
+    if artifact.verification.gate_count != 15 {
+        return Err(format!(
+            "Strict must have 15 gates, got {}",
+            artifact.verification.gate_count
+        ));
+    }
     Ok(())
 }
 
@@ -117,14 +128,15 @@ fn accepted_artifact_encoder_rejects_relaxed_raw_submit_when_accepted_artifacts_
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
         .map_err(|error| format!("Relaxed policy must be accepted: {error}"))?;
-    assert_eq!(
-        artifact.verification.gate_count, 0,
-        "Relaxed must have 0 gates"
-    );
-    assert!(
-        !artifact.verification.durable,
-        "Relaxed must not be durable"
-    );
+    if artifact.verification.gate_count != 0 {
+        return Err(format!(
+            "Relaxed must have 0 gates, got {}",
+            artifact.verification.gate_count
+        ));
+    }
+    if artifact.verification.durable {
+        return Err(String::from("Relaxed must not be durable"));
+    }
     Ok(())
 }
 
@@ -134,7 +146,12 @@ fn accepted_artifact_store_payload_is_raw_workflow_parts_not_nested_artifact() -
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let decoded_parts = postcard::from_bytes::<WorkflowParts>(&artifact.ir)
         .map_err(|error| format!("workflow parts decode failed: {error}"))?;
-    assert_eq!(&*decoded_parts.name, "scope.valid_workflow");
+    if &*decoded_parts.name != "scope.valid_workflow" {
+        return Err(format!(
+            "name must be 'scope.valid_workflow', got {:?}",
+            &*decoded_parts.name
+        ));
+    }
     Ok(())
 }
 
@@ -142,7 +159,12 @@ fn accepted_artifact_store_payload_is_raw_workflow_parts_not_nested_artifact() -
 fn accepted_artifact_encoder_binds_ir_digest_to_ir_bytes_not_workflow_parts_digest()
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert_eq!(artifact.digest, artifact.verification.digest);
+    if artifact.digest != artifact.verification.digest {
+        return Err(format!(
+            "artifact digest must match verification digest: artifact={:?}, verification={:?}",
+            artifact.digest, artifact.verification.digest
+        ));
+    }
     Ok(())
 }
 
@@ -151,83 +173,96 @@ fn accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let proof = &artifact.verification;
-    assert_eq!(proof.gate_count, 15);
-    assert!(proof.bounded_claimed, "bounded_claimed flag must be true");
-    assert!(
-        proof.taint_safe_claimed,
-        "taint_safe_claimed flag must be true"
-    );
-    assert!(
-        proof.retry_safe_claimed,
-        "retry_safe_claimed flag must be true"
-    );
-    assert!(
-        proof.replayable_claimed,
-        "replayable_claimed flag must be true"
-    );
-    assert!(proof.durable, "durable flag must be true for Strict policy");
+    if proof.gate_count != 15 {
+        return Err(format!("expected 15 gates, got {}", proof.gate_count));
+    }
+    if !proof.bounded_claimed {
+        return Err(String::from("bounded_claimed flag must be true"));
+    }
+    if !proof.taint_safe_claimed {
+        return Err(String::from("taint_safe_claimed flag must be true"));
+    }
+    if !proof.retry_safe_claimed {
+        return Err(String::from("retry_safe_claimed flag must be true"));
+    }
+    if !proof.replayable_claimed {
+        return Err(String::from("replayable_claimed flag must be true"));
+    }
+    if !proof.durable {
+        return Err(String::from("durable flag must be true for Strict policy"));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_encoder_journaled_proof_has_durable_false() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
-    assert!(
-        !artifact.verification.durable,
-        "Journaled policy must not be durable"
-    );
+    if artifact.verification.durable {
+        return Err(String::from("Journaled policy must not be durable"));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_encoder_strict_proof_has_durable_true() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert!(
-        artifact.verification.durable,
-        "Strict policy must be durable"
-    );
+    if !artifact.verification.durable {
+        return Err(String::from("Strict policy must be durable"));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_encoder_journaled_gate_count_equals_fifteen() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
-    assert_eq!(
-        artifact.verification.gate_count, 15,
-        "Journaled must have 15 gates"
-    );
+    if artifact.verification.gate_count != 15 {
+        return Err(format!(
+            "Journaled must have 15 gates, got {}",
+            artifact.verification.gate_count
+        ));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_encoder_strict_gate_count_equals_fifteen() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert_eq!(
-        artifact.verification.gate_count, 15,
-        "Strict must have 15 gates"
-    );
+    if artifact.verification.gate_count != 15 {
+        return Err(format!(
+            "Strict must have 15 gates, got {}",
+            artifact.verification.gate_count
+        ));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_validator_accepts_empty_warnings_array() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert!(artifact.verification.warnings.is_empty());
+    if !artifact.verification.warnings.is_empty() {
+        return Err(String::from("warnings must be empty"));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_validator_accepts_empty_idempotency_lists() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert!(artifact.verification.idempotency_keyed.is_empty());
-    assert!(artifact.verification.idempotency_attested.is_empty());
+    if !artifact.verification.idempotency_keyed.is_empty() {
+        return Err(String::from("idempotency_keyed must be empty"));
+    }
+    if !artifact.verification.idempotency_attested.is_empty() {
+        return Err(String::from("idempotency_attested must be empty"));
+    }
     Ok(())
 }
 
 #[test]
 fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert!(artifact.required_capabilities.is_empty());
+    if !artifact.required_capabilities.is_empty() {
+        return Err(String::from("required_capabilities must be empty"));
+    }
     Ok(())
 }
 
@@ -235,7 +270,12 @@ fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(),
 fn accepted_artifact_encoder_records_zero_accepted_at_seq() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     // Current implementation records accepted artifacts without journal sequence tracking.
-    assert_eq!(artifact.accepted_at_seq.get(), 0);
+    if artifact.accepted_at_seq.get() != 0 {
+        return Err(format!(
+            "accepted_at_seq must be 0, got {}",
+            artifact.accepted_at_seq.get()
+        ));
+    }
     Ok(())
 }
 
@@ -251,8 +291,15 @@ fn accepted_artifact_roundtrip_through_storage_persists_and_loads() -> Result<()
         .map_err(|e| format!("load failed: {e}"))?
         .ok_or_else(|| String::from("artifact not found after submit"))?;
 
-    assert_eq!(stored.digest, artifact.digest);
-    assert!(!stored.ir.is_empty());
+    if stored.digest != artifact.digest {
+        return Err(format!(
+            "stored digest must match: stored={:?}, artifact={:?}",
+            stored.digest, artifact.digest
+        ));
+    }
+    if stored.ir.is_empty() {
+        return Err(String::from("ir must not be empty"));
+    }
     Ok(())
 }
 
@@ -266,7 +313,12 @@ fn accepted_artifact_stored_bytes_are_postcard_encoded() -> Result<(), String> {
     let decoded: WorkflowParts = postcard::from_bytes(&artifact.ir)
         .map_err(|e| format!("postcard decode of ir field failed: {e}"))?;
 
-    assert_eq!(&*decoded.name, "scope.valid_workflow");
+    if &*decoded.name != "scope.valid_workflow" {
+        return Err(format!(
+            "name must be 'scope.valid_workflow', got {:?}",
+            &*decoded.name
+        ));
+    }
     Ok(())
 }
 
@@ -276,7 +328,13 @@ fn runtime_admission_requires_artifact_digest_not_raw_workflow() -> Result<(), S
     let workflow = minimal_workflow()?;
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
     let artifact = result.expect("Relaxed must be accepted");
-    assert_eq!(artifact.digest, workflow.digest());
+    if artifact.digest != workflow.digest() {
+        return Err(format!(
+            "artifact digest must match workflow digest: artifact={:?}, workflow={:?}",
+            artifact.digest,
+            workflow.digest()
+        ));
+    }
     Ok(())
 }
 
@@ -299,15 +357,13 @@ fn submit_artifact_rejects_missing_workflow_digest() -> Result<(), String> {
     })
     .map_err(|e| format!("workflow with zero digest should fail: {e}"))?;
     let result = submit_artifact(&journal, &bad_workflow, RuntimePolicy::Strict);
-    assert!(
-        matches!(
-            result,
-            Err(vb_storage::JournalError::ArtifactChecksumMismatch)
-        ),
-        "workflow with zero digest must be rejected with ArtifactChecksumMismatch, got {:?}",
-        result
-    );
-    Ok(())
+    match result {
+        Err(vb_storage::JournalError::ArtifactChecksumMismatch) => Ok(()),
+        other => Err(format!(
+            "workflow with zero digest must be rejected with ArtifactChecksumMismatch, got {:?}",
+            other
+        )),
+    }
 }
 
 #[test]
@@ -316,10 +372,12 @@ fn submit_artifact_validates_workflow_structure() -> Result<(), String> {
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .expect("valid workflow should be accepted under Strict policy");
-    assert_eq!(
-        artifact.verification.gate_count, 15,
-        "accepted workflow must have 15 gates"
-    );
+    if artifact.verification.gate_count != 15 {
+        return Err(format!(
+            "accepted workflow must have 15 gates, got {}",
+            artifact.verification.gate_count
+        ));
+    }
     Ok(())
 }
 
@@ -329,7 +387,13 @@ fn submit_artifact_returns_artifact_with_correct_digest() -> Result<(), String> 
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .map_err(|e| format!("submit failed: {e}"))?;
-    assert_eq!(artifact.digest, workflow.digest());
+    if artifact.digest != workflow.digest() {
+        return Err(format!(
+            "artifact digest must match workflow digest: artifact={:?}, workflow={:?}",
+            artifact.digest,
+            workflow.digest()
+        ));
+    }
     Ok(())
 }
 
@@ -343,7 +407,9 @@ fn submit_artifact_persists_artifact_to_journal() -> Result<(), String> {
     let loaded = journal
         .compiled_ir(artifact.digest)
         .map_err(|e| format!("load failed: {e}"))?;
-    assert!(loaded.is_some(), "artifact must be persisted");
+    if loaded.is_none() {
+        return Err(String::from("artifact must be persisted"));
+    }
     Ok(())
 }
 
@@ -357,10 +423,11 @@ fn submit_artifact_journaled_does_not_persist_strictly() -> Result<(), String> {
     let loaded = journal
         .compiled_ir(artifact.digest)
         .map_err(|e| format!("load failed: {e}"))?;
-    assert!(
-        loaded.is_some(),
-        "Journaled artifact must still be persisted"
-    );
+    if loaded.is_none() {
+        return Err(String::from(
+            "Journaled artifact must still be persisted",
+        ));
+    }
     Ok(())
 }
 
@@ -370,7 +437,13 @@ fn accepted_artifact_proof_contains_workflow_digest() -> Result<(), String> {
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
         .map_err(|e| format!("submit failed: {e}"))?;
-    assert_eq!(artifact.verification.digest, workflow.digest());
+    if artifact.verification.digest != workflow.digest() {
+        return Err(format!(
+            "proof digest must match workflow digest: proof={:?}, workflow={:?}",
+            artifact.verification.digest,
+            workflow.digest()
+        ));
+    }
     Ok(())
 }
 
@@ -378,13 +451,16 @@ fn accepted_artifact_proof_contains_workflow_digest() -> Result<(), String> {
 fn accepted_artifact_validator_requires_all_proof_flags_true_under_strict() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let p = &artifact.verification;
-    assert!(
-        p.bounded_claimed
-            && p.taint_safe_claimed
-            && p.retry_safe_claimed
-            && p.replayable_claimed
-            && p.durable
-    );
+    if !(p.bounded_claimed
+        && p.taint_safe_claimed
+        && p.retry_safe_claimed
+        && p.replayable_claimed
+        && p.durable)
+    {
+        return Err(String::from(
+            "all proof flags must be true and durable must be true under Strict",
+        ));
+    }
     Ok(())
 }
 
@@ -393,12 +469,15 @@ fn accepted_artifact_validator_requires_all_proof_flags_true_under_journaled() -
 {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     let p = &artifact.verification;
-    assert!(
-        p.bounded_claimed
-            && p.taint_safe_claimed
-            && p.retry_safe_claimed
-            && p.replayable_claimed
-            && !p.durable
-    );
+    if !(p.bounded_claimed
+        && p.taint_safe_claimed
+        && p.retry_safe_claimed
+        && p.replayable_claimed
+        && !p.durable)
+    {
+        return Err(String::from(
+            "all proof flags must be true and durable must be false under Journaled",
+        ));
+    }
     Ok(())
 }

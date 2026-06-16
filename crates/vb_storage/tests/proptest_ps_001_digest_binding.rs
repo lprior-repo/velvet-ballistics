@@ -10,6 +10,8 @@
 // PRODUCTION BINDING:
 //   vb_storage::admission::submit_artifact (public API)
 
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
@@ -122,7 +124,7 @@ proptest! {
         let workflow = make_workflow([0u8; 32]);
         // Relaxed policy: admission with gate_count=0
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
-        // May succeed or fail depending on journal state
-        let _ = result;
+        // May succeed or fail depending on journal state; explicitly drop to satisfy must_use.
+        drop(result);
     }
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::EventSeq;
@@ -32,7 +34,8 @@ proptest! {
             MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0,
             &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         ).expect("encode RecordKind::RunAccepted must succeed for valid inputs");
-        prop_assert!(value.len() >= RECORD_HEADER_LEN as usize,
+        let header_len = u64::from(RECORD_HEADER_LEN);
+        prop_assert!(u64::try_from(value.len()).expect("encoded len fits in u64") >= header_len,
             "encoded RunAccepted must be at least header length, got {} bytes",
             value.len());
     }

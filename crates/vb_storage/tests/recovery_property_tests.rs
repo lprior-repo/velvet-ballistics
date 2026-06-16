@@ -16,12 +16,11 @@ use vb_storage::recovery::{
 use vb_storage::{EventSeq, JournalEvent};
 
 fn unsupported_flags() -> impl Strategy<Value = UnsupportedRecoveryState> {
-    (any::<bool>(), any::<bool>(), any::<bool>(), any::<bool>()).prop_map(
-        |(slot_values, slot_taint, action_payloads, pending_actions)| UnsupportedRecoveryState {
+    (any::<bool>(), any::<bool>(), any::<bool>()).prop_map(
+        |(slot_values, slot_taint, action_payloads)| UnsupportedRecoveryState {
             slot_values,
             slot_taint,
             action_payloads,
-            pending_actions,
         },
     )
 }

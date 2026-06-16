@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::EventSeq;
@@ -45,7 +47,8 @@ proptest! {
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
-        let _ = b2.append_event(&event);
+        // We expect a duplicate failure; explicitly drop the result.
+        drop(b2.append_event(&event));
         b2.commit().expect("commit");
         let events = journal.events_for_run(RunId::new(run)).expect("replay");
         prop_assert_eq!(events.len(), 1);
@@ -61,19 +64,13 @@ proptest! {
             MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, seq,
             &event, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        match (r1, r2) {
-            (Ok(v1), Ok(v2)) => {
-                prop_assert_eq!(v1, v2,
-                    "encode_record must be deterministic for same inputs");
-            }
-            (Err(e1), Err(e2)) => {
-                prop_assert!(true,
-                    "both encode attempts failed (acceptable edge case)");
-            }
-            _ => {
-                prop_assert!(false,
-                    "encode_record must be consistently Ok or Err, not mixed");
-            }
+        if let (Ok(v1), Ok(v2)) = (r1, r2) {
+            prop_assert_eq!(v1, v2,
+                "encode_record must be deterministic for same inputs");
+        } else {
+            // Both must be consistently Ok or Err, not mixed.
+            prop_assert!(false,
+                "encode_record must be consistently Ok or Err, not mixed");
         }
     }
     #[test]
@@ -106,7 +103,8 @@ proptest! {
         batch.append_event(&event).expect("append");
         batch.commit().expect("commit");
         let mut b2 = JournalWriteBatch::new(&journal);
-        let _ = b2.append_event(&event);
+        // We expect a duplicate failure; explicitly drop the result.
+        drop(b2.append_event(&event));
         b2.commit().expect("commit");
     }
 }

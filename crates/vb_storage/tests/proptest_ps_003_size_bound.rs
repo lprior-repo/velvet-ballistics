@@ -11,6 +11,8 @@
 // PRODUCTION BINDING:
 //   vb_storage::admission::submit_artifact (exercises reject_oversized_compiled_ir_value internally)
 
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
@@ -87,7 +89,8 @@ proptest! {
     /// PS-003b: MAX_COMPILED_IR_BYTES is a u32 and fits in its domain.
     #[test]
     fn ps_003_max_fits_in_u32(_dummy in proptest::bool::ANY) {
-        prop_assert!(MAX_COMPILED_IR_BYTES <= u32::MAX);
+        // MAX_COMPILED_IR_BYTES is itself a u32 constant; the type guarantees the bound.
+        let _ = MAX_COMPILED_IR_BYTES;
         prop_assert!(MAX_COMPILED_IR_BYTES > 0);
     }
 
@@ -97,7 +100,7 @@ proptest! {
         // MAX_COMPILED_IR_BYTES = 16_777_216 (16 MiB)
         prop_assert_eq!(MAX_COMPILED_IR_BYTES, 16_777_216);
         // Must be representable as usize on all supported platforms
-        prop_assert!(MAX_COMPILED_IR_BYTES as usize <= usize::MAX);
+        prop_assert!(u64::from(MAX_COMPILED_IR_BYTES) <= u64::try_from(usize::MAX).unwrap_or(u64::MAX));
     }
 
     /// PS-003d: Large but valid workflows (within bounds) submit successfully.
@@ -110,7 +113,9 @@ proptest! {
         let envelope = postcard::to_allocvec(&artifact)
             .expect("serialize artifact envelope for size check");
         // Envelope must be within bounds for submission to succeed
-        prop_assert!(envelope.len() as u32 <= MAX_COMPILED_IR_BYTES,
+        let envelope_len_u32 = u32::try_from(envelope.len())
+            .expect("envelope fits in u32 (MAX_COMPILED_IR_BYTES is u32)");
+        prop_assert!(envelope_len_u32 <= MAX_COMPILED_IR_BYTES,
             "successfully submitted artifact envelope must not exceed MAX, got {} bytes",
             envelope.len());
     }

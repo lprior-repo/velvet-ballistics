@@ -11,6 +11,8 @@
 // PRODUCTION BINDING:
 //   vb_storage::admission::submit_artifact
 
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 //! Edge-case tests for vb_storage recovery and journal append boundaries.
 //!
 //! Covers three verified gap areas that lack dedicated tests:
@@ -73,16 +74,12 @@ fn validate_contiguous_sequences_rejects_hole_at_position_1() {
         result.is_err(),
         "non-contiguous sequence must be rejected, but got Ok"
     );
-    let err = result.unwrap_err();
-    match &err {
-        RecoveryError::ReplayDivergence { detail, .. } => {
-            assert!(
-                detail.contains("sequence violation"),
-                "expected ReplayDivergence with sequence violation detail, got detail = {detail:?}"
-            );
-        }
-        other => panic!("expected ReplayDivergence, got {:?}", other),
-    }
+    let err = result.expect_err("non-contiguous must produce an error");
+    assert!(
+        matches!(&err, RecoveryError::ReplayDivergence { detail, .. } if detail.contains("sequence violation")),
+        "expected ReplayDivergence with sequence violation detail, got {:?}",
+        err
+    );
 }
 
 /// When the sequence overflows (u64::MAX followed by any next seq), the
@@ -104,16 +101,12 @@ fn validate_contiguous_sequences_rejects_u64_max_overflow() {
         result.is_err(),
         "overflow sequence must be rejected, but got Ok"
     );
-    let err = result.unwrap_err();
-    match &err {
-        RecoveryError::ReplayDivergence { detail, .. } => {
-            assert!(
-                detail.contains("overflow"),
-                "expected ReplayDivergence with overflow detail, got detail = {detail:?}"
-            );
-        }
-        other => panic!("expected ReplayDivergence, got {:?}", other),
-    }
+    let err = result.expect_err("overflow must produce an error");
+    assert!(
+        matches!(&err, RecoveryError::ReplayDivergence { detail, .. } if detail.contains("overflow")),
+        "expected ReplayDivergence with overflow detail, got {:?}",
+        err
+    );
 }
 
 /// Two events sharing the same sequence number must be rejected as a
@@ -135,16 +128,12 @@ fn validate_contiguous_sequences_rejects_duplicate_sequence() {
         result.is_err(),
         "duplicate sequence must be rejected, but got Ok"
     );
-    let err = result.unwrap_err();
-    match &err {
-        RecoveryError::ReplayDivergence { detail, .. } => {
-            assert!(
-                detail.contains("sequence violation"),
-                "expected ReplayDivergence with sequence violation detail, got detail = {detail:?}"
-            );
-        }
-        other => panic!("expected ReplayDivergence, got {:?}", other),
-    }
+    let err = result.expect_err("duplicate sequence must produce an error");
+    assert!(
+        matches!(&err, RecoveryError::ReplayDivergence { detail, .. } if detail.contains("sequence violation")),
+        "expected ReplayDivergence with sequence violation detail, got {:?}",
+        err
+    );
 }
 
 // ===========================================================================
@@ -193,16 +182,15 @@ fn duplicate_event_with_mismatched_payload_returns_duplicate_error() {
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(events.len(), 1, "exactly one event must be stored");
-    match &events[0] {
-        JournalEvent::RunAccepted { workflow, .. } => {
-            assert_eq!(
-                *workflow,
-                WorkflowDigest::from_bytes(workflow_a),
-                "stored event must have original payload, not corrupted one"
-            );
-        }
-        other => panic!("expected RunAccepted, got {:?}", other),
-    }
+    let first_event = events.first().expect("at least one event stored");
+    assert!(
+        matches!(
+            first_event,
+            JournalEvent::RunAccepted { workflow, .. } if *workflow == WorkflowDigest::from_bytes(workflow_a)
+        ),
+        "stored event must be RunAccepted with original payload (workflow_a), got {:?}",
+        first_event
+    );
 }
 
 // ===========================================================================

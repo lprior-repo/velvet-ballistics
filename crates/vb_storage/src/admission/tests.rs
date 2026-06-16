@@ -1,9 +1,3 @@
-#[allow(
-    clippy::assertions_on_constants,
-    clippy::panic,
-    clippy::panic_in_result_fn,
-    clippy::unwrap_used
-)]
 use crate::admission::*;
 use crate::error::JournalError;
 
