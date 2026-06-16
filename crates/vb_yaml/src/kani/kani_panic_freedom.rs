@@ -56,8 +56,11 @@ fn check_parse_yaml_events_panic_free() {
             Ok(events) => {
                 // On success, events must be a valid Vec.
                 // Event count must be bounded (≤ max_nodes from YamlLimits).
-                kani::assert(events.len() <= 100_000,
-                    "event count {} exceeds max_nodes bound", events.len());
+                kani::assert(
+                    events.len() <= 100_000,
+                    "event count {} exceeds max_nodes bound",
+                    events.len(),
+                );
             }
             Err(error) => {
                 // On error, must be a typed YamlError.
@@ -65,9 +68,11 @@ fn check_parse_yaml_events_panic_free() {
                 let code = error.symbolic_code();
                 let _name = code.as_str();
                 // Code must not be the sentinel.
-                kani::assert_ne!(code,
+                kani::assert_ne!(
+                    code,
                     vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT,
-                    "YamlError must not use INTERNAL_INVARIANT sentinel");
+                    "YamlError must not use INTERNAL_INVARIANT sentinel"
+                );
             }
         }
     }
