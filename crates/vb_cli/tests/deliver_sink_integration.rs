@@ -10,7 +10,10 @@
 //!   `/sys` and their descendants), `/proc/../<allowed-parent>` resolution
 //! - The in-process debug hooks activated by the `VB_DELIVER_SINK_TEST_*_ENV`
 //!   variables are reachable only from the binary; this file exercises them
-//!   end-to-end.
+//!   end-to-end. They are honored only when the binary is built with
+//!   `debug_assertions` (the default for `cargo test -p velvet-ballistics`,
+//!   not `cargo build --release`); `assert_test_hooks_active` below probes
+//!   and fails loudly if the binary under test does not honor them.
 //!
 //! In-process library behavior (every `write_json_line` error branch,
 //! rollback and post-commit state contracts, internal helpers) lives in the
@@ -21,6 +24,7 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
 const TEST_CLEANUP_FAILURES_ENV: &str = "VB_DELIVER_SINK_TEST_CLEANUP_FAILURES";
 const TEST_POST_COMMIT_FINAL_ACTION_ENV: &str = "VB_DELIVER_SINK_TEST_POST_COMMIT_FINAL_ACTION";
