@@ -307,8 +307,6 @@ pub struct UnsupportedRecoveryState {
     pub slot_taint: bool,
     /// Action payload/result bodies are not present in current action records.
     pub action_payloads: bool,
-    /// Pending action resumability cannot be projected into the runtime frame yet.
-    pub pending_actions: bool,
 }
 
 impl UnsupportedRecoveryState {
@@ -317,7 +315,6 @@ impl UnsupportedRecoveryState {
         slot_values: false,
         slot_taint: false,
         action_payloads: false,
-        pending_actions: false,
     };
 
     /// Event-only slot values have no durable taint payload.
@@ -352,28 +349,18 @@ impl UnsupportedRecoveryState {
 
     /// Pending actions were recovered but cannot yet be resumed by `RunFrame`.
     #[must_use]
-    pub const fn pending_actions_unsupported() -> Self {
-        Self {
-            pending_actions: true,
-            ..Self::SUPPORTED
-        }
-    }
-
-    /// Combines two support descriptors without permitting contradictory states.
-    #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self {
             slot_values: self.slot_values || other.slot_values,
             slot_taint: self.slot_taint || other.slot_taint,
             action_payloads: self.action_payloads || other.action_payloads,
-            pending_actions: self.pending_actions || other.pending_actions,
         }
     }
 
     /// Production proof surface for `SUPPORTED`: every unsupported flag is false.
     #[must_use]
     pub const fn is_fully_supported(self) -> bool {
-        !self.slot_values && !self.slot_taint && !self.action_payloads && !self.pending_actions
+        !self.slot_values && !self.slot_taint && !self.action_payloads
     }
 
     /// Production proof surface for flag-wise union correspondence.
@@ -382,7 +369,6 @@ impl UnsupportedRecoveryState {
         union.slot_values == (self.slot_values || other.slot_values)
             && union.slot_taint == (self.slot_taint || other.slot_taint)
             && union.action_payloads == (self.action_payloads || other.action_payloads)
-            && union.pending_actions == (self.pending_actions || other.pending_actions)
     }
 }
 
@@ -403,8 +389,6 @@ pub struct RecoveryFrameSeed {
     pub steps: Vec<RecoveredStepEntry>,
     /// Slot values reconstructed by deterministic replay.
     pub slots: Vec<RecoveredSlotEntry>,
-    /// Actions scheduled but not completed or failed at the recovery point.
-    pub pending_actions: Vec<RecoveredPendingAction>,
     /// Exact pieces of live runtime state not represented by durable events yet.
     pub unsupported: UnsupportedRecoveryState,
 }

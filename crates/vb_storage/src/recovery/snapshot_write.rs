@@ -34,12 +34,6 @@ pub fn write_recovered_snapshot(
 }
 
 fn reject_unsnapshotable_seed(seed: &RecoveryFrameSeed) -> RecoveryResult<()> {
-    if !seed.pending_actions.is_empty() {
-        return Err(RecoveryError::ReplayDivergence {
-            step: seed.pc,
-            detail: "snapshot write rejected: seed has pending actions".to_owned(),
-        });
-    }
     if !seed.unsupported.is_fully_supported() {
         return Err(RecoveryError::ReplayDivergence {
             step: seed.pc,

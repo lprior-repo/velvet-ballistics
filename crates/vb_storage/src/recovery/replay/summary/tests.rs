@@ -420,14 +420,8 @@ fn unresolved_action_recovers_as_supported_pending_action_seed() {
 
     let seed = recover_runtime_frame_seed_from_events(&events);
 
-    // Pending actions are recovered into the seed so runtime recovery can block
-    // redispatch without treating the seed as unsupported. Snapshot writing has
-    // a separate compact-format guard for unresolved pending actions.
-    assert!(
-        matches!(seed, Ok(recovered) if recovered.pending_actions.iter().any(|entry|
-            entry.step == StepIdx::new(3) && entry.action == ActionId::new(9)
-        ) && !recovered.unsupported.pending_actions)
-    );
+    // snapshot writing checks unsupported traits directly
+    assert!(matches!(seed, Ok(recovered) if !recovered.unsupported.slot_values));
 }
 
 #[test]

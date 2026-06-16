@@ -100,7 +100,8 @@ fn vb_mrwe6_atomic_index_all_cases() {
         } if classified_action == action && classified_run == run && classified_step == step
     ));
     kani::assert(matches!(
-        verification_event_and_index_keys_exist(&event), Ok(true)
+        verification_event_and_index_keys_exist(&event),
+        Ok(true)
     ));
 
     let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
@@ -112,7 +113,10 @@ fn vb_mrwe6_atomic_index_all_cases() {
     kani::assert_eq!(event_committed, index_committed);
 
     match variant {
-        ScheduleVariant::Legacy => kani::assert(matches!(event, JournalEvent::ActionScheduled { .. })), ScheduleVariant::Ticketed => {
+        ScheduleVariant::Legacy => {
+            kani::assert(matches!(event, JournalEvent::ActionScheduled { .. }))
+        }
+        ScheduleVariant::Ticketed => {
             kani::assert(matches!(event, JournalEvent::ActionScheduledTicket { .. }));
         }
     }
@@ -122,5 +126,5 @@ fn vb_mrwe6_atomic_index_all_cases() {
         kani::assert(!index_committed, "kani harness assertion");
     }
 
-    core::mem::forget(event));
+    core::mem::forget(event);
 }

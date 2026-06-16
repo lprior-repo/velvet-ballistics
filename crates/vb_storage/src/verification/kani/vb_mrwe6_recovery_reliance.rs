@@ -83,7 +83,8 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
     ));
     if let Some(resolution) = &resolution_event {
         kani::assert(matches!(
-            verification_action_index_intent(resolution), VerificationActionIndexIntent::Delete { .. }
+            verification_action_index_intent(resolution),
+            VerificationActionIndexIntent::Delete { .. }
         ));
     }
 
@@ -97,42 +98,50 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
     match resolution_shape {
         ResolutionShape::None if marker_present => {
             kani::assert(matches!(
-                outcome, Ok(VerificationRecoveryOutcome::PendingInventory)
+                outcome,
+                Ok(VerificationRecoveryOutcome::PendingInventory)
             ));
         }
         ResolutionShape::None if legacy_profile => {
             kani::assert(matches!(
-                outcome, Ok(VerificationRecoveryOutcome::LegacyFallback)
+                outcome,
+                Ok(VerificationRecoveryOutcome::LegacyFallback)
             ));
         }
         ResolutionShape::None => {
             kani::assert(matches!(
-                outcome, Ok(VerificationRecoveryOutcome::ParityDefect)
+                outcome,
+                Ok(VerificationRecoveryOutcome::ParityDefect)
             ));
         }
         ResolutionShape::SameKey => {
             kani::assert(matches!(
-                outcome, Ok(VerificationRecoveryOutcome::ResolvedNoPending)
+                outcome,
+                Ok(VerificationRecoveryOutcome::ResolvedNoPending)
             ));
         }
         ResolutionShape::MismatchedKey => {
             kani::assert(matches!(
-                outcome, Ok(VerificationRecoveryOutcome::ParityDefect)
+                outcome,
+                Ok(VerificationRecoveryOutcome::ParityDefect)
             ));
         }
     }
 
     if !legacy_profile && !marker_present && matches!(resolution_shape, ResolutionShape::None) {
         kani::assert(!matches!(
-            outcome, Ok(VerificationRecoveryOutcome::PendingInventory)
+            outcome,
+            Ok(VerificationRecoveryOutcome::PendingInventory)
         ));
     }
     if matches!(resolution_shape, ResolutionShape::MismatchedKey) {
         kani::assert(!matches!(
-            outcome, Ok(VerificationRecoveryOutcome::PendingInventory)
+            outcome,
+            Ok(VerificationRecoveryOutcome::PendingInventory)
         ));
         kani::assert(!matches!(
-            outcome, Ok(VerificationRecoveryOutcome::LegacyFallback)
+            outcome,
+            Ok(VerificationRecoveryOutcome::LegacyFallback)
         ));
     }
 

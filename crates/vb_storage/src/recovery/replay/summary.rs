@@ -344,7 +344,6 @@ fn build_recovery_frame_seed(
     let slots = recover_slots(&accumulator, workflow)?;
     let unsupported = seed_unsupported_state(&accumulator, &slots);
     let steps = recovered_steps(accumulator.step_states);
-    let pending_actions = recovered_pending_actions(accumulator.pending_actions);
 
     Ok(RecoveryFrameSeed {
         summary: accumulator.summary,
@@ -354,7 +353,6 @@ fn build_recovery_frame_seed(
         pc: accumulator.pc,
         steps,
         slots: slots.entries,
-        pending_actions,
         unsupported,
     })
 }

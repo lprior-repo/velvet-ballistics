@@ -664,7 +664,6 @@ fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() 
             slot_values: true,
             slot_taint: false,
             action_payloads: false,
-            pending_actions: false,
         }
     );
     Ok(())
@@ -772,7 +771,6 @@ fn frame_seed_builder_delegates_to_workflow_replay() -> Result<(), Box<dyn std::
             slot_values: false,
             slot_taint: false,
             action_payloads: false,
-            pending_actions: false,
         }
     );
     Ok(())

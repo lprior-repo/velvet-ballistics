@@ -123,7 +123,8 @@ fn vb_mrwe6_queue_intent_preservation() {
         EventClass::Unrelated => {
             kani::assert(matches!(intent, SideIndexIntent::None));
             kani::assert(matches!(
-                production_intent, VerificationActionIndexIntent::None
+                production_intent,
+                VerificationActionIndexIntent::None
             ));
             kani::assert(matches!(keys_exist, Ok(false)));
         }

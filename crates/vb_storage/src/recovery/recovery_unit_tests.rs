@@ -281,7 +281,6 @@ mod tests {
         assert!(!state.slot_values);
         assert!(!state.slot_taint);
         assert!(!state.action_payloads);
-        assert!(!state.pending_actions);
     }
 
     #[test]
@@ -290,7 +289,6 @@ mod tests {
         assert!(state.slot_values);
         assert!(!state.slot_taint);
         assert!(!state.action_payloads);
-        assert!(!state.pending_actions);
     }
 
     #[test]
@@ -299,27 +297,16 @@ mod tests {
         assert!(!state.slot_values);
         assert!(state.slot_taint);
         assert!(!state.action_payloads);
-        assert!(!state.pending_actions);
-    }
-
-    #[test]
-    fn unsupported_recovery_state_pending_actions_unsupported() {
-        let state = UnsupportedRecoveryState::pending_actions_unsupported();
-        assert!(!state.slot_values);
-        assert!(!state.slot_taint);
-        assert!(!state.action_payloads);
-        assert!(state.pending_actions);
     }
 
     #[test]
     fn unsupported_recovery_state_union() {
         let a = UnsupportedRecoveryState::slot_values_unsupported();
-        let b = UnsupportedRecoveryState::pending_actions_unsupported();
+        let b = UnsupportedRecoveryState::event_slot_taint_unsupported();
         let union = UnsupportedRecoveryState::union(a, b);
         assert!(union.slot_values);
-        assert!(!union.slot_taint);
+        assert!(union.slot_taint);
         assert!(!union.action_payloads);
-        assert!(union.pending_actions);
     }
 
     // =========================================================================

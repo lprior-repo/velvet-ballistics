@@ -63,7 +63,8 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         (Mrwe6EventClass::Scheduled, Mrwe6IntentKind::PutPending)
     ) {
         kani::assert(matches!(
-            scheduled_atom.map(|validated| validated.atom_kind()), Ok(Mrwe6AtomKind::EventAndPutPending)
+            scheduled_atom.map(|validated| validated.atom_kind()),
+            Ok(Mrwe6AtomKind::EventAndPutPending)
         ));
         kani::assert_eq!(kernel_scheduled_atom, Ok(Mrwe6AtomKind::EventAndPutPending));
     } else {
@@ -88,12 +89,16 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         mrwe6_kernel_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
     kani::assert_eq!(duplicate, kernel_duplicate);
     if !equal_payload {
-        kani::assert_eq!(duplicate,
-            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict);
+        kani::assert_eq!(
+            duplicate,
+            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict
+        );
     }
     if equal_payload && !matches!(class, Mrwe6EventClass::Scheduled) {
-        kani::assert_eq!(duplicate,
-            Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected);
+        kani::assert_eq!(
+            duplicate,
+            Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
+        );
     }
 
     let is_resolution_event = kani::any::<bool>();
@@ -111,8 +116,10 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     );
     kani::assert_eq!(resolution, kernel_resolution);
     if !is_resolution_event {
-        kani::assert_eq!(resolution,
-            Mrwe6ResolutionCommitDecision::NonResolutionRejected);
+        kani::assert_eq!(
+            resolution,
+            Mrwe6ResolutionCommitDecision::NonResolutionRejected
+        );
     }
     let committed = mrwe6_committed_resolution_from_facts(
         is_resolution_event,
