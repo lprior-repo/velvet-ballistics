@@ -148,24 +148,15 @@ fn resolve_new_file_target(path: &Path) -> Result<DeliverFileTarget, DeliverSink
     if path.is_dir() {
         return Err(DeliverSinkError::Directory);
     }
-
     let Some(parent) = path.parent() else {
         return Err(DeliverSinkError::MissingParent);
     };
-    let parent_dir = open_parent_directory(parent)?;
-    #[cfg(test)]
-    let _ = test_support::maybe_change_parent_path(parent);
-    let resolved_parent = canonicalize_parent_path(parent)?;
-    if is_blocked_root(&resolved_parent) {
-        return Err(DeliverSinkError::BlockedPath);
-    }
-    ensure_parent_matches_path(&parent_dir, &resolved_parent)?;
-
+    let (parent_dir, resolved_parent) = open_and_resolve_parent(parent)?;
     let Some(file_name) = path.file_name() else {
         return Err(DeliverSinkError::MissingFilePath);
     };
     let resolved_path = resolved_parent.join(file_name);
-    validate_resolved_file_path(&parent_dir, &resolved_parent, file_name, &resolved_path)?;
+    validate_resolved_target(&parent_dir, &resolved_parent, file_name, &resolved_path)?;
 
     Ok(DeliverFileTarget {
         parent_dir,
@@ -174,7 +165,19 @@ fn resolve_new_file_target(path: &Path) -> Result<DeliverFileTarget, DeliverSink
     })
 }
 
-fn validate_resolved_file_path(
+fn open_and_resolve_parent(parent: &Path) -> Result<(OwnedFd, PathBuf), DeliverSinkError> {
+    let parent_dir = open_parent_directory(parent)?;
+    #[cfg(test)]
+    let _ = test_support::maybe_change_parent_path(parent);
+    let resolved_parent = canonicalize_parent_path(parent)?;
+    if is_blocked_root(&resolved_parent) {
+        return Err(DeliverSinkError::BlockedPath);
+    }
+    ensure_parent_matches_path(&parent_dir, &resolved_parent)?;
+    Ok((parent_dir, resolved_parent))
+}
+
+fn validate_resolved_target(
     parent_dir: &OwnedFd,
     resolved_parent: &Path,
     file_name: &OsStr,
@@ -315,6 +318,7 @@ fn maybe_change_final_path_after_final_sync(
     Ok(())
 }
 
+// Only the final-path hook gets an `instrumented-cli` arm: `deliver_sink_integration.rs` drives the real binary with `VB_DELIVER_SINK_TEST_POST_COMMIT_FINAL_ACTION` to cover the post-publish `confirm_published_final_path` path end-to-end.
 #[cfg(all(not(test), debug_assertions))]
 fn maybe_change_final_path_after_final_sync(
     target: &DeliverFileTarget,
