@@ -13,7 +13,7 @@ use vb_core::action::{
 };
 use vb_core::action::{Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
-use vb_runtime::action::ActionRegistry;
+use vb_runtime::action::dispatch_generic;
 
 fn make_contract(id: u16, name: &str) -> ActionContract {
     ActionContract {
@@ -56,25 +56,16 @@ fn make_input_with_capacity(action_id: u16, capacity: u16) -> ActionInput {
     input
 }
 
-fn register_action(registry: &mut ActionRegistry, id: u16, name: &str) -> ActionContract {
-    let contract = make_contract(id, name);
-    registry
-        .register(contract.clone())
-        .expect("register must succeed");
-    contract
-}
-
 // ---------------------------------------------------------------------------
 // Suspended outcome
 // ---------------------------------------------------------------------------
 
 #[test]
 fn test_dispatch_produces_suspended_outcome() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 5, "test.action");
+    let contract = make_contract(5, "test.action");
     let input = make_input(5);
 
-    let result = registry.dispatch(&input, &contract);
+    let result = dispatch_generic(&input, &contract);
     match result {
         Ok(ActionOutcome::Suspended(ticket)) => {
             assert_eq!(
@@ -93,11 +84,10 @@ fn test_dispatch_produces_suspended_outcome() {
 
 #[test]
 fn test_dispatch_preserves_run() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -111,11 +101,10 @@ fn test_dispatch_preserves_run() {
 
 #[test]
 fn test_dispatch_preserves_step() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -129,11 +118,10 @@ fn test_dispatch_preserves_step() {
 
 #[test]
 fn test_dispatch_preserves_ticket_seq() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -147,11 +135,10 @@ fn test_dispatch_preserves_ticket_seq() {
 
 #[test]
 fn test_dispatch_preserves_ticket_action() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -165,11 +152,10 @@ fn test_dispatch_preserves_ticket_action() {
 
 #[test]
 fn test_dispatch_preserves_ticket_attempt() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -183,11 +169,10 @@ fn test_dispatch_preserves_ticket_attempt() {
 
 #[test]
 fn test_dispatch_preserves_ticket_idempotency_key() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -205,11 +190,10 @@ fn test_dispatch_preserves_ticket_idempotency_key() {
 
 #[test]
 fn test_dispatch_capacity_set_to_one() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -223,11 +207,10 @@ fn test_dispatch_capacity_set_to_one() {
 
 #[test]
 fn test_dispatch_capacity_override_from_high_value() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input_with_capacity(1, 9999);
 
-    let result = registry.dispatch(&input, &contract).unwrap();
+    let result = dispatch_generic(&input, &contract).unwrap();
     match result {
         ActionOutcome::Suspended(ticket) => {
             assert_eq!(
@@ -249,12 +232,11 @@ fn test_dispatch_capacity_override_from_high_value() {
 
 #[test]
 fn test_dispatch_is_idempotent() {
-    let mut registry = ActionRegistry::new();
-    let contract = register_action(&mut registry, 1, "test.action");
+    let contract = make_contract(1, "test.action");
     let input = make_input(1);
 
-    let result1 = registry.dispatch(&input, &contract).unwrap();
-    let result2 = registry.dispatch(&input, &contract).unwrap();
+    let result1 = dispatch_generic(&input, &contract).unwrap();
+    let result2 = dispatch_generic(&input, &contract).unwrap();
 
     match (result1, result2) {
         (ActionOutcome::Suspended(t1), ActionOutcome::Suspended(t2)) => {
@@ -273,7 +255,6 @@ fn test_dispatch_is_idempotent() {
 
 #[test]
 fn test_dispatch_zero_max_input_bytes_rejects() {
-    let mut registry = ActionRegistry::new();
     let input = make_input(1);
     let contract = ActionContract {
         id: ActionId::new(1),
@@ -289,11 +270,7 @@ fn test_dispatch_zero_max_input_bytes_rejects() {
         required_capabilities: Box::new([]),
     };
 
-    registry
-        .register(contract.clone())
-        .expect("register must succeed");
-
-    let result = registry.dispatch(&input, &contract);
+    let result = dispatch_generic(&input, &contract);
     assert_eq!(
         result,
         Err(ActionError::PayloadTooLarge {
@@ -310,8 +287,6 @@ fn test_dispatch_zero_max_input_bytes_rejects() {
 
 #[test]
 fn test_dispatch_with_different_action_names() {
-    let mut registry = ActionRegistry::new();
-
     // Explicit IDs to avoid collisions.
     let actions: &[(&str, u16)] = &[
         ("test.action", 100),
@@ -321,7 +296,7 @@ fn test_dispatch_with_different_action_names() {
     ];
 
     for (name, id) in actions {
-        let contract = register_action(&mut registry, *id, name);
+        let contract = make_contract(*id, name);
 
         let input = ActionInput {
             run: RunId::new(1),
@@ -340,7 +315,7 @@ fn test_dispatch_with_different_action_names() {
             },
         };
 
-        let result = registry.dispatch(&input, &contract).unwrap();
+        let result = dispatch_generic(&input, &contract).unwrap();
         match result {
             ActionOutcome::Suspended(ticket) => {
                 assert_eq!(

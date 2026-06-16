@@ -1285,7 +1285,6 @@ fn unsupported_recovery_state_returns_invalid_recovery_hydration() {
             state: RecoveredStepState::Running,
         }],
         slots: vec![],
-        pending_actions: vec![],
         // GA-016a: Unsupported state — slot values missing
         unsupported: UnsupportedRecoveryState::slot_values_unsupported(),
     };
@@ -1331,13 +1330,11 @@ fn unsupported_live_frame_component_fails_closed_at_boundary() {
             state: RecoveredStepState::Running,
         }],
         slots: vec![],
-        pending_actions: vec![],
         // Unsupported: action payloads present but not decodable
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: false,
             action_payloads: true,
-            pending_actions: false,
         },
     };
 

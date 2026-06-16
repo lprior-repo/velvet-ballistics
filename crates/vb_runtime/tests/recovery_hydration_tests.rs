@@ -1672,57 +1672,6 @@ fn verify_digests_workflow_and_ir_level_detects_ir_mismatch() {
 // SECTION 11: Runtime boundary recovery tests
 // ============================================================================
 
-/// After the fix, pending_actions are always a supported recovery state.
-/// Unsupported.pending_actions is never set by seed_unsupported_state(),
-/// and the runtime no longer rejects based on pending_actions.
-/// This test verifies that pending_actions alone does NOT block hydration.
-#[test]
-fn runtime_boundary_accepts_pending_actions_as_supported() {
-    let run = RunId::new(11100);
-    let digest = test_digest(0x26);
-
-    // Build a seed where pending_actions is non-empty but unsupported state is SUPPORTED.
-    // After the fix, this should succeed: pending_actions are a normal supported recovery state.
-    let seed = RecoveryFrameSeed {
-        summary: RecoveryRuntimeSummary {
-            run,
-            first_seq: EventSeq::ZERO,
-            last_seq: EventSeq::ZERO,
-            workflow: Some(digest),
-            steps_started: 1,
-            steps_succeeded: 0,
-            actions_scheduled: 0,
-            actions_resolved: 0,
-            suspensions: 0,
-            slots_written: 0,
-            terminal: None,
-        },
-        first_step: StepIdx::ZERO,
-        step_count: 1,
-        slot_count: 0,
-        pc: StepIdx::ZERO,
-        steps: vec![RecoveredStepEntry {
-            step: StepIdx::ZERO,
-            state: RecoveredStepState::Running,
-        }],
-        slots: vec![],
-        pending_actions: vec![vb_storage::recovery::RecoveredPendingAction {
-            step: StepIdx::ZERO,
-            action: vb_core::ActionId::new(9),
-        }],
-        // After fix: pending_actions are always supported, never part of UnsupportedRecoveryState
-        unsupported: vb_storage::recovery::UnsupportedRecoveryState::SUPPORTED,
-    };
-
-    let boundary = vb_runtime::recovery::DurableFrameRecoveryBoundary::from_seed(seed);
-    // After fix: pending_actions alone does NOT block hydration
-    let result = boundary.hydrate_run_frame();
-    assert!(
-        result.is_ok(),
-        "expected Ok for supported pending_actions recovery, got: {result:?}"
-    );
-}
-
 /// Given a RecoveryHydration::FrameSeed with unsupported slot_taint
 /// When recovery_boundary_from_hydration is called
 /// Then boundary reports the unsupported state correctly
@@ -1748,7 +1697,6 @@ fn runtime_boundary_exposes_unsupported_state() {
         slot_values: false,
         slot_taint: true,
         action_payloads: false,
-        pending_actions: false,
     };
 
     let seed = RecoveryFrameSeed {
@@ -1762,7 +1710,6 @@ fn runtime_boundary_exposes_unsupported_state() {
             state: RecoveredStepState::Succeeded,
         }],
         slots: vec![],
-        pending_actions: vec![],
         unsupported,
     };
 
