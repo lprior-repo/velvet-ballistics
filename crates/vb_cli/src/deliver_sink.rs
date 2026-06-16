@@ -230,7 +230,7 @@ fn write_json_line_to_temp_file(
     match write_result {
         Ok(()) => published_path_identity_for_file(&file),
         Err(write_error) => {
-            let _ = cleanup_unpublished_temp_file(&target.parent_dir, temp_name, write_error);
+            let _ = cleanup_unpublished_temp_file(&target.parent_dir, temp_name, write_error).ok();
             Err(DeliverSinkError::PublishStateUnknown)
         }
     }
@@ -502,10 +502,10 @@ fn preferred_temp_name(file_name: &OsStr) -> OsString {
 fn hashed_temp_name(path: &Path) -> OsString {
     use std::fmt::Write as _;
     let digest = blake3::hash(path.as_os_str().as_encoded_bytes());
-    let mut temp_name = String::with_capacity(".vb".len() + 16);
+    let mut temp_name = String::with_capacity(".vb".len().saturating_add(16));
     temp_name.push_str(".vb");
     for byte in &digest.as_bytes()[..8] {
-        let _ = write!(&mut temp_name, "{byte:02x}");
+        let _ = write!(&mut temp_name, "{byte:02x}").ok();
     }
     OsString::from(temp_name)
 }

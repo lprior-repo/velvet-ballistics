@@ -355,7 +355,7 @@ fn scan_manifest_file(path: &Path) -> Result<CargoScan> {
 fn scan_manifest_text(text: &str) -> CargoScan {
     let mut state = ManifestState::default();
     for (index, raw_line) in text.lines().enumerate() {
-        state.process_line(index + 1, raw_line);
+        state.process_line(index.saturating_add(1), raw_line);
     }
     state.finish(text)
 }
@@ -403,8 +403,8 @@ fn normalize_allowlist_line(raw_line: &str) -> String {
     if !trimmed.contains(ALLOW_MARKER) {
         return raw_line.to_owned();
     }
-    let prefix_len = raw_line.len() - trimmed.len();
-    let indent = &raw_line[..prefix_len];
+    let prefix_len = raw_line.len().saturating_sub(trimmed.len());
+    let indent = raw_line.get(..prefix_len).unwrap_or("");
     let suffix = trimmed.strip_prefix('#').unwrap_or(trimmed);
     format!("{indent}//{suffix}")
 }
@@ -429,7 +429,8 @@ fn allowlist_reasons(text: &str) -> Vec<Option<String>> {
             continue;
         }
         if let Some(reason) = pending.take() {
-            reasons[index] = Some(reason);
+            #[allow(clippy::option_map_unit_fn)]
+            reasons.get_mut(index).map(|r| *r = Some(reason));
         }
     }
     reasons
@@ -464,7 +465,7 @@ fn parse_allow_reason(line: &str) -> Option<String> {
     if !is_valid_marker_prefix(line, token_idx) {
         return None;
     }
-    let reason = line[token_idx + ALLOW_MARKER.len()..].trim();
+    let reason = line.get(token_idx.saturating_add(ALLOW_MARKER.len())..).unwrap_or("").trim();
     if reason.is_empty() {
         None
     } else {
@@ -477,10 +478,11 @@ fn is_valid_marker_prefix(line: &str, token_idx: usize) -> bool {
     if token_idx < 2 {
         return false;
     }
-    if bytes[token_idx - 1] != b' ' && bytes[token_idx - 1] != b'\t' {
+    let prev = bytes.get(token_idx.saturating_sub(1)).copied();
+    if prev != Some(b' ') && prev != Some(b'\t') {
         return false;
     }
-    let prev_byte = bytes[token_idx - 2];
+    let prev_byte = bytes.get(token_idx.saturating_sub(2)).copied().unwrap_or(b' ');
     prev_byte == b'#' || prev_byte == b'/' || prev_byte == b'!'
 }
 
@@ -643,33 +645,33 @@ fn manifest_dependency_entry(semantic: &str) -> Option<(String, Option<String>)>
 
 fn manifest_package_name(rest: &str) -> Option<String> {
     let idx = find_word_token(rest, "package")?;
-    let after = rest[idx + "package".len()..].trim_start();
+    let after = rest.get(idx.saturating_add("package".len())..).unwrap_or("").trim_start();
     let after = after.strip_prefix('=')?.trim_start();
     quoted_string(after)
 }
 
 fn find_word_token(input: &str, token: &str) -> Option<usize> {
     let mut search_start = 0;
-    while let Some(rel) = input[search_start..].find(token) {
-        let idx = search_start + rel;
+    while let Some(rel) = input.get(search_start..).and_then(|s| s.find(token)) {
+        let idx = search_start.saturating_add(rel);
         if is_word_token(input, idx, token) {
             return Some(idx);
         }
-        search_start = idx + token.len();
+        search_start = idx.saturating_add(token.len());
     }
     None
 }
 
 fn is_word_token(input: &str, idx: usize, token: &str) -> bool {
     if idx > 0 {
-        if let Some(prev) = input[..idx].chars().next_back() {
+        if let Some(prev) = input.get(..idx).and_then(|s| s.chars().next_back()) {
             if prev.is_alphanumeric() || prev == '_' || prev == '-' {
                 return false;
             }
         }
     }
-    let after_idx = idx + token.len();
-    if let Some(next) = input[after_idx..].chars().next() {
+    let after_idx = idx.saturating_add(token.len());
+    if let Some(next) = input.get(after_idx..).and_then(|s| s.chars().next()) {
         if next.is_alphanumeric() || next == '_' || next == '-' {
             return false;
         }
@@ -688,7 +690,7 @@ fn quoted_string(input: &str) -> Option<String> {
 }
 
 fn strip_toml_comment(line: &str) -> &str {
-    comment_start(line).map_or(line, |idx| &line[..idx])
+    comment_start(line).and_then(|idx| line.get(..idx)).unwrap_or(line)
 }
 
 fn comment_start(line: &str) -> Option<usize> {

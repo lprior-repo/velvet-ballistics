@@ -142,7 +142,7 @@ impl IpcServer {
         let free_slot = self.clients.iter().position(|c| c.is_none());
 
         if let Some(index) = free_slot {
-            let token = Token(index + 1);
+            let token = Token(index.saturating_add(1));
 
             let mut client = ClientConnection {
                 stream,
@@ -156,7 +156,9 @@ impl IpcServer {
                 .register(&mut client.stream, token, Interest::READABLE)
                 .map_err(|source| IpcServerError::PollFailed { source })?;
 
-            self.clients[index] = Some(client);
+             if let Some(c) = self.clients.get_mut(index) {
+              *c = Some(client);
+          }
         } else {
             // Drop connection to enforce concurrent client limit.
             drop(stream);
