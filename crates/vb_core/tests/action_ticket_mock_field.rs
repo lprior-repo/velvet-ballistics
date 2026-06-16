@@ -90,7 +90,8 @@ fn test_action_ticket_copy_preserved_with_mock() {
 #[test]
 fn test_action_ticket_clone_preserved_with_mock() {
     let ticket = make_ticket(MockMarker::HttpGet);
-    let cloned = ticket.clone();
+    // ActionTicket is Copy; copy via assignment (no clone call).
+    let cloned = ticket;
 
     assert_eq!(cloned.mock, MockMarker::HttpGet, "cloned mock must match");
     assert_eq!(cloned.run, ticket.run, "cloned run must match");

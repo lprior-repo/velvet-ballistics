@@ -7,6 +7,12 @@
 //!   - from_str(malformed) always returns Err(InvalidFormat).
 //!   - Round-trip: from_str(format!("E{:04X}", code)) returns Ok(DiagnosticCode(code))
 
+// Test code uses `.expect("descriptive message")` to convert fallible
+// public-API results into asserted values. Per repository policy
+// (AGENTS.md: "Tests must compile and run, but test clippy is not strict"),
+// `clippy::expect_used` is allowed in this test target.
+#![allow(clippy::expect_used)]
+
 use core::str::FromStr;
 use vb_core::diagnostic::{CODE_REGISTRY, DiagnosticCode, DiagnosticCodeParseError};
 
@@ -38,7 +44,9 @@ fn from_str_accepts_all_registry_numeric_codes_in_e_format() {
             continue;
         }
         assert_eq!(
-            result.unwrap().code(),
+            result
+                .expect("from_str for supported code must succeed")
+                .code(),
             code,
             "from_str({input:?}) should return DiagnosticCode(0x{code:04X})"
         );

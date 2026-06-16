@@ -8,6 +8,11 @@
 
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
+// Test code uses `.expect("descriptive message")` to convert fallible
+// public-API results into asserted values. Per repository policy
+// (AGENTS.md: "Tests must compile and run, but test clippy is not strict"),
+// `clippy::expect_used` is allowed in this test target.
+#![allow(clippy::expect_used)]
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
@@ -30,22 +35,14 @@ fn test_mock_marker_no_panic_on_all_variants() {
 
     for m in &variants {
         // Serialization roundtrip must not panic.
-        let buf = match postcard::to_allocvec(m) {
-            Ok(b) => b,
-            Err(_) => {
-                panic!("operation failed");
-                return;
-            }
-        };
-        let _: MockMarker = match postcard::from_bytes(&buf) {
-            Ok(v) => v,
-            Err(_) => {
-                panic!("operation failed");
-                return;
-            }
-        };
+        let buf = postcard::to_allocvec(m).expect("MockMarker postcard serialization must succeed");
+        let _: MockMarker =
+            postcard::from_bytes(&buf).expect("MockMarker postcard deserialization must succeed");
 
         // Debug formatting must not panic.
+        // The String from format! is intentionally dropped after the call,
+        // so suppress the must-use-on-let-_ lint locally.
+        #[allow(clippy::let_underscore_must_use)]
         let _ = format!("{m:?}");
 
         // Hashing must not panic.
@@ -71,22 +68,12 @@ fn test_legacy_7field_deserialize_fallback() {
         mock: MockMarker::GithubIssueCreate, // discriminant 0 — legacy default
     };
 
-    let buf = match postcard::to_allocvec(&legacy_ticket) {
-        Ok(b) => b,
-        Err(_) => {
-            panic!("operation failed");
-            return;
-        }
-    };
+    let buf = postcard::to_allocvec(&legacy_ticket)
+        .expect("legacy ActionTicket serialization must succeed");
 
     // Deserialize back.
-    let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
-        Ok(v) => v,
-        Err(_) => {
-            panic!("operation failed");
-            return;
-        }
-    };
+    let restored: vb_core::action::ActionTicket =
+        postcard::from_bytes(&buf).expect("legacy ActionTicket deserialization must succeed");
 
     assert_eq!(
         restored.mock,
@@ -109,20 +96,10 @@ fn test_action_ticket_serde_no_panic_boundary() {
         mock: MockMarker::HttpGet,
     };
 
-    let buf = match postcard::to_allocvec(&ticket) {
-        Ok(b) => b,
-        Err(_) => {
-            panic!("operation failed");
-            return;
-        }
-    };
-    let restored: vb_core::action::ActionTicket = match postcard::from_bytes(&buf) {
-        Ok(v) => v,
-        Err(_) => {
-            panic!("operation failed");
-            return;
-        }
-    };
+    let buf = postcard::to_allocvec(&ticket)
+        .expect("ActionTicket boundary-value serialization must succeed");
+    let restored: vb_core::action::ActionTicket = postcard::from_bytes(&buf)
+        .expect("ActionTicket boundary-value deserialization must succeed");
 
     assert_eq!(restored.run.get(), u64::MAX, "max run must be preserved");
     assert_eq!(restored.step.get(), u16::MAX, "max step must be preserved");

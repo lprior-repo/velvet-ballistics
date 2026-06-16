@@ -5,6 +5,12 @@
 //! Verifies that ResourceContract has exactly 18 fields including
 //! max_transitions_per_tick and allows_secret_results.
 
+// Test code uses `.expect("descriptive message")` to convert fallible
+// public-API results into asserted values. Per repository policy
+// (AGENTS.md: "Tests must compile and run, but test clippy is not strict"),
+// `clippy::expect_used` is allowed in this test target.
+#![allow(clippy::expect_used)]
+
 use vb_core::ResourceContract;
 
 // ---------------------------------------------------------------------------
@@ -60,7 +66,7 @@ fn resource_contract_canonical_type_has_18_fields() {
     assert_eq!(c.max_collect_items, 1);
     assert_eq!(c.max_queue_depth, 1);
     assert_eq!(c.max_journal_batch_bytes, 1);
-    assert_eq!(c.allows_secret_results, false);
+    assert!(!c.allows_secret_results);
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +109,7 @@ fn compiled_workflow_accepts_18_field_resource_contract() {
     let workflow = CompiledWorkflow::try_from_parts(parts)
         .expect("CompiledWorkflow::try_from_parts must accept 18-field ResourceContract");
     assert_eq!(workflow.resource_contract().max_transitions_per_tick, 100);
-    assert_eq!(workflow.resource_contract().allows_secret_results, true);
+    assert!(workflow.resource_contract().allows_secret_results);
 }
 
 // ---------------------------------------------------------------------------
@@ -160,8 +166,8 @@ fn compiled_workflow_resource_contract_returns_full_18_field_contract() {
         returned.max_transitions_per_tick, 888,
         "max_transitions_per_tick roundtrip"
     );
-    assert_eq!(
-        returned.allows_secret_results, true,
+    assert!(
+        returned.allows_secret_results,
         "allows_secret_results roundtrip"
     );
     // Spot-check a few more fields to ensure full roundtrip
@@ -212,8 +218,8 @@ fn resource_contract_default_has_reasonable_values() {
         "DEFAULT max_transitions_per_tick must be > 0"
     );
     // allows_secret_results defaults to false (conservative)
-    assert_eq!(
-        c.allows_secret_results, false,
+    assert!(
+        !c.allows_secret_results,
         "DEFAULT must be conservative: allows_secret_results=false"
     );
 }

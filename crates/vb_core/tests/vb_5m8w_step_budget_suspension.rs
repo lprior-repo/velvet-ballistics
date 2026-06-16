@@ -1,4 +1,11 @@
 #![forbid(unsafe_code)]
+//! Step budget suspension tests.
+//!
+//! These tests convert fallible helpers into `expect`-style failures so the
+//! function signatures do not need to return `Result`. Per repository policy
+//! (AGENTS.md: "Tests must compile and run, but test clippy is not strict"),
+//! `clippy::expect_used` is allowed in this test target.
+#![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
 use vb_core::engine::{EngineSignal, StepBudget, run_until_blocked};
@@ -75,89 +82,90 @@ fn given_u64_max_budget_when_constructed_then_clamped_to_max_step_budget() {
 }
 
 #[test]
-fn given_zero_budget_when_try_take_called_then_returns_false_without_mutation() -> Result<(), String>
-{
+fn given_zero_budget_when_try_take_called_then_returns_false_without_mutation() {
     let mut budget = StepBudget::new(0);
     let before_remaining = budget.remaining();
 
-    let taken = budget.try_take().map_err(|error| error.to_string())?;
+    let taken = budget
+        .try_take()
+        .expect("try_take on a zero budget should not error");
 
-    assert_eq!(taken, false);
+    assert!(!taken);
     assert_eq!(budget.remaining(), before_remaining);
-    Ok(())
 }
 
 #[test]
-fn given_positive_budget_when_try_take_called_then_remaining_decrements_by_one()
--> Result<(), String> {
+fn given_positive_budget_when_try_take_called_then_remaining_decrements_by_one() {
     let mut budget = StepBudget::new(MAX_STEP_BUDGET);
 
-    let taken = budget.try_take().map_err(|error| error.to_string())?;
+    let taken = budget
+        .try_take()
+        .expect("try_take on a positive budget should not error");
 
-    assert_eq!(taken, true);
+    assert!(taken);
     assert_eq!(budget.remaining(), MAX_STEP_BUDGET - 1);
-    Ok(())
 }
 
 #[test]
-fn given_try_take_repeated_after_zero_then_budget_does_not_underflow() -> Result<(), String> {
+fn given_try_take_repeated_after_zero_then_budget_does_not_underflow() {
     let mut budget = StepBudget::new(0);
 
     for attempt in 0..=1024u16 {
-        let taken = budget.try_take().map_err(|error| error.to_string())?;
-        assert_eq!(taken, false, "attempt {attempt} must report exhausted");
+        let taken = budget
+            .try_take()
+            .expect("try_take on a zero budget should not error");
+        assert!(!taken, "attempt {attempt} must report exhausted");
         assert_eq!(
             budget.remaining(),
             0,
             "attempt {attempt} must preserve zero"
         );
     }
-    Ok(())
 }
 
 #[test]
 fn given_zero_budget_when_run_until_blocked_then_signal_is_step_budget_exhausted_not_finished_or_error()
--> Result<(), String> {
-    let workflow = workflow_with_const_then_finish(ConstValue::I64(99))?;
-    let mut run = new_frame(&workflow)?;
+ {
+    let workflow = workflow_with_const_then_finish(ConstValue::I64(99))
+        .expect("WorkflowParts must construct successfully");
+    let mut run = new_frame(&workflow).expect("RunFrame must construct successfully");
     let mut store = ValueStore::new();
 
     let signal = run_until_blocked(&workflow, &mut run, StepBudget::new(0), &mut store)
-        .map_err(|error| error.to_string())?;
+        .expect("run_until_blocked must not error on a zero budget");
 
     assert_eq!(signal, EngineSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(0));
     assert_eq!(run.executed(), 0);
     assert_eq!(run.step_state(StepIdx::new(0)), Ok(StepState::Pending));
     assert_eq!(
-        run.read_slot(SlotIdx::new(0)).map(|value| *value),
+        run.read_slot(SlotIdx::new(0)).copied(),
         Err(vb_core::CoreError::SlotUninitialized {
             slot: SlotIdx::new(0)
         })
     );
-    Ok(())
 }
 
 #[test]
-fn given_one_step_completed_when_next_budget_exhausts_then_completed_step_remains_succeeded()
--> Result<(), String> {
-    let workflow = workflow_with_const_then_finish(ConstValue::I64(42))?;
-    let mut run = new_frame(&workflow)?;
+fn given_one_step_completed_when_next_budget_exhausts_then_completed_step_remains_succeeded() {
+    let workflow = workflow_with_const_then_finish(ConstValue::I64(42))
+        .expect("WorkflowParts must construct successfully");
+    let mut run = new_frame(&workflow).expect("RunFrame must construct successfully");
     let mut store = ValueStore::new();
 
     let first_signal = run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store)
-        .map_err(|error| error.to_string())?;
+        .expect("run_until_blocked must not error on a budget of 1");
     assert_eq!(first_signal, EngineSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(1));
     assert_eq!(run.executed(), 1);
     assert_eq!(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded));
     assert_eq!(
-        run.read_slot(SlotIdx::new(0)).map(|value| *value),
+        run.read_slot(SlotIdx::new(0)).copied(),
         Ok(SlotValue::I64(42))
     );
 
     let second_signal = run_until_blocked(&workflow, &mut run, StepBudget::new(0), &mut store)
-        .map_err(|error| error.to_string())?;
+        .expect("run_until_blocked must not error on a zero budget");
 
     assert_eq!(second_signal, EngineSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(1));
@@ -165,26 +173,25 @@ fn given_one_step_completed_when_next_budget_exhausts_then_completed_step_remain
     assert_eq!(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded));
     assert_eq!(run.step_state(StepIdx::new(1)), Ok(StepState::Pending));
     assert_eq!(
-        run.read_slot(SlotIdx::new(0)).map(|value| *value),
+        run.read_slot(SlotIdx::new(0)).copied(),
         Ok(SlotValue::I64(42))
     );
-    Ok(())
 }
 
 #[test]
-fn given_budget_suspended_run_when_fresh_budget_scheduled_then_run_resumes_from_same_pc()
--> Result<(), String> {
-    let workflow = workflow_with_const_then_finish(ConstValue::I64(7))?;
-    let mut run = new_frame(&workflow)?;
+fn given_budget_suspended_run_when_fresh_budget_scheduled_then_run_resumes_from_same_pc() {
+    let workflow = workflow_with_const_then_finish(ConstValue::I64(7))
+        .expect("WorkflowParts must construct successfully");
+    let mut run = new_frame(&workflow).expect("RunFrame must construct successfully");
     let mut store = ValueStore::new();
 
     let first_signal = run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store)
-        .map_err(|error| error.to_string())?;
+        .expect("run_until_blocked must not error on a budget of 1");
     assert_eq!(first_signal, EngineSignal::StepBudgetExhausted);
     assert_eq!(run.pc(), StepIdx::new(1));
 
     let resumed_signal = run_until_blocked(&workflow, &mut run, StepBudget::new(1), &mut store)
-        .map_err(|error| error.to_string())?;
+        .expect("run_until_blocked must not error on a budget of 1");
 
     assert_eq!(
         resumed_signal,
@@ -194,7 +201,6 @@ fn given_budget_suspended_run_when_fresh_budget_scheduled_then_run_resumes_from_
     assert_eq!(run.executed(), 2);
     assert_eq!(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded));
     assert_eq!(run.step_state(StepIdx::new(1)), Ok(StepState::Succeeded));
-    Ok(())
 }
 
 proptest! {
@@ -212,8 +218,9 @@ proptest! {
 
         let taken = budget.try_take().map_err(|error| TestCaseError::fail(error.to_string()))?;
 
-        prop_assert_eq!(taken, true);
-        prop_assert_eq!(budget.remaining(), requested - 1);
+        prop_assert!(taken);
+        // requested is in 1u64..=MAX_STEP_BUDGET, so saturating_sub yields requested-1.
+        prop_assert_eq!(budget.remaining(), requested.saturating_sub(1));
     }
 
     #[test]
@@ -222,7 +229,7 @@ proptest! {
 
         for _ in 0..repetitions {
             let taken = budget.try_take().map_err(|error| TestCaseError::fail(error.to_string()))?;
-            prop_assert_eq!(taken, false);
+            prop_assert!(!taken);
             prop_assert_eq!(budget.remaining(), 0);
         }
         prop_assert_eq!(budget.remaining(), 0);

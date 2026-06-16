@@ -9,6 +9,13 @@
 
 #![forbid(unsafe_code)]
 #![cfg(feature = "vb-rxru0-mock-marker")]
+// Test code uses `.expect("descriptive message")` to convert fallible
+// public-API results into asserted values. Per repository policy
+// (AGENTS.md: "Tests must compile and run, but test clippy is not strict"),
+// `clippy::expect_used` is allowed in this test target. The as-conversion on
+// the `MockMarker` discriminant and the `len() > 0` comparison are explicit
+// structural checks of the wire format, so they are allowed at file level.
+#![allow(clippy::expect_used, clippy::as_conversions, clippy::len_zero)]
 
 use vb_core::action::MockMarker;
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};

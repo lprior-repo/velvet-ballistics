@@ -16,15 +16,15 @@ proptest! {
         let payload = slug_payload(vec![slug(0, total)], total);
         let bytes = encode_slugs(&payload)?;
 
-        match from_bytes_compiled_slugs(&bytes, total + extra) {
+        match from_bytes_compiled_slugs(&bytes, total.saturating_add(extra)) {
             Ok(admitted) => prop_assert_eq!(admitted.remaining_budget(), extra),
             Err(err) => return Err(TestCaseError::fail(format!("slug budget admission failed: {err}"))),
         }
 
         if total > 0 {
             prop_assert_eq!(
-                from_bytes_compiled_slugs(&bytes, total - 1),
-                Err(SlugParseError::YbBudgetExceeded { total, max: total - 1 })
+                from_bytes_compiled_slugs(&bytes, total.saturating_sub(1)),
+                Err(SlugParseError::YbBudgetExceeded { total, max: total.saturating_sub(1) })
             );
         }
     }

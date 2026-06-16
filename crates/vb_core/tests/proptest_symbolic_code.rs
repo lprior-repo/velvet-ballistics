@@ -3,6 +3,14 @@
 //! Compensates: BLOCKED PO-001 (kani_from_static_validation).
 //! Invariant: from_static(s).is_some() iff s exists in CODE_REGISTRY.
 
+// Test code uses `.expect("descriptive message")` to convert fallible
+// public-API results into asserted values inside proptest harnesses.
+// Per repository policy (AGENTS.md: "Tests must compile and run, but test
+// clippy is not strict"), `clippy::expect_used` is allowed in this test
+// target. All messages are descriptive and identify the specific proptest
+// scenario that would fail.
+#![allow(clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode, numeric_to_symbolic, symbolic_to_numeric};
 
@@ -32,7 +40,7 @@ proptest! {
     fn from_static_returns_some_and_matches_registry(s in arb_registered_str()) {
         let code = SymbolicCode::from_static(s);
         prop_assert!(code.is_some());
-        let code = code.unwrap();
+        let code = code.expect("registered code must be Some");
         prop_assert_eq!(code.as_str(), s);
         let expected_numeric = symbolic_to_numeric(s);
         prop_assert_eq!(code.numeric_code(), expected_numeric);
@@ -41,21 +49,21 @@ proptest! {
     #[test]
     fn from_str_rejects_unregistered(s in arb_unregistered_ascii()) {
         let parsed: Result<SymbolicCode, _> = s.as_str().parse();
-        prop_assert!(matches!(parsed, Err(_)));
+        prop_assert!(parsed.is_err());
     }
 
     #[test]
     fn from_str_rejects_whitespace_wrapped_registered(s in arb_registered_str()) {
         let wrapped = format!(" {s} ");
         let parsed: Result<SymbolicCode, _> = wrapped.as_str().parse();
-        prop_assert!(matches!(parsed, Err(_)));
+        prop_assert!(parsed.is_err());
     }
 
     #[test]
     fn from_str_rejects_lowercase_registered(s in arb_registered_str()) {
         let lower: String = s.to_lowercase();
         let parsed: Result<SymbolicCode, _> = lower.as_str().parse();
-        prop_assert!(matches!(parsed, Err(_)));
+        prop_assert!(parsed.is_err());
     }
 
     #[test]
@@ -67,20 +75,24 @@ proptest! {
 
     #[test]
     fn as_str_preserves_constructor_string(s in arb_registered_str()) {
-        let code = SymbolicCode::from_static(s).unwrap();
+        let code = SymbolicCode::from_static(s)
+            .expect("from_static must return Some for registered code");
         prop_assert_eq!(code.as_str(), s);
     }
 
     #[test]
     fn numeric_code_matches_registry(s in arb_registered_str()) {
-        let code = SymbolicCode::from_static(s).unwrap();
-        let expected = symbolic_to_numeric(s).unwrap();
+        let code = SymbolicCode::from_static(s)
+            .expect("from_static must return Some for registered code");
+        let expected = symbolic_to_numeric(s)
+            .expect("symbolic_to_numeric must return Some for registered code");
         prop_assert_eq!(code.numeric_code(), Some(expected));
     }
 
     #[test]
     fn copy_preserves_identity(s in arb_registered_str()) {
-        let code = SymbolicCode::from_static(s).unwrap();
+        let code = SymbolicCode::from_static(s)
+            .expect("from_static must return Some for registered code");
         let copy = code;
         prop_assert_eq!(code, copy);
         prop_assert_eq!(code.as_str(), copy.as_str());
@@ -88,8 +100,10 @@ proptest! {
 
     #[test]
     fn as_diagnostic_code_matches_registry(s in arb_registered_str()) {
-        let code = SymbolicCode::from_static(s).unwrap();
-        let expected_num = symbolic_to_numeric(s).unwrap();
+        let code = SymbolicCode::from_static(s)
+            .expect("from_static must return Some for registered code");
+        let expected_num = symbolic_to_numeric(s)
+            .expect("symbolic_to_numeric must return Some for registered code");
         prop_assert_eq!(
             code.as_diagnostic_code().map(|c| c.code()),
             Some(expected_num),
@@ -98,7 +112,8 @@ proptest! {
 
     #[test]
     fn display_formats_as_symbolic_name_not_e_hex(s in arb_registered_str()) {
-        let code = SymbolicCode::from_static(s).unwrap();
+        let code = SymbolicCode::from_static(s)
+            .expect("from_static must return Some for registered code");
         let display = code.to_string();
         let num = code.numeric_code().expect("registered code must have a numeric code");
         let expected_hex = format!("E{:04X}", num);
@@ -109,7 +124,8 @@ proptest! {
 
     #[test]
     fn numeric_to_symbolic_returns_some_for_registered_codes(s in arb_registered_str()) {
-        let code = SymbolicCode::from_static(s).unwrap();
+        let code = SymbolicCode::from_static(s)
+            .expect("from_static must return Some for registered code");
         let back = numeric_to_symbolic(code.numeric_code().expect("registered code must have a numeric code"));
         prop_assert!(back.is_some());
     }
@@ -127,7 +143,7 @@ fn from_static_returns_none_for_empty_string() {
 #[test]
 fn from_str_rejects_empty() {
     let parsed: Result<SymbolicCode, _> = "".parse();
-    assert!(matches!(parsed, Err(_)));
+    assert!(parsed.is_err());
 }
 
 #[test]
