@@ -562,10 +562,12 @@ fn kani_integration_valid_workflow_passes_all_schema_gates() {
 #[test]
 fn kani_integration_version_mismatch_is_invalid_version() {
     let doc = make_doc(vec![("version", FieldValue::String("v2.0".to_owned()))]);
-    assert_eq!(validate_version(&doc),
+    assert_eq!(
+        validate_version(&doc),
         Err(ValidationError::InvalidVersion {
             version: "v2.0".to_owned(),
-        }));
+        })
+    );
 }
 
 #[test]
@@ -574,17 +576,21 @@ fn kani_integration_http_trigger_is_rejected() {
         "when",
         FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)]),
     )]);
-    assert_eq!(validate_trigger(&doc),
-        Err(ValidationError::HttpTriggerOutOfCore));
+    assert_eq!(
+        validate_trigger(&doc),
+        Err(ValidationError::HttpTriggerOutOfCore)
+    );
 }
 
 #[test]
 fn kani_integration_empty_workflow_is_rejected() {
     let doc = make_doc(vec![]);
-    assert_eq!(validate_workflow_schema(&doc),
+    assert_eq!(
+        validate_workflow_schema(&doc),
         Err(ValidationError::MissingRequiredField {
             field: "version".to_owned(),
-        }));
+        })
+    );
 }
 
 #[test]
@@ -593,8 +599,10 @@ fn kani_integration_duplicate_field_caught() {
         ("name", FieldValue::String("first".to_owned())),
         ("name", FieldValue::String("second".to_owned())),
     ]);
-    assert_eq!(validate_workflow_schema(&doc),
-        Err(ValidationError::DuplicateKey));
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::DuplicateKey)
+    );
 }
 
 #[test]
@@ -605,15 +613,19 @@ fn kani_integration_multiple_primitives_caught() {
         ("do", FieldValue::Empty),
         ("finish", FieldValue::Empty),
     ]);
-    assert_eq!(validate_single_primitive(&step),
-        Err(ValidationError::MultipleStepPrimitives));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MultipleStepPrimitives)
+    );
 }
 
 #[test]
 fn kani_integration_missing_primitive_caught() {
     let step = make_step(vec![("id", FieldValue::String("bare_step".to_owned()))]);
-    assert_eq!(validate_single_primitive(&step),
-        Err(ValidationError::MissingStepPrimitive));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MissingStepPrimitive)
+    );
 }
 
 #[test]
@@ -728,8 +740,10 @@ fn kani_integration_unknown_top_level_field_is_caught() {
         ),
         ("bogus_top_level", FieldValue::Empty),
     ]);
-    assert_eq!(validate_workflow_schema(&doc),
-        Err(ValidationError::UnknownTopLevelField));
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::UnknownTopLevelField)
+    );
 }
 
 #[test]
@@ -750,8 +764,10 @@ fn kani_integration_multiple_triggers_rejected() {
             ("schedule".to_owned(), FieldValue::Mapping(vec![])),
         ]),
     )]);
-    assert_eq!(validate_trigger(&doc),
+    assert_eq!(
+        validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
             trigger: "multiple triggers".to_owned(),
-        }));
+        })
+    );
 }

@@ -67,6 +67,11 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
 /// - Not/Exists/Length/Empty/Sum/Count/Unique: pop 1, push 1
 /// - AppendIf: pop 3, push 1
 /// - All others (binary): pop 2, push 1
+///
+/// # Verification
+///
+/// Bound to proof obligations PO-VB-001 through PO-VB-006 in
+/// `verification/verus/vb_validate_gate_07.rs`.
 pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
     let mut depth: u8 = 0;
     let mut max_depth: u8 = 0;
