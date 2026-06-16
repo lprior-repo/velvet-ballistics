@@ -36,6 +36,10 @@ mod tests;
 #[cfg(kani)]
 pub mod proofs;
 
+// Verus proofs (compiled under verus toolchain only)
+#[cfg(verus)]
+pub mod proofs;
+
 #[cfg(kani)]
 pub mod kani;
 #[cfg(kani)]

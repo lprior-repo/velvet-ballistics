@@ -16,11 +16,13 @@
 //! - `strip_quotes` with single-character inner string
 //! - `eval_neg_op` IEEE 754 negative zero
 
-use crate::lexer::{BinaryOp, UnaryOp, lex_expr, infix_binding_power};
-use crate::parser::{parse_expr, parse_helper_name, helper_arity, helper_name, ExprAst, ExprLiteral};
-use crate::bytecode::{compile_expr, compile_expr_with_resolver, check_expr_stack_bound};
+use crate::bytecode::fold::{fold_binary, fold_unary};
+use crate::bytecode::{check_expr_stack_bound, compile_expr, compile_expr_with_resolver};
 use crate::eval::eval_unary_op;
-use crate::bytecode::fold::{fold_unary, fold_binary};
+use crate::lexer::{BinaryOp, UnaryOp, infix_binding_power, lex_expr};
+use crate::parser::{
+    ExprAst, ExprLiteral, helper_arity, helper_name, parse_expr, parse_helper_name,
+};
 use crate::{ExprError, ExprResult};
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 
@@ -31,19 +33,58 @@ use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 /// All 13 helpers map to the correct ExprHelper variant.
 #[test]
 fn parse_helper_name_returns_correct_variant_for_all_helpers() {
-    assert_eq!(parse_helper_name("contains"), Some(crate::parser::ExprHelper::Contains));
-    assert_eq!(parse_helper_name("starts_with"), Some(crate::parser::ExprHelper::StartsWith));
-    assert_eq!(parse_helper_name("ends_with"), Some(crate::parser::ExprHelper::EndsWith));
-    assert_eq!(parse_helper_name("has"), Some(crate::parser::ExprHelper::Has));
-    assert_eq!(parse_helper_name("exists"), Some(crate::parser::ExprHelper::Exists));
-    assert_eq!(parse_helper_name("length"), Some(crate::parser::ExprHelper::Length));
-    assert_eq!(parse_helper_name("empty"), Some(crate::parser::ExprHelper::Empty));
-    assert_eq!(parse_helper_name("append"), Some(crate::parser::ExprHelper::Append));
-    assert_eq!(parse_helper_name("append_if"), Some(crate::parser::ExprHelper::AppendIf));
-    assert_eq!(parse_helper_name("merge"), Some(crate::parser::ExprHelper::Merge));
-    assert_eq!(parse_helper_name("sum"), Some(crate::parser::ExprHelper::Sum));
-    assert_eq!(parse_helper_name("count"), Some(crate::parser::ExprHelper::Count));
-    assert_eq!(parse_helper_name("unique"), Some(crate::parser::ExprHelper::Unique));
+    assert_eq!(
+        parse_helper_name("contains"),
+        Some(crate::parser::ExprHelper::Contains)
+    );
+    assert_eq!(
+        parse_helper_name("starts_with"),
+        Some(crate::parser::ExprHelper::StartsWith)
+    );
+    assert_eq!(
+        parse_helper_name("ends_with"),
+        Some(crate::parser::ExprHelper::EndsWith)
+    );
+    assert_eq!(
+        parse_helper_name("has"),
+        Some(crate::parser::ExprHelper::Has)
+    );
+    assert_eq!(
+        parse_helper_name("exists"),
+        Some(crate::parser::ExprHelper::Exists)
+    );
+    assert_eq!(
+        parse_helper_name("length"),
+        Some(crate::parser::ExprHelper::Length)
+    );
+    assert_eq!(
+        parse_helper_name("empty"),
+        Some(crate::parser::ExprHelper::Empty)
+    );
+    assert_eq!(
+        parse_helper_name("append"),
+        Some(crate::parser::ExprHelper::Append)
+    );
+    assert_eq!(
+        parse_helper_name("append_if"),
+        Some(crate::parser::ExprHelper::AppendIf)
+    );
+    assert_eq!(
+        parse_helper_name("merge"),
+        Some(crate::parser::ExprHelper::Merge)
+    );
+    assert_eq!(
+        parse_helper_name("sum"),
+        Some(crate::parser::ExprHelper::Sum)
+    );
+    assert_eq!(
+        parse_helper_name("count"),
+        Some(crate::parser::ExprHelper::Count)
+    );
+    assert_eq!(
+        parse_helper_name("unique"),
+        Some(crate::parser::ExprHelper::Unique)
+    );
 }
 
 /// Unknown helper names return None.
@@ -94,14 +135,23 @@ fn helper_arity_arity_three_append_if() {
 #[test]
 fn helper_name_canonical_mapping() {
     assert_eq!(helper_name(crate::parser::ExprHelper::Contains), "contains");
-    assert_eq!(helper_name(crate::parser::ExprHelper::StartsWith), "starts_with");
-    assert_eq!(helper_name(crate::parser::ExprHelper::EndsWith), "ends_with");
+    assert_eq!(
+        helper_name(crate::parser::ExprHelper::StartsWith),
+        "starts_with"
+    );
+    assert_eq!(
+        helper_name(crate::parser::ExprHelper::EndsWith),
+        "ends_with"
+    );
     assert_eq!(helper_name(crate::parser::ExprHelper::Has), "has");
     assert_eq!(helper_name(crate::parser::ExprHelper::Exists), "exists");
     assert_eq!(helper_name(crate::parser::ExprHelper::Length), "length");
     assert_eq!(helper_name(crate::parser::ExprHelper::Empty), "empty");
     assert_eq!(helper_name(crate::parser::ExprHelper::Append), "append");
-    assert_eq!(helper_name(crate::parser::ExprHelper::AppendIf), "append_if");
+    assert_eq!(
+        helper_name(crate::parser::ExprHelper::AppendIf),
+        "append_if"
+    );
     assert_eq!(helper_name(crate::parser::ExprHelper::Merge), "merge");
     assert_eq!(helper_name(crate::parser::ExprHelper::Sum), "sum");
     assert_eq!(helper_name(crate::parser::ExprHelper::Count), "count");
@@ -115,11 +165,12 @@ fn helper_name_canonical_mapping() {
 /// `fold_unary(Neg, F64(...))` returns None — constant folding is I64-only for arithmetic.
 #[test]
 fn fold_unary_neg_f64_does_not_fold() {
-    let f64_lit = ExprAst::Literal(ExprLiteral::F64(
-        vb_core::FiniteF64::new(3.14).unwrap(),
-    ));
+    let f64_lit = ExprAst::Literal(ExprLiteral::F64(vb_core::FiniteF64::new(3.14).unwrap()));
     let folded = fold_unary(UnaryOp::Neg, &f64_lit);
-    assert_eq!(folded, None, "F64 negation must not fold (I64-only arithmetic)");
+    assert_eq!(
+        folded, None,
+        "F64 negation must not fold (I64-only arithmetic)"
+    );
 }
 
 /// `fold_unary(Neg, Bool(...))` returns None — negation only works on I64.
@@ -182,11 +233,17 @@ fn fold_binary_neq_cross_type_folds_to_true() {
 fn fold_binary_eq_same_type_i64_folds() {
     let left = Box::new(ExprAst::Literal(ExprLiteral::I64(5)));
     let right = Box::new(ExprAst::Literal(ExprLiteral::I64(5)));
-    assert_eq!(fold_binary(BinaryOp::Eq, &left, &right), Some(ConstValue::Bool(true)));
+    assert_eq!(
+        fold_binary(BinaryOp::Eq, &left, &right),
+        Some(ConstValue::Bool(true))
+    );
 
     let left = Box::new(ExprAst::Literal(ExprLiteral::I64(5)));
     let right = Box::new(ExprAst::Literal(ExprLiteral::I64(3)));
-    assert_eq!(fold_binary(BinaryOp::Eq, &left, &right), Some(ConstValue::Bool(false)));
+    assert_eq!(
+        fold_binary(BinaryOp::Eq, &left, &right),
+        Some(ConstValue::Bool(false))
+    );
 }
 
 /// `Eq(F64, F64)` folds to Bool — same-type F64 Eq works.
@@ -198,7 +255,10 @@ fn fold_binary_eq_same_type_f64_folds() {
     let right = Box::new(ExprAst::Literal(ExprLiteral::F64(
         vb_core::FiniteF64::new(1.0).unwrap(),
     )));
-    assert_eq!(fold_binary(BinaryOp::Eq, &left, &right), Some(ConstValue::Bool(true)));
+    assert_eq!(
+        fold_binary(BinaryOp::Eq, &left, &right),
+        Some(ConstValue::Bool(true))
+    );
 }
 
 /// `Eq(I64, Bool)` folds to Bool(false) — ConstValue equality distinguishes types.
@@ -207,7 +267,10 @@ fn fold_binary_eq_type_mismatch_returns_false() {
     let left = Box::new(ExprAst::Literal(ExprLiteral::I64(1)));
     let right = Box::new(ExprAst::Literal(ExprLiteral::Bool(true)));
     // ConstValue::I64(1) != ConstValue::Bool(true), so Eq folds to Bool(false)
-    assert_eq!(fold_binary(BinaryOp::Eq, &left, &right), Some(ConstValue::Bool(false)));
+    assert_eq!(
+        fold_binary(BinaryOp::Eq, &left, &right),
+        Some(ConstValue::Bool(false))
+    );
 }
 
 // =========================================================================
@@ -362,7 +425,10 @@ fn check_expr_stack_bound_deep_loads_within_limit() {
     // Use ops that leave stack balanced instead.
     let result = check_expr_stack_bound(&ops);
     // Stack is non-empty at end → ExpressionStackUnderflow
-    assert!(result.is_err(), "50 loads with no consumers should fail (stack not empty)");
+    assert!(
+        result.is_err(),
+        "50 loads with no consumers should fail (stack not empty)"
+    );
 }
 
 /// 65 LoadConst ops → exceeds MAX_EXPRESSION_STACK(64).
@@ -375,7 +441,10 @@ fn check_expr_stack_bound_exceeds_max_expression_stack() {
         .collect();
     let result = check_expr_stack_bound(&ops);
     // 65 > 64 (MAX_EXPRESSION_STACK) → StackOverflow
-    assert!(result.is_err(), "65 loads should exceed MAX_EXPRESSION_STACK(64)");
+    assert!(
+        result.is_err(),
+        "65 loads should exceed MAX_EXPRESSION_STACK(64)"
+    );
     match result {
         Err(ExprError::StackOverflow { max }) => {
             assert_eq!(max, 64, "overflow should report max=64");
@@ -394,7 +463,10 @@ fn check_expr_stack_bound_64_loads_at_limit() {
         .collect();
     let result = check_expr_stack_bound(&ops);
     // 64 loads → depth 64 → passes capacity (64 <= 64) but fails final depth (64 > 1)
-    assert!(result.is_err(), "64 loads should fail final depth validation");
+    assert!(
+        result.is_err(),
+        "64 loads should fail final depth validation"
+    );
     match result {
         Err(ExprError::UnexpectedEof) => {
             // InvalidCompiledWorkflow maps to UnexpectedEof via core_to_expr
@@ -413,13 +485,13 @@ fn check_expr_stack_bound_mixed_ops_tracking() {
     // Correct pattern for empty final: push 2, Add → depth 1... still not empty.
     // We need: push 2, Add → depth 1. That's not empty.
     // For empty: push 2, Add → 1 left. Need to pop. No Pop op.
-    // The only way to empty is: push 2, Add → 1. 
+    // The only way to empty is: push 2, Add → 1.
     // Actually check the stack effect table: LoadConst pushes 1, Add pops 2 pushes 1 (net -1)
     // So: LoadConst, LoadConst, Add → depth 0 ✓
     let ops = vec![
         ExprOp::LoadConst(ConstIdx::new(0)), // stack: 1
         ExprOp::LoadConst(ConstIdx::new(1)), // stack: 2 (max)
-        ExprOp::Add,                          // stack: 0
+        ExprOp::Add,                         // stack: 0
     ];
     let max_stack = check_expr_stack_bound(&ops).expect("balanced add should pass");
     assert_eq!(max_stack, 2);
@@ -433,7 +505,10 @@ fn check_expr_stack_bound_256_loads_exceeds_u8_depth() {
         .collect();
     let result = check_expr_stack_bound(&ops);
     // Depth would overflow u8 → should fail
-    assert!(result.is_err(), "256 loads should overflow u8 depth tracking");
+    assert!(
+        result.is_err(),
+        "256 loads should overflow u8 depth tracking"
+    );
 }
 
 // =========================================================================

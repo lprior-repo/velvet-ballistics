@@ -15,6 +15,10 @@ pub(crate) mod miri_tests;
 pub mod tests;
 pub mod types;
 
+// Verus proofs (compiled under verus toolchain only)
+#[cfg(verus)]
+pub(crate) mod verus;
+
 /// Maximum source bytes accepted by the lexer.
 const MAX_SOURCE_BYTES: usize = 4096;
 /// Maximum tokens per expression (excluding the End token).

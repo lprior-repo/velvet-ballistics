@@ -180,5 +180,8 @@ fn empty_program_rejected_at_construction() {
     // Build an empty program — 0 ops
     let result = ExprProgram::try_from_ops(Vec::new().into_boxed_slice());
     // Empty program → validate_expr_final_depth(0) → ExpressionStackUnderflow
-    assert!(result.is_err(), "empty program should be rejected at construction");
+    assert!(
+        result.is_err(),
+        "empty program should be rejected at construction"
+    );
 }

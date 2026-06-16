@@ -11,6 +11,10 @@ pub(crate) mod miri_tests;
 pub mod tests;
 pub mod types;
 
+// Verus proofs (compiled under verus toolchain only)
+#[cfg(verus)]
+pub(crate) mod verus;
+
 /// Maximum nesting depth for the parser.
 const MAX_DEPTH: u8 = 64;
 /// Maximum helper call arguments.
