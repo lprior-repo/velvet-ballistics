@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 //! Source map module tests.
 
 use super::*;
@@ -128,7 +129,7 @@ fn source_map_span_for_node_returns_correct_range() {
     assert!(s.end_offset >= s.start_offset);
 }
 
-fn span_text<'a>(yaml: &'a str, span: SourceSpan) -> &'a str {
+fn span_text(yaml: &str, span: SourceSpan) -> &str {
     yaml.get(span.start_offset..span.end_offset).unwrap_or("")
 }
 
@@ -521,15 +522,11 @@ fn build_source_map_handles_mixed_indentation() {
 fn build_source_map_flow_style_sequence() {
     let yaml = "items: [a, b, c]\n";
     let result = build_source_map(yaml);
-    match result {
-        Ok(map) => {
-            assert!(
-                !map.is_empty(),
-                "flow-style sequence source map should not be empty"
-            );
-        }
-        Err(e) => panic!("flow-style sequence should be accepted, got error: {e:?}"),
-    }
+    let map = result.expect("flow-style sequence should be accepted");
+    assert!(
+        !map.is_empty(),
+        "flow-style sequence source map should not be empty"
+    );
 }
 
 /// Source map handles YAML with flow style mappings.
@@ -537,15 +534,11 @@ fn build_source_map_flow_style_sequence() {
 fn build_source_map_flow_style_mapping() {
     let yaml = "obj: {key: value}\n";
     let result = build_source_map(yaml);
-    match result {
-        Ok(map) => {
-            assert!(
-                !map.is_empty(),
-                "flow-style mapping source map should not be empty"
-            );
-        }
-        Err(e) => panic!("flow-style mapping should be accepted, got error: {e:?}"),
-    }
+    let map = result.expect("flow-style mapping should be accepted");
+    assert!(
+        !map.is_empty(),
+        "flow-style mapping source map should not be empty"
+    );
 }
 
 /// Source map handles empty sequences and mappings.

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::expect_used)]
 //! Library-level integration tests.
 
 use super::*;
@@ -1186,7 +1187,10 @@ fn semantic_source_map_tracks_trigger_and_block_scalar() {
     "};
     let map = crate::source_map::build_semantic_source_map(yaml).expect("source map builds");
     let manual = map.span_for_path("$.when.manual").expect("manual span");
-    assert_eq!(&yaml[manual.start_offset..manual.end_offset], "manual");
+    assert_eq!(
+        yaml.get(manual.start_offset..manual.end_offset),
+        Some("manual")
+    );
     let value = map
         .span_for_path("$.steps[0].set.value")
         .expect("value span");
@@ -1226,10 +1230,7 @@ fn adversarial_api_only_whitespace_rejected() {
 #[test]
 fn build_source_map_returns_non_empty_for_valid_yaml() {
     let yaml = "key: value\n";
-    let map = match build_source_map(yaml) {
-        Ok(v) => v,
-        Err(e) => panic!("build_source_map should succeed for valid YAML: {e:?}"),
-    };
+    let map = build_source_map(yaml).expect("build_source_map should succeed for valid YAML");
     assert!(
         !map.is_empty(),
         "source map should not be empty for valid YAML"
@@ -1300,7 +1301,7 @@ fn load_fixture_source_parses_valid_workflow() {
     "#};
     let result = load_fixture_source(yaml);
     assert!(
-        matches!(result, Ok(_)),
+        result.is_ok(),
         "load_fixture_source should accept valid workflow, got {result:?}"
     );
 }
