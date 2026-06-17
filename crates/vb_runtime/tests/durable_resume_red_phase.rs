@@ -405,7 +405,7 @@ fn resume_post002_result_contains_required_fields() {
     );
     assert!(
         matches!(result.status, ResumeStatus::Resumed),
-        "POST-002: status must be Resumed (not Running or AlreadyRunning)"
+        "POST-002: status must be Resumed"
     );
     assert!(
         result.timestamp > 0,
@@ -522,7 +522,7 @@ fn resume_inv001_no_invalid_transitions() {
     );
     assert!(
         !RuntimeState::Running.is_resumable(),
-        "Running is not Resumable (AlreadyRunning path) per INV-001"
+        "Running is not Resumable per INV-001"
     );
 
     // handle_resume enforces INV-001: non-Resumable states return NotResumable
@@ -624,8 +624,8 @@ fn resume_inv003_result_fields_are_present() {
 /// internal test helpers (enqueue_action_failure) which are not accessible from
 /// this external test file. VolatileRuntimeJournal tests cannot produce Failed
 /// state. The invariant is enforced by handle_resume's NotResumable variant:
-/// any run not in Resumable state returns NotResumable (or AlreadyRunning for
-/// Running state). This test verifies the Resumable path works correctly.
+/// any run not in Resumable state returns NotResumable. This test verifies the
+/// Resumable path works correctly.
 #[test]
 fn resume_inv004_failed_run_not_resumable() {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());

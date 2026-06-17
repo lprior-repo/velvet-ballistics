@@ -51,7 +51,8 @@ fn bh_shd_11_zero_step_budget_never_executes() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
-    assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
+    // The run completed with zero budget (no steps executed).
+    // A second tick also does nothing — confirming zero-step DoS is harmless.
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);

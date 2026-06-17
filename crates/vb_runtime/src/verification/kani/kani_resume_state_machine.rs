@@ -128,13 +128,13 @@ fn kani_resume_non_resumable_guard() {
 }
 
 // =========================================================================
-// PO-vb282my-RS-KANI-002: Already Running path
-// handle_resume returns Ok(AlreadyRunning) when RuntimeState == Running
+// PO-vb282my-RS-KANI-002: Running state is not resumable
+// handle_resume returns Err(NotResumable) when RuntimeState == Running
 // =========================================================================
 
 #[kani::proof]
 #[kani::unwind(10)]
-fn kani_resume_already_running() {
+fn kani_resume_running_not_resumable() {
     let mut shard = new_shard();
     let run = any_run_id();
 
@@ -142,19 +142,13 @@ fn kani_resume_already_running() {
     shard.run_state_insert(run, minimal_run_state(run));
     shard.runtime_state_insert(run, RuntimeState::Running);
 
-    // Call production function
+    // Call production function handle_resume
     let result = shard.handle_resume(run);
 
-    // Assert: Ok(AlreadyRunning)
-    match result {
-        Ok(resume_result) => {
-            kani::assert(matches!(resume_result.status, ResumeStatus::AlreadyRunning, "assertion failed"),
-                "Running state must return AlreadyRunning",
-            );
-        }
-        Err(_) => {
-        }
-    }
+    // Assert: must return Err(NotResumable) — Running is not a resumable state
+    kani::assert(matches!(result, Err(ResumeError::NotResumable { .. })),
+        "Running state must return NotResumable error",
+    );
 }
 
 // =========================================================================

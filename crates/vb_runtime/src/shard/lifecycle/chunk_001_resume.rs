@@ -6,13 +6,6 @@ impl Shard {
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
         self.validate_run_exists(run)?;
         let current_state = self.get_runtime_state_or_running(run);
-        if current_state == RuntimeState::Running {
-            return Ok(ResumeResult {
-                run_id: run,
-                status: ResumeStatus::AlreadyRunning,
-                timestamp: current_timestamp(),
-            });
-        }
         if current_state != RuntimeState::Resumable {
             return Err(ResumeError::NotResumable {
                 run_id: run,

@@ -188,8 +188,6 @@ pub enum ResumeStatus {
     /// The post-drive lifecycle may be `Running`, `Resumable`, or terminal,
     /// depending on the deterministic engine signal emitted by that drive.
     Resumed,
-    /// Run was already running when resume was attempted.
-    AlreadyRunning,
 }
 
 /// Result of a successful resume operation.
