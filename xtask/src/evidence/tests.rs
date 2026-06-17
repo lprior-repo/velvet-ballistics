@@ -1,5 +1,19 @@
+// This file is included via `include!()` from `xtask/src/evidence.rs`.
+// Inner attributes (`#![...]`) are not valid in this context because the
+// include site is in the middle of the parent module; outer attributes
+// (`#[...]`) on the next item work correctly.
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::expect_used,
+        clippy::unwrap_used,
+        clippy::as_conversions,
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        clippy::let_underscore_must_use,
+        clippy::panic,
+        clippy::panic_in_result_fn
+    )]
     use super::*;
     use std::path::PathBuf;
 
@@ -8,14 +22,30 @@ mod tests {
         assert_eq!(GateProfile::AiFast.evidence_file(), "ai-fast.yaml");
         assert_eq!(GateProfile::AiDeep.evidence_file(), "ai-deep.yaml");
         assert_eq!(GateProfile::AiRelease.evidence_file(), "ai-release.yaml");
-        assert_eq!(GateProfile::AiFast.gates(), &["fmt", "check", "clippy", "nextest", "forbidden-scan", "hotpath-scan"]);
-        assert_eq!(GateProfile::AiDeep.gates(), &["miri", "mutants", "llvm-cov", "fuzz-build"]);
+        assert_eq!(
+            GateProfile::AiFast.gates(),
+            &[
+                "fmt",
+                "check",
+                "clippy",
+                "nextest",
+                "forbidden-scan",
+                "hotpath-scan"
+            ]
+        );
+        assert_eq!(
+            GateProfile::AiDeep.gates(),
+            &["miri", "mutants", "llvm-cov", "fuzz-build"]
+        );
         assert!(GateProfile::AiRelease.gates().contains(&"maxperf"));
     }
 
     #[test]
     fn evidence_path_stays_under_bead_directory() {
-        assert_eq!(evidence_path("vb-kkvb", "fmt"), PathBuf::from(".evidence/vb-kkvb/fmt.yaml"));
+        assert_eq!(
+            evidence_path("vb-kkvb", "fmt"),
+            PathBuf::from(".evidence/vb-kkvb/fmt.yaml")
+        );
     }
 
     #[test]
@@ -61,7 +91,10 @@ mod tests {
             why_failed: None,
         };
         let why = explain_failure(&evidence);
-        assert_eq!(why, None, "Pass status must produce None from explain_failure");
+        assert_eq!(
+            why, None,
+            "Pass status must produce None from explain_failure"
+        );
     }
 
     #[test]
@@ -138,7 +171,10 @@ mod tests {
         let result = validate_evidence_dir(dir.path(), required_gates);
 
         // Then: returns Ok with empty error vec
-        assert!(result.is_ok(), "validate_evidence_dir must not error on valid dir");
+        assert!(
+            result.is_ok(),
+            "validate_evidence_dir must not error on valid dir"
+        );
         assert!(
             result.as_ref().unwrap().is_empty(),
             "no errors when all gate files are present"
@@ -151,8 +187,7 @@ mod tests {
 
         // Given: a temp directory with only "fmt.yaml" present
         let dir = tempfile::tempdir().expect("create temp dir");
-        fs::write(dir.path().join("fmt.yaml"), "status: pass\n")
-            .expect("write fmt gate file");
+        fs::write(dir.path().join("fmt.yaml"), "status: pass\n").expect("write fmt gate file");
         let required_gates = &["fmt", "clippy", "test"];
 
         // When: validate_evidence_dir is called
@@ -162,11 +197,11 @@ mod tests {
         assert!(result.is_ok());
         let errors = result.unwrap();
         assert_eq!(errors.len(), 2);
-        assert!(errors.iter().any(|e| {
-            matches!(e, Error::MissingEvidence { gate: g, .. } if g == "clippy")
-        }));
-        assert!(errors.iter().any(|e| {
-            matches!(e, Error::MissingEvidence { gate: g, .. } if g == "test")
-        }));
+        assert!(errors
+            .iter()
+            .any(|e| { matches!(e, Error::MissingEvidence { gate: g, .. } if g == "clippy") }));
+        assert!(errors
+            .iter()
+            .any(|e| { matches!(e, Error::MissingEvidence { gate: g, .. } if g == "test") }));
     }
 }

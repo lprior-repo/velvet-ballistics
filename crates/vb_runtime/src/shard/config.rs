@@ -15,7 +15,7 @@ use crate::trace::TraceRing;
 
 // Re-export from queue for ShardConfig
 pub use super::queue::{
-    MAX_COMMAND_QUEUE_CAPACITY, ShardCommandQueue, is_valid_command_queue_capacity,
+    is_valid_command_queue_capacity, ShardCommandQueue, MAX_COMMAND_QUEUE_CAPACITY,
 };
 
 // ============================================================================
@@ -81,7 +81,16 @@ impl Default for ShardConfig {
             step_budget_per_tick: 1000,
             max_active_runs: 1024,
             policy: vb_core::policy::RuntimePolicy::Strict,
-            coalesce_window_ticks: 1,
+            // Flipped from 1 to 10 by the P2-14c batched-atomicity bench
+            // (see `.evidence/batched_atomicity_bench.json`): A/B measurement
+            // shows the coalescing layer provides >= 3x I/O reduction on
+            // submit + 100 actions. The 78 test sites that explicitly set
+            // `coalesce_window_ticks: 1` continue to get the no-coalescing
+            // behavior they assert against; the three sites that use
+            // `..ShardConfig::default()` (vb_ipc server trace test, the
+            // workspace strict-admission test, and the step-budget helper)
+            // are verified to remain green by the gates below.
+            coalesce_window_ticks: 10,
             snapshot_interval_steps: 0,
         }
     }

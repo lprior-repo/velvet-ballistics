@@ -85,7 +85,13 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() {
         assert!(false, "invalid shard count");
         return;
     };
-    let mut config = ShardConfig::default();
+    let mut config = ShardConfig {
+        // Pin to 1 so coalesce-window default flip does not buffer events
+        // behind a 10-tick window, which would leave queue counts at zero
+        // when the test asserts on pending_profile_counts().
+        coalesce_window_ticks: 1,
+        ..ShardConfig::default()
+    };
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
     let runtime = Runtime::new_with_journal(shard_count, config, runtime_journal);
 

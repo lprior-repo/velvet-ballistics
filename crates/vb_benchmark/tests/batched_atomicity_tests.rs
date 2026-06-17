@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::let_underscore_must_use
+)]
 //! Unit tests for the batched-atomicity coalescing benchmark.
 //!
 //! This test file contains its own copy of the shared infrastructure
@@ -279,5 +287,92 @@ fn coalescing_ratio_at_least_three() {
     assert_eq!(
         events_a, append_a,
         "event count must match append count: events={events_a} appends={append_a}"
+    );
+}
+
+/// Records the A/B coalescing ratio to `.evidence/batched_atomicity_bench.json`
+/// (workspace root) as required by the P2-14c bead close condition.
+///
+/// Runs the same workload as `coalescing_ratio_at_least_three`, computes the
+/// throughput ratio, and writes a JSON artifact with the counts, the ratio,
+/// and the >= 3.0x threshold. The test fails if the ratio is below 3.0x.
+#[test]
+fn records_evidence_json_with_ratio() {
+    let workflow = build_finish_workflow();
+
+    let (mut shard_a, mut shard_b, counting_a, counting_b) = build_shards();
+
+    for i in 0..100u64 {
+        let _ = shard_a.enqueue(ShardCommand::Submit {
+            run: RunId::new(i),
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        });
+        let _ = shard_b.enqueue(ShardCommand::Submit {
+            run: RunId::new(i),
+            workflow: workflow.clone(),
+            caps: vb_core::capability::CapabilitySet::empty(),
+        });
+    }
+
+    drain_shard(&mut shard_a);
+    drain_shard(&mut shard_b);
+
+    let append_a = *counting_a.append_count.lock().unwrap();
+    let batch_a = *counting_a.batch_count.lock().unwrap();
+    let append_b = *counting_b.append_count.lock().unwrap();
+    let batch_b = *counting_b.batch_count.lock().unwrap();
+    let events_a = counting_a.snapshot().unwrap().len();
+    let events_b = counting_b.snapshot().unwrap().len();
+
+    // Ratio = (events written with window=1) / (batch calls with window=10).
+    // This is the I/O-call reduction factor: with window=1 every event is
+    // an individual journal append; with window=10 events are coalesced and
+    // flushed as a single batch, so the ratio is approximately the window
+    // size. The bead requires this ratio to be >= 3.0x.
+    let ratio = if batch_b > 0 {
+        append_a as f64 / batch_b as f64
+    } else {
+        0.0_f64
+    };
+
+    assert!(
+        ratio >= 3.0,
+        "coalescing ratio {ratio:.2}x is below the required 3.0x threshold: \
+         append_a={append_a} batch_b={batch_b}"
+    );
+
+    let evidence = serde_json::json!({
+        "bench": "batched_atomicity",
+        "ratio": ratio,
+        "coalesce_window_ticks_a": 1_u32,
+        "coalesce_window_ticks_b": 10_u32,
+        "commands_per_shard": 100_u32,
+        "append_a": append_a,
+        "append_b": append_b,
+        "batch_a": batch_a,
+        "batch_b": batch_b,
+        "events_a": events_a,
+        "events_b": events_b,
+        "threshold": 3.0_f64,
+        "pass": ratio >= 3.0,
+    });
+
+    // `CARGO_MANIFEST_DIR` is `crates/vb_benchmark`; the workspace root is
+    // two parents up.
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace_root = manifest_dir
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("workspace root has two parents above crate manifest dir");
+    let evidence_dir = workspace_root.join(".evidence");
+    std::fs::create_dir_all(&evidence_dir).expect("create .evidence dir");
+    let evidence_path = evidence_dir.join("batched_atomicity_bench.json");
+    let pretty = serde_json::to_string_pretty(&evidence).expect("serialize evidence");
+    std::fs::write(&evidence_path, pretty).expect("write evidence JSON");
+
+    eprintln!(
+        "wrote {} (ratio={ratio:.2}x, threshold=3.0x)",
+        evidence_path.display()
     );
 }
