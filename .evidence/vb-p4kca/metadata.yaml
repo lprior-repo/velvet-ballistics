@@ -1,5 +1,5 @@
 benchmark: aggregate_resource_budget/1000_runs
-benchmark_crate: vb_benchmark
+benchmark_crate: vb_core
 benchmark_harness: criterion
 git_commit: 220dbe278697979435c7332d2af7799bdf567edc
 git_branch: main

@@ -10,9 +10,9 @@ metadata.
 ## Run
 
 - **Benchmark**: `aggregate_resource_budget/1000_runs`
-- **Crate**: `vb_benchmark` (Cargo.toml `[[bench]]` entry)
+- **Crate**: `vb_core` (Cargo.toml `[[bench]]` entry; restored from phantom by vb-ship-012)
 - **Harness**: Criterion 0.8.2
-- **Command**: `cargo +nightly bench -p vb_benchmark --bench aggregate_resource_budget -- --format terse -v`
+- **Command**: `cargo +nightly bench -p vb_core --bench aggregate_resource_budget -- --format terse -v`
 - **Build profile**: bench (`optimized + debuginfo`)
 - **Criterion sample size**: 100
 - **Criterion warm-up time**: 3 s
@@ -62,6 +62,15 @@ single-step transition.
   and committed as `e1daeece48c5aa36f7ef2c1073100798051d3ade`
   with the message
   `evidence(vb-ship-009): initial aggregate_resource_budget baseline + metadata`.
+- The benchmark was originally captured against
+  `crates/vb_benchmark/benches/aggregate_resource_budget.rs` (the
+  per-run `RunMetrics` aggregator). As of bead **vb-ship-012** it is
+  also re-homed in `crates/vb_core/benches/aggregate_resource_budget.rs`
+  against `vb_core::budget::AggregateResourceBudget` and the
+  `validate_step_ceilings` admission validator, so the
+  `vb_core` `[[bench]]` entry declared in
+  `crates/vb_core/Cargo.toml` is a real, compiling criterion bench
+  rather than a phantom file.
 
 ## Files in this evidence bundle
 
