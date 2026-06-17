@@ -4591,7 +4591,7 @@ mod hydrate_run_frame_tests {
         );
         assert_eq!(
             frame_from_snapshot.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
-            frame_from_journal.step_state(StepIdx::new(0)).unwrap()
+            frame_from_journal.step_state(StepIdx::new(0)).expect("step_state must succeed for valid frame")
         );
 
         // NOTE: Full frame equality (==) would fail because:
