@@ -435,3 +435,66 @@ fn validator_iteration_count_for_summary_check_is_bounded() {
     let max_iterations_for_summary_check: u64 = 4;
     assert_eq!(max_iterations_for_summary_check, 4);
 }
+
+// ── positive_vb_ajc40_refinement_witness integration ──────────────────────
+//
+// Mirrors `src/positive.rs::positive_vb_ajc40_refinement_witness`.
+// Asserts the witness pipeline arithmetic that Flux proves statically.
+
+#[test]
+fn refinement_witness_remaining_budget_is_balanced() {
+    let slug_count: u64 = 65_535;
+    let query_count: u64 = 65_535;
+    let slug_depth: u64 = 16;
+    let query_depth: u64 = 16;
+    let recomputed_total: u64 = 21;
+    let declared_total: u64 = 21;
+    let pair: u64 = 9 + 12;
+    let max_budget: u64 = 34;
+
+    assert_eq!(pair, 21);
+    assert_eq!(recomputed_total, declared_total);
+
+    let slug_remaining = max_budget - recomputed_total;
+    let query_remaining = max_budget - recomputed_total;
+
+    assert_eq!(slug_remaining, 13);
+    assert_eq!(query_remaining, 13);
+    assert!(validate_count(slug_count).is_ok());
+    assert!(validate_count(query_count).is_ok());
+    assert!(validate_summary(0, recomputed_total, declared_total, slug_depth, max_budget).is_ok());
+    assert!(validate_summary(0, recomputed_total, declared_total, query_depth, max_budget).is_ok());
+}
+
+// ── invalid_state_probes_fail_under_flux integration ──────────────────────
+//
+// Mirrors `src/negative.rs::invalid_state_probes_fail_under_flux`.
+// Asserts that the negative-probe inputs would be rejected by the validator
+// seams Flux is asked to refute.
+
+#[test]
+fn refinement_negative_probes_are_rejected_by_validators() {
+    assert!(matches!(validate_count(65_536), Err("count_exceeds_max")));
+    assert!(matches!(validate_count(65_536), Err("count_exceeds_max")));
+    assert!(matches!(
+        validate_summary(0, 0, 0, 17, 0),
+        Err("depth_exceeds_max")
+    ));
+    assert!(matches!(
+        validate_summary(0, 0, 0, 17, 0),
+        Err("depth_exceeds_max")
+    ));
+    assert!(matches!(
+        validate_summary(0, 12, 13, 0, 0),
+        Err("declared_recomputed_mismatch")
+    ));
+    assert!(u64::MAX.checked_add(1).is_none());
+    assert!(matches!(
+        validate_summary(0, 26, 26, 0, 25),
+        Err("recomputed_exceeds_budget")
+    ));
+    assert!(matches!(
+        validate_summary(0, 26, 26, 0, 25),
+        Err("recomputed_exceeds_budget")
+    ));
+}

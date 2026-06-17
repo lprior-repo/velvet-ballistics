@@ -554,8 +554,10 @@ fn is_compile_idempotency_gate_accepted_exhaustive_60_cells() {
                 Idempotency::IdempotentExternal,
                 Idempotency::AtLeastOnceExternal,
             ] {
-                let id = u16::try_from(total).expect("exhaustive table bounded to 60 cells")
-                    .checked_add(7000).expect("id + 7000 fits u16 for table of 60 cells");
+                let id = u16::try_from(total)
+                    .expect("exhaustive table bounded to 60 cells")
+                    .checked_add(7000)
+                    .expect("id + 7000 fits u16 for table of 60 cells");
                 let c = contract(id, side_effect, idempotency, retry_safety);
                 let accepted = vb_compile::is_compile_idempotency_gate_accepted(&c);
                 let expected = expected_acceptance(side_effect, retry_safety, idempotency);

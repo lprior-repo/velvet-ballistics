@@ -45,7 +45,10 @@ fn foreach_yaml_no_atonce() -> String {
 /// Extract the limit from the ForEachStart node at index 0.
 fn extract_foreach_start_limit(workflow: &vb_core::CompiledWorkflow) -> u32 {
     let parts = workflow.to_parts();
-    let node0 = parts.nodes.first().expect("workflow must have at least one node");
+    let node0 = parts
+        .nodes
+        .first()
+        .expect("workflow must have at least one node");
     match &node0.kind {
         CompiledNodeKind::ForEachStart { limit, .. } => *limit,
         other => {
@@ -191,8 +194,10 @@ fn foreach_at_once_one_source_path_limit_is_one() {
 fn foreach_at_once_zero_and_one_produce_different_digests() {
     let yaml_zero = foreach_yaml("0");
     let yaml_one = foreach_yaml("1");
-    let digest_zero = digest_from_yaml(&yaml_zero).expect("compile_workflow must succeed for test fixture");
-    let digest_one = digest_from_yaml(&yaml_one).expect("compile_workflow must succeed for test fixture");
+    let digest_zero =
+        digest_from_yaml(&yaml_zero).expect("compile_workflow must succeed for test fixture");
+    let digest_one =
+        digest_from_yaml(&yaml_one).expect("compile_workflow must succeed for test fixture");
 
     assert_ne!(
         digest_zero, digest_one,
@@ -204,8 +209,10 @@ fn foreach_at_once_zero_and_one_produce_different_digests() {
 fn foreach_at_once_zero_and_one_source_digests_differ() {
     let yaml_zero = foreach_yaml("0");
     let yaml_one = foreach_yaml("1");
-    let digest_zero = digest_from_source(&yaml_zero).expect("compile_source must succeed for test fixture");
-    let digest_one = digest_from_source(&yaml_one).expect("compile_source must succeed for test fixture");
+    let digest_zero =
+        digest_from_source(&yaml_zero).expect("compile_source must succeed for test fixture");
+    let digest_one =
+        digest_from_source(&yaml_one).expect("compile_source must succeed for test fixture");
 
     assert_ne!(
         digest_zero, digest_one,
@@ -221,8 +228,10 @@ fn foreach_at_once_zero_and_one_source_digests_differ() {
 fn foreach_at_once_none_and_one_produce_identical_digests() {
     let yaml_none = foreach_yaml_no_atonce();
     let yaml_one = foreach_yaml("1");
-    let digest_none = digest_from_yaml(&yaml_none).expect("compile_workflow must succeed for test fixture");
-    let digest_one = digest_from_yaml(&yaml_one).expect("compile_workflow must succeed for test fixture");
+    let digest_none =
+        digest_from_yaml(&yaml_none).expect("compile_workflow must succeed for test fixture");
+    let digest_one =
+        digest_from_yaml(&yaml_one).expect("compile_workflow must succeed for test fixture");
 
     assert_eq!(
         digest_none, digest_one,
@@ -234,8 +243,10 @@ fn foreach_at_once_none_and_one_produce_identical_digests() {
 fn foreach_at_once_none_and_one_source_digests_identical() {
     let yaml_none = foreach_yaml_no_atonce();
     let yaml_one = foreach_yaml("1");
-    let digest_none = digest_from_source(&yaml_none).expect("compile_source must succeed for test fixture");
-    let digest_one = digest_from_source(&yaml_one).expect("compile_source must succeed for test fixture");
+    let digest_none =
+        digest_from_source(&yaml_none).expect("compile_source must succeed for test fixture");
+    let digest_one =
+        digest_from_source(&yaml_one).expect("compile_source must succeed for test fixture");
 
     assert_eq!(
         digest_none, digest_one,
@@ -363,8 +374,10 @@ fn foreach_at_once_one_digest_agrees_across_apis() {
 fn foreach_at_once_zero_and_two_produce_different_digests() {
     let yaml_zero = foreach_yaml("0");
     let yaml_two = foreach_yaml("2");
-    let digest_zero = digest_from_yaml(&yaml_zero).expect("compile_workflow must succeed for test fixture");
-    let digest_two = digest_from_yaml(&yaml_two).expect("compile_workflow must succeed for test fixture");
+    let digest_zero =
+        digest_from_yaml(&yaml_zero).expect("compile_workflow must succeed for test fixture");
+    let digest_two =
+        digest_from_yaml(&yaml_two).expect("compile_workflow must succeed for test fixture");
 
     assert_ne!(
         digest_zero, digest_two,

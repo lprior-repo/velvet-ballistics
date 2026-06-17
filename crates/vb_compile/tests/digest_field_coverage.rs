@@ -149,10 +149,9 @@ steps:
       result: 0
 "#;
 
-    let digest_a = compile_and_digest(yaml)
-        .expect("together workflow must compile and digest");
-    let digest_b = compile_and_digest(yaml)
-        .expect("together workflow must compile and digest (second call)");
+    let digest_a = compile_and_digest(yaml).expect("together workflow must compile and digest");
+    let digest_b =
+        compile_and_digest(yaml).expect("together workflow must compile and digest (second call)");
 
     assert_eq!(
         digest_a, digest_b,

@@ -51,7 +51,9 @@ fn workflow_source_strategy() -> BoxedStrategy<WorkflowSource> {
                     } else {
                         StepPrimitive::Set {
                             output: format!("out_{i}"),
-                            value: i64::try_from(i).expect("i < 5 in num_steps=1..=5 strategy").to_string(),
+                            value: i64::try_from(i)
+                                .expect("i < 5 in num_steps=1..=5 strategy")
+                                .to_string(),
                         }
                     },
                     with: None,

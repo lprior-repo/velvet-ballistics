@@ -1,4 +1,9 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::panic
+)]
 // Manual QA smoke test for vb-5h50 trimming
 // Run with: cargo test -p vb_storage --test manual_qa_smoke -- --nocapture
 

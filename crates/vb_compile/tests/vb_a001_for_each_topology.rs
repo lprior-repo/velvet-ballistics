@@ -131,8 +131,10 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() {
                 "ForEachStart done → node 3 (Finish)"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::ForEachStart { .. }),
-            "node 0 expected ForEachStart, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ForEachStart { .. }),
+            "node 0 expected ForEachStart, got {other:?}"
+        ),
     }
 
     // Node 1: SetConst (body) — THE FIX: next must be Some(StepIdx(2))
@@ -149,8 +151,10 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() {
                 "body SetConst next must point to ForEachNext at index 2"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::SetConst { .. }),
-            "node 1 expected SetConst, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::SetConst { .. }),
+            "node 1 expected SetConst, got {other:?}"
+        ),
     }
 
     // Node 2: ForEachNext — body→1 (loop), done→3 (exit)
@@ -160,8 +164,10 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() {
             assert_eq!(body, &StepIdx::new(1), "ForEachNext body → SetConst at 1");
             assert_eq!(done, &StepIdx::new(3), "ForEachNext done → Finish at 3");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ForEachNext { .. }),
-            "node 2 expected ForEachNext, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ForEachNext { .. }),
+            "node 2 expected ForEachNext, got {other:?}"
+        ),
     }
 
     // Node 3: Finish — terminal
@@ -170,8 +176,10 @@ fn vb_a001_body_setconst_next_points_to_foreachnext() {
         CompiledNodeKind::Finish { result } => {
             assert_eq!(result, &SlotIdx::new(0));
         }
-        other => assert!(matches!(other, CompiledNodeKind::Finish { .. }),
-            "node 3 expected Finish, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Finish { .. }),
+            "node 3 expected Finish, got {other:?}"
+        ),
     }
 }
 
@@ -368,17 +376,13 @@ fn vb_a001_foreachstart_fields_valid() {
             assert!(*limit > 0, "limit must be positive");
             assert!(body.as_usize() < parts.nodes.len(), "body in-range");
             assert!(done.as_usize() < parts.nodes.len(), "done in-range");
-            assert!(
-                input.as_usize() < slot_count,
-                "input slot in-range"
-            );
-            assert!(
-                item_slot.as_usize() < slot_count,
-                "item_slot in-range"
-            );
+            assert!(input.as_usize() < slot_count, "input slot in-range");
+            assert!(item_slot.as_usize() < slot_count, "item_slot in-range");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ForEachStart { .. }),
-            "node 0 expected ForEachStart, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ForEachStart { .. }),
+            "node 0 expected ForEachStart, got {other:?}"
+        ),
     }
 }
 
@@ -400,8 +404,10 @@ fn vb_a001_foreachnext_targets_in_bounds() {
                 "ForEachNext done in-range"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::ForEachNext { .. }),
-            "node 2 expected ForEachNext, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ForEachNext { .. }),
+            "node 2 expected ForEachNext, got {other:?}"
+        ),
     }
 }
 

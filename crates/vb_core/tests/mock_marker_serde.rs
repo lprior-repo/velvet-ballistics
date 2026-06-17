@@ -1,4 +1,9 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::panic
+)]
 //! MockMarker serialization tests.
 //!
 //! Verifies postcard serialization roundtrip for MockMarker.

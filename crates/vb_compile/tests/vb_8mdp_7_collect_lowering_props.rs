@@ -358,8 +358,10 @@ fn collect_defaults_limit_and_page_size_to_one() {
                 "default page_size (items) should be 1 when omitted"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectStart { .. }),
-            "expected CollectStart, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectStart { .. }),
+            "expected CollectStart, got {other:?}"
+        ),
     }
 }
 
@@ -467,8 +469,11 @@ fn collect_with_moderate_preamble_has_correct_offsets() {
             assert_eq!(body.get(), 101, "body = id+1 = 101");
             assert_eq!(done.get(), 103, "done = id+3 = 103");
         }
-        _ => assert!(matches!(start.kind, CompiledNodeKind::CollectStart { .. }),
-            "expected CollectStart, got {:?}", start.kind),
+        _ => assert!(
+            matches!(start.kind, CompiledNodeKind::CollectStart { .. }),
+            "expected CollectStart, got {:?}",
+            start.kind
+        ),
     }
 }
 
@@ -499,9 +504,15 @@ fn lower_collect_node_ids_are_id_body_done() {
     let result = lower_collect(id, SlotIdx::new(0), 5, 10, body, done, &mut builder);
     let nodes = result.expect("lower_collect should succeed");
 
-    let node0 = nodes.first().expect("nodes must be non-empty (lower_collect emits 3 nodes)");
-    let node1 = nodes.get(1).expect("node 1 must exist (lower_collect emits 3 nodes)");
-    let node2 = nodes.get(2).expect("node 2 must exist (lower_collect emits 3 nodes)");
+    let node0 = nodes
+        .first()
+        .expect("nodes must be non-empty (lower_collect emits 3 nodes)");
+    let node1 = nodes
+        .get(1)
+        .expect("node 1 must exist (lower_collect emits 3 nodes)");
+    let node2 = nodes
+        .get(2)
+        .expect("node 2 must exist (lower_collect emits 3 nodes)");
     assert_eq!(node0.id.get(), 10, "CollectStart at id");
     assert_eq!(node1.id.get(), 11, "CollectPage at body");
     assert_eq!(node2.id.get(), 12, "CollectFinish at done");
@@ -519,7 +530,9 @@ fn lower_collect_collectstart_has_correct_fields() {
 
     let result = lower_collect(id, source, limit, page_size, body, done, &mut builder);
     let nodes = result.expect("lower_collect should succeed");
-    let node0 = nodes.first().expect("nodes must be non-empty (lower_collect emits 3 nodes)");
+    let node0 = nodes
+        .first()
+        .expect("nodes must be non-empty (lower_collect emits 3 nodes)");
 
     match &node0.kind {
         CompiledNodeKind::CollectStart {
@@ -535,8 +548,10 @@ fn lower_collect_collectstart_has_correct_fields() {
             assert_eq!(b.get(), 11, "body step preserved");
             assert_eq!(d.get(), 12, "done step preserved");
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectStart { .. }),
-            "expected CollectStart, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectStart { .. }),
+            "expected CollectStart, got {other:?}"
+        ),
     }
 }
 
@@ -550,7 +565,9 @@ fn lower_collect_collectpage_has_correct_slot_reference() {
 
     let result = lower_collect(id, source, 3, 4, body, done, &mut builder);
     let nodes = result.expect("lower_collect should succeed");
-    let node1 = nodes.get(1).expect("node 1 must exist (lower_collect emits 3 nodes)");
+    let node1 = nodes
+        .get(1)
+        .expect("node 1 must exist (lower_collect emits 3 nodes)");
 
     match &node1.kind {
         CompiledNodeKind::CollectPage {
@@ -566,8 +583,10 @@ fn lower_collect_collectpage_has_correct_slot_reference() {
             assert_eq!(b.get(), 11, "CollectPage.body preserved");
             assert_eq!(d.get(), 12, "CollectPage.done preserved");
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectPage { .. }),
-            "expected CollectPage, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectPage { .. }),
+            "expected CollectPage, got {other:?}"
+        ),
     }
 }
 
@@ -581,7 +600,9 @@ fn lower_collect_collectfinish_has_correct_slot_reference() {
 
     let result = lower_collect(id, source, 3, 4, body, done, &mut builder);
     let nodes = result.expect("lower_collect should succeed");
-    let node2 = nodes.get(2).expect("node 2 must exist (lower_collect emits 3 nodes)");
+    let node2 = nodes
+        .get(2)
+        .expect("node 2 must exist (lower_collect emits 3 nodes)");
 
     match &node2.kind {
         CompiledNodeKind::CollectFinish { collector_slot } => {
@@ -591,8 +612,10 @@ fn lower_collect_collectfinish_has_correct_slot_reference() {
                 "CollectFinish.collector_slot matches source"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectFinish { .. }),
-            "expected CollectFinish, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectFinish { .. }),
+            "expected CollectFinish, got {other:?}"
+        ),
     }
 }
 

@@ -1,8 +1,12 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::panic
+)]
 // vb_validate Integration Tests — RED PHASE
 // These tests prove the pipeline validate function returns correct ValidationError
 // variants for symbol bounds and resource contract violations.
-
 #![forbid(unsafe_code)]
 
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId};

@@ -54,10 +54,7 @@ fn scalarvalue_exhaustiveness_in_digest() {
         ScalarValue::Integer(_) => {}
         _ => {}
     }
-    assert!(
-        matched_string,
-        "expected String variant, got {sv_string:?}"
-    );
+    assert!(matched_string, "expected String variant, got {sv_string:?}");
 
     // Variant 2: Integer
     let sv_integer = ScalarValue::Integer(42);

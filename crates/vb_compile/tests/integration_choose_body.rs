@@ -90,7 +90,9 @@ fn compile_workflow_choose_body_set_success() {
     match &choose_node.kind {
         CompiledNodeKind::ChooseSlot { branches, .. } => {
             assert!(!branches.is_empty(), "must have at least one branch");
-            let first_branch = branches.first().expect("branches is non-empty (asserted above)");
+            let first_branch = branches
+                .first()
+                .expect("branches is non-empty (asserted above)");
             assert_eq!(
                 first_branch.target,
                 StepIdx::new(2),
@@ -102,8 +104,10 @@ fn compile_workflow_choose_body_set_success() {
                 "condition must be slot 0 (setup output)"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::ChooseSlot { .. }),
-            "node 1 must be ChooseSlot (already asserted above), got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ChooseSlot { .. }),
+            "node 1 must be ChooseSlot (already asserted above), got {other:?}"
+        ),
     }
 }
 
@@ -158,7 +162,9 @@ fn compile_workflow_choose_body_do_success() {
     match &choose_node.kind {
         CompiledNodeKind::ChooseSlot { branches, .. } => {
             assert!(!branches.is_empty(), "must have at least one branch");
-            let first_branch = branches.first().expect("branches is non-empty (asserted above)");
+            let first_branch = branches
+                .first()
+                .expect("branches is non-empty (asserted above)");
             assert_eq!(
                 first_branch.target,
                 StepIdx::new(2),
@@ -170,7 +176,9 @@ fn compile_workflow_choose_body_do_success() {
                 "condition must be slot 0 (setup output)"
             );
         }
-        other => assert!(matches!(other, CompiledNodeKind::ChooseSlot { .. }),
-            "node 1 must be ChooseSlot (already asserted above), got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ChooseSlot { .. }),
+            "node 1 must be ChooseSlot (already asserted above), got {other:?}"
+        ),
     }
 }

@@ -1,6 +1,77 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::arithmetic_side_effects, clippy::indexing_slicing, clippy::let_underscore_must_use, clippy::panic, clippy::panic_in_result_fn, clippy::bool_comparison, clippy::manual_div_ceil, clippy::clone_on_copy, clippy::len_zero, clippy::redundant_clone, clippy::collapsible_if, clippy::needless_return, clippy::needless_borrow, clippy::useless_format, clippy::redundant_pub_crate, clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::missing_safety_doc, clippy::wildcard_enum_match_arm, clippy::large_futures, clippy::unused_async, clippy::unused_self, clippy::let_underscore_drop, clippy::filter_map_next, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::implicit_clone, clippy::inefficient_to_string, clippy::inconsistent_struct_constructor, clippy::iter_filter_is_ok, clippy::iter_filter_is_some, clippy::iter_not_returning_iterator, clippy::iter_over_hash_type, clippy::iter_without_into_iter, clippy::large_digit_groups, clippy::large_types_passed_by_value, clippy::let_and_return, clippy::misnamed_getters, clippy::mutable_key_type, clippy::needless_collect, clippy::nonminimal_bool, clippy::option_if_let_else, clippy::or_fun_call, clippy::path_buf_push_overwrite, clippy::print_stderr, clippy::print_stdout, clippy::pub_with_shorthand, clippy::range_minus_one, clippy::range_plus_one, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::single_match_else, clippy::suspicious_operation_groupings, clippy::trivially_copy_pass_by_ref, clippy::uninlined_format_args, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unused_io_amount, clippy::unused_trait_names, clippy::vec_init_then_push, clippy::wildcard_imports, clippy::approximate_const, clippy::absurd_extreme_comparisons, clippy::expect_fun_call, clippy::as_ref_should_use, clippy::useless_vec, clippy::useless_conversion, clippy::let_underscore_must_use)]
-
-
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::let_underscore_must_use,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::bool_comparison,
+    clippy::manual_div_ceil,
+    clippy::clone_on_copy,
+    clippy::len_zero,
+    clippy::redundant_clone,
+    clippy::collapsible_if,
+    clippy::needless_return,
+    clippy::needless_borrow,
+    clippy::useless_format,
+    clippy::redundant_pub_crate,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::missing_safety_doc,
+    clippy::wildcard_enum_match_arm,
+    clippy::large_futures,
+    clippy::unused_async,
+    clippy::unused_self,
+    let_underscore_drop,
+    clippy::filter_map_next,
+    clippy::from_iter_instead_of_collect,
+    clippy::if_not_else,
+    clippy::implicit_clone,
+    clippy::inefficient_to_string,
+    clippy::inconsistent_struct_constructor,
+    clippy::iter_filter_is_ok,
+    clippy::iter_filter_is_some,
+    clippy::iter_not_returning_iterator,
+    clippy::iter_over_hash_type,
+    clippy::iter_without_into_iter,
+    clippy::large_digit_groups,
+    clippy::large_types_passed_by_value,
+    clippy::let_and_return,
+    clippy::misnamed_getters,
+    clippy::mutable_key_type,
+    clippy::needless_collect,
+    clippy::nonminimal_bool,
+    clippy::option_if_let_else,
+    clippy::or_fun_call,
+    clippy::path_buf_push_overwrite,
+    clippy::print_stderr,
+    clippy::print_stdout,
+    clippy::pub_with_shorthand,
+    clippy::range_minus_one,
+    clippy::range_plus_one,
+    clippy::ref_binding_to_reference,
+    clippy::ref_option_ref,
+    clippy::single_match_else,
+    clippy::suspicious_operation_groupings,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_wraps,
+    clippy::unnested_or_patterns,
+    clippy::unreadable_literal,
+    clippy::unused_io_amount,
+    clippy::unused_trait_names,
+    clippy::vec_init_then_push,
+    clippy::wildcard_imports,
+    clippy::approx_constant,
+    clippy::absurd_extreme_comparisons,
+    clippy::expect_fun_call,
+    clippy::as_ref_should_use,
+    clippy::useless_vec,
+    clippy::useless_conversion,
+    clippy::let_underscore_must_use
+)]
 #![forbid(unsafe_code)]
 #![deny(
     clippy::unwrap_used,
@@ -468,7 +539,10 @@ fn parse_allow_reason(line: &str) -> Option<String> {
     if !is_valid_marker_prefix(line, token_idx) {
         return None;
     }
-    let reason = line.get(token_idx.saturating_add(ALLOW_MARKER.len())..).unwrap_or("").trim();
+    let reason = line
+        .get(token_idx.saturating_add(ALLOW_MARKER.len())..)
+        .unwrap_or("")
+        .trim();
     if reason.is_empty() {
         None
     } else {
@@ -485,7 +559,10 @@ fn is_valid_marker_prefix(line: &str, token_idx: usize) -> bool {
     if prev != Some(b' ') && prev != Some(b'\t') {
         return false;
     }
-    let prev_byte = bytes.get(token_idx.saturating_sub(2)).copied().unwrap_or(b' ');
+    let prev_byte = bytes
+        .get(token_idx.saturating_sub(2))
+        .copied()
+        .unwrap_or(b' ');
     prev_byte == b'#' || prev_byte == b'/' || prev_byte == b'!'
 }
 
@@ -648,7 +725,10 @@ fn manifest_dependency_entry(semantic: &str) -> Option<(String, Option<String>)>
 
 fn manifest_package_name(rest: &str) -> Option<String> {
     let idx = find_word_token(rest, "package")?;
-    let after = rest.get(idx.saturating_add("package".len())..).unwrap_or("").trim_start();
+    let after = rest
+        .get(idx.saturating_add("package".len())..)
+        .unwrap_or("")
+        .trim_start();
     let after = after.strip_prefix('=')?.trim_start();
     quoted_string(after)
 }
@@ -693,7 +773,9 @@ fn quoted_string(input: &str) -> Option<String> {
 }
 
 fn strip_toml_comment(line: &str) -> &str {
-    comment_start(line).and_then(|idx| line.get(..idx)).unwrap_or(line)
+    comment_start(line)
+        .and_then(|idx| line.get(..idx))
+        .unwrap_or(line)
 }
 
 fn comment_start(line: &str) -> Option<usize> {

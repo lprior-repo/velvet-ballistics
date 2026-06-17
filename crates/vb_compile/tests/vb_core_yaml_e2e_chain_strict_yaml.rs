@@ -42,10 +42,11 @@ fn classify(error: CompileError) -> StrictYamlRejection {
 }
 
 #[test]
-fn strict_yaml_rejected_when_duplicate_top_level_key_present() { 
+fn strict_yaml_rejected_when_duplicate_top_level_key_present() {
     let source = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(
         rejection,
@@ -57,10 +58,12 @@ fn strict_yaml_rejected_when_duplicate_top_level_key_present() {
 }
 
 #[test]
-fn validate_and_compile_yaml_returns_artifact_when_minimal_yaml_is_valid() { 
+fn validate_and_compile_yaml_returns_artifact_when_minimal_yaml_is_valid() {
     let source = "version: velvet-ballistics/v1\nname: valid_minimal\nwhen: { manual: {} }\nsteps:\n  - id: make\n    set: { output: answer, value: \"42\" }\n  - id: done\n    finish: { result: answer }\n";
 
-    let workflow = compile_yaml(source).map_err(|errors| errors.to_string()).expect("valid minimal YAML must compile");
+    let workflow = compile_yaml(source)
+        .map_err(|errors| errors.to_string())
+        .expect("valid minimal YAML must compile");
 
     assert_eq!(workflow.digest(), workflow.to_parts().digest);
     assert_eq!(workflow.name(), "valid_minimal");
@@ -72,7 +75,8 @@ fn validate_and_compile_yaml_returns_artifact_when_minimal_yaml_is_valid() {
 fn validate_and_compile_yaml_rejects_duplicate_keys_with_strict_yaml_rejected() {
     let source = "version: velvet-ballistics/v1\nname: first\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(
         rejection,
@@ -84,31 +88,33 @@ fn validate_and_compile_yaml_rejects_duplicate_keys_with_strict_yaml_rejected() 
 }
 
 #[test]
-fn strict_yaml_rejected_when_anchor_present() { 
+fn strict_yaml_rejected_when_anchor_present() {
     let source = "version: velvet-ballistics/v1\nname: anchored\nwhen: &trigger { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::AnchorForbidden);
     // test passed
 }
 
 #[test]
-fn validate_and_compile_yaml_rejects_aliases_and_anchors_with_strict_yaml_rejected()
-{ 
+fn validate_and_compile_yaml_rejects_aliases_and_anchors_with_strict_yaml_rejected() {
     let source = "version: velvet-ballistics/v1\nname: anchored\nwhen: &trigger { manual: {} }\nsteps:\n  - id: done\n    finish: { result: *trigger }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::AnchorForbidden);
     // test passed
 }
 
 #[test]
-fn strict_yaml_rejected_when_explicit_tag_present() { 
+fn strict_yaml_rejected_when_explicit_tag_present() {
     let source = "version: !vb velvet-ballistics/v1\nname: tagged\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::TagForbidden);
     // test passed
@@ -118,17 +124,19 @@ fn strict_yaml_rejected_when_explicit_tag_present() {
 fn validate_and_compile_yaml_rejects_explicit_tags_with_strict_yaml_rejected() {
     let source = "version: !vb velvet-ballistics/v1\nname: tagged\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::TagForbidden);
     // test passed
 }
 
 #[test]
-fn strict_yaml_rejected_when_multi_document_stream_present() { 
+fn strict_yaml_rejected_when_multi_document_stream_present() {
     let source = "version: velvet-ballistics/v1\nname: first\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n---\nversion: velvet-ballistics/v1\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::DocumentCount { count: 2 });
     // test passed
@@ -138,17 +146,19 @@ fn strict_yaml_rejected_when_multi_document_stream_present() {
 fn validate_and_compile_yaml_rejects_multi_document_stream_with_strict_yaml_rejected() {
     let source = "version: velvet-ballistics/v1\nname: first\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n---\nversion: velvet-ballistics/v1\nname: second\nwhen: { manual: {} }\nsteps:\n  - id: done\n    finish: { result: 0 }\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::DocumentCount { count: 2 });
     // test passed
 }
 
 #[test]
-fn strict_yaml_rejected_when_top_level_shape_is_sequence() { 
+fn strict_yaml_rejected_when_top_level_shape_is_sequence() {
     let source = "- version\n- velvet-ballistics/v1\n";
 
-    let rejection = classify(first_error(source).expect("first_error must return Err for invalid YAML"));
+    let rejection =
+        classify(first_error(source).expect("first_error must return Err for invalid YAML"));
 
     assert_eq!(rejection, StrictYamlRejection::TopLevelNotMapping);
     // test passed

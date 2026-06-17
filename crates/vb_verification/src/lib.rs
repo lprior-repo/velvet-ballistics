@@ -57,7 +57,8 @@ mod kani_harnesses {
         let result = hydrate_run_frame(&snapshot, &tail_events, run_id);
 
         // Postcondition: must return Err
-        kani::assert(result.is_err(),
+        kani::assert(
+            result.is_err(),
             "hydrate_run_frame must return Err when snapshot.run != run_id",
         );
     }
@@ -72,7 +73,8 @@ mod kani_harnesses {
         let result = hydrate_run_frame_from_events(&events, run_id);
 
         // Postcondition: must return Err for empty events
-        kani::assert(result.is_err(),
+        kani::assert(
+            result.is_err(),
             "hydrate_run_frame_from_events must return Err on empty events",
         );
     }

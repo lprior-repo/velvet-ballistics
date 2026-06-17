@@ -424,9 +424,7 @@ fn submit_artifact_journaled_does_not_persist_strictly() -> Result<(), String> {
         .compiled_ir(artifact.digest)
         .map_err(|e| format!("load failed: {e}"))?;
     if loaded.is_none() {
-        return Err(String::from(
-            "Journaled artifact must still be persisted",
-        ));
+        return Err(String::from("Journaled artifact must still be persisted"));
     }
     Ok(())
 }

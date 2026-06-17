@@ -1,4 +1,9 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::panic
+)]
 //! Property test: diag_codes.rs promotion sync via public API.
 //!
 //! Invariant: All 58 ValidationError numeric codes (accessible via error_code())

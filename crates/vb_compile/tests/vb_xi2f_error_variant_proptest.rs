@@ -86,7 +86,9 @@ fn entry_out_of_bounds_returns_error() {
 fn step_out_of_bounds_returns_error() {
     let mut parts = minimal_valid_parts();
     let mut nodes = parts.nodes.to_vec();
-    let first_node = nodes.first_mut().expect("minimal_valid_parts must have at least one node");
+    let first_node = nodes
+        .first_mut()
+        .expect("minimal_valid_parts must have at least one node");
     *first_node = CompiledNode {
         id: StepIdx::new(0),
         output: None,
@@ -110,7 +112,9 @@ fn step_out_of_bounds_returns_error() {
 fn slot_out_of_bounds_returns_error() {
     let mut parts = minimal_valid_parts();
     let mut nodes = parts.nodes.to_vec();
-    let first_node = nodes.first_mut().expect("minimal_valid_parts must have at least one node");
+    let first_node = nodes
+        .first_mut()
+        .expect("minimal_valid_parts must have at least one node");
     *first_node = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(99)), // Out of bounds: slot_count is 1

@@ -45,8 +45,10 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "RepeatStart body");
             assert_eq!(done.get(), 3, "RepeatStart done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::RepeatStart { .. }),
-            "expected RepeatStart at node 0, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::RepeatStart { .. }),
+            "expected RepeatStart at node 0, got {other:?}"
+        ),
     }
 
     // Verify Do at node 1
@@ -56,8 +58,10 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() {
             assert_eq!(action.get(), 0, "Do action id"); // First registered action
             assert_eq!(input.get(), 0, "Do input slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
-            "expected Do at node 1, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"
+        ),
     }
 
     // Verify RepeatAttempt at node 2
@@ -72,8 +76,10 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "RepeatAttempt body");
             assert_eq!(done.get(), 3, "RepeatAttempt done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::RepeatAttempt { .. }),
-            "expected RepeatAttempt at node 2, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::RepeatAttempt { .. }),
+            "expected RepeatAttempt at node 2, got {other:?}"
+        ),
     }
 
     // Verify RepeatFinish at node 3
@@ -82,8 +88,10 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() {
         CompiledNodeKind::RepeatFinish { result } => {
             assert_eq!(result.get(), 1, "RepeatFinish result");
         }
-        other => assert!(matches!(other, CompiledNodeKind::RepeatFinish { .. }),
-            "expected RepeatFinish at node 3, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::RepeatFinish { .. }),
+            "expected RepeatFinish at node 3, got {other:?}"
+        ),
     }
 
     // Verify Finish at node 4
@@ -92,8 +100,10 @@ fn nested_do_in_repeat_body_lowers_to_final_ir() {
         CompiledNodeKind::Finish { result } => {
             assert_eq!(result.get(), 0, "Finish result slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Finish { .. }),
-            "expected Finish at node 4, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Finish { .. }),
+            "expected Finish at node 4, got {other:?}"
+        ),
     }
 }
 
@@ -129,8 +139,10 @@ fn nested_do_in_collect_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "CollectStart body");
             assert_eq!(done.get(), 3, "CollectStart done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectStart { .. }),
-            "expected CollectStart at node 0, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectStart { .. }),
+            "expected CollectStart at node 0, got {other:?}"
+        ),
     }
 
     // Verify Do at node 1
@@ -139,8 +151,10 @@ fn nested_do_in_collect_body_lowers_to_final_ir() {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "Do input slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
-            "expected Do at node 1, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"
+        ),
     }
 
     // Verify CollectPage at node 2
@@ -155,8 +169,10 @@ fn nested_do_in_collect_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "CollectPage body");
             assert_eq!(done.get(), 3, "CollectPage done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectPage { .. }),
-            "expected CollectPage at node 2, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectPage { .. }),
+            "expected CollectPage at node 2, got {other:?}"
+        ),
     }
 
     // Verify CollectFinish at node 3
@@ -165,8 +181,10 @@ fn nested_do_in_collect_body_lowers_to_final_ir() {
         CompiledNodeKind::CollectFinish { collector_slot } => {
             assert_eq!(collector_slot.get(), 0, "CollectFinish collector_slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::CollectFinish { .. }),
-            "expected CollectFinish at node 3, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::CollectFinish { .. }),
+            "expected CollectFinish at node 3, got {other:?}"
+        ),
     }
 }
 
@@ -206,8 +224,10 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "ForEachStart body");
             assert_eq!(done.get(), 3, "ForEachStart done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ForEachStart { .. }),
-            "expected ForEachStart at node 0, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ForEachStart { .. }),
+            "expected ForEachStart at node 0, got {other:?}"
+        ),
     }
 
     // Verify Do at node 1 (body step)
@@ -218,8 +238,10 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() {
             assert_eq!(action.get(), 0, "Do action id");
             assert_eq!(input.get(), 1, "Do input slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
-            "expected Do at node 1, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"
+        ),
     }
 
     // Verify ForEachNext at node 2
@@ -234,8 +256,10 @@ fn nested_do_in_for_each_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "ForEachNext body");
             assert_eq!(done.get(), 3, "ForEachNext done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ForEachNext { .. }),
-            "expected ForEachNext at node 2, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ForEachNext { .. }),
+            "expected ForEachNext at node 2, got {other:?}"
+        ),
     }
 }
 
@@ -277,8 +301,10 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "ReduceStart body");
             assert_eq!(done.get(), 3, "ReduceStart done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ReduceStart { .. }),
-            "expected ReduceStart at node 0, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ReduceStart { .. }),
+            "expected ReduceStart at node 0, got {other:?}"
+        ),
     }
 
     // Verify Do at node 1
@@ -287,8 +313,10 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "Do input slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
-            "expected Do at node 1, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Do { .. }),
+            "expected Do at node 1, got {other:?}"
+        ),
     }
 
     // Verify ReduceNext at node 2
@@ -305,8 +333,10 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() {
             assert_eq!(body.get(), 1, "ReduceNext body");
             assert_eq!(done.get(), 3, "ReduceNext done");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ReduceNext { .. }),
-            "expected ReduceNext at node 2, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ReduceNext { .. }),
+            "expected ReduceNext at node 2, got {other:?}"
+        ),
     }
 
     // Verify ReduceFinish at node 3
@@ -315,8 +345,10 @@ fn nested_do_in_reduce_body_lowers_to_final_ir() {
         CompiledNodeKind::ReduceFinish { accumulator } => {
             assert_eq!(accumulator.get(), 1, "ReduceFinish accumulator");
         }
-        other => assert!(matches!(other, CompiledNodeKind::ReduceFinish { .. }),
-            "expected ReduceFinish at node 3, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::ReduceFinish { .. }),
+            "expected ReduceFinish at node 3, got {other:?}"
+        ),
     }
 }
 
@@ -383,8 +415,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() {
             assert_eq!(actual, [1, 3], "TogetherStart branches");
             assert_eq!(join.get(), 5, "TogetherStart join");
         }
-        other => assert!(matches!(other, CompiledNodeKind::TogetherStart { .. }),
-            "expected TogetherStart at node 0, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::TogetherStart { .. }),
+            "expected TogetherStart at node 0, got {other:?}"
+        ),
     }
 
     // Verify first TogetherBranch at node 1
@@ -400,8 +434,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() {
             assert_eq!(entry.get(), 2, "first TogetherBranch entry");
             assert_eq!(join.get(), 5, "first TogetherBranch join");
         }
-        other => assert!(matches!(other, CompiledNodeKind::TogetherBranch { .. }),
-            "expected first TogetherBranch at node 1, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::TogetherBranch { .. }),
+            "expected first TogetherBranch at node 1, got {other:?}"
+        ),
     }
 
     // Verify Do at node 2 (left action)
@@ -410,8 +446,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 0, "left Do input slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
-            "expected left Do at node 2, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Do { .. }),
+            "expected left Do at node 2, got {other:?}"
+        ),
     }
 
     // Verify second TogetherBranch at node 3
@@ -427,8 +465,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() {
             assert_eq!(entry.get(), 4, "second TogetherBranch entry");
             assert_eq!(join.get(), 5, "second TogetherBranch join");
         }
-        other => assert!(matches!(other, CompiledNodeKind::TogetherBranch { .. }),
-            "expected second TogetherBranch at node 3, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::TogetherBranch { .. }),
+            "expected second TogetherBranch at node 3, got {other:?}"
+        ),
     }
 
     // Verify Do at node 4 (right action)
@@ -437,8 +477,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() {
         CompiledNodeKind::Do { action: _, input } => {
             assert_eq!(input.get(), 1, "right Do input slot");
         }
-        other => assert!(matches!(other, CompiledNodeKind::Do { .. }),
-            "expected right Do at node 4, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::Do { .. }),
+            "expected right Do at node 4, got {other:?}"
+        ),
     }
 
     // Verify TogetherJoin at node 5
@@ -451,8 +493,10 @@ fn nested_do_in_together_branch_lowers_to_final_ir() {
             assert_eq!(*branch_count, 2, "TogetherJoin branch_count");
             assert_eq!(accumulator.get(), 0, "TogetherJoin accumulator");
         }
-        other => assert!(matches!(other, CompiledNodeKind::TogetherJoin { .. }),
-            "expected TogetherJoin at node 5, got {other:?}"),
+        other => assert!(
+            matches!(other, CompiledNodeKind::TogetherJoin { .. }),
+            "expected TogetherJoin at node 5, got {other:?}"
+        ),
     }
 }
 
