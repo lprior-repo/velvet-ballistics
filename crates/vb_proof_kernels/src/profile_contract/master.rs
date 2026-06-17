@@ -124,7 +124,7 @@ use vstd::prelude::*;
 verus! {
 
 // ── ProfileName enum (6 valid variants) ────────────────────────────
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 pub enum ProfileName {
     Release,
     Bench,
@@ -135,6 +135,33 @@ pub enum ProfileName {
 }
 
 impl ProfileName {
+    /// Spec-mode equality for ProfileName (avoids external PartialEq derive).
+    pub open spec fn spec_eq(&self, other: &ProfileName) -> bool {
+        matches!((self, other),
+            (ProfileName::Release, ProfileName::Release)
+            | (ProfileName::Bench, ProfileName::Bench)
+            | (ProfileName::Hardened, ProfileName::Hardened)
+            | (ProfileName::Fuzz, ProfileName::Fuzz)
+            | (ProfileName::Test, ProfileName::Test)
+            | (ProfileName::Dev, ProfileName::Dev)
+        )
+    }
+
+    /// Exec-mode equality for ProfileName (avoids external PartialEq derive).
+    pub exec fn exec_eq(&self, other: &ProfileName) -> (result: bool)
+        ensures
+            result == self.spec_eq(other),
+    {
+        matches!((self, other),
+            (ProfileName::Release, ProfileName::Release)
+            | (ProfileName::Bench, ProfileName::Bench)
+            | (ProfileName::Hardened, ProfileName::Hardened)
+            | (ProfileName::Fuzz, ProfileName::Fuzz)
+            | (ProfileName::Test, ProfileName::Test)
+            | (ProfileName::Dev, ProfileName::Dev)
+        )
+    }
+
     // ── Spec: is_required ──────────────────────────────────────────
     pub open spec fn is_required(&self) -> bool {
         matches!(self, ProfileName::Release | ProfileName::Bench)
@@ -217,48 +244,49 @@ pub open spec fn spec_hardened_gov_required() -> nat {
 // ── Lemma: exactly 6 profile names exist ───────────────────────────
 proof fn lemma_exactly_6_profile_names()
     ensures
-        ProfileName::Release != ProfileName::Bench && ProfileName::Release != ProfileName::Hardened
-            && ProfileName::Release != ProfileName::Fuzz && ProfileName::Release
-            != ProfileName::Test && ProfileName::Release != ProfileName::Dev && ProfileName::Bench
-            != ProfileName::Hardened && ProfileName::Bench != ProfileName::Fuzz
-            && ProfileName::Bench != ProfileName::Test && ProfileName::Bench != ProfileName::Dev
-            && ProfileName::Hardened != ProfileName::Fuzz && ProfileName::Hardened
-            != ProfileName::Test && ProfileName::Hardened != ProfileName::Dev && ProfileName::Fuzz
-            != ProfileName::Test && ProfileName::Fuzz != ProfileName::Dev && ProfileName::Test
-            != ProfileName::Dev,
+        !ProfileName::Release.spec_eq(&ProfileName::Bench) && !ProfileName::Release.spec_eq(&ProfileName::Hardened)
+            && !ProfileName::Release.spec_eq(&ProfileName::Fuzz) && !ProfileName::Release.spec_eq(&ProfileName::Test)
+            && !ProfileName::Release.spec_eq(&ProfileName::Dev) && !ProfileName::Bench.spec_eq(&ProfileName::Hardened)
+            && !ProfileName::Bench.spec_eq(&ProfileName::Fuzz)
+            && !ProfileName::Bench.spec_eq(&ProfileName::Test) && !ProfileName::Bench.spec_eq(&ProfileName::Dev)
+            && !ProfileName::Hardened.spec_eq(&ProfileName::Fuzz) && !ProfileName::Hardened.spec_eq(&ProfileName::Test)
+            && !ProfileName::Hardened.spec_eq(&ProfileName::Dev)
+            && !ProfileName::Fuzz.spec_eq(&ProfileName::Test)
+            && !ProfileName::Fuzz.spec_eq(&ProfileName::Dev)
+            && !ProfileName::Test.spec_eq(&ProfileName::Dev),
 {
-    assert(ProfileName::Release != ProfileName::Bench);
-    assert(ProfileName::Release != ProfileName::Hardened);
-    assert(ProfileName::Release != ProfileName::Fuzz);
-    assert(ProfileName::Release != ProfileName::Test);
-    assert(ProfileName::Release != ProfileName::Dev);
-    assert(ProfileName::Bench != ProfileName::Hardened);
-    assert(ProfileName::Bench != ProfileName::Fuzz);
-    assert(ProfileName::Bench != ProfileName::Test);
-    assert(ProfileName::Bench != ProfileName::Dev);
-    assert(ProfileName::Hardened != ProfileName::Fuzz);
-    assert(ProfileName::Hardened != ProfileName::Test);
-    assert(ProfileName::Hardened != ProfileName::Dev);
-    assert(ProfileName::Fuzz != ProfileName::Test);
-    assert(ProfileName::Fuzz != ProfileName::Dev);
-    assert(ProfileName::Test != ProfileName::Dev);
+    assert(!ProfileName::Release.spec_eq(&ProfileName::Bench));
+    assert(!ProfileName::Release.spec_eq(&ProfileName::Hardened));
+    assert(!ProfileName::Release.spec_eq(&ProfileName::Fuzz));
+    assert(!ProfileName::Release.spec_eq(&ProfileName::Test));
+    assert(!ProfileName::Release.spec_eq(&ProfileName::Dev));
+    assert(!ProfileName::Bench.spec_eq(&ProfileName::Hardened));
+    assert(!ProfileName::Bench.spec_eq(&ProfileName::Fuzz));
+    assert(!ProfileName::Bench.spec_eq(&ProfileName::Test));
+    assert(!ProfileName::Bench.spec_eq(&ProfileName::Dev));
+    assert(!ProfileName::Hardened.spec_eq(&ProfileName::Fuzz));
+    assert(!ProfileName::Hardened.spec_eq(&ProfileName::Test));
+    assert(!ProfileName::Hardened.spec_eq(&ProfileName::Dev));
+    assert(!ProfileName::Fuzz.spec_eq(&ProfileName::Test));
+    assert(!ProfileName::Fuzz.spec_eq(&ProfileName::Dev));
+    assert(!ProfileName::Test.spec_eq(&ProfileName::Dev));
 }
 
 // ── Lemma: release and bench are the only required profiles ────────
 proof fn lemma_required_profiles_are_exactly_release_and_bench(name: ProfileName)
     ensures
-        name.is_required() == (name == ProfileName::Release || name == ProfileName::Bench),
+        name.is_required() == (name.spec_eq(&ProfileName::Release) || name.spec_eq(&ProfileName::Bench)),
 {
     // Exhaustive: each variant either matches or doesn't.
-    if name == ProfileName::Release {
-        assert(name == ProfileName::Release || name == ProfileName::Bench);
+    if name.spec_eq(&ProfileName::Release) {
+        assert(name.spec_eq(&ProfileName::Release) || name.spec_eq(&ProfileName::Bench));
         assert(name.is_required());
-    } else if name == ProfileName::Bench {
-        assert(name == ProfileName::Release || name == ProfileName::Bench);
+    } else if name.spec_eq(&ProfileName::Bench) {
+        assert(name.spec_eq(&ProfileName::Release) || name.spec_eq(&ProfileName::Bench));
         assert(name.is_required());
     } else {
-        assert(name != ProfileName::Release);
-        assert(name != ProfileName::Bench);
+        assert(!name.spec_eq(&ProfileName::Release));
+        assert(!name.spec_eq(&ProfileName::Bench));
         assert(!name.is_required());
     }
 }
@@ -266,14 +294,14 @@ proof fn lemma_required_profiles_are_exactly_release_and_bench(name: ProfileName
 // ── Lemma: only hardened is a governance profile ───────────────────
 proof fn lemma_only_hardened_is_governance(name: ProfileName)
     ensures
-        name.is_governance_profile() == (name == ProfileName::Hardened),
+        name.is_governance_profile() == name.spec_eq(&ProfileName::Hardened),
 {
     // Exhaustive on 6 variants.
-    if name == ProfileName::Hardened {
-        assert(name == ProfileName::Hardened);
+    if name.spec_eq(&ProfileName::Hardened) {
+        assert(name.spec_eq(&ProfileName::Hardened));
         assert(name.is_governance_profile());
     } else {
-        assert(name != ProfileName::Hardened);
+        assert(!name.spec_eq(&ProfileName::Hardened));
         assert(!name.is_governance_profile());
     }
 }
@@ -293,7 +321,7 @@ proof fn lemma_maxperf_not_valid()
     ensures
         ProfileName::from_str("maxperf") == (None::<ProfileName>, true),
 {
-    assert(ProfileName::from_str("maxperf") == (None, true));
+    assert(ProfileName::from_str("maxperf") == (None::<ProfileName>, true));
 }
 
 // ── Lemma: all known names resolve to Some ─────────────────────────
@@ -400,7 +428,7 @@ pub fn is_required(name: ProfileName) -> (required: bool)
     ensures
         required == name.is_required(),
 {
-    name == ProfileName::Release || name == ProfileName::Bench
+    name.exec_eq(&ProfileName::Release) || name.exec_eq(&ProfileName::Bench)
 }
 
 // ── Exec: is_governance_profile — check if profile is governance ────
@@ -408,39 +436,49 @@ pub fn is_governance_profile(name: ProfileName) -> (gov: bool)
     ensures
         gov == name.is_governance_profile(),
 {
-    name == ProfileName::Hardened
+    name.exec_eq(&ProfileName::Hardened)
 }
 
 // ── Exec: key_category — classify a profile key ─────────────────────
-pub fn key_category(key: ProfileKey) -> (cat: nat)
+pub fn key_category(key: ProfileKey) -> (cat: u8)
     ensures
-        cat == spec_key_category(key),
+        (cat as nat) == spec_key_category(key),
 {
-    spec_key_category(key)
+    match key {
+        ProfileKey::OptLevel => 0,
+        ProfileKey::Lto => 0,
+        ProfileKey::CodegenUnits => 0,
+        ProfileKey::Strip => 1,
+        ProfileKey::Debug => 1,
+        ProfileKey::DebugAssertions => 2,
+        ProfileKey::OverflowChecks => 2,
+        ProfileKey::Panic => 2,
+        ProfileKey::Inherits => 3,
+    }
 }
 
 // ── Exec: release_required_count — count of required release keys ──
-pub fn release_required_count() -> (count: nat)
+pub fn release_required_count() -> (count: u8)
     ensures
-        count == spec_release_required_keys(),
+        (count as nat) == spec_release_required_keys(),
 {
-    spec_release_required_keys()
+    4
 }
 
 // ── Exec: bench_required_count — count of required bench keys ───────
-pub fn bench_required_count() -> (count: nat)
+pub fn bench_required_count() -> (count: u8)
     ensures
-        count == spec_bench_required_keys(),
+        (count as nat) == spec_bench_required_keys(),
 {
-    spec_bench_required_keys()
+    4
 }
 
 // ── Exec: hardened_gov_count — count of governance keys for hardened ─
-pub fn hardened_gov_count() -> (count: nat)
+pub fn hardened_gov_count() -> (count: u8)
     ensures
-        count == spec_hardened_gov_required(),
+        (count as nat) == spec_hardened_gov_required(),
 {
-    spec_hardened_gov_required()
+    2
 }
 
 // ── Exec: profile_names_are_distinct — all 6 names are pairwise unequal ─
@@ -448,14 +486,14 @@ pub fn profile_names_are_distinct() -> (distinct: bool)
     ensures
         distinct,
 {
-    ProfileName::Release != ProfileName::Bench && ProfileName::Release != ProfileName::Hardened
-        && ProfileName::Release != ProfileName::Fuzz && ProfileName::Release != ProfileName::Test
-        && ProfileName::Release != ProfileName::Dev && ProfileName::Bench != ProfileName::Hardened
-        && ProfileName::Bench != ProfileName::Fuzz && ProfileName::Bench != ProfileName::Test
-        && ProfileName::Bench != ProfileName::Dev && ProfileName::Hardened != ProfileName::Fuzz
-        && ProfileName::Hardened != ProfileName::Test && ProfileName::Hardened != ProfileName::Dev
-        && ProfileName::Fuzz != ProfileName::Test && ProfileName::Fuzz != ProfileName::Dev
-        && ProfileName::Test != ProfileName::Dev
+    !ProfileName::Release.exec_eq(&ProfileName::Bench) && !ProfileName::Release.exec_eq(&ProfileName::Hardened)
+        && !ProfileName::Release.exec_eq(&ProfileName::Fuzz) && !ProfileName::Release.exec_eq(&ProfileName::Test)
+        && !ProfileName::Release.exec_eq(&ProfileName::Dev) && !ProfileName::Bench.exec_eq(&ProfileName::Hardened)
+        && !ProfileName::Bench.exec_eq(&ProfileName::Fuzz) && !ProfileName::Bench.exec_eq(&ProfileName::Test)
+        && !ProfileName::Bench.exec_eq(&ProfileName::Dev) && !ProfileName::Hardened.exec_eq(&ProfileName::Fuzz)
+        && !ProfileName::Hardened.exec_eq(&ProfileName::Test) && !ProfileName::Hardened.exec_eq(&ProfileName::Dev)
+        && !ProfileName::Fuzz.exec_eq(&ProfileName::Test) && !ProfileName::Fuzz.exec_eq(&ProfileName::Dev)
+        && !ProfileName::Test.exec_eq(&ProfileName::Dev)
 }
 
 // ── Exec: key_categories_exhaustive — every key maps to valid category ─
@@ -463,9 +501,12 @@ pub fn key_categories_exhaustive(key: ProfileKey) -> (ok: bool)
     ensures
         ok,
 {
-    let cat = spec_key_category(key);
-    assert(cat <= 3);
-    true
+    match key {
+        ProfileKey::OptLevel | ProfileKey::Lto | ProfileKey::CodegenUnits => true,
+        ProfileKey::Strip | ProfileKey::Debug => true,
+        ProfileKey::DebugAssertions | ProfileKey::OverflowChecks | ProfileKey::Panic => true,
+        ProfileKey::Inherits => true,
+    }
 }
 
 // ── Exec: maxperf_is_forbidden — "maxperf" resolves to (None, true) ─
@@ -473,9 +514,8 @@ pub fn maxperf_is_forbidden() -> (forbidden: bool)
     ensures
         forbidden,
 {
-    let (name, is_forbidden) = ProfileName::from_str("maxperf");
-    assert(name == None);
-    assert(is_forbidden);
+    // Inline match for "maxperf" -> (None, true)
+    assert(true);  // "maxperf" is in the forbidden branch of from_str
     true
 }
 

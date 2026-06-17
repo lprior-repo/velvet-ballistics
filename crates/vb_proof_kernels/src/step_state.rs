@@ -10,7 +10,7 @@ use vstd::prelude::*;
 verus! {
 
 // ── StepState enum ─────────────────────────────────────────────────────
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 pub enum StepState {
     Pending,
     Running,
@@ -20,6 +20,35 @@ pub enum StepState {
     Failed,
     Cancelled,
     Skipped,
+}
+
+impl StepState {
+    // Exec-mode equality used in exec fn bodies.
+    pub fn eq(&self, other: &StepState) -> (result: bool) {
+        match (self, other) {
+            (StepState::Pending, StepState::Pending)
+            | (StepState::Running, StepState::Running)
+            | (StepState::Waiting, StepState::Waiting)
+            | (StepState::Asking, StepState::Asking)
+            | (StepState::Succeeded, StepState::Succeeded)
+            | (StepState::Failed, StepState::Failed)
+            | (StepState::Cancelled, StepState::Cancelled)
+            | (StepState::Skipped, StepState::Skipped) => true,
+            _ => false,
+        }
+    }
+}
+
+// ── Spec: step state equality ──────────────────────────────────────────
+pub open spec fn spec_step_state_eq(a: StepState, b: StepState) -> bool {
+    matches!((a, b), (StepState::Pending, StepState::Pending)
+        | (StepState::Running, StepState::Running)
+        | (StepState::Waiting, StepState::Waiting)
+        | (StepState::Asking, StepState::Asking)
+        | (StepState::Succeeded, StepState::Succeeded)
+        | (StepState::Failed, StepState::Failed)
+        | (StepState::Cancelled, StepState::Cancelled)
+        | (StepState::Skipped, StepState::Skipped))
 }
 
 // ── Spec: transition relation (canonical mathematical definition) ─────
@@ -145,15 +174,20 @@ pub fn is_valid_transition(from: StepState, to: StepState) -> (valid: bool)
     ensures
         valid == spec_valid_transition(from, to),
 {
-    from == to || (from == StepState::Pending && (to == StepState::Running || to
-        == StepState::Succeeded || to == StepState::Failed || to == StepState::Cancelled || to
-        == StepState::Skipped)) || (from == StepState::Running && (to == StepState::Succeeded || to
-        == StepState::Failed || to == StepState::Waiting || to == StepState::Asking || to
-        == StepState::Cancelled || to == StepState::Skipped)) || (from == StepState::Waiting && to
-        == StepState::Running) || (from == StepState::Asking && to == StepState::Running) || (from
-        == StepState::Succeeded && to == StepState::Succeeded) || (from == StepState::Failed && to
-        == StepState::Failed) || (from == StepState::Cancelled && to == StepState::Cancelled) || (
-    from == StepState::Skipped && to == StepState::Skipped)
+    from.eq(&to) || (from.eq(&StepState::Pending)
+        && (to.eq(&StepState::Running) || to.eq(&StepState::Succeeded)
+            || to.eq(&StepState::Failed) || to.eq(&StepState::Cancelled)
+            || to.eq(&StepState::Skipped)))
+        || (from.eq(&StepState::Running)
+            && (to.eq(&StepState::Succeeded) || to.eq(&StepState::Failed)
+                || to.eq(&StepState::Waiting) || to.eq(&StepState::Asking)
+                || to.eq(&StepState::Cancelled) || to.eq(&StepState::Skipped)))
+        || (from.eq(&StepState::Waiting) && to.eq(&StepState::Running))
+        || (from.eq(&StepState::Asking) && to.eq(&StepState::Running))
+        || (from.eq(&StepState::Succeeded) && to.eq(&StepState::Succeeded))
+        || (from.eq(&StepState::Failed) && to.eq(&StepState::Failed))
+        || (from.eq(&StepState::Cancelled) && to.eq(&StepState::Cancelled))
+        || (from.eq(&StepState::Skipped) && to.eq(&StepState::Skipped))
 }
 
 // ── Exec: is_terminal — state classification ──────────────────────────
@@ -161,8 +195,8 @@ pub fn is_terminal(s: StepState) -> (terminal: bool)
     ensures
         terminal == spec_is_terminal(s),
 {
-    s == StepState::Succeeded || s == StepState::Failed || s == StepState::Cancelled || s
-        == StepState::Skipped
+    s.eq(&StepState::Succeeded) || s.eq(&StepState::Failed)
+        || s.eq(&StepState::Cancelled) || s.eq(&StepState::Skipped)
 }
 
 // ── Exec: validate_transition — returns Ok if transition is valid ──────
@@ -172,11 +206,27 @@ pub fn validate_transition(from: StepState, to: StepState) -> (result: Result<
 >)
     ensures
         match result {
-            Ok(s) => s == to && spec_valid_transition(from, to),
+            Ok(s) => s.eq(&to) && spec_valid_transition(from, to),
             Err(_) => !spec_valid_transition(from, to),
         },
 {
-    if spec_valid_transition(from, to) {
+    // Inline the transition relation (same logic as spec_valid_transition)
+    // using .eq(&...) calls since spec fn calls are not allowed in exec body.
+    let valid = from.eq(&to) || (from.eq(&StepState::Pending)
+        && (to.eq(&StepState::Running) || to.eq(&StepState::Succeeded)
+            || to.eq(&StepState::Failed) || to.eq(&StepState::Cancelled)
+            || to.eq(&StepState::Skipped)))
+        || (from.eq(&StepState::Running)
+            && (to.eq(&StepState::Succeeded) || to.eq(&StepState::Failed)
+                || to.eq(&StepState::Waiting) || to.eq(&StepState::Asking)
+                || to.eq(&StepState::Cancelled) || to.eq(&StepState::Skipped)))
+        || (from.eq(&StepState::Waiting) && to.eq(&StepState::Running))
+        || (from.eq(&StepState::Asking) && to.eq(&StepState::Running))
+        || (from.eq(&StepState::Succeeded) && to.eq(&StepState::Succeeded))
+        || (from.eq(&StepState::Failed) && to.eq(&StepState::Failed))
+        || (from.eq(&StepState::Cancelled) && to.eq(&StepState::Cancelled))
+        || (from.eq(&StepState::Skipped) && to.eq(&StepState::Skipped));
+    if valid {
         Ok(to)
     } else {
         Err("invalid_state_transition")

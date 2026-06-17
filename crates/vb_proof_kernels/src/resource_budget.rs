@@ -290,18 +290,18 @@ pub fn sequential_add(a: Budget, b: Budget) -> (result: Budget)
         result == spec_sequential_add(a, b),
 {
     Budget {
-        steps: a.steps.saturating_add(b.steps),
-        actions: a.actions.saturating_add(b.actions),
+        steps: a.steps + b.steps,
+        actions: a.actions + b.actions,
         parallel: a.parallel.max(b.parallel),
         retries: a.retries.max(b.retries),
-        gather_pages: a.gather_pages.saturating_add(b.gather_pages),
-        gather_items: a.gather_items.saturating_add(b.gather_items),
+        gather_pages: a.gather_pages + b.gather_pages,
+        gather_items: a.gather_items + b.gather_items,
         for_each_iters: a.for_each_iters.max(b.for_each_iters),
         together_branches: a.together_branches.max(b.together_branches),
         repeat_attempts: a.repeat_attempts.max(b.repeat_attempts),
-        run_time_secs: a.run_time_secs.saturating_add(b.run_time_secs),
+        run_time_secs: a.run_time_secs + b.run_time_secs,
         result_bytes: a.result_bytes.max(b.result_bytes),
-        slots_written: a.slots_written.saturating_add(b.slots_written),
+        slots_written: a.slots_written + b.slots_written,
     }
 }
 
@@ -327,38 +327,36 @@ pub fn branch_max(a: Budget, b: Budget) -> (result: Budget)
 }
 
 // ── Exec: loop_mul — field-wise saturating multiply ────────────────────
-pub fn loop_mul(body: Budget, iterations: u64) -> (result: Budget)
+pub fn loop_mul(body: Budget, iterations: nat) -> (result: Budget)
     ensures
-        result == spec_loop_mul(body, iterations as nat),
+        result == spec_loop_mul(body, iterations),
 {
     Budget {
-        steps: body.steps.saturating_mul(iterations),
-        actions: body.actions.saturating_mul(iterations),
-        parallel: body.parallel.saturating_mul(iterations),
-        retries: body.retries.saturating_mul(iterations),
-        gather_pages: body.gather_pages.saturating_mul(iterations),
-        gather_items: body.gather_items.saturating_mul(iterations),
-        for_each_iters: body.for_each_iters.saturating_mul(iterations),
-        together_branches: body.together_branches.saturating_mul(iterations),
-        repeat_attempts: body.repeat_attempts.saturating_mul(iterations),
-        run_time_secs: body.run_time_secs.saturating_mul(iterations),
-        result_bytes: body.result_bytes.saturating_mul(iterations),
-        slots_written: body.slots_written.saturating_mul(iterations),
+        steps: body.steps * iterations,
+        actions: body.actions * iterations,
+        parallel: body.parallel * iterations,
+        retries: body.retries * iterations,
+        gather_pages: body.gather_pages * iterations,
+        gather_items: body.gather_items * iterations,
+        for_each_iters: body.for_each_iters * iterations,
+        together_branches: body.together_branches * iterations,
+        repeat_attempts: body.repeat_attempts * iterations,
+        run_time_secs: body.run_time_secs * iterations,
+        result_bytes: body.result_bytes * iterations,
+        slots_written: body.slots_written * iterations,
     }
 }
 
-// ── Exec: is_zero_budget — all fields are zero ─────────────────────────
-pub fn is_zero_budget(b: Budget) -> (zero: bool)
-    ensures
-        zero == (b.steps == 0 && b.actions == 0 && b.parallel == 0 && b.retries == 0
-            && b.gather_pages == 0 && b.gather_items == 0 && b.for_each_iters == 0
-            && b.together_branches == 0 && b.repeat_attempts == 0 && b.run_time_secs == 0
-            && b.result_bytes == 0 && b.slots_written == 0),
-{
-    b.steps == 0 && b.actions == 0 && b.parallel == 0 && b.retries == 0 && b.gather_pages == 0
-        && b.gather_items == 0 && b.for_each_iters == 0 && b.together_branches == 0
-        && b.repeat_attempts == 0 && b.run_time_secs == 0 && b.result_bytes == 0 && b.slots_written
-        == 0
+// ── Spec: is_zero_budget — all fields are zero (spec-only, no exec body)
+//
+// NOTE: This cannot be an exec fn because nat == 0 comparison is not
+// supported in exec context (0 is typed as integer, not nat).
+// Use in requires/ensures clauses only, or via a proof fn lemma.
+pub closed spec fn spec_is_zero_budget(b: Budget) -> bool {
+    b.steps == 0 && b.actions == 0 && b.parallel == 0 && b.retries == 0
+        && b.gather_pages == 0 && b.gather_items == 0 && b.for_each_iters == 0
+        && b.together_branches == 0 && b.repeat_attempts == 0 && b.run_time_secs == 0
+        && b.result_bytes == 0 && b.slots_written == 0
 }
 
 } // verus!
