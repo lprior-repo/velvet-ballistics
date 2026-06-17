@@ -133,7 +133,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Integration tests for `run --step` single-step CLI command (vb-qi37.14.1).

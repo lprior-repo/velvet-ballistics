@@ -105,7 +105,7 @@ mod harnesses {
                 found.is_some(),
                 "Every registered symbolic name must resolve",
             );
-            kani::assert(found == Some(entry.numeric, "assertion failed"), "Symbolic→numeric mismatch");
+            kani::assert(found == Some(entry.numeric), "Symbolic→numeric mismatch");
 
             // And the numeric→symbolic lookup should also find it
             let rev = super::super::kani_registry_bijection::count_numeric(entry.numeric);

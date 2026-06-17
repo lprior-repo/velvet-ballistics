@@ -102,7 +102,7 @@ fn step_once_bounds_harness() {
     // INV-004: PC is in bounds after step_once
     let pc = run.pc();
     let pc_usize = pc.as_usize();
-    kani::assert(pc_usize < usize::from(step_count, "assertion failed"),
+    kani::assert(pc_usize < usize::from(step_count),
         "PC in bounds after step_once",
     );
 
@@ -207,7 +207,7 @@ fn step_once_state_mapping_harness() {
         };
 
         // INV-002: states[step] must reflect correct StepState
-        kani::assert(state == Ok(expected_state, "assertion failed"),
+        kani::assert(state == Ok(expected_state),
             "states[step] matches signal mapping",
         );
     }
@@ -326,7 +326,7 @@ fn step_once_pc_bounds_harness() {
     // INV-004: PC ∈ [0, step_count) after step_once
     let pc = run.pc();
     let pc_usize = pc.as_usize();
-    kani::assert(pc_usize < usize::from(step_count, "assertion failed"),
+    kani::assert(pc_usize < usize::from(step_count),
         "PC < step_count after step_once",
     );
 }

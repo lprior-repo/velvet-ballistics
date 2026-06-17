@@ -464,7 +464,7 @@ proptest! {
 
         prop_kani::assert(budget.max_total_steps == expected_steps,
             "CollectStart with limit={} and body_count={} should have {} total steps, got {}",
-            limit, body_node_count, expected_steps, budget.max_total_steps, 'assertion failed');
+            limit, body_node_count, expected_steps, budget.max_total_steps, "assertion failed");
         prop_kani::assert(budget.max_gather_items >= limit,
             "max_gather_items {} should be at least limit {}",
             budget.max_gather_items, limit);
@@ -1022,7 +1022,7 @@ proptest! {
 
         prop_kani::assert(budget.max_total_steps == expected_steps,
             "CollectStart with limit={} and body_count={} should have {} total steps, got {}",
-            limit, body_node_count, expected_steps, budget.max_total_steps, 'assertion failed');
+            limit, body_node_count, expected_steps, budget.max_total_steps, "assertion failed");
         prop_kani::assert(budget.max_gather_items >= limit,
             "max_gather_items {} should be at least limit {}",
             budget.max_gather_items, limit);
@@ -1122,7 +1122,7 @@ proptest! {
             max_attempts, body_node_count, expected_steps, budget.max_total_steps);
         prop_kani::assert(budget.max_repeat_attempts == max_attempts,
             "max_repeat_attempts should be {}",
-            max_attempts, 'assertion failed');
+            max_attempts, "assertion failed");
     }
 
     /// PROP-BUD-001 P3: Nested loops multiply correctly through multiple levels.
@@ -1244,10 +1244,10 @@ proptest! {
 
         prop_kani::assert(budget.max_total_steps == expected_steps,
             "Nested loops with outer={}, inner={}, inner_body={} should have {} steps, got {}",
-            outer_limit, inner_limit, inner_body_count, expected_steps, budget.max_total_steps, 'assertion failed');
+            outer_limit, inner_limit, inner_body_count, expected_steps, budget.max_total_steps, "assertion failed");
         prop_kani::assert(budget.max_nesting_depth == 2,
             "Nested loops should have depth 2, got {}",
-            budget.max_nesting_depth, 'assertion failed');
+            budget.max_nesting_depth, "assertion failed");
     }
 
     /// PROP-BUD-001 P4: TogetherStart fanout is counted correctly.
@@ -1324,13 +1324,13 @@ proptest! {
 
         prop_kani::assert(budget.max_fanout == branch_count,
             "max_fanout should be {}, got {}",
-            branch_count, budget.max_fanout, 'assertion failed');
+            branch_count, budget.max_fanout, "assertion failed");
         prop_kani::assert(budget.max_together_branches == branch_count,
             "max_together_branches should be {}, got {}",
-            branch_count, budget.max_together_branches, 'assertion failed');
+            branch_count, budget.max_together_branches, "assertion failed");
         prop_kani::assert(budget.max_parallel_in_flight == branch_count,
             "max_parallel_in_flight should be {}, got {}",
-            branch_count, budget.max_parallel_in_flight, 'assertion failed');
+            branch_count, budget.max_parallel_in_flight, "assertion failed");
     }
 
     /// PROP-BUD-001 P5: AggregateResourceBudget::from_workflow preserves verified dimensions.
@@ -1571,8 +1571,8 @@ proptest! {
         match result {
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => {
                 // These fields ARE present in the current implementation
-                prop_kani::assert(actual == total_steps, "assertion failed");
-                prop_kani::assert(limit == policy_limit, "assertion failed");
+                prop_kani::assert(actual == total_steps);
+                prop_kani::assert(limit == policy_limit);
 
                 // FAIL: The error does not include the primitive kind or node index
                 // PROP-DIAG-001 requires: primitive, node/step index, structural path
@@ -1683,8 +1683,8 @@ proptest! {
 
         match validation_result {
             Err(BudgetError::FanoutExceeded { actual, limit }) => {
-                prop_kani::assert(actual == branch_count, "assertion failed");
-                prop_kani::assert(limit == policy_fanout, "assertion failed");
+                prop_kani::assert(actual == branch_count);
+                prop_kani::assert(limit == policy_fanout);
                 // FAIL: Missing primitive kind (TogetherStart) and node index (0)
                 // PROP-DIAG-001 requires structural provenance
             }
@@ -1758,7 +1758,7 @@ proptest! {
                 let expected_steps = 1 + 1 + 1; // header + 1 iteration + finish
                 prop_kani::assert(budget.max_total_steps == expected_steps,
                     "ReduceStart should compute {} steps with cold-AST conservative iter count",
-                    expected_steps, 'assertion failed');
+                    expected_steps, "assertion failed");
             }
             Err(WorkflowError::StepCountOverflow { actual }) => {
                 prop_kani::assert(false,
@@ -1993,7 +1993,7 @@ proptest! {
         let added = added.unwrap();
 
         let subtracted = added.try_subtract_budget(&budget);
-        prop_kani::assert(subtracted == Ok(usage, "assertion failed"), "add then subtract same budget must roundtrip to original usage");
+        prop_kani::assert(subtracted == Ok(usage), "add then subtract same budget must roundtrip to original usage");
     }
 
     #[test]
@@ -2148,10 +2148,10 @@ proptest! {
             }
             Ok(subtracted) => {
                 prop_kani::assert(base_steps >= u64::from(delta_steps), "subtract returned Ok but base < delta")
-                prop_kani::assert(subtracted.max_steps_executable == base_steps.checked_sub(u64::from(delta_steps), "assertion failed").unwrap_or(u64::MAX), "assertion failed");
+                prop_kani::assert(subtracted.max_steps_executable == base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX));
             }
             Err(_other) => {
-                prop_.unwrap_or(u64::MAX), "assertion failed");
+                prop_.unwrap_or(u64::MAX));
             }
             Err(_other) => {
                 prop_kani::assert(false, "expected Ok or Underflow, got unexpected error")
@@ -2266,37 +2266,37 @@ proptest! {
 
         prop_kani::assert(added_a.max_steps_executable != added_b.max_steps_executable, "changing max_steps_executable must change that dimension");
         prop_added_a.max_steps_executable != added_b.max_steps_executable, "changing max_steps_executable must change that dimension");
-        prop_kani::assert(added_a.max_action_tickets == added_b.max_action_tickets, "assertion failed");
-        prop_added_a.max_action_tickets == added_b.max_action_tickets, "assertion failed");
-        prop_kani::assert(added_a.max_parallel_in_flight == added_b.max_parallel_in_flight, "assertion failed");
-        prop_added_a.max_parallel_in_flight == added_b.max_parallel_in_flight, "assertion failed");
-        prop_kani::assert(added_a.max_gather_pages == added_b.max_gather_pages, "assertion failed");
-        prop_added_a.max_gather_pages == added_b.max_gather_pages, "assertion failed");
-        prop_kani::assert(added_a.max_gather_items == added_b.max_gather_items, "assertion failed");
-        prop_added_a.max_gather_items == added_b.max_gather_items, "assertion failed");
-        prop_kani::assert(added_a.max_result_bytes == added_b.max_result_bytes, "assertion failed");
-        prop_added_a.max_result_bytes == added_b.max_result_bytes, "assertion failed");
-        prop_kani::assert(added_a.max_total_slots_written == added_b.max_total_slots_written, "assertion failed");
-        prop_added_a.max_total_slots_written == added_b.max_total_slots_written, "assertion failed");
-        prop_kani::assert(added_a.max_timer_entries == added_b.max_timer_entries, "assertion failed");
-        prop_added_a.max_timer_entries == added_b.max_timer_entries, "assertion failed");
-        prop_kani::assert(added_a.max_trace_events == added_b.max_trace_events, "assertion failed");
-        prop_added_a.max_trace_events == added_b.max_trace_events, "assertion failed");
-        prop_kani::assert(added_a.max_active_runs == added_b.max_active_runs, "assertion failed");
-        prop_added_a.max_active_runs == added_b.max_active_runs, "assertion failed");
-        prop_kani::assert(added_a.max_queue_depth == added_b.max_queue_depth, "assertion failed");
-        prop_added_a.max_queue_depth == added_b.max_queue_depth, "assertion failed");
-        prop_kani::assert(added_a.max_journal_batch_bytes == added_b.max_journal_batch_bytes, "assertion failed");
-        prop_added_a.max_journal_batch_bytes == added_b.max_journal_batch_bytes, "assertion failed");
-        prop_kani::assert(added_a.max_ipc_payload_bytes == added_b.max_ipc_payload_bytes, "assertion failed");
-        prop_added_a.max_ipc_payload_bytes == added_b.max_ipc_payload_bytes, "assertion failed");
-        prop_kani::assert(added_a.max_blob_bytes == added_b.max_blob_bytes, "assertion failed");
-        prop_added_a.max_blob_bytes == added_b.max_blob_bytes, "assertion failed");
-        prop_kani::assert(added_a.max_input_bytes == added_b.max_input_bytes, "assertion failed");
-        prop_added_a.max_input_bytes == added_b.max_input_bytes, "assertion failed");
-        prop_kani::assert(added_a.max_step_budget_per_tick == added_b.max_step_budget_per_tick, "assertion failed");
-        prop_added_a.max_step_budget_per_tick == added_b.max_step_budget_per_tick, "assertion failed");
-        prop_kani::assert(added_a.max_transitions_per_tick == added_b.max_transitions_per_tick, "assertion failed");
+        prop_kani::assert(added_a.max_action_tickets == added_b.max_action_tickets);
+        prop_added_a.max_action_tickets == added_b.max_action_tickets);
+        prop_kani::assert(added_a.max_parallel_in_flight == added_b.max_parallel_in_flight);
+        prop_added_a.max_parallel_in_flight == added_b.max_parallel_in_flight);
+        prop_kani::assert(added_a.max_gather_pages == added_b.max_gather_pages);
+        prop_added_a.max_gather_pages == added_b.max_gather_pages);
+        prop_kani::assert(added_a.max_gather_items == added_b.max_gather_items);
+        prop_added_a.max_gather_items == added_b.max_gather_items);
+        prop_kani::assert(added_a.max_result_bytes == added_b.max_result_bytes);
+        prop_added_a.max_result_bytes == added_b.max_result_bytes);
+        prop_kani::assert(added_a.max_total_slots_written == added_b.max_total_slots_written);
+        prop_added_a.max_total_slots_written == added_b.max_total_slots_written);
+        prop_kani::assert(added_a.max_timer_entries == added_b.max_timer_entries);
+        prop_added_a.max_timer_entries == added_b.max_timer_entries);
+        prop_kani::assert(added_a.max_trace_events == added_b.max_trace_events);
+        prop_added_a.max_trace_events == added_b.max_trace_events);
+        prop_kani::assert(added_a.max_active_runs == added_b.max_active_runs);
+        prop_added_a.max_active_runs == added_b.max_active_runs);
+        prop_kani::assert(added_a.max_queue_depth == added_b.max_queue_depth);
+        prop_added_a.max_queue_depth == added_b.max_queue_depth);
+        prop_kani::assert(added_a.max_journal_batch_bytes == added_b.max_journal_batch_bytes);
+        prop_added_a.max_journal_batch_bytes == added_b.max_journal_batch_bytes);
+        prop_kani::assert(added_a.max_ipc_payload_bytes == added_b.max_ipc_payload_bytes);
+        prop_added_a.max_ipc_payload_bytes == added_b.max_ipc_payload_bytes);
+        prop_kani::assert(added_a.max_blob_bytes == added_b.max_blob_bytes);
+        prop_added_a.max_blob_bytes == added_b.max_blob_bytes);
+        prop_kani::assert(added_a.max_input_bytes == added_b.max_input_bytes);
+        prop_added_a.max_input_bytes == added_b.max_input_bytes);
+        prop_kani::assert(added_a.max_step_budget_per_tick == added_b.max_step_budget_per_tick);
+        prop_added_a.max_step_budget_per_tick == added_b.max_step_budget_per_tick);
+        prop_kani::assert(added_a.max_transitions_per_tick == added_b.max_transitions_per_tick);
     }
 }
 

@@ -133,7 +133,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Production-type binding tests for contracts-as-data (vb-6f02).

@@ -22,7 +22,7 @@ fn harness_new_valid_capacity() {
             loop {}
         }
     };
-    kani::assert(stack.len() == 0, "assertion failed");
+    kani::assert(stack.len() == 0);
 }
 
 #[kani::proof]
@@ -36,7 +36,7 @@ fn harness_new_invalid_capacity() {
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
-            kani::assert(max == capacity, "assertion failed");
+            kani::assert(max == capacity);
         }
         _ => {
             kani::assume(false);
@@ -62,7 +62,7 @@ fn harness_push_with_room() {
 
     let result = stack.push(SlotValue::Null);
     kani::assert(result.is_ok(), "kani harness assertion");
-    kani::assert(stack.len() == 1, "assertion failed");
+    kani::assert(stack.len() == 1);
 }
 
 #[kani::proof]
@@ -82,14 +82,14 @@ fn harness_push_overflow_returns_error() {
             loop {}
         }
     };
-    kani::assert(stack.len() == 1, "assertion failed");
+    kani::assert(stack.len() == 1);
 
     let result = stack.push(SlotValue::Null);
     kani::assert(result.is_err(), "kani harness assertion");
 
     match result {
         Err(EngineError::ExpressionStackOverflow { max }) => {
-            kani::assert(max == 1, "assertion failed");
+            kani::assert(max == 1);
         }
         _ => {
             kani::assume(false);
@@ -124,7 +124,7 @@ fn harness_pop_with_items() {
 
     let result = stack.pop();
     kani::assert(result.is_ok(), "kani harness assertion");
-    kani::assert(stack.len() == initial_len - 1, "assertion failed");
+    kani::assert(stack.len() == initial_len - 1);
 }
 
 #[kani::proof]
@@ -137,7 +137,7 @@ fn harness_pop_empty_returns_underflow() {
             loop {}
         }
     };
-    kani::assert(stack.len() == 0, "assertion failed");
+    kani::assert(stack.len() == 0);
     let mut stack = stack;
 
     let result = stack.pop();
@@ -181,7 +181,7 @@ fn harness_push_pop_roundtrip() {
             loop {}
         }
     };
-    kani::assert(popped == SlotValue::Null, "assertion failed");
+    kani::assert(popped == SlotValue::Null);
 }
 
 #[kani::proof]
@@ -201,11 +201,11 @@ fn harness_pop_pair_underflow() {
             loop {}
         }
     };
-    kani::assert(stack.len() == 1, "assertion failed");
+    kani::assert(stack.len() == 1);
 
     let result = pop_value(&mut stack);
     kani::assert(result.is_ok(), "kani harness assertion");
-    kani::assert(stack.len() == 0, "assertion failed");
+    kani::assert(stack.len() == 0);
 
     let result2 = pop_value(&mut stack);
     kani::assert(result2.is_err(), "kani harness assertion");

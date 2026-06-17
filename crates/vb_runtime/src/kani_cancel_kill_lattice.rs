@@ -40,7 +40,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: attempt_val,
     };
-    kani::assert(valid_event.is_valid(, "assertion failed"), "valid RunKilled event must be valid");
+    kani::assert(valid_event.is_valid(), "valid RunKilled event must be valid");
 
     // Test RunId(0) is rejected
     let zero_run_event = JournalEvent::RunKilled {
@@ -48,7 +48,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
     };
-    kani::assert(!zero_run_event.is_valid(, "assertion failed"), "RunKilled with RunId(0) must be invalid");
+    kani::assert(!zero_run_event.is_valid(), "RunKilled with RunId(0) must be invalid");
 
     // Test EventSeq(u64::MAX) is rejected
     let overflow_seq_event = JournalEvent::RunKilled {
@@ -56,7 +56,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(u64::MAX),
         attempt: 1,
     };
-    kani::assert(!overflow_seq_event.is_valid(, "assertion failed"), "RunKilled with seq=u64::MAX must be invalid");
+    kani::assert(!overflow_seq_event.is_valid(), "RunKilled with seq=u64::MAX must be invalid");
 
     // Test attempt=0 is rejected
     let zero_attempt_event = JournalEvent::RunKilled {
@@ -64,7 +64,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: 0,
     };
-    kani::assert(!zero_attempt_event.is_valid(, "assertion failed"), "RunKilled with attempt=0 must be invalid");
+    kani::assert(!zero_attempt_event.is_valid(), "RunKilled with attempt=0 must be invalid");
 
     // Test RunCancelled also rejects zero run
     let cancelled_zero_run = JournalEvent::RunCancelled {
@@ -72,7 +72,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
     };
-    kani::assert(!cancelled_zero_run.is_valid(, "assertion failed"), "RunCancelled with RunId(0) must be invalid");
+    kani::assert(!cancelled_zero_run.is_valid(), "RunCancelled with RunId(0) must be invalid");
 
     // Test RunCancelled rejects u64::MAX seq
     let cancelled_overflow = JournalEvent::RunCancelled {
@@ -80,7 +80,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(u64::MAX),
         attempt: 1,
     };
-    kani::assert(!cancelled_overflow.is_valid(, "assertion failed"), "RunCancelled with seq=u64::MAX must be invalid");
+    kani::assert(!cancelled_overflow.is_valid(), "RunCancelled with seq=u64::MAX must be invalid");
 
     // Test RunCancelled rejects attempt=0
     let cancelled_zero_attempt = JournalEvent::RunCancelled {
@@ -88,7 +88,7 @@ fn kani_cancel_kill_lattice() {
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: 0,
     };
-    kani::assert(!cancelled_zero_attempt.is_valid(, "assertion failed"), "RunCancelled with attempt=0 must be invalid");
+    kani::assert(!cancelled_zero_attempt.is_valid(), "RunCancelled with attempt=0 must be invalid");
 }
 
 /// PO-runtime-cancel-kill-lattice-kani-01-H2:
@@ -101,13 +101,13 @@ fn check_terminal_record_kinds_are_known() {
 
     // RunKilled has kind id 28
     let killed_kind = 28u16;
-    kani::assert(is_known_record_kind(killed_kind, "assertion failed"),
+    kani::assert(is_known_record_kind(killed_kind),
         "RecordKind::RunKilled (kind=28) must be a known record kind",
     );
 
     // RunCancelled has kind id 27
     let cancelled_kind = 27u16;
-    kani::assert(is_known_record_kind(cancelled_kind, "assertion failed"),
+    kani::assert(is_known_record_kind(cancelled_kind),
         "RecordKind::RunCancelled (kind=27) must be a known record kind",
     );
 }
@@ -145,7 +145,7 @@ fn check_terminal_events_are_terminal() {
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
     };
-    kani::assert(killed.is_terminal_for_run(run, "assertion failed"),
+    kani::assert(killed.is_terminal_for_run(run),
         "RunKilled must be terminal for its own run",
     );
 
@@ -154,7 +154,7 @@ fn check_terminal_events_are_terminal() {
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
     };
-    kani::assert(cancelled.is_terminal_for_run(run, "assertion failed"),
+    kani::assert(cancelled.is_terminal_for_run(run),
         "RunCancelled must be terminal for its own run",
     );
 }

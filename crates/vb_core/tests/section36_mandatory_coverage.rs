@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 #![forbid(unsafe_code)]
 //! Section 36 mandatory test coverage: FiniteF64, SlotValue, StepBudget,

@@ -185,7 +185,7 @@ fn kani_min_payload_bytes_accepts_zero() {
 
     match result {
         Ok(payload) => {
-            kani::assert(payload.is_empty(, "assertion failed"),
+            kani::assert(payload.is_empty(),
                 "zero-length payload must produce empty vec",
             );
         }

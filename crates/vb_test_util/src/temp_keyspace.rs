@@ -74,10 +74,7 @@ mod tests {
                 Err(e) => panic!("TempKeyspace::open() should succeed, got Err({e:?})"),
             };
             let path = temp.path().to_path_buf();
-            assert!(
-                paths.insert(path),
-                "temp keyspaces must have unique paths"
-            );
+            assert!(paths.insert(path), "temp keyspaces must have unique paths");
         }
     }
 
@@ -97,10 +94,7 @@ mod tests {
                             }
                         };
                         let path = temp.path().to_path_buf();
-                        assert!(
-                            paths.insert(path),
-                            "temp keyspaces must have unique paths"
-                        );
+                        assert!(paths.insert(path), "temp keyspaces must have unique paths");
                     }
                     paths
                 })

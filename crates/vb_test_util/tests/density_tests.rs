@@ -3,7 +3,12 @@
 //! tests for the deterministic fixture, seed, and Fjall test harness.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::indexing_slicing, clippy::clone_on_copy, clippy::panic, clippy::panic_in_result_fn)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::clone_on_copy,
+    clippy::panic,
+    clippy::panic_in_result_fn
+)]
 
 use vb_test_util::TestSetupError;
 use vb_test_util::fixture::{FixtureBuilder, FixtureCapacity};
@@ -222,9 +227,7 @@ fn fixture_builder_with_capacity_minimum_one_byte() {
     assert_eq!(bytes.len(), 1);
 }
 
-fn expect_seeded_bytes_ok<const N: usize>(
-    result: Option<SeededBytes<N>>,
-) -> SeededBytes<N> {
+fn expect_seeded_bytes_ok<const N: usize>(result: Option<SeededBytes<N>>) -> SeededBytes<N> {
     match result {
         Some(v) => v,
         None => panic!("SeededBytes::<{N}>::new should succeed for N > 0"),
@@ -334,10 +337,7 @@ fn temp_keyspace_uniqueness_sequential() {
     for _ in 0..5 {
         let temp = expect_temp_keyspace_ok(TempKeyspace::open());
         let path = temp.path().to_path_buf();
-        assert!(
-            paths.insert(path),
-            "temp keyspaces must have unique paths"
-        );
+        assert!(paths.insert(path), "temp keyspaces must have unique paths");
     }
 }
 

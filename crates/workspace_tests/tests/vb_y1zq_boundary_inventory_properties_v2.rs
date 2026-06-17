@@ -134,7 +134,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Property tests for vb_boundary_inventory — additional coverage beyond vb_y1zq_boundary_inventory_properties.

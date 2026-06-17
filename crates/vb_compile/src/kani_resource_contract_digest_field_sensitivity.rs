@@ -352,7 +352,7 @@ fn prove_single_field_changes_digest() {
     let encoded_base = encode_contract_bytes(&base);
     let encoded_modified = encode_contract_bytes(&modified);
 
-    kani::assert(encoded_base != encoded_modified, "assertion failed");
+    kani::assert(encoded_base != encoded_modified);
 
     // Level 2: Digest must differ
     let source = representative_source();
@@ -364,7 +364,7 @@ fn prove_single_field_changes_digest() {
     let source = representative_source();
     let digest_base = crate::mod_compile_lowering::canonical_digest(&source, base);
     let digest_modified = crate::mod_compile_lowering::canonical_digest(&source, modified);
-    kani::assert(digest_base != digest_modified, "assertion failed");
+    kani::assert(digest_base != digest_modified);
 
     kani::cover!(field_idx < 17);
 }

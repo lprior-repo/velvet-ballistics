@@ -457,7 +457,7 @@ fn check_foreach_width_parity() {
         (Ok(lw), Ok(bw), Err(_)) => {
             // Lowering failed (e.g., multi-step body rejected by emit_single_body_set)
             // Verify layout width is consistent: lw == 2 + bw
-            kani::assert(lw == 2usize.saturating_add(bw, "assertion failed"),
+            kani::assert(lw == 2usize.saturating_add(bw),
                 "layout width must be 2 + body_width(body, 0) even when lowering fails",
             );
         }

@@ -347,7 +347,7 @@ fn lower_ask_rejects_max_id_without_overflow() {
             limit,
         }) => {
             kani::assert(value == usize::from(u16::MAX), "ask reports max id");
-            kani::assert(limit == usize::from(u16::MAX, "assertion failed"), "ask reports step limit");
+            kani::assert(limit == usize::from(u16::MAX), "ask reports step limit");
         }
         Err(_) => , "ask reports step limit");
         }

@@ -50,10 +50,10 @@ fn lower_slot_reference_valid() {
 
         kani::assert(result.is_ok(), "valid $slot.N should compile successfully");
         if let Ok(program) = result {
-            kani::assert(program.ops.len(, "assertion failed") == 1, "$slot.N should produce exactly 1 op");
+            kani::assert(program.ops.len() == 1, "$slot.N should produce exactly 1 op");
             match program.ops[0] {
                 ExprOp::LoadSlot(s) => {
-                    kani::assert(s == SlotIdx::new(slot_idx, "assertion failed"),
+                    kani::assert(s == SlotIdx::new(slot_idx),
                         "LoadSlot should contain the parsed slot index",
                     );
                 }
@@ -86,7 +86,7 @@ fn lower_slot_reference_valid() {
         kani::assert(res.is_ok(), "$slot.0 should succeed");
         if let Ok(prog) = res {
             if let ExprOp::LoadSlot(s) = prog.ops[0] {
-                kani::assert(s == SlotIdx::new(0, "assertion failed"), "$slot.0 index should be 0");
+                kani::assert(s == SlotIdx::new(0), "$slot.0 index should be 0");
             } else {
                 , "$slot.0 index should be 0");
             } else {
@@ -109,7 +109,7 @@ fn lower_slot_reference_valid() {
         kani::assert(res.is_ok(), "$slot.1 should succeed");
         if let Ok(prog) = res {
             if let ExprOp::LoadSlot(s) = prog.ops[0] {
-                kani::assert(s == SlotIdx::new(1, "assertion failed"), "$slot.1 index should be 1");
+                kani::assert(s == SlotIdx::new(1), "$slot.1 index should be 1");
             } else {
                 , "$slot.1 index should be 1");
             } else {
@@ -131,7 +131,7 @@ fn lower_slot_reference_valid() {
         kani::assert(res.is_ok(), "$slot.255 should succeed");
         if let Ok(prog) = res {
             if let ExprOp::LoadSlot(s) = prog.ops[0] {
-                kani::assert(s == SlotIdx::new(255, "assertion failed"), "$slot.255 index should be 255");
+                kani::assert(s == SlotIdx::new(255), "$slot.255 index should be 255");
             } else {
                 , "$slot.255 index should be 255");
             } else {
@@ -153,7 +153,7 @@ fn lower_slot_reference_valid() {
         kani::assert(res.is_ok(), "$slot.65535 should succeed");
         if let Ok(prog) = res {
             if let ExprOp::LoadSlot(s) = prog.ops[0] {
-                kani::assert(s == SlotIdx::new(65535, "assertion failed"), "$slot.65535 index should be 65535");
+                kani::assert(s == SlotIdx::new(65535), "$slot.65535 index should be 65535");
             } else {
                 , "$slot.65535 index should be 65535");
             } else {
@@ -175,7 +175,7 @@ fn lower_slot_reference_valid() {
             &expr, &mut Vec::new(), &mut acc,
         );
         kani::assert(res.is_ok(), "$slots.N should compile successfully");
-        kani::assert(acc.is_empty(, "assertion failed"), "$slots.N (no path) should not create accessor");
+        kani::assert(acc.is_empty(), "$slots.N (no path) should not create accessor");
     }
 }
 
@@ -203,10 +203,10 @@ fn lower_slot_reference_with_path_creates_accessor() {
 
         kani::assert(result.is_ok(), "$slots.2.7 should compile successfully");
         if let Ok(program) = result {
-            kani::assert(!accessors.is_empty(, "assertion failed"), "$slots.2.7 should create one accessor entry");
+            kani::assert(!accessors.is_empty(), "$slots.2.7 should create one accessor entry");
             let ap = &accessors[0];
-            kani::assert(ap.root == SlotIdx::new(2, "assertion failed"), "accessor root should be SlotIdx::new(2)");
-            kani::assert(ap.path.len(, "assertion failed") == 1, "$slots.2.7 should have one path segment");
+            kani::assert(ap.root == SlotIdx::new(2), "accessor root should be SlotIdx::new(2)");
+            kani::assert(ap.path.len() == 1, "$slots.2.7 should have one path segment");
             let seg0 = &ap.path[0];
             let is_index = matches!(seg0, PathSegment::Index(_));
              == 1, "$slots.2.7 should have one path segment");
@@ -219,7 +219,7 @@ fn lower_slot_reference_with_path_creates_accessor() {
             kani::assert(program.ops.len() == 1, "$slots.2.7 should produce exactly 1 op");
             match program.ops[0] {
                 ExprOp::LoadAccessor(aidx) => {
-                    kani::assert(aidx == AccessorIdx::new(0, "assertion failed"),
+                    kani::assert(aidx == AccessorIdx::new(0),
                         "accessor index should be 0 (first entry)",
                     );
                 }
@@ -251,18 +251,18 @@ fn lower_slot_reference_with_path_creates_accessor() {
 
         kani::assert(res2.is_ok(), "$slots.1.2.3.4 should compile successfully");
         if let Ok(program2) = res2 {
-            kani::assert(acc2.len(, "assertion failed") == 1, "$slots.1.2.3.4 should create exactly one accessor");
+            kani::assert(acc2.len() == 1, "$slots.1.2.3.4 should create exactly one accessor");
             let ap2 = &acc2[0];
-            kani::assert(ap2.root == SlotIdx::new(1, "assertion failed"), "accessor root should be SlotIdx::new(1)");
-            kani::assert(ap2.path.len(, "assertion failed") == 3, "$slots.1.2.3.4 should have 3 path segments");
+            kani::assert(ap2.root == SlotIdx::new(1), "accessor root should be SlotIdx::new(1)");
+            kani::assert(ap2.path.len() == 3, "$slots.1.2.3.4 should have 3 path segments");
             // Unrolled segment checks — no loops
-            kani::assert(matches!(&ap2.path[0], PathSegment::Index(_), "assertion failed"),
+            kani::assert(matches!(&ap2.path[0], PathSegment::Index(_)),
                 "segment 0 must be Index",
             );
-            kani::assert(matches!(&ap2.path[1], PathSegment::Index(_), "assertion failed"),
+            kani::assert(matches!(&ap2.path[1], PathSegment::Index(_)),
                 "segment 1 must be Index",
             );
-            kani::assert(matches!(&ap2.path[2], PathSegment::Index(_), "assertion failed"),
+            kani::assert(matches!(&ap2.path[2], PathSegment::Index(_)),
                 "segment 2 must be Index",
             );
         }
@@ -284,6 +284,6 @@ fn lower_slot_reference_with_path_creates_accessor() {
 
         // Must fail: field accessor requires symbol table (not available in v1)
         kani::assert(res3.is_err(), "$slot.1.name must be rejected (field accessor not in v1)");
-        kani::assert(acc3.is_empty(, "assertion failed"), "rejected field accessor must not mutate accessors");
+        kani::assert(acc3.is_empty(), "rejected field accessor must not mutate accessors");
     }
 }

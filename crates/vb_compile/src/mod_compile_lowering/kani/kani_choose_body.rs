@@ -45,13 +45,13 @@ fn kani_choose_body_fallthrough() {
     );
 
     if result.is_ok() {
-        kani::assert(builder.nodes.len(, "assertion failed") > 1,
+        kani::assert(builder.nodes.len() > 1,
             "must have body nodes after ChooseSlot",
         );
         if let Some(last_body) = builder.nodes.last() {
-            kani::assert(last_body.id.as_usize(, "assertion failed") > 0, "body node id must be > 0");
+            kani::assert(last_body.id.as_usize() > 0, "body node id must be > 0");
             if let Some(last_next) = last_body.next {
-                kani::assert(last_next.as_usize(, "assertion failed") == common_next.as_usize(),
+                kani::assert(last_next.as_usize() == common_next.as_usize(),
                     "last body node must fall through to common_next",
                 );
             }
@@ -89,7 +89,7 @@ fn kani_choose_stepidx_overflow() {
 
     if result.is_ok() {
         for node in &builder.nodes {
-            kani::assert(node.id.as_usize(, "assertion failed") <= usize::from(u16::MAX),
+            kani::assert(node.id.as_usize() <= usize::from(u16::MAX),
                 "all StepIdx must stay in u16 range",
             );
         }
@@ -127,7 +127,7 @@ fn kani_choose_emission_parity() {
 
     if result.is_ok() {
         if let Ok(expected_width) = width {
-            kani::assert(builder.nodes.len(, "assertion failed") == expected_width,
+            kani::assert(builder.nodes.len() == expected_width,
                 "emitted node count must equal choose_width result",
             );
         }
@@ -149,10 +149,10 @@ fn kani_emit_choose_branch_body_count() {
 
     match result {
         Ok(count) => {
-            kani::assert(count == usize::from(step_count, "assertion failed"),
+            kani::assert(count == usize::from(step_count),
                 "emitted node count must equal input step count",
             );
-            kani::assert(builder.nodes.len(, "assertion failed") == count,
+            kani::assert(builder.nodes.len() == count,
                 "builder node count must match",
             );
             for node in &builder.nodes {
@@ -160,7 +160,7 @@ fn kani_emit_choose_branch_body_count() {
             }
             if let Some(last) = builder.nodes.last() {
                 if let Some(ln) = last.next {
-                    kani::assert(ln.as_usize(, "assertion failed") == common_next.as_usize(),
+                    kani::assert(ln.as_usize() == common_next.as_usize(),
                         "last body node must chain to common_next",
                     );
                 }

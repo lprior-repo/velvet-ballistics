@@ -137,7 +137,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! vb-qi37.2.4 Integration Tests: BudgetError Variant Coverage

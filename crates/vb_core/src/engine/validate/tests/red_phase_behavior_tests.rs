@@ -88,18 +88,18 @@ mod valid_workflow_graph_acceptance {
     #[test]
     fn accepts_single_finish_node() {
         let parts = valid_parts();
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_node_bounds(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_resource_contract(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_node_bounds(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
+        kani::assert(validate_resource_contract(&parts) == Ok(()));
     }
 
     #[test]
     fn accepts_two_node_linear_chain() {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_node_bounds(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_node_bounds(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
     }
 
     #[test]
@@ -109,9 +109,9 @@ mod valid_workflow_graph_acceptance {
             nop_node_with_next(1, 2),
             finish_node(2, 0),
         ]);
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_node_bounds(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_node_bounds(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
     }
 
     #[test]
@@ -153,8 +153,8 @@ mod valid_workflow_graph_acceptance {
             constants: vec![ConstValue::I64(0)].into_boxed_slice(),
             ..parts
         };
-        kani::assert(validate_compiled_workflow(&p, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&p, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&p) == Ok(()));
+        kani::assert(validate_transition_target(&p) == Ok(()));
     }
 
     #[test]
@@ -172,9 +172,9 @@ mod valid_workflow_graph_acceptance {
             },
             finish_node(1, 0),
         ]);
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_node_bounds(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
+        kani::assert(validate_node_bounds(&parts) == Ok(()));
     }
 }
 
@@ -204,7 +204,7 @@ mod cycle_detection_and_backward_edges {
         kani::assert(result == Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(1),
                 to: StepIdx::new(0),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -223,7 +223,7 @@ mod cycle_detection_and_backward_edges {
         kani::assert(result == Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(0),
                 to: StepIdx::new(0),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -245,7 +245,7 @@ mod cycle_detection_and_backward_edges {
         kani::assert(result == Err(WorkflowError::JumpCycle {
                 step: StepIdx::new(1),
                 target: StepIdx::new(0),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -281,7 +281,7 @@ mod cycle_detection_and_backward_edges {
         kani::assert(result == Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(1),
                 to: StepIdx::new(0),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -316,7 +316,7 @@ mod cycle_detection_and_backward_edges {
         ]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
         kani::assert(err != WorkflowError::BackwardEdge {
-                from: StepIdx::new(1, "assertion failed"), "assertion failed");
+                from: StepIdx::new(1));
     }
 }
 
@@ -333,7 +333,7 @@ mod disconnected_unreachable_nodes {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::UnreachableNode {
                 step: StepIdx::new(1),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -347,7 +347,7 @@ mod disconnected_unreachable_nodes {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::UnreachableNode {
                 step: StepIdx::new(1),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -355,7 +355,7 @@ mod disconnected_unreachable_nodes {
         let parts = valid_parts_with_nodes(vec![finish_node(0, 0), nop_node(1)]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
         kani::assert(err == WorkflowError::UnreachableNode {
-                step: StepIdx::new(1, "assertion failed"), });
+                step: StepIdx::new(1), });
     }
 
     #[test]
@@ -365,7 +365,7 @@ mod disconnected_unreachable_nodes {
             nop_node_with_next(1, 2),
             finish_node(2, 0),
         ]);
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
     }
 }
 
@@ -392,7 +392,7 @@ mod duplicate_node_ids_detection {
         kani::assert(result == Err(WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(0),
                 actual: StepIdx::new(5),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -413,7 +413,7 @@ mod duplicate_node_ids_detection {
         kani::assert(result == Err(WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(1),
                 actual: StepIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -435,7 +435,7 @@ mod duplicate_node_ids_detection {
         kani::assert(result == Err(WorkflowError::NodeIdMismatch {
                 expected: StepIdx::new(1),
                 actual: StepIdx::new(5),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -464,7 +464,7 @@ mod duplicate_node_ids_detection {
         }]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
         kani::assert(err != WorkflowError::NodeIdMismatch {
-                expected: StepIdx::new(0, "assertion failed"), "assertion failed");
+                expected: StepIdx::new(0));
     }
 }
 
@@ -495,7 +495,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ConstOutOfBounds {
                 constant: ConstIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -518,7 +518,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(5),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -543,7 +543,7 @@ mod per_node_kind_invalid_configurations {
                 crate::errors::CoreError::ExprOutOfBounds {
                     expr: ExprIdx::new(99),
                 }
-            ), "assertion failed"), "assertion failed");
+            )));
     }
 
     #[test]
@@ -569,7 +569,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "object_fields",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -595,7 +595,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "list_items",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -616,7 +616,7 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert(result == Err(WorkflowError::EmptyBranchTable, "assertion failed"), "assertion failed");
+        kani::assert(result == Err(WorkflowError::EmptyBranchTable));
     }
 
     #[test]
@@ -637,7 +637,7 @@ mod per_node_kind_invalid_configurations {
             ..valid_parts()
         };
         let result = validate_compiled_workflow(&parts);
-        kani::assert(result == Err(WorkflowError::EmptyBranchTable, "assertion failed"), "assertion failed");
+        kani::assert(result == Err(WorkflowError::EmptyBranchTable));
     }
 
     #[test]
@@ -664,7 +664,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -688,7 +688,7 @@ mod per_node_kind_invalid_configurations {
         kani::assert(result == Err(WorkflowError::BackwardEdge {
                 from: StepIdx::new(0),
                 to: StepIdx::new(0),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -711,7 +711,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "branch_count",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -735,7 +735,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_retry_attempts",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -759,7 +759,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -782,7 +782,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(50),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -803,7 +803,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -826,7 +826,7 @@ mod per_node_kind_invalid_configurations {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(77),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 }
 
@@ -847,7 +847,7 @@ mod resource_contract_exceeded {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_steps",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -860,7 +860,7 @@ mod resource_contract_exceeded {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_slots",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -874,7 +874,7 @@ mod resource_contract_exceeded {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_constants",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -892,7 +892,7 @@ mod resource_contract_exceeded {
         let result = validate_compiled_workflow(&parts_with_accessors);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_accessors",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -910,7 +910,7 @@ mod resource_contract_exceeded {
         let result = validate_compiled_workflow(&parts_with_expr);
         kani::assert(result == Err(WorkflowError::ResourceContractExceeded {
                 resource: "max_expressions",
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 }
 
@@ -933,9 +933,9 @@ mod target_out_of_bounds {
                 target: StepIdx::new(99),
             },
         }]);
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Err(WorkflowError::StepOutOfBounds {
+        kani::assert(validate_transition_target(&parts) == Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }), "assertion failed");
+            }));
     }
 
     #[test]
@@ -954,9 +954,9 @@ mod target_out_of_bounds {
                 done: StepIdx::new(99),
             },
         }]);
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Err(WorkflowError::StepOutOfBounds {
+        kani::assert(validate_transition_target(&parts) == Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }), "assertion failed");
+            }));
     }
 
     #[test]
@@ -966,9 +966,9 @@ mod target_out_of_bounds {
             nodes: vec![finish_node(0, 0)].into_boxed_slice(),
             ..valid_parts()
         };
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Err(WorkflowError::EntryOutOfBounds {
+        kani::assert(validate_compiled_workflow(&parts) == Err(WorkflowError::EntryOutOfBounds {
                 entry: StepIdx::new(42),
-            }), "assertion failed");
+            }));
     }
 
     #[test]
@@ -981,9 +981,9 @@ mod target_out_of_bounds {
             error_slot: None,
             kind: CompiledNodeKind::Nop,
         }]);
-        kani::assert(validate_node_bounds(&parts, "assertion failed") == Err(WorkflowError::StepOutOfBounds {
+        kani::assert(validate_node_bounds(&parts) == Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }), "assertion failed");
+            }));
     }
 
     #[test]
@@ -1003,9 +1003,9 @@ mod target_out_of_bounds {
             slot_count: 1,
             ..valid_parts()
         };
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Err(WorkflowError::SlotOutOfBounds {
+        kani::assert(validate_compiled_workflow(&parts) == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(77),
-            }), "assertion failed");
+            }));
     }
 
     #[test]
@@ -1025,9 +1025,9 @@ mod target_out_of_bounds {
             constants: Box::new([]),
             ..valid_parts()
         };
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Err(WorkflowError::ConstOutOfBounds {
+        kani::assert(validate_compiled_workflow(&parts) == Err(WorkflowError::ConstOutOfBounds {
                 constant: ConstIdx::new(99),
-            }), "assertion failed");
+            }));
     }
 }
 
@@ -1055,7 +1055,7 @@ mod taint_secret_validation {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::StepOutOfBounds {
                 step: StepIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 
     #[test]
@@ -1076,7 +1076,7 @@ mod taint_secret_validation {
         let result = validate_compiled_workflow(&parts);
         kani::assert(result == Err(WorkflowError::SlotOutOfBounds {
                 slot: SlotIdx::new(99),
-            }, "assertion failed"), "assertion failed");
+            }));
     }
 }
 
@@ -1127,7 +1127,7 @@ mod error_message_exactness_verification {
         ]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
         kani::assert(err != WorkflowError::BackwardEdge {
-                from: StepIdx::new(1, "assertion failed"), "assertion failed");
+                from: StepIdx::new(1));
     }
 
     #[test]
@@ -1147,7 +1147,7 @@ mod error_message_exactness_verification {
             ..valid_parts()
         };
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        , "assertion failed");
+        );
     }
 
     #[test]
@@ -1167,7 +1167,7 @@ mod error_message_exactness_verification {
             ..valid_parts()
         };
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
     }
 
     #[test]
@@ -1196,7 +1196,7 @@ mod error_message_exactness_verification {
         }]);
         let err = validate_compiled_workflow(&parts).unwrap_err();
         kani::assert(err != WorkflowError::NodeIdMismatch {
-                expected: StepIdx::new(0, "assertion failed"), "assertion failed");
+                expected: StepIdx::new(0));
     }
 
     #[test]
@@ -1208,7 +1208,7 @@ mod error_message_exactness_verification {
         };
         let err = validate_compiled_workflow(&parts).unwrap_err();
         kani::assert(err == WorkflowError::EntryOutOfBounds {
-                entry: StepIdx::new(55, "assertion failed"), });
+                entry: StepIdx::new(55), });
     }
 
     #[test]
@@ -1252,7 +1252,7 @@ mod error_message_exactness_verification {
         };
         parts.resource_contract.max_steps = 2;
         let err = validate_compiled_workflow(&parts).unwrap_err();
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
     }
 
     #[test]
@@ -1269,7 +1269,7 @@ mod error_message_exactness_verification {
         }]);
         let err = validate_transition_target(&parts).unwrap_err();
         kani::assert(err == WorkflowError::StepOutOfBounds {
-                step: StepIdx::new(42, "assertion failed"), });
+                step: StepIdx::new(42), });
     }
 }
 
@@ -1361,8 +1361,8 @@ mod complex_nested_workflow_validation {
             slot_count: 2,
             ..valid_parts()
         };
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
     }
 
     #[test]
@@ -1424,8 +1424,8 @@ mod complex_nested_workflow_validation {
             entry: StepIdx::new(0),
             ..valid_parts()
         };
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
     }
 
     #[test]
@@ -1453,8 +1453,8 @@ mod complex_nested_workflow_validation {
             .into_boxed_slice(),
             ..valid_parts()
         };
-        kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+        kani::assert(validate_transition_target(&parts) == Ok(()));
     }
 
     #[test]
@@ -1463,7 +1463,7 @@ mod complex_nested_workflow_validation {
         let result = validate_compiled_workflow(&parts);
         kani::assert(matches!(
             result,
-            Err(WorkflowError::ImproperLoopNesting { .. }), "assertion failed"));
+            Err(WorkflowError::ImproperLoopNesting { .. })));
     }
 }
 
@@ -1488,7 +1488,7 @@ mod determinism_idempotency_of_validation {
         let result = validate_compiled_workflow(&parts);
         kani::assert(matches!(
             result,
-            Err(WorkflowError::ImproperLoopNesting { .. }), "assertion failed"));
+            Err(WorkflowError::ImproperLoopNesting { .. })));
     }
 }
 
@@ -1520,25 +1520,25 @@ mod determinism_idempotency_of_validation {
         let parts = valid_parts();
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
         let r3 = validate_node_bounds(&parts);
         let r4 = validate_node_bounds(&parts);
         ;
         let r3 = validate_node_bounds(&parts);
         let r4 = validate_node_bounds(&parts);
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
         let r5 = validate_transition_target(&parts);
         let r6 = validate_transition_target(&parts);
         ;
         let r5 = validate_transition_target(&parts);
         let r6 = validate_transition_target(&parts);
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
         let r7 = validate_resource_contract(&parts);
         let r8 = validate_resource_contract(&parts);
         ;
         let r7 = validate_resource_contract(&parts);
         let r8 = validate_resource_contract(&parts);
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
     }
 
     #[test]
@@ -1604,17 +1604,17 @@ mod determinism_idempotency_of_validation {
         ]);
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-        kani::assert(true, "assertion failed");
+        kani::assert(true);
     }
 
     #[test]
     fn validation_is_idempotent_across_multiple_calls() {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
         for _ in 0..10 {
-            kani::assert(validate_compiled_workflow(&parts, "assertion failed") == Ok(()), "assertion failed");
-            kani::assert(validate_node_bounds(&parts, "assertion failed") == Ok(()), "assertion failed");
-            kani::assert(validate_transition_target(&parts, "assertion failed") == Ok(()), "assertion failed");
-            kani::assert(validate_resource_contract(&parts, "assertion failed") == Ok(()), "assertion failed");
+            kani::assert(validate_compiled_workflow(&parts) == Ok(()));
+            kani::assert(validate_node_bounds(&parts) == Ok(()));
+            kani::assert(validate_transition_target(&parts) == Ok(()));
+            kani::assert(validate_resource_contract(&parts) == Ok(()));
         }
     }
 
@@ -1626,7 +1626,7 @@ mod determinism_idempotency_of_validation {
         };
         let expected = Err(WorkflowError::EmptyNodes);
         for _ in 0..10 {
-            kani::assert(validate_compiled_workflow(&parts, "assertion failed") == expected, "assertion failed");
+            kani::assert(validate_compiled_workflow(&parts) == expected);
         }
     }
 
@@ -1642,8 +1642,8 @@ mod determinism_idempotency_of_validation {
             nop_node_with_next(1, 2),
             finish_node(2, 0),
         ]);
-        kani::assert(validate_compiled_workflow(&parts_a, "assertion failed") == Ok(()), "assertion failed");
-        kani::assert(validate_compiled_workflow(&parts_a, "assertion failed") == validate_compiled_workflow(&parts_b), "assertion failed");
+        kani::assert(validate_compiled_workflow(&parts_a) == Ok(()));
+        kani::assert(validate_compiled_workflow(&parts_a) == validate_compiled_workflow(&parts_b));
     }
 }
 
@@ -1663,7 +1663,7 @@ mod kani_harnesses {
         let parts = valid_parts_with_nodes(vec![nop_node_with_next(0, 1), finish_node(1, 0)]);
         let r1 = validate_compiled_workflow(&parts);
         let r2 = validate_compiled_workflow(&parts);
-         == validate_compiled_workflow(&parts_b), "assertion failed");
+         == validate_compiled_workflow(&parts_b));
     }
 }
 

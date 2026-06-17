@@ -2,7 +2,6 @@
 //!
 //! This is a tiny, pure, sequential Rust kernel for step state verification.
 //! Suitable for Verus/Aeneas extraction to Lean.
-
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
@@ -10,204 +9,181 @@ use vstd::prelude::*;
 #[cfg(verus_keep_ghost)]
 verus! {
 
-    // ── StepState enum ─────────────────────────────────────────────────────
-    #[derive(Clone, Copy, PartialEq)]
-    pub enum StepState {
-        Pending,
-        Running,
-        Waiting,
-        Asking,
-        Succeeded,
-        Failed,
-        Cancelled,
-        Skipped,
-    }
+// ── StepState enum ─────────────────────────────────────────────────────
+#[derive(Clone, Copy, PartialEq)]
+pub enum StepState {
+    Pending,
+    Running,
+    Waiting,
+    Asking,
+    Succeeded,
+    Failed,
+    Cancelled,
+    Skipped,
+}
 
-    // ── Spec: transition relation (canonical mathematical definition) ─────
-    pub open spec fn spec_valid_transition(from: StepState, to: StepState) -> bool {
-        from == to
-            || (from == StepState::Pending
-                && (to == StepState::Running
-                    || to == StepState::Succeeded
-                    || to == StepState::Failed
-                    || to == StepState::Cancelled
-                    || to == StepState::Skipped))
-            || (from == StepState::Running
-                && (to == StepState::Succeeded
-                    || to == StepState::Failed
-                    || to == StepState::Waiting
-                    || to == StepState::Asking
-                    || to == StepState::Cancelled
-                    || to == StepState::Skipped))
-            || (from == StepState::Waiting && to == StepState::Running)
-            || (from == StepState::Asking && to == StepState::Running)
-            || (from == StepState::Succeeded && to == StepState::Succeeded)
-            || (from == StepState::Failed && to == StepState::Failed)
-            || (from == StepState::Cancelled && to == StepState::Cancelled)
-            || (from == StepState::Skipped && to == StepState::Skipped)
-    }
+// ── Spec: transition relation (canonical mathematical definition) ─────
+pub open spec fn spec_valid_transition(from: StepState, to: StepState) -> bool {
+    from == to || (from == StepState::Pending && (to == StepState::Running || to
+        == StepState::Succeeded || to == StepState::Failed || to == StepState::Cancelled || to
+        == StepState::Skipped)) || (from == StepState::Running && (to == StepState::Succeeded || to
+        == StepState::Failed || to == StepState::Waiting || to == StepState::Asking || to
+        == StepState::Cancelled || to == StepState::Skipped)) || (from == StepState::Waiting && to
+        == StepState::Running) || (from == StepState::Asking && to == StepState::Running) || (from
+        == StepState::Succeeded && to == StepState::Succeeded) || (from == StepState::Failed && to
+        == StepState::Failed) || (from == StepState::Cancelled && to == StepState::Cancelled) || (
+    from == StepState::Skipped && to == StepState::Skipped)
+}
 
-    // ── Spec: is_terminal ──────────────────────────────────────────────────
-    pub open spec fn spec_is_terminal(s: StepState) -> bool {
-        matches!(
+// ── Spec: is_terminal ──────────────────────────────────────────────────
+pub open spec fn spec_is_terminal(s: StepState) -> bool {
+    matches!(
             s,
             StepState::Succeeded | StepState::Failed | StepState::Cancelled | StepState::Skipped
         )
-    }
+}
 
-    // ── Lemma: terminal states have no non-terminal successors ───────────
-    proof fn lemma_terminal_has_no_non_terminal_successor(
-        terminal: StepState,
-    )
-        requires
-            spec_is_terminal(terminal),
-        ensures
-            !spec_valid_transition(terminal, StepState::Pending)
-                && !spec_valid_transition(terminal, StepState::Running)
-                && !spec_valid_transition(terminal, StepState::Waiting)
-                && !spec_valid_transition(terminal, StepState::Asking),
-    {
-        // Only Succeeded, Failed, Cancelled, Skipped are terminal.
-        // Each has only self-transition; none transition to Pending/Running/Waiting/Asking.
-        assert(!spec_valid_transition(terminal, StepState::Pending));
-        assert(!spec_valid_transition(terminal, StepState::Running));
-        assert(!spec_valid_transition(terminal, StepState::Waiting));
-        assert(!spec_valid_transition(terminal, StepState::Asking));
-    }
+// ── Lemma: terminal states have no non-terminal successors ───────────
+proof fn lemma_terminal_has_no_non_terminal_successor(terminal: StepState)
+    requires
+        spec_is_terminal(terminal),
+    ensures
+        !spec_valid_transition(terminal, StepState::Pending) && !spec_valid_transition(
+            terminal,
+            StepState::Running,
+        ) && !spec_valid_transition(terminal, StepState::Waiting) && !spec_valid_transition(
+            terminal,
+            StepState::Asking,
+        ),
+{
+    // Only Succeeded, Failed, Cancelled, Skipped are terminal.
+    // Each has only self-transition; none transition to Pending/Running/Waiting/Asking.
+    assert(!spec_valid_transition(terminal, StepState::Pending));
+    assert(!spec_valid_transition(terminal, StepState::Running));
+    assert(!spec_valid_transition(terminal, StepState::Waiting));
+    assert(!spec_valid_transition(terminal, StepState::Asking));
+}
 
-    // ── Lemma: pending is non-terminal ────────────────────────────────────
-    proof fn lemma_pending_is_non_terminal()
-        ensures
-            !spec_is_terminal(StepState::Pending),
-    {
-        assert(!spec_is_terminal(StepState::Pending));
-    }
+// ── Lemma: pending is non-terminal ────────────────────────────────────
+proof fn lemma_pending_is_non_terminal()
+    ensures
+        !spec_is_terminal(StepState::Pending),
+{
+    assert(!spec_is_terminal(StepState::Pending));
+}
 
-    // ── Lemma: running is non-terminal ────────────────────────────────────
-    proof fn lemma_running_is_non_terminal()
-        ensures
-            !spec_is_terminal(StepState::Running),
-    {
-        assert(!spec_is_terminal(StepState::Running));
-    }
+// ── Lemma: running is non-terminal ────────────────────────────────────
+proof fn lemma_running_is_non_terminal()
+    ensures
+        !spec_is_terminal(StepState::Running),
+{
+    assert(!spec_is_terminal(StepState::Running));
+}
 
-    // ── Lemma: waiting is non-terminal ────────────────────────────────────
-    proof fn lemma_waiting_is_non_terminal()
-        ensures
-            !spec_is_terminal(StepState::Waiting),
-    {
-        assert(!spec_is_terminal(StepState::Waiting));
-    }
+// ── Lemma: waiting is non-terminal ────────────────────────────────────
+proof fn lemma_waiting_is_non_terminal()
+    ensures
+        !spec_is_terminal(StepState::Waiting),
+{
+    assert(!spec_is_terminal(StepState::Waiting));
+}
 
-    // ── Lemma: asking is non-terminal ─────────────────────────────────────
-    proof fn lemma_asking_is_non_terminal()
-        ensures
-            !spec_is_terminal(StepState::Asking),
-    {
-        assert(!spec_is_terminal(StepState::Asking));
-    }
+// ── Lemma: asking is non-terminal ─────────────────────────────────────
+proof fn lemma_asking_is_non_terminal()
+    ensures
+        !spec_is_terminal(StepState::Asking),
+{
+    assert(!spec_is_terminal(StepState::Asking));
+}
 
-    // ── Lemma: succeeded is terminal ──────────────────────────────────────
-    proof fn lemma_succeeded_is_terminal()
-        ensures
-            spec_is_terminal(StepState::Succeeded),
-    {
-        assert(spec_is_terminal(StepState::Succeeded));
-    }
+// ── Lemma: succeeded is terminal ──────────────────────────────────────
+proof fn lemma_succeeded_is_terminal()
+    ensures
+        spec_is_terminal(StepState::Succeeded),
+{
+    assert(spec_is_terminal(StepState::Succeeded));
+}
 
-    // ── Lemma: failed is terminal ─────────────────────────────────────────
-    proof fn lemma_failed_is_terminal()
-        ensures
-            spec_is_terminal(StepState::Failed),
-    {
-        assert(spec_is_terminal(StepState::Failed));
-    }
+// ── Lemma: failed is terminal ─────────────────────────────────────────
+proof fn lemma_failed_is_terminal()
+    ensures
+        spec_is_terminal(StepState::Failed),
+{
+    assert(spec_is_terminal(StepState::Failed));
+}
 
-    // ── Lemma: cancelled is terminal ──────────────────────────────────────
-    proof fn lemma_cancelled_is_terminal()
-        ensures
-            spec_is_terminal(StepState::Cancelled),
-    {
-        assert(spec_is_terminal(StepState::Cancelled));
-    }
+// ── Lemma: cancelled is terminal ──────────────────────────────────────
+proof fn lemma_cancelled_is_terminal()
+    ensures
+        spec_is_terminal(StepState::Cancelled),
+{
+    assert(spec_is_terminal(StepState::Cancelled));
+}
 
-    // ── Lemma: skipped is terminal ────────────────────────────────────────
-    proof fn lemma_skipped_is_terminal()
-        ensures
-            spec_is_terminal(StepState::Skipped),
-    {
-        assert(spec_is_terminal(StepState::Skipped));
-    }
+// ── Lemma: skipped is terminal ────────────────────────────────────────
+proof fn lemma_skipped_is_terminal()
+    ensures
+        spec_is_terminal(StepState::Skipped),
+{
+    assert(spec_is_terminal(StepState::Skipped));
+}
 
-    // ── Lemma: terminal self-transitions are always valid ─────────────────
-    proof fn lemma_terminal_self_transition_valid(
-        terminal: StepState,
-    )
-        requires
-            spec_is_terminal(terminal),
-        ensures
-            spec_valid_transition(terminal, terminal),
-    {
-        // Succeeded->Succeeded, Failed->Failed, Cancelled->Cancelled, Skipped->Skipped
-        // are all listed in spec_valid_transition.
-        assert(spec_valid_transition(terminal, terminal));
-    }
+// ── Lemma: terminal self-transitions are always valid ─────────────────
+proof fn lemma_terminal_self_transition_valid(terminal: StepState)
+    requires
+        spec_is_terminal(terminal),
+    ensures
+        spec_valid_transition(terminal, terminal),
+{
+    // Succeeded->Succeeded, Failed->Failed, Cancelled->Cancelled, Skipped->Skipped
+    // are all listed in spec_valid_transition.
+    assert(spec_valid_transition(terminal, terminal));
+}
 
-    // ── Exec: is_valid_transition — state machine transition validator ─────
-    pub fn is_valid_transition(from: StepState, to: StepState) -> (valid: bool)
-        ensures
-            valid == spec_valid_transition(from, to),
-    {
-        from == to
-            || (from == StepState::Pending
-                && (to == StepState::Running
-                    || to == StepState::Succeeded
-                    || to == StepState::Failed
-                    || to == StepState::Cancelled
-                    || to == StepState::Skipped))
-            || (from == StepState::Running
-                && (to == StepState::Succeeded
-                    || to == StepState::Failed
-                    || to == StepState::Waiting
-                    || to == StepState::Asking
-                    || to == StepState::Cancelled
-                    || to == StepState::Skipped))
-            || (from == StepState::Waiting && to == StepState::Running)
-            || (from == StepState::Asking && to == StepState::Running)
-            || (from == StepState::Succeeded && to == StepState::Succeeded)
-            || (from == StepState::Failed && to == StepState::Failed)
-            || (from == StepState::Cancelled && to == StepState::Cancelled)
-            || (from == StepState::Skipped && to == StepState::Skipped)
-    }
+// ── Exec: is_valid_transition — state machine transition validator ─────
+pub fn is_valid_transition(from: StepState, to: StepState) -> (valid: bool)
+    ensures
+        valid == spec_valid_transition(from, to),
+{
+    from == to || (from == StepState::Pending && (to == StepState::Running || to
+        == StepState::Succeeded || to == StepState::Failed || to == StepState::Cancelled || to
+        == StepState::Skipped)) || (from == StepState::Running && (to == StepState::Succeeded || to
+        == StepState::Failed || to == StepState::Waiting || to == StepState::Asking || to
+        == StepState::Cancelled || to == StepState::Skipped)) || (from == StepState::Waiting && to
+        == StepState::Running) || (from == StepState::Asking && to == StepState::Running) || (from
+        == StepState::Succeeded && to == StepState::Succeeded) || (from == StepState::Failed && to
+        == StepState::Failed) || (from == StepState::Cancelled && to == StepState::Cancelled) || (
+    from == StepState::Skipped && to == StepState::Skipped)
+}
 
-    // ── Exec: is_terminal — state classification ──────────────────────────
-    pub fn is_terminal(s: StepState) -> (terminal: bool)
-        ensures
-            terminal == spec_is_terminal(s),
-    {
-        s == StepState::Succeeded
-            || s == StepState::Failed
-            || s == StepState::Cancelled
-            || s == StepState::Skipped
-    }
+// ── Exec: is_terminal — state classification ──────────────────────────
+pub fn is_terminal(s: StepState) -> (terminal: bool)
+    ensures
+        terminal == spec_is_terminal(s),
+{
+    s == StepState::Succeeded || s == StepState::Failed || s == StepState::Cancelled || s
+        == StepState::Skipped
+}
 
-    // ── Exec: validate_transition — returns Ok if transition is valid ──────
-    pub fn validate_transition(from: StepState, to: StepState) -> (result: Result<StepState, &'static str>)
-        ensures
-            match result {
-                Ok(s) => s == to && spec_valid_transition(from, to),
-                Err(_) => !spec_valid_transition(from, to),
-            },
-    {
-        if spec_valid_transition(from, to) {
-            Ok(to)
-        } else {
-            Err("invalid_state_transition")
-        }
+// ── Exec: validate_transition — returns Ok if transition is valid ──────
+pub fn validate_transition(from: StepState, to: StepState) -> (result: Result<
+    StepState,
+    &'static str,
+>)
+    ensures
+        match result {
+            Ok(s) => s == to && spec_valid_transition(from, to),
+            Err(_) => !spec_valid_transition(from, to),
+        },
+{
+    if spec_valid_transition(from, to) {
+        Ok(to)
+    } else {
+        Err("invalid_state_transition")
     }
+}
 
 } // verus!
-
 // ── Regular Rust implementation (non-Verus compilation) ─────────────────────
 #[cfg(not(verus_keep_ghost))]
 mod cargo_kernel {
@@ -250,7 +226,10 @@ mod cargo_kernel {
         pub fn is_terminal(&self) -> bool {
             matches!(
                 self,
-                StepState::Succeeded | StepState::Failed | StepState::Cancelled | StepState::Skipped
+                StepState::Succeeded
+                    | StepState::Failed
+                    | StepState::Cancelled
+                    | StepState::Skipped
             )
         }
     }
@@ -363,9 +342,14 @@ mod tests {
     #[test]
     fn test_all_idempotent_transitions() {
         for state in [
-            StepState::Pending, StepState::Running, StepState::Waiting,
-            StepState::Asking, StepState::Succeeded, StepState::Failed,
-            StepState::Cancelled, StepState::Skipped,
+            StepState::Pending,
+            StepState::Running,
+            StepState::Waiting,
+            StepState::Asking,
+            StepState::Succeeded,
+            StepState::Failed,
+            StepState::Cancelled,
+            StepState::Skipped,
         ] {
             assert!(is_valid_transition(state, state));
         }
@@ -383,16 +367,25 @@ mod tests {
 
     #[test]
     fn test_terminal_self_transition() {
-        assert!(is_valid_transition(StepState::Succeeded, StepState::Succeeded));
+        assert!(is_valid_transition(
+            StepState::Succeeded,
+            StepState::Succeeded
+        ));
         assert!(is_valid_transition(StepState::Failed, StepState::Failed));
-        assert!(is_valid_transition(StepState::Cancelled, StepState::Cancelled));
+        assert!(is_valid_transition(
+            StepState::Cancelled,
+            StepState::Cancelled
+        ));
         assert!(is_valid_transition(StepState::Skipped, StepState::Skipped));
     }
 
     #[test]
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        assert!(!is_valid_transition(StepState::Succeeded, StepState::Running));
+        assert!(!is_valid_transition(
+            StepState::Succeeded,
+            StepState::Running
+        ));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 
@@ -461,65 +454,110 @@ mod tests {
 
     #[test]
     fn test_validate_transition_pending_to_running_ok() {
-        assert_eq!(validate_transition(StepState::Pending, StepState::Running), Ok(StepState::Running));
+        assert_eq!(
+            validate_transition(StepState::Pending, StepState::Running),
+            Ok(StepState::Running)
+        );
     }
 
     #[test]
     fn test_validate_transition_pending_to_succeeded_ok() {
-        assert_eq!(validate_transition(StepState::Pending, StepState::Succeeded), Ok(StepState::Succeeded));
+        assert_eq!(
+            validate_transition(StepState::Pending, StepState::Succeeded),
+            Ok(StepState::Succeeded)
+        );
     }
 
     #[test]
     fn test_validate_transition_pending_to_failed_ok() {
-        assert_eq!(validate_transition(StepState::Pending, StepState::Failed), Ok(StepState::Failed));
+        assert_eq!(
+            validate_transition(StepState::Pending, StepState::Failed),
+            Ok(StepState::Failed)
+        );
     }
 
     #[test]
     fn test_validate_transition_running_to_waiting_ok() {
-        assert_eq!(validate_transition(StepState::Running, StepState::Waiting), Ok(StepState::Waiting));
+        assert_eq!(
+            validate_transition(StepState::Running, StepState::Waiting),
+            Ok(StepState::Waiting)
+        );
     }
 
     #[test]
     fn test_validate_transition_running_to_asking_ok() {
-        assert_eq!(validate_transition(StepState::Running, StepState::Asking), Ok(StepState::Asking));
+        assert_eq!(
+            validate_transition(StepState::Running, StepState::Asking),
+            Ok(StepState::Asking)
+        );
     }
 
     #[test]
     fn test_validate_transition_waiting_to_running_ok() {
-        assert_eq!(validate_transition(StepState::Waiting, StepState::Running), Ok(StepState::Running));
+        assert_eq!(
+            validate_transition(StepState::Waiting, StepState::Running),
+            Ok(StepState::Running)
+        );
     }
 
     #[test]
     fn test_validate_transition_asking_to_running_ok() {
-        assert_eq!(validate_transition(StepState::Asking, StepState::Running), Ok(StepState::Running));
+        assert_eq!(
+            validate_transition(StepState::Asking, StepState::Running),
+            Ok(StepState::Running)
+        );
     }
 
     #[test]
     fn test_validate_transition_terminal_idempotent() {
-        assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded), Ok(StepState::Succeeded));
-        assert_eq!(validate_transition(StepState::Failed, StepState::Failed), Ok(StepState::Failed));
-        assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled), Ok(StepState::Cancelled));
-        assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped), Ok(StepState::Skipped));
+        assert_eq!(
+            validate_transition(StepState::Succeeded, StepState::Succeeded),
+            Ok(StepState::Succeeded)
+        );
+        assert_eq!(
+            validate_transition(StepState::Failed, StepState::Failed),
+            Ok(StepState::Failed)
+        );
+        assert_eq!(
+            validate_transition(StepState::Cancelled, StepState::Cancelled),
+            Ok(StepState::Cancelled)
+        );
+        assert_eq!(
+            validate_transition(StepState::Skipped, StepState::Skipped),
+            Ok(StepState::Skipped)
+        );
     }
 
     #[test]
     fn test_validate_transition_invalid_pending_to_waiting() {
-        assert_eq!(validate_transition(StepState::Pending, StepState::Waiting), Err("invalid_state_transition"));
+        assert_eq!(
+            validate_transition(StepState::Pending, StepState::Waiting),
+            Err("invalid_state_transition")
+        );
     }
 
     #[test]
     fn test_validate_transition_invalid_running_to_pending() {
-        assert_eq!(validate_transition(StepState::Running, StepState::Pending), Err("invalid_state_transition"));
+        assert_eq!(
+            validate_transition(StepState::Running, StepState::Pending),
+            Err("invalid_state_transition")
+        );
     }
 
     #[test]
     fn test_validate_transition_invalid_waiting_to_succeeded() {
-        assert_eq!(validate_transition(StepState::Waiting, StepState::Succeeded), Err("invalid_state_transition"));
+        assert_eq!(
+            validate_transition(StepState::Waiting, StepState::Succeeded),
+            Err("invalid_state_transition")
+        );
     }
 
     #[test]
     fn test_validate_transition_invalid_asking_to_failed() {
-        assert_eq!(validate_transition(StepState::Asking, StepState::Failed), Err("invalid_state_transition"));
+        assert_eq!(
+            validate_transition(StepState::Asking, StepState::Failed),
+            Err("invalid_state_transition")
+        );
     }
 
     #[test]
@@ -579,7 +617,10 @@ mod kani_step_state_harnesses {
     #[kani::proof]
     fn terminal_cannot_transition_to_non_terminal_kani() {
         let result = terminal_cannot_transition_to_non_terminal();
-        assert!(result, "terminal_cannot_transition_to_non_terminal must hold (all terminal states absorbing)");
+        assert!(
+            result,
+            "terminal_cannot_transition_to_non_terminal must hold (all terminal states absorbing)"
+        );
 
         let t_raw: u8 = kani::any();
         let s_raw: u8 = kani::any();

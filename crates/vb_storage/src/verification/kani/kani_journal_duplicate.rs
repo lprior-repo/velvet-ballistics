@@ -123,7 +123,7 @@ fn kani_journal_key_injectivity() {
                 "distinct (run, seq) pairs must produce distinct keys",
             );
             // Verify key length invariant
-            kani::assert(k1.len(, "assertion failed") == 17, "journal event key is 17 bytes");
+            kani::assert(k1.len() == 17, "journal event key is 17 bytes");
         }
         _ => {}
     }

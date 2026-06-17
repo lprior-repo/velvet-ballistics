@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! End-to-end integration tests for the deliver-sink binary.
 //!

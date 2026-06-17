@@ -49,5 +49,5 @@ fn kani_foreach_input_reaches_hasher() {
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
 
-    kani::assert(ha.finalize(, "assertion failed").as_bytes() != hb.finalize().as_bytes(), "assertion failed");
+    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes());
 }

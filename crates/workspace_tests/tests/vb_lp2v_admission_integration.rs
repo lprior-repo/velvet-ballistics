@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Additional BDD integration tests for vb-lp2v proof-admission behaviors.
 //!

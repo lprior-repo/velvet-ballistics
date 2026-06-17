@@ -33,7 +33,7 @@ fn canonical_layout_no_overflow() {
     let width: usize = kani::any();
     let next = cursor.checked_add(width);
     // checked_add always returns Some or None — never panics
-    kani::assert(matches!(next, Some(_) | None, "assertion failed"),
+    kani::assert(matches!(next, Some(_) | None),
         "checked_add returns Some or None, never panics",
     );
 
@@ -41,7 +41,7 @@ fn canonical_layout_no_overflow() {
     // for any usize value. It returns Ok(u16) or Err.
     let cursor2: usize = kani::any();
     let idx_result = u16::try_from(cursor2);
-    kani::assert(matches!(idx_result, Ok(_) | Err(_), "assertion failed"),
+    kani::assert(matches!(idx_result, Ok(_) | Err(_)),
         "try_from(u16) returns Ok or Err, never panics",
     );
 
@@ -56,7 +56,7 @@ fn canonical_layout_no_overflow() {
         Some(final_cursor) => {
             let idx = u16::try_from(final_cursor);
             // Both branches handle errors gracefully — no panic possible
-            kani::assert(matches!(idx, Ok(_) | Err(_), "assertion failed"),
+            kani::assert(matches!(idx, Ok(_) | Err(_)),
                 "combined checked_add+try_from chain never panics",
             );
         }

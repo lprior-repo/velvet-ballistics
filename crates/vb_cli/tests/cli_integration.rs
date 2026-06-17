@@ -133,9 +133,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 #![cfg(not(miri))]
 //! CLI integration tests — truth serum adversarial audit as executable tests.

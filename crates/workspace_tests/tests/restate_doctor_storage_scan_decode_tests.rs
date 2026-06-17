@@ -144,7 +144,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Integration tests for CLI doctor command storage scan and decode operations.

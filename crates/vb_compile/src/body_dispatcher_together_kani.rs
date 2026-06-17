@@ -230,7 +230,7 @@ fn body_dispatcher_together_acceptance_kani() {
                     }
                 };
                 if let Some(nxt) = last.next {
-                    kani::assert(nxt.as_usize(, "assertion failed") == 100, "last node must point to next");
+                    kani::assert(nxt.as_usize() == 100, "last node must point to next");
                 }
             }
         }

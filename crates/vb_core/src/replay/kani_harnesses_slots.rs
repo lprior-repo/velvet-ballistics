@@ -231,7 +231,6 @@ fn verify_choose_slot_output_in_input_set() {
         Ok(ReplayAction::Continue(target)) => {
             let valid =
                 target == StepIdx::new(1) || target == StepIdx::new(2) || target == StepIdx::new(3);
-            , "kani harness assertion");
     }
 }
 

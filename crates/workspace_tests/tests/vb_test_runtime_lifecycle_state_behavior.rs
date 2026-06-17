@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! vb_test_runtime_lifecycle_state_behavior: Runtime Lifecycle and State Machine Behavior Tests
 //!

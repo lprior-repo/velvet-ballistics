@@ -419,10 +419,10 @@ fn kani_shard_command_queue_bounded_invariant() {
                 queue.capacity() == capacity,
                 "queue reports constructor capacity",
             );
-            kani::assert(queue.len(, "assertion failed") == 0, "new queue starts empty");
-            kani::assert(queue.is_empty(, "assertion failed"), "new queue is empty");
-            kani::assert(!queue.is_full(, "assertion failed"), "new queue is not full");
-            kani::assert(queue.remaining_capacity(, "assertion failed") == capacity,
+            kani::assert(queue.len() == 0, "new queue starts empty");
+            kani::assert(queue.is_empty(), "new queue is empty");
+            kani::assert(!queue.is_full(), "new queue is not full");
+            kani::assert(queue.remaining_capacity() == capacity,
                 "new queue exposes full remaining capacity",
             );
             std::mem::forget(queue);
@@ -471,12 +471,12 @@ fn kani_shard_command_queue_push() {
                 }
             }
             kani::assert(queue.len() == 1, "queue len increments after first enqueue");
-            kani::assert(queue.remaining_capacity(, "assertion failed") + queue.len() == capacity,
+            kani::assert(queue.remaining_capacity() + queue.len() == capacity,
                 "remaining capacity plus len stays equal to capacity",
             );
 
             if capacity > 1 {
-                kani::assert(!queue.is_full(, "assertion failed"),
+                kani::assert(!queue.is_full(),
                     "queue is not full before reaching capacity",
                 );
                 match queue.enqueue_token(arbitrary_queue_token()) {
@@ -496,8 +496,8 @@ fn kani_shard_command_queue_push() {
             }
 
             kani::assert(queue.len() == capacity, "queue len reaches capacity");
-            kani::assert(queue.is_full(, "assertion failed"), "queue reports full at capacity");
-            kani::assert(queue.remaining_capacity(, "assertion failed") == 0,
+            kani::assert(queue.is_full(), "queue reports full at capacity");
+            kani::assert(queue.remaining_capacity() == 0,
                 "remaining capacity reaches zero at capacity",
             );
 
@@ -521,10 +521,10 @@ fn kani_shard_command_queue_push() {
                 queue.len() == capacity,
                 "overflow enqueue does not change queue length",
             );
-            kani::assert(queue.remaining_capacity(, "assertion failed") == 0,
+            kani::assert(queue.remaining_capacity() == 0,
                 "overflow enqueue leaves remaining capacity unchanged",
             );
-            kani::assert(queue.is_full(, "assertion failed"), "overflow enqueue leaves queue full");
+            kani::assert(queue.is_full(), "overflow enqueue leaves queue full");
             std::mem::forget(queue);
         }
         Err(error) => {
@@ -624,9 +624,9 @@ fn kani_shard_command_queue_drain() {
                 queue.pop_token().is_none(),
                 "queue pop returns None once drained",
             );
-            kani::assert(queue.is_empty(, "assertion failed"), "queue is empty after draining all items");
-            kani::assert(!queue.is_full(, "assertion failed"), "drained queue is not full");
-            kani::assert(queue.remaining_capacity(, "assertion failed") == capacity,
+            kani::assert(queue.is_empty(), "queue is empty after draining all items");
+            kani::assert(!queue.is_full(), "drained queue is not full");
+            kani::assert(queue.remaining_capacity() == capacity,
                 "drained queue restores full remaining capacity",
             );
             std::mem::forget(queue);

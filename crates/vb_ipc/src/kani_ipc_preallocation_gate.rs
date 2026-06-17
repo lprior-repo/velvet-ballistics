@@ -351,10 +351,10 @@ fn kani_read_frame_payload_bounded_accepts_within_bound() {
 
     match result {
         Ok(payload) => {
-            kani::assert(payload.len(, "assertion failed") == payload_len as usize,
+            kani::assert(payload.len() == payload_len as usize,
                 "allocated vec must have exactly payload_len bytes",
             );
-            kani::assert(payload == cursor_data.to_vec(, "assertion failed"),
+            kani::assert(payload == cursor_data.to_vec(),
                 "read payload must match cursor data",
             );
         }

@@ -157,19 +157,19 @@ mod kani_verification {
     #[kani::proof]
     fn review_status_approved_never_panics() {
         let status = ReviewStatus::from_serialized("approved");
-        kani::assert(status.serialized(, "assertion failed") == "approved", "kani harness assertion");
+        kani::assert(status.serialized() == "approved", "kani harness assertion");
     }
 
     #[kani::proof]
     fn review_status_waived_never_panics() {
         let status = ReviewStatus::from_serialized("waived");
-        kani::assert(status.serialized(, "assertion failed") == "waived", "kani harness assertion");
+        kani::assert(status.serialized() == "waived", "kani harness assertion");
     }
 
     #[kani::proof]
     fn review_status_other_preserves_value() {
         let status = ReviewStatus::Other(String::from("custom-status"));
-        kani::assert(status.serialized(, "assertion failed") == "custom-status",
+        kani::assert(status.serialized() == "custom-status",
             "kani harness assertion",
         );
     }
@@ -189,7 +189,6 @@ mod kani_verification {
         let v = ValidatedBoundaryInventory::with_schema_version(schema);
         kani::assert(v.schema_version == schema, "kani harness assertion");
         kani::assert(v.records.is_empty(), "kani harness assertion");
-        , "kani harness assertion");
         kani::assert(v.discovered_boundary_count == 0, "kani harness assertion");
     }
 
@@ -243,7 +242,7 @@ mod kani_verification {
             let result = classify_boundary(candidate);
             match result {
                 Ok(classified) => {
-                    kani::assert(!classified.id.is_empty(, "assertion failed"), "kani harness assertion");
+                    kani::assert(!classified.id.is_empty(), "kani harness assertion");
                 }
                 Err(_) => {}
             }
@@ -267,16 +266,6 @@ mod kani_verification {
         match ref_state {
             FieldState::Missing => {}
             FieldState::Present(_) => {}
-        }
-    }
-
-    #[kani::proof]
-    fn freshness_marker_edge_versions() {
-        let marker_min = FreshnessMarker::new(0, 0, 0);
-        , "kani harness assertion");
-                }
-                Err(_) => {}
-            }
         }
     }
 
@@ -304,8 +293,6 @@ mod kani_verification {
     fn freshness_marker_edge_versions() {
         let marker_min = FreshnessMarker::new(0, 0, 0);
         kani::assert(marker_min.source_version == 0, "kani harness assertion");
-        let marker_max = FreshnessMarker::new(u64::MAX, u64::MAX, u64::MAX);
-        marker_min.source_version == 0, "kani harness assertion");
         let marker_max = FreshnessMarker::new(u64::MAX, u64::MAX, u64::MAX);
         kani::assert(
             marker_max.evidence_version == u64::MAX,

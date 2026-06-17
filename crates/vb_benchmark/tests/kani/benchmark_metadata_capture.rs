@@ -224,7 +224,7 @@ fn proof_commit_hash_validation_preserved() {
         &name, baseline, result, &command, non_hex_hash, &environment,
         budget_us, fjall_ns, api_ns, ipc_ns,
     );
-    kani::assert(matches!(result2, Err(EvidenceError::MissingCommit), "assertion failed"),
+    kani::assert(matches!(result2, Err(EvidenceError::MissingCommit)),
         "non-hex commit_hash must return MissingCommit",
     );
 }
@@ -264,7 +264,7 @@ fn proof_serialization_completeness() {
 
     if let serde_json::Value::Object(map) = parsed {
         for key in &MASTER_METADATA_FIELDS {
-            kani::assert(map.contains_key(*key, "assertion failed"),
+            kani::assert(map.contains_key(*key),
                 &format!("JSON must contain key: {}", key),
             );
         }
@@ -310,8 +310,8 @@ fn proof_audit_compatible_keys() {
 
     if let serde_json::Value::Object(map) = parsed {
         // Audit-compatible keys (without _ns suffix)
-        kani::assert(map.contains_key("fjall_write_latency", "assertion failed"), "must contain audit key fjall_write_latency");
-        kani::assert(map.contains_key("direct_api_latency", "assertion failed"), "must contain audit key direct_api_latency");
-        kani::assert(map.contains_key("ipc_latency", "assertion failed"), "must contain audit key ipc_latency");
+        kani::assert(map.contains_key("fjall_write_latency"), "must contain audit key fjall_write_latency");
+        kani::assert(map.contains_key("direct_api_latency"), "must contain audit key direct_api_latency");
+        kani::assert(map.contains_key("ipc_latency"), "must contain audit key ipc_latency");
     }
 }

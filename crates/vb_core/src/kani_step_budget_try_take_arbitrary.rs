@@ -188,30 +188,30 @@ fn kani_step_budget_try_take_arbitrary() {
     let result = budget.try_take();
 
     kani::assert(result == Ok(false), "zero budget reports exhaustion");
-    kani::assert(budget.remaining(, "assertion failed") == 0, "zero budget remains zero");
-    kani::assert(clamped_tick_budget.remaining(, "assertion failed") <= StepBudget::MAX.remaining(),
+    kani::assert(budget.remaining() == 0, "zero budget remains zero");
+    kani::assert(clamped_tick_budget.remaining() <= StepBudget::MAX.remaining(),
         "tick budget generator clamps",
     );
-    kani::assert(clamped_max_steps.remaining(, "assertion failed") <= StepBudget::MAX.remaining(),
+    kani::assert(clamped_max_steps.remaining() <= StepBudget::MAX.remaining(),
         "max steps generator clamps",
     );
-    kani::assert(run.pc(, "assertion failed") == before_pc, "actual pc is preserved");
-    kani::assert(run.executed(, "assertion failed") == before_executed,
+    kani::assert(run.pc() == before_pc, "actual pc is preserved");
+    kani::assert(run.executed() == before_executed,
         "actual execution count is preserved",
     );
-    kani::assert(run.step_count(, "assertion failed") == before_step_count,
+    kani::assert(run.step_count() == before_step_count,
         "actual step count is preserved",
     );
-    kani::assert(run.slot_count(, "assertion failed") == before_slot_count,
+    kani::assert(run.slot_count() == before_slot_count,
         "actual slot count is preserved",
     );
-    kani::assert(run.max_parallel_in_flight(, "assertion failed") == before_max_parallel,
+    kani::assert(run.max_parallel_in_flight() == before_max_parallel,
         "actual max parallel accounting is preserved",
     );
-    kani::assert(run.parallel_in_flight(, "assertion failed") == before_parallel,
+    kani::assert(run.parallel_in_flight() == before_parallel,
         "actual parallel accounting is preserved",
     );
-    kani::assert(run.step_state(shape.first_step, "assertion failed") == before_first_step,
+    kani::assert(run.step_state(shape.first_step) == before_first_step,
         "actual entry step state is preserved",
     );
 }

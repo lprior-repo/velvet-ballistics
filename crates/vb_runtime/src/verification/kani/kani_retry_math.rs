@@ -168,12 +168,12 @@ fn kani_retry_cursor_bounds() {
 
     // --- initial_cursor ---
     let initial = policy.initial_cursor();
-    kani::assert(initial.attempt == 1, "assertion failed");
-    initial.attempt == 1, "assertion failed");
-    kani::assert(initial.remaining == policy.max_attempts, "assertion failed");
-    initial.remaining == policy.max_attempts, "assertion failed");
-    kani::assert(initial.delay_ms == 0, "assertion failed");
-    initial.delay_ms == 0, "assertion failed");
+    kani::assert(initial.attempt == 1);
+    initial.attempt == 1);
+    kani::assert(initial.remaining == policy.max_attempts);
+    initial.remaining == policy.max_attempts);
+    kani::assert(initial.delay_ms == 0);
+    initial.delay_ms == 0);
     kani::assert(initial.exhausted == policy.max_attempts == 0, "initial cursor exhausted only when max_attempts == 0");
     kani::cover!(initial.exhausted == false);
     kani::cover!(initial.exhausted == true);
@@ -250,7 +250,7 @@ fn kani_retry_cursor_bounds() {
         Err(e) => {
             // Errors should only occur for invalid cursors outside our assumes
             let msg = format!("{:?}", e);
-            kani::assert(msg.contains("exceeded", "assertion failed") || msg.contains("nonzero") || msg.contains("zero"),
+            kani::assert(msg.contains("exceeded") || msg.contains("nonzero") || msg.contains("zero"),
                 "only expected validation errors"
             
         }
@@ -302,12 +302,12 @@ fn kani_retry_cursor_bounds() {
 
     // --- Negative tests: validate_attempt rejects invalid inputs ---
     // Reject attempt 0
-    kani::assert(policy.delay_for_attempt(max_interval, 0, "assertion failed").is_err()
+    kani::assert(policy.delay_for_attempt(max_interval, 0).is_err()
 
     // Reject attempt > max_attempts
     if policy.max_attempts < 10 {
         kani::assert(policy
-            .delay_for_attempt(max_interval, policy.max_attempts + 1, "assertion failed")
+            .delay_for_attempt(max_interval, policy.max_attempts + 1)
             .is_err()
     }
 

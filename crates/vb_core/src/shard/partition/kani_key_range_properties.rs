@@ -78,10 +78,10 @@ fn key_range_intersection_correct() {
     if expected_start <= expected_end {
         match result {
             Some(r) => {
-                kani::assert(r.start(, "assertion failed") == expected_start,
+                kani::assert(r.start() == expected_start,
                     "intersection start must be max of inputs",
                 );
-                kani::assert(r.end(, "assertion failed") == expected_end,
+                kani::assert(r.end() == expected_end,
                     "intersection end must be min of inputs",
                 );
             }

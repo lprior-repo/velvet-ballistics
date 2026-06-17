@@ -45,14 +45,14 @@ fn lower_accessor_reference_numeric() {
 
         kani::assert(result.is_ok(), "$slots.2.7 should compile successfully");
         if let Ok(program) = result {
-            kani::assert(!accessors.is_empty(, "assertion failed"),
+            kani::assert(!accessors.is_empty(),
                 "$slots.2.7 should create one accessor entry",
             );
             let ap = &accessors[0];
-            kani::assert(ap.root == SlotIdx::new(2, "assertion failed"),
+            kani::assert(ap.root == SlotIdx::new(2),
                 "accessor root should be SlotIdx::new(2)",
             );
-            kani::assert(ap.path.len(, "assertion failed") == 1,
+            kani::assert(ap.path.len() == 1,
                 "$slots.2.7 should have one path segment",
             );
             let seg0 = &ap.path[0];
@@ -69,7 +69,7 @@ fn lower_accessor_reference_numeric() {
             kani::assert(program.ops.len() == 1, "$slots.2.7 should produce exactly 1 op");
             match program.ops[0] {
                 vb_core::ExprOp::LoadAccessor(aidx) => {
-                    kani::assert(aidx == AccessorIdx::new(0, "assertion failed"),
+                    kani::assert(aidx == AccessorIdx::new(0),
                         "accessor index should be 0 (first entry)",
                     );
                 }
@@ -103,24 +103,24 @@ fn lower_accessor_reference_numeric() {
 
         kani::assert(res2.is_ok(), "$slots.1.2.3.4 should compile successfully");
         if let Ok(program2) = res2 {
-            kani::assert(acc2.len(, "assertion failed") == 1,
+            kani::assert(acc2.len() == 1,
                 "$slots.1.2.3.4 should create exactly one accessor",
             );
             let ap2 = &acc2[0];
-            kani::assert(ap2.root == SlotIdx::new(1, "assertion failed"),
+            kani::assert(ap2.root == SlotIdx::new(1),
                 "accessor root should be SlotIdx::new(1)",
             );
-            kani::assert(ap2.path.len(, "assertion failed") == 3,
+            kani::assert(ap2.path.len() == 3,
                 "$slots.1.2.3.4 should have 3 path segments",
             );
             // All segments must be Index — unrolled for clarity
-            kani::assert(matches!(&ap2.path[0], PathSegment::Index(_), "assertion failed"),
+            kani::assert(matches!(&ap2.path[0], PathSegment::Index(_)),
                 "all v1 path segments must be Index",
             );
-            kani::assert(matches!(&ap2.path[1], PathSegment::Index(_), "assertion failed"),
+            kani::assert(matches!(&ap2.path[1], PathSegment::Index(_)),
                 "all v1 path segments must be Index",
             );
-            kani::assert(matches!(&ap2.path[2], PathSegment::Index(_), "assertion failed"),
+            kani::assert(matches!(&ap2.path[2], PathSegment::Index(_)),
                 "all v1 path segments must be Index",
             );
         }
@@ -146,7 +146,7 @@ fn lower_accessor_reference_numeric() {
         kani::assert(res3.is_err(),
             "$slot.1.name must be rejected (field accessor not in v1)",
         );
-        kani::assert(acc3.is_empty(, "assertion failed"),
+        kani::assert(acc3.is_empty(),
             "rejected field accessor must not mutate accessors",
         );
     }
@@ -178,7 +178,7 @@ fn accessor_index_assignment() {
     kani::assert(res1.is_ok(), "first accessor should compile");
     if let Ok(prog1) = res1 {
         if let vb_core::ExprOp::LoadAccessor(idx1) = prog1.ops[0] {
-            kani::assert(idx1 == AccessorIdx::new(0, "assertion failed"), "first accessor index should be 0");
+            kani::assert(idx1 == AccessorIdx::new(0), "first accessor index should be 0");
         }
     }
 
@@ -187,7 +187,7 @@ fn accessor_index_assignment() {
     kani::assert(res2.is_ok(), "second accessor should compile");
     if let Ok(prog2) = res2 {
         if let vb_core::ExprOp::LoadAccessor(idx2) = prog2.ops[0] {
-            kani::assert(idx2 == AccessorIdx::new(1, "assertion failed"), "second accessor index should be 1");
+            kani::assert(idx2 == AccessorIdx::new(1), "second accessor index should be 1");
         }
     }
 
@@ -196,11 +196,11 @@ fn accessor_index_assignment() {
     kani::assert(res3.is_ok(), "third accessor should compile");
     if let Ok(prog3) = res3 {
         if let vb_core::ExprOp::LoadAccessor(idx3) = prog3.ops[0] {
-            kani::assert(idx3 == AccessorIdx::new(2, "assertion failed"), "third accessor index should be 2");
+            kani::assert(idx3 == AccessorIdx::new(2), "third accessor index should be 2");
         }
     }
 
-    kani::assert(acc.len(, "assertion failed") == 3, "three accessors should be accumulated");
+    kani::assert(acc.len() == 3, "three accessors should be accumulated");
 }
 
 /// KANI-ACCESSOR-REF-001c: non-numeric path segments are rejected.
@@ -219,5 +219,5 @@ fn rejects_non_numeric_accessor_path() {
         &mut acc,
     );
     kani::assert(res.is_err(), "non-numeric path segment should be rejected");
-    kani::assert(acc.is_empty(, "assertion failed"), "rejected path should not create accessor");
+    kani::assert(acc.is_empty(), "rejected path should not create accessor");
 }

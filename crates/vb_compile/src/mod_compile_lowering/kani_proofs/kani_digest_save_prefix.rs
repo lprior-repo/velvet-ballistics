@@ -258,5 +258,5 @@ fn kani_digest_save_deterministic() {
     crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_prim).unwrap_or(());
     crate::mod_compile_lowering::digest_step_primitive(&mut h2, &save_prim).unwrap_or(());
 
-    kani::assert(h1.finalize(, "assertion failed").as_bytes() == h2.finalize().as_bytes(), "Save digest must be deterministic");
+    kani::assert(h1.finalize().as_bytes() == h2.finalize().as_bytes(), "Save digest must be deterministic");
 }

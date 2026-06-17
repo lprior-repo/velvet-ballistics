@@ -50,7 +50,7 @@ mod kani_harnesses {
                 ipc_latency_ns: kani::any(),
             };
             let result = check_evidence_gate(&metadata, threshold_pct);
-            kani::assert(matches!(result, Err(EvidenceError::ZeroLatencyField { .. }), "assertion failed"),
+            kani::assert(matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
                 "zero fjall_write_latency_ns must return ZeroLatencyField error",
             );
         }
@@ -70,7 +70,7 @@ mod kani_harnesses {
                 ipc_latency_ns: kani::any(),
             };
             let result = check_evidence_gate(&metadata, threshold_pct);
-            kani::assert(matches!(result, Err(EvidenceError::ZeroLatencyField { .. }), "assertion failed"),
+            kani::assert(matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
                 "zero direct_api_latency_ns must return ZeroLatencyField error",
             );
         }
@@ -90,7 +90,7 @@ mod kani_harnesses {
                 ipc_latency_ns: 0,
             };
             let result = check_evidence_gate(&metadata, threshold_pct);
-            kani::assert(matches!(result, Err(EvidenceError::ZeroLatencyField { .. }), "assertion failed"),
+            kani::assert(matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
                 "zero ipc_latency_ns must return ZeroLatencyField error",
             );
         }
@@ -130,7 +130,7 @@ mod kani_harnesses {
         // The result should NOT be ZeroLatencyField for any latency.
         // It may be another error (MissingBaseline, EmptyBudget, etc.)
         // but not ZeroLatencyField since all latencies are non-zero.
-        kani::assert(!matches!(result, Err(EvidenceError::ZeroLatencyField { .. }), "assertion failed"),
+        kani::assert(!matches!(result, Err(EvidenceError::ZeroLatencyField { .. })),
             "non-zero latencies should not trigger ZeroLatencyField error",
         );
     }

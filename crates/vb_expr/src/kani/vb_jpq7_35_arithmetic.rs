@@ -34,7 +34,7 @@ fn check_i64_add_overflow() {
             // Correct behavior
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::IntegerOverflow),
                 "i64 overflow must return IntegerOverflow",
             );
         }
@@ -65,7 +65,7 @@ fn check_i64_sub_overflow() {
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::IntegerOverflow),
                 "i64 underflow must return IntegerOverflow",
             );
         }
@@ -96,7 +96,7 @@ fn check_i64_mul_overflow() {
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::IntegerOverflow),
                 "i64::MAX * 2 must return IntegerOverflow",
             );
         }
@@ -127,7 +127,7 @@ fn check_i64_mul_overflow_min_neg_one() {
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::IntegerOverflow),
                 "i64::MIN * -1 must return IntegerOverflow",
             );
         }
@@ -160,7 +160,7 @@ fn check_i64_div_overflow_min_div_neg_one() {
             // Correct: checked_div returns None for MIN/-1
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::IntegerOverflow),
                 "i64::MIN / -1 must return IntegerOverflow",
             );
         }
@@ -191,7 +191,7 @@ fn check_i64_neg_overflow() {
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::IntegerOverflow),
                 "-(i64::MIN) must return IntegerOverflow",
             );
         }
@@ -259,7 +259,7 @@ fn check_i64_div_zero_returns_division_by_zero() {
             // Correct behavior
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::DivisionByZero, "assertion failed"),
+            kani::assert(matches!(e, ExprError::DivisionByZero),
                 "i64/0 must return DivisionByZero",
             );
         }
@@ -310,7 +310,7 @@ fn check_f64_div_zero_returns_non_finite_float() {
             // Correct: Inf rejected by FiniteF64::new
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::NonFiniteFloat, "assertion failed"),
+            kani::assert(matches!(e, ExprError::NonFiniteFloat),
                 "F64/0 must return NonFiniteFloat",
             );
         }
@@ -356,7 +356,7 @@ fn check_f64_zero_div_zero_returns_non_finite_float() {
     match result {
         Err(ExprError::NonFiniteFloat) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::NonFiniteFloat, "assertion failed"),
+            kani::assert(matches!(e, ExprError::NonFiniteFloat),
                 "0.0/0.0 must return NonFiniteFloat",
             );
         }

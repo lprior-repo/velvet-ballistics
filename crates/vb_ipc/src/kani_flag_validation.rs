@@ -379,7 +379,7 @@ fn differential_zero_mask_consistency() {
                         "zero-mask differential: ReservedBitsSet ⇔ ReservedBitsSet outcome",
                     );
                 } else if model.is_invalid_flags() {
-                    kani::assert(is_prod_invalid(prod, "assertion failed"),
+                    kani::assert(is_prod_invalid(prod),
                         "zero-mask differential: InvalidFlags ⇔ InvalidFlags outcome",
                     );
                 }
@@ -570,17 +570,17 @@ fn flag_validate_zero_mask() {
 
             // --- Classification-specific assertions ---
             if raw_flags == 0 {
-                kani::assert(model.is_valid(, "assertion failed"),
+                kani::assert(model.is_valid(),
                     "zero-mask command with flags=0 must validate",
                 );
-                kani::assert(is_prod_valid(prod, "assertion failed"),
+                kani::assert(is_prod_valid(prod),
                     "zero-mask production: flags=0 must be Ok",
                 );
             } else if (raw_flags & RESERVED_GLOBAL_MASK) != 0 {
-                kani::assert(model.is_reserved_bits_set(, "assertion failed"),
+                kani::assert(model.is_reserved_bits_set(),
                     "zero-mask: flags with reserved bits → ReservedBitsSet",
                 );
-                kani::assert(is_prod_reserved(prod, "assertion failed"),
+                kani::assert(is_prod_reserved(prod),
                     "zero-mask production: reserved bits → Err(reserved_bits_set)",
                 );
 
@@ -621,7 +621,7 @@ fn flag_validate_zero_mask() {
                     model.is_invalid_flags(),
                     "zero-mask: low-byte-only non-zero flags → InvalidFlags",
                 );
-                kani::assert(is_prod_invalid(prod, "assertion failed"),
+                kani::assert(is_prod_invalid(prod),
                     "zero-mask production: invalid low-byte → Err(invalid_flags)",
                 );
 
@@ -683,10 +683,10 @@ fn flag_validate_small_mask() {
             let has_invalid = (raw_flags & !mask) != 0;
 
             if has_reserved {
-                kani::assert(model.is_reserved_bits_set(, "assertion failed"),
+                kani::assert(model.is_reserved_bits_set(),
                     "small-mask: reserved bits → ReservedBitsSet",
                 );
-                kani::assert(is_prod_reserved(prod, "assertion failed"),
+                kani::assert(is_prod_reserved(prod),
                     "small-mask production: reserved → Err(reserved_bits_set)",
                 );
 
@@ -720,7 +720,7 @@ fn flag_validate_small_mask() {
                     model.is_invalid_flags(),
                     "small-mask: invalid bits → InvalidFlags",
                 );
-                kani::assert(is_prod_invalid(prod, "assertion failed"),
+                kani::assert(is_prod_invalid(prod),
                     "small-mask production: invalid → Err(invalid_flags)",
                 );
 
@@ -745,7 +745,7 @@ fn flag_validate_small_mask() {
                 }
             } else {
                 kani::assert(model.is_valid(), "small-mask: valid flags → Valid");
-                kani::assert(is_prod_valid(prod, "assertion failed"), "small-mask production: valid → Ok");
+                kani::assert(is_prod_valid(prod), "small-mask production: valid → Ok");
             }
         }
         Err(_) => {}
@@ -778,10 +778,10 @@ fn reserved_bits_all_commands() {
             let prod = validate_production_impl(cmd, raw_flags);
 
             // Must be ReservedBitsSet (first check, takes precedence)
-            kani::assert(model.is_reserved_bits_set(, "assertion failed"),
+            kani::assert(model.is_reserved_bits_set(),
                 "any reserved bit → ReservedBitsSet",
             );
-            kani::assert(is_prod_reserved(prod, "assertion failed"),
+            kani::assert(is_prod_reserved(prod),
                 "production: reserved bits → Err(reserved_bits_set)",
             );
             // Verify error fields in model
@@ -1140,7 +1140,7 @@ fn decode_rejects_invalid_flags() {
             //     );
             // } else if model.is_invalid_flags() {
             //     kani::cover!(true, "decode_reject: InvalidFlags path — model and production agree");
-            //     kani::assert(//         matches!(e, IpcError::InvalidCommandFlags { .. }, "assertion failed"),
+            //     kani::assert(//         matches!(e, IpcError::InvalidCommandFlags { .. }),
             //         "InvalidFlags predicted → decode returned InvalidCommandFlags"
             //     );
             // }
@@ -1166,7 +1166,7 @@ fn model_invariant_disjoint_masks() {
     match command {
         Ok(cmd) => {
             let mask = valid_mask_model(cmd);
-            kani::assert((mask & RESERVED_GLOBAL_MASK, "assertion failed") == 0,
+            kani::assert((mask & RESERVED_GLOBAL_MASK) == 0,
                 "INV-6: valid_mask and reserved_global_mask are disjoint",
             );
         }
@@ -1184,7 +1184,7 @@ fn model_zero_flags_always_valid() {
     match command {
         Ok(cmd) => {
             let result = validate_flags_model(cmd, 0);
-            kani::assert(result.is_valid(, "assertion failed"),
+            kani::assert(result.is_valid(),
                 "flags=0 must always be valid for any command",
             );
         }

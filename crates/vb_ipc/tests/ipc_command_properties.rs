@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Property test: IpcCommand enum has exactly 11 variants and correct parse/encode.

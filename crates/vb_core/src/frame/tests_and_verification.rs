@@ -153,7 +153,7 @@ mod tests {
                 result,
                 Err(CoreError::InternalInvariantViolation {
                     reason: "invalid_state_transition"
-                }), "assertion failed"),
+                })),
             "Succeeded->Running must be rejected (terminal states are absorbing)",
         );
 
@@ -2681,7 +2681,7 @@ mod frame_kani_harnesses {
                 return;
             }
         };
-        kani::assert(frame.executed(, "assertion failed") == 0, "executed counter starts at 0");
+        kani::assert(frame.executed() == 0, "executed counter starts at 0");
     }
 
     /// K-EXEC2: increment_executed advances counter.
@@ -2699,7 +2699,7 @@ mod frame_kani_harnesses {
         let before = frame.executed();
         let result = frame.increment_executed();
         kani::assert(result.is_ok(), "increment_executed returns Ok");
-        kani::assert(frame.executed(, "assertion failed") == before + 1, "executed increments by 1");
+        kani::assert(frame.executed() == before + 1, "executed increments by 1");
     }
 
     /// K-EXEC3: reinitialize resets executed counter.
@@ -2730,13 +2730,13 @@ mod frame_kani_harnesses {
 
         let result = frame.reinitialize(new_run_id, new_pc, step_count, slot_count);
         kani::assert(result.is_ok(), "reinitialize succeeds with valid params");
-        kani::assert(frame.executed(, "assertion failed") == 0,
+        kani::assert(frame.executed() == 0,
             "executed reset to 0 after reinitialize",
         );
-        kani::assert(frame.run_id(, "assertion failed") == new_run_id,
+        kani::assert(frame.run_id() == new_run_id,
             "run_id updated after reinitialize",
         );
-        kani::assert(frame.pc(, "assertion failed") == new_pc, "pc updated after reinitialize");
+        kani::assert(frame.pc() == new_pc, "pc updated after reinitialize");
     }
 
     /// K-EXEC4: add_parallel_in_flight increases counter.
@@ -2760,7 +2760,7 @@ mod frame_kani_harnesses {
 
         let result = frame.add_parallel_in_flight(delta);
         kani::assert(result.is_ok(), "add_parallel_in_flight returns Ok");
-        kani::assert(frame.parallel_in_flight(, "assertion failed") == before + delta,
+        kani::assert(frame.parallel_in_flight() == before + delta,
             "parallel_in_flight increases by delta",
         );
     }
@@ -2787,7 +2787,7 @@ mod frame_kani_harnesses {
 
         let result = frame.sub_parallel_in_flight(delta);
         kani::assert(result.is_ok(), "sub_parallel_in_flight returns Ok");
-        kani::assert(frame.parallel_in_flight(, "assertion failed") == before - delta,
+        kani::assert(frame.parallel_in_flight() == before - delta,
             "parallel_in_flight decreases by delta",
         );
     }

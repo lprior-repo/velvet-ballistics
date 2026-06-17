@@ -190,8 +190,8 @@ fn capability_opaque_dotted_names_siblings_do_not_cross_grant() -> Result<(), St
 #[test]
 fn capability_expiration_api_note_no_time_fields_on_capability() {
     let c = cap("network", ActionId::new(1));
-    kani::assert(c.name(, "assertion failed") == "network", "assertion failed");
-    kani::assert(c.action_id(, "assertion failed") == ActionId::new(1), "assertion failed");
+    kani::assert(c.name() == "network");
+    kani::assert(c.action_id() == ActionId::new(1));
 }
 
 #[test]
@@ -912,7 +912,6 @@ mod kani {
         let key_slots: [SlotIdx; 0] = [];
         let r1 = verify_idempotency(&contract, &key_slots, &frame);
         let r2 = verify_idempotency(&contract, &key_slots, &frame);
-        , "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -1163,12 +1162,12 @@ mod kani {
         let set = CapabilitySet::from_grants(Box::new([grant]));
 
         let required = Capability::new("resource".into(), ActionId::new(2));
-        kani::assert(!set.grants(&required, "assertion failed"),
+        kani::assert(!set.grants(&required),
             "grant for action 1 must not grant action 2",
         );
 
         let required_same_name = Capability::new("resource".into(), ActionId::new(1));
-        kani::assert(set.grants(&required_same_name, "assertion failed"),
+        kani::assert(set.grants(&required_same_name),
             "grant for action 1 must grant action 1",
         );
     }

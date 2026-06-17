@@ -103,14 +103,14 @@ fn ps_003_u32_conversion_safe() {
     kani::assert(u32::try_from(0usize).is_ok(), "zero converts");
 
     // MAX_COMPILED_IR_BYTES as usize converts
-    kani::assert(u32::try_from(MAX_COMPILED_IR_BYTES as usize, "assertion failed").is_ok(),
+    kani::assert(u32::try_from(MAX_COMPILED_IR_BYTES as usize).is_ok(),
         "MAX converts",
     );
 
     // Any value up to MAX_COMPILED_IR_BYTES converts safely
     let v: usize = kani::any();
     kani::assume(v <= MAX_COMPILED_IR_BYTES as usize);
-    kani::assert(u32::try_from(v, "assertion failed").is_ok(), "bounded value converts");
+    kani::assert(u32::try_from(v).is_ok(), "bounded value converts");
 }
 
 /// PS-003c: Verify usize::MAX is correctly handled.

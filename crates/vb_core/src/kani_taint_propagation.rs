@@ -28,8 +28,8 @@ fn arbitrary_taint() -> Taint {
 fn kani_join_taint_clean_identity() {
     let a = arbitrary_taint();
 
-    kani::assert(join_taint(a, Taint::Clean, "assertion failed") == a, "right Clean identity");
-    kani::assert(join_taint(Taint::Clean, a, "assertion failed") == a, "left Clean identity");
+    kani::assert(join_taint(a, Taint::Clean) == a, "right Clean identity");
+    kani::assert(join_taint(Taint::Clean, a) == a, "left Clean identity");
 }
 
 /// VB-CORE-TAINT-006-KANI H2: join_taint is commutative.

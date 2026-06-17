@@ -74,7 +74,7 @@ fn step_budget_remaining_bounded() {
 #[kani::unwind(4)]
 fn step_budget_zero_returns_false() {
     let mut budget = StepBudget::new(0);
-    kani::assert(budget.remaining(, "assertion failed") == 0, "zero budget has 0 remaining");
+    kani::assert(budget.remaining() == 0, "zero budget has 0 remaining");
     let result = budget.try_take();
     match result {
         Ok(false) => (), // correct behavior - budget exhausted

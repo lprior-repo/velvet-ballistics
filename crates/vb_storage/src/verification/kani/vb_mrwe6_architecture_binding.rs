@@ -88,11 +88,11 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let intent = generated_intent_kind();
     let required = mrwe6_required_intent_kind_for_class(class);
     let kernel_required = mrwe6_kernel_required_intent_kind_for_class(class);
-    kani::assert(required == kernel_required, "assertion failed");
+    kani::assert(required == kernel_required);
     let valid_match = mrwe6_intent_kind_matches_event_class(class, intent);
     let kernel_valid_match = mrwe6_kernel_intent_kind_matches_event_class(class, intent);
-    kani::assert(valid_match == kernel_valid_match, "assertion failed");
-    kani::assert(valid_match == required == intent, "assertion failed");
+    kani::assert(valid_match == kernel_valid_match);
+    kani::assert(valid_match == required == intent);
 
     let atom = mrwe6_validated_atom(class, intent);
     if valid_match {
@@ -109,8 +109,8 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     ) {
         kani::assert(matches!(
             scheduled_atom.map(|validated| validated.atom_kind()),
-            Ok(Mrwe6AtomKind::EventAndPutPending), "assertion failed"));
-        kani::assert(kernel_scheduled_atom == Ok(Mrwe6AtomKind::EventAndPutPending, "assertion failed"), "assertion failed");
+            Ok(Mrwe6AtomKind::EventAndPutPending)));
+        kani::assert(kernel_scheduled_atom == Ok(Mrwe6AtomKind::EventAndPutPending));
     } else {
         kani::assert(scheduled_atom.is_err(), "kani harness assertion");
         kani::assert(kernel_scheduled_atom.is_err(), "kani harness assertion");
@@ -131,7 +131,6 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let duplicate = mrwe6_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
     let kernel_duplicate =
         mrwe6_kernel_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
-    , "kani harness assertion");
     }
 
     let equal_payload = kani::any::<bool>();
@@ -139,12 +138,12 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let duplicate = mrwe6_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
     let kernel_duplicate =
         mrwe6_kernel_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
-    kani::assert(duplicate == kernel_duplicate, "assertion failed");
+    kani::assert(duplicate == kernel_duplicate);
     if !equal_payload {
-        kani::assert(duplicate == Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict, "assertion failed");
+        kani::assert(duplicate == Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict);
     }
     if equal_payload && !matches!(class, Mrwe6EventClass::Scheduled) {
-        kani::assert(duplicate == Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected, "assertion failed");
+        kani::assert(duplicate == Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected);
     }
 
     let is_resolution_event = kani::any::<bool>();
@@ -160,9 +159,9 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         key_matches_pending,
         commit_success,
     );
-    kani::assert(resolution == kernel_resolution, "assertion failed");
+    kani::assert(resolution == kernel_resolution);
     if !is_resolution_event {
-        kani::assert(resolution == Mrwe6ResolutionCommitDecision::NonResolutionRejected, "assertion failed");
+        kani::assert(resolution == Mrwe6ResolutionCommitDecision::NonResolutionRejected);
     }
     let committed = mrwe6_committed_resolution_from_facts(
         is_resolution_event,
@@ -195,7 +194,6 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         false,
     );
     if matches!(kernel_recovery, Mrwe6RecoveryOutcome::PendingInventory) {
-        , "kani harness assertion");
     }
 
     let resolution_present = kani::any::<bool>();
@@ -227,6 +225,6 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         );
         kani::assert(pending.is_ok(), "kani harness assertion");
     } else {
-        kani::assert(!matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory, "assertion failed"));
+        kani::assert(!matches!(recovery, Mrwe6RecoveryOutcome::PendingInventory));
     }
 }

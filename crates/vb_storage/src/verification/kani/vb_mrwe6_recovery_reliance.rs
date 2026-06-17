@@ -79,11 +79,11 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
             action: classified_action,
             run: classified_run,
             step: classified_step,
-        } if classified_action == action && classified_run == run && classified_step == step, "assertion failed"));
+        } if classified_action == action && classified_run == run && classified_step == step));
     if let Some(resolution) = &resolution_event {
         kani::assert(matches!(
             verification_action_index_intent(resolution),
-            VerificationActionIndexIntent::Delete { .. }, "assertion failed"));
+            VerificationActionIndexIntent::Delete { .. }));
     }
 
     let outcome = verification_recovery_outcome(
@@ -97,42 +97,42 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
         ResolutionShape::None if marker_present => {
             kani::assert(matches!(
                 outcome,
-                Ok(VerificationRecoveryOutcome::PendingInventory), "assertion failed"));
+                Ok(VerificationRecoveryOutcome::PendingInventory)));
         }
         ResolutionShape::None if legacy_profile => {
             kani::assert(matches!(
                 outcome,
-                Ok(VerificationRecoveryOutcome::LegacyFallback), "assertion failed"));
+                Ok(VerificationRecoveryOutcome::LegacyFallback)));
         }
         ResolutionShape::None => {
             kani::assert(matches!(
                 outcome,
-                Ok(VerificationRecoveryOutcome::ParityDefect), "assertion failed"));
+                Ok(VerificationRecoveryOutcome::ParityDefect)));
         }
         ResolutionShape::SameKey => {
             kani::assert(matches!(
                 outcome,
-                Ok(VerificationRecoveryOutcome::ResolvedNoPending), "assertion failed"));
+                Ok(VerificationRecoveryOutcome::ResolvedNoPending)));
         }
         ResolutionShape::MismatchedKey => {
             kani::assert(matches!(
                 outcome,
-                Ok(VerificationRecoveryOutcome::ParityDefect), "assertion failed"));
+                Ok(VerificationRecoveryOutcome::ParityDefect)));
         }
     }
 
     if !legacy_profile && !marker_present && matches!(resolution_shape, ResolutionShape::None) {
         kani::assert(!matches!(
             outcome,
-            Ok(VerificationRecoveryOutcome::PendingInventory), "assertion failed"));
+            Ok(VerificationRecoveryOutcome::PendingInventory)));
     }
     if matches!(resolution_shape, ResolutionShape::MismatchedKey) {
         kani::assert(!matches!(
             outcome,
-            Ok(VerificationRecoveryOutcome::PendingInventory), "assertion failed"));
+            Ok(VerificationRecoveryOutcome::PendingInventory)));
         kani::assert(!matches!(
             outcome,
-            Ok(VerificationRecoveryOutcome::LegacyFallback), "assertion failed"));
+            Ok(VerificationRecoveryOutcome::LegacyFallback)));
     }
 
     core::mem::forget(scheduled);

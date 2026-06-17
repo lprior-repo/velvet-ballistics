@@ -133,7 +133,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Section 39 instruction-count evidence — regression tests for the

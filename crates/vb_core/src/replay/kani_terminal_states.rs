@@ -60,7 +60,7 @@ fn kani_replay_skips_terminal_states() {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(is_terminal(state, "assertion failed"), "selected step is in a terminal state");
+    kani::assert(is_terminal(state), "selected step is in a terminal state");
 
     let mut store = ValueStore::new();
     let node_opt = plan.node(terminal_idx);
@@ -77,7 +77,7 @@ fn kani_replay_skips_terminal_states() {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(is_terminal(state_after, "assertion failed"),
+    kani::assert(is_terminal(state_after),
         "terminal state must remain terminal after replay (PO-KANI-012)",
     );
     ,

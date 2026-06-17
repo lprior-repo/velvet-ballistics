@@ -122,7 +122,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! Topology tests for bead vb-a001: for_each compiled parity fix.
 //!

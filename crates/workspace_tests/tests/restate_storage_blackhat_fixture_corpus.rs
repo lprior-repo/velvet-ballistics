@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! PO-vb-7m21-004,009,014,020,025,029,034,039 deterministic proptest corpus.
 //! PO-vb-7m21-044,049,054,059,064,069,074,079 blackhat corruption fixture tests.

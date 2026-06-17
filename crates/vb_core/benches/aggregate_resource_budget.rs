@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Criterion benchmark for [`vb_core::budget::AggregateResourceBudget`].

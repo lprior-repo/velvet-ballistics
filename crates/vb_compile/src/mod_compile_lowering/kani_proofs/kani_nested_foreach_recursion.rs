@@ -139,7 +139,7 @@ fn check_foreach_recursion_terminates() {
         Ok(()) => {
             // Base case: body is exactly 1 Set step at depth 0
             // Verify a node was emitted
-            kani::assert(!builder.nodes.is_empty(, "assertion failed"), "base case must emit a node");
+            kani::assert(!builder.nodes.is_empty(), "base case must emit a node");
         }
         Err(_) => {
             // Error path: body.len() != 1 or unsupported primitive

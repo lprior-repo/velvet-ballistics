@@ -138,7 +138,7 @@
     let_underscore_drop,
     missing_docs,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};

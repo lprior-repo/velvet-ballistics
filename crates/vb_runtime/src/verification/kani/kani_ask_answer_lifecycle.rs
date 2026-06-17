@@ -60,7 +60,7 @@ fn kani_ask_answer_append_before_insert() {
     shard.apply(run, RuntimeEvent::AwaitTimer);
 
     let state = shard.runtime_state_get(run);
-    kani::assert(state == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::assert(state == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) must set Resumable state",
     );
     // Also test AwaitAction → Resumable
@@ -68,7 +68,7 @@ fn kani_ask_answer_append_before_insert() {
     let r2 = any_run_id();
     s2.apply(r2, RuntimeEvent::AwaitAction);
     let state2 = s2.runtime_state_get(r2);
-    kani::assert(state2 == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::assert(state2 == Some(RuntimeState::Resumable),
         "apply(AwaitAction) must set Resumable state",
     );
 }
@@ -302,13 +302,13 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
 
     shard.apply(run, RuntimeEvent::AwaitTimer);
     let state = shard.runtime_state_get(run);
-    kani::kani::assert(state == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::kani::assert(state == Some(RuntimeState::Resumable),
         "after AwaitTimer, state is Resumable", )
 
     // Verify that calling apply(AwaitTimer) again is idempotent
     shard.apply(run, RuntimeEvent::AwaitTimer);
     let state2 = shard.runtime_state_get(run);
-    kani::kani::assert(state2 == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::kani::assert(state2 == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) is idempotent", )
 }
 

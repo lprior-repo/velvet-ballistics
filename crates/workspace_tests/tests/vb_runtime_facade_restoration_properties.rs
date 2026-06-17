@@ -133,15 +133,13 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // vb-pyg3p: behavior test for vb_runtime runtime facade
 // Tests public Runtime facade importability, API surface, and typed-error paths.
 //
 // This is a basic behavior test - proptest properties can be added
 // in vb_runtime_facade_restoration_properties.rs once the lane is fixed.
-
 #![forbid(unsafe_code)]
 
 use std::num::NonZeroUsize;

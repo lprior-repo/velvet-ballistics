@@ -2,7 +2,6 @@
 //!
 //! This is a tiny, pure, sequential Rust kernel for envelope header verification.
 //! Suitable for Verus/Aeneas extraction to Lean.
-
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
@@ -10,214 +9,205 @@ use vstd::prelude::*;
 #[cfg(verus_keep_ghost)]
 verus! {
 
-    // ── Envelope header constants (nat-level) ────────────────────────────
-    pub open spec fn HEADER_LEN() -> nat { 60 }
-    pub open spec fn MAGIC_VALUE() -> nat { 0x564C5F42 }
+// ── Envelope header constants (nat-level) ────────────────────────────
+pub open spec fn HEADER_LEN() -> nat {
+    60
+}
 
-    // ── Spec: payload_len combines the two 32-bit halves ───────────────
-    // 2^32 = 4294967296
-    pub open spec fn spec_payload_len(payload_len_hi: nat, payload_len_u32: nat) -> nat {
-        payload_len_hi * 4294967296nat + payload_len_u32
+pub open spec fn MAGIC_VALUE() -> nat {
+    0x564C5F42
+}
+
+// ── Spec: payload_len combines the two 32-bit halves ───────────────
+// 2^32 = 4294967296
+pub open spec fn spec_payload_len(payload_len_hi: nat, payload_len_u32: nat) -> nat {
+    payload_len_hi * 4294967296nat + payload_len_u32
+}
+
+// ── Spec: magic is valid ───────────────────────────────────────────
+pub open spec fn spec_validate_magic(magic: nat) -> bool {
+    magic == MAGIC_VALUE()
+}
+
+// ── Spec: payload length within bound ──────────────────────────────
+pub open spec fn spec_validate_payload_len(
+    payload_len_hi: nat,
+    payload_len_u32: nat,
+    max: nat,
+) -> bool {
+    spec_payload_len(payload_len_hi, payload_len_u32) <= max
+}
+
+// ── Spec: validate_before_alloc — returns Ok iff magic valid and
+//    payload within bound ──────────────────────────────────────────
+pub enum ValidationSpecResult {
+    Ok,
+    InvalidMagic,
+    PayloadTooLarge,
+}
+
+// ── Spec: validate_before_alloc — returns Ok iff magic valid and
+//    payload within bound ──────────────────────────────────────────
+pub open spec fn spec_validate_before_alloc(
+    magic: nat,
+    payload_len_hi: nat,
+    payload_len_u32: nat,
+    max_payload: nat,
+) -> ValidationSpecResult {
+    if !spec_validate_magic(magic) {
+        ValidationSpecResult::InvalidMagic
+    } else if spec_payload_len(payload_len_hi, payload_len_u32) > max_payload {
+        ValidationSpecResult::PayloadTooLarge
+    } else {
+        ValidationSpecResult::Ok
     }
+}
 
-    // ── Spec: magic is valid ───────────────────────────────────────────
-    pub open spec fn spec_validate_magic(magic: nat) -> bool {
-        magic == MAGIC_VALUE()
-    }
+// ── Lemma: payload_len of zero halves is zero ──────────────────────
+proof fn lemma_payload_len_zero_halves()
+    ensures
+        spec_payload_len(0, 0) == 0,
+{
+    assert(spec_payload_len(0, 0) == 0);
+}
 
-    // ── Spec: payload length within bound ──────────────────────────────
-    pub open spec fn spec_validate_payload_len(payload_len_hi: nat, payload_len_u32: nat, max: nat) -> bool {
-        spec_payload_len(payload_len_hi, payload_len_u32) <= max
-    }
+// ── Lemma: payload_len is non-negative ─────────────────────────────
+proof fn lemma_payload_len_non_negative(hi: nat, lo: nat)
+    ensures
+        spec_payload_len(hi, lo) >= 0,
+{
+    assert(spec_payload_len(hi, lo) >= 0);
+}
 
-    // ── Spec: validate_before_alloc — returns Ok iff magic valid and
-    //    payload within bound ──────────────────────────────────────────
-    pub enum ValidationSpecResult {
-        Ok,
-        InvalidMagic,
-        PayloadTooLarge,
-    }
+// ── Lemma: validate_magic of correct magic is true ─────────────────
+proof fn lemma_magic_valid()
+    ensures
+        spec_validate_magic(MAGIC_VALUE()),
+{
+    assert(spec_validate_magic(MAGIC_VALUE()));
+}
 
-    // ── Spec: validate_before_alloc — returns Ok iff magic valid and
-    //    payload within bound ──────────────────────────────────────────
-    pub open spec fn spec_validate_before_alloc(
-        magic: nat,
-        payload_len_hi: nat,
-        payload_len_u32: nat,
-        max_payload: nat,
-    ) -> ValidationSpecResult {
-        if !spec_validate_magic(magic) {
-            ValidationSpecResult::InvalidMagic
-        } else if spec_payload_len(payload_len_hi, payload_len_u32) > max_payload {
-            ValidationSpecResult::PayloadTooLarge
-        } else {
-            ValidationSpecResult::Ok
-        }
-    }
+// ── Lemma: validate_magic of wrong magic is false ──────────────────
+proof fn lemma_magic_invalid()
+    ensures
+        !spec_validate_magic(MAGIC_VALUE() + 1),
+{
+    assert(!spec_validate_magic(MAGIC_VALUE() + 1));
+}
 
-    // ── Lemma: payload_len of zero halves is zero ──────────────────────
-    proof fn lemma_payload_len_zero_halves()
-        ensures
-            spec_payload_len(0, 0) == 0,
-    {
-        assert(spec_payload_len(0, 0) == 0);
-    }
+// ── Lemma: new header (magic + zero payload) validates against any max ─
+proof fn lemma_new_validates(hi: nat, lo: nat, max: nat)
+    requires
+        hi == 0 && lo == 0,
+        max >= 0,
+    ensures
+        spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok,
+{
+    assert(spec_payload_len(hi, lo) == 0);
+    assert(spec_payload_len(hi, lo) <= max);
+    assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok);
+}
 
-    // ── Lemma: payload_len is non-negative ─────────────────────────────
-    proof fn lemma_payload_len_non_negative(hi: nat, lo: nat)
-        ensures
-            spec_payload_len(hi, lo) >= 0,
-    {
-        assert(spec_payload_len(hi, lo) >= 0);
-    }
+// ── Lemma: bad magic always yields InvalidMagic ─────────────────────
+proof fn lemma_bad_magic_yields_invalid_magic(hi: nat, lo: nat, max: nat)
+    requires
+        hi >= 0 && lo >= 0 && max >= 0,
+    ensures
+        spec_validate_before_alloc(MAGIC_VALUE() + 1, hi, lo, max)
+            == ValidationSpecResult::InvalidMagic,
+{
+    assert(!spec_validate_magic(MAGIC_VALUE() + 1));
+    assert(spec_validate_before_alloc(MAGIC_VALUE() + 1, hi, lo, max)
+        == ValidationSpecResult::InvalidMagic);
+}
 
-    // ── Lemma: validate_magic of correct magic is true ─────────────────
-    proof fn lemma_magic_valid()
-        ensures
-            spec_validate_magic(MAGIC_VALUE()),
-    {
-        assert(spec_validate_magic(MAGIC_VALUE()));
-    }
+// ── Lemma: oversized payload yields PayloadTooLarge (when magic valid) ─
+proof fn lemma_oversize_yields_payload_too_large(hi: nat, lo: nat, max: nat)
+    requires
+        hi >= 0 && lo >= 0 && max >= 0,
+        spec_payload_len(hi, lo) > max,
+    ensures
+        spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max)
+            == ValidationSpecResult::PayloadTooLarge,
+{
+    assert(spec_validate_magic(MAGIC_VALUE()));
+    assert(spec_payload_len(hi, lo) > max);
+    assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max)
+        == ValidationSpecResult::PayloadTooLarge);
+}
 
-    // ── Lemma: validate_magic of wrong magic is false ──────────────────
-    proof fn lemma_magic_invalid()
-        ensures
-            !spec_validate_magic(MAGIC_VALUE() + 1),
-    {
-        assert(!spec_validate_magic(MAGIC_VALUE() + 1));
-    }
+// ── Lemma: both checks pass yields Ok ──────────────────────────────
+proof fn lemma_both_pass(hi: nat, lo: nat, max: nat)
+    requires
+        hi >= 0 && lo >= 0 && max >= 0,
+        spec_payload_len(hi, lo) <= max,
+    ensures
+        spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok,
+{
+    assert(spec_validate_magic(MAGIC_VALUE()));
+    assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok);
+}
 
-    // ── Lemma: new header (magic + zero payload) validates against any max ─
-    proof fn lemma_new_validates(
-        hi: nat,
-        lo: nat,
-        max: nat,
-    )
-        requires
-            hi == 0 && lo == 0,
-            max >= 0,
-        ensures
-            spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok,
-    {
-        assert(spec_payload_len(hi, lo) == 0);
-        assert(spec_payload_len(hi, lo) <= max);
-        assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok);
-    }
-
-    // ── Lemma: bad magic always yields InvalidMagic ─────────────────────
-    proof fn lemma_bad_magic_yields_invalid_magic(
-        hi: nat,
-        lo: nat,
-        max: nat,
-    )
-        requires
-            hi >= 0 && lo >= 0 && max >= 0,
-        ensures
-            spec_validate_before_alloc(MAGIC_VALUE() + 1, hi, lo, max) == ValidationSpecResult::InvalidMagic,
-    {
-        assert(!spec_validate_magic(MAGIC_VALUE() + 1));
-        assert(spec_validate_before_alloc(MAGIC_VALUE() + 1, hi, lo, max) == ValidationSpecResult::InvalidMagic);
-    }
-
-    // ── Lemma: oversized payload yields PayloadTooLarge (when magic valid) ─
-    proof fn lemma_oversize_yields_payload_too_large(
-        hi: nat,
-        lo: nat,
-        max: nat,
-    )
-        requires
-            hi >= 0 && lo >= 0 && max >= 0,
-            spec_payload_len(hi, lo) > max,
-        ensures
-            spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::PayloadTooLarge,
-    {
-        assert(spec_validate_magic(MAGIC_VALUE()));
-        assert(spec_payload_len(hi, lo) > max);
-        assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::PayloadTooLarge);
-    }
-
-    // ── Lemma: both checks pass yields Ok ──────────────────────────────
-    proof fn lemma_both_pass(
-        hi: nat,
-        lo: nat,
-        max: nat,
-    )
-        requires
-            hi >= 0 && lo >= 0 && max >= 0,
-            spec_payload_len(hi, lo) <= max,
-        ensures
-            spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok,
-    {
-        assert(spec_validate_magic(MAGIC_VALUE()));
-        assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok);
-    }
-
-    // ── Lemma: validate_before_alloc is total (always returns a result) ──
-    proof fn lemma_validate_before_alloc_total(
-        magic: nat,
-        hi: nat,
-        lo: nat,
-        max: nat,
-    )
-        requires
-            magic >= 0 && hi >= 0 && lo >= 0 && max >= 0,
-        ensures
-            match spec_validate_before_alloc(magic, hi, lo, max) {
-                ValidationSpecResult::Ok => true,
-                ValidationSpecResult::InvalidMagic => true,
-                ValidationSpecResult::PayloadTooLarge => true,
-            },
-    {
-        // spec_validate_before_alloc is a total if-then-else function over
-        // three outcomes; one must hold.
-        assert(match spec_validate_before_alloc(magic, hi, lo, max) {
+// ── Lemma: validate_before_alloc is total (always returns a result) ──
+proof fn lemma_validate_before_alloc_total(magic: nat, hi: nat, lo: nat, max: nat)
+    requires
+        magic >= 0 && hi >= 0 && lo >= 0 && max >= 0,
+    ensures
+        match spec_validate_before_alloc(magic, hi, lo, max) {
             ValidationSpecResult::Ok => true,
             ValidationSpecResult::InvalidMagic => true,
             ValidationSpecResult::PayloadTooLarge => true,
-        });
-    }
+        },
+{
+    // spec_validate_before_alloc is a total if-then-else function over
+    // three outcomes; one must hold.
+    assert(match spec_validate_before_alloc(magic, hi, lo, max) {
+        ValidationSpecResult::Ok => true,
+        ValidationSpecResult::InvalidMagic => true,
+        ValidationSpecResult::PayloadTooLarge => true,
+    });
+}
 
-    // ── Lemma: payload_len monotone in hi ──────────────────────────────
-    proof fn lemma_payload_len_monotone_hi(hi1: nat, hi2: nat, lo: nat)
-        requires
-            hi1 < hi2 && lo >= 0,
-        ensures
-            spec_payload_len(hi1, lo) < spec_payload_len(hi2, lo),
-    {
-        assert(spec_payload_len(hi1, lo) < spec_payload_len(hi2, lo));
-    }
+// ── Lemma: payload_len monotone in hi ──────────────────────────────
+proof fn lemma_payload_len_monotone_hi(hi1: nat, hi2: nat, lo: nat)
+    requires
+        hi1 < hi2 && lo >= 0,
+    ensures
+        spec_payload_len(hi1, lo) < spec_payload_len(hi2, lo),
+{
+    assert(spec_payload_len(hi1, lo) < spec_payload_len(hi2, lo));
+}
 
-    // ── Lemma: payload_len monotone in lo ──────────────────────────────
-    proof fn lemma_payload_len_monotone_lo(hi: nat, lo1: nat, lo2: nat)
-        requires
-            hi >= 0 && lo1 < lo2,
-        ensures
-            spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2),
-    {
-        assert(spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2));
-    }
+// ── Lemma: payload_len monotone in lo ──────────────────────────────
+proof fn lemma_payload_len_monotone_lo(hi: nat, lo1: nat, lo2: nat)
+    requires
+        hi >= 0 && lo1 < lo2,
+    ensures
+        spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2),
+{
+    assert(spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2));
+}
 
-    // ── Exec: validate_before_alloc — header validation before allocation ──
-    pub fn validate_before_alloc(
-        magic: nat,
-        payload_len_hi: nat,
-        payload_len_u32: nat,
-        max_payload: nat,
-    ) -> (result: ValidationSpecResult)
-        ensures
-            result == spec_validate_before_alloc(magic, payload_len_hi, payload_len_u32, max_payload),
-    {
-        if !spec_validate_magic(magic) {
-            ValidationSpecResult::InvalidMagic
-        } else if spec_payload_len(payload_len_hi, payload_len_u32) > max_payload {
-            ValidationSpecResult::PayloadTooLarge
-        } else {
-            ValidationSpecResult::Ok
-        }
+// ── Exec: validate_before_alloc — header validation before allocation ──
+pub fn validate_before_alloc(
+    magic: nat,
+    payload_len_hi: nat,
+    payload_len_u32: nat,
+    max_payload: nat,
+) -> (result: ValidationSpecResult)
+    ensures
+        result == spec_validate_before_alloc(magic, payload_len_hi, payload_len_u32, max_payload),
+{
+    if !spec_validate_magic(magic) {
+        ValidationSpecResult::InvalidMagic
+    } else if spec_payload_len(payload_len_hi, payload_len_u32) > max_payload {
+        ValidationSpecResult::PayloadTooLarge
+    } else {
+        ValidationSpecResult::Ok
     }
+}
 
 } // verus!
-
 // ── Regular Rust implementation (non-Verus compilation) ─────────────────────
 #[cfg(not(verus_keep_ghost))]
 mod cargo_kernel {
@@ -309,7 +299,10 @@ mod cargo_kernel {
         Err(ValidationError),
     }
 
-    pub fn validate_header_before_alloc(header: &EnvelopeHeader, max_payload: u64) -> ValidationResult {
+    pub fn validate_header_before_alloc(
+        header: &EnvelopeHeader,
+        max_payload: u64,
+    ) -> ValidationResult {
         header.validate_before_alloc(max_payload)
     }
 

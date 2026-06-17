@@ -65,7 +65,7 @@ fn kani_together_ordering() {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
                 // Must jump to the first branch
-                kani::assert(run.pc(, "assertion failed") == branches[0], "together_start must jump to first branch (declaration order)");
+                kani::assert(run.pc() == branches[0], "together_start must jump to first branch (declaration order)");
             }
             _ => {
                 // Error signal — ok
@@ -107,7 +107,7 @@ fn kani_together_branch_first_branch() {
     ) {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
-                kani::assert(run.pc(, "assertion failed") == entry, "first branch must jump to entry without accumulation");
+                kani::assert(run.pc() == entry, "first branch must jump to entry without accumulation");
             }
             _ => {}
         },
@@ -180,10 +180,10 @@ fn kani_together_join_pif_reduction() {
     ) {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
-                kani::assert(run.pc(, "assertion failed") == next_step, "join must continue to next step");
+                kani::assert(run.pc() == next_step, "join must continue to next step");
                 // PIF should have been reduced
                 if pif_before >= branch_count {
-                    kani::assert(run.parallel_in_flight(, "assertion failed") == pif_before - branch_count, "PIF must decrease by branch_count after join");
+                    kani::assert(run.parallel_in_flight() == pif_before - branch_count, "PIF must decrease by branch_count after join");
                 }
             }
             _ => {}

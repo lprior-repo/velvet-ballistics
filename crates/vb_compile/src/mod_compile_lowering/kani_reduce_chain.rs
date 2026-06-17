@@ -111,7 +111,7 @@ fn check_chain_integrity() {
     match next_result {
         Ok(next_idx) => {
             if let Some(last_id) = prev_step_id {
-                kani::assert(last_id < next_idx.get(, "assertion failed"),
+                kani::assert(last_id < next_idx.get(),
                     "last body step ID must be less than next_step",
                 );
             }

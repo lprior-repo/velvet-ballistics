@@ -423,7 +423,7 @@ fn kani_terminal_run_rejects_completion() {
         Err(RuntimeError::RunNotFound)
     };
 
-    kani::assert(result == Err(RuntimeError::RunNotFound, "assertion failed"),
+    kani::assert(result == Err(RuntimeError::RunNotFound),
         "run not in self.runs must produce RunNotFound",
     );
 }
@@ -874,7 +874,7 @@ fn kani_retry_exhaustion() {
             Ok(false) => {
                 // Counter must not have been incremented
                 let current = state.action_attempts.get(step_usize).copied().unwrap_or(0);
-                kani::assert(current == prev_attempt.max(ticket.attempt, "assertion failed"),
+                kani::assert(current == prev_attempt.max(ticket.attempt),
                     "exhausted: counter unchanged (set to max)",
                 );
             }
@@ -1129,7 +1129,7 @@ fn kani_retry_convergence() {
 
         // Once we hit exhaustion, subsequent results should not be Ok(true)
         if saw_false || saw_err {
-            kani::assert(!matches!(result, Ok(true), "assertion failed"),
+            kani::assert(!matches!(result, Ok(true)),
                 "monotonic: cannot transition back to Ok(true) after exhaustion",
             );
         }

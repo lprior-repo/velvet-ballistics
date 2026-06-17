@@ -9,7 +9,8 @@
 use proptest::prelude::*;
 use vb_proof_kernels::profile_contract::{
     ContractGap, MASTER_PROFILE_CONTRACT, ProfileKey, ProfileName, ProfileNameError, SettingValue,
-    StrVal, binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
+    StrVal,
+    binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
     validate_against_governance, validate_against_master,
 };
 

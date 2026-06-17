@@ -134,7 +134,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! Lifecycle integration tests — red-phase evidence for bead vb-qi37.16.5
 //!

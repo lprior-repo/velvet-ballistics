@@ -110,7 +110,7 @@ mod harnesses {
             kani::assert(reversed.is_some(),
                 "numeric_code must resolve to a SymbolicCode",
             );
-            kani::assert(reversed == Some(sym, "assertion failed"), "Reverse lookup must return the original SymbolicCode");
+            kani::assert(reversed == Some(sym), "Reverse lookup must return the original SymbolicCode");
             // Also verify code matches
             , "Reverse lookup must return the original SymbolicCode");
             // Also verify code matches
@@ -135,10 +135,10 @@ mod harnesses {
             );
             // The core invariant: no mismatch between symbolic and numeric codes
             let numeric_sym = diagnostic.numeric_code.symbolic_code();
-            kani::assert(numeric_sym == Some(sym, "assertion failed"), "Invariant: numeric_code.symbolic_code() must equal Some(code)");
+            kani::assert(numeric_sym == Some(sym), "Invariant: numeric_code.symbolic_code() must equal Some(code)");
 
             // Also verify that numeric_code's inner value matches the registry
-            kani::assert(diagnostic.numeric_code.code(, "assertion failed") == entry.numeric, "Numeric code must match the registry entry for this SymbolicCode");
+            kani::assert(diagnostic.numeric_code.code() == entry.numeric, "Numeric code must match the registry entry for this SymbolicCode");
         }
     }
 }

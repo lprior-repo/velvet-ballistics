@@ -201,7 +201,7 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
             ],
         ));
         let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
-        kani::assert(!gaps.is_empty(, "assertion failed"),
+        kani::assert(!gaps.is_empty(),
             "Wrong lto value must produce contract gaps",
         );
     }
@@ -219,7 +219,7 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
             ],
         ));
         let gaps = validate_against_governance(&ws);
-        kani::assert(!gaps.is_empty(, "assertion failed"),
+        kani::assert(!gaps.is_empty(),
             "Hardened without debug-assertions must produce governance gap",
         );
     }
@@ -292,42 +292,42 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
         let contract: &MasterProfileContract = &MASTER_PROFILE_CONTRACT;
 
         // Required profiles: Release and Bench
-        kani::assert(contract.required_profiles.contains(&ProfileName::Release, "assertion failed"),
+        kani::assert(contract.required_profiles.contains(&ProfileName::Release),
             "Master contract must require Release profile",
         );
-        kani::assert(contract.required_profiles.contains(&ProfileName::Bench, "assertion failed"),
+        kani::assert(contract.required_profiles.contains(&ProfileName::Bench),
             "Master contract must require Bench profile",
         );
 
         // forbidden_profile_names contains "maxperf"
-        kani::assert(contract.forbidden_profile_names.contains(&"maxperf", "assertion failed"),
+        kani::assert(contract.forbidden_profile_names.contains(&"maxperf"),
             "Master contract must forbid 'maxperf'",
         );
 
         // Release keys: all 4 must be present
-        kani::assert(contract.release_keys.len(, "assertion failed") == 4,
+        kani::assert(contract.release_keys.len() == 4,
             "Master contract must specify exactly 4 release keys",
         );
         // Check each key has the correct master value
         for &(key, ref expected) in contract.release_keys {
             match key {
                 ProfileKey::OptLevel => {
-                    kani::assert(*expected == SettingValue::U8(3, "assertion failed"),
+                    kani::assert(*expected == SettingValue::U8(3),
                         "Master contract: release opt-level must be 3",
                     );
                 }
                 ProfileKey::Lto => {
-                    kani::assert(*expected == SettingValue::String(StrVal::Thin, "assertion failed"),
+                    kani::assert(*expected == SettingValue::String(StrVal::Thin),
                         "Master contract: release lto must be 'thin'",
                     );
                 }
                 ProfileKey::CodegenUnits => {
-                    kani::assert(*expected == SettingValue::U16(1, "assertion failed"),
+                    kani::assert(*expected == SettingValue::U16(1),
                         "Master contract: release codegen-units must be 1",
                     );
                 }
                 ProfileKey::Strip => {
-                    kani::assert(*expected == SettingValue::String(StrVal::Symbols, "assertion failed"),
+                    kani::assert(*expected == SettingValue::String(StrVal::Symbols),
                         "Master contract: release strip must be 'symbols'",
                     );
                 }
@@ -350,22 +350,22 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
         for &(key, ref expected) in contract.bench_keys {
             match key {
                 ProfileKey::Inherits => {
-                    kani::assert(*expected == SettingValue::String(StrVal::Release, "assertion failed"),
+                    kani::assert(*expected == SettingValue::String(StrVal::Release),
                         "Master contract: bench inherits must be 'release'",
                     );
                 }
                 ProfileKey::Debug => {
-                    kani::assert(*expected == SettingValue::Bool(true, "assertion failed"),
+                    kani::assert(*expected == SettingValue::Bool(true),
                         "Master contract: bench debug must be true",
                     );
                 }
                 ProfileKey::Lto => {
-                    kani::assert(*expected == SettingValue::String(StrVal::Thin, "assertion failed"),
+                    kani::assert(*expected == SettingValue::String(StrVal::Thin),
                         "Master contract: bench lto must be 'thin'",
                     );
                 }
                 ProfileKey::CodegenUnits => {
-                    kani::assert(*expected == SettingValue::U16(1, "assertion failed"),
+                    kani::assert(*expected == SettingValue::U16(1),
                         "Master contract: bench codegen-units must be 1",
                     );
                 }

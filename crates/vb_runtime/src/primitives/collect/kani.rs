@@ -75,7 +75,7 @@ fn collect_page_pagination_bounds() {
         "copy_prefix on empty items must succeed",
     );
     if let Ok(page) = copy_result {
-        kani::assert(page.is_empty(, "assertion failed"), "empty items must produce empty page");
+        kani::assert(page.is_empty(), "empty items must produce empty page");
     }
 
     // Test copy_prefix with items.
@@ -92,7 +92,7 @@ fn collect_page_pagination_bounds() {
     let copy_result = copy_prefix(&items, page_sz);
     match copy_result {
         Ok(page) => {
-            kani::assert(page.len(, "assertion failed") <= page_sz.min(item_count),
+            kani::assert(page.len() <= page_sz.min(item_count),
                 "page len {} must be <= min({}, {})",
                 page.len(),
                 page_sz,

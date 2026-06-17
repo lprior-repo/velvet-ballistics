@@ -81,7 +81,7 @@ fn prove_encoding_no_collision() {
 
     kani::assert(encoded_a != encoded_b,
         "Domain-tagged encoding must be injective: different contracts produce different encodings.\n\
-         a={:?}\nb={:?}", a, b, 'assertion failed');
+         a={:?}\nb={:?}", a, b, "assertion failed");
 }
 
 /// PO-K12 variant: All-zeros vs all-ones edge case.

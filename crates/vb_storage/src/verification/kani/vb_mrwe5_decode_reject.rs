@@ -50,7 +50,7 @@ pub fn valid_postcard_mismatches_reject_before_semantics() {
     } else {
         RecordKind::StepStarted
     };
-    kani::assert(envelope_kind != event.record_kind(, "assertion failed"), "kani harness assertion");
+    kani::assert(envelope_kind != event.record_kind(), "kani harness assertion");
 
     let envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,
@@ -58,5 +58,5 @@ pub fn valid_postcard_mismatches_reject_before_semantics() {
         record_kind: envelope_kind.id(),
         sequence: event.seq().get(),
     };
-    kani::assert(!semantic_decode_accepts(&envelope, &event, "assertion failed"));
+    kani::assert(!semantic_decode_accepts(&envelope, &event));
 }

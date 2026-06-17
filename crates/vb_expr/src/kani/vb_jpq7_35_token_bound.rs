@@ -104,7 +104,7 @@ fn check_lex_source_length_bound() {
         match result {
             Ok(tokens) => {
                 // Success is fine — tokens.len() is bounded
-                kani::assert(tokens.len(, "assertion failed") <= 257, "tokens bounded at 257 (256 + End)");
+                kani::assert(tokens.len() <= 257, "tokens bounded at 257 (256 + End)");
             }
             Err(_) => {
                 // Typed errors are fine — no panic
@@ -137,11 +137,11 @@ fn check_lex_expr_returns_bounded_tokens() {
     match result {
         Ok(tokens) => {
             // Token count MUST be bounded (including End sentinel)
-            kani::assert(tokens.len(, "assertion failed") <= 257, "lex_expr tokens bounded at 257");
+            kani::assert(tokens.len() <= 257, "lex_expr tokens bounded at 257");
             // Must end with End token
             if !tokens.is_empty() {
                 let last = &tokens[tokens.len() - 1];
-                kani::assert(matches!(last, crate::lexer::Token::End, "assertion failed"),
+                kani::assert(matches!(last, crate::lexer::Token::End),
                     "lex_expr output must end with End token",
                 );
             }
@@ -164,8 +164,8 @@ fn check_lex_expr_empty_input() {
     match result {
         Ok(tokens) => {
             // Empty string should produce exactly one token: End
-            kani::assert(tokens.len(, "assertion failed") == 1, "empty input: 1 token (End)");
-            kani::assert(matches!(tokens[0], crate::lexer::Token::End, "assertion failed"),
+            kani::assert(tokens.len() == 1, "empty input: 1 token (End)");
+            kani::assert(matches!(tokens[0], crate::lexer::Token::End),
                 "empty input: only token is End",
             );
         }

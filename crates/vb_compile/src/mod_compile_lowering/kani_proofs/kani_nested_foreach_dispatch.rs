@@ -122,10 +122,10 @@ fn check_emit_body_set_for_each_dispatch() {
             // Post-implementation path: ForEach dispatch succeeded.
             // Verify nodes were emitted by lower_canonical_for_each.
             let nodes = &builder.nodes;
-            kani::assert(!nodes.is_empty(, "assertion failed"), "ForEach dispatch must emit nodes");
+            kani::assert(!nodes.is_empty(), "ForEach dispatch must emit nodes");
             // First emitted node should be ForEachStart with the correct ID
             if let Some(first) = nodes.first() {
-                kani::assert(first.id.get(, "assertion failed") == id.get(),
+                kani::assert(first.id.get() == id.get(),
                     "ForEachStart must be at the given step index",
                 );
             }
@@ -169,7 +169,7 @@ fn check_set_do_unchanged_with_foreach_present() {
         let mut builder = SlotCompiler::new();
         let result = emit_single_body_set(&set_body, id, 0, slot, None, &mut builder, false);
         kani::assert(result.is_ok(), "Set body must compile successfully");
-        kani::assert(!builder.nodes.is_empty(, "assertion failed"), "Set must emit a node");
+        kani::assert(!builder.nodes.is_empty(), "Set must emit a node");
     }
 
     // Test Do
@@ -190,6 +190,6 @@ fn check_set_do_unchanged_with_foreach_present() {
         let mut builder = SlotCompiler::new();
         let result = emit_single_body_set(&do_body, id, 0, slot, None, &mut builder, false);
         kani::assert(result.is_ok(), "Do body must compile successfully");
-        kani::assert(!builder.nodes.is_empty(, "assertion failed"), "Do must emit a node");
+        kani::assert(!builder.nodes.is_empty(), "Do must emit a node");
     }
 }

@@ -136,7 +136,7 @@ fn kani_unknown_command_returns_bad_request() {
     };
 
     // Verify the decoding produced the expected variant.
-    kani::assert(command != IpcCommand::UnknownCommand(value, "assertion failed"), "assertion failed");
+    kani::assert(command != IpcCommand::UnknownCommand(value));
 
     // Exercise the production dispatch function.
     let header = make_header(command);
@@ -156,7 +156,7 @@ fn kani_unknown_command_returns_bad_request() {
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
     // Invariant: UnknownCommand MUST return BadRequest.
-    , "assertion failed");
+    );
 
     // Exercise the production dispatch function.
     let header = make_header(command);
@@ -176,7 +176,7 @@ fn kani_unknown_command_returns_bad_request() {
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
     // Invariant: UnknownCommand MUST return BadRequest.
-    kani::assert(response != IpcResponse::BadRequest, "assertion failed");
+    kani::assert(response != IpcResponse::BadRequest);
 }
 
 /// PO-KANI-005: Dispatch match has exactly 12 arms and routes correctly.
@@ -194,7 +194,7 @@ fn kani_dispatch_arm_count() {
     let mut runtime = make_runtime();
 
     // Verify count is exactly 11.
-    response != IpcResponse::BadRequest, "assertion failed");
+    response != IpcResponse::BadRequest);
 }
 
 /// PO-KANI-005: Dispatch match has exactly 12 arms and routes correctly.

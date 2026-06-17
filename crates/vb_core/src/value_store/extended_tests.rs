@@ -488,7 +488,7 @@ fn handle_invalid_symbol_on_empty_store_returns_error() {
     let result = store.symbol(SymbolId::new(0));
     kani::assert(result == Err(CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(0),
-        }, "assertion failed"), "assertion failed");
+        }));
 }
 
 #[test]
@@ -497,7 +497,7 @@ fn handle_forged_max_symbol_id_returns_error_not_panic() {
     let result = store.symbol(SymbolId::new(u32::MAX));
     kani::assert(result == Err(CoreError::SymbolOutOfBounds {
             symbol: SymbolId::new(u32::MAX),
-        }, "assertion failed"), "assertion failed");
+        }));
 }
 
 #[test]
@@ -506,7 +506,7 @@ fn handle_forged_max_blob_id_returns_error_not_panic() {
     let result = store.blob(BlobId::new(u64::MAX));
     kani::assert(result == Err(CoreError::BlobOutOfBounds {
             blob: BlobId::new(u64::MAX),
-        }, "assertion failed"), "assertion failed");
+        }));
 }
 
 #[test]
@@ -548,7 +548,7 @@ fn handle_object_field_on_forged_object_id_returns_error() {
     let result = store.object_field(ObjectId::new(u32::MAX), SymbolId::new(0));
     kani::assert(result == Err(CoreError::ObjectOutOfBounds {
             object: ObjectId::new(u32::MAX),
-        }, "assertion failed"), "assertion failed");
+        }));
 }
 
 // =============================================================================
@@ -604,7 +604,7 @@ fn value_store_accepts_all_primitive_slot_values_in_list() -> Result<(), String>
 
 #[test]
 fn value_null_is_not_bool_true_in_store_context() {
-    kani::assert(!SlotValue::Null.is_true(, "assertion failed"), "kani harness assertion");
+    kani::assert(!SlotValue::Null.is_true(), "kani harness assertion");
 }
 
 #[test]
@@ -670,21 +670,21 @@ fn value_const_to_slot_all_variants_roundtrip_in_store() -> Result<(), String> {
 
 #[test]
 fn slot_value_equality_null_distinct_from_bool_false() {
-    kani::assert(SlotValue::Null != SlotValue::Bool(false, "assertion failed"), "assertion failed");
+    kani::assert(SlotValue::Null != SlotValue::Bool(false));
 }
 
 #[test]
 fn slot_value_equality_i64_vs_f64_same_numeric_value_are_distinct() -> Result<(), String> {
     let finite = FiniteF64::new(0.0).map_err(|e| e.to_string())?;
-    kani::assert(SlotValue::I64(0, "assertion failed") != SlotValue::F64(finite), "assertion failed");
+    kani::assert(SlotValue::I64(0) != SlotValue::F64(finite));
     Ok(())
 }
 
 #[test]
 fn slot_value_equality_different_handle_types_different() {
-    kani::assert(SlotValue::Symbol(SymbolId::new(1), "assertion failed") != SlotValue::List(ListId::new(1)), "assertion failed");
-    kani::assert(SlotValue::List(ListId::new(1), "assertion failed") != SlotValue::Object(ObjectId::new(1)), "assertion failed");
-    kani::assert(SlotValue::Object(ObjectId::new(1), "assertion failed") != SlotValue::Blob(BlobId::new(1)), "assertion failed");
+    kani::assert(SlotValue::Symbol(SymbolId::new(1)) != SlotValue::List(ListId::new(1)));
+    kani::assert(SlotValue::List(ListId::new(1)) != SlotValue::Object(ObjectId::new(1)));
+    kani::assert(SlotValue::Object(ObjectId::new(1)) != SlotValue::Blob(BlobId::new(1)));
 }
 
 #[test]
@@ -791,7 +791,7 @@ fn value_store_accepts_all_primitive_slot_values_in_list() -> Result<(), String>
 
 #[test]
 fn value_null_is_not_bool_true_in_store_context() {
-    kani::assert(!SlotValue::Null.is_true(, "assertion failed"), "kani harness assertion");
+    kani::assert(!SlotValue::Null.is_true(), "kani harness assertion");
 }
 
 #[test]
@@ -857,21 +857,21 @@ fn value_const_to_slot_all_variants_roundtrip_in_store() -> Result<(), String> {
 
 #[test]
 fn slot_value_equality_null_distinct_from_bool_false() {
-    kani::assert(SlotValue::Null != SlotValue::Bool(false, "assertion failed"), "assertion failed");
+    kani::assert(SlotValue::Null != SlotValue::Bool(false));
 }
 
 #[test]
 fn slot_value_equality_i64_vs_f64_same_numeric_value_are_distinct() -> Result<(), String> {
     let finite = FiniteF64::new(0.0).map_err(|e| e.to_string())?;
-    kani::assert(SlotValue::I64(0, "assertion failed") != SlotValue::F64(finite), "assertion failed");
+    kani::assert(SlotValue::I64(0) != SlotValue::F64(finite));
     Ok(())
 }
 
 #[test]
 fn slot_value_equality_different_handle_types_different() {
-    kani::assert(SlotValue::Symbol(SymbolId::new(1), "assertion failed") != SlotValue::List(ListId::new(1)), "assertion failed");
-    kani::assert(SlotValue::List(ListId::new(1), "assertion failed") != SlotValue::Object(ObjectId::new(1)), "assertion failed");
-    kani::assert(SlotValue::Object(ObjectId::new(1), "assertion failed") != SlotValue::Blob(BlobId::new(1)), "assertion failed");
+    kani::assert(SlotValue::Symbol(SymbolId::new(1)) != SlotValue::List(ListId::new(1)));
+    kani::assert(SlotValue::List(ListId::new(1)) != SlotValue::Object(ObjectId::new(1)));
+    kani::assert(SlotValue::Object(ObjectId::new(1)) != SlotValue::Blob(BlobId::new(1)));
 }
 
 #[test]
@@ -922,7 +922,7 @@ fn store_clone_produces_equal_store() -> Result<(), String> {
 fn store_default_equals_new() {
     let default: ValueStore = Default::default();
     let constructed = ValueStore::new();
-     != SlotValue::Blob(BlobId::new(1)), "assertion failed");
+     != SlotValue::Blob(BlobId::new(1)));
 }
 
 #[test]
@@ -973,7 +973,7 @@ fn store_clone_produces_equal_store() -> Result<(), String> {
 fn store_default_equals_new() {
     let default: ValueStore = Default::default();
     let constructed = ValueStore::new();
-    kani::assert(true, "assertion failed");
+    kani::assert(true);
 }
 
 #[test]
@@ -2434,7 +2434,7 @@ mod kani {
         match store.insert_symbol(Box::<str>::from(bounded)) {
             Ok(id) => match store.symbol(id) {
                 Ok(resolved) => {
-                    kani::assert(true, "assertion failed");
+                    kani::assert(true);
                 }
                 Err(_) => {
                     kani::assert(false, "valid handle must resolve");
@@ -2528,9 +2528,9 @@ mod kani {
                 kani::assert(false, "insert over cap must not succeed");
             }
             Err(CoreError::BudgetExceeded { budget, limit }) => {
-                kani::assert(true, "assertion failed");
+                kani::assert(true);
                 ;
-                kani::assert(true, "assertion failed");
+                kani::assert(true);
             }
             Err(_) => {}
         }
@@ -2564,7 +2564,7 @@ proptest::proptest! {
                 )));
             }
         };
-        prop_kani::assert(retrieved == s.as_str(, "assertion failed"), "assertion failed");
+        prop_kani::assert(retrieved == s.as_str());
     }
 
     #[test]
@@ -2590,8 +2590,8 @@ proptest::proptest! {
                 )));
             }
         };
-        prop_kani::assert(retrieved.len(, "assertion failed") == data.len(), "assertion failed");
-        prop_kani::assert(retrieved == data.as_slice(, "assertion failed"), "kani harness assertion")
+        prop_kani::assert(retrieved.len() == data.len());
+        prop_kani::assert(retrieved == data.as_slice(), "kani harness assertion")
     }
 
     #[test]
@@ -2618,7 +2618,7 @@ proptest::proptest! {
                 )));
             }
         };
-        prop_kani::assert(retrieved.len(, "assertion failed") == values.len(), "assertion failed");
+        prop_kani::assert(retrieved.len() == values.len());
         for (i, expected) in values.iter().enumerate() {
             let Some(actual) = retrieved.get(i) else {
                 return Err(proptest::test_runner::TestCaseError::fail(format!(
@@ -2632,7 +2632,7 @@ proptest::proptest! {
                     "retrieved list missing index {i}"
                 )));
             };
-            prop_ == values.len(), "assertion failed");
+            prop_ == values.len());
         for (i, expected) in values.iter().enumerate() {
             let Some(actual) = retrieved.get(i) else {
                 return Err(proptest::test_runner::TestCaseError::fail(format!(
@@ -2646,6 +2646,6 @@ proptest::proptest! {
                     "retrieved list missing index {i}"
                 )));
             };
-            prop_kani::assert(true, "assertion failed");        }
+            prop_kani::assert(true);        }
     }
 }

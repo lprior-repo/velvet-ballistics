@@ -5,7 +5,7 @@ fn vb_mrwe_7_duplicate_policy() {
     let duplicate_seen: bool = kani::any();
     let same_payload: bool = kani::any();
     let drains = !duplicate_seen || same_payload;
-    kani::assert(!(duplicate_seen && !same_payload && drains, "assertion failed"),
+    kani::assert(!(duplicate_seen && !same_payload && drains),
         "duplicate policy invariant",
     );
 }

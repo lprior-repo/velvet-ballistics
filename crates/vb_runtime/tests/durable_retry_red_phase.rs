@@ -127,7 +127,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 // These tests define expected behavior that is NOT yet implemented or not yet exposed.
 // They are written in RED-phase TDD style: tests FAIL until production code implements/exposes behavior.

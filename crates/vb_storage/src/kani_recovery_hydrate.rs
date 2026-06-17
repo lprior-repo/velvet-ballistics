@@ -116,7 +116,7 @@ fn replay_next_seq_overflow_boundary() {
     let result = crate::codec::next_seq(EventSeq::new(raw));
 
     if raw == u64::MAX {
-        kani::assert(matches!(&result, Err(JournalError::SequenceOverflow), "assertion failed"),
+        kani::assert(matches!(&result, Err(JournalError::SequenceOverflow)),
             "next_seq returns SequenceOverflow at u64::MAX",
         );
     } else {
@@ -327,7 +327,7 @@ fn slot_taint_resolution_fails_closed_on_read_failure() {
 fn slot_taint_resolution_defaults_clean_only_for_uninitialized() {
     let decision = resolve_slot_taint_read(SlotTaintReadObservation::Uninitialized);
 
-    kani::assert(matches!(decision, SlotTaintResolution::Use(Taint::Clean), "assertion failed"),
+    kani::assert(matches!(decision, SlotTaintResolution::Use(Taint::Clean)),
         "uninitialized slots are the only Clean default path",
     );
 }

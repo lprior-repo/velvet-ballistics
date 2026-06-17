@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Proptest file: proptest_vb_db7vh_ps_004_journal_event_total_proptest_block

@@ -60,7 +60,7 @@ fn prove_secret_result_not_allowed_enforcement() {
 
     // Verify the field is preserved in copies (value semantics)
     let copy = contract;
-    kani::assert(copy.allows_secret_results == contract.allows_secret_results, "assertion failed");
+    kani::assert(copy.allows_secret_results == contract.allows_secret_results);
 
     // Conservative default check
     let default = ResourceContract::DEFAULT;

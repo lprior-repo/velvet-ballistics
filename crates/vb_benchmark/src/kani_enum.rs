@@ -42,7 +42,7 @@ mod kani_harnesses {
             LatencyFieldId::Ipc => true,
         };
 
-        kani::assert(matched, "assertion failed");
+        kani::assert(matched);
 
         // Verify Copy derive: field_id can be copied.
         let _copied = field_id;
@@ -50,7 +50,7 @@ mod kani_harnesses {
 
         // Verify Eq derive: equality comparison works.
         let eq_result = field_id == field_id;
-        kani::assert(eq_result, "assertion failed");
+        kani::assert(eq_result);
     }
 
     /// Harness: exhaustive match on EvidenceError covers all variants.
@@ -101,6 +101,6 @@ mod kani_harnesses {
 
         // Verify Eq derive works
         let eq_result = LatencyFieldId::FjallWrite == LatencyFieldId::FjallWrite;
-        kani::assert(eq_result, "assertion failed");
+        kani::assert(eq_result);
     }
 }

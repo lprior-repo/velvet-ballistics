@@ -275,21 +275,21 @@ fn check_runkilled_fields_preserved() {
     };
 
     // Verify fields round-trip through accessors
-    kani::assert(event.run_id(, "assertion failed").get() == run_val,
+    kani::assert(event.run_id().get() == run_val,
         "RunKilled run_id must match",
     );
-    kani::assert(event.seq(, "assertion failed").get() == seq_val, "RunKilled seq must match");
-    kani::assert(event.attempt(, "assertion failed") == Some(attempt_val),
+    kani::assert(event.seq().get() == seq_val, "RunKilled seq must match");
+    kani::assert(event.attempt() == Some(attempt_val),
         "RunKilled attempt must match",
     );
 
     // Verify record kind
-    kani::assert(matches!(event.record_kind(), crate::RecordKind::RunKilled, "assertion failed"),
+    kani::assert(matches!(event.record_kind(), crate::RecordKind::RunKilled),
         "RunKilled event must return RecordKind::RunKilled",
     );
 
     // Verify structural validity (non-zero run, non-overflow seq, non-zero attempt)
-    kani::assert(event.is_valid(, "assertion failed"),
+    kani::assert(event.is_valid(),
         "RunKilled with valid fields must pass is_valid()",
     );
 }
@@ -302,7 +302,7 @@ fn check_runkilled_zero_run_invalid() {
         seq: crate::EventSeq::new(1),
         attempt: 1,
     };
-    kani::assert(!event.is_valid(, "assertion failed"), "RunKilled with RunId(0) must be invalid");
+    kani::assert(!event.is_valid(), "RunKilled with RunId(0) must be invalid");
 }
 
 /// PO-KANI-005-H6: A RunKilled event with attempt(0) must fail is_valid().
@@ -313,7 +313,7 @@ fn check_runkilled_zero_attempt_invalid() {
         seq: crate::EventSeq::new(1),
         attempt: 0,
     };
-    kani::assert(!event.is_valid(, "assertion failed"),
+    kani::assert(!event.is_valid(),
         "RunKilled with attempt(0) must be invalid",
     );
 }

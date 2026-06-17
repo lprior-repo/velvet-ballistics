@@ -73,7 +73,7 @@ fn proof_cancel_duplicate_no_append() {
         let is_duplicate = state_after_first == LifecycleState::Cancelled;
 
         // Assert: duplicate detection is accurate
-        kani::assert(is_duplicate == (state_after_first == LifecycleState::Cancelled, "assertion failed"),
+        kani::assert(is_duplicate == (state_after_first == LifecycleState::Cancelled),
             "duplicate detection must correctly identify Cancelled state",
         );
 
@@ -232,7 +232,7 @@ fn kani_stale_cancel_harness() {
     // If state is terminal, stale check should prevent invalid transition
     if is_stale {
         // Terminal state: cancel should return StaleRequest
-        kani::assert(state.is_terminal(, "assertion failed"), "terminal state detection works");
+        kani::assert(state.is_terminal(), "terminal state detection works");
     }
 }
 

@@ -35,14 +35,14 @@ fn kani_watermark_monotonic() {
     let mut watermark = CompletionWatermark::new(run, max_pending, max_waiters);
 
     // Property 1: New watermark has boundary = 0
-    kani::assert(watermark.boundary(, "assertion failed") == 0, "new watermark starts at boundary=0");
+    kani::assert(watermark.boundary() == 0, "new watermark starts at boundary=0");
 
     // Property 2: Complete seq=1 succeeds and advances boundary to 1
     let result1 = watermark.complete(run, 1);
     kani::assert(result1.is_ok(), "complete(seq=1) must succeed for new watermark");
 
     // After completing 1, boundary must be 1
-    kani::assert(watermark.boundary(, "assertion failed") == 1,
+    kani::assert(watermark.boundary() == 1,
         "boundary must advance to 1 after completing seq=1",
     );
 
@@ -51,29 +51,29 @@ fn kani_watermark_monotonic() {
     kani::assert(result2.is_ok(), "complete(seq=2) must succeed when boundary=1");
 
     // After completing 2, boundary must be 2
-    kani::assert(watermark.boundary(, "assertion failed") == 2,
+    kani::assert(watermark.boundary() == 2,
         "boundary must advance to 2 after completing seq=2",
     );
 
     // Property 4: Complete seq=1 again is rejected (duplicate)
     let result_dup = watermark.complete(run, 1);
-    kani::assert(matches!(result_dup, Err(CompletionWatermarkError::Duplicate { seq }) if seq == 1, "assertion failed"),
+    kani::assert(matches!(result_dup, Err(CompletionWatermarkError::Duplicate { seq }) if seq == 1),
         "completing same seq twice must return Duplicate error",
     );
 
     // boundary must NOT have changed
-    kani::assert(watermark.boundary(, "assertion failed") == 2,
+    kani::assert(watermark.boundary() == 2,
         "boundary must not change after duplicate completion attempt",
     );
 
     // Property 5: Complete seq=0 is rejected (invalid sequence)
     let result_zero = watermark.complete(run, 0);
-    kani::assert(matches!(result_zero, Err(CompletionWatermarkError::InvalidSequence { seq }) if seq == 0, "assertion failed"),
+    kani::assert(matches!(result_zero, Err(CompletionWatermarkError::InvalidSequence { seq }) if seq == 0),
         "completing seq=0 must return InvalidSequence error",
     );
 
     // boundary must NOT have changed
-    kani::assert(watermark.boundary(, "assertion failed") == 2,
+    kani::assert(watermark.boundary() == 2,
         "boundary must not change after invalid sequence attempt",
     );
 
@@ -82,7 +82,7 @@ fn kani_watermark_monotonic() {
     kani::assert(result_gap.is_ok(), "complete(seq=5) with gap must return Ok (queued as pending)");
 
     // boundary must still be 2 because seq=3 and seq=4 are missing
-    kani::assert(watermark.boundary(, "assertion failed") == 2,
+    kani::assert(watermark.boundary() == 2,
         "boundary must not advance when there is a gap in sequences",
     );
 
@@ -94,7 +94,7 @@ fn kani_watermark_monotonic() {
             return;
         }
     }
-    kani::assert(watermark.boundary(, "assertion failed") == 3, "boundary advances to 3 after completing seq=3");
+    kani::assert(watermark.boundary() == 3, "boundary advances to 3 after completing seq=3");
 
     match watermark.complete(run, 4) {
         Ok(v) => { let _ = v; },
@@ -103,23 +103,23 @@ fn kani_watermark_monotonic() {
             return;
         }
     }
-    kani::assert(watermark.boundary(, "assertion failed") == 4, "boundary advances to 4 after completing seq=4");
+    kani::assert(watermark.boundary() == 4, "boundary advances to 4 after completing seq=4");
 
     // seq=5 was already pending, so after seq=4, boundary should jump to 5
     // (drain_prefix drains all contiguous sequences)
-    kani::assert(watermark.boundary(, "assertion failed") == 5,
+    kani::assert(watermark.boundary() == 5,
         "boundary must advance to 5 after completing seq=4 (draining pending seq=5)",
     );
 
     // Property 7: Complete for wrong run is rejected
     let wrong_run = RunId::new(run_val.wrapping_add(100));
     let result_wrong = watermark.complete(wrong_run, 6);
-    kani::assert(matches!(result_wrong, Err(CompletionWatermarkError::WrongRun { .. }), "assertion failed"),
+    kani::assert(matches!(result_wrong, Err(CompletionWatermarkError::WrongRun { .. })),
         "completing with wrong run_id must return WrongRun error",
     );
 
     // boundary must NOT have changed
-    kani::assert(watermark.boundary(, "assertion failed") == 5,
+    kani::assert(watermark.boundary() == 5,
         "boundary must not change after wrong-run completion attempt",
     );
 }

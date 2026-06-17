@@ -318,7 +318,7 @@ fn kani_choose_replay_no_match() {
 
     match &result {
         Err(ReplayError::Internal { reason }) => {
-            kani::assert(reason.contains("no branch matched", "assertion failed"),
+            kani::assert(reason.contains("no branch matched"),
                 "no-match error must mention no branch matched",
             );
         }
@@ -365,7 +365,7 @@ fn kani_choose_replay_non_bool_condition() {
 
     match &result {
         Err(ReplayError::Internal { reason }) => {
-            kani::assert(reason.contains("not boolean", "assertion failed"),
+            kani::assert(reason.contains("not boolean"),
                 "non-bool condition must produce 'condition is not boolean'",
             );
         }

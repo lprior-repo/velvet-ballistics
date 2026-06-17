@@ -126,7 +126,7 @@ pub fn kind_ids_and_legacy_policy_are_narrow() {
     } else {
         RecordKind::StepSucceeded
     };
-    kani::assert(wrong_envelope != payload.record_kind(, "assertion failed"), "kani harness assertion");
+    kani::assert(wrong_envelope != payload.record_kind(), "kani harness assertion");
 
     let envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,
@@ -134,5 +134,5 @@ pub fn kind_ids_and_legacy_policy_are_narrow() {
         record_kind: wrong_envelope.id(),
         sequence: payload.seq().get(),
     };
-    kani::assert(!semantic_decode_accepts(&envelope, &payload, "assertion failed"));
+    kani::assert(!semantic_decode_accepts(&envelope, &payload));
 }

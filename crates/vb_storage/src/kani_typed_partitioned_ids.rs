@@ -123,7 +123,7 @@ fn assert_key_contracts(inputs: SymbolicKeyInputs) {
         Ok(key) => {
             kani::assert(key[0] == PREFIX_RUN_EVENT, "run_event prefix");
             kani::assert(key[1..9] == run_value.to_be_bytes(), "run_event run bytes");
-            kani::assert(key[9..17] == seq_value.to_be_bytes(, "assertion failed"), "run_event seq bytes");
+            kani::assert(key[9..17] == seq_value.to_be_bytes(), "run_event seq bytes");
         }
         Err(_) => , "run_event seq bytes");
         }
@@ -136,7 +136,7 @@ fn assert_key_contracts(inputs: SymbolicKeyInputs) {
                 key[1..5] == workflow_value.to_be_bytes(),
                 "index_workflow workflow bytes",
             );
-            kani::assert(key[5..13] == run_value.to_be_bytes(, "assertion failed"),
+            kani::assert(key[5..13] == run_value.to_be_bytes(),
                 "index_workflow run bytes",
             );
         }
@@ -153,10 +153,10 @@ fn assert_key_contracts(inputs: SymbolicKeyInputs) {
                 key[1..3] == action_value.to_be_bytes(),
                 "index_action action bytes",
             );
-            kani::assert(key[3..11] == run_value.to_be_bytes(, "assertion failed"),
+            kani::assert(key[3..11] == run_value.to_be_bytes(),
                 "index_action run bytes",
             );
-            kani::assert(key[11..13] == step_value.to_be_bytes(, "assertion failed"),
+            kani::assert(key[11..13] == step_value.to_be_bytes(),
                 "index_action step bytes",
             );
         }
@@ -186,18 +186,18 @@ fn assert_record_kind_contract(input: SymbolicRecordKindInput) {
         "is_known != unknown",
     );
     if unknown_record_kind(kind) {
-        kani::assert(unknown_record_kind_value(kind, "assertion failed") == Some(kind),
+        kani::assert(unknown_record_kind_value(kind) == Some(kind),
             "unknown kind value",
         );
     }
-    kani::assert(RecordKind::WorkflowSource.id(, "assertion failed") == 1, "WorkflowSource=1");
-    kani::assert(RecordKind::CompiledIr.id(, "assertion failed") == 2, "CompiledIr=2");
-    kani::assert(RecordKind::RunHeader.id(, "assertion failed") == 3, "RunHeader=3");
-    kani::assert(RecordKind::RunAccepted.id(, "assertion failed") == 10, "RunAccepted=10");
-    kani::assert(RecordKind::RunAnswered.id(, "assertion failed") == 27, "RunAnswered=27");
-    kani::assert(RecordKind::Snapshot.id(, "assertion failed") == 30, "Snapshot=30");
-    kani::assert(RecordKind::Blob.id(, "assertion failed") == 40, "Blob=40");
-    kani::assert(RecordKind::IndexUpdate.id(, "assertion failed") == 50, "IndexUpdate=50");
+    kani::assert(RecordKind::WorkflowSource.id() == 1, "WorkflowSource=1");
+    kani::assert(RecordKind::CompiledIr.id() == 2, "CompiledIr=2");
+    kani::assert(RecordKind::RunHeader.id() == 3, "RunHeader=3");
+    kani::assert(RecordKind::RunAccepted.id() == 10, "RunAccepted=10");
+    kani::assert(RecordKind::RunAnswered.id() == 27, "RunAnswered=27");
+    kani::assert(RecordKind::Snapshot.id() == 30, "Snapshot=30");
+    kani::assert(RecordKind::Blob.id() == 40, "Blob=40");
+    kani::assert(RecordKind::IndexUpdate.id() == 50, "IndexUpdate=50");
 }
 
 #[kani::proof]
@@ -217,7 +217,7 @@ fn vb_eepg_unknown_record_kind_error_contract() {
     let input: SymbolicRecordKindInput = kani::any();
     let kind = u16::from(input.record_kind_raw);
     kani::assume(unknown_record_kind(kind));
-    kani::assert(unknown_record_kind_value(kind, "assertion failed") == Some(kind),
+    kani::assert(unknown_record_kind_value(kind) == Some(kind),
         "unknown kind returns Some(kind)",
     );
 }

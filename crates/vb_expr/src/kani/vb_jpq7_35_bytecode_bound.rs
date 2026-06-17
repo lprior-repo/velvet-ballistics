@@ -53,13 +53,13 @@ fn check_compile_small_ast_succeeds() {
     match result {
         Ok(program) => {
             // Program ops must be bounded
-            kani::assert(program.ops.len(, "assertion failed") <= MAX_OPS,
+            kani::assert(program.ops.len() <= MAX_OPS,
                 "small AST: ops must not exceed MAX_OPS",
             );
         }
         Err(e) => {
             // Any error is safe
-            kani::assert(!matches!(e, ExprError::BytecodeTooLong { .. }, "assertion failed"),
+            kani::assert(!matches!(e, ExprError::BytecodeTooLong { .. }),
                 "small AST must not trigger BytecodeTooLong",
             );
         }
@@ -83,13 +83,13 @@ fn check_push_constant_within_bound() {
 
     match result {
         Ok(idx) => {
-            kani::assert(usize::from(idx.as_usize(), "assertion failed") == n,
+            kani::assert(usize::from(idx.as_usize()) == n,
                 "constant index must match position",
             );
-            kani::assert(constants.len(, "assertion failed") == n + 1, "constant was pushed");
+            kani::assert(constants.len() == n + 1, "constant was pushed");
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::ConstantPoolOverflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::ConstantPoolOverflow),
                 "only possible error for n < MAX_CONSTANTS is ConstantPoolOverflow \
                  (possible if n == MAX_CONSTANTS due to off-by-one or u16 overflow)",
             );

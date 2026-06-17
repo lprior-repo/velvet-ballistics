@@ -51,7 +51,7 @@ fn kani_foreach_at_once_none_some1_equivalence() {
     let mut h1 = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut hn, &foreach_none);
     super::super::digest_step_primitive(&mut h1, &foreach_some1);
-    kani::assert(hn.finalize(, "assertion failed").as_bytes() == h1.finalize().as_bytes(), "assertion failed");
+    kani::assert(hn.finalize().as_bytes() == h1.finalize().as_bytes());
 }
 
 /// H2: None and Some(0) produce DIFFERENT digest contributions.
@@ -80,5 +80,5 @@ fn kani_foreach_at_once_none_some0_inequivalence() {
     super::super::digest_step_primitive(&mut hn, &foreach_none);
     super::super::digest_step_primitive(&mut h0, &foreach_some0);
     // After fix, None hashes 1u32, Some(0) hashes 0u32 — should differ
-    kani::assert(hn.finalize(, "assertion failed").as_bytes() != h0.finalize().as_bytes(), "assertion failed");
+    kani::assert(hn.finalize().as_bytes() != h0.finalize().as_bytes());
 }

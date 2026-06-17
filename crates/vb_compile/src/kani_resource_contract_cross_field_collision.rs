@@ -96,8 +96,8 @@ fn prove_no_cross_field_collision_u32() {
     contract_2.max_input_bytes = val_b;
     contract_2.max_output_bytes = val_a;
 
-    kani::assert(contract_1.max_input_bytes != contract_2.max_input_bytes, "assertion failed");
-    kani::assert(contract_1.max_output_bytes != contract_2.max_output_bytes, "assertion failed");
+    kani::assert(contract_1.max_input_bytes != contract_2.max_input_bytes);
+    kani::assert(contract_1.max_output_bytes != contract_2.max_output_bytes);
 
     let enc_1 = encode_contract_bytes(&contract_1);
     let enc_2 = encode_contract_bytes(&contract_2);
@@ -123,8 +123,8 @@ fn prove_no_cross_field_collision_u64() {
     contract_2.max_step_budget_per_tick = val_b;
     contract_2.max_transitions_per_tick = val_a;
 
-    kani::assert(contract_1.max_step_budget_per_tick != contract_2.max_step_budget_per_tick, "assertion failed");
-    kani::assert(contract_1.max_transitions_per_tick != contract_2.max_transitions_per_tick, "assertion failed");
+    kani::assert(contract_1.max_step_budget_per_tick != contract_2.max_step_budget_per_tick);
+    kani::assert(contract_1.max_transitions_per_tick != contract_2.max_transitions_per_tick);
 
     let enc_1 = encode_contract_bytes(&contract_1);
     let enc_2 = encode_contract_bytes(&contract_2);

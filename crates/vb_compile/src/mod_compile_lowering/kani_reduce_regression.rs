@@ -78,11 +78,11 @@ fn check_single_step_reference_behavior() {
 
     match result {
         Ok(()) => {
-            kani::assert(builder.nodes.len(, "assertion failed") == 1,
+            kani::assert(builder.nodes.len() == 1,
                 "single-step body must emit exactly 1 node",
             );
             if let Some(node) = builder.nodes.first() {
-                kani::assert(node.id.get(, "assertion failed") == id_val,
+                kani::assert(node.id.get() == id_val,
                     "emitted node ID must match body_step id",
                 );
                 kani::assert(node.next.is_some(),
@@ -202,7 +202,7 @@ fn check_single_step_equivalence_contract() {
     match (&result_a, &result_b) {
         (Ok(()), Ok(())) => {
             // Node count must match
-            kani::assert(builder_a.nodes.len(, "assertion failed") == builder_b.nodes.len(),
+            kani::assert(builder_a.nodes.len() == builder_b.nodes.len(),
                 "both dispatchers must emit same node count: a={}, b={}",
                 builder_a.nodes.len(),
                 builder_b.nodes.len(),

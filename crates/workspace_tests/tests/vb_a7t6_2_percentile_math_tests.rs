@@ -145,7 +145,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Section 39 p50/p95/p99 percentile math — regression test for the

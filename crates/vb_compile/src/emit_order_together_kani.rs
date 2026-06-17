@@ -248,7 +248,7 @@ fn emit_order_together_bounded_kani() {
 
             // First emitted node should be at base_id
             if emitted > 0 {
-                kani::assert(builder.nodes[nodes_before].id.as_usize(, "assertion failed") == base_id.as_usize(),
+                kani::assert(builder.nodes[nodes_before].id.as_usize() == base_id.as_usize(),
                     "first emitted node at base StepIdx",
                 );
             }

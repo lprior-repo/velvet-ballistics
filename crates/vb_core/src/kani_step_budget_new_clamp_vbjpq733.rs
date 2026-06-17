@@ -21,7 +21,7 @@ fn step_budget_new_clamp_above_max() {
     let value: u64 = kani::any();
     kani::assume(value > MAX_STEP_BUDGET);
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining(, "assertion failed") == MAX_STEP_BUDGET,
+    kani::assert(budget.remaining() == MAX_STEP_BUDGET,
         "value > MAX must clamp to MAX",
     );
 }
@@ -33,7 +33,7 @@ fn step_budget_new_pass_through() {
     let value: u64 = kani::any();
     kani::assume(value <= MAX_STEP_BUDGET);
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining(, "assertion failed") == value,
+    kani::assert(budget.remaining() == value,
         "value <= MAX must pass through unchanged",
     );
 }
@@ -43,7 +43,7 @@ fn step_budget_new_pass_through() {
 #[kani::unwind(4)]
 fn step_budget_new_zero_valid() {
     let budget = StepBudget::new(0);
-    kani::assert(budget.remaining(, "assertion failed") == 0, "zero budget is valid");
+    kani::assert(budget.remaining() == 0, "zero budget is valid");
 }
 
 /// PO-012 H4: clamp is idempotent — new(new(x).remaining()) == new(x)
@@ -53,7 +53,7 @@ fn step_budget_new_clamp_idempotent() {
     let value: u64 = kani::any();
     let once = StepBudget::new(value);
     let twice = StepBudget::new(once.remaining());
-    kani::assert(once.remaining(, "assertion failed") == twice.remaining(),
+    kani::assert(once.remaining() == twice.remaining(),
         "clamp must be idempotent: production new(new(x).remaining()) == new(x)",
     );
 }
@@ -62,7 +62,7 @@ fn step_budget_new_clamp_idempotent() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn step_budget_max_equals_constant() {
-    kani::assert(StepBudget::MAX.remaining(, "assertion failed") == MAX_STEP_BUDGET,
+    kani::assert(StepBudget::MAX.remaining() == MAX_STEP_BUDGET,
         "StepBudget::MAX.remaining() == MAX_STEP_BUDGET",
     );
 }
@@ -73,7 +73,7 @@ fn step_budget_max_equals_constant() {
 fn step_budget_new_always_bounded() {
     let value: u64 = kani::any();
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining(, "assertion failed") <= MAX_STEP_BUDGET,
+    kani::assert(budget.remaining() <= MAX_STEP_BUDGET,
         "any input must produce remaining <= MAX via production StepBudget::new",
     );
 }

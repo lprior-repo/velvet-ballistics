@@ -69,21 +69,21 @@ fn zero_gaps_after_fix() {
     // ----- Master contract validation -----
     let master_gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
 
-    kani::assert(master_gaps.is_empty(, "assertion failed"),
+    kani::assert(master_gaps.is_empty(),
         "Post-fix configuration must produce zero master contract gaps",
     );
 
     // ----- Governance validation -----
     let governance_gaps = validate_against_governance(&ws);
 
-    kani::assert(governance_gaps.is_empty(, "assertion failed"),
+    kani::assert(governance_gaps.is_empty(),
         "Post-fix configuration must produce zero governance gaps",
     );
 
     // Confirm the hardened profile has debug-assertions=true explicitly
     if let Some(hardened) = ws.find(ProfileName::Hardened) {
         let da = hardened.get(ProfileKey::DebugAssertions);
-        kani::assert(da == Some(&SettingValue::Bool(true), "assertion failed"),
+        kani::assert(da == Some(&SettingValue::Bool(true)),
             "Hardened must have debug-assertions=true in explicit settings",
         );
     }

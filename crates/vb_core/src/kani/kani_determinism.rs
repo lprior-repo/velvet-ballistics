@@ -92,7 +92,7 @@ mod harnesses {
                 .iter()
                 .find(|e| e.symbolic == sym.as_str())
                 .map(|e| e.numeric);
-            kani::assert(entry_numeric == Some(raw, "assertion failed"), "Registry numeric must match input");
+            kani::assert(entry_numeric == Some(raw), "Registry numeric must match input");
         }
     }
 

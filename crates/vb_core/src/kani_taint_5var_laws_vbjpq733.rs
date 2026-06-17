@@ -97,7 +97,7 @@ fn join_taint_idempotent_5var() {
 fn join_taint_clean_identity_5var() {
     let a: Taint = kani::any();
     kani::assert(join_taint(a, Taint::Clean) == a, "Clean must be identity (right)");
-    kani::assert(join_taint(Taint::Clean, a, "assertion failed") == a, "Clean must be identity (left)");
+    kani::assert(join_taint(Taint::Clean, a) == a, "Clean must be identity (left)");
 }
 
 /// PO-001 H5: Monotonicity — discriminant never decreases
@@ -132,7 +132,7 @@ fn join_taint_monotonic_5var() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn join_taint_secret_absorbs_secret() {
-    kani::assert(join_taint(Taint::Secret, Taint::Secret, "assertion failed") == Taint::Secret,
+    kani::assert(join_taint(Taint::Secret, Taint::Secret) == Taint::Secret,
         "Secret is idempotent at the lattice top",
     );
 }
@@ -142,7 +142,7 @@ fn join_taint_secret_absorbs_secret() {
 #[kani::unwind(4)]
 fn join_taint_secret_top() {
     let a: Taint = kani::any();
-    kani::assert(join_taint(a, Taint::Secret, "assertion failed") == Taint::Secret,
+    kani::assert(join_taint(a, Taint::Secret) == Taint::Secret,
         "Secret absorbs all",
     );
 }

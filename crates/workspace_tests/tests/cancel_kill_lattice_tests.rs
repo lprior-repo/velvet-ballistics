@@ -138,9 +138,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 //! cancel_kill_lattice_tests: Cancel/Kill State Machine Lattice Tests
@@ -171,11 +170,11 @@ use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{InspectResponse, ShardConfig, TerminalOutcome};
 use vb_runtime::trace::TraceEvent;
-use vb_runtime::RuntimeError;
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))

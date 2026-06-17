@@ -107,9 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 
 //! MasterProfileContract — the immutable reference contract from the master document.
 //!
@@ -124,224 +123,391 @@ use vstd::prelude::*;
 #[cfg(verus_keep_ghost)]
 verus! {
 
-    // ── ProfileName enum (6 valid variants) ────────────────────────────
-    #[derive(Clone, Copy, PartialEq)]
-    pub enum ProfileName {
-        Release,
-        Bench,
-        Hardened,
-        Fuzz,
-        Test,
-        Dev,
+// ── ProfileName enum (6 valid variants) ────────────────────────────
+#[derive(Clone, Copy, PartialEq)]
+pub enum ProfileName {
+    Release,
+    Bench,
+    Hardened,
+    Fuzz,
+    Test,
+    Dev,
+}
+
+impl ProfileName {
+    // ── Spec: is_required ──────────────────────────────────────────
+    pub open spec fn is_required(&self) -> bool {
+        matches!(self, ProfileName::Release | ProfileName::Bench)
     }
 
-    impl ProfileName {
-        // ── Spec: is_required ──────────────────────────────────────────
-        pub open spec fn is_required(&self) -> bool {
-            matches!(self, ProfileName::Release | ProfileName::Bench)
-        }
-
-        // ── Spec: is_governance_profile ────────────────────────────────
-        pub open spec fn is_governance_profile(&self) -> bool {
-            matches!(self, ProfileName::Hardened)
-        }
-
-        // ── Spec: new from string ──────────────────────────────────────
-        pub open spec fn from_str(name: &str) -> (Option<ProfileName>, bool) {
-            // Returns (Some(name), false) if known, (None, true) if forbidden
-            match name {
-                "release" => (Some(ProfileName::Release), false),
-                "bench" => (Some(ProfileName::Bench), false),
-                "hardened" => (Some(ProfileName::Hardened), false),
-                "fuzz" => (Some(ProfileName::Fuzz), false),
-                "test" => (Some(ProfileName::Test), false),
-                "dev" => (Some(ProfileName::Dev), false),
-                "maxperf" => (None, true),  // forbidden
-                _ => (None, false),  // unknown but not forbidden
-            }
-        }
+    // ── Spec: is_governance_profile ────────────────────────────────
+    pub open spec fn is_governance_profile(&self) -> bool {
+        matches!(self, ProfileName::Hardened)
     }
 
-    // ── ProfileKey enum (9 variants) ───────────────────────────────────
-    #[derive(Clone, Copy, PartialEq)]
-    pub enum ProfileKey {
-        OptLevel,
-        Lto,
-        CodegenUnits,
-        Strip,
-        Debug,
-        DebugAssertions,
-        OverflowChecks,
-        Panic,
-        Inherits,
-    }
-
-    // ── Spec: key belongs to a category ────────────────────────────────
-    pub open spec fn spec_key_category(key: ProfileKey) -> nat {
-        // 0 = optimization, 1 = debug, 2 = safety, 3 = inheritance
-        match key {
-            ProfileKey::OptLevel => 0,
-            ProfileKey::Lto => 0,
-            ProfileKey::CodegenUnits => 0,
-            ProfileKey::Strip => 1,
-            ProfileKey::Debug => 1,
-            ProfileKey::DebugAssertions => 2,
-            ProfileKey::OverflowChecks => 2,
-            ProfileKey::Panic => 2,
-            ProfileKey::Inherits => 3,
+    // ── Spec: new from string ──────────────────────────────────────
+    pub open spec fn from_str(name: &str) -> (Option<ProfileName>, bool) {
+        // Returns (Some(name), false) if known, (None, true) if forbidden
+        match name {
+            "release" => (Some(ProfileName::Release), false),
+            "bench" => (Some(ProfileName::Bench), false),
+            "hardened" => (Some(ProfileName::Hardened), false),
+            "fuzz" => (Some(ProfileName::Fuzz), false),
+            "test" => (Some(ProfileName::Test), false),
+            "dev" => (Some(ProfileName::Dev), false),
+            "maxperf" => (None, true),  // forbidden
+            _ => (None, false),  // unknown but not forbidden
         }
     }
+}
 
-    // ── Release/Bench required key specs ───────────────────────────────
-    //
-    // These are the nat-encoded key-value pairs from the master contract.
-    // We encode each pair as a single nat for proof convenience.
-    //
-    // Encoding: key_index * 100 + value_tag
-    // where value_tag: U8(3) = 3, U16(1) = 1, String(Thin) = 10,
-    //     String(Release) = 11, Bool(true) = 20
+// ── ProfileKey enum (9 variants) ───────────────────────────────────
+#[derive(Clone, Copy, PartialEq)]
+pub enum ProfileKey {
+    OptLevel,
+    Lto,
+    CodegenUnits,
+    Strip,
+    Debug,
+    DebugAssertions,
+    OverflowChecks,
+    Panic,
+    Inherits,
+}
 
-    pub open spec fn spec_release_required_keys() -> nat {
-        // 4 required keys for release
-        4
+// ── Spec: key belongs to a category ────────────────────────────────
+pub open spec fn spec_key_category(key: ProfileKey) -> nat {
+    // 0 = optimization, 1 = debug, 2 = safety, 3 = inheritance
+    match key {
+        ProfileKey::OptLevel => 0,
+        ProfileKey::Lto => 0,
+        ProfileKey::CodegenUnits => 0,
+        ProfileKey::Strip => 1,
+        ProfileKey::Debug => 1,
+        ProfileKey::DebugAssertions => 2,
+        ProfileKey::OverflowChecks => 2,
+        ProfileKey::Panic => 2,
+        ProfileKey::Inherits => 3,
     }
+}
 
-    pub open spec fn spec_bench_required_keys() -> nat {
-        // 4 required keys for bench
-        4
-    }
+// ── Release/Bench required key specs ───────────────────────────────
+//
+// These are the nat-encoded key-value pairs from the master contract.
+// We encode each pair as a single nat for proof convenience.
+//
+// Encoding: key_index * 100 + value_tag
+// where value_tag: U8(3) = 3, U16(1) = 1, String(Thin) = 10,
+//     String(Release) = 11, Bool(true) = 20
+pub open spec fn spec_release_required_keys() -> nat {
+    // 4 required keys for release
+    4
+}
 
-    pub open spec fn spec_hardened_gov_required() -> nat {
-        // 2 governance keys for hardened
-        2
-    }
+pub open spec fn spec_bench_required_keys() -> nat {
+    // 4 required keys for bench
+    4
+}
 
-    // ── Lemma: exactly 6 profile names exist ───────────────────────────
-    proof fn lemma_exactly_6_profile_names()
-        ensures
-            ProfileName::Release != ProfileName::Bench
-                && ProfileName::Release != ProfileName::Hardened
-                && ProfileName::Release != ProfileName::Fuzz
-                && ProfileName::Release != ProfileName::Test
-                && ProfileName::Release != ProfileName::Dev
-                && ProfileName::Bench != ProfileName::Hardened
-                && ProfileName::Bench != ProfileName::Fuzz
-                && ProfileName::Bench != ProfileName::Test
-                && ProfileName::Bench != ProfileName::Dev
-                && ProfileName::Hardened != ProfileName::Fuzz
-                && ProfileName::Hardened != ProfileName::Test
-                && ProfileName::Hardened != ProfileName::Dev
-                && ProfileName::Fuzz != ProfileName::Test
-                && ProfileName::Fuzz != ProfileName::Dev
-                && ProfileName::Test != ProfileName::Dev,
-    {
-    }
+pub open spec fn spec_hardened_gov_required() -> nat {
+    // 2 governance keys for hardened
+    2
+}
 
-    // ── Lemma: release and bench are the only required profiles ────────
-    proof fn lemma_required_profiles_are_exactly_release_and_bench(
-        name: ProfileName,
-    )
-        ensures
-            name.is_required() == (name == ProfileName::Release || name == ProfileName::Bench),
-    {
-    }
+// ── Lemma: exactly 6 profile names exist ───────────────────────────
+proof fn lemma_exactly_6_profile_names()
+    ensures
+        ProfileName::Release != ProfileName::Bench && ProfileName::Release != ProfileName::Hardened
+            && ProfileName::Release != ProfileName::Fuzz && ProfileName::Release
+            != ProfileName::Test && ProfileName::Release != ProfileName::Dev && ProfileName::Bench
+            != ProfileName::Hardened && ProfileName::Bench != ProfileName::Fuzz
+            && ProfileName::Bench != ProfileName::Test && ProfileName::Bench != ProfileName::Dev
+            && ProfileName::Hardened != ProfileName::Fuzz && ProfileName::Hardened
+            != ProfileName::Test && ProfileName::Hardened != ProfileName::Dev && ProfileName::Fuzz
+            != ProfileName::Test && ProfileName::Fuzz != ProfileName::Dev && ProfileName::Test
+            != ProfileName::Dev,
+{
+    assert(ProfileName::Release != ProfileName::Bench);
+    assert(ProfileName::Release != ProfileName::Hardened);
+    assert(ProfileName::Release != ProfileName::Fuzz);
+    assert(ProfileName::Release != ProfileName::Test);
+    assert(ProfileName::Release != ProfileName::Dev);
+    assert(ProfileName::Bench != ProfileName::Hardened);
+    assert(ProfileName::Bench != ProfileName::Fuzz);
+    assert(ProfileName::Bench != ProfileName::Test);
+    assert(ProfileName::Bench != ProfileName::Dev);
+    assert(ProfileName::Hardened != ProfileName::Fuzz);
+    assert(ProfileName::Hardened != ProfileName::Test);
+    assert(ProfileName::Hardened != ProfileName::Dev);
+    assert(ProfileName::Fuzz != ProfileName::Test);
+    assert(ProfileName::Fuzz != ProfileName::Dev);
+    assert(ProfileName::Test != ProfileName::Dev);
+}
 
-    // ── Lemma: only hardened is a governance profile ───────────────────
-    proof fn lemma_only_hardened_is_governance(name: ProfileName)
-        ensures
-            name.is_governance_profile() == (name == ProfileName::Hardened),
-    {
+// ── Lemma: release and bench are the only required profiles ────────
+proof fn lemma_required_profiles_are_exactly_release_and_bench(name: ProfileName)
+    ensures
+        name.is_required() == (name == ProfileName::Release || name == ProfileName::Bench),
+{
+    // Exhaustive: each variant either matches or doesn't.
+    if name == ProfileName::Release {
+        assert(name == ProfileName::Release || name == ProfileName::Bench);
+        assert(name.is_required());
+    } else if name == ProfileName::Bench {
+        assert(name == ProfileName::Release || name == ProfileName::Bench);
+        assert(name.is_required());
+    } else {
+        assert(name != ProfileName::Release);
+        assert(name != ProfileName::Bench);
+        assert(!name.is_required());
     }
+}
 
-    // ── Lemma: no profile is both required and governance ──────────────
-    proof fn lemma_required_and_governance_disjoint()
-        ensures
-            !(ProfileName::Release.is_governance_profile() || ProfileName::Bench.is_governance_profile()),
-    {
+// ── Lemma: only hardened is a governance profile ───────────────────
+proof fn lemma_only_hardened_is_governance(name: ProfileName)
+    ensures
+        name.is_governance_profile() == (name == ProfileName::Hardened),
+{
+    // Exhaustive on 6 variants.
+    if name == ProfileName::Hardened {
+        assert(name == ProfileName::Hardened);
+        assert(name.is_governance_profile());
+    } else {
+        assert(name != ProfileName::Hardened);
+        assert(!name.is_governance_profile());
     }
+}
 
-    // ── Lemma: maxperf is not a valid profile name ─────────────────────
-    proof fn lemma_maxperf_not_valid()
-        ensures
-            ProfileName::from_str("maxperf") == (None::<ProfileName>, true),
-    {
-    }
+// ── Lemma: no profile is both required and governance ──────────────
+proof fn lemma_required_and_governance_disjoint()
+    ensures
+        !(ProfileName::Release.is_governance_profile()
+            || ProfileName::Bench.is_governance_profile()),
+{
+    assert(!ProfileName::Release.is_governance_profile());
+    assert(!ProfileName::Bench.is_governance_profile());
+}
 
-    // ── Lemma: all known names resolve to Some ─────────────────────────
-    proof fn lemma_known_names_resolve()
-        ensures
-            matches!(ProfileName::from_str("release").0, Some(_))
-                && matches!(ProfileName::from_str("bench").0, Some(_))
-                && matches!(ProfileName::from_str("hardened").0, Some(_))
-                && matches!(ProfileName::from_str("fuzz").0, Some(_))
-                && matches!(ProfileName::from_str("test").0, Some(_))
-                && matches!(ProfileName::from_str("dev").0, Some(_)),
-    {
-    }
+// ── Lemma: maxperf is not a valid profile name ─────────────────────
+proof fn lemma_maxperf_not_valid()
+    ensures
+        ProfileName::from_str("maxperf") == (None::<ProfileName>, true),
+{
+    assert(ProfileName::from_str("maxperf") == (None, true));
+}
 
-    // ── Lemma: all known names are not forbidden ───────────────────────
-    proof fn lemma_known_names_not_forbidden()
-        ensures
-            !ProfileName::from_str("release").1
-                && !ProfileName::from_str("bench").1
-                && !ProfileName::from_str("hardened").1
-                && !ProfileName::from_str("fuzz").1
-                && !ProfileName::from_str("test").1
-                && !ProfileName::from_str("dev").1,
-    {
-    }
+// ── Lemma: all known names resolve to Some ─────────────────────────
+proof fn lemma_known_names_resolve()
+    ensures
+        matches!(ProfileName::from_str("release").0, Some(_))
+            && matches!(ProfileName::from_str("bench").0, Some(_))
+            && matches!(ProfileName::from_str("hardened").0, Some(_))
+            && matches!(ProfileName::from_str("fuzz").0, Some(_))
+            && matches!(ProfileName::from_str("test").0, Some(_))
+            && matches!(ProfileName::from_str("dev").0, Some(_)),
+{
+    assert(matches!(ProfileName::from_str("release").0, Some(_)));
+    assert(matches!(ProfileName::from_str("bench").0, Some(_)));
+    assert(matches!(ProfileName::from_str("hardened").0, Some(_)));
+    assert(matches!(ProfileName::from_str("fuzz").0, Some(_)));
+    assert(matches!(ProfileName::from_str("test").0, Some(_)));
+    assert(matches!(ProfileName::from_str("dev").0, Some(_)));
+}
 
-    // ── Lemma: key categories partition correctly ──────────────────────
-    proof fn lemma_key_categories_exhaustive(key: ProfileKey)
-        ensures
-            spec_key_category(key) <= 3,
-    {
-    }
+// ── Lemma: all known names are not forbidden ───────────────────────
+proof fn lemma_known_names_not_forbidden()
+    ensures
+        !ProfileName::from_str("release").1 && !ProfileName::from_str("bench").1
+            && !ProfileName::from_str("hardened").1 && !ProfileName::from_str("fuzz").1
+            && !ProfileName::from_str("test").1 && !ProfileName::from_str("dev").1,
+{
+    assert(!ProfileName::from_str("release").1);
+    assert(!ProfileName::from_str("bench").1);
+    assert(!ProfileName::from_str("hardened").1);
+    assert(!ProfileName::from_str("fuzz").1);
+    assert(!ProfileName::from_str("test").1);
+    assert(!ProfileName::from_str("dev").1);
+}
 
-    // ── Lemma: inherits is the only inheritance key ────────────────────
-    proof fn lemma_inherits_unique_inheritance_key(key: ProfileKey)
-        ensures
-            (spec_key_category(key) == 3) ==> key == ProfileKey::Inherits,
-    {
-    }
+// ── Lemma: key categories partition correctly ──────────────────────
+proof fn lemma_key_categories_exhaustive(key: ProfileKey)
+    ensures
+        spec_key_category(key) <= 3,
+{
+    // All 9 variants map to 0..=3.
+    assert(spec_key_category(key) <= 3);
+}
 
-    // ── Lemma: release keys count ──────────────────────────────────────
-    proof fn lemma_release_key_count()
-        ensures
-            spec_release_required_keys() == 4,
-    {
+// ── Lemma: inherits is the only inheritance key ────────────────────
+proof fn lemma_inherits_unique_inheritance_key(key: ProfileKey)
+    ensures
+        (spec_key_category(key) == 3) ==> key == ProfileKey::Inherits,
+{
+    // Only ProfileKey::Inherits maps to category 3.
+    if key == ProfileKey::Inherits {
+        assert(spec_key_category(key) == 3);
+    } else {
+        assert(spec_key_category(key) != 3);
     }
+}
 
-    // ── Lemma: bench keys count ────────────────────────────────────────
-    proof fn lemma_bench_key_count()
-        ensures
-            spec_bench_required_keys() == 4,
-    {
-    }
+// ── Lemma: release keys count ──────────────────────────────────────
+proof fn lemma_release_key_count()
+    ensures
+        spec_release_required_keys() == 4,
+{
+    assert(spec_release_required_keys() == 4);
+}
 
-    // ── Lemma: hardened governance key count ───────────────────────────
-    proof fn lemma_hardened_gov_key_count()
-        ensures
-            spec_hardened_gov_required() == 2,
-    {
-    }
+// ── Lemma: bench keys count ────────────────────────────────────────
+proof fn lemma_bench_key_count()
+    ensures
+        spec_bench_required_keys() == 4,
+{
+    assert(spec_bench_required_keys() == 4);
+}
 
-    // ── Lemma: release has more optimization keys than safety keys ─────
-    proof fn lemma_release_optimization_dominance()
-        ensures
-            spec_release_required_keys() >= spec_hardened_gov_required(),
-    {
-    }
+// ── Lemma: hardened governance key count ───────────────────────────
+proof fn lemma_hardened_gov_key_count()
+    ensures
+        spec_hardened_gov_required() == 2,
+{
+    assert(spec_hardened_gov_required() == 2);
+}
 
-    // ── Lemma: bench and release have same key count ───────────────────
-    proof fn lemma_bench_release_same_key_count()
-        ensures
-            spec_bench_required_keys() == spec_release_required_keys(),
-    {
-    }
+// ── Lemma: release has more optimization keys than safety keys ─────
+proof fn lemma_release_optimization_dominance()
+    ensures
+        spec_release_required_keys() >= spec_hardened_gov_required(),
+{
+    assert(spec_release_required_keys() == 4);
+    assert(spec_hardened_gov_required() == 2);
+    assert(spec_release_required_keys() >= spec_hardened_gov_required());
+}
+
+// ── Lemma: bench and release have same key count ───────────────────
+proof fn lemma_bench_release_same_key_count()
+    ensures
+        spec_bench_required_keys() == spec_release_required_keys(),
+{
+    assert(spec_bench_required_keys() == 4);
+    assert(spec_release_required_keys() == 4);
+    assert(spec_bench_required_keys() == spec_release_required_keys());
+}
+
+// ── Exec: is_required — check if profile is required ────────────────
+pub fn is_required(name: ProfileName) -> (required: bool)
+    ensures
+        required == name.is_required(),
+{
+    name == ProfileName::Release || name == ProfileName::Bench
+}
+
+// ── Exec: is_governance_profile — check if profile is governance ────
+pub fn is_governance_profile(name: ProfileName) -> (gov: bool)
+    ensures
+        gov == name.is_governance_profile(),
+{
+    name == ProfileName::Hardened
+}
+
+// ── Exec: key_category — classify a profile key ─────────────────────
+pub fn key_category(key: ProfileKey) -> (cat: nat)
+    ensures
+        cat == spec_key_category(key),
+{
+    spec_key_category(key)
+}
+
+// ── Exec: release_required_count — count of required release keys ──
+pub fn release_required_count() -> (count: nat)
+    ensures
+        count == spec_release_required_keys(),
+{
+    spec_release_required_keys()
+}
+
+// ── Exec: bench_required_count — count of required bench keys ───────
+pub fn bench_required_count() -> (count: nat)
+    ensures
+        count == spec_bench_required_keys(),
+{
+    spec_bench_required_keys()
+}
+
+// ── Exec: hardened_gov_count — count of governance keys for hardened ─
+pub fn hardened_gov_count() -> (count: nat)
+    ensures
+        count == spec_hardened_gov_required(),
+{
+    spec_hardened_gov_required()
+}
+
+// ── Exec: profile_names_are_distinct — all 6 names are pairwise unequal ─
+pub fn profile_names_are_distinct() -> (distinct: bool)
+    ensures
+        distinct,
+{
+    ProfileName::Release != ProfileName::Bench && ProfileName::Release != ProfileName::Hardened
+        && ProfileName::Release != ProfileName::Fuzz && ProfileName::Release != ProfileName::Test
+        && ProfileName::Release != ProfileName::Dev && ProfileName::Bench != ProfileName::Hardened
+        && ProfileName::Bench != ProfileName::Fuzz && ProfileName::Bench != ProfileName::Test
+        && ProfileName::Bench != ProfileName::Dev && ProfileName::Hardened != ProfileName::Fuzz
+        && ProfileName::Hardened != ProfileName::Test && ProfileName::Hardened != ProfileName::Dev
+        && ProfileName::Fuzz != ProfileName::Test && ProfileName::Fuzz != ProfileName::Dev
+        && ProfileName::Test != ProfileName::Dev
+}
+
+// ── Exec: key_categories_exhaustive — every key maps to valid category ─
+pub fn key_categories_exhaustive(key: ProfileKey) -> (ok: bool)
+    ensures
+        ok,
+{
+    let cat = spec_key_category(key);
+    assert(cat <= 3);
+    true
+}
+
+// ── Exec: maxperf_is_forbidden — "maxperf" resolves to (None, true) ─
+pub fn maxperf_is_forbidden() -> (forbidden: bool)
+    ensures
+        forbidden,
+{
+    let (name, is_forbidden) = ProfileName::from_str("maxperf");
+    assert(name == None);
+    assert(is_forbidden);
+    true
+}
+
+// ── Exec: all_known_names_resolve — 6 known names all resolve to Some ─
+pub fn all_known_names_resolve() -> (ok: bool)
+    ensures
+        ok,
+{
+    assert(matches!(ProfileName::from_str("release").0, Some(_)));
+    assert(matches!(ProfileName::from_str("bench").0, Some(_)));
+    assert(matches!(ProfileName::from_str("hardened").0, Some(_)));
+    assert(matches!(ProfileName::from_str("fuzz").0, Some(_)));
+    assert(matches!(ProfileName::from_str("test").0, Some(_)));
+    assert(matches!(ProfileName::from_str("dev").0, Some(_)));
+    true
+}
+
+// ── Exec: known_names_not_forbidden — no known name is forbidden ────
+pub fn known_names_not_forbidden() -> (ok: bool)
+    ensures
+        ok,
+{
+    assert(!ProfileName::from_str("release").1);
+    assert(!ProfileName::from_str("bench").1);
+    assert(!ProfileName::from_str("hardened").1);
+    assert(!ProfileName::from_str("fuzz").1);
+    assert(!ProfileName::from_str("test").1);
+    assert(!ProfileName::from_str("dev").1);
+    true
+}
 
 } // verus!
-
 // ── Regular Rust implementation (non-Verus compilation) ─────────────────────
 #[cfg(not(verus_keep_ghost))]
 mod cargo_kernel {
@@ -425,13 +591,22 @@ mod tests {
     #[test]
     fn test_master_contract_required_profiles() {
         assert_eq!(MASTER_PROFILE_CONTRACT.required_profiles.len(), 2);
-        assert_eq!(MASTER_PROFILE_CONTRACT.required_profiles[0], ProfileName::Release);
-        assert_eq!(MASTER_PROFILE_CONTRACT.required_profiles[1], ProfileName::Bench);
+        assert_eq!(
+            MASTER_PROFILE_CONTRACT.required_profiles[0],
+            ProfileName::Release
+        );
+        assert_eq!(
+            MASTER_PROFILE_CONTRACT.required_profiles[1],
+            ProfileName::Bench
+        );
     }
 
     #[test]
     fn test_master_contract_forbidden() {
-        assert_eq!(MASTER_PROFILE_CONTRACT.forbidden_profile_names, &["maxperf"]);
+        assert_eq!(
+            MASTER_PROFILE_CONTRACT.forbidden_profile_names,
+            &["maxperf"]
+        );
     }
 
     #[test]

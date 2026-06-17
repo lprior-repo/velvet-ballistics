@@ -43,7 +43,7 @@ fn check_push_on_empty_stack_succeeds() {
     let result = stack_push(&mut stack, SlotValue::Bool(true));
 
     kani::assert(result.is_ok(), "push on empty stack must succeed");
-    kani::assert(stack.len(, "assertion failed") == 1, "stack must have 1 element after push");
+    kani::assert(stack.len() == 1, "stack must have 1 element after push");
 }
 
 /// PO-KANI-004 H2: push on full stack returns StackOverflow.
@@ -56,7 +56,7 @@ fn check_push_on_full_stack_returns_overflow() {
         let _ = stack_push(&mut stack, SlotValue::Bool(true));
     }
 
-    kani::assert(stack.len(, "assertion failed") == MAX_EXPRESSION_STACK_USIZE,
+    kani::assert(stack.len() == MAX_EXPRESSION_STACK_USIZE,
         "stack must be full",
     );
 
@@ -165,7 +165,7 @@ fn check_push_many_pop_all() {
         kani::assert(result.is_ok(), "push within capacity must succeed");
     }
 
-    kani::assert(stack.len(, "assertion failed") == n,
+    kani::assert(stack.len() == n,
         "stack must have n elements after n pushes",
     );
 
@@ -176,7 +176,7 @@ fn check_push_many_pop_all() {
     }
 
     // Stack must be empty
-    kani::assert(stack.is_empty(, "assertion failed"),
+    kani::assert(stack.is_empty(),
         "stack must be empty after n pushes + n pops",
     );
 }
@@ -231,7 +231,7 @@ fn check_pop_pair_underflow() {
     match left {
         Err(ExprError::StackUnderflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::StackUnderflow, "assertion failed"),
+            kani::assert(matches!(e, ExprError::StackUnderflow),
                 "second pop on single-element stack must return StackUnderflow",
             );
         }

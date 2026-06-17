@@ -50,14 +50,14 @@ fn prove_canonical_contract_has_18_fields() {
     };
 
     // Verify field values are preserved intact through the struct.
-    kani::assert(contract.max_transitions_per_tick == 16, "assertion failed");
-    kani::assert(contract.allows_secret_results == true, "assertion failed");
-    kani::assert(contract.max_steps == 100, "assertion failed");
+    kani::assert(contract.max_transitions_per_tick == 16);
+    kani::assert(contract.allows_secret_results == true);
+    kani::assert(contract.max_steps == 100);
 
     // Structural assertion: the type is Copy (value semantics)
     let copy = contract;
-    kani::assert(copy.max_transitions_per_tick == contract.max_transitions_per_tick, "assertion failed");
-    kani::assert(copy.allows_secret_results == contract.allows_secret_results, "assertion failed");
+    kani::assert(copy.max_transitions_per_tick == contract.max_transitions_per_tick);
+    kani::assert(copy.allows_secret_results == contract.allows_secret_results);
 
     kani::cover!(contract.max_transitions_per_tick == 16);
 }

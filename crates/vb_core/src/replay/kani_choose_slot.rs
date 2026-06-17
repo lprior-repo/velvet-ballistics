@@ -153,7 +153,6 @@ fn verify_choose_slot_output_in_input_set() {
         Ok(ReplayAction::Continue(target)) => {
             let valid =
                 target == StepIdx::new(1) || target == StepIdx::new(2) || target == StepIdx::new(3);
-            , "kani harness assertion");
     }
 }
 
@@ -281,7 +280,7 @@ fn verify_replay_deterministic_for_same_input() {
 
     match (result_a, result_b) {
         (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-            kani::assert(a == b, "assertion failed");
+            kani::assert(a == b);
         }
         (Err(_), Err(_)) => {}
         _ => {

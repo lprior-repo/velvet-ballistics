@@ -145,9 +145,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Proptest invariants for vb-lp2v proof-admission behaviors.
 //!

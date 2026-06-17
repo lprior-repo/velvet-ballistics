@@ -132,7 +132,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Behavior tests: SymbolicCode serde integration.

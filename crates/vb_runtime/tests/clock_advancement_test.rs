@@ -127,7 +127,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! PS-007: Clock Advancement — behavior tests (G1-G5).
 //!

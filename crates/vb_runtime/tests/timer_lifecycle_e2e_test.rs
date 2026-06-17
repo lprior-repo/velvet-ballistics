@@ -127,7 +127,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! E2E Tests: Full timer lifecycle scenarios.
 //!

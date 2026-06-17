@@ -251,7 +251,7 @@ fn partition_plan_post_conditions() {
             kani::assert(ranges[0].start() == 0, "first range must start at 0");
 
             // Invariant 3: ranges[N-1].end == kmax
-            kani::assert(ranges[len - 1].end(, "assertion failed") == kmax, "last range must end at kmax");
+            kani::assert(ranges[len - 1].end() == kmax, "last range must end at kmax");
 
             // Invariant 4: Contiguity
             for i in 0..len.saturating_sub(1) {
@@ -307,7 +307,7 @@ fn partition_plan_covers_keyspace() {
             for i in 0..len.saturating_sub(1) {
                 match plan.ranges[i].end().checked_add(1) {
                     Some(expected) => {
-                        kani::assert(expected == plan.ranges[i + 1].start(, "assertion failed"), "no gaps");
+                        kani::assert(expected == plan.ranges[i + 1].start(), "no gaps");
                     }
                     None => {}
                 }

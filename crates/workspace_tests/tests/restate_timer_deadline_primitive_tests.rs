@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Primitive-level behavior tests proving invariants documented in the
 //! state11 proof-preparation report for vb-wfi4:

@@ -114,7 +114,7 @@ fn prove_contract_survives_compilation() {
         Err(_) => { kani::assume(false); loop {}}
     };
 
-    kani::assert(workflow.digest(, "assertion failed") != workflow_default.digest(), "CompiledWorkflow digest must differ when contracts differ");
+    kani::assert(workflow.digest() != workflow_default.digest(), "CompiledWorkflow digest must differ when contracts differ");
 
     kani::cover!(workflow.resource_contract() == contract);
 }
@@ -150,12 +150,12 @@ fn prove_non_default_contract_encoding_differs() {
     modified.max_steps = max_steps;
     modified.allows_secret_results = true;
 
-    kani::assert(default != modified, "assertion failed");
+    kani::assert(default != modified);
 
     let enc_default = encode_contract_bytes(&default);
     let enc_modified = encode_contract_bytes(&modified);
 
-    default != modified, "assertion failed");
+    default != modified);
 
     let enc_default = encode_contract_bytes(&default);
     let enc_modified = encode_contract_bytes(&modified);

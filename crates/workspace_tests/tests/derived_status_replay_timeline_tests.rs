@@ -133,7 +133,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Derived status and replay timeline tests for CLI (vb-qz1u).

@@ -133,13 +133,11 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // vb-m214: CLI operator workflow BDD acceptance scenarios
 // Black-box CLI integration tests using std::process::Command only.
 // No internal imports — tests invoke the compiled CLI binary directly.
-
 #![forbid(unsafe_code)]
 #![cfg(not(miri))]
 

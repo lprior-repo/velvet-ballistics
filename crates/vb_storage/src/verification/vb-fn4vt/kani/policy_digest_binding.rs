@@ -117,12 +117,12 @@ fn compute_policy_digest_no_panic() {
             let policy_digest = WorkflowDigest::from_bytes(*hash.as_bytes());
 
             // Verify the digest is well-formed (all 32 bytes valid)
-            kani::assert(policy_digest.as_bytes(, "assertion failed").len() == 32, "assertion failed");
+            kani::assert(policy_digest.as_bytes().len() == 32);
             kani::cover!(policy_digest.as_bytes().len() == 32, "policy-digest-computed");
         }
         Err(_) => {
             // Serialization failed - not expected for default contract
-            .len() == 32, "assertion failed");
+            .len() == 32);
             kani::cover!(policy_digest.as_bytes().len() == 32, "policy-digest-computed");
         }
         Err(_) => {
@@ -153,6 +153,6 @@ fn policy_digest_deterministic() {
     let hash2 = blake3::hash(&bytes2);
 
     // Same bytes must produce same hash
-    kani::assert(hash1.as_bytes() == hash2.as_bytes(), "assertion failed");
+    kani::assert(hash1.as_bytes() == hash2.as_bytes());
     kani::cover!(hash1.as_bytes() == hash2.as_bytes(), "policy-digest-deterministic");
 }

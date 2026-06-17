@@ -134,9 +134,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Unit tests for Gates 12, 14, 15 (bead vb-qi37.8).
 //!

@@ -44,7 +44,7 @@ fn check_offset_distinctness() {
         let result = checked_step_offset(id, offset, "reduce", "body");
         match result {
             Ok(step_idx) => {
-                kani::assert(step_idx.get(, "assertion failed") >= base_id.saturating_add(offset),
+                kani::assert(step_idx.get() >= base_id.saturating_add(offset),
                     "step index must be >= id + offset",
                 );
                 offsets.push(step_idx.get());
@@ -94,7 +94,7 @@ fn check_offset_overflow_detected() {
     let result = checked_step_offset(id, large_offset, "reduce", "body");
     match result {
         Ok(step_idx) => {
-            kani::assert(step_idx.get(, "assertion failed") <= u16::MAX,
+            kani::assert(step_idx.get() <= u16::MAX,
                 "production never returns step index > u16::MAX",
             );
         }

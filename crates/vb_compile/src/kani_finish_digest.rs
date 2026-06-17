@@ -216,7 +216,7 @@ fn finish_string_result_injectivity() {
 
     // Universal claim: distinct inputs produce distinct encodings.
     // Kani must verify this for ALL input pairs within bounds.
-    kani::assert(encodings_differ(&encoded1, &encoded2, "assertion failed"),
+    kani::assert(encodings_differ(&encoded1, &encoded2),
         "distinct byte slices must produce distinct Finish String encodings",
     );
 }
@@ -335,7 +335,7 @@ fn finish_scalarvalue_variant_discrimination() {
     // With the edge case excluded, String and Integer encodings always
     // differ: either the lengths differ (len != 8) or the content
     // differs (slice[..8] != i.to_le_bytes()).
-    kani::assert(string_vs_integer_differ(&encoded_string, &encoded_integer, "assertion failed"),
+    kani::assert(string_vs_integer_differ(&encoded_string, &encoded_integer),
         "String and Integer Finish encodings must differ \
          (edge case excluded via assume, see TB-FINISH-003)",
     );

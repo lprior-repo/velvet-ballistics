@@ -121,7 +121,7 @@ mod kani_duplicate_ps009 {
 
                 // The encoded output includes RECORD_HEADER_LEN overhead
                 use crate::constants::RECORD_HEADER_LEN;
-                kani::assert(v1.len(, "assertion failed") as u64 > RECORD_HEADER_LEN as u64,
+                kani::assert(v1.len() as u64 > RECORD_HEADER_LEN as u64,
                     "encoded > header len",
                 );
             }

@@ -52,19 +52,19 @@ fn check_runkilled_construction_preserves_fields() {
     };
 
     // Verify field preservation through accessors
-    kani::assert(event.run_id(, "assertion failed").get() == run_val,
+    kani::assert(event.run_id().get() == run_val,
         "RunKilled run_id must preserve the constructed RunId value");
-    kani::assert(event.seq(, "assertion failed").get() == seq_val,
+    kani::assert(event.seq().get() == seq_val,
         "RunKilled seq must preserve the constructed EventSeq value");
-    kani::assert(event.attempt(, "assertion failed") == Some(attempt_val),
+    kani::assert(event.attempt() == Some(attempt_val),
         "RunKilled attempt must preserve the constructed attempt value");
 
     // Verify structural validity for well-formed inputs
-    kani::assert(event.is_valid(, "assertion failed"),
+    kani::assert(event.is_valid(),
         "RunKilled with valid fields (non-zero run, non-MAX seq, non-zero attempt) must be valid");
 
     // Verify record kind identity
-    kani::assert(matches!(event.record_kind(), vb_storage::RecordKind::RunKilled, "assertion failed"),
+    kani::assert(matches!(event.record_kind(), vb_storage::RecordKind::RunKilled),
         "RunKilled event must return RecordKind::RunKilled");
 }
 
@@ -84,7 +84,7 @@ fn check_runkilled_zero_run_invalid() {
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: attempt_val,
     };
-    kani::assert(!event.is_valid(, "assertion failed"),
+    kani::assert(!event.is_valid(),
         "RunKilled with RunId(0) must be rejected as invalid");
 }
 
@@ -99,7 +99,7 @@ fn check_runkilled_overflow_seq_invalid() {
         seq: vb_storage::EventSeq::new(u64::MAX),
         attempt: 1,
     };
-    kani::assert(!event.is_valid(, "assertion failed"),
+    kani::assert(!event.is_valid(),
         "RunKilled with EventSeq(u64::MAX) must be rejected as invalid");
 }
 
@@ -115,7 +115,7 @@ fn check_runkilled_zero_attempt_invalid() {
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: 0,
     };
-    kani::assert(!event.is_valid(, "assertion failed"),
+    kani::assert(!event.is_valid(),
         "RunKilled with attempt(0) must be rejected as invalid");
 }
 
@@ -191,13 +191,13 @@ fn check_validate_kind_family_exhaustive() {
         Ok(()) => {
             // If magic is MAGIC_JOURNAL_EVENT, kind must be in 10..=28
             if magic == vb_storage::constants::MAGIC_JOURNAL_EVENT {
-                kani::assert((10u16..=28u16, "assertion failed").contains(&kind),
+                kani::assert((10u16..=28u16).contains(&kind),
                     &format!("journal kind {kind} returned Ok but not in 10..=28"));
             }
         }
         Err(e) => {
             // Errors must be typed, not panics
-            kani::assert(matches!(e, vb_storage::JournalError::RecordKindFamilyMismatch { .. }, "assertion failed"),
+            kani::assert(matches!(e, vb_storage::JournalError::RecordKindFamilyMismatch { .. }),
                 "validate_kind_family errors must be RecordKindFamilyMismatch");
         }
     }

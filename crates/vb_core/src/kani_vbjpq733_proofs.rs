@@ -23,7 +23,7 @@ fn vbjpq733_step_budget_try_take_no_panic() {
     let value: u64 = kani::any();
     let mut budget = StepBudget::new(value);
     let _ = budget.try_take();
-    kani::assert(budget.remaining(, "assertion failed") <= MAX_STEP_BUDGET,
+    kani::assert(budget.remaining() <= MAX_STEP_BUDGET,
         "remaining bounded after try_take",
     );
 }
@@ -34,7 +34,7 @@ fn vbjpq733_step_budget_try_take_no_panic() {
 fn vbjpq733_step_budget_remaining_bounded() {
     let value: u64 = kani::any();
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining(, "assertion failed") <= MAX_STEP_BUDGET,
+    kani::assert(budget.remaining() <= MAX_STEP_BUDGET,
         "remaining <= MAX after production new",
     );
 }
@@ -44,7 +44,7 @@ fn vbjpq733_step_budget_remaining_bounded() {
 #[kani::unwind(4)]
 fn vbjpq733_step_budget_zero_returns_false() {
     let mut budget = StepBudget::new(0);
-    kani::assert(budget.remaining(, "assertion failed") == 0, "zero budget has 0 remaining");
+    kani::assert(budget.remaining() == 0, "zero budget has 0 remaining");
     match budget.try_take() {
         Ok(false) => {}
         Ok(true) =>  == 0, "zero budget has 0 remaining");
@@ -98,7 +98,7 @@ fn vbjpq733_step_budget_new_pass_through() {
     let value: u64 = kani::any();
     kani::assume(value <= MAX_STEP_BUDGET);
     let budget = StepBudget::new(value);
-    kani::assert(budget.remaining(, "assertion failed") == value,
+    kani::assert(budget.remaining() == value,
         "value <= MAX passes through unchanged",
     );
 }
@@ -110,7 +110,7 @@ fn vbjpq733_step_budget_new_clamp_idempotent() {
     let value: u64 = kani::any();
     let once = StepBudget::new(value);
     let twice = StepBudget::new(once.remaining());
-    kani::assert(once.remaining(, "assertion failed") == twice.remaining(),
+    kani::assert(once.remaining() == twice.remaining(),
         "production clamp must be idempotent",
     );
 }
@@ -119,7 +119,7 @@ fn vbjpq733_step_budget_new_clamp_idempotent() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn vbjpq733_step_budget_max_equals_constant() {
-    kani::assert(StepBudget::MAX.remaining(, "assertion failed") == MAX_STEP_BUDGET,
+    kani::assert(StepBudget::MAX.remaining() == MAX_STEP_BUDGET,
         "MAX.remaining() == MAX_STEP_BUDGET",
     );
 }
@@ -142,7 +142,7 @@ fn taint_discriminant(t: Taint) -> u8 {
 fn vbjpq733_join_taint_commutative() {
     let a: Taint = kani::any();
     let b: Taint = kani::any();
-    kani::assert(join_taint(a, b, "assertion failed") == join_taint(b, a),
+    kani::assert(join_taint(a, b) == join_taint(b, a),
         "join_taint must be commutative",
     );
 }
@@ -154,7 +154,7 @@ fn vbjpq733_join_taint_associative() {
     let a: Taint = kani::any();
     let b: Taint = kani::any();
     let c: Taint = kani::any();
-    kani::assert(join_taint(join_taint(a, b), c, "assertion failed") == join_taint(a, join_taint(b, c)),
+    kani::assert(join_taint(join_taint(a, b), c) == join_taint(a, join_taint(b, c)),
         "join_taint must be associative",
     );
 }
@@ -164,7 +164,7 @@ fn vbjpq733_join_taint_associative() {
 #[kani::unwind(4)]
 fn vbjpq733_join_taint_idempotent() {
     let a: Taint = kani::any();
-    kani::assert(join_taint(a, a, "assertion failed") == a, "join_taint must be idempotent");
+    kani::assert(join_taint(a, a) == a, "join_taint must be idempotent");
 }
 
 /// PO-001 H4: Clean is identity element
@@ -172,10 +172,10 @@ fn vbjpq733_join_taint_idempotent() {
 #[kani::unwind(4)]
 fn vbjpq733_join_taint_clean_identity() {
     let a: Taint = kani::any();
-    kani::assert(join_taint(a, Taint::Clean, "assertion failed") == a,
+    kani::assert(join_taint(a, Taint::Clean) == a,
         "Clean must be right identity",
     );
-    kani::assert(join_taint(Taint::Clean, a, "assertion failed") == a,
+    kani::assert(join_taint(Taint::Clean, a) == a,
         "Clean must be left identity",
     );
 }
@@ -228,7 +228,7 @@ fn vbjpq733_join_taint_random_secret() {
 #[kani::unwind(4)]
 fn vbjpq733_join_taint_time_top() {
     let a: Taint = kani::any();
-    kani::assert(join_taint(a, Taint::Secret, "assertion failed") == Taint::Secret,
+    kani::assert(join_taint(a, Taint::Secret) == Taint::Secret,
         "TimeDependent absorbs all",
     );
 }

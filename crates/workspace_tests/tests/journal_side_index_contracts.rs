@@ -137,7 +137,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Property-based tests for journal side-index atomicity contracts (vb-3h3k).

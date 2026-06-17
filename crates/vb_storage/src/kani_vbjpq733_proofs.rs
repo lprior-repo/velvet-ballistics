@@ -22,7 +22,7 @@ fn vbjpq733_unsupported_union_all_combos() {
         pending_actions: kani::any(),
     };
     let u = a.union(b);
-    kani::assert(a.union_matches_flags(b, u, "assertion failed"),
+    kani::assert(a.union_matches_flags(b, u),
         "production union_matches_flags holds",
     );
 }
@@ -42,7 +42,7 @@ fn vbjpq733_unsupported_union_commutative() {
         action_payloads: kani::any(),
         pending_actions: kani::any(),
     };
-    kani::assert(a.union(b, "assertion failed") == b.union(a), "production union is commutative");
+    kani::assert(a.union(b) == b.union(a), "production union is commutative");
 }
 
 #[kani::proof]
@@ -54,7 +54,7 @@ fn vbjpq733_unsupported_union_idempotent() {
         action_payloads: kani::any(),
         pending_actions: kani::any(),
     };
-    kani::assert(a.union(a, "assertion failed") == a, "production union is idempotent");
+    kani::assert(a.union(a) == a, "production union is idempotent");
 }
 
 #[kani::proof]
@@ -66,10 +66,10 @@ fn vbjpq733_unsupported_union_supported_identity() {
         action_payloads: kani::any(),
         pending_actions: kani::any(),
     };
-    kani::assert(a.union(UnsupportedRecoveryState::SUPPORTED, "assertion failed") == a,
+    kani::assert(a.union(UnsupportedRecoveryState::SUPPORTED) == a,
         "SUPPORTED right identity",
     );
-    kani::assert(UnsupportedRecoveryState::SUPPORTED.union(a, "assertion failed") == a,
+    kani::assert(UnsupportedRecoveryState::SUPPORTED.union(a) == a,
         "SUPPORTED left identity",
     );
 }
@@ -79,7 +79,7 @@ fn vbjpq733_unsupported_union_supported_identity() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn vbjpq733_is_fully_supported_supported_constant() {
-    kani::assert(UnsupportedRecoveryState::SUPPORTED.is_fully_supported(, "assertion failed"),
+    kani::assert(UnsupportedRecoveryState::SUPPORTED.is_fully_supported(),
         "production SUPPORTED.is_fully_supported() == true",
     );
 }

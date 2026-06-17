@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // BDD Runner Tests — vb-oewy
 //
 // Tests for the BDD suite runner and evidence artifact contract.
@@ -144,7 +143,6 @@
 //
 // All tests follow Given/When/Then structure.
 // No unsafe code. No unwrap/expect on fallible operations.
-
 #![forbid(unsafe_code)]
 
 // NOTE: These tests are failing-first. They will fail until:

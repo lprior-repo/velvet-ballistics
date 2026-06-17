@@ -134,9 +134,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Behavior tests for vb_compile parsing and validation.
 //!

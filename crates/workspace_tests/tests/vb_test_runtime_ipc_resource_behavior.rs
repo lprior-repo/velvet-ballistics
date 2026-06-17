@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 //! BDD behavior tests for vb_runtime IPC and resource management behavior.

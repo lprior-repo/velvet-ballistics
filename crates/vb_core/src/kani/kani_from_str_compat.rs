@@ -113,7 +113,7 @@ mod harnesses {
             let result = from_str_diagnostic_code(&e_str);
             match result {
                 Ok(parsed) => {
-                    kani::assert(parsed.code(, "assertion failed") == code, "Parsed code must match the registry numeric value");
+                    kani::assert(parsed.code() == code, "Parsed code must match the registry numeric value");
                 }
                 Err(_) => {
                     // If is_supported_code accepts it, from_str must succeed
@@ -239,7 +239,7 @@ mod harnesses {
         for code in unsupported.iter() {
             let e_str = format_e_code(*code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(result != Err(DiagnosticCodeParseError::UnsupportedCode, "assertion failed"), "assertion failed");
+            kani::assert(result != Err(DiagnosticCodeParseError::UnsupportedCode));
         }
     }
 }

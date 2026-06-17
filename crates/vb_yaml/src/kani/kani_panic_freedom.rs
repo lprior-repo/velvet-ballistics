@@ -56,7 +56,7 @@ fn check_parse_yaml_events_panic_free() {
             Ok(events) => {
                 // On success, events must be a valid Vec.
                 // Event count must be bounded (≤ max_nodes from YamlLimits).
-                kani::assert(events.len(, "assertion failed") <= 100_000,
+                kani::assert(events.len() <= 100_000,
                     "event count {} exceeds max_nodes bound",
                     events.len(),
                 );
@@ -107,7 +107,7 @@ fn check_validate_yaml_profile_panic_free() {
             Err(error) => {
                 // Must be a registered symbolic code.
                 let code = error.symbolic_code();
-                kani::assert(code != vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT, "assertion failed");
+                kani::assert(code != vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT);
             }
         }
     }

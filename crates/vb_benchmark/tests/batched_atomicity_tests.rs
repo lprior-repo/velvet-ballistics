@@ -124,7 +124,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! Unit tests for the batched-atomicity coalescing benchmark.
 //!
@@ -191,7 +191,10 @@ impl CountingJournal {
 
 impl RuntimeJournal for CountingJournal {
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
-        *self.append_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
+        *self
+            .append_count
+            .lock()
+            .map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         let mut events = self
             .events
             .lock()
@@ -215,7 +218,10 @@ impl RuntimeJournal for CountingJournal {
         event: RuntimeJournalEvent,
         _seq: EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        *self.append_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
+        *self
+            .append_count
+            .lock()
+            .map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         let mut events = self
             .events
             .lock()
@@ -239,7 +245,10 @@ impl RuntimeJournal for CountingJournal {
         events: &[RuntimeJournalEvent],
         seq_start: EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        *self.batch_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
+        *self
+            .batch_count
+            .lock()
+            .map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         for (offset, event) in events.iter().enumerate() {
             let offset_u64 =
                 u64::try_from(offset).map_err(|_| vb_runtime::RuntimeError::EncodeFailed)?;

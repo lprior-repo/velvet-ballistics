@@ -134,7 +134,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 use std::error::Error;
@@ -188,8 +188,6 @@ fn xtask_version_prints_package_version_when_requested() -> Result<(), Box<dyn E
     assert_eq!(stdout, "xtask 0.1.0\n");
     Ok(())
 }
-
-
 
 fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>> {
     let cargo_target_dir = xtask_target_dir();

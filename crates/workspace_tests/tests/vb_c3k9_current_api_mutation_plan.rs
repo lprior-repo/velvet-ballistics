@@ -133,7 +133,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 use velvet_ballistics_workspace_tests::quality::current_api_mutation_plan::{

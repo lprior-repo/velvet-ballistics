@@ -191,7 +191,7 @@ fn verify_all_variants_registered() {
     // The code must not be the INTERNAL_INVARIANT sentinel.
     kani::assert(code != SymbolicCode::INTERNAL_INVARIANT,
         "YamlError variant {}: symbolic_code must not be INTERNAL_INVARIANT",
-        variant, 'assertion failed');
+        variant, "assertion failed");
 
     // The code name must be non-empty.
     kani::assert(

@@ -54,7 +54,7 @@ fn kani_f64_add_preserves_finiteness() {
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get(, "assertion failed").is_finite(),
+    kani::assert(f.get().is_finite(),
         "eval_add_op of two bounded finite f64s must produce finite f64",
     );
 }
@@ -95,7 +95,7 @@ fn kani_f64_sub_preserves_finiteness() {
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get(, "assertion failed").is_finite(),
+    kani::assert(f.get().is_finite(),
         "eval_sub_op of two bounded finite f64s must produce finite f64",
     );
 }
@@ -140,7 +140,7 @@ fn kani_f64_mul_preserves_finiteness() {
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get(, "assertion failed").is_finite(),
+    kani::assert(f.get().is_finite(),
         "eval_mul_op of two bounded finite f64s must produce finite f64",
     );
 }
@@ -168,7 +168,7 @@ fn kani_f64_neg_preserves_finiteness() {
     let Ok(SlotValue::F64(f)) = result else {
         return;
     };
-    kani::assert(f.get(, "assertion failed").is_finite(),
+    kani::assert(f.get().is_finite(),
         "eval_neg_op of a finite f64 must produce finite f64",
     );
 }

@@ -198,7 +198,7 @@ mod kani_encoding_ps005 {
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             ) {
                 Ok(value) => {
-                    kani::assert(value.len(, "assertion failed") >= RECORD_HEADER_LEN as usize,
+                    kani::assert(value.len() >= RECORD_HEADER_LEN as usize,
                         "event kind {i}: encoded len >= RECORD_HEADER_LEN",
                     );
                 }

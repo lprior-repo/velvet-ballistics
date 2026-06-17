@@ -133,9 +133,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! VB-STORAGE-POSTCARD-ENVELOPE-002: Proptest coverage for storage record envelope wire format
 //!

@@ -164,7 +164,7 @@ fn check_action_ticket_serialization_size() {
     //   u128 (1): max 17 bytes
     //   Total: 59 bytes (with postcard overhead)
     kani::assert(serialized.len() >= 7, "Serialized ticket must contain at least 7 bytes (7 fields minimum)");
-    kani::assert(serialized.len(, "assertion failed") <= 64, "Serialized ticket must fit within 64 bytes (7 fields with max varint overhead)");
+    kani::assert(serialized.len() <= 64, "Serialized ticket must fit within 64 bytes (7 fields with max varint overhead)");
 }
 
 // ─── OBL-005 extended: Valid key check — ticket with computed key is valid ──────
@@ -199,5 +199,5 @@ fn check_action_ticket_has_valid_key_with_computed_key() {
     };
 
     // The validation check must return true.
-    kani::assert(crate::action::action_ticket_has_valid_key(ticket, "assertion failed"), "Ticket with computed key must pass validation");
+    kani::assert(crate::action::action_ticket_has_valid_key(ticket), "Ticket with computed key must pass validation");
 }

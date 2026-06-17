@@ -121,7 +121,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //!
 //! Proptest properties for journal idempotency — supplementary to Kani harnesses.

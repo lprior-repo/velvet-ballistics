@@ -212,7 +212,7 @@ fn verify_replay_deterministic_for_same_input() {
 
     match (result_a, result_b) {
         (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-            kani::assert(a == b, "assertion failed");
+            kani::assert(a == b);
         }
         (Err(_), Err(_)) => {}
         _ => {
@@ -333,7 +333,7 @@ fn kani_replay_skips_terminal_states() {
             state,
             crate::frame::StepState::Failed
                 | crate::frame::StepState::Cancelled
-                | crate::frame::StepState::Skipped, "assertion failed"),
+                | crate::frame::StepState::Skipped),
         "step 1 is in an absorbing terminal state",
     );
 
@@ -369,7 +369,7 @@ fn kani_replay_skips_terminal_states() {
             state_after,
             crate::frame::StepState::Failed
                 | crate::frame::StepState::Cancelled
-                | crate::frame::StepState::Skipped, "assertion failed"),
+                | crate::frame::StepState::Skipped),
         "absorbing terminal state must remain terminal after replay (PO-KANI-012)",
     );
 

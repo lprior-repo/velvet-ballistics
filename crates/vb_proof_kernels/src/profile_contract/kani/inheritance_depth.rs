@@ -7,8 +7,8 @@ use super::*;
 fn inheritance_depth_bounded_and_cycle_free() {
     let ws: WorkspaceProfileSet = kani::any();
 
-    kani::assert(ws.len(, "assertion failed") >= 1, "Workspace must have at least 1 profile");
-    kani::assert(ws.len(, "assertion failed") <= 6, "Workspace bounded to at most 6 profiles");
+    kani::assert(ws.len() >= 1, "Workspace must have at least 1 profile");
+    kani::assert(ws.len() <= 6, "Workspace bounded to at most 6 profiles");
 
     for config in &ws.profiles {
         verify_resolution_result(resolve_inheritance(config, &ws));
@@ -25,7 +25,7 @@ fn verify_resolution_result(result: Result<Vec<(ProfileKey, SettingValue)>, Reso
 }
 
 fn assert_resolved_profile_shape(resolved: &[(ProfileKey, SettingValue)]) {
-    kani::assert(!resolved.is_empty(, "assertion failed"),
+    kani::assert(!resolved.is_empty(),
         "Resolved profile should contain at least explicit settings",
     );
     let mut seen_keys: Vec<ProfileKey> = Vec::new();

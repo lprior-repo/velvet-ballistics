@@ -200,8 +200,8 @@ mod kani_errors_ps003 {
         };
         let msg = format!("{err}");
         // Error message must contain the diagnostic fields
-        kani::assert(msg.contains("5000", "assertion failed"), "error message missing len: {msg}");
-        kani::assert(msg.contains("1000", "assertion failed"), "error message missing max: {msg}");
+        kani::assert(msg.contains("5000"), "error message missing len: {msg}");
+        kani::assert(msg.contains("1000"), "error message missing max: {msg}");
     }
 
     /// C4: QueueFull error message is descriptive.
@@ -209,8 +209,8 @@ mod kani_errors_ps003 {
     fn check_queue_full_error_message() {
         let err = JournalError::QueueFull;
         let msg = format!("{err}");
-        kani::assert(!msg.is_empty(, "assertion failed"), "QueueFull must have error message");
-        kani::assert(msg.contains("full", "assertion failed") || msg.contains("queue"),
+        kani::assert(!msg.is_empty(), "QueueFull must have error message");
+        kani::assert(msg.contains("full") || msg.contains("queue"),
             "QueueFull message should indicate queue fullness: {msg}",
         );
     }

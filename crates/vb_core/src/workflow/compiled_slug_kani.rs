@@ -49,31 +49,31 @@ fn vb_ajc40_slug_decode_smoke_cases() {
     // closure over postcard internals while still asserting public Ok shape.
     match validate_compiled_slugs(
         CompiledSlugs {
-            slugs: Vec::new(, "assertion failed").into_boxed_slice(),
+            slugs: Vec::new().into_boxed_slice(),
             total_yield_cost: 0,
         },
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.is_empty(, "assertion failed"), "assertion failed");
-            kani::assert(admitted.len(, "assertion failed") == 0, "assertion failed");
-            kani::assert(admitted.remaining_budget(, "assertion failed") == 0, "assertion failed");
+            kani::assert(admitted.is_empty());
+            kani::assert(admitted.len() == 0);
+            kani::assert(admitted.remaining_budget() == 0);
         }
         Err(_) => kani::assert(false),
     }
 
     match validate_compiled_slugs(
         CompiledSlugs {
-            slugs: vec![slug(0, 0, "assertion failed")].into_boxed_slice(),
+            slugs: vec![slug(0, 0)].into_boxed_slice(),
             total_yield_cost: 0,
         },
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len(, "assertion failed") == 1, "assertion failed");
+            kani::assert(admitted.len() == 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) =>  == 1, "assertion failed");
+        Err(_) =>  == 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
@@ -111,8 +111,8 @@ fn vb_ajc40_slug_post_decode_semantics() {
         budget,
     ) {
         Ok(remaining_budget) => {
-            kani::assert(len <= MAX_SLUGS_PER_WORKFLOW, "kani harness assertion", "assertion failed");
-            kani::assert(remaining_budget <= budget, "kani harness assertion", "assertion failed");
+            kani::assert(len <= MAX_SLUGS_PER_WORKFLOW, "kani harness assertion");
+            kani::assert(remaining_budget <= budget, "kani harness assertion");
             kani::assert(
                 max_path_depth <= MAX_SLUG_PATH_SEGMENTS,
                 "kani harness assertion",
@@ -142,21 +142,21 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len(, "assertion failed") == 1, "assertion failed");
-            kani::assert(admitted.remaining_budget(, "assertion failed") == 0, "assertion failed");
+            kani::assert(admitted.len() == 1);
+            kani::assert(admitted.remaining_budget() == 0);
         }
         Err(_) => kani::assert(false),
     }
 
     match validate_compiled_slugs(
         CompiledSlugs {
-            slugs: vec![slug(0, 1, "assertion failed")].into_boxed_slice(),
+            slugs: vec![slug(0, 1)].into_boxed_slice(),
             total_yield_cost: 1,
         },
         1,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len(, "assertion failed") == 1, "assertion failed");
+            kani::assert(admitted.len() == 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
@@ -164,7 +164,7 @@ fn vb_ajc40_slug_budget_boundaries() {
 
     match validate_compiled_slugs(
         CompiledSlugs {
-            slugs: vec![slug(0, 1, "assertion failed")].into_boxed_slice(),
+            slugs: vec![slug(0, 1)].into_boxed_slice(),
             total_yield_cost: 1,
         },
         0,
@@ -176,10 +176,10 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Err(SlugParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert(total == 1, "assertion failed", "assertion failed");
+            kani::assert(total == 1);
             assert_eq!(max, 0);
         }
-        _ => total == 1, "assertion failed", "assertion failed");
+        _ => total == 1);
             assert_eq!(max, 0);
         }
         _ => kani::assert(false),
@@ -197,13 +197,13 @@ fn vb_ajc40_slug_path_depth_16_17() {
         },
         0,
     ) {
-        Ok(admitted) => kani::assert(admitted.len(, "assertion failed") == 1, "assertion failed"),
+        Ok(admitted) => kani::assert(admitted.len() == 1),
         Err(_) => kani::assert(false),
     }
 
     match validate_compiled_slugs(
         CompiledSlugs {
-            slugs: vec![slug(MAX_SLUG_PATH_SEGMENTS + 1, 0, "assertion failed")].into_boxed_slice(),
+            slugs: vec![slug(MAX_SLUG_PATH_SEGMENTS + 1, 0)].into_boxed_slice(),
             total_yield_cost: 0,
         },
         0,
@@ -224,7 +224,7 @@ fn vb_ajc40_slug_path_depth_16_17() {
 #[kani::unwind(4)]
 fn vb_ajc40_slug_count_65535_65536() {
     kani::assert(
-        validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW, "assertion failed").is_ok(),
+        validate_compiled_slug_count(MAX_SLUGS_PER_WORKFLOW).is_ok(),
         "kani harness assertion",
     );
 
@@ -236,9 +236,9 @@ fn vb_ajc40_slug_count_65535_65536() {
 
     match validate_compiled_slug_count(SLUG_COUNT_OVER_LIMIT) {
         Err(SlugParseError::TooManySlugs { count, max }) => {
-            kani::assert(count == SLUG_COUNT_OVER_LIMIT, "assertion failed", "assertion failed");
-            count == SLUG_COUNT_OVER_LIMIT, "assertion failed", "assertion failed");
-            kani::assert(max == MAX_SLUGS_PER_WORKFLOW, "assertion failed", "assertion failed");
+            kani::assert(count == SLUG_COUNT_OVER_LIMIT);
+            count == SLUG_COUNT_OVER_LIMIT);
+            kani::assert(max == MAX_SLUGS_PER_WORKFLOW);
         }
         _ => assert!(false),
     }

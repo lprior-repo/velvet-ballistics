@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 #![forbid(unsafe_code)]
 //! Resource contract validation tests (Behaviors E1–E11).

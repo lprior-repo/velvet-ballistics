@@ -103,29 +103,29 @@ mod harnesses {
             let e: ValidationError = ValidationError::DuplicateKey;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "DUPLICATE_KEY must be registered");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "DUPLICATE_KEY must be registered");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ForbiddenYamlFeature;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::UnknownTopLevelField;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::UnknownStepField;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::MissingRequiredField {
@@ -133,8 +133,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidVersion {
@@ -142,43 +142,43 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidId { id: String::new() };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ReservedId { id: String::new() };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::DuplicateId { id: String::new() };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::MultipleStepPrimitives;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::MissingStepPrimitive;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::UnknownReference {
@@ -186,8 +186,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::FutureReference {
@@ -195,8 +195,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::SecretNotDeclared {
@@ -204,15 +204,15 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::DirectRuntimeReference;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ScopeGuardViolation {
@@ -221,8 +221,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::DirectLoopReference {
@@ -230,8 +230,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::DirectStepReference {
@@ -239,8 +239,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::StepSkippedReference {
@@ -249,8 +249,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ResultReferenceMissing {
@@ -276,15 +276,15 @@ mod harnesses {
             let e: ValidationError = ValidationError::InvalidThenTarget;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ControlFlowCycle;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::UnreachableStep {
@@ -292,92 +292,92 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidChoose;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidForEach;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidTogether;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidCollect;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidReduce;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidRepeat;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidWait;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidAsk;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidFinish;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidRetry;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidOnError;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::SecretResultLeak;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::TypeMismatch {
@@ -386,15 +386,15 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::PayloadTooLarge;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::LimitRequired {
@@ -402,8 +402,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::LimitExceeded {
@@ -411,8 +411,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::UnsupportedTrigger {
@@ -420,15 +420,15 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::HttpTriggerOutOfCore;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ExpressionStackExceeded {
@@ -437,8 +437,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ExpressionStackMismatch {
@@ -448,8 +448,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::AccessorSlotOutOfRange {
@@ -459,8 +459,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::AccessorPathInvalid {
@@ -469,8 +469,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::AccessorPathTooDeep {
@@ -480,8 +480,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::AccessorSymbolOutOfBounds {
@@ -492,8 +492,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::SlotReferenceOutOfRange {
@@ -503,8 +503,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::LoopBodyStepOutOfRange {
@@ -515,8 +515,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::SlotDependencyCycle {
@@ -525,8 +525,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::NodeKindConstraintViolation {
@@ -535,8 +535,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ActionContractMissing {
@@ -545,15 +545,15 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::ActionContractOrphan { action_id: 0usize };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::CapabilityNameEmpty {
@@ -562,8 +562,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::CapabilityNameTooLong {
@@ -574,8 +574,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::CapabilityNameInvalid {
@@ -585,8 +585,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::CapabilityActionMismatch {
@@ -596,8 +596,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::CapabilityDuplicate {
@@ -608,15 +608,15 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::SlotTypeInconsistency { slot: 0usize };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::NonDeterministicPath {
@@ -625,15 +625,15 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::MissingSchemaVersion;
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::CueVetFailed {
@@ -641,8 +641,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
         let _ = {
             let e: ValidationError = ValidationError::VersionMonotonicityBreach {
@@ -652,8 +652,8 @@ mod harnesses {
             };
             let code = e.code();
             let name = code.as_str();
-            kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
-            kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+            kani::assert(is_registered(name), "kani harness assertion");
+            kani::assert(!name.is_empty(), "kani harness assertion");
         };
     }
 }

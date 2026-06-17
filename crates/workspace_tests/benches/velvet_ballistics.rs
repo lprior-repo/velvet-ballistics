@@ -148,7 +148,7 @@
     let_underscore_drop,
     missing_docs,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 use bytes::Bytes;

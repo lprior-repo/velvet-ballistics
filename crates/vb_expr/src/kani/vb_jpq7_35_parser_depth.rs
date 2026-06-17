@@ -55,7 +55,7 @@ fn check_parse_accepts_max_depth() {
             // Any typed error is acceptable (except panics)
             // Could be UnexpectedToken if parens are unbalanced due to 0-arg functions, etc.
             // Key property: NOT ParseDepthExceeded at depth 64
-            kani::assert(!matches!(e, ExprError::ParseDepthExceeded { .. }, "assertion failed"),
+            kani::assert(!matches!(e, ExprError::ParseDepthExceeded { .. }),
                 "depth 64 must not trigger ParseDepthExceeded",
             );
         }
@@ -73,7 +73,7 @@ fn check_parse_rejects_depth_exceeded() {
 
     match result {
         Err(e) => {
-            kani::assert(matches!(e, ExprError::ParseDepthExceeded { .. }, "assertion failed"),
+            kani::assert(matches!(e, ExprError::ParseDepthExceeded { .. }),
                 "depth 65 must return ParseDepthExceeded",
             );
         }
@@ -151,7 +151,7 @@ fn check_parse_shallow_always_succeeds() {
     match result {
         Ok(_) => {} // Success
         Err(e) => {
-            kani::assert(!matches!(e, ExprError::ParseDepthExceeded { .. }, "assertion failed"),
+            kani::assert(!matches!(e, ExprError::ParseDepthExceeded { .. }),
                 "shallow depth must not trigger ParseDepthExceeded",
             );
         }

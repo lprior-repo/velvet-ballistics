@@ -121,7 +121,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};

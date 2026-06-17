@@ -70,8 +70,8 @@ fn yaml_e2e_admission_matrix() {
 
     let outcome = strict_admission(model);
     if strict_predicate(model) {
-        kani::assert(matches!(outcome, AdmissionOutcome::Admitted, "assertion failed"));
+        kani::assert(matches!(outcome, AdmissionOutcome::Admitted));
     } else {
-        kani::assert(matches!(outcome, AdmissionOutcome::Rejected(_), "assertion failed"));
+        kani::assert(matches!(outcome, AdmissionOutcome::Rejected(_)));
     }
 }

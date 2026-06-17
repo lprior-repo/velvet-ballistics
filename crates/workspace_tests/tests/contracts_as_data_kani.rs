@@ -779,8 +779,8 @@ fn kani_gate_evidence_parity() {
     }
 
     // Postcondition: kind and gate_name are always correct
-    kani::assert(evidence.kind == "contract-discovery", "assertion failed");
-    kani::assert(evidence.gate_name == "contracts", "assertion failed");
+    kani::assert(evidence.kind == "contract-discovery");
+    kani::assert(evidence.gate_name == "contracts");
 
     // Postcondition: total == valid + invalid (invariant)
     kani::assert(
@@ -809,7 +809,7 @@ fn kani_gate_evidence_empty() {
         match result {
             Ok(evidence) => {
                 kani::assert(matches!(evidence.status, GateStatus::Pass));
-                kani::assert(evidence.exit_code == 0, "assertion failed");
+                kani::assert(evidence.exit_code == 0);
                 kani::assert(evidence.why_failed.is_none(), "kani harness assertion");
             }
             Err(e) => {
@@ -837,7 +837,7 @@ fn kani_gate_evidence_all_invalid() {
     match result {
         Ok(evidence) => {
             kani::assert(matches!(evidence.status, GateStatus::Fail));
-            kani::assert(evidence.exit_code == 1, "assertion failed");
+            kani::assert(evidence.exit_code == 1);
             kani::assert(evidence.why_failed.is_some(), "kani harness assertion");
         }
         Err(e) => {

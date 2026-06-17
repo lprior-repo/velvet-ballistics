@@ -127,7 +127,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! PS-008: Capacity Bounds — behavior tests (H1-H3).
 //!

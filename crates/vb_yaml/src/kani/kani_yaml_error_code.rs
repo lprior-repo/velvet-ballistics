@@ -229,7 +229,7 @@ fn kani_yaml_error_code_registered() {
     // the production `HasSymbolicCode` impl.
     kani::assert(code != SymbolicCode::INTERNAL_INVARIANT,
         "YamlError variant {}: symbolic_code must not be INTERNAL_INVARIANT",
-        variant, 'assertion failed');
+        variant, "assertion failed");
 
     // The code name must be non-empty.
     kani::assert(

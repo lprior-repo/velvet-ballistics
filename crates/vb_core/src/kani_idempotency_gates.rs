@@ -231,7 +231,7 @@ fn verify_idempotency_missing_key_symbolic_contract_no_frame_write() {
         matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "symbolic missing key covered"
     );
-    kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_)), "assertion failed"),
+    kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "symbolic KeyRequired side-effecting contract with empty key returns MissingKey",
     );
 }
@@ -248,7 +248,7 @@ fn verify_idempotency_symbolic_key_taints_are_classified() {
         0 => {
             let result = verify_idempotency(&contract, &[], &frame);
             kani::cover!(result.is_err(), "missing key failure covered");
-            kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_)), "assertion failed"),
+            kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_))),
                 "empty KeyRequired key set returns MissingKey",
             );
         }
@@ -848,7 +848,7 @@ fn kani_verify_idempotency_missing_key() {
     );
     kani::assert(matches!(
             result_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite)), "assertion failed"),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))),
         "KeyRequired empty returns MissingKey(Writes)",
     );
 
@@ -864,7 +864,7 @@ fn kani_verify_idempotency_missing_key() {
     );
     kani::assert(matches!(
             result_unsafe_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite)), "assertion failed"),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))),
         "Unsafe returns MissingKey even with empty key_slots",
     );
 
@@ -878,7 +878,7 @@ fn kani_verify_idempotency_missing_key() {
     );
     kani::assert(matches!(
             result_unsafe_with_key,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite)), "assertion failed"),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))),
         "Unsafe with keys still returns MissingKey",
     );
 

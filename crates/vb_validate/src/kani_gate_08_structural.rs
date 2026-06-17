@@ -195,7 +195,7 @@ fn kani_gate_08_arbitrary_parts_root_oob_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. }), "assertion failed"),
+    kani::assert(matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
         "arbitrary parts with out-of-range root is rejected",
     );
     std::mem::forget(parts);
@@ -232,7 +232,7 @@ fn kani_gate_08_arbitrary_parts_symbol_oob_rejected() {
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(matches!(
             result,
-            Err(ValidationError::AccessorSymbolOutOfBounds { .. }), "assertion failed"),
+            Err(ValidationError::AccessorSymbolOutOfBounds { .. })),
         "arbitrary parts with OOB field symbol is rejected",
     );
     std::mem::forget(parts);
@@ -245,7 +245,7 @@ fn kani_gate_08_arbitrary_parts_index_sentinel_rejected() {
     let parts = bounded_parts_with_index_sentinel();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(matches!(result, Err(ValidationError::AccessorPathInvalid { .. }), "assertion failed"),
+    kani::assert(matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
         "parts with u32::MAX index sentinel is rejected",
     );
     std::mem::forget(parts);

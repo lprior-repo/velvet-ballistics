@@ -127,7 +127,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! Integration tests for vb-jggy: Persist execution attempt numbers and reject stale completions.
 //!
