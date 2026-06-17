@@ -51,23 +51,24 @@ fn fuzz_choose_lowering(
 
     let mut builder = SlotCompiler::new();
     // lower_choose must never panic and must return a typed Result.
-    // On success, the builder must contain valid lowering state.
+    // On success, returns a CompiledNode; on error, returns a CompileError.
     let result = lower_choose(StepIdx::new(0), branches, otherwise, &mut builder);
     match result {
-        Ok(_) => {
-            // Successful lowering - verify builder state is consistent
-            // The builder must have processed all branches
+        Ok(node) => {
+            // Successful lowering - the node must be a ChooseSlot kind
+            // with valid branch references.
             assert!(
-                builder.branches().len() <= 128,
-                "builder branch count must be bounded"
+                matches!(node.kind, vb_core::CompiledNodeKind::ChooseSlot { .. }),
+                "lower_choose must produce a ChooseSlot node"
             );
         }
         Err(e) => {
-            // Lowering errors are expected for invalid inputs.
+            // Lowering errors are expected for invalid inputs (e.g. >64 branches).
             // Verify the error is typed (not a panic).
             let _ = e;
         }
     }
+}
 
 fuzz_target!(|data: (u8, Vec<u16>, Vec<u16>, Option<u16>)| {
     let (branch_count, conditions, targets, otherwise_val) = data;

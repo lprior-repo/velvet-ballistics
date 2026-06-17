@@ -65,7 +65,7 @@ proptest! {
         };
         for event in &events {
             let append = journal1.append_strict(event);
-            prop_assert!(append.is_ok(), "journal one append failed: {append:?}");
+            prop_assert!(matches!(append, Ok(())), "journal one append must succeed with Ok(()), got {append:?}");
         }
         let summary1 = recover_runtime_summary(&journal1, run);
 
@@ -79,7 +79,7 @@ proptest! {
         };
         for event in &events {
             let append = journal2.append_strict(event);
-            prop_assert!(append.is_ok(), "journal two append failed: {append:?}");
+            prop_assert!(matches!(append, Ok(())), "journal two append must succeed with Ok(()), got {append:?}");
         }
         let summary2 = recover_runtime_summary(&journal2, run);
 

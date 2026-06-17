@@ -176,7 +176,7 @@ proptest! {
             } else {
                 let result = insert_by_type(&mut store, typ);
                 prop_assert!(
-                    result.is_ok(),
+                    matches!(result, Ok(_)),
                     "insert below cap must succeed, got {:?}",
                     result
                 );
@@ -196,7 +196,11 @@ proptest! {
         for i in 0..count {
             let label = format!("s{i}");
             let result = store.insert_symbol(label);
-            prop_assert!(result.is_ok(), "uncapped store must accept insert {i}");
+            prop_assert!(
+                matches!(result, Ok(_)),
+                "uncapped store must accept insert {i}, got {:?}",
+                result
+            );
         }
         prop_assert_eq!(
             store.total_arena_count(),
@@ -225,19 +229,19 @@ proptest! {
 
         for _ in 0..n_symbols {
             let r = store.insert_symbol("x");
-            prop_assert!(r.is_ok(), "symbol insert within cap must succeed");
+            prop_assert!(matches!(r, Ok(_)), "symbol insert within cap must succeed, got {:?}", r);
         }
         for _ in 0..n_lists {
             let r = store.insert_list(vec![].into_boxed_slice());
-            prop_assert!(r.is_ok(), "list insert within cap must succeed");
+            prop_assert!(matches!(r, Ok(_)), "list insert within cap must succeed, got {:?}", r);
         }
         for _ in 0..n_objects {
             let r = store.insert_object(vec![].into_boxed_slice());
-            prop_assert!(r.is_ok(), "object insert within cap must succeed");
+            prop_assert!(matches!(r, Ok(_)), "object insert within cap must succeed, got {:?}", r);
         }
         for _ in 0..n_blobs {
             let r = store.insert_blob(bytes::Bytes::new());
-            prop_assert!(r.is_ok(), "blob insert within cap must succeed");
+            prop_assert!(matches!(r, Ok(_)), "blob insert within cap must succeed, got {:?}", r);
         }
 
         prop_assert_eq!(store.total_arena_count(), total);

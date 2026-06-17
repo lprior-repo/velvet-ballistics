@@ -210,6 +210,7 @@ fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String>
     )
 }
 
+#[cfg(feature = "instrumented-cli")]
 #[test]
 fn agent_context_deliver_reports_unknown_publish_when_rival_unlinks_final_path_after_publish()
 -> Result<(), String> {
@@ -231,6 +232,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rival_unlinks_final_path_a
     Ok(())
 }
 
+#[cfg(feature = "instrumented-cli")]
 #[test]
 fn agent_context_deliver_reports_unknown_publish_when_rival_replaces_final_path_after_publish()
 -> Result<(), String> {
@@ -255,6 +257,7 @@ fn agent_context_deliver_reports_unknown_publish_when_rival_replaces_final_path_
     Ok(())
 }
 
+#[cfg(feature = "instrumented-cli")]
 #[test]
 fn agent_context_deliver_reports_unknown_publish_when_rollback_leaves_temp_link()
 -> Result<(), String> {

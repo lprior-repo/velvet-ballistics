@@ -397,11 +397,19 @@ mod proptests {
             ]
         ) {
             let bytes = postcard::to_allocvec(&val);
-            prop_assert!(bytes.is_ok(), "postcard serialization should succeed");
-            let bytes = bytes.unwrap();
+            prop_assert!(
+                matches!(bytes, Ok(_)),
+                "postcard serialization should succeed, got {:?}",
+                bytes
+            );
+            let bytes = bytes.expect("matches! above guarantees Ok");
             let recovered: Result<SlotValue, _> = postcard::from_bytes(&bytes);
-            prop_assert!(recovered.is_ok(), "postcard deserialization should succeed");
-            let recovered = recovered.unwrap();
+            prop_assert!(
+                matches!(recovered, Ok(_)),
+                "postcard deserialization should succeed, got {:?}",
+                recovered
+            );
+            let recovered = recovered.expect("matches! above guarantees Ok");
             prop_assert_eq!(val, recovered);
         }
     }

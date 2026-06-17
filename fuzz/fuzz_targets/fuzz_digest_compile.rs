@@ -23,7 +23,23 @@ fuzz_target!(|data: &[u8]| {
         // The digest is computed by canonical_digest() at the start of
         // compile_source() (part_01.rs:46) — before the lowering loop.
         // This exercises the full digest computation path.
-        let _ = compile_source(&source);
+        let result = compile_source(&source);
+        match result {
+            Ok(workflow) => {
+                // Compiled workflow must have at least one node
+                assert!(
+                    workflow.node_count() >= 1,
+                    "compiled workflow must have at least 1 node"
+                );
+            }
+            Err(errors) => {
+                // Compilation errors are expected for some inputs.
+                assert!(
+                    !errors.is_empty(),
+                    "compile errors must contain at least one error"
+                );
+            }
+        }
     }
 });
 

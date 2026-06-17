@@ -45,33 +45,37 @@ proptest! {
     fn body_nodes_have_next_pointer(body_counts in body_counts_strategy()) {
         let yaml = make_choose_yaml(&body_counts);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        prop_assert!(result.is_ok(), "compile_workflow failed: {:?}", result.err());
 
-        if let Ok(workflow) = result {
-            let nc = workflow.node_count();
-            let mut found_choose = false;
-            for i in 0..nc {
-                let node = workflow.node(StepIdx::new(i));
-                if let Some(n) = node
-                    && matches!(n.kind, CompiledNodeKind::ChooseSlot { .. })
-                {
-                    found_choose = true;
-                    let next_i = i.checked_add(1).expect("i < nc so i+1 fits in usize");
-                    for j in next_i..nc {
-                        if let Some(bn) = workflow.node(StepIdx::new(j)) {
-                            match &bn.kind {
-                                CompiledNodeKind::Finish { .. } => break,
-                                _ => {
-                                    prop_assert!(bn.next.is_some(),
-                                        "body node {} must have next pointer", j);
-                                }
+        // Valid YAML → Ok; iterate nodes to verify body chain integrity.
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "choose yaml must compile Ok, got {:?}",
+            result
+        );
+        let workflow = result.expect("matches! above guarantees Ok");
+        let nc = workflow.node_count();
+        let mut found_choose = false;
+        for i in 0..nc {
+            let node = workflow.node(StepIdx::new(i));
+            if let Some(n) = node
+                && matches!(n.kind, CompiledNodeKind::ChooseSlot { .. })
+            {
+                found_choose = true;
+                let next_i = i.checked_add(1).expect("i < nc so i+1 fits in usize");
+                for j in next_i..nc {
+                    if let Some(bn) = workflow.node(StepIdx::new(j)) {
+                        match &bn.kind {
+                            CompiledNodeKind::Finish { .. } => break,
+                            _ => {
+                                prop_assert!(bn.next.is_some(),
+                                    "body node {} must have next pointer", j);
                             }
                         }
                     }
-                    break;
                 }
+                break;
             }
-            prop_assert!(found_choose, "must find ChooseSlot node");
         }
+        prop_assert!(found_choose, "must find ChooseSlot node");
     }
 }

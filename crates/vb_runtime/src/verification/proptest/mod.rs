@@ -46,7 +46,7 @@ mod proptest_idempotency {
             let mut tracker = IdempotencyTracker::with_default_capacity();
 
             let first = tracker.mark_completed(&ticket);
-            assert!(first.is_ok(), "first completion must succeed");
+            assert_eq!(first, Ok(()), "first completion must succeed with Ok(()), got {:?}", first);
 
             let second = tracker.mark_completed(&ticket);
             assert_eq!(
@@ -200,7 +200,7 @@ mod proptest_idempotency {
             assert!(!tracker.is_completed(evicted), "first ticket should be evicted");
 
             let reinsert = tracker.mark_completed(evicted);
-            assert!(reinsert.is_ok(), "re-insertion of evicted key must succeed");
+            assert_eq!(reinsert, Ok(()), "re-insertion of evicted key must succeed with Ok(()), got {:?}", reinsert);
             assert!(
                 tracker.is_completed(evicted),
                 "re-inserted key must be queryable"
@@ -240,7 +240,7 @@ mod proptest_idempotency {
             let mut tracker = IdempotencyTracker::with_default_capacity();
 
             let first = tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key);
-            assert!(first.is_ok(), "first mark must succeed");
+            assert_eq!(first, Ok(()), "first mark must succeed with Ok(()), got {:?}", first);
 
             let second = tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key);
             assert_eq!(
@@ -285,8 +285,8 @@ mod proptest_idempotency {
                 ..ActionTicket::default()
             };
 
-            assert!(tracker.mark_completed(&ticket_a).is_ok());
-            assert!(tracker.mark_completed(&ticket_b).is_ok());
+            assert_eq!(tracker.mark_completed(&ticket_a), Ok(()), "ticket_a completion must succeed");
+            assert_eq!(tracker.mark_completed(&ticket_b), Ok(()), "ticket_b completion must succeed");
 
             assert!(tracker.is_completed(&ticket_a));
             assert!(tracker.is_completed(&ticket_b));

@@ -3,12 +3,6 @@
 use libfuzzer_sys::fuzz_target;
 use vb_core::WorkflowDigest;
 
-/// Fuzz target for canonical digest computation.
-///
-/// Feeds arbitrary bytes through digest computation and verifies:
-/// - Digest is never empty (always produces a hash)
-/// - Same input always produces same digest (determinism)
-/// - Different input produces different digest (sensitivity)
 fuzz_target!(|data: &[u8]| {
     // Compute canonical digest from input bytes
     let digest1 = compute_digest(data);
@@ -41,7 +35,6 @@ fuzz_target!(|data: &[u8]| {
 fn compute_digest(data: &[u8]) -> WorkflowDigest {
     // Use blake3 to compute a digest — the canonical digest path
     // should always produce a non-zero hash for any input.
-    use blake3::Hasher;
-    let hash = Hasher::hash(data);
+    let hash = blake3::hash(data);
     WorkflowDigest::from_bytes(hash.into())
 }

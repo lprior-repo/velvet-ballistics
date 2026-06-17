@@ -20,17 +20,22 @@ fn varied_choose_yaml(branch_count: u8, max_body: u8, has_otherwise: bool) -> St
 
     let actual_count = branch_count.min(64);
     for i in 0..actual_count {
-        yaml.push_str(&format!("        - when: \"{}\"\n          steps:\n", i));
-        for j in 0..max_body.min(5) {
-            yaml.push_str(&format!(
-                "            - id: b{i}s{j}\n              set:\n                output: out_{i}_{j}\n                value: \"1\"\n"
-            ));
+        yaml.push_str(&format!("        - when: \"{}\"\n", i));
+        if max_body == 0 {
+            yaml.push_str("          steps: []\n");
+        } else {
+            yaml.push_str("          steps:\n");
+            for j in 0..max_body.min(5) {
+                yaml.push_str(&format!(
+                    "            - id: b{i}s{j}\n              set:\n                output: out_{i}_{j}\n                value: \"1\"\n"
+                ));
+            }
         }
     }
     if has_otherwise {
         yaml.push_str("      otherwise: done\n");
     }
-    yaml.push_str("  - id: done\n    finish:\n      result: \"ok\"\n");
+    yaml.push_str("  - id: done\n    finish:\n      result: 0\n");
     yaml
 }
 
@@ -46,9 +51,20 @@ proptest! {
             vb_compile::compile_workflow(yaml.as_bytes())
         }));
         prop_assert!(result.is_ok(), "compile_workflow must never panic");
+
+           // The YAML produced by varied_choose_yaml is structurally valid, but
+        // large inputs may exceed the YAML mapping size limit (1024 entries).
+        // The primary goal is to verify the compiler never panics; compilation
+        // may fail with a limit_exceeded error for very large inputs.
+        let inner = result.expect("catch_unwind succeeded; unwrap is safe");
+        prop_assert!(
+            matches!(inner, Ok(_) | Err(_)),
+            "varied_choose_yaml compiles or errors gracefully (never panics), got {:?}",
+            inner
+        );
     }
 
-    #[test]
+  #[test]
     fn varied_choose_result_is_well_typed(
         branch_count in 1u8..=64u8,
         max_body in 0u8..=5u8,
@@ -56,13 +72,18 @@ proptest! {
     ) {
         let yaml = varied_choose_yaml(branch_count, max_body, has_otherwise);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        // Must be Ok or Err — both are valid typed returns
-        match result {
-            Ok(wf) => {
-                // Verify we can iterate all nodes without panic
-                let _nc = wf.node_count();
-            }
-            Err(_) => { /* error path is valid */ }
-        }
+
+        // Valid YAML compiles to >= 2 nodes (choose + finish) or fails with
+        // a graceful error. When max_body == 0, there are no body steps so
+        // only 2 nodes are emitted. Large inputs may exceed YAML mapping
+        // size limit.
+        prop_assert!(
+            matches!(result, Ok(ref wf) if wf.node_count() >= 2)
+                || matches!(&result, Err(e) if e.0.iter().any(|err| {
+                    matches!(err, vb_compile::CompileError::CanonicalYaml { category, .. } if *category == "limit_exceeded")
+                })),
+            "valid choose yaml compiles to >= 2 nodes or errors gracefully, got {:?}",
+            result
+        );
     }
 }

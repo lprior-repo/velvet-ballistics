@@ -85,10 +85,12 @@ proptest! {
 
         let result = emit_single_body_set(&body, id, slot, None, &mut builder, false);
 
-        // Valid Set body should succeed
-        prop_assert!(result.is_ok(), "valid Set body should succeed");
-
-        // Exactly one node should be emitted
+        // Valid Set body should succeed and produce exactly one node.
+        prop_assert!(
+            matches!(result, Ok(())),
+            "valid Set body should succeed, got {:?}",
+            result
+        );
         prop_assert_eq!(builder.node_count(), 1, "exactly 1 node for single-Set body");
     }
 
@@ -102,8 +104,12 @@ proptest! {
 
         let result = emit_single_body_set(&empty_body, id, slot, None, &mut builder, false);
 
-        // Empty body should return error, not panic
-        prop_assert!(result.is_err(), "empty body should return error");
+        // Empty body should return error (StepFieldShape) and emit no nodes.
+        prop_assert!(
+            matches!(result, Err(_)),
+            "empty body must return error, got {:?}",
+            result
+        );
 
         // No nodes should be emitted for empty body
         prop_assert_eq!(builder.node_count(), 0, "no nodes for empty body");
@@ -126,9 +132,15 @@ proptest! {
             &mut builder,
         );
 
-        // If source parses correctly, should succeed with 4 nodes
+        // Valid source yields 4 nodes; invalid source returns an error.
         if result.is_ok() {
             prop_assert_eq!(builder.node_count(), 4, "exactly 4 nodes for valid collect");
+        } else {
+            prop_assert!(
+                matches!(result, Err(_)),
+                "invalid collect source should return error, got {:?}",
+                result
+            );
         }
     }
 }
@@ -156,8 +168,12 @@ proptest! {
             &mut builder,
         );
 
-        if result.is_ok() {
-            let nodes = builder.into_nodes();
+        prop_assert!(
+            matches!(result, Ok(())),
+            "lower_canonical_collect must return Ok(()) on valid input, got {:?}",
+            result
+        );
+        let nodes = builder.into_nodes();
             prop_assert_eq!(nodes.len(), 4, "exactly 4 nodes emitted");
 
             // Check node IDs: id, id+1, id+2, id+3

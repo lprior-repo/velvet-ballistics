@@ -1480,9 +1480,12 @@ mod proptest_reentry {
             }
 
             let result = jump_to_body(&mut run, body);
-            prop_assert!(result.is_ok(), "jump_to_body must never error; state={state:?}, err={:?}", result.err());
-
-            let signal = result.unwrap();
+            prop_assert!(
+                matches!(result, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "jump_to_body must return Ok(Continue); state={state:?}, got {:?}",
+                result
+            );
+            let signal = result.expect("matches! above ensures Ok");
             prop_assert_eq!(signal, vb_core::EngineSignal::Continue);
 
             // PC must be at body
@@ -1527,7 +1530,11 @@ mod proptest_reentry {
                 done,
                 Some(iterator_slot),
             );
-            prop_assert!(start.is_ok(), "for_each_start must succeed");
+            prop_assert!(
+                matches!(start, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "for_each_start must return Ok(Continue), got {:?}",
+                start
+            );
 
             if items.is_empty() {
                 // Empty list: should jump directly to done
@@ -1560,7 +1567,11 @@ mod proptest_reentry {
                         done,
                         Some(item_slot),
                     );
-                    prop_assert!(next.is_ok(), "for_each_next[{i}] must succeed");
+                    prop_assert!(
+                        matches!(next, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                        "for_each_next[{i}] must return Ok(Continue), got {:?}",
+                        next
+                    );
                     let pc = run.pc();
                     prop_assert!(pc == body, "PC must be body for item {next_idx}, got {pc:?}",
                         next_idx = i + 1);
@@ -1580,7 +1591,11 @@ mod proptest_reentry {
                         done,
                         Some(item_slot),
                     );
-                    prop_assert!(next.is_ok(), "final for_each_next must succeed");
+                    prop_assert!(
+                        matches!(next, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                        "final for_each_next must return Ok(Continue), got {:?}",
+                        next
+                    );
                     prop_assert_eq!(run.pc(), done, "PC must be done after last item");
                 }
             }
@@ -1619,7 +1634,11 @@ mod proptest_reentry {
                 done,
                 Some(iterator_slot),
             );
-            prop_assert!(start.is_ok(), "reduce_start must succeed");
+            prop_assert!(
+                matches!(start, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "reduce_start must return Ok(Continue), got {:?}",
+                start
+            );
 
             if items.is_empty() {
                 // Empty list: should jump directly to done
@@ -1649,7 +1668,11 @@ mod proptest_reentry {
                         done,
                         Some(SlotIdx::new(4)),
                     );
-                    prop_assert!(next.is_ok(), "reduce_next[{i}] must succeed");
+                    prop_assert!(
+                        matches!(next, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                        "reduce_next[{i}] must return Ok(Continue), got {:?}",
+                        next
+                    );
                     prop_assert_eq!(run.pc(), body, "PC must be body for item {}", i + 1);
                 } else {
                     // Last item — reduce_next routes to done
@@ -1662,7 +1685,11 @@ mod proptest_reentry {
                         done,
                         Some(SlotIdx::new(4)),
                     );
-                    prop_assert!(next.is_ok(), "final reduce_next must succeed");
+                    prop_assert!(
+                        matches!(next, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                        "final reduce_next must return Ok(Continue), got {:?}",
+                        next
+                    );
                     prop_assert_eq!(run.pc(), done, "PC must be done after last item");
                 }
             }
@@ -1702,7 +1729,11 @@ mod proptest_reentry {
                 Some(collector_slot),
                 None,
             );
-            prop_assert!(start.is_ok(), "collect_start must succeed");
+            prop_assert!(
+                matches!(start, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "collect_start must return Ok(Continue), got {:?}",
+                start
+            );
 
             if items.is_empty() {
                 prop_assert_eq!(run.pc(), done, "empty list should route to done");
@@ -1738,8 +1769,11 @@ mod proptest_reentry {
                         body,
                         done,
                     );
-                    prop_assert!(next.is_ok(),
-                        "collect_next page {} must succeed (total: {total_pages})", page_num + 1);
+                    prop_assert!(
+                        matches!(next, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                        "collect_next page {} must return Ok(Continue) (total: {}), got {:?}",
+                        page_num + 1, total_pages, next
+                    );
                     let pc = run.pc();
                     prop_assert!(pc == body,
                         "PC must be body for page {next_page} (got {pc:?})", next_page = page_num + 1);
@@ -1753,8 +1787,11 @@ mod proptest_reentry {
                         body,
                         done,
                     );
-                    prop_assert!(next.is_ok(),
-                        "final collect_next must succeed (page {total_pages})");
+                    prop_assert!(
+                        matches!(next, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                        "final collect_next must return Ok(Continue) (page {total_pages}), got {:?}",
+                        next
+                    );
                     prop_assert_eq!(run.pc(), done,
                         "PC must be done after last page");
                 }
@@ -1777,7 +1814,11 @@ mod proptest_reentry {
             let done = StepIdx::new(2);
 
             let start = repeat_start(&mut run, max_attempts, body, done, Some(attempt_slot));
-            prop_assert!(start.is_ok(), "repeat_start must succeed");
+            prop_assert!(
+                matches!(start, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "repeat_start must return Ok(Continue), got {:?}",
+                start
+            );
             prop_assert_eq!(run.pc(), body);
 
             let body_step = StepIdx::new(1);
@@ -1798,8 +1839,11 @@ mod proptest_reentry {
                     Some(body), // next=body (where to go if more attempts)
                     StepIdx::ZERO,
                 );
-                prop_assert!(rc.is_ok(),
-                    "repeat_check attempt {} must succeed (max={max_attempts})", attempt_num);
+                prop_assert!(
+                    matches!(rc, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                    "repeat_check attempt {} must return Ok(Continue) (max={max_attempts}), got {:?}",
+                    attempt_num, rc
+                );
 
                 if attempt_num + 1 < max_attempts {
                     // More attempts remain — repeat_check routes back to body
@@ -1850,7 +1894,11 @@ mod proptest_reentry {
                 done,
                 Some(output_slot),
             );
-            prop_assert!(fs.is_ok(), "for_each_start must succeed");
+            prop_assert!(
+                matches!(fs, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "for_each_start must return Ok(Continue), got {:?}",
+                fs
+            );
 
             let body_step = StepIdx::new(1);
 
@@ -1911,8 +1959,11 @@ mod proptest_reentry {
             run.mark_succeeded(body_step).unwrap();
 
             let rc = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
-            prop_assert!(rc.is_ok(),
-                "repeat_check must succeed when attempts remain (max={max_attempts}, current={current_attempt})");
+            prop_assert!(
+                matches!(rc, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
+                "repeat_check must return Ok(Continue) when attempts remain (max={max_attempts}, current={current_attempt}), got {:?}",
+                rc
+            );
             prop_assert_eq!(run.pc(), next_body,
                 "PC must be body_entry when attempts remain");
 

@@ -172,10 +172,11 @@ proptest! {
     fn yaml_compiler_compile_never_panics(yaml in valid_yaml_workflow()) {
         let result = YamlCompiler::default().compile(yaml.as_bytes());
 
-        // Must return Result, never panic
+        // Valid YAML must compile to Ok
         prop_assert!(
-            result.is_ok() || result.is_err(),
-            "YamlCompiler::compile must return Result"
+            result.is_ok(),
+            "YamlCompiler::compile on valid YAML must return Ok, got {:?}",
+            result
         );
     }
 }

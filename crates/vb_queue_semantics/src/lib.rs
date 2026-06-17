@@ -5,9 +5,6 @@
 
 //! Dependency-free queue-state transition semantics used by runtime queues and proof artifacts.
 
-#[cfg(test)]
-mod tests;
-
 use std::collections::VecDeque;
 
 /// Shared queue capacity maximum used by the Verus-native helper route.

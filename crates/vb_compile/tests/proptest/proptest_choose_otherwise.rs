@@ -46,33 +46,40 @@ proptest! {
     fn otherwise_present_compiles(body_counts in body_counts_strategy()) {
         let yaml = make_choose_yaml(&body_counts, true);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        prop_assert!(result.is_ok(), "choose with otherwise must compile: {:?}", result.err());
+        // Valid YAML with otherwise → Ok
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "choose with otherwise must compile Ok, got {:?}",
+            result
+        );
     }
 
     #[test]
     fn otherwise_target_exists(body_counts in body_counts_strategy()) {
         let yaml = make_choose_yaml(&body_counts, true);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        prop_assert!(result.is_ok(), "compile_workflow failed: {:?}", result.err());
-
-        if let Ok(workflow) = result {
-            let nc = workflow.node_count();
-            let mut found_choose = false;
-            for i in 0..nc {
-                if let Some(node) = workflow.node(StepIdx::new(i))
-                    && let CompiledNodeKind::ChooseSlot { otherwise, .. } = &node.kind
-                {
-                    found_choose = true;
-                    prop_assert!(otherwise.is_some(), "otherwise must be set");
-                    if let Some(target) = otherwise {
-                        prop_assert!(
-                            workflow.node(*target).is_some(),
-                            "otherwise target must be a valid node"
-                        );
-                    }
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "choose with otherwise must compile Ok, got {:?}",
+            result
+        );
+        let workflow = result.expect("matches! above guarantees Ok");
+        let nc = workflow.node_count();
+        let mut found_choose = false;
+        for i in 0..nc {
+            if let Some(node) = workflow.node(StepIdx::new(i))
+                && let CompiledNodeKind::ChooseSlot { otherwise, .. } = node.kind
+            {
+                found_choose = true;
+                prop_assert!(otherwise.is_some(), "otherwise must be set");
+                if let Some(target) = otherwise {
+                    prop_assert!(
+                        workflow.node(target).is_some(),
+                        "otherwise target must be a valid node"
+                    );
                 }
             }
-            prop_assert!(found_choose, "must find ChooseSlot");
         }
+        prop_assert!(found_choose, "must find ChooseSlot");
     }
 }

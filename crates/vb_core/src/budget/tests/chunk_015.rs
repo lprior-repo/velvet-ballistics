@@ -174,8 +174,13 @@ proptest::proptest! {
         {
             prop_assert!(matches!(result, Ok(())));
         } else {
-            // If any dimension exceeds policy, validation should fail
-            prop_assert!(result.is_err());
+            // If any dimension exceeds policy, validation should fail with a
+            // specific BudgetError variant, not just a generic Err.
+            prop_assert!(
+                matches!(result, Err(BudgetError::TotalStepsExceeded { .. } | BudgetError::TotalSlotsExceeded { .. } | BudgetError::FanoutExceeded { .. } | BudgetError::NestingDepthExceeded { .. })),
+                "exceeded policy must return a specific BudgetError, got {:?}",
+                result
+            );
         }
     }
 }

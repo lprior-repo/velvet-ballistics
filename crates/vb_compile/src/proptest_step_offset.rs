@@ -58,13 +58,19 @@ proptest! {
         let expected_sum = (id as u32) + (offset as u32);
 
         if expected_sum <= u16::MAX as u32 {
-            // Should succeed
-            prop_assert!(result.is_ok(), "id + offset should succeed when <= u16::MAX");
-            let new_id = result.unwrap();
-            prop_assert_eq!(new_id.get(), id + offset as u16, "new_id = id + offset");
+            // Should succeed and return the correct incremented id.
+            prop_assert!(
+                matches!(result, Ok(new_id) if new_id.get() == id + offset as u16),
+                "id + offset should succeed with correct value when <= u16::MAX, got {:?}",
+                result
+            );
         } else {
-            // Should return error
-            prop_assert!(result.is_err(), "id + offset should error when > u16::MAX");
+            // Should return error (StepIndexOutOfRange)
+            prop_assert!(
+                matches!(result, Err(_)),
+                "id + offset should error when > u16::MAX, got {:?}",
+                result
+            );
         }
     }
 }
@@ -87,15 +93,12 @@ proptest! {
         let sum = (id as u32) + (offset as u32);
 
         if sum > u16::MAX as u32 {
-            // Must be error
-            prop_assert!(result.is_err(), "overflow must return error");
-
-            // Error variant must be StepIndexOutOfRange
-            let err = result.unwrap_err();
-            prop_assert_eq!(err.0.len(), 1, "exactly one error");
+            // Error variant must be StepIndexOutOfRange (exactly one error)
             prop_assert!(
-                matches!(&err.0[0], vb_compile::CompileError::StepIndexOutOfRange { .. }),
-                "error is StepIndexOutOfRange"
+                matches!(result, Err(ref err) if err.0.len() == 1
+                    && matches!(&err.0[0], vb_compile::CompileError::StepIndexOutOfRange { .. })),
+                "overflow must return single StepIndexOutOfRange error, got {:?}",
+                result
             );
         }
     }
@@ -113,8 +116,11 @@ proptest! {
             "done",
         );
 
-        prop_assert!(result.is_ok(), "id=u16::MAX-3, offset=3 should succeed");
-        prop_assert_eq!(result.unwrap().get(), u16::MAX, "result = u16::MAX");
+        prop_assert!(
+            matches!(result, Ok(new_id) if new_id.get() == u16::MAX),
+            "id=u16::MAX-3, offset=3 must return u16::MAX, got {:?}",
+            result
+        );
     }
 
     /// PO-029 H3: u16::MAX with offset 1, 2, 3 all overflow.
@@ -127,6 +133,11 @@ proptest! {
             "done",
         );
 
-        prop_assert!(result.is_err(), "u16::MAX + offset must error");
+        prop_assert!(
+            matches!(result, Err(ref err) if err.0.len() == 1
+                && matches!(&err.0[0], vb_compile::CompileError::StepIndexOutOfRange { .. })),
+            "u16::MAX + offset must return single StepIndexOutOfRange error, got {:?}",
+            result
+        );
     }
 }

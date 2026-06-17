@@ -310,7 +310,7 @@ proptest! {
         );
         let inner: Result<IpcCommand, _> = result.expect("catch_unwind should not panic");
         prop_assert!(
-            inner.is_ok(),
+            matches!(inner, Ok(_)),
             "from_u16({}) must return Ok, got {:?}",
             id,
             inner

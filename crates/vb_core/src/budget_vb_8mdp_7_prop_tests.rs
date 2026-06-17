@@ -282,7 +282,12 @@ proptest! {
     ) {
         let original = usage;
         let result = original.try_add_budget(&budget);
-        if result.is_err() {
+        // On Err, must be Overflow and original must be unchanged.
+        if let Err(ref e) = result {
+            prop_assert!(
+                matches!(e, crate::budget::AggregateBudgetError::Overflow { .. }),
+                "try_add_budget Err must be Overflow, got {e:?}"
+            );
             prop_assert_eq!(original, usage,
                 "original usage must be unchanged on Overflow");
         }
@@ -295,7 +300,12 @@ proptest! {
     ) {
         let original = usage;
         let result = original.try_subtract_budget(&budget);
-        if result.is_err() {
+        // On Err, must be Underflow and original must be unchanged.
+        if let Err(ref e) = result {
+            prop_assert!(
+                matches!(e, crate::budget::AggregateBudgetError::Underflow { .. }),
+                "try_subtract_budget Err must be Underflow, got {e:?}"
+            );
             prop_assert_eq!(original, usage,
                 "original usage must be unchanged on Underflow");
         }
@@ -314,8 +324,11 @@ proptest! {
     ) {
         let capacity = arb_capacity_larger_than(&usage);
         let result = usage.fits_within(&capacity);
-        prop_assert!(result.is_ok(),
-            "fits_within should be Ok when all dims are within capacity");
+        prop_assert!(
+            matches!(result, Ok(())),
+            "fits_within should be Ok(()) when all dims are within capacity, got {:?}",
+            result
+        );
     }
 
     // ── I5: fits_within returns CapacityExceeded when a dim exceeds capacity ──
@@ -493,10 +506,9 @@ fn try_add_budget_happy_path_increments_all_dims() {
         ..budget_zero()
     };
     let result = usage.try_add_budget(&budget);
-    assert!(result.is_ok(), "try_add_budget should succeed: {result:?}");
     let new_usage = match result {
         Ok(u) => u,
-        Err(_) => return, // skip rest if unexpected failure
+        Err(e) => panic!("try_add_budget should succeed for small budget: {e:?}"),
     };
     assert_eq!(new_usage.max_steps_executable, 10, "max_steps_executable incremented");
     assert_eq!(new_usage.max_action_tickets, 5, "max_action_tickets incremented");
@@ -583,7 +595,11 @@ fn check_policy_ok_when_within_bounds() {
     let usage = AggregateResourceUsage::default();
     let policy = BoundednessPolicy::DEFAULT;
     let result = usage.check_policy(&policy);
-    assert!(result.is_ok(), "empty usage should be within default policy");
+    assert!(
+        matches!(result, Ok(())),
+        "empty usage should be Ok(()) within default policy, got {:?}",
+        result
+    );
 }
 
 #[test]
@@ -610,5 +626,9 @@ fn validate_aggregate_budget_ok_for_small_budget() {
     };
     let policy = BoundednessPolicy::DEFAULT;
     let result = crate::budget::validate_aggregate_budget(&budget, &policy);
-    assert!(result.is_ok(), "small budget should pass validation");
+    assert!(
+        matches!(result, Ok(())),
+        "small budget should pass validation (Ok), got {:?}",
+        result
+    );
 }

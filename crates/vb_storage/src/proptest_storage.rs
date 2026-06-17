@@ -290,7 +290,11 @@ mod storage_tests {
                 };
                 let result = queue.enqueue_journaled(ev);
                 if enqueued < capacity {
-                    prop_assert!(result.is_ok(), "enqueue must succeed within capacity");
+                    prop_assert!(
+            matches!(result, Ok(())),
+            "enqueue must succeed within capacity, got {:?}",
+            result
+        );
                     enqueued += 1;
                 } else {
                     prop_assert!(
@@ -441,13 +445,19 @@ mod storage_tests {
                 max_payload,
             );
             // BLOCK-001 FIXED: validate_kind_family now accepts kind 28 for MAGIC_JOURNAL_EVENT.
-            prop_assert!(encoded.is_ok(),
-                "BLOCK-001 FIXED: encode of RunKilled must succeed with kind 28");
-            let bytes = encoded.unwrap();
+            prop_assert!(
+                matches!(encoded, Ok(_)),
+                "BLOCK-001 FIXED: encode of RunKilled must succeed with kind 28, got {:?}",
+                encoded
+            );
+            let bytes = encoded.expect("matches! above guarantees Ok");
             let decoded = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, max_payload);
-            prop_assert!(decoded.is_ok(),
-                "BLOCK-001 FIXED: decode of RunKilled must succeed with kind 28");
-            let (_envelope, decoded_event) = decoded.unwrap();
+            prop_assert!(
+                matches!(decoded, Ok(_)),
+                "BLOCK-001 FIXED: decode of RunKilled must succeed with kind 28, got {:?}",
+                decoded
+            );
+            let (_envelope, decoded_event) = decoded.expect("matches! above guarantees Ok");
             prop_assert_eq!(decoded_event, event,
                 "RunKilled round-trip must preserve all fields");
         }
@@ -467,8 +477,11 @@ mod storage_tests {
                 &event,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             );
-            prop_assert!(result.is_err(),
-                "kind 28 with MAGIC_SNAPSHOT must return Err(RecordKindFamilyMismatch)");
+            prop_assert!(
+                matches!(result, Err(crate::JournalError::RecordKindFamilyMismatch { .. })),
+                "kind 28 with MAGIC_SNAPSHOT must return RecordKindFamilyMismatch, got {:?}",
+                result
+            );
         }
 
         /// Verify that kind 28 with MAGIC_BLOB is rejected.
@@ -486,8 +499,11 @@ mod storage_tests {
                 &event,
                 MAX_BLOB_BYTES,
             );
-            prop_assert!(result.is_err(),
-                "kind 28 with MAGIC_BLOB must return Err(RecordKindFamilyMismatch)");
+            prop_assert!(
+                matches!(result, Err(crate::JournalError::RecordKindFamilyMismatch { .. })),
+                "kind 28 with MAGIC_BLOB must return RecordKindFamilyMismatch, got {:?}",
+                result
+            );
         }
 
         // =====================================================================

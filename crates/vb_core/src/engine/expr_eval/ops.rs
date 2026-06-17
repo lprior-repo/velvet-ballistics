@@ -33,6 +33,31 @@ fn eval_coalesce(stack: &mut ExprStack) -> Result<(), EngineError> {
     }
 }
 
+/// Evaluates numeric negation for `I64` and `F64` operands.
+fn eval_neg(stack: &mut ExprStack) -> Result<(), EngineError> {
+    let value = super::stack::pop_value(stack)?;
+    let negated = match value {
+        SlotValue::I64(n) => n
+            .checked_neg()
+            .ok_or(EngineError::InvalidCompiledWorkflow {
+                reason: "integer negation overflow",
+            })?,
+        SlotValue::F64(f) => {
+            let raw = -f.get();
+            let finite =
+                crate::value::FiniteF64::new(raw).map_err(|_| EngineError::NonFiniteNumber)?;
+            return push_value(stack, SlotValue::F64(finite));
+        }
+        other => {
+            return Err(EngineError::TypeMismatch {
+                expected: "number",
+                found: other.type_name(),
+            });
+        }
+    };
+    push_value(stack, SlotValue::I64(negated))
+}
+
 fn eval_bool_pair(stack: &mut ExprStack, op: fn(bool, bool) -> bool) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
     push_value(
@@ -224,6 +249,7 @@ pub(crate) fn eval_expr_operator(
         ExprOp::Count => eval_count(stack, store),
         ExprOp::Unique => eval_unique(stack, store),
         ExprOp::Coalesce => eval_coalesce(stack),
+        ExprOp::Neg => eval_neg(stack),
         ExprOp::LoadSlot(_) | ExprOp::LoadConst(_) | ExprOp::LoadAccessor(_) => {
             Err(EngineError::InternalInvariantViolation {
                 reason: "load ops should be handled in eval_expr_op",

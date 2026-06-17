@@ -44,31 +44,39 @@ proptest! {
     fn emission_count_matches_body_steps(body_counts in body_counts_strategy()) {
         let yaml = choose_yaml(&body_counts);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        prop_assert!(result.is_ok(), "compile_workflow failed: {:?}", result.err());
 
-        if let Ok(workflow) = result {
-            let total_body: u16 = body_counts.iter().map(|&c| u16::from(c)).sum();
-            let expected = 3u16.checked_add(total_body).expect("3 + total_body fits u16 (total_body bounded by 6*4=24)"); // Setup + ChooseSlot + body + Finish
-            prop_assert_eq!(
-                workflow.node_count(), expected,
-                "node_count must equal Setup + ChooseSlot + sum(body) + Finish"
-            );
-        }
+        // Valid YAML → Ok with predictable node count.
+        let total_body: u16 = body_counts.iter().map(|&c| u16::from(c)).sum();
+        let expected = 3u16.checked_add(total_body).expect("3 + total_body fits u16 (total_body bounded by 6*4=24)"); // Setup + ChooseSlot + body + Finish
+        prop_assert!(
+            matches!(result, Ok(ref wf) if wf.node_count() == expected),
+            "node_count {:?} must equal expected {} (Setup + ChooseSlot + sum(body) + Finish), result={:?}",
+            result.as_ref().map(|w| w.node_count()),
+            expected,
+            result
+        );
     }
 
     #[test]
     fn first_node_after_setup_is_choose_slot(body_counts in body_counts_strategy()) {
         let yaml = choose_yaml(&body_counts);
-        if let Ok(workflow) = vb_compile::compile_workflow(yaml.as_bytes()) {
-            // After the Setup step (node 0), the next emitted node should be ChooseSlot
-            let choose_node = workflow.node(StepIdx::new(1));
-            prop_assert!(choose_node.is_some(), "node 1 must exist");
-            if let Some(n) = choose_node {
-                prop_assert!(
-                    matches!(n.kind, CompiledNodeKind::ChooseSlot { .. }),
-                    "node 1 must be ChooseSlot, got {:?}", n.kind
-                );
-            }
+        let result = vb_compile::compile_workflow(yaml.as_bytes());
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "choose yaml must compile Ok, got {:?}",
+            result
+        );
+        // The YAML produced is always valid; unwrap is safe after matches! check above.
+        let workflow = result.expect("matches! above guarantees Ok");
+
+        // After the Setup step (node 0), the next emitted node should be ChooseSlot.
+        let choose_node = workflow.node(StepIdx::new(1));
+        prop_assert!(choose_node.is_some(), "node 1 must exist");
+        if let Some(n) = choose_node {
+            prop_assert!(
+                matches!(n.kind, CompiledNodeKind::ChooseSlot { .. }),
+                "node 1 must be ChooseSlot, got {:?}", n.kind
+            );
         }
     }
 }

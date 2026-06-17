@@ -25,6 +25,8 @@ pub(crate) const INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count";
 pub(crate) const INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE: &str =
     "INPUT_MAPPING_FAILED: input slot index out of range";
+pub(crate) const INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE: &str =
+    "INPUT_MAPPING_FAILED: input-bin was empty";
 
 pub(crate) fn cmd_validate(workflow: &Path) -> ExitCode {
     let bytes = match read_file(workflow) {

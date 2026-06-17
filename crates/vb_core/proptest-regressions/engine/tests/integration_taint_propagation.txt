@@ -1,0 +1,23 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5e1ca416d98b6410014b1c7cfe8810f1703f9e7d6191ad3510fbb53f3e9ee172 # shrinks to item_count = 1, taints = []
+cc d66ea899fbed8664dab9519ea01943096fc876e71cbbb138b0ab7bc7016392fe # shrinks to field_count = 1, taints = []
+cc 628066d70c7d81200b20b1ab927d4e2f866eb63860c88bb52f6674d201eb1971 # shrinks to kind = I64, secret_slot_idx = 1, ast = Or(Const(0), LoadSlot(SlotIdx(1)))
+cc f0f57cc2638373d6f639d26b692893fb02434f09f6addb70be01db2a8f346d6c # shrinks to kind = Bool, taints = [Clean], bump_target = 0, bump_to = Clean, ast = Or(Eq(Const(0), Const(0)), Const(0))
+cc 805b898879d477a08a6e2517112ae8e973866bf228392fb050a9bff1b08ea71d # shrinks to kind = I64, taints = [], ast = Div(Add(Const(0), Const(0)), Const(0))
+cc 732b99eaabee74a86a86a5667de8a6c55286ad3a4c3ffbec08fb64e22de073d2 # shrinks to kind = Bool, ast = Add(Const(0), Const(0))
+cc 010e25e42b83e0231fb37fb801f35aebf2aa8f6ef525d5ac550b016ce1147a0e # shrinks to ast = Mul(Const(3), Const(-3074457345618258603))
+cc 0660e00a004054a0ff27bfc937a6b199e01e55f9f179dda3db6fb4d5dbd19d87 # shrinks to taints = [Clean], bump_target = 0, bump_to = Clean, ast = Div(Const(0), Sub(LoadSlot(SlotIdx(0)), LoadSlot(SlotIdx(0))))
+cc 321fd2b2b6e0ccfe3fb5e88206e8815899ebd9224ffc3fde31d5186c09e8de27 # shrinks to ast = Div(Const(0), Div(Const(0), Const(0)))
+cc f5688a103a1abe23be7f97c442cddc736ef33edf9514323621ab7fe92364d894 # shrinks to ast = Div(Const(0), Div(LoadSlot(SlotIdx(0)), Const(2)))
+cc 73b06de37647708a8a6eb4464a1a73b20ec1288797d40c3638a0dd0c7e1fb358 # shrinks to secret_slot_idx = 1, ast = Div(Add(LoadSlot(SlotIdx(1)), Const(0)), Div(Const(0), Const(0)))
+cc 1a8d2d3f392ab8d1e8ba334abd90a09fc53c5ca2520a114296679fc3164a1c8e # shrinks to taints = [], ast = Add(Div(Const(0), Sub(LoadSlot(SlotIdx(0)), LoadSlot(SlotIdx(0)))), Const(0))
+cc 4d031f5f918f7aeaef48393e5a467840c85e6315a12df2f8101937b6d1d96b50 # shrinks to secret_slot_idx = 0, ast = Div(Const(-3), Div(LoadSlot(SlotIdx(0)), Const(-3)))
+cc ffd510bd0ebfdbf21dde8f54b7a49c0810e61a4aa5c3f35d8d7d51dd25fdbfd6 # shrinks to ast = Div(Const(-3), Div(Const(-3), Const(-4)))
+cc 78819b33f76fe4f0d9b939f21979aa568126db1dc82f654aacbba815158ae8aa # shrinks to taints = [], ast = Div(Const(-3), Sub(LoadSlot(SlotIdx(0)), LoadSlot(SlotIdx(0))))
+cc 5877c2940faec6b636adb54da4d6856f72ae842e60256e83083e08bad4329d9c # shrinks to ast = Div(Const(-3), Div(Const(-3), Const(-4)))
+cc d162ad54521a36b3f9bb1506faeadb8ab258bbf754a71a984cd8b9ef7c310415 # shrinks to taints = [Clean], bump_target = 0, bump_to = Clean, ast = Div(Const(-3), Div(Const(1), Const(-3)))

@@ -190,8 +190,8 @@ proptest! {
         let parts = build_valid_chain(usize::from(step_count));
         let result = CompiledWorkflow::try_from_parts(parts);
         prop_assert!(
-            result.is_ok(),
-            "valid chain with {} steps should pass validation, got {:?}",
+            matches!(result, Ok(ref _wf) if _wf.node_count() == step_count),
+            "valid chain with {} steps should pass validation with correct node count, got {:?}",
             step_count,
             result
         );

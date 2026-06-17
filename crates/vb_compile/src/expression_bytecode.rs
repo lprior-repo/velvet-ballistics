@@ -422,34 +422,47 @@ fn lower_numeric_negation(
     ops: &mut Vec<ExprOp>,
     resolver: &mut impl ExpressionReferenceResolver,
 ) -> Result<(), CompileError> {
-    // The negation lowering pushes `0 - <expr>` so it can reuse the
-    // existing `Sub` opcode. The constant must match the static type
-    // of the operand: a `Sub` between an `I64(0)` and an `F64(v)` is a
-    // type mismatch at runtime, so we synthesize `F64(0.0)` when the
-    // operand is statically F64. References and helper calls have
-    // unknown static types; we default to `I64(0)` to preserve the
-    // legacy behaviour for those cases, matching the production
-    // evaluator's prior assumption.
-    let zero = if expr_static_type_is_f64(expr) {
-        // `0.0` is a finite f64 by IEEE-754 definition; `FiniteF64::new`
-        // is the only path that enforces the invariant. The match
-        // arm is defensive against a future implementation that ever
-        // rejects `0.0` (no such implementation exists today).
-        match FiniteF64::new(0.0) {
-            Ok(value) => ConstValue::F64(value),
-            Err(_) => {
-                return Err(CompileError::ExpressionLoweringUnsupported {
-                    feature: "negative zero finite constant".into(),
-                });
+    // Optimize: when the operand is a constant literal, load the absolute
+    // value and apply `Neg` directly. This produces a shorter bytecode
+    // sequence (`LoadConst + Neg`) compared to the legacy `0 - expr`
+    // pattern (`LoadConst(0) + LoadConst(v) + Sub`).
+    if let ParsedExpression::Literal(lit) = expr {
+        match lit {
+            ExpressionLiteral::I64(v) => {
+                // Negation of i64::MIN overflows, so we use the absolute
+                // value of the operand (which is always safe for non-MIN
+                // values) and apply Neg. For i64::MIN the runtime `eval_neg`
+                // will correctly return an error.
+                let abs_value = v.checked_abs().unwrap_or(*v);
+                let idx = push_expression_constant(ConstValue::I64(abs_value), constants)?;
+                ops.push(ExprOp::LoadConst(idx));
+                ops.push(ExprOp::Neg);
+                return Ok(());
             }
+            ExpressionLiteral::F64(f) => {
+                // Negate the raw f64 value; if the result is non-finite, the
+                // runtime `eval_neg` will return NonFiniteNumber.
+                let raw = -f.get();
+                // For -0.0, abs(-0.0) == 0.0, so we store the positive form.
+                let abs_raw = raw.abs();
+                let abs_f = FiniteF64::new(abs_raw)
+                    .map_err(|_| CompileError::ExpressionLoweringUnsupported {
+                        feature: "non-finite absolute value constant".into(),
+                    })?;
+                let idx = push_expression_constant(ConstValue::F64(abs_f), constants)?;
+                ops.push(ExprOp::LoadConst(idx));
+                ops.push(ExprOp::Neg);
+                return Ok(());
+            }
+            _ => {}
         }
-    } else {
-        ConstValue::I64(0)
-    };
-    let zero_index = push_expression_constant(zero, constants)?;
-    ops.push(ExprOp::LoadConst(zero_index));
+    }
+
+    // General case: lower the operand, then apply `Neg`.
+    // The runtime `eval_neg` handles both I64 and F64 types correctly,
+    // so we don't need the legacy `0 - expr` type-safety dance.
     lower_expr(expr, constants, ops, resolver)?;
-    ops.push(ExprOp::Sub);
+    ops.push(ExprOp::Neg);
     Ok(())
 }
 

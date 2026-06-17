@@ -157,9 +157,13 @@ proptest! {
         };
 
         let result = normalize_scheduled_ticket(&state, ticket);
-        prop_assert!(result.is_ok(), "normalize_scheduled_ticket must succeed for stale (it promotes)");
-        let norm = result.unwrap();
-        prop_assert!(norm.attempt >= current, "normalized attempt must be >= current (stale promoted)");
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "normalize_scheduled_ticket must succeed for stale (it promotes), got {:?}",
+            result
+        );
+        let norm = result.expect("matches! above guarantees Ok");
+        prop_assert!(norm.attempt >= current, "normalized attempt {} must be >= current {}", norm.attempt, current);
     }
 }
 
@@ -226,9 +230,12 @@ proptest! {
         };
 
         let result = normalize_scheduled_ticket(&state, ticket);
-        prop_assert!(result.is_ok(),
-            "future attempt within capacity must normalize OK (current behavior)");
-        let norm = result.unwrap();
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "future attempt within capacity must normalize OK, got {:?}",
+            result
+        );
+        let norm = result.expect("matches! above guarantees Ok");
         prop_assert!(norm.attempt >= incoming,
             "normalized attempt {} must be >= incoming {}", norm.attempt, incoming);
     }
@@ -254,8 +261,11 @@ proptest! {
         };
 
         let result = normalize_scheduled_ticket(&state, ticket);
-        prop_assert!(result.is_err(),
-            "attempt {} beyond capacity {} must be rejected", incoming, capacity);
+        prop_assert!(
+            matches!(result, Err(RuntimeError::AttemptBeyondMax { .. })),
+            "attempt {} beyond capacity {} must be rejected with AttemptBeyondMax, got {:?}",
+            incoming, capacity, result
+        );
     }
 }
 
@@ -376,9 +386,12 @@ proptest! {
         prop_assert_eq!(attempts_before, attempts_after,
             "stale completion must not mutate action_attempts");
 
-        // The function should return an error (step not running or stale attempt)
-        prop_assert!(result.is_err(),
-            "invalid completion must produce an error");
+        // The function should return an error (step not running)
+        prop_assert!(
+            matches!(result, Err(RuntimeError::InvalidActionCompletion)),
+            "invalid completion must produce InvalidActionCompletion, got {:?}",
+            result
+        );
     }
 }
 
@@ -516,10 +529,12 @@ proptest! {
         };
 
         let result = record_retry_attempt(&mut state, ticket, policy);
-        // With max_attempts=0, validate_retry_attempt rejects everything.
-        // Unless ticket_attempt is also 0, in which case it's a different error.
-        prop_assert!(result.is_err(),
-            "zero max_attempts policy must reject all retries, got {:?}", result);
+        // With max_attempts=0, validate_retry_attempt rejects everything with AttemptBeyondMax.
+        prop_assert!(
+            matches!(result, Err(RuntimeError::AttemptBeyondMax { .. })),
+            "zero max_attempts policy must reject with AttemptBeyondMax, got {:?}",
+            result
+        );
     }
 }
 

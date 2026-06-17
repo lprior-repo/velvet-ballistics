@@ -1611,8 +1611,11 @@ mod proptests {
         fn empty_path_is_identity_for_all_scalar_types(val in arb_scalar_value()) {
             let (workflow, run, mut store) = build_test_run_store(1, val).unwrap();
             let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
-            prop_assert!(result.is_ok(), "empty path access should never fail");
-            prop_assert_eq!(result.unwrap(), val);
+            prop_assert!(
+                matches!(result, Ok(ref v) if v == &val),
+                "empty path access must return Ok({val:?}), got {:?}",
+                result
+            );
         }
     }
 
@@ -1621,8 +1624,11 @@ mod proptests {
         fn empty_path_identity_without_store(val in arb_scalar_value()) {
             let (workflow, run, _store) = build_test_run_store(2, val).unwrap();
             let result = eval_accessor(&workflow, &run, AccessorIdx::new(0));
-            prop_assert!(result.is_ok(), "empty path access without store should never fail");
-            prop_assert_eq!(result.unwrap(), val);
+            prop_assert!(
+                matches!(result, Ok(ref v) if v == &val),
+                "empty path access without store must return Ok({val:?}), got {:?}",
+                result
+            );
         }
     }
 
@@ -1648,7 +1654,11 @@ mod proptests {
             run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean).unwrap();
 
             let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
-            prop_assert!(result.is_err(), "invalid index must always produce an error");
+            prop_assert!(
+                matches!(result, Err(EngineError::ListIndexOutOfBounds { index: idx }) if idx == index),
+                "out-of-bounds index {} on empty list must return ListIndexOutOfBounds, got {:?}",
+                index, result
+            );
         }
     }
 
@@ -1670,7 +1680,11 @@ mod proptests {
             run.write_slot_with_taint(SlotIdx::new(0), val, Taint::Clean).unwrap();
 
             let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
-            prop_assert!(result.is_err(), "field access on non-object must always produce an error");
+            prop_assert!(
+                matches!(result, Err(EngineError::UnsupportedAccessorTraversal { segment: "field", .. })),
+                "field access on non-object must return UnsupportedAccessorTraversal, got {:?}",
+                result
+            );
         }
     }
 }

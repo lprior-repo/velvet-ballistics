@@ -216,7 +216,11 @@ proptest! {
 
         let result = emit_single_body_set(&body, id, slot, None, &mut builder, false);
 
-        prop_assert!(result.is_ok(), "valid Set → Ok");
+        prop_assert!(
+            matches!(result, Ok(_)),
+            "valid Set body must compile Ok, got {:?}",
+            result
+        );
         prop_assert_eq!(builder.node_count(), 1, "exactly 1 node emitted");
     }
 }

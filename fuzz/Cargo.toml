@@ -733,3 +733,48 @@ path = "fuzz_targets/fuzz_action_ticket_roundtrip.rs"
 test = false
 doc = false
 bench = false
+
+# === Orphan fuzz targets added during fuzz review hardening ===
+
+[[bin]]
+name = "fuzz_choose_depth"
+path = "fuzz_targets/fuzz_choose_depth.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_choose_when_parse"
+path = "fuzz_targets/fuzz_choose_when_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "choose_lowering_fuzzer"
+path = "fuzz_targets/choose_lowering_fuzzer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_digest_compile"
+path = "fuzz_targets/fuzz_digest_compile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "foreach_digest_canonical"
+path = "fuzz_targets/foreach_digest_canonical.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "foreach_digest_step"
+path = "fuzz_targets/foreach_digest_step.rs"
+test = false
+doc = false
+bench = false
+
