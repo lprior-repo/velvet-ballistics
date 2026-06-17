@@ -1240,6 +1240,40 @@ obligations:
       proof functions. Flux refinements waived: prior invariants were false (ActionTicket fields are
       public u16, zero values are valid and constructible — GOD RULE 2 violation corrected).
 
+  # ============================================================
+  # ACTION COMPLETION KERNEL — vb-kzz99 (GOD RULE 2: pure kernel binding)
+  # ============================================================
+  - id: VB-RUNTIME-ACT-002
+    section: [49]
+    statement: |
+      Action completion kernel: advance_after_action_completion returns Err when
+      node is missing, Ok(()) for terminal steps, Err when PC set fails, and
+      Ok(()) when node has a next and PC set succeeds.
+      Input validation: validate_input_bytes returns Err when max_input_bytes == 0
+      AND input_slot_count > 0; Ok(()) otherwise.
+      Scheduled attempt recording: record_scheduled_attempt computes new attempt
+      via scheduled_attempt_after when ticket_attempt > 0 and step in bounds;
+      no-op when ticket_attempt == 0.
+      Compositional dispatch guard: if validation passes AND node exists with
+      valid next, advance succeeds.
+    proof_level: L4
+    crate: vb_runtime
+    files:
+      - crates/vb_runtime/src/shard/helpers/action.rs
+      - crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+    required:
+      verus: crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+    commands:
+      - verus --crate-type=lib crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+    verified:
+      vb_kzz99_action_completion: deductively_verified
+    note: |
+      19 verified, 0 errors (verus --crate-type=lib). Spec/proof layer covers
+      spec_validate_input_bytes, spec_advance_after_action_completion,
+      spec_record_scheduled_attempt, scheduled_attempt_after_spec and their
+      exec bindings + theorem_dispatch_guard_composition.
+      All proofs use compute; no quantifier triggers needed.
+
 # ============================================================
 # EVIDENCE FORMAT
 # ============================================================

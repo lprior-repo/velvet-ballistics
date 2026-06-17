@@ -45,9 +45,33 @@ pub mod loom {
 // impossible cfg (Verus uses its own compiler frontend).
 #[cfg(verus)]
 pub mod verus {
-    #[path = "vb-0l9k0/mod.rs"]
+    // Timer seam proofs (vb-0l9k0)
+    #[path = "verus/vb-0l9k0/mod.rs"]
     pub mod vb_0l9k0;
+
+    // Attempt-fence kernel proofs (vb-y9d3v)
+    #[path = "verus/vb_y9d3v_action_fence.rs"]
     pub mod vb_y9d3v_action_fence;
+
+    // Action dispatch proofs (vb-rxru0)
+    #[path = "verus/vb_rxru0_action_verus.rs"]
+    pub mod vb_rxru0_action_verus;
+
+    // Runtime facade API proofs (vb-evkno)
+    #[path = "verus/runtime_facade_api.rs"]
+    pub mod runtime_facade_api;
+
+    // Runtime error variant exhaustiveness (vb-evkno)
+    #[path = "verus/runtime_facade_typed_errors.rs"]
+    pub mod runtime_facade_typed_errors;
+
+    // Runtime module topology proofs (vb-evkno)
+    #[path = "verus/runtime_module_topology.rs"]
+    pub mod runtime_module_topology;
+
+    // Action completion kernel proofs (vb-kzz99)
+    #[path = "verus/vb_kzz99_action_completion.rs"]
+    pub mod vb_kzz99_action_completion;
 }
 
 // Kani harnesses (compiled with cargo kani)
@@ -61,10 +85,4 @@ pub(crate) mod kani {
 #[cfg(all(flux, feature = "vb-rxru0-flux-refinements"))]
 pub mod rxru0_flux {
     pub mod vb_rxru0_dispatch_generic;
-}
-
-// Verus proof modules for vb-rxru0
-#[cfg(verus)]
-pub mod verus {
-    pub mod vb_rxru0_action_verus;
 }
