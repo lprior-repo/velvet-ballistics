@@ -55,7 +55,7 @@ fn vb_ajc40_slug_decode_smoke_cases() {
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.is_empty());
+            kani::assert(admitted.is_empty(), "assertion failed");
             kani::assert(admitted.len() == 0, "assertion failed");
             kani::assert(admitted.remaining_budget() == 0, "assertion failed");
         }
@@ -108,8 +108,8 @@ fn vb_ajc40_slug_post_decode_semantics() {
         budget,
     ) {
         Ok(remaining_budget) => {
-            kani::assert(len <= MAX_SLUGS_PER_WORKFLOW, "kani harness assertion");
-            kani::assert(remaining_budget <= budget, "kani harness assertion");
+            kani::assert(len <= MAX_SLUGS_PER_WORKFLOW, "kani harness assertion", "assertion failed");
+            kani::assert(remaining_budget <= budget, "kani harness assertion", "assertion failed");
             kani::assert(
                 max_path_depth <= MAX_SLUG_PATH_SEGMENTS,
                 "kani harness assertion",
@@ -167,7 +167,7 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Err(SlugParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert(total == 1, "assertion failed");
+            kani::assert(total == 1, "assertion failed", "assertion failed");
             assert_eq!(max, 0);
         }
         _ => kani::assert(false),
@@ -218,8 +218,8 @@ fn vb_ajc40_slug_count_65535_65536() {
 
     match validate_compiled_slug_count(SLUG_COUNT_OVER_LIMIT) {
         Err(SlugParseError::TooManySlugs { count, max }) => {
-            kani::assert(count == SLUG_COUNT_OVER_LIMIT, "assertion failed");
-            kani::assert(max == MAX_SLUGS_PER_WORKFLOW, "assertion failed");
+            kani::assert(count == SLUG_COUNT_OVER_LIMIT, "assertion failed", "assertion failed");
+            kani::assert(max == MAX_SLUGS_PER_WORKFLOW, "assertion failed", "assertion failed");
         }
         _ => assert!(false),
     }

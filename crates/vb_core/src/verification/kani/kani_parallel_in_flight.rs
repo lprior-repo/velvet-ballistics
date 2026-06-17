@@ -86,7 +86,7 @@ fn kani_parallel_in_flight_lifecycle() {
                     Ok(()) => {
                         // PIF must be ≥ 0 after successful sub
                         let pif = frame.parallel_in_flight();
-                        kani::assert(pif <= max_pif, "PIF {} must be ≤ max {}", pif, max_pif);
+                        kani::assert(pif <= max_pif, "PIF must be ≤ max_PIF");
                     }
                     Err(_) => {
                         // Underflow is OK; PIF must not go below 0

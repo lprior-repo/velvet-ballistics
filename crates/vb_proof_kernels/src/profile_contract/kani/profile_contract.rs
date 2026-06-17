@@ -61,9 +61,9 @@ fn release_profile_master_keys() {
         }
     }
 
-    kani::assert(!has_release_gap);
+    kani::assert(!has_release_gap, "assertion failed");
 
-    kani::assert(gaps.is_empty());
+    kani::assert(gaps.is_empty(), "assertion failed");
 }
 
 // ---------------------------------------------------------------------------
@@ -115,8 +115,8 @@ fn bench_profile_master_keys() {
         }
     }
 
-    kani::assert(!has_bench_gap);
-    kani::assert(gaps.is_empty());
+    kani::assert(!has_bench_gap, "assertion failed");
+    kani::assert(gaps.is_empty(), "assertion failed");
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ fn hardened_debug_assertions_enabled() {
 
     let gaps = validate_against_governance(&ws);
 
-    kani::assert(gaps.is_empty());
+    kani::assert(gaps.is_empty(), "assertion failed");
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ fn hardened_debug_assertions_enabled() {
 fn maxperf_rejected_by_construction() {
     // 1. Direct check
     let result = ProfileName::new("maxperf");
-    kani::assert(result.is_err());
+    kani::assert(result.is_err(), "assertion failed");
 
     // 2. Exhaustive: all valid ProfileName variants are not maxperf
     let name: ProfileName = kani::any();
@@ -175,5 +175,5 @@ fn maxperf_rejected_by_construction() {
             has_forbidden = true;
         }
     }
-    kani::assert(!has_forbidden);
+    kani::assert(!has_forbidden, "assertion failed");
 }

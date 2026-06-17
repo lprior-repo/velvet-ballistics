@@ -75,13 +75,13 @@ mod kani_harnesses {
 
         match result {
             Ok(metadata) => {
-                kani::assert(metadata.fjall_write_latency_ns == fjall_ns);
-                kani::assert(metadata.direct_api_latency_ns == api_ns);
-                kani::assert(metadata.ipc_latency_ns == ipc_ns);
+                kani::assert(metadata.fjall_write_latency_ns == fjall_ns, "assertion failed");
+                kani::assert(metadata.direct_api_latency_ns == api_ns, "assertion failed");
+                kani::assert(metadata.ipc_latency_ns == ipc_ns, "assertion failed");
             }
             Err(_) => {
                 // Should not happen with valid commit_hash assumption.
-                kani::assert(false);
+                kani::assert(false, "assertion failed");
             }
         }
     }
