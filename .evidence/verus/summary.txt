@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=23
+VERUS_TARGET_COUNT=1
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -6,27 +6,5 @@ VERUS_VERSION=Verus
   Toolchain: 1.95.0-x86_64-unknown-linux-gnu
 
 VERUSFMT=available
-PASS verus verification/verus/vb_mrwe6_atomic_index.rs
-PASS verus verification/verus/vb_mrwe6_queue_intent.rs
-PASS verus verification/verus/vb_mrwe6_duplicate_schedule.rs
-PASS verus verification/verus/vb_mrwe6_completion_policy.rs
-PASS verus verification/verus/vb_mrwe6_recovery_reliance.rs
-PASS verus verification/verus/vb_mrwe5_kind_parity.rs
-PASS verus verification/verus/vb_mrwe5_decode_reject.rs
-PASS verus verification/verus/vb_mrwe5_roundtrip.rs
-PASS verus verification/verus/vb_mrwe5_compat_kind_family.rs
-PASS verus verification/verus/taint_lattice.rs
-PASS verus verification/verus/step_state_machine.rs
-PASS verus verification/verus/step_budget.rs
-PASS verus verification/verus/resource_budget.rs
-PASS verus crates/vb_ipc/src/verification/verus/vb_5iebh.rs
-PASS verus verification/verus/vb_jpq724_events_for_run_production.rs
-PASS verus verification/verus/signals_invariant.rs
-PASS verus verification/verus/run_loop_termination.rs
-PASS verus verification/verus/vb_cli_commands_journal_trace.rs
-PASS verus verification/verus/budget_bounded.rs
-PASS verus verification/verus/idempotency_replay_tracker.rs
-PASS verus verification/verus/accepted_artifact_admission_decision.rs
-PASS verus crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
-PASS verus crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+PASS verus verification/verus/vb_queue_semantics.rs
 VERUS_TRUST_SCAN_OK
