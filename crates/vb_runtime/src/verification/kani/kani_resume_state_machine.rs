@@ -177,7 +177,7 @@ fn kani_resume_append_before_drive() {
 
     // After apply(Resume), state must be Resuming
     let state_after = shard.runtime_state_get(run);
-    kani::assert(matches!(state_after, Some(RuntimeState::Resuming), "assertion failed"),
+    kani::assert(matches!(state_after, Some(RuntimeState::Resuming)),
         "apply(Resume) must transition to Resuming",
     );
 }
@@ -201,7 +201,7 @@ fn kani_resume_append_failure_rollback() {
 
     // Assert: state must be restored to Resumable
     let state_after = shard.runtime_state_get(run);
-    kani::assert(matches!(state_after, Some(RuntimeState::Resumable), "assertion failed"),
+    kani::assert(matches!(state_after, Some(RuntimeState::Resumable)),
         "apply(ResumeRollback) must restore to Resumable",
     );
 }
@@ -227,7 +227,7 @@ fn kani_resume_drive_failure_preserves_journal() {
 
     // Assert: state is Resumable (journal entry preserved, state rollback only)
     let state_after = shard.runtime_state_get(run);
-    kani::assert(matches!(state_after, Some(RuntimeState::Resumable), "assertion failed"),
+    kani::assert(matches!(state_after, Some(RuntimeState::Resumable)),
         "drive failure rollback must restore Resumable",
     );
 }
@@ -253,7 +253,7 @@ fn kani_resume_rollback_consistency() {
 
     // Verify
     let state_after = shard.runtime_state_get(run);
-    kani::assert(matches!(state_after, Some(RuntimeState::Resumable), "assertion failed"),
+    kani::assert(matches!(state_after, Some(RuntimeState::Resumable)),
         "apply(ResumeRollback) must always result in Resumable",
     );
     // Verify all transitions produce correct states
@@ -292,7 +292,7 @@ fn kani_resume_rollback_consistency() {
         let r = any_run_id();
         s.apply(r, *event);
         let got = s.runtime_state_get(r);
-        kani::assert(got == Some(*expected, "assertion failed"),
+        kani::assert(got == Some(*expected),
             &format!("{} transition must produce correct state", label),
         );
     }
@@ -312,7 +312,7 @@ fn kani_resume_apply_state_transitions() {
     // Test Submit → Initial
     shard.apply(run, RuntimeEvent::Submit);
     let state = shard.runtime_state_get(run);
-    kani::assert(state == Some(RuntimeState::Initial, "assertion failed"),
+    kani::assert(state == Some(RuntimeState::Initial),
         "Submit must set Initial state",
     );
     // Test Resume → Resuming
