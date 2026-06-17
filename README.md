@@ -20,8 +20,7 @@ velvet-ballistics addresses all four dimensions:
 |---|---|---|---|
 | Formal resource bounds | Checked arithmetic, bounded frames, slot budgets | Timeouts only | No |
 | Taint tracking | Clean/DerivedFromSecret/Secret lattice | No | No |
-| IR compilation | 34 CompiledNodeKind variants with exact semantics | Interpreted | Interpreted |
-| Native code generation | maxperf profile generates Rust, zero interpreter | No | No |
+| IR compilation | 34 CompiledNodeKind variants with exact semantics, IR interpreter execution | Interpreted | Interpreted |
 
 ## Architecture
 
@@ -32,7 +31,7 @@ YAML source
   -> typed expression bytecode (Pratt parser, 64-entry fixed stack)
   -> numeric slot compiler
   -> compact IR (34 node kinds, u16 step indices, u16 slot indices)
-  -> generated Rust maxperf mode
+  -> IR interpreter execution (no codegen in current scope)
   -> shard-owned in-memory runtime (no async, no allocation in hot path)
   -> native ActionId dispatch with taint enforcement
   -> Fjall binary persistence (9 keyspaces, blake3+crc32c envelopes)
@@ -51,7 +50,6 @@ crates/vb_compile      Full compilation pipeline (YAML -> validated IR)
 crates/vb_storage      Fjall journal, envelope, recovery, snapshots
 crates/vb_runtime      Shard engine, action dispatch, primitives, frame pool
 crates/vb_ipc          Unix domain socket server/client, binary protocol
-velvet-optional        Optional generated Rust code track
 benches/               Benchmark evidence for speed claims
 ```
 
