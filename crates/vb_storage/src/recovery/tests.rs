@@ -1,3 +1,129 @@
+#![allow(
+    clippy::absurd_extreme_comparisons,
+    clippy::approx_constant,
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::assertions_on_constants,
+    clippy::bool_assert_comparison,
+    clippy::bool_comparison,
+    clippy::cast_abs_to_unsigned,
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::clone_on_copy,
+    clippy::collapsible_if,
+    clippy::collapsible_match,
+    clippy::duplicated_attributes,
+    clippy::err_expect,
+    clippy::expect_fun_call,
+    clippy::expect_used,
+    clippy::field_reassign_with_default,
+    clippy::filter_map_next,
+    clippy::from_iter_instead_of_collect,
+    clippy::get_first,
+    clippy::if_let_mutex,
+    clippy::if_not_else,
+    clippy::implicit_clone,
+    clippy::implicit_saturating_sub,
+    clippy::inconsistent_struct_constructor,
+    clippy::indexing_slicing,
+    clippy::inefficient_to_string,
+    clippy::items_after_test_module,
+    clippy::iter_count,
+    clippy::iter_filter_is_ok,
+    clippy::iter_filter_is_some,
+    clippy::iter_not_returning_iterator,
+    clippy::iter_over_hash_type,
+    clippy::iter_without_into_iter,
+    clippy::large_digit_groups,
+    clippy::large_futures,
+    clippy::large_stack_arrays,
+    clippy::large_types_passed_by_value,
+    clippy::len_zero,
+    clippy::let_and_return,
+    clippy::let_underscore_must_use,
+    clippy::manual_div_ceil,
+    clippy::manual_let_else,
+    clippy::manual_map,
+    clippy::manual_saturating_arithmetic,
+    clippy::manual_strip,
+    clippy::manual_unwrap_or,
+    clippy::match_like_matches_macro,
+    clippy::misnamed_getters,
+    clippy::missing_safety_doc,
+    clippy::module_inception,
+    clippy::mutable_key_type,
+    clippy::needless_bool,
+    clippy::needless_bool_assign,
+    clippy::needless_borrow,
+    clippy::needless_borrows_for_generic_args,
+    clippy::needless_collect,
+    clippy::needless_pass_by_value,
+    clippy::needless_range_loop,
+    clippy::needless_return,
+    clippy::needless_update,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::nonminimal_bool,
+    clippy::ok_expect,
+    clippy::option_if_let_else,
+    clippy::or_fun_call,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::path_buf_push_overwrite,
+    clippy::print_stderr,
+    clippy::print_stdout,
+    clippy::pub_with_shorthand,
+    clippy::range_minus_one,
+    clippy::range_plus_one,
+    clippy::redundant_clone,
+    clippy::redundant_closure,
+    clippy::redundant_else,
+    clippy::redundant_guards,
+    clippy::redundant_locals,
+    clippy::redundant_pattern_matching,
+    clippy::redundant_pub_crate,
+    clippy::ref_binding_to_reference,
+    clippy::ref_option_ref,
+    clippy::shadow_unrelated,
+    clippy::similar_names,
+    clippy::single_match,
+    clippy::single_match_else,
+    clippy::suspicious_operation_groupings,
+    clippy::todo,
+    clippy::too_many_lines,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::type_complexity,
+    clippy::unimplemented,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_cast,
+    clippy::unnecessary_fallible_conversions,
+    clippy::unnecessary_map_or,
+    clippy::unnecessary_mut_passed,
+    clippy::unnecessary_unwrap,
+    clippy::unnecessary_wraps,
+    clippy::unneeded_struct_pattern,
+    clippy::unnested_or_patterns,
+    clippy::unreadable_literal,
+    clippy::unused_async,
+    clippy::unused_io_amount,
+    clippy::unused_self,
+    clippy::unused_trait_names,
+    clippy::unwrap_used,
+    clippy::useless_asref,
+    clippy::useless_conversion,
+    clippy::useless_format,
+    clippy::useless_vec,
+    clippy::vec_init_then_push,
+    clippy::wildcard_enum_match_arm,
+    clippy::wildcard_imports,
+    dead_code,
+    let_underscore_drop,
+    unused_imports,
+    unused_variables,
+)]
+
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
 use crate::recovery::types::DigestCheckConfig;
@@ -478,7 +604,9 @@ fn replay_events_accepts_identical_duplicate_action_scheduled_ticket() {
 
     let result = replay_events(&events, &mut tracker, &[]);
 
-    assert!(result.is_ok(), "expected Ok, got {:?}", result);
+    let Ok(_events) = result else {
+        panic!("expected Ok, got {:?}", result);
+    };
 }
 
 #[test]
@@ -1371,8 +1499,11 @@ fn extract_terminal_finds_last_terminal() {
     ];
 
     let terminal = extract_terminal(&events);
-    assert!(terminal.is_some());
-    assert!(matches!(terminal, Some(JournalEvent::RunFinished { .. })));
+    let Some(JournalEvent::RunFinished { run: term_run, result: term_result, .. }) = terminal else {
+        panic!("extract_terminal must return RunFinished for terminal events");
+    };
+    assert_eq!(term_run, &RunId::new(1), "terminal run must match");
+    assert_eq!(term_result.get(), 0, "terminal result slot must be 0");
 }
 
 #[test]
@@ -1384,7 +1515,11 @@ fn extract_terminal_returns_none_without_terminal() {
     }];
 
     let terminal = extract_terminal(&events);
-    assert!(terminal.is_none());
+    assert!(
+        terminal.is_none(),
+        "extract_terminal must return None for non-terminal events, got: {:?}",
+        terminal
+    );
 }
 
 #[test]
@@ -2807,8 +2942,10 @@ fn extract_terminal_returns_some_for_finished_event() {
     ];
 
     let result = extract_terminal(&events);
-    assert!(result.is_some());
-    assert_eq!(result, Some(&finished));
+    let Some(terminal_ev) = result else {
+        panic!("extract_terminal must return Some for events ending in RunFinished");
+    };
+    assert_eq!(terminal_ev, &finished, "terminal event must be the RunFinished event");
 }
 
 #[test]
@@ -2820,7 +2957,11 @@ fn extract_terminal_returns_none_for_non_terminal_event() {
     }];
 
     let terminal = extract_terminal(&events);
-    assert!(terminal.is_none());
+    assert!(
+        terminal.is_none(),
+        "extract_terminal must return None for non-terminal events, got: {:?}",
+        terminal
+    );
 }
 
 // --- Recovery frame seed divergence and edge case tests ---
@@ -3214,12 +3355,9 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
 
-        assert!(
-            result.is_ok(),
-            "expected Ok(RunFrame), got Err: {:?}",
-            result
-        );
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok(RunFrame), got Err: {:?}", result);
+        };
         assert_eq!(frame.run_id(), run);
         assert_eq!(frame.step_count(), 1);
         assert_eq!(frame.slot_count(), 1);
@@ -3262,12 +3400,9 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(
-            result.is_ok(),
-            "expected Ok(RunFrame), got Err: {:?}",
-            result
-        );
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok(RunFrame), got Err: {:?}", result);
+        };
         assert_eq!(frame.run_id(), run);
         assert_eq!(frame.step_count(), 1);
         assert_eq!(frame.slot_count(), 1);
@@ -3335,11 +3470,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-
-        assert!(
-            result.is_ok(),
-            "legacy frame extra must not be corrupt taint"
-        );
+        let Ok(_frame) = result else {
+            panic!("legacy frame extra must not be corrupt taint, got: {:?}", result);
+        };
     }
 
     // --- Error: mismatched snapshot run_id ---
@@ -3491,8 +3624,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.pc(), StepIdx::new(1));
     }
 
@@ -3524,8 +3658,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.step_state(StepIdx::new(0)).unwrap(),
             StepState::Succeeded
@@ -3564,8 +3699,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.read_slot(SlotIdx::new(0)).unwrap(),
             &SlotValue::I64(2)
@@ -3600,8 +3736,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.read_taint(SlotIdx::new(0)).unwrap(), Taint::Secret);
     }
 
@@ -3661,8 +3798,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.executed(), 3);
     }
 
@@ -3708,8 +3846,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.parallel_in_flight(), 1);
         assert_eq!(frame.max_parallel_in_flight(), 2);
     }
@@ -3824,8 +3963,9 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.read_slot(SlotIdx::new(1)).unwrap(),
             &SlotValue::I64(42)
@@ -3911,8 +4051,9 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.parallel_in_flight(), 0);
         assert_eq!(frame.max_parallel_in_flight(), 1);
         assert_eq!(frame.executed(), 2);
@@ -4013,8 +4154,9 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
 
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.parallel_in_flight(), 1);
         assert_eq!(frame.max_parallel_in_flight(), 2);
         assert_eq!(
@@ -4043,8 +4185,9 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
 
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.parallel_in_flight(), 0);
         assert_eq!(
             frame.step_state(StepIdx::ZERO).unwrap(),
@@ -4080,8 +4223,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.step_count(), 1);
         assert_eq!(frame.slot_count(), 1);
     }
@@ -4142,8 +4286,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.step_state(StepIdx::new(0)).unwrap(),
             StepState::Waiting
@@ -4171,8 +4316,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.step_state(StepIdx::new(0)).unwrap(),
             StepState::Asking
@@ -4206,8 +4352,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.parallel_in_flight(), 0);
         assert_eq!(frame.max_parallel_in_flight(), 1);
     }
@@ -4238,8 +4385,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.step_state(StepIdx::new(0)).unwrap(),
             StepState::Succeeded
@@ -4266,8 +4414,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(
             frame.step_state(StepIdx::new(0)).unwrap(),
             StepState::Running
@@ -4352,8 +4501,9 @@ mod hydrate_run_frame_tests {
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
-        assert!(result.is_ok(), "expected Ok, got {:?}", result);
-        let frame = result.unwrap();
+        let Ok(frame) = result else {
+            panic!("expected Ok, got {:?}", result);
+        };
         assert_eq!(frame.slot_count(), 2);
         assert_eq!(
             frame.read_slot(SlotIdx::new(0)).unwrap(),

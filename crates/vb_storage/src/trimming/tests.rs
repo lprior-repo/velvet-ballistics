@@ -249,12 +249,18 @@ fn trim_preserves_run_header_and_snapshot() {
     let header = journal
         .run_header(run)
         .expect("header lookup should succeed");
-    assert!(header.is_some(), "run header should be preserved");
+    let Some(header_rec) = header else {
+        panic!("trim must preserve run header");
+    };
+    assert_eq!(header_rec.run, run, "preserved header must match trimmed run");
 
     let snap = journal
         .snapshot(run, EventSeq::new(2))
         .expect("snapshot lookup should succeed");
-    assert!(snap.is_some(), "snapshot should be preserved");
+    let Some(snapshot) = snap else {
+        panic!("trim must preserve snapshot for trimmed run");
+    };
+    assert_eq!(snapshot.seq.get(), 2, "preserved snapshot must have expected seq");
 }
 
 #[test]
@@ -670,10 +676,12 @@ fn replay_equivalence_after_trim() {
     // Verify trimmed events are actually gone by trying to read them directly
     for seq in 0..3u64 {
         let key = crate::keys::run_event_key(run, EventSeq::new(seq)).expect("key ok");
+        let got = journal.events.get(key).expect("get ok");
         assert!(
-            journal.events.get(key).expect("get ok").is_none(),
-            "event seq {} should be deleted",
-            seq
+            got.is_none(),
+            "event seq {} should be deleted after trim, but was found: {:?}",
+            seq,
+            got
         );
     }
 }
@@ -749,21 +757,19 @@ fn diagnostic_returns_eligible_and_blocked_runs() {
         .runs
         .iter()
         .find(|r| matches!(r, TrimEligibility::Eligible { run, .. } if run == &run_a));
-    assert!(
-        eligible.is_some(),
-        "run A should be Eligible, got {:?}",
-        diag.runs
-    );
+    let Some(&TrimEligibility::Eligible { run: eligible_run, .. }) = eligible else {
+        panic!("run A should be Eligible in diagnostic, got: {:?}", diag.runs);
+    };
+    assert_eq!(eligible_run, run_a, "eligible run must match run A");
 
     let blocked = diag
         .runs
         .iter()
         .find(|r| matches!(r, TrimEligibility::Blocked { run, .. } if run == &run_b));
-    assert!(
-        blocked.is_some(),
-        "run B should be Blocked, got {:?}",
-        diag.runs
-    );
+    let Some(&TrimEligibility::Blocked { run: blocked_run, .. }) = blocked else {
+        panic!("run B should be Blocked in diagnostic, got: {:?}", diag.runs);
+    };
+    assert_eq!(blocked_run, run_b, "blocked run must match run B");
 }
 
 #[test]
@@ -807,13 +813,9 @@ fn diagnostic_reports_correct_safe_point_and_trimmable_count() {
         } if r == &run => Some((*safe_point, *events_trimmable)),
         _ => None,
     });
-
-    assert!(
-        eligible.is_some(),
-        "run should be eligible, got {:?}",
-        diag.runs
-    );
-    let (safe_point, trimmable) = eligible.unwrap();
+    let Some((safe_point, trimmable)) = eligible else {
+        panic!("run should be Eligible in diagnostic, got {:?}", diag.runs);
+    };
     assert_eq!(safe_point, EventSeq::new(5), "safe point should be seq 5");
     assert_eq!(trimmable, 5, "should report 5 trimmable events (0-4)");
     assert_eq!(

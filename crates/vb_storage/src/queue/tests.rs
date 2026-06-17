@@ -53,7 +53,9 @@ mod internal_tests {
     #[test]
     fn new_accepts_valid_capacity_and_batch() {
         let result = JournalWriterQueue::new(8, 4, StorageLimits::DEFAULT);
-        assert!(result.is_ok(), "valid capacity and batch should succeed");
+        let Ok(_) = result else {
+            panic!("valid capacity and batch must succeed, got {:?}", result);
+        };
     }
 
     #[test]
@@ -85,9 +87,10 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(1);
         for i in 0..3u64 {
-            queue
-                .enqueue_journaled(make_event(run, i))
-                .unwrap_or_else(|_| panic!("enqueue {} should succeed within capacity", i));
+            let result = queue.enqueue_journaled(make_event(run, i));
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed within capacity, got {:?}", i, result);
+            };
         }
         let counts = queue
             .pending_profile_counts()
@@ -198,9 +201,10 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(50);
         for i in 0..5u64 {
-            queue
-                .enqueue_journaled(make_event(run, i))
-                .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = queue.enqueue_journaled(make_event(run, i));
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed, got {:?}", i, result);
+            };
         }
 
         let report = queue.shutdown(&journal).expect("shutdown should succeed");
@@ -253,9 +257,10 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(60);
         for i in 0..5u64 {
-            queue
-                .enqueue_journaled(make_event(run, i))
-                .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = queue.enqueue_journaled(make_event(run, i));
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed, got {:?}", i, result);
+            };
         }
 
         // batch_size is 2, so first flush drains 2
@@ -277,9 +282,10 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(70);
         for i in 0..5u64 {
-            queue
-                .enqueue_journaled(make_event(run, i))
-                .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = queue.enqueue_journaled(make_event(run, i));
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed, got {:?}", i, result);
+            };
         }
 
         let report = queue.drain_all(&journal).expect("drain_all should succeed");
@@ -554,15 +560,14 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(111);
         for i in 0..6u64 {
-            if i % 2 == 0 {
-                queue
-                    .enqueue_strict(make_event(run, i))
-                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = if i % 2 == 0 {
+                queue.enqueue_strict(make_event(run, i))
             } else {
-                queue
-                    .enqueue_journaled(make_event(run, i))
-                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
-            }
+                queue.enqueue_journaled(make_event(run, i))
+            };
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed, got {:?}", i, result);
+            };
         }
 
         for _ in 0..3 {
@@ -766,15 +771,14 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(150);
         for i in 0..7u64 {
-            if i % 2 == 0 {
-                queue
-                    .enqueue_strict(make_event(run, i))
-                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = if i % 2 == 0 {
+                queue.enqueue_strict(make_event(run, i))
             } else {
-                queue
-                    .enqueue_journaled(make_event(run, i))
-                    .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
-            }
+                queue.enqueue_journaled(make_event(run, i))
+            };
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed, got {:?}", i, result);
+            };
         }
 
         let report = queue.drain_all(&journal).expect("drain_all should succeed");
@@ -959,9 +963,10 @@ mod internal_tests {
             .expect("queue creation should succeed");
         let run = RunId::new(240);
         for i in 0..5u64 {
-            queue
-                .enqueue_journaled(make_event(run, i))
-                .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = queue.enqueue_journaled(make_event(run, i));
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed, got {:?}", i, result);
+            };
         }
 
         let report = queue.flush_batch(&journal).expect("flush should succeed");
@@ -1050,9 +1055,10 @@ mod internal_tests {
 
         // Fill to exact capacity
         for i in 0..3u64 {
-            queue
-                .enqueue_journaled(make_event(run, i))
-                .unwrap_or_else(|_| panic!("enqueue {} should succeed", i));
+            let result = queue.enqueue_journaled(make_event(run, i));
+            let Ok(()) = result else {
+                panic!("enqueue {} must succeed within capacity, got {:?}", i, result);
+            };
         }
 
         let counts = queue

@@ -1,4 +1,3 @@
-
 #[test]
 fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_arrives() {
     // Given a timed wait has captured a TimerFired authority token.

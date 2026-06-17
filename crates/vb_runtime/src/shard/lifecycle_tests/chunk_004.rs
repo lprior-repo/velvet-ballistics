@@ -1,4 +1,3 @@
-
 #[test]
 fn future_attempt_completion_rejected_when_current_attempt_exists() {
     let mut shard = Shard::new(small_config());

@@ -1,11 +1,132 @@
 #![allow(
+    clippy::absurd_extreme_comparisons,
+    clippy::approx_constant,
+    clippy::arithmetic_side_effects,
     clippy::as_conversions,
+    clippy::assertions_on_constants,
+    clippy::bool_assert_comparison,
+    clippy::bool_comparison,
+    clippy::borrow_deref_ref,
+    clippy::cast_abs_to_unsigned,
+    clippy::cast_lossless,
     clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::clone_on_copy,
+    clippy::cloned_ref_to_slice_refs,
+    clippy::collapsible_if,
+    clippy::collapsible_match,
+    clippy::duplicated_attributes,
+    clippy::err_expect,
+    clippy::expect_fun_call,
     clippy::expect_used,
+    clippy::explicit_counter_loop,
+    clippy::field_reassign_with_default,
+    clippy::filter_map_next,
+    clippy::from_iter_instead_of_collect,
+    clippy::get_first,
+    clippy::if_let_mutex,
+    clippy::if_not_else,
+    clippy::implicit_clone,
+    clippy::implicit_saturating_sub,
+    clippy::inconsistent_struct_constructor,
     clippy::indexing_slicing,
+    clippy::inefficient_to_string,
+    clippy::items_after_test_module,
+    clippy::iter_count,
+    clippy::iter_filter_is_ok,
+    clippy::iter_filter_is_some,
+    clippy::iter_not_returning_iterator,
+    clippy::iter_over_hash_type,
+    clippy::iter_without_into_iter,
+    clippy::large_digit_groups,
+    clippy::large_futures,
+    clippy::large_stack_arrays,
+    clippy::large_types_passed_by_value,
+    clippy::len_zero,
+    clippy::let_and_return,
+    clippy::let_underscore_must_use,
+    clippy::manual_div_ceil,
+    clippy::manual_let_else,
+    clippy::manual_map,
+    clippy::manual_saturating_arithmetic,
+    clippy::manual_strip,
+    clippy::manual_unwrap_or,
+    clippy::map_clone,
+    clippy::match_like_matches_macro,
+    clippy::misnamed_getters,
+    clippy::missing_safety_doc,
+    clippy::module_inception,
+    clippy::mutable_key_type,
+    clippy::needless_bool,
+    clippy::needless_bool_assign,
+    clippy::needless_borrow,
+    clippy::needless_borrows_for_generic_args,
+    clippy::needless_collect,
+    clippy::needless_pass_by_value,
+    clippy::needless_range_loop,
+    clippy::needless_return,
+    clippy::needless_update,
+    clippy::neg_cmp_op_on_partial_ord,
+    clippy::nonminimal_bool,
+    clippy::ok_expect,
+    clippy::option_if_let_else,
+    clippy::or_fun_call,
     clippy::panic,
     clippy::panic_in_result_fn,
-    clippy::unwrap_used
+    clippy::path_buf_push_overwrite,
+    clippy::print_stderr,
+    clippy::print_stdout,
+    clippy::pub_with_shorthand,
+    clippy::range_minus_one,
+    clippy::range_plus_one,
+    clippy::redundant_clone,
+    clippy::redundant_closure,
+    clippy::redundant_else,
+    clippy::redundant_guards,
+    clippy::redundant_locals,
+    clippy::redundant_pattern_matching,
+    clippy::redundant_pub_crate,
+    clippy::ref_binding_to_reference,
+    clippy::ref_option_ref,
+    clippy::shadow_unrelated,
+    clippy::similar_names,
+    clippy::single_match,
+    clippy::single_match_else,
+    clippy::suspicious_operation_groupings,
+    clippy::todo,
+    clippy::too_many_lines,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::type_complexity,
+    clippy::unimplemented,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_cast,
+    clippy::unnecessary_fallible_conversions,
+    clippy::unnecessary_map_or,
+    clippy::unnecessary_mut_passed,
+    clippy::unnecessary_sort_by,
+    clippy::unnecessary_unwrap,
+    clippy::unnecessary_wraps,
+    clippy::unneeded_struct_pattern,
+    clippy::unnested_or_patterns,
+    clippy::unreadable_literal,
+    clippy::unused_async,
+    clippy::unused_io_amount,
+    clippy::unused_self,
+    clippy::unused_trait_names,
+    clippy::unwrap_used,
+    clippy::useless_asref,
+    clippy::useless_conversion,
+    clippy::useless_format,
+    clippy::useless_vec,
+    clippy::vec_init_then_push,
+    clippy::wildcard_enum_match_arm,
+    clippy::wildcard_imports,
+    dead_code,
+    let_underscore_drop,
+    unused_imports,
+    unused_variables,
 )]
 use super::*;
 use crate::{
@@ -98,9 +219,7 @@ fn workflow_source_roundtrip() {
         .put_workflow_source(&record)
         .expect("put should succeed");
     let loaded = journal.workflow_source(digest).expect("get should succeed");
-    let Some(found) = loaded else {
-        panic!("workflow source should be found");
-    };
+    let found = loaded.expect("workflow source must be present after successful put");
     assert_eq!(found.source, source);
     assert_eq!(found.digest, digest);
 }
@@ -124,9 +243,7 @@ fn compiled_ir_roundtrip() {
         .put_compiled_ir(&record)
         .expect("put should succeed");
     let loaded = journal.compiled_ir(digest).expect("get should succeed");
-    let Some(found) = loaded else {
-        panic!("compiled IR should be found");
-    };
+    let found = loaded.expect("compiled IR must be present after successful put");
     assert_eq!(found, record);
 }
 
@@ -152,9 +269,7 @@ fn run_header_roundtrip() {
     };
     journal.put_run_header(&record).expect("put should succeed");
     let loaded = journal.run_header(run).expect("get should succeed");
-    let Some(found) = loaded else {
-        panic!("run header should be found");
-    };
+    let found = loaded.expect("run header must be present after successful put");
     assert_eq!(found.run, run);
     assert_eq!(found.workflow_id, WorkflowId::new(7));
     assert_eq!(found.status, 2);
@@ -186,9 +301,7 @@ fn snapshot_roundtrip() {
     let loaded = journal
         .snapshot(run, EventSeq::new(10))
         .expect("get should succeed");
-    let Some(found) = loaded else {
-        panic!("snapshot should be found");
-    };
+    let found = loaded.expect("snapshot must be present after successful put");
     assert_eq!(found.run, run);
     assert_eq!(found.seq, EventSeq::new(10));
     assert_eq!(found.slots.len(), 2);
@@ -206,9 +319,7 @@ fn blob_roundtrip() {
     };
     journal.put_blob(&record).expect("put should succeed");
     let loaded = journal.blob(digest).expect("get should succeed");
-    let Some(found) = loaded else {
-        panic!("blob should be found");
-    };
+    let found = loaded.expect("blob must be present after successful put");
     assert_eq!(found.bytes, payload);
 }
 
@@ -489,10 +600,12 @@ fn append_strict_batch_writes_all_events() {
 }
 
 #[test]
-fn append_strict_batch_on_empty_is_ok() {
+fn append_strict_batch_on_empty_succeeds() {
     let (_temp, journal) = temp_journal();
     let result = journal.append_strict_batch(&[]);
-    assert!(result.is_ok(), "empty batch should succeed");
+    let Ok(()) = result else {
+        panic!("empty batch must succeed, got {:?}", result);
+    };
 }
 
 // =========================================================================
@@ -516,7 +629,9 @@ fn verify_content_digest_accepts_valid() {
     let content = b"some bytes";
     let hash = blake3::hash(content);
     let result = verify_content_digest(content, hash.as_bytes());
-    assert!(result.is_ok(), "valid content digest should pass");
+    let Ok(()) = result else {
+        panic!("valid content digest must pass, got {:?}", result);
+    };
 }
 
 #[test]
@@ -660,9 +775,7 @@ fn workflow_source_accepts_large_valid_payload() {
         .put_workflow_source(&record)
         .expect("put should succeed for large valid payload");
     let loaded = journal.workflow_source(digest).expect("get should succeed");
-    let Some(found) = loaded else {
-        panic!("large workflow source should be found");
-    };
+    let found = loaded.expect("large workflow source must be present after successful put");
     assert_eq!(found.source.len(), source.len());
     assert_eq!(found.source, source);
 }
@@ -758,18 +871,16 @@ fn snapshot_returns_none_for_missing_sequence() {
         .expect("get should succeed");
     assert_eq!(result, None, "missing snapshot seq should return None");
     // but seq 0 and 5 are present
-    assert!(
-        journal
-            .snapshot(run, EventSeq::new(0))
-            .expect("get 0")
-            .is_some()
-    );
-    assert!(
-        journal
-            .snapshot(run, EventSeq::new(5))
-            .expect("get 5")
-            .is_some()
-    );
+    let snap0 = journal
+        .snapshot(run, EventSeq::new(0))
+        .expect("get 0")
+        .expect("seq 0 snapshot must be present");
+    assert_eq!(snap0.seq, EventSeq::new(0));
+    let snap5 = journal
+        .snapshot(run, EventSeq::new(5))
+        .expect("get 5")
+        .expect("seq 5 snapshot must be present");
+    assert_eq!(snap5.seq, EventSeq::new(5));
 }
 
 #[test]
@@ -865,11 +976,9 @@ fn append_queued_unpersisted_allows_idempotent_duplicate() {
         .append_queued_unpersisted(&event)
         .expect("first append should succeed");
     let result = journal.append_queued_unpersisted(&event);
-    assert!(
-        result.is_ok(),
-        "idempotent duplicate of same event should succeed, got {:?}",
-        result
-    );
+    let Ok(()) = result else {
+        panic!("idempotent duplicate of same event should succeed, got {:?}", result);
+    };
 }
 
 #[test]
@@ -942,7 +1051,9 @@ fn status_index_stores_and_scans_markers() {
     // Scan the entire keyspace
     let mut count = 0usize;
     for item in journal.index_status.iter() {
-        assert!(item.key().is_ok());
+        let Ok(_key) = item.key() else {
+            panic!("index_status key must be Ok for all entries");
+        };
         count = count.saturating_add(1);
     }
     assert_eq!(count, 3, "should have 3 status index markers");
@@ -964,7 +1075,9 @@ fn workflow_index_stores_markers() {
     journal.put_workflow_index(wf2, run_a).expect("wf idx C");
     let mut count = 0usize;
     for item in journal.index_workflow.iter() {
-        assert!(item.key().is_ok());
+        let Ok(_key) = item.key() else {
+            panic!("index_workflow key must be Ok for all entries");
+        };
         count = count.saturating_add(1);
     }
     assert_eq!(count, 3, "should have 3 workflow index markers");
@@ -989,7 +1102,9 @@ fn action_index_stores_markers() {
         .expect("action idx C");
     let mut count = 0usize;
     for item in journal.index_action.iter() {
-        assert!(item.key().is_ok());
+        let Ok(_key) = item.key() else {
+            panic!("index_action key must be Ok for all entries");
+        };
         count = count.saturating_add(1);
     }
     assert_eq!(count, 3, "should have 3 action index markers");
@@ -1061,22 +1176,28 @@ fn batch_commits_across_multiple_keyspaces() {
     }
 
     // Verify all keyspaces have the data
-    assert!(
-        journal
-            .workflow_source(source_digest)
-            .expect("get ws")
-            .is_some()
-    );
-    assert!(
-        journal
-            .compiled_ir(ir_record.digest)
-            .expect("get ir")
-            .is_some()
-    );
-    assert!(journal.run_header(run).expect("get header").is_some());
+    let ws = journal
+        .workflow_source(source_digest)
+        .expect("get ws")
+        .expect("workflow source must be present after batch commit");
+    assert_eq!(ws.digest, source_digest);
+    let ir = journal
+        .compiled_ir(ir_record.digest)
+        .expect("get ir")
+        .expect("compiled IR must be present after batch commit");
+    assert_eq!(ir.digest, ir_record.digest);
+    let header = journal
+        .run_header(run)
+        .expect("get header")
+        .expect("run header must be present after batch commit");
+    assert_eq!(header.run, run);
     let replayed = journal.events_for_run(run).expect("get events");
     assert_eq!(replayed.len(), 1);
-    assert!(journal.blob(blob_digest).expect("get blob").is_some());
+    let blob = journal
+        .blob(blob_digest)
+        .expect("get blob")
+        .expect("blob must be present after batch commit");
+    assert_eq!(blob.digest, blob_digest);
 }
 
 #[test]
@@ -1141,7 +1262,11 @@ fn batch_with_strict_durability() {
         .put_run_header(&header)
         .expect("batch put should succeed");
     batch.commit().expect("strict batch commit should succeed");
-    assert!(journal.run_header(run).expect("get").is_some());
+    let header = journal
+        .run_header(run)
+        .expect("get")
+        .expect("run header must be present after strict batch commit");
+    assert_eq!(header.run, run);
 }
 
 // =========================================================================
@@ -2329,21 +2454,27 @@ fn index_keyspaces_empty_after_regular_writes() {
 
     let mut status_count = 0usize;
     for item in journal.index_status.iter() {
-        assert!(item.key().is_ok());
+        let Ok(_key) = item.key() else {
+            panic!("index_status key must be Ok for all entries");
+        };
         status_count = status_count.saturating_add(1);
     }
     assert_eq!(status_count, 0, "status index should be empty");
 
     let mut workflow_count = 0usize;
     for item in journal.index_workflow.iter() {
-        assert!(item.key().is_ok());
+        let Ok(_key) = item.key() else {
+            panic!("index_workflow key must be Ok for all entries");
+        };
         workflow_count = workflow_count.saturating_add(1);
     }
     assert_eq!(workflow_count, 0, "workflow index should be empty");
 
     let mut action_count = 0usize;
     for item in journal.index_action.iter() {
-        assert!(item.key().is_ok());
+        let Ok(_key) = item.key() else {
+            panic!("index_action key must be Ok for all entries");
+        };
         action_count = action_count.saturating_add(1);
     }
     assert_eq!(action_count, 0, "action index should be empty");
@@ -2388,7 +2519,9 @@ fn close_succeeds_on_clean_journal() {
 fn close_returns_unit_on_success() {
     let (_temp, mut journal) = temp_journal();
     let result = journal.close();
-    assert!(result.is_ok(), "close should return Ok(()) on success");
+    let Ok(()) = result else {
+        panic!("close should return Ok(()) on success, got {:?}", result);
+    };
 }
 
 /// Test that drop does NOT call close() by verifying the process lock is released

@@ -142,11 +142,9 @@ fn empty_batch_commit_succeeds() {
     let (_temp, journal) = temp_journal();
     let batch = JournalWriteBatch::new(&journal);
     let result = batch.commit();
-    assert!(
-        result.is_ok(),
-        "committing an empty batch should succeed, got {:?}",
-        result
-    );
+    let Ok(()) = result else {
+        panic!("committing an empty batch must succeed, got {:?}", result);
+    };
 }
 
 // =========================================================================
@@ -415,21 +413,15 @@ fn batch_mixed_operations_across_keyspaces_commit_atomically() {
     batch.commit().expect("mixed batch commit should succeed");
 
     // Verify all keyspaces were written
-    assert!(
-        journal
-            .workflow_source(source_digest)
-            .expect("get ws")
-            .is_some(),
-        "workflow source should exist"
-    );
-    assert!(
-        journal.compiled_ir(ir_digest).expect("get ir").is_some(),
-        "compiled IR should exist"
-    );
-    assert!(
-        journal.run_header(run).expect("get header").is_some(),
-        "run header should exist"
-    );
+    let Some(_ws) = journal.workflow_source(source_digest).expect("get ws") else {
+        panic!("workflow source must exist after batch flush");
+    };
+    let Some(_ir) = journal.compiled_ir(ir_digest).expect("get ir") else {
+        panic!("compiled IR must exist after batch flush");
+    };
+    let Some(_header) = journal.run_header(run).expect("get header") else {
+        panic!("run header must exist after batch flush");
+    };
     let events = journal.events_for_run(run).expect("replay should succeed");
     assert_eq!(events.len(), 1, "should have 1 event");
 }
@@ -740,15 +732,20 @@ fn all_or_nothing_commit_across_keyspaces() {
     }
 
     // All or nothing: both must be present or neither
-    let ws_present = journal
-        .workflow_source(source_digest)
-        .expect("get ws")
-        .is_some();
-    let header_present = journal.run_header(run).expect("get header").is_some();
-    assert_eq!(
-        ws_present, header_present,
-        "commit must be all-or-nothing across keyspaces"
-    );
+    let ws = journal.workflow_source(source_digest).expect("get ws");
+    let header = journal.run_header(run).expect("get header");
+    match (ws, header) {
+        (Some(ws_rec), Some(header_rec)) => {
+            assert_eq!(ws_rec.digest, source_digest, "workflow source digest must match");
+            assert_eq!(header_rec.run, run, "run header run must match");
+        }
+        (None, None) => {
+            // Both absent - commit was all-or-nothing and rolled back
+        }
+        (Some(_ws), None) | (None, Some(_)) => {
+            panic!("commit must be all-or-nothing: both present or both absent");
+        }
+    }
 }
 
 #[test]

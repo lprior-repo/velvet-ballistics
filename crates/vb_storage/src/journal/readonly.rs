@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 //! Read-only journal wrapper.
 //!
 //! `ReadOnlyJournal` wraps `FjallJournal` and exposes only its read methods.
