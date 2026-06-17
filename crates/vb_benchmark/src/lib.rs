@@ -34,26 +34,37 @@ pub enum LatencyFieldId {
     Ipc,
 }
 
-/// Master metadata field names for JSON serialization completeness.
+/// Master metadata field names for completeness auditing.
 ///
-/// These 10 keys must all be present in any serialized `BenchmarkMetadata`
-/// output. Used by completeness invariants and audit pipelines.
+/// These 20 keys correspond to the `MASTER_METADATA_FIELDS` tuple defined
+/// in `scripts/check-section36-39-coverage.py`. They represent the canonical
+/// system-level metadata fields that must all be present in the evidence
+/// corpus for a benchmark run to be considered complete.
 ///
-/// Note: These are the JSON keys produced by serde serialization.
-/// The Python audit script (`check-section36-39-coverage.py`) tracks
-/// 20 broader system-level metadata fields across multiple evidence files;
-/// this constant covers only the `BenchmarkMetadata` struct's own keys.
-pub const MASTER_METADATA_FIELDS: [&str; 10] = [
-    "name",
-    "baseline_us",
-    "result_us",
-    "command",
-    "commit",
-    "environment",
-    "budget_us",
-    "fjall_write_latency",
-    "direct_api_latency",
-    "ipc_latency",
+/// Note: This constant used to be 10 elements (only the struct's own JSON
+/// keys); it was expanded to match the 20-element audit tuple so the
+/// `check-section36-39-coverage.py` script can verify this Rust side.
+pub const MASTER_METADATA_FIELDS: [&str; 20] = [
+    "git commit",
+    "rustc version",
+    "nightly date",
+    "CPU model",
+    "CPU governor",
+    "kernel version",
+    "build profile",
+    "RUSTFLAGS",
+    "benchmark tool and version",
+    "sample count or instruction count",
+    "input fixture digest",
+    "durability profile",
+    "execution mode",
+    "p50/p95/p99 latency",
+    "instruction counts",
+    "allocation count",
+    "bytes allocated",
+    "Fjall write latency",
+    "direct API latency",
+    "IPC latency",
 ];
 
 /// Benchmark metadata captured during a single benchmark run.
