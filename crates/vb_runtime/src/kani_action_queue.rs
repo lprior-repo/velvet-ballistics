@@ -54,37 +54,32 @@ fn kani_action_queue_capacity() {
 
     if capacity == 0 {
         // Zero capacity must be rejected with InvalidCapacity::Zero
-        kani::assert(
-            matches!(
+        kani::assert(matches!(
                 result,
                 Err(ActionQueueError::InvalidCapacity {
                     reason: crate::action_queue::InvalidActionQueueCapacity::Zero,
                     ..
-                })
-            ),
+                }), "assertion failed"),
             "capacity=0 must be rejected with InvalidCapacity::Zero",
         );
     } else if capacity > MAX_ACTION_COMPLETION_QUEUE_CAPACITY {
         // Above-max capacity must be rejected with InvalidCapacity::AboveMaximum
-        kani::assert(
-            matches!(
+        kani::assert(matches!(
                 result,
                 Err(ActionQueueError::InvalidCapacity {
                     reason: crate::action_queue::InvalidActionQueueCapacity::AboveMaximum { maximum },
                     ..
-                }) if maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY
-            ),
+                }) if maximum == MAX_ACTION_COMPLETION_QUEUE_CAPACITY, "assertion failed"),
             "capacity above MAX must be rejected with InvalidCapacity::AboveMaximum",
         );
     } else {
         // Valid capacity (1..=MAX) must succeed
-        kani::assert(result.is_ok(), "valid capacity must be accepted");
+        kani::assert(result.is_ok(, "assertion failed"), "valid capacity must be accepted");
         if let Ok(queue) = result {
-            kani::assert(
-                queue.capacity() == capacity,
+            kani::assert(queue.capacity(, "assertion failed") == capacity,
                 "queue reports the correct capacity",
             );
-            kani::assert(queue.is_empty(), "new queue is empty");
+            kani::assert(queue.is_empty(, "assertion failed"), "new queue is empty");
         }
     }
 }
@@ -110,24 +105,21 @@ fn kani_action_queue_full() {
     while i < capacity {
         let ticket = arbitrary_action_ticket(i as u64);
         let enqueued = queue.enqueue(ticket);
-        kani::assert(enqueued.is_ok(), "enqueue until capacity must succeed");
+        kani::assert(enqueued.is_ok(, "assertion failed"), "enqueue until capacity must succeed");
         i += 1;
     }
 
     // Queue is now full — next enqueue must return QueueFull
     let extra_ticket = arbitrary_action_ticket(u64::MAX);
     let result = queue.enqueue(extra_ticket);
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result,
-            Err(ActionQueueError::QueueFull { .. })
-        ),
+            Err(ActionQueueError::QueueFull { .. }), "assertion failed"),
         "enqueue at capacity must return QueueFull",
     );
 
     // len must never exceed capacity
-    kani::assert(
-        queue.len() <= capacity,
+    kani::assert(queue.len(, "assertion failed") <= capacity,
         "queue len must not exceed capacity",
     );
 }
@@ -177,23 +169,23 @@ fn kani_action_queue_fifo() {
 
     // Dequeue must return in FIFO order: 0, then 1, then 2
     let first = queue.dequeue();
-    kani::assert(first.is_some(), "dequeue from non-empty queue returns Some");
+    kani::assert(first.is_some(, "assertion failed"), "dequeue from non-empty queue returns Some");
     if let Some(t) = first {
-        kani::assert(t.seq.get() == 0, "first dequeued ticket has seq=0");
+        kani::assert(t.seq.get(, "assertion failed") == 0, "first dequeued ticket has seq=0");
     }
 
     let second = queue.dequeue();
-    kani::assert(second.is_some(), "second dequeue returns Some");
+    kani::assert(second.is_some(, "assertion failed"), "second dequeue returns Some");
     if let Some(t) = second {
-        kani::assert(t.seq.get() == 1, "second dequeued ticket has seq=1");
+        kani::assert(t.seq.get(, "assertion failed") == 1, "second dequeued ticket has seq=1");
     }
 
     let third = queue.dequeue();
-    kani::assert(third.is_some(), "third dequeue returns Some");
+    kani::assert(third.is_some(, "assertion failed"), "third dequeue returns Some");
     if let Some(t) = third {
-        kani::assert(t.seq.get() == 2, "third dequeued ticket has seq=2");
+        kani::assert(t.seq.get(, "assertion failed") == 2, "third dequeued ticket has seq=2");
     }
 
     let fourth = queue.dequeue();
-    kani::assert(fourth.is_none(), "dequeue from empty queue returns None");
+    kani::assert(fourth.is_none(, "assertion failed"), "dequeue from empty queue returns None");
 }

@@ -92,5 +92,5 @@ fn ps_011_oversized_envelope_rejected_early() {
     let result = validate_compiled_ir_record(&record);
 
     // Must be an error — oversized envelope must be rejected at Gate 1
-    kani::assert(result.is_err(), "oversized envelope must be rejected");
+    kani::assert(result.is_err(, "assertion failed"), "oversized envelope must be rejected");
 }

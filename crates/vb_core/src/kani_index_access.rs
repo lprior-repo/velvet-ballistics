@@ -32,7 +32,7 @@ fn kani_write_slot_in_bounds() {
     };
 
     let result = frame.write_slot(slot, SlotValue::Null);
-    kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
+    kani::assert(result.is_ok(, "assertion failed"), "write_slot with valid idx returns Ok");
 }
 
 /// VB-CORE-IDX-001 H2: read_slot with in-bounds index succeeds after write
@@ -59,10 +59,9 @@ fn kani_read_slot_in_bounds() {
     kani::assume(write_result.is_ok());
 
     let read_result = frame.read_slot(slot);
-    kani::assert(read_result.is_ok(), "read_slot with valid idx returns Ok");
+    kani::assert(read_result.is_ok(, "assertion failed"), "read_slot with valid idx returns Ok");
     if let Ok(val) = read_result {
-        kani::assert(
-            matches!(val, SlotValue::I64(42)),
+        kani::assert(matches!(val, SlotValue::I64(42), "assertion failed"),
             "read_slot returns written value",
         );
     }
@@ -90,7 +89,7 @@ fn kani_write_slot_out_of_bounds() {
     };
 
     let result = frame.write_slot(slot, SlotValue::Null);
-    kani::assert(result.is_err(), "write_slot with OOB idx returns Err");
+    kani::assert(result.is_err(, "assertion failed"), "write_slot with OOB idx returns Err");
 }
 
 /// VB-CORE-IDX-001 H4: read_slot with out-of-bounds index returns error
@@ -115,7 +114,7 @@ fn kani_read_slot_out_of_bounds() {
     };
 
     let result = frame.read_slot(slot);
-    kani::assert(result.is_err(), "read_slot with OOB idx returns Err");
+    kani::assert(result.is_err(, "assertion failed"), "read_slot with OOB idx returns Err");
 }
 
 /// VB-CORE-IDX-001 H5: multiple slots written and read sequentially
@@ -140,13 +139,13 @@ fn kani_multiple_slots_sequential() {
         let slot = SlotIdx::new(i);
         let value = SlotValue::I64(i as i64);
         let write_result = frame.write_slot(slot, value);
-        kani::assert(write_result.is_ok(), "write_slot succeeds for slot");
+        kani::assert(write_result.is_ok(, "assertion failed"), "write_slot succeeds for slot");
     }
 
     for i in 0..slot_count {
         let slot = SlotIdx::new(i);
         let read_result = frame.read_slot(slot);
-        kani::assert(read_result.is_ok(), "read_slot succeeds for slot");
+        kani::assert(read_result.is_ok(, "assertion failed"), "read_slot succeeds for slot");
     }
 }
 
@@ -155,7 +154,7 @@ fn kani_multiple_slots_sequential() {
 fn kani_step_idx_valid() {
     let raw: u16 = kani::any();
     let idx = StepIdx::new(raw);
-    kani::assert(idx.get() == raw, "StepIdx::new preserves value");
+    kani::assert(idx.get(, "assertion failed") == raw, "StepIdx::new preserves value");
 }
 
 /// VB-CORE-IDX-001 H7: SlotIdx::new with valid value
@@ -163,5 +162,5 @@ fn kani_step_idx_valid() {
 fn kani_slot_idx_valid() {
     let raw: u16 = kani::any();
     let idx = SlotIdx::new(raw);
-    kani::assert(idx.get() == raw, "SlotIdx::new preserves value");
+    kani::assert(idx.get(, "assertion failed") == raw, "SlotIdx::new preserves value");
 }

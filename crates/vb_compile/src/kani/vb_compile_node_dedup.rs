@@ -74,7 +74,7 @@ fn node_id_uniqueness() {
         ResourceContract::DEFAULT,
     );
 
-    kani::assert(result.is_ok(), "unique StepIdx nodes should compile successfully");
+    kani::assert(result.is_ok(, "assertion failed"), "unique StepIdx nodes should compile successfully");
 
     // ----------------------------------------------------------------
     // Test 2: duplicate StepIdx — must be rejected
@@ -127,8 +127,7 @@ fn node_id_uniqueness() {
     );
 
     // Duplicate StepIdx should be rejected by vb_validate shared validation
-    kani::assert(
-        dup_result.is_err(),
+    kani::assert(dup_result.is_err(, "assertion failed"),
         "duplicate StepIdx nodes must be rejected",
     );
 }
@@ -165,32 +164,27 @@ fn step_idx_ordering_preserved() {
         ResourceContract::DEFAULT,
     );
 
-    kani::assert(result.is_ok(), "ordered nodes should compile");
+    kani::assert(result.is_ok(, "assertion failed"), "ordered nodes should compile");
 
     // Verify node count and ordering
     if let Ok(workflow) = result {
         let parts = workflow.to_parts();
-        kani::assert(parts.nodes.len() == 5, "compiled workflow should have 5 nodes");
+        kani::assert(parts.nodes.len(, "assertion failed") == 5, "compiled workflow should have 5 nodes");
 
         // StepIdx values in output should match input order (0, 1, 2, 3, 4)
-        kani::assert(
-            parts.nodes[0].id == StepIdx::new(0),
+        kani::assert(parts.nodes[0].id == StepIdx::new(0, "assertion failed"),
             "first node id should be 0",
         );
-        kani::assert(
-            parts.nodes[1].id == StepIdx::new(1),
+        kani::assert(parts.nodes[1].id == StepIdx::new(1, "assertion failed"),
             "second node id should be 1",
         );
-        kani::assert(
-            parts.nodes[2].id == StepIdx::new(2),
+        kani::assert(parts.nodes[2].id == StepIdx::new(2, "assertion failed"),
             "third node id should be 2",
         );
-        kani::assert(
-            parts.nodes[3].id == StepIdx::new(3),
+        kani::assert(parts.nodes[3].id == StepIdx::new(3, "assertion failed"),
             "fourth node id should be 3",
         );
-        kani::assert(
-            parts.nodes[4].id == StepIdx::new(4),
+        kani::assert(parts.nodes[4].id == StepIdx::new(4, "assertion failed"),
             "fifth node id should be 4",
         );
     }

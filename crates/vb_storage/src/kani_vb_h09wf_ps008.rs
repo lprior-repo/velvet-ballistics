@@ -30,6 +30,38 @@ fn ps_008_gate_count_exhaustive() {
     let accepted = is_accepted_gate_count(gate_count);
 
     if gate_count == 0 || gate_count == 15 {
+        // Kani proof harness for PS-008: Gate count and proof flags (Gates 6-7).
+//
+// Obligation: PO-vb-h09wf-023
+// Verifier: kani
+// Command: cargo kani -p vb_storage --harness ps_008_gate_count_flags --features kani-vb-h09wf
+//
+// Domain claim: (a) of all 256 u8 gate_count values, only 0 and 15 pass is_accepted_gate_count;
+// (b) of all 32 proof flag combinations (2^5), only the all-true combination causes
+// missing_proof_flag to return None; all others return the name of the first missing flag.
+//
+// PRODUCTION BINDING:
+//   vb_storage::admission::is_accepted_gate_count (admission.rs:475-477)
+//   vb_storage::admission::missing_proof_flag (admission.rs:459-473)
+//
+// Trusted base: u8 exhaustive enumeration, bool exhaustive enumeration
+// Model bounds: exhaustive — 256 gate_count values, 32 flag combos
+// Source: .beads/vb-h09wf/proof-obligations.planned.jsonl PO-vb-h09wf-023
+
+#![forbid(unsafe_code)]
+#![cfg(kani)]
+
+use crate::admission::{VerificationProof, is_accepted_gate_count, missing_proof_flag};
+
+/// PS-008a: Exhaustively verify is_accepted_gate_count for all 256 u8 values.
+#[kani::proof]
+#[kani::unwind(8)]
+fn ps_008_gate_count_exhaustive() {
+    let gate_count: u8 = kani::any();
+
+    let accepted = is_accepted_gate_count(gate_count);
+
+    if gate_count == 0 || gate_count == 15 {
         kani::assert(accepted, "gate_count={gate_count} must be accepted");
     } else {
         kani::assert(!accepted, "gate_count={gate_count} must be rejected");
@@ -72,8 +104,19 @@ fn ps_008_proof_flags_exhaustive() {
             "all flags true: missing_proof_flag must return None",
         );
     } else {
-        kani::assert(
-            missing.is_some(),
+        kani::assert(missing.is_some(, "assertion failed"),
+            "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}",
+        );
+        // Verify the returned flag name matches the first missing one
+        let flag = match missing {
+            Some(v) => v,
+            None => {
+                kani::assume(false);
+                return;
+            }
+        };
+        match flag {
+            "bounded" => ,
             "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}",
         );
         // Verify the returned flag name matches the first missing one

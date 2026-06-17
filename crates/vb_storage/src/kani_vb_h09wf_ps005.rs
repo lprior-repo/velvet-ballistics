@@ -34,7 +34,15 @@ fn ps_005_trailing_bytes() {
 
     if declared_end == actual_len {
         // Exact match: no trailing bytes
-        kani::assert(result.is_ok(), "equal lengths must pass");
+        kani::assert(result.is_ok(, "assertion failed"), "equal lengths must pass");
+    } else if actual_len > declared_end {
+        // Trailing bytes present
+        match result {
+            Err(JournalError::UnexpectedTrailingBytes {
+                declared_end: d,
+                actual_len: a,
+            }) => {
+                , "equal lengths must pass");
     } else if actual_len > declared_end {
         // Trailing bytes present
         match result {
@@ -46,6 +54,7 @@ fn ps_005_trailing_bytes() {
                 kani::assert(a == actual_len, "actual_len must match");
             }
             Ok(()) => {
+                ) => {
                 kani::assert(
                     false,
                     "trailing bytes (actual={actual_len} > declared={declared_end}) must be rejected",
@@ -73,12 +82,12 @@ fn ps_005_trailing_bytes() {
 #[kani::proof]
 fn ps_005_zero_length_case() {
     let result = reject_trailing_bytes(0, 0);
-    kani::assert(result.is_ok(), "zero/zero must pass");
+    kani::assert(result.is_ok(, "assertion failed"), "zero/zero must pass");
 }
 
 /// PS-005c: Single trailing byte always detected.
 #[kani::proof]
 fn ps_005_single_trailing_byte() {
     let result = reject_trailing_bytes(0, 1);
-    kani::assert(result.is_err(), "one trailing byte must be rejected");
+    kani::assert(result.is_err(, "assertion failed"), "one trailing byte must be rejected");
 }

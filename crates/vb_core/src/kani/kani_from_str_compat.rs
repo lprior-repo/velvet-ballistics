@@ -113,7 +113,12 @@ mod harnesses {
             let result = from_str_diagnostic_code(&e_str);
             match result {
                 Ok(parsed) => {
-                    kani::assert(parsed.code() == code, "Parsed code must match the registry numeric value");
+                    kani::assert(parsed.code(, "assertion failed") == code, "Parsed code must match the registry numeric value");
+                }
+                Err(_) => {
+                    // If is_supported_code accepts it, from_str must succeed
+                    if is_supported_code(code) {
+                         == code, "Parsed code must match the registry numeric value");
                 }
                 Err(_) => {
                     // If is_supported_code accepts it, from_str must succeed
@@ -139,8 +144,7 @@ mod harnesses {
         for code in 0x0601u16..=0x0603 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(
-                result.is_ok(),
+            kani::assert(result.is_ok(, "assertion failed"),
                 "New ContractDiscovery code {:04X} must parse",
                 code,
             );
@@ -148,7 +152,28 @@ mod harnesses {
         // Extended boundary code
         let e_str = format_e_code(0x401C);
         let result = from_str_diagnostic_code(&e_str);
-        kani::assert(result.is_ok(), "Extended boundary code 0x401C must parse");
+        kani::assert(result.is_ok(, "assertion failed"), "Extended boundary code 0x401C must parse");
+    }
+
+    /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).
+    #[kani::proof]
+    #[kani::unwind(30)]
+    fn kani_from_str_rejects_unsupported() {
+        let unsupported = [
+            0x0100u16, 0x010C, 0x0200, 0x0205, 0x0300, 0x030A, 0x0400, 0x040D, 0x0500, 0x0600,
+            0x0604, 0x0900, 0x0F00, 0x1000, 0x1003, 0x1010, 0x1014, 0x1100, 0x1105, 0x1200, 0x1203,
+            0x1300, 0x130E, 0x1310, 0x1315, 0x1400, 0x1408, 0x2000, 0x2010, 0x3000, 0x300F, 0x4000,
+            0x401D,
+        ];
+        for code in unsupported.iter() {
+            let e_str = format_e_code(*code);
+            let result = from_str_diagnostic_code(&e_str);
+            ;
+                }
+                Err(_) => {
+                    // If is_supported_code accepts it, from_str must succeed
+                    if is_supported_code(code) {
+                        , "Extended boundary code 0x401C must parse");
     }
 
     /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).
@@ -190,8 +215,7 @@ mod harnesses {
         for code in 0x0601u16..=0x0603 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(
-                result.is_ok(),
+            kani::assert(result.is_ok(, "assertion failed"),
                 "New ContractDiscovery code {:04X} must parse",
                 code,
             );
@@ -199,7 +223,7 @@ mod harnesses {
         // Extended boundary code
         let e_str = format_e_code(0x401C);
         let result = from_str_diagnostic_code(&e_str);
-        kani::assert(result.is_ok(), "Extended boundary code 0x401C must parse");
+        kani::assert(result.is_ok(, "assertion failed"), "Extended boundary code 0x401C must parse");
     }
 
     /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).
@@ -215,7 +239,7 @@ mod harnesses {
         for code in unsupported.iter() {
             let e_str = format_e_code(*code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(result != Err(DiagnosticCodeParseError::UnsupportedCode), "assertion failed");
+            kani::assert(result != Err(DiagnosticCodeParseError::UnsupportedCode, "assertion failed"), "assertion failed");
         }
     }
 }

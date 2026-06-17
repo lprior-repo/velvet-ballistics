@@ -102,8 +102,7 @@ fn step_once_bounds_harness() {
     // INV-004: PC is in bounds after step_once
     let pc = run.pc();
     let pc_usize = pc.as_usize();
-    kani::assert(
-        pc_usize < usize::from(step_count),
+    kani::assert(pc_usize < usize::from(step_count, "assertion failed"),
         "PC in bounds after step_once",
     );
 
@@ -195,7 +194,7 @@ fn step_once_state_mapping_harness() {
     // After step_once returns Ok, verify states[pc_before] matches signal
     if let Ok(signal) = result {
         let state = run.step_state(pc_before);
-        kani::assert(state.is_ok(), "step_state read does not panic");
+        kani::assert(state.is_ok(, "assertion failed"), "step_state read does not panic");
 
         // Map signal to expected state (per contract.md INV-002)
         // Use wildcard bindings for slot-carrying variants so all signal
@@ -208,8 +207,7 @@ fn step_once_state_mapping_harness() {
         };
 
         // INV-002: states[step] must reflect correct StepState
-        kani::assert(
-            state == Ok(expected_state),
+        kani::assert(state == Ok(expected_state, "assertion failed"),
             "states[step] matches signal mapping",
         );
     }
@@ -271,8 +269,7 @@ fn step_once_slot_init_harness() {
     let slot_idx = SlotIdx::new(kani::any::<u16>() % slot_count.max(1));
     let read_result = run.read_slot(slot_idx);
     // read_slot returns Err(SlotUninitialized) for uninitialized slots — not panic
-    kani::assert(
-        read_result.is_err() || read_result.is_ok(),
+    kani::assert(read_result.is_err(, "assertion failed") || read_result.is_ok(),
         "read_slot returns Result (not panic)",
     );
 }
@@ -329,8 +326,7 @@ fn step_once_pc_bounds_harness() {
     // INV-004: PC ∈ [0, step_count) after step_once
     let pc = run.pc();
     let pc_usize = pc.as_usize();
-    kani::assert(
-        pc_usize < usize::from(step_count),
+    kani::assert(pc_usize < usize::from(step_count, "assertion failed"),
         "PC < step_count after step_once",
     );
 }
@@ -382,7 +378,7 @@ fn taint_validity_harness() {
     if write_result.is_ok() {
         // INV-006: After Ok return, taint[slot] ∈ {Clean, DerivedFromSecret, Secret}
         let taint_read = run.read_taint(slot_idx);
-        kani::assert(taint_read.is_ok(), "taint read does not panic");
+        kani::assert(taint_read.is_ok(, "assertion failed"), "taint read does not panic");
 
         if let Ok(t) = taint_read {
             // Taint is a three-level lattice — all variants valid after successful write.
@@ -407,13 +403,11 @@ fn taint_validity_harness() {
             | SlotValue::Symbol(_)
     ));
     let write_slot_result = run.write_slot(slot_idx2, value2);
-    kani::assert(
-        write_slot_result.is_ok(),
+    kani::assert(write_slot_result.is_ok(, "assertion failed"),
         "write_slot within effective slot count succeeds",
     );
     let taint_after_write_slot = run.read_taint(slot_idx2);
-    kani::assert(
-        taint_after_write_slot.is_ok(),
+    kani::assert(taint_after_write_slot.is_ok(, "assertion failed"),
         "read_taint after write_slot does not panic",
     );
 }

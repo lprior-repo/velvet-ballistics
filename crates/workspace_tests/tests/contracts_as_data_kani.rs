@@ -313,22 +313,37 @@ fn kani_schema_version_no_panic() {
         Ok(version) => {
             // Valid semver must have exactly 3 dot-separated u32 components
             let parts: Vec<&str> = version.split('.').collect();
-            kani::assert(
-                parts.len() == 3,
+            kani::assert(parts.len(, "assertion failed") == 3,
                 "Valid schema_version must have exactly 3 parts, got {}",
                 parts.len(),
             );
             for part in &parts {
-                kani::assert(!part.is_empty(), "Each semver component must be non-empty");
-                kani::assert(
-                    part.parse::<u32>().is_ok(),
+                kani::assert(!part.is_empty(, "assertion failed"), "Each semver component must be non-empty");
+                kani::assert(part.parse::<u32>(, "assertion failed").is_ok(),
                     "Each semver component must be a valid u32",
                 );
             }
         }
         Err(ValidationError::MissingSchemaVersion) => {
             // Called for empty/missing input
-            kani::assert(raw.is_empty(), "kani harness assertion");
+            kani::assert(raw.is_empty(, "assertion failed"), "kani harness assertion");
+        }
+        Err(ValidationError::InvalidVersion { version: _ }) => {
+            // Called for malformed input — must not match ^\d+\.\d+\.\d+$
+            let parts: Vec<&str> = raw.split('.').collect();
+            if parts.len() == 3 {
+                // Has 3 parts but one or more are invalid
+                for part in &parts {
+                    if !part.is_empty() && part.parse::<u32>().is_ok() {
+                        // This part is valid — at least one must be invalid
+                        // or there are leading zeros
+                    }
+                }
+            }
+        }
+        Err(_) => {
+            // Other error variants shouldn't be returned for schema_version
+            , "kani harness assertion");
         }
         Err(ValidationError::InvalidVersion { version: _ }) => {
             // Called for malformed input — must not match ^\d+\.\d+\.\d+$
@@ -367,7 +382,34 @@ fn kani_schema_version_correctness() {
 
     match result {
         Ok(version) => {
+            
+                false,
+                "parse_schema_version should not return other error types",
+            );
+        }
+    }
+}
+
+/// OBL-001: parse_schema_version correctness — implementation matches independent spec for all inputs.
+///
+/// GOD RULE 1 compliant: uses kani::any() for arbitrary string inputs.
+/// An independent spec function determines validity; the proof asserts
+/// that parse_schema_version's result is consistent with the spec for ALL inputs.
+#[kani::proof]
+#[kani::unwind(10)]
+fn kani_schema_version_correctness() {
+    let raw: String = kani::any();
+    let result = parse_schema_version(&raw);
+    let is_valid = spec_is_valid_schema_version(&raw);
+
+    match result {
+        Ok(version) => {
             kani::assert(
+                is_valid,
+                "parse_schema_version accepted invalid semver: '{}'",
+                raw,
+            );
+            
                 is_valid,
                 "parse_schema_version accepted invalid semver: '{}'",
                 raw,
@@ -375,7 +417,16 @@ fn kani_schema_version_correctness() {
             kani::assert(version == raw, "Accepted version must equal input");
         }
         Err(ValidationError::MissingSchemaVersion) => {
+            version == raw, "Accepted version must equal input");
+        }
+        Err(ValidationError::MissingSchemaVersion) => {
             kani::assert(
+                !is_valid,
+                "Spec says empty string is invalid); parse_schema_version returned MissingSchemaVersion",
+            );
+        }
+        Err(ValidationError::InvalidVersion { version: _ }) => {
+            
                 !is_valid,
                 "Spec says empty string is invalid); parse_schema_version returned MissingSchemaVersion",
             );
@@ -481,36 +532,31 @@ fn kani_kind_exhaustive() {
         }
         ContractKind::UiTokens => {
             let result = parse_contract_kind("ui_tokens");
-            kani::assert(
-                matches!(result, Ok(ContractKind::UiTokens)),
+            kani::assert(matches!(result, Ok(ContractKind::UiTokens), "assertion failed"),
                 "ui_tokens should parse to UiTokens",
             );
         }
         ContractKind::AcceptedArtifacts => {
             let result = parse_contract_kind("accepted_artifacts");
-            kani::assert(
-                matches!(result, Ok(ContractKind::AcceptedArtifacts)),
+            kani::assert(matches!(result, Ok(ContractKind::AcceptedArtifacts), "assertion failed"),
                 "accepted_artifacts should parse to AcceptedArtifacts",
             );
         }
         ContractKind::EvidenceBundle => {
             let result = parse_contract_kind("evidence_bundle");
-            kani::assert(
-                matches!(result, Ok(ContractKind::EvidenceBundle)),
+            kani::assert(matches!(result, Ok(ContractKind::EvidenceBundle), "assertion failed"),
                 "evidence_bundle should parse to EvidenceBundle",
             );
         }
         ContractKind::Diagnostics => {
             let result = parse_contract_kind("diagnostics");
-            kani::assert(
-                matches!(result, Ok(ContractKind::Diagnostics)),
+            kani::assert(matches!(result, Ok(ContractKind::Diagnostics), "assertion failed"),
                 "diagnostics should parse to Diagnostics",
             );
         }
         ContractKind::GateOutput => {
             let result = parse_contract_kind("gate_output");
-            kani::assert(
-                matches!(result, Ok(ContractKind::GateOutput)),
+            kani::assert(matches!(result, Ok(ContractKind::GateOutput), "assertion failed"),
                 "gate_output should parse to GateOutput",
             );
         }
@@ -534,8 +580,7 @@ fn kani_kind_rejects_unknown() {
         && unknown_kind != "gate_output"
     {
         let result = parse_contract_kind(&unknown_kind);
-        kani::assert(
-            matches!(result, Err(ValidationError::InvalidKind { .. })),
+        kani::assert(matches!(result, Err(ValidationError::InvalidKind { .. }), "assertion failed"),
             "parse_contract_kind should reject unknown kind: '{}'",
             unknown_kind,
         );
@@ -554,10 +599,9 @@ fn kani_vet_exit_code() {
 
     // Postcondition: exit_code == 0 => Ok, non-zero => Err
     if exit_code == 0 {
-        kani::assert(result.is_ok(), "Exit code 0 should always return Ok");
+        kani::assert(result.is_ok(, "assertion failed"), "Exit code 0 should always return Ok");
     } else {
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "Non-zero exit code {} should always return Err",
             exit_code,
         );
@@ -565,8 +609,7 @@ fn kani_vet_exit_code() {
 
     // No panic for negative exit codes (system errors)
     if exit_code < 0 {
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "Negative exit code {} should return Err",
             exit_code,
         );
@@ -574,8 +617,7 @@ fn kani_vet_exit_code() {
 
     // No panic for large positive exit codes
     if exit_code > 255 {
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "Large exit code {} should return Err",
             exit_code,
         );
@@ -601,8 +643,14 @@ fn kani_gate_evidence_parity() {
     // The function must never fail when precondition is met
     let result = gate_evidence_from_report(total, valid, invalid);
 
-    kani::assert(
-        result.is_ok(),
+    kani::assert(result.is_ok(, "assertion failed"),
+        "gate_evidence_from_report should always return Ok when valid + invalid == total",
+    );
+
+    let evidence = match result {
+        Ok(e) => e,
+        Err(e) => {
+            ,
         "gate_evidence_from_report should always return Ok when valid + invalid == total",
     );
 
@@ -619,8 +667,10 @@ fn kani_gate_evidence_parity() {
 
     // Postcondition: status == Pass iff invalid == 0
     if invalid == 0 {
-        kani::assert(
-            matches!(evidence.status, GateStatus::Pass),
+        kani::assert(matches!(evidence.status, GateStatus::Pass, "assertion failed"),
+            "Status should be Pass when invalid == 0",
+        );
+        ,
             "Status should be Pass when invalid == 0",
         );
         kani::assert(evidence.exit_code == 0, "Exit code should be 0 when invalid == 0");
@@ -629,13 +679,21 @@ fn kani_gate_evidence_parity() {
             "why_failed should be None when invalid == 0",
         );
     } else {
-        kani::assert(
-            matches!(evidence.status, GateStatus::Fail),
+        kani::assert(matches!(evidence.status, GateStatus::Fail, "assertion failed"),
+            "Status should be Fail when invalid > 0",
+        );
+        ,
             "Status should be Fail when invalid > 0",
         );
         kani::assert(evidence.exit_code == 1, "Exit code should be 1 when invalid > 0");
         kani::assert(
             evidence.why_failed.is_some(),
+            "why_failed should be Some when invalid > 0",
+        );
+    }
+
+    // Postcondition: kind and gate_name are always correct
+    ,
             "why_failed should be Some when invalid > 0",
         );
     }
@@ -670,9 +728,13 @@ fn kani_gate_evidence_empty() {
         let result = gate_evidence_from_report(total, valid, invalid);
         match result {
             Ok(evidence) => {
-                kani::assert(matches!(evidence.status, GateStatus::Pass));
+                kani::assert(matches!(evidence.status, GateStatus::Pass, "assertion failed"));
+                );
                 kani::assert(evidence.exit_code == 0, "assertion failed");
                 kani::assert(evidence.why_failed.is_none(), "kani harness assertion");
+            }
+            Err(e) => {
+                , "kani harness assertion");
             }
             Err(e) => {
                 kani::assert(
@@ -698,9 +760,13 @@ fn kani_gate_evidence_all_invalid() {
 
     match result {
         Ok(evidence) => {
-            kani::assert(matches!(evidence.status, GateStatus::Fail));
+            kani::assert(matches!(evidence.status, GateStatus::Fail, "assertion failed"));
+            );
             kani::assert(evidence.exit_code == 1, "assertion failed");
             kani::assert(evidence.why_failed.is_some(), "kani harness assertion");
+        }
+        Err(e) => {
+            , "kani harness assertion");
         }
         Err(e) => {
             kani::assert(false, &format!("Expected Ok, got Err: {}", e));

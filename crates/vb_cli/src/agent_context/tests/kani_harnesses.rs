@@ -17,17 +17,14 @@ fn kani_build_has_required_fields() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
 
-    kani::assert(
-        result.get("schema_version").is_some(),
+    kani::assert(result.get("schema_version", "assertion failed").is_some(),
         "OBL-002: schema_version must be present",
     );
-    kani::assert(
-        result.get("kind").is_some(),
+    kani::assert(result.get("kind", "assertion failed").is_some(),
         "OBL-002: kind must be present",
     );
-    kani::assert(result.get("cli").is_some(), "OBL-002: cli must be present");
-    kani::assert(
-        result.get("version").is_some(),
+    kani::assert(result.get("cli", "assertion failed").is_some(), "OBL-002: cli must be present");
+    kani::assert(result.get("version", "assertion failed").is_some(),
         "OBL-002: version must be present",
     );
 }
@@ -39,12 +36,10 @@ fn kani_build_has_runtime_policy_fields() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
 
-    kani::assert(
-        result.get("active_gates").is_some(),
+    kani::assert(result.get("active_gates", "assertion failed").is_some(),
         "OBL-003: active_gates must be present",
     );
-    kani::assert(
-        result.get("known_blockers").is_some(),
+    kani::assert(result.get("known_blockers", "assertion failed").is_some(),
         "OBL-003: known_blockers must be present",
     );
 }
@@ -57,11 +52,10 @@ fn kani_commands_includes_agent_context() {
     let result = crate::agent_context::build(&version);
 
     let commands = result.get("commands");
-    kani::assert(commands.is_some(), "OBL-004: commands must be present");
+    kani::assert(commands.is_some(, "assertion failed"), "OBL-004: commands must be present");
 
     if let Some(cmds) = commands {
-        kani::assert(
-            cmds.get("agent-context").is_some(),
+        kani::assert(cmds.get("agent-context", "assertion failed").is_some(),
             "OBL-004: agent-context command must be present",
         );
     }
@@ -74,13 +68,12 @@ fn kani_exit_codes_has_defined_range() {
     let result = crate::agent_context::build("0.1.0");
 
     let exit_codes = result.get("exit_codes");
-    kani::assert(exit_codes.is_some(), "OBL-005: exit_codes must be present");
+    kani::assert(exit_codes.is_some(, "assertion failed"), "OBL-005: exit_codes must be present");
 
     if let Some(codes) = exit_codes {
         for code in 0..=8 {
             let key = format!("{}", code);
-            kani::assert(
-                codes.get(&key).is_some(),
+            kani::assert(codes.get(&key, "assertion failed").is_some(),
                 &format!("OBL-005: exit code {} must be defined", code),
             );
         }
@@ -94,22 +87,18 @@ fn kani_known_blockers_has_all_categories() {
     let result = crate::agent_context::build("0.1.0");
 
     let blockers = result.get("known_blockers");
-    kani::assert(
-        blockers.is_some(),
+    kani::assert(blockers.is_some(, "assertion failed"),
         "OBL-006: known_blockers must be present",
     );
 
     if let Some(b) = blockers {
-        kani::assert(
-            b.get("policy").is_some(),
+        kani::assert(b.get("policy", "assertion failed").is_some(),
             "OBL-006: policy category must be present",
         );
-        kani::assert(
-            b.get("resource").is_some(),
+        kani::assert(b.get("resource", "assertion failed").is_some(),
             "OBL-006: resource category must be present",
         );
-        kani::assert(
-            b.get("capability").is_some(),
+        kani::assert(b.get("capability", "assertion failed").is_some(),
             "OBL-006: capability category must be present",
         );
     }
@@ -123,8 +112,11 @@ fn kani_output_size_bounded() {
     kani::assume(version.len() <= 64);
     let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
-    kani::assert(
-        encoded.is_ok(),
+    kani::assert(encoded.is_ok(, "assertion failed"),
+        "OBL-007: output must serialize to JSON without error",
+    );
+    let size = encoded.map(|s| s.len()).unwrap_or(usize::MAX);
+    ,
         "OBL-007: output must serialize to JSON without error",
     );
     let size = encoded.map(|s| s.len()).unwrap_or(usize::MAX);
@@ -134,6 +126,18 @@ fn kani_output_size_bounded() {
             "OBL-007: agent-context output must be bounded to 8 KiB, got {} bytes",
             size
         ),
+    );
+}
+
+/// OBL-008: build() is deterministic — same version produces identical output.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_build_deterministic() {
+    let version: String = kani::any();
+    kani::assume(version.len() <= 32);
+    let first = crate::agent_context::build(&version);
+    let second = crate::agent_context::build(&version);
+    ,
     );
 }
 
@@ -159,7 +163,7 @@ fn kani_build_serializable_roundtrip() {
     kani::assume(version.len() <= 64);
     let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
-    kani::assert(encoded.is_ok(), "OBL-009: serialization must succeed");
+    kani::assert(encoded.is_ok(, "assertion failed"), "OBL-009: serialization must succeed");
     let decoded: Result<serde_json::Value, _> = match encoded {
         Ok(s) => serde_json::from_str(&s),
         Err(_) => {
@@ -167,8 +171,7 @@ fn kani_build_serializable_roundtrip() {
             return;
         }
     };
-    kani::assert(
-        decoded.is_ok(),
+    kani::assert(decoded.is_ok(, "assertion failed"),
         "OBL-009: deserialization roundtrip must succeed",
     );
 }
@@ -180,8 +183,7 @@ fn kani_agent_contract_booleans_are_bools() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let contract = result.get("agent_contract");
-    kani::assert(
-        contract.is_some(),
+    kani::assert(contract.is_some(, "assertion failed"),
         "OBL-010: agent_contract must be present",
     );
     if let Some(c) = contract {
@@ -194,8 +196,7 @@ fn kani_agent_contract_booleans_are_bools() {
         ] {
             let val = c.get(*key);
             match val {
-                Some(v) => kani::assert(
-                    v.is_boolean(),
+                Some(v) => kani::assert(v.is_boolean(, "assertion failed"),
                     &format!("OBL-010: field '{}' must be a boolean", key),
                 ),
                 None => {
@@ -214,16 +215,14 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let policy = result.get("vocabulary_policy");
-    kani::assert(
-        policy.is_some(),
+    kani::assert(policy.is_some(, "assertion failed"),
         "OBL-011: vocabulary_policy must be present",
     );
     if let Some(p) = policy {
         for key in &["canonical_resource_verbs", "banned_verbs", "banned_flags"] {
             let val = p.get(*key);
             match val {
-                Some(v) => kani::assert(
-                    v.is_array(),
+                Some(v) => kani::assert(v.is_array(, "assertion failed"),
                     &format!("OBL-011: field '{}' must be an array", key),
                 ),
                 None => {
@@ -241,11 +240,10 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
 fn kani_known_blockers_policy_count_exact() {
     let result = crate::agent_context::build("0.1.0");
     let policy = result.pointer("/known_blockers/policy");
-    kani::assert(policy.is_some(), "OBL-012: policy pointer must be present");
+    kani::assert(policy.is_some(, "assertion failed"), "OBL-012: policy pointer must be present");
     if let Some(p) = policy {
-        kani::assert(p.is_array(), "OBL-012: policy must be an array");
-        kani::assert(
-            p.as_array().map(|a| a.len()) == Some(8),
+        kani::assert(p.is_array(, "assertion failed"), "OBL-012: policy must be an array");
+        kani::assert(p.as_array(, "assertion failed").map(|a| a.len()) == Some(8),
             "OBL-012: policy must have exactly 8 entries",
         );
     }
@@ -257,14 +255,12 @@ fn kani_known_blockers_policy_count_exact() {
 fn kani_known_blockers_resource_count_exact() {
     let result = crate::agent_context::build("0.1.0");
     let resource = result.pointer("/known_blockers/resource");
-    kani::assert(
-        resource.is_some(),
+    kani::assert(resource.is_some(, "assertion failed"),
         "OBL-013: resource pointer must be present",
     );
     if let Some(r) = resource {
-        kani::assert(r.is_array(), "OBL-013: resource must be an array");
-        kani::assert(
-            r.as_array().map(|a| a.len()) == Some(3),
+        kani::assert(r.is_array(, "assertion failed"), "OBL-013: resource must be an array");
+        kani::assert(r.as_array(, "assertion failed").map(|a| a.len()) == Some(3),
             "OBL-013: resource must have exactly 3 entries",
         );
     }
@@ -276,14 +272,12 @@ fn kani_known_blockers_resource_count_exact() {
 fn kani_known_blockers_capability_count_exact() {
     let result = crate::agent_context::build("0.1.0");
     let capability = result.pointer("/known_blockers/capability");
-    kani::assert(
-        capability.is_some(),
+    kani::assert(capability.is_some(, "assertion failed"),
         "OBL-014: capability pointer must be present",
     );
     if let Some(c) = capability {
-        kani::assert(c.is_array(), "OBL-014: capability must be an array");
-        kani::assert(
-            c.as_array().map(|a| a.len()) == Some(3),
+        kani::assert(c.is_array(, "assertion failed"), "OBL-014: capability must be an array");
+        kani::assert(c.as_array(, "assertion failed").map(|a| a.len()) == Some(3),
             "OBL-014: capability must have exactly 3 entries",
         );
     }
@@ -296,13 +290,12 @@ fn kani_all_commands_have_summary() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let commands = result.get("commands");
-    kani::assert(commands.is_some(), "OBL-015: commands must be present");
+    kani::assert(commands.is_some(, "assertion failed"), "OBL-015: commands must be present");
     if let Some(cmds) = commands {
-        kani::assert(cmds.is_object(), "OBL-015: commands must be an object");
+        kani::assert(cmds.is_object(, "assertion failed"), "OBL-015: commands must be an object");
         if let Some(obj) = cmds.as_object() {
             for (name, cmd) in obj.iter() {
-                kani::assert(
-                    cmd.get("summary").is_some(),
+                kani::assert(cmd.get("summary", "assertion failed").is_some(),
                     &format!("OBL-015: command '{}' must have a summary", name),
                 );
             }
@@ -316,8 +309,7 @@ fn kani_all_commands_have_summary() {
 fn kani_build_output_is_object() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
-    kani::assert(
-        result.is_object(),
+    kani::assert(result.is_object(, "assertion failed"),
         "OBL-016: build output must be an object",
     );
 }
@@ -329,13 +321,12 @@ fn kani_enums_has_all_variants() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let enums = result.get("enums");
-    kani::assert(enums.is_some(), "OBL-017: enums must be present");
+    kani::assert(enums.is_some(, "assertion failed"), "OBL-017: enums must be present");
     if let Some(e) = enums {
-        kani::assert(e.is_object(), "OBL-017: enums must be an object");
+        kani::assert(e.is_object(, "assertion failed"), "OBL-017: enums must be an object");
         for key in &["emit", "compile_emit", "durability", "verify_profile"] {
             match e.get(*key) {
-                Some(v) => kani::assert(
-                    v.is_array(),
+                Some(v) => kani::assert(v.is_array(, "assertion failed"),
                     &format!("OBL-017: enum '{}' must be an array", key),
                 ),
                 None => {
@@ -373,8 +364,7 @@ fn kani_non_version_fields_independent_of_version() {
         "vocabulary_policy",
     ];
     for key in &structural_keys {
-        kani::assert(
-            a.get(key) == b.get(key),
+        kani::assert(a.get(key, "assertion failed") == b.get(key),
             &format!(
                 "OBL-018: field '{}' must be identical regardless of version",
                 key

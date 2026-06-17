@@ -56,8 +56,7 @@ fn step_idx_as_usize_returns_usize_from_u16() {
     let inner = kani::any::<u16>();
     let id = StepIdx::new(inner);
     let result = id.as_usize();
-    kani::assert(
-        result == usize::from(inner),
+    kani::assert(result == usize::from(inner, "assertion failed"),
         "as_usize must equal usize::from(inner)",
     );
 }
@@ -67,8 +66,7 @@ fn slot_idx_as_usize_returns_usize_from_u16() {
     let inner = kani::any::<u16>();
     let id = SlotIdx::new(inner);
     let result = id.as_usize();
-    kani::assert(
-        result == usize::from(inner),
+    kani::assert(result == usize::from(inner, "assertion failed"),
         "as_usize must equal usize::from(inner)",
     );
 }
@@ -78,8 +76,7 @@ fn expr_idx_as_usize_returns_usize_from_u16() {
     let inner = kani::any::<u16>();
     let id = ExprIdx::new(inner);
     let result = id.as_usize();
-    kani::assert(
-        result == usize::from(inner),
+    kani::assert(result == usize::from(inner, "assertion failed"),
         "as_usize must equal usize::from(inner)",
     );
 }
@@ -89,8 +86,7 @@ fn accessor_idx_as_usize_returns_usize_from_u16() {
     let inner = kani::any::<u16>();
     let id = AccessorIdx::new(inner);
     let result = id.as_usize();
-    kani::assert(
-        result == usize::from(inner),
+    kani::assert(result == usize::from(inner, "assertion failed"),
         "as_usize must equal usize::from(inner)",
     );
 }
@@ -100,8 +96,7 @@ fn const_idx_as_usize_returns_usize_from_u16() {
     let inner = kani::any::<u16>();
     let id = ConstIdx::new(inner);
     let result = id.as_usize();
-    kani::assert(
-        result == usize::from(inner),
+    kani::assert(result == usize::from(inner, "assertion failed"),
         "as_usize must equal usize::from(inner)",
     );
 }

@@ -26,6 +26,34 @@ fn step_budget_try_take_no_panic() {
     let _ = budget.try_take();
     // If we got here, try_take didn't panic
     let remaining = budget.remaining();
+    #![cfg(kani)]
+#![forbid(unsafe_code)]
+
+//! vb-jpq7.33 PO-010 REPAIRED: StepBudget::try_take calls production code.
+//!
+//! GOD RULE 2 FIX: All harnesses call actual production `vb_core::engine::signals::StepBudget`
+//! functions, not local models.
+//!
+//! Properties:
+//!   - try_take never panics
+//!   - After construction, remaining <= MAX_STEP_BUDGET
+//!   - Monotonic decrease: remaining never increases
+//!   - Zero budget returns Ok(false)
+//!   - Positive budget returns Ok(true) with decrement
+
+// This harness lives in crates/vb_core/src/ and uses crate:: imports
+use crate::engine::signals::StepBudget;
+use crate::limits::MAX_STEP_BUDGET;
+
+/// PO-010 H1: try_take never panics for any valid StepBudget
+#[kani::proof]
+#[kani::unwind(12)]
+fn step_budget_try_take_no_panic() {
+    let value: u64 = kani::any();
+    let mut budget = StepBudget::new(value);
+    let _ = budget.try_take();
+    // If we got here, try_take didn't panic
+    let remaining = budget.remaining();
     kani::assert(remaining <= MAX_STEP_BUDGET, "remaining must be bounded after try_take");
 }
 
@@ -46,11 +74,16 @@ fn step_budget_remaining_bounded() {
 #[kani::unwind(4)]
 fn step_budget_zero_returns_false() {
     let mut budget = StepBudget::new(0);
-    kani::assert(budget.remaining() == 0, "zero budget has 0 remaining");
+    kani::assert(budget.remaining(, "assertion failed") == 0, "zero budget has 0 remaining");
+    let result = budget.try_take();
+    match result {
+        Ok(false) => (), // correct behavior - budget exhausted
+        Ok(true) =>  == 0, "zero budget has 0 remaining");
     let result = budget.try_take();
     match result {
         Ok(false) => (), // correct behavior - budget exhausted
         Ok(true) => kani::assert(false, "zero budget must not return Ok(true)"),
+        Err(_) => "),
         Err(_) => kani::assert(false, "zero budget must not error"),
     }
 }
@@ -72,7 +105,12 @@ fn step_budget_positive_decrements() {
                 "positive budget must decrement by exactly 1",
             );
         }
+        Ok(false) =>  == before - 1,
+                "positive budget must decrement by exactly 1",
+            );
+        }
         Ok(false) => kani::assert(false, "positive budget must not return Ok(false) immediately"),
+        Err(_) =>  immediately"),
         Err(_) => kani::assert(false, "positive budget must not error"),
     }
 }
@@ -96,7 +134,17 @@ fn step_budget_monotonic_decrease() {
                 prev = budget.remaining();
             }
             Ok(false) => {
+                 == prev - 1,
+                    "each take decrements by exactly 1",
+                );
+                prev = budget.remaining();
+            }
+            Ok(false) => {
                 kani::assert(prev == 0, "Ok(false) only when exhausted");
+                break;
+            }
+            Err(_) => {
+                 only when exhausted");
                 break;
             }
             Err(_) => {

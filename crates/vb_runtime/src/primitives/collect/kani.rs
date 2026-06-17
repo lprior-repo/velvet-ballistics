@@ -21,7 +21,17 @@ use vb_core::value_store::ValueStore;
 fn collect_page_pagination_bounds() {
     // Test page_size_from with zero.
     let zero_result = page_size_from(0);
-    kani::assert(zero_result.is_err(), "page_size=0 must return error");
+    kani::assert(zero_result.is_err(, "assertion failed"), "page_size=0 must return error");
+
+    // Test with kani::any() page_size.
+    let page_size: u32 = kani::any();
+    kani::assume(page_size > 0);
+    kani::assume(page_size <= 1024); // Reasonable bound for verification
+
+    let result = page_size_from(page_size);
+    match result {
+        Ok(ps) => {
+            , "page_size=0 must return error");
 
     // Test with kani::any() page_size.
     let page_size: u32 = kani::any();
@@ -61,12 +71,11 @@ fn collect_page_pagination_bounds() {
     // Test copy_prefix with empty items.
     let empty_items: &[SlotValue] = &[];
     let copy_result = copy_prefix(empty_items, 1);
-    kani::assert(
-        copy_result.is_ok(),
+    kani::assert(copy_result.is_ok(, "assertion failed"),
         "copy_prefix on empty items must succeed",
     );
     if let Ok(page) = copy_result {
-        kani::assert(page.is_empty(), "empty items must produce empty page");
+        kani::assert(page.is_empty(, "assertion failed"), "empty items must produce empty page");
     }
 
     // Test copy_prefix with items.
@@ -83,8 +92,7 @@ fn collect_page_pagination_bounds() {
     let copy_result = copy_prefix(&items, page_sz);
     match copy_result {
         Ok(page) => {
-            kani::assert(
-                page.len() <= page_sz.min(item_count),
+            kani::assert(page.len(, "assertion failed") <= page_sz.min(item_count),
                 "page len {} must be <= min({}, {})",
                 page.len(),
                 page_sz,

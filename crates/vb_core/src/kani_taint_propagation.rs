@@ -28,8 +28,20 @@ fn arbitrary_taint() -> Taint {
 fn kani_join_taint_clean_identity() {
     let a = arbitrary_taint();
 
-    kani::assert(join_taint(a, Taint::Clean) == a, "right Clean identity");
-    kani::assert(join_taint(Taint::Clean, a) == a, "left Clean identity");
+    kani::assert(join_taint(a, Taint::Clean, "assertion failed") == a, "right Clean identity");
+    kani::assert(join_taint(Taint::Clean, a, "assertion failed") == a, "left Clean identity");
+}
+
+/// VB-CORE-TAINT-006-KANI H2: join_taint is commutative.
+#[kani::proof]
+#[kani::unwind(4)]
+fn kani_join_taint_commutative() {
+    let a = arbitrary_taint();
+    let b = arbitrary_taint();
+    let result_ab = join_taint(a, b);
+    let result_ba = join_taint(b, a);
+
+     == a, "left Clean identity");
 }
 
 /// VB-CORE-TAINT-006-KANI H2: join_taint is commutative.
@@ -44,6 +56,20 @@ fn kani_join_taint_commutative() {
     kani::assert(
         result_ab == result_ba,
         "join_taint(a, b) == join_taint(b, a)",
+    );
+}
+
+/// VB-CORE-TAINT-006-KANI H3: join_taint is associative.
+#[kani::proof]
+#[kani::unwind(4)]
+fn kani_join_taint_associative() {
+    let a = arbitrary_taint();
+    let b = arbitrary_taint();
+    let c = arbitrary_taint();
+    let ab_c = join_taint(join_taint(a, b), c);
+    let a_bc = join_taint(a, join_taint(b, c));
+
+     == join_taint(b, a)",
     );
 }
 

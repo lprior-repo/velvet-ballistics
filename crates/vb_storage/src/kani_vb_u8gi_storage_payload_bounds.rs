@@ -20,8 +20,7 @@ pub fn vb_u8gi_storage_payload_bounds_arbitrary() {
     header[12..16].copy_from_slice(&payload_len.to_le_bytes());
 
     if payload_len > max_payload_len {
-        kani::assert(
-            matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len), Err(JournalError::PayloadTooLarge { len, max }) if len == payload_len && max == max_payload_len),
+        kani::assert(matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max_payload_len), Err(JournalError::PayloadTooLarge { len, max }) if len == payload_len && max == max_payload_len, "assertion failed"),
             "PayloadTooLarge rejects oversized payload",
         );
     }

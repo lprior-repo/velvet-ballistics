@@ -32,6 +32,40 @@ mod kani_guards_ps008 {
     /// C6: MAX_BATCH_COUNT is a reasonable limit.
     #[kani::proof]
     fn check_max_batch_count_reasonable() {
+        // Kani proof harness for guard precedence (PS-008, C6).
+//
+// Obligation ID: POB-vb-vzcuf-030
+// Verifier: kani
+// Command: cargo kani --harness check_guard_precedence -p vb_storage
+//
+// Domain claim: Guard precedence remains key, durable duplicate,
+// count, per-record payload, accumulated bytes, mutation.
+//
+// PRODUCTION BINDING:
+//   Tests JournalWriteBatch::append_event from
+//   crates/vb_storage/src/batch.rs:209-229.
+//
+//   Tests actual production guard ordering by calling append_event
+//   with inputs designed to trigger specific guards and verifying
+//   which error is returned.
+//
+//   The production guard order is:
+//   1. run_event_key (key validation) — line 210
+//   2. events.contains_key (durable duplicate) — line 211
+//   3. inner.len() >= MAX_BATCH_COUNT (batch count) — line 218
+//   4. encode_record (per-record encoding) — line 221
+//   (5. accumulated byte admission — to be added)
+//   6. inner.insert (mutation) — line 228
+//
+// Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-030
+
+#[cfg(kani)]
+mod kani_guards_ps008 {
+    use crate::constants::MAX_BATCH_COUNT;
+
+    /// C6: MAX_BATCH_COUNT is a reasonable limit.
+    #[kani::proof]
+    fn check_max_batch_count_reasonable() {
         kani::assert(MAX_BATCH_COUNT > 0, "MAX_BATCH_COUNT > 0");
         kani::assert(MAX_BATCH_COUNT <= 100_000, "batch count cap too high");
     }
@@ -88,7 +122,20 @@ mod kani_guards_ps008 {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        kani::assert(result.is_ok(), "adequate max must accept");
+        kani::assert(result.is_ok(, "assertion failed"), "adequate max must accept");
+    }
+
+    /// C6: Sequencing proof: must not attempt byte admission before encoding.
+    /// The encoded length is needed for byte admission, so encoding guard
+    /// must always precede the byte admission guard.
+    #[kani::proof]
+    fn check_encoding_before_admission_necessity() {
+        // We need encoded_len for byte admission.
+        // encoded_len comes from encode_record's Vec<u8>.len().
+        // Therefore, encoding must succeed before byte admission can run.
+        // This is a structural requirement of the guard ordering.
+        use crate::constants::RECORD_HEADER_LEN;
+        , "adequate max must accept");
     }
 
     /// C6: Sequencing proof: must not attempt byte admission before encoding.

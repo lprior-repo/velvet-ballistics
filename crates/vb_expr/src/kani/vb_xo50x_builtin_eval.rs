@@ -21,8 +21,7 @@ fn kani_builtin_eval_min_neg_one() {
 
     let result = eval_i64_div_values(left, right);
 
-    kani::assert(
-        matches!(result, Err(ExprError::IntegerOverflow)),
+    kani::assert(matches!(result, Err(ExprError::IntegerOverflow), "assertion failed"),
         "active i64::MIN / -1 must return IntegerOverflow",
     );
 }
@@ -32,8 +31,23 @@ fn kani_builtin_eval_zero_divisor_partition() {
     let left: i64 = kani::any();
     let result = eval_i64_div_values(left, 0);
 
-    kani::assert(
-        matches!(result, Err(ExprError::DivisionByZero)),
+    kani::assert(matches!(result, Err(ExprError::DivisionByZero), "assertion failed"),
+        "zero divisor must return DivisionByZero",
+    );
+}
+
+#[kani::proof]
+fn kani_builtin_eval_representable_i64_partition() {
+    let left: i64 = kani::any();
+    let right: i64 = kani::any();
+    kani::assume(right != 0);
+    kani::assume(!(left == i64::MIN && right == -1));
+
+    let result = eval_i64_div_values(left, right);
+
+    match result {
+        Ok(SlotValue::I64(_)) => {}
+        Ok(_) => ,
         "zero divisor must return DivisionByZero",
     );
 }
@@ -65,6 +79,7 @@ fn kani_builtin_eval_bounded_i16_quotient_matches_checked_div() {
     let result = eval_i64_div_values(left, right);
 
     match (result, left.checked_div(right)) {
+        (Ok(SlotValue::I64(actual)), Some(expected)) => ) {
         (Ok(SlotValue::I64(actual)), Some(expected)) => kani::assert(
             actual == expected,
             "bounded i16 quotient must match checked_div",
@@ -80,18 +95,15 @@ fn kani_builtin_eval_public_i64_partition_bridge() {
     let public_result = eval_binary_op(BinaryOp::Div, SlotValue::I64(left), SlotValue::I64(right));
 
     if right == 0 {
-        kani::assert(
-            matches!(public_result, Err(ExprError::DivisionByZero)),
+        kani::assert(matches!(public_result, Err(ExprError::DivisionByZero), "assertion failed"),
             "public i64 division must preserve zero-divisor classification",
         );
     } else if left == i64::MIN && right == -1 {
-        kani::assert(
-            matches!(public_result, Err(ExprError::IntegerOverflow)),
+        kani::assert(matches!(public_result, Err(ExprError::IntegerOverflow), "assertion failed"),
             "public i64 division must preserve overflow classification",
         );
     } else {
-        kani::assert(
-            matches!(public_result, Ok(SlotValue::I64(_))),
+        kani::assert(matches!(public_result, Ok(SlotValue::I64(_)), "assertion failed"),
             "public i64 division must return a representable i64 quotient",
         );
     }

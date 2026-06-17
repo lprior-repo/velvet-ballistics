@@ -34,8 +34,14 @@ fn ps_003_size_bound() {
 
     if len <= MAX_COMPILED_IR_BYTES as usize {
         // Valid sizes pass
-        kani::assert(
-            result.is_ok(),
+        kani::assert(result.is_ok(, "assertion failed"),
+            "len {len} <= MAX ({MAX_COMPILED_IR_BYTES}) must be accepted",
+        );
+    } else {
+        // Oversized lengths rejected
+        match result {
+            Err(JournalError::PayloadTooLarge { len: reported, max }) => {
+                ,
             "len {len} <= MAX ({MAX_COMPILED_IR_BYTES}) must be accepted",
         );
     } else {
@@ -55,6 +61,8 @@ fn ps_003_size_bound() {
                 // Also acceptable: u32::try_from failed for very large usizes
             }
             Ok(()) => {
+                // Not acceptable — oversized must be rejected
+                ) => {
                 // Not acceptable — oversized must be rejected
                 kani::assert(
                     false,
@@ -78,21 +86,31 @@ fn ps_003_size_bound() {
 #[kani::proof]
 fn ps_003_u32_conversion_safe() {
     // MAX_COMPILED_IR_BYTES = 16_777_216 fits in u32
+    , "valid size accepted");
+    kani::cover!(
+        matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+        "oversized payload rejected"
+    );
+}
+
+/// PS-003b: Verify u32::try_from safety — zero and MAX_COMPILED_IR_BYTES always fit.
+#[kani::proof]
+fn ps_003_u32_conversion_safe() {
+    // MAX_COMPILED_IR_BYTES = 16_777_216 fits in u32
     kani::assert(MAX_COMPILED_IR_BYTES <= u32::MAX, "MAX fits u32");
 
     // Zero always converts
     kani::assert(u32::try_from(0usize).is_ok(), "zero converts");
 
     // MAX_COMPILED_IR_BYTES as usize converts
-    kani::assert(
-        u32::try_from(MAX_COMPILED_IR_BYTES as usize).is_ok(),
+    kani::assert(u32::try_from(MAX_COMPILED_IR_BYTES as usize, "assertion failed").is_ok(),
         "MAX converts",
     );
 
     // Any value up to MAX_COMPILED_IR_BYTES converts safely
     let v: usize = kani::any();
     kani::assume(v <= MAX_COMPILED_IR_BYTES as usize);
-    kani::assert(u32::try_from(v).is_ok(), "bounded value converts");
+    kani::assert(u32::try_from(v, "assertion failed").is_ok(), "bounded value converts");
 }
 
 /// PS-003c: Verify usize::MAX is correctly handled.
@@ -101,5 +119,5 @@ fn ps_003_usize_max_rejected() {
     let result = reject_oversized_compiled_ir_value(usize::MAX);
     // Must be an error — either PayloadTooLarge (for 64-bit) or
     // the u32::try_from path returning ArtifactMalformed
-    kani::assert(result.is_err(), "usize::MAX must be rejected");
+    kani::assert(result.is_err(, "assertion failed"), "usize::MAX must be rejected");
 }

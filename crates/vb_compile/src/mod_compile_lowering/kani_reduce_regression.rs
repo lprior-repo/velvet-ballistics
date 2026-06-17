@@ -78,17 +78,33 @@ fn check_single_step_reference_behavior() {
 
     match result {
         Ok(()) => {
-            kani::assert(
-                builder.nodes.len() == 1,
+            kani::assert(builder.nodes.len(, "assertion failed") == 1,
                 "single-step body must emit exactly 1 node",
             );
             if let Some(node) = builder.nodes.first() {
-                kani::assert(
-                    node.id.get() == id_val,
+                kani::assert(node.id.get(, "assertion failed") == id_val,
                     "emitted node ID must match body_step id",
                 );
-                kani::assert(
-                    node.next.is_some(),
+                kani::assert(node.next.is_some(, "assertion failed"),
+                    "emitted node must have next pointer set",
+                );
+            }
+        }
+        Err(_) => {}
+    }
+}
+
+/// Verify body_width contract for single-step bodies: width = overhead + 1.
+/// The multi-step dispatcher must satisfy the same width contract.
+#[kani::proof]
+#[kani::unwind(8)]
+fn check_single_step_body_width_contract() {
+    let body = arbitrary_single_step_body();
+    let result = body_width(&body, 3);
+
+    match result {
+        Ok(w) => {
+            ,
                     "emitted node must have next pointer set",
                 );
             }
@@ -109,6 +125,30 @@ fn check_single_step_body_width_contract() {
         Ok(w) => {
             kani::assert(w >= 4, "reduce width with single body step >= 4");
             kani::assert(w <= usize::from(u16::MAX), "width within u16::MAX");
+        }
+        Err(_) => {}
+    }
+}
+
+/// Equivalence contract: emit_reduce_body_steps MUST produce the same builder state
+/// as emit_single_body_set for body.len() == 1.
+///
+/// For single-step bodies, both dispatchers must:
+///   - Return the same Ok/Err outcome
+///   - Produce the same number of emitted nodes
+///   - Produce nodes with matching IDs and next pointers
+///
+/// This harness directly compares both functions with identical inputs.
+#[kani::proof]
+#[kani::unwind(8)]
+fn check_single_step_equivalence_contract() {
+    let body = arbitrary_single_step_body();
+
+    // Verify width contract as a precondition
+    let width_result = body_width(&body, 3);
+    match width_result {
+        Ok(w) => {
+            , "width within u16::MAX");
         }
         Err(_) => {}
     }
@@ -162,8 +202,20 @@ fn check_single_step_equivalence_contract() {
     match (&result_a, &result_b) {
         (Ok(()), Ok(())) => {
             // Node count must match
-            kani::assert(
-                builder_a.nodes.len() == builder_b.nodes.len(),
+            kani::assert(builder_a.nodes.len(, "assertion failed") == builder_b.nodes.len(),
+                "both dispatchers must emit same node count: a={}, b={}",
+                builder_a.nodes.len(),
+                builder_b.nodes.len(),
+            );
+
+            // Per-node comparison: IDs and next pointers must match
+            for (i, (node_a, node_b)) in builder_a
+                .nodes
+                .iter()
+                .zip(builder_b.nodes.iter())
+                .enumerate()
+            {
+                 == builder_b.nodes.len(),
                 "both dispatchers must emit same node count: a={}, b={}",
                 builder_a.nodes.len(),
                 builder_b.nodes.len(),

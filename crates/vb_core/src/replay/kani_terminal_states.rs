@@ -60,12 +60,11 @@ fn kani_replay_skips_terminal_states() {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(is_terminal(state), "selected step is in a terminal state");
+    kani::assert(is_terminal(state, "assertion failed"), "selected step is in a terminal state");
 
     let mut store = ValueStore::new();
     let node_opt = plan.node(terminal_idx);
-    kani::assert(
-        node_opt.is_some(),
+    kani::assert(node_opt.is_some(, "assertion failed"),
         "symbolic terminal index maps to a plan node",
     );
     let Some(node) = node_opt else {
@@ -78,8 +77,10 @@ fn kani_replay_skips_terminal_states() {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(
-        is_terminal(state_after),
+    kani::assert(is_terminal(state_after, "assertion failed"),
+        "terminal state must remain terminal after replay (PO-KANI-012)",
+    );
+    ,
         "terminal state must remain terminal after replay (PO-KANI-012)",
     );
     kani::assert(

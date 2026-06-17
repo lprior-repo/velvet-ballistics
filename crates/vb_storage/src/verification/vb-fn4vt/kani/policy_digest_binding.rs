@@ -117,7 +117,12 @@ fn compute_policy_digest_no_panic() {
             let policy_digest = WorkflowDigest::from_bytes(*hash.as_bytes());
 
             // Verify the digest is well-formed (all 32 bytes valid)
-            kani::assert(policy_digest.as_bytes().len() == 32, "assertion failed");
+            kani::assert(policy_digest.as_bytes(, "assertion failed").len() == 32, "assertion failed");
+            kani::cover!(policy_digest.as_bytes().len() == 32, "policy-digest-computed");
+        }
+        Err(_) => {
+            // Serialization failed - not expected for default contract
+            .len() == 32, "assertion failed");
             kani::cover!(policy_digest.as_bytes().len() == 32, "policy-digest-computed");
         }
         Err(_) => {

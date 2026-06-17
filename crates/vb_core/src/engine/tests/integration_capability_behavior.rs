@@ -190,8 +190,8 @@ fn capability_opaque_dotted_names_siblings_do_not_cross_grant() -> Result<(), St
 #[test]
 fn capability_expiration_api_note_no_time_fields_on_capability() {
     let c = cap("network", ActionId::new(1));
-    kani::assert(c.name() == "network", "assertion failed");
-    kani::assert(c.action_id() == ActionId::new(1), "assertion failed");
+    kani::assert(c.name(, "assertion failed") == "network", "assertion failed");
+    kani::assert(c.action_id(, "assertion failed") == ActionId::new(1), "assertion failed");
 }
 
 #[test]
@@ -247,7 +247,7 @@ fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String
     };
     let mut frame = test_frame(2, 2);
     let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
-    kani::assert(write_result.is_ok(), "kani harness assertion");
+    kani::assert(write_result.is_ok(, "assertion failed"), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
     let result_b = verify_idempotency(&contract, &key_slots, &frame);
@@ -272,7 +272,7 @@ fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
     };
     let mut frame = test_frame(2, 2);
     let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    kani::assert(write_result.is_ok(), "kani harness assertion");
+    kani::assert(write_result.is_ok(, "assertion failed"), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
     let result_b = verify_idempotency(&contract, &key_slots, &frame);
@@ -733,7 +733,7 @@ fn retry_safety_none_side_effect_passes_for_all_retry_safeties() -> Result<(), S
 fn taint_validation_secret_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
-    kani::assert(wr.is_ok(), "kani harness assertion");
+    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -745,7 +745,7 @@ fn taint_validation_secret_key_rejected() -> Result<(), String> {
 fn taint_validation_derived_from_secret_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(99), Taint::DerivedFromSecret);
-    kani::assert(wr.is_ok(), "kani harness assertion");
+    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
     let key_slots = [SlotIdx::new(1)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -757,7 +757,7 @@ fn taint_validation_derived_from_secret_key_rejected() -> Result<(), String> {
 fn taint_validation_random_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    kani::assert(wr.is_ok(), "kani harness assertion");
+    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -769,7 +769,7 @@ fn taint_validation_random_key_rejected() -> Result<(), String> {
 fn taint_validation_time_dependent_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    kani::assert(wr.is_ok(), "kani harness assertion");
+    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -781,7 +781,138 @@ fn taint_validation_time_dependent_key_rejected() -> Result<(), String> {
 fn taint_validation_clean_key_passes() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
-    kani::assert(wr.is_ok(), "kani harness assertion");
+    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
+    let key_slots = [SlotIdx::new(0)];
+    ensure_equal(
+        validate_idempotency_key_ingredients(&key_slots, &frame),
+        Ok(()),
+    )
+}
+
+#[test]
+fn taint_validation_mixed_key_first_clean_second_secret_short_circuits_on_secret() -> Result<(), String> {
+    let mut frame = test_frame(4, 2);
+    let _ = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
+    let _ = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret);
+    let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
+    ensure_equal(
+        validate_idempotency_key_ingredients(&key_slots, &frame),
+        Err(IdempotencyViolation::SecretInKey(1)),
+    )
+}
+
+#[test]
+fn taint_validation_first_of_two_both_secret_short_circuits_on_first() -> Result<(), String> {
+    let mut frame = test_frame(4, 2);
+    let _ = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+    let _ = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret);
+    let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
+    ensure_equal(
+        validate_idempotency_key_ingredients(&key_slots, &frame),
+        Err(IdempotencyViolation::SecretInKey(0)),
+    )
+}
+
+// =============================================================================
+// 14. CapabilitySet structural tests
+// =============================================================================
+
+#[test]
+fn capability_set_empty_len_zero_and_is_empty() -> Result<(), String> {
+    let set = CapabilitySet::empty();
+    ensure_equal(set.len(), 0)?;
+    ensure_equal(set.is_empty(), true)
+}
+
+#[test]
+fn capability_set_with_single_grant_has_len_one_and_not_empty() -> Result<(), String> {
+    let set = CapabilitySet::from_grants(Box::new([cap("network", ActionId::new(1))]));
+    ensure_equal(set.len(), 1)?;
+    ensure_equal(set.is_empty(), false)
+}
+
+#[test]
+fn capability_set_with_zero_grants_is_empty() -> Result<(), String> {
+    let set = CapabilitySet::from_grants(Box::new([]));
+    ensure_equal(set.len(), 0)?;
+    ensure_equal(set.is_empty(), true)
+}
+
+#[test]
+fn capability_set_empty_name_grant_denies_all() -> Result<(), String> {
+    let set = CapabilitySet::from_grants(Box::new([cap("", ActionId::new(1))]));
+    ensure_equal(set.grants(&cap("network", ActionId::new(1))), false)?;
+    ensure_equal(set.grants(&cap("", ActionId::new(1))), false)?;
+    ensure_equal(set.grants(&cap("", ActionId::new(0))), false)
+}
+
+#[test]
+fn capability_set_different_actions_no_cross_grant() -> Result<(), String> {
+    let set = CapabilitySet::from_grants(Box::new([cap("resource", ActionId::new(1))]));
+    ensure_equal(set.grants(&cap("resource", ActionId::new(2))), false)?;
+    ensure_equal(set.grants(&cap("resource", ActionId::new(0))), false)?;
+    ensure_equal(set.grants(&cap("other", ActionId::new(1))), false)
+}
+
+#[test]
+fn capability_set_large_valid_grants() -> Result<(), String> {
+    let mut caps = Vec::new();
+    for i in 0..50_u16 {
+        caps.push(cap("action", ActionId::new(i)));
+    }
+    let set = CapabilitySet::from_grants(caps.into_boxed_slice());
+    ensure_equal(set.len(), 50)?;
+    ensure_equal(set.grants(&cap("action", ActionId::new(0))), true)?;
+    ensure_equal(set.grants(&cap("action", ActionId::new(49))), true)?;
+    ensure_equal(set.grants(&cap("action", ActionId::new(50))), false)?;
+    ensure_equal(set.grants(&cap("different", ActionId::new(0))), false)?;
+    Ok(())
+}
+
+#[test]
+fn capability_set_identical_grants_multiple_times_still_grants_once() -> Result<(), String> {
+    let set = CapabilitySet::from_grants(Box::new([
+        cap("network", ActionId::new(1)),
+        cap("network", ActionId::new(1)),
+        cap("network", ActionId::new(1)),
+    ]));
+    ensure_equal(set.len(), 3)?;
+    ensure_equal(set.grants(&cap("network", ActionId::new(1))), true)
+}
+
+// =============================================================================
+// 15. Kani proofs: exported as cfg(kani) module
+// =============================================================================
+
+#[cfg(kani)]
+mod kani {
+    use crate::action::{
+        ActionContract, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,
+        validate_idempotency_key_ingredients, verify_idempotency,
+    };
+    use crate::capability::{Capability, CapabilitySet};
+    use crate::frame::RunFrame;
+    use crate::ids::{ActionId, RunId, SlotIdx, StepIdx};
+    use crate::value::{SlotValue, Taint};
+
+    /// Idempotency determinism: same inputs always produce same result.
+    #[kani::proof]
+    #[kani::unwind(4)]
+    fn kani_idempotency_determinism() {
+        let contract = kani::any::<ActionContract>();
+        kani::assume(contract.retry_safety == RetrySafety::RequiresIdempotencyKey);
+        kani::assume(contract.side_effect != SideEffect::Pure);
+
+        let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+        let frame = match frame {
+            Ok(f) => f,
+            Err(_) => { kani::assume(false); return; }
+        };
+
+        let key_slots: [SlotIdx; 0] = [];
+        let r1 = verify_idempotency(&contract, &key_slots, &frame);
+        let r2 = verify_idempotency(&contract, &key_slots, &frame);
+        , "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -945,8 +1076,19 @@ mod kani {
         ];
 
         let result = validate_idempotency_key_ingredients(&key_slots, &frame);
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
+            "validate must return Err when any key slot is tainted",
+        );
+
+        if let Err(err) = &result {
+            let variants = [
+                matches!(err, IdempotencyViolation::MissingKey(_)),
+                matches!(err, IdempotencyViolation::SecretInKey(_)),
+                matches!(err, IdempotencyViolation::SecretInKey(_)),
+                matches!(err, IdempotencyViolation::SecretInKey(_)),
+            ];
+            let count = variants.iter().filter(|&&b| b).count();
+            ,
             "validate must return Err when any key slot is tainted",
         );
 
@@ -974,12 +1116,28 @@ mod kani {
 
         let set_small = CapabilitySet::from_grants(Box::new([Capability::new("target".into(), action)]));
         let was_granted = set_small.grants(&required);
+        ",
+            );
+        }
+    }
+
+    /// Monotonicity: adding grants never removes existing permissions.
+    #[kani::proof]
+    #[kani::unwind(6)]
+    fn kani_capability_grants_monotonicity() {
+        let action = ActionId::new(1);
+        let required = Capability::new("target".into(), action);
+
+        let set_small = CapabilitySet::from_grants(Box::new([Capability::new("target".into(), action)]));
+        let was_granted = set_small.grants(&required);
         kani::assert(was_granted, "single grant must match");
 
         let set_large = CapabilitySet::from_grants(Box::new([
             Capability::new("target".into(), action),
             Capability::new("extra".into(), action),
         ]));
+        let still_granted = set_large.grants(&required);
+        );
         let still_granted = set_large.grants(&required);
         kani::assert(
             still_granted,
@@ -1005,14 +1163,12 @@ mod kani {
         let set = CapabilitySet::from_grants(Box::new([grant]));
 
         let required = Capability::new("resource".into(), ActionId::new(2));
-        kani::assert(
-            !set.grants(&required),
+        kani::assert(!set.grants(&required, "assertion failed"),
             "grant for action 1 must not grant action 2",
         );
 
         let required_same_name = Capability::new("resource".into(), ActionId::new(1));
-        kani::assert(
-            set.grants(&required_same_name),
+        kani::assert(set.grants(&required_same_name, "assertion failed"),
             "grant for action 1 must grant action 1",
         );
     }

@@ -22,8 +22,7 @@ fn kani_from_u16_exhaustive() {
 
     // Invariant 1: from_u16 must never panic or return Err for any u16.
     let result = IpcCommand::from_u16(value);
-    kani::assert(
-        result.is_ok(),
+    kani::assert(result.is_ok(, "assertion failed"),
         "from_u16({}) must return Ok); got {:?}",
         value,
         result,
@@ -125,7 +124,12 @@ fn kani_command_count_and_discriminants() {
     ];
 
     // Verify exactly 11 semantic variants.
-    kani::assert(variants.len() == 11, "Exactly 11 semantic IpcCommand variants must exist");
+    kani::assert(variants.len(, "assertion failed") == 11, "Exactly 11 semantic IpcCommand variants must exist");
+
+    // Verify discriminant range 1..=11 for each variant.
+    for cmd in &variants {
+        let id = cmd.as_u16();
+         == 11, "Exactly 11 semantic IpcCommand variants must exist");
 
     // Verify discriminant range 1..=11 for each variant.
     for cmd in &variants {
@@ -139,16 +143,38 @@ fn kani_command_count_and_discriminants() {
 
     // Verify each declared discriminant matches as_u16().
     kani::assert(IpcCommand::SubmitRun.as_u16() == 1, "SubmitRun discriminant must be 1");
-    kani::assert(IpcCommand::SubmitRunInline.as_u16() == 2, "SubmitRunInline discriminant must be 2");
-    kani::assert(IpcCommand::CancelRun.as_u16() == 3, "CancelRun discriminant must be 3");
-    kani::assert(IpcCommand::InspectRun.as_u16() == 4, "InspectRun discriminant must be 4");
-    kani::assert(IpcCommand::ListEvents.as_u16() == 5, "ListEvents discriminant must be 5");
-    kani::assert(IpcCommand::AnswerAsk.as_u16() == 6, "AnswerAsk discriminant must be 6");
-    kani::assert(IpcCommand::CompleteAction.as_u16() == 7, "CompleteAction discriminant must be 7");
-    kani::assert(IpcCommand::FailAction.as_u16() == 8, "FailAction discriminant must be 8");
-    kani::assert(IpcCommand::DrainTrace.as_u16() == 9, "DrainTrace discriminant must be 9");
-    kani::assert(IpcCommand::Health.as_u16() == 10, "Health discriminant must be 10");
-    kani::assert(IpcCommand::Shutdown.as_u16() == 11, "Shutdown discriminant must be 11");
+    kani::assert(IpcCommand::SubmitRunInline.as_u16(, "assertion failed") == 2, "SubmitRunInline discriminant must be 2");
+    kani::assert(IpcCommand::CancelRun.as_u16(, "assertion failed") == 3, "CancelRun discriminant must be 3");
+    kani::assert(IpcCommand::InspectRun.as_u16(, "assertion failed") == 4, "InspectRun discriminant must be 4");
+    kani::assert(IpcCommand::ListEvents.as_u16(, "assertion failed") == 5, "ListEvents discriminant must be 5");
+    kani::assert(IpcCommand::AnswerAsk.as_u16(, "assertion failed") == 6, "AnswerAsk discriminant must be 6");
+    kani::assert(IpcCommand::CompleteAction.as_u16(, "assertion failed") == 7, "CompleteAction discriminant must be 7");
+    kani::assert(IpcCommand::FailAction.as_u16(, "assertion failed") == 8, "FailAction discriminant must be 8");
+    kani::assert(IpcCommand::DrainTrace.as_u16(, "assertion failed") == 9, "DrainTrace discriminant must be 9");
+    kani::assert(IpcCommand::Health.as_u16(, "assertion failed") == 10, "Health discriminant must be 10");
+    kani::assert(IpcCommand::Shutdown.as_u16(, "assertion failed") == 11, "Shutdown discriminant must be 11");
+
+    // Verify discriminant uniqueness: collect all values and check no duplicates.
+    let ids: [u16; 11] = [
+        IpcCommand::SubmitRun.as_u16(),
+        IpcCommand::SubmitRunInline.as_u16(),
+        IpcCommand::CancelRun.as_u16(),
+        IpcCommand::InspectRun.as_u16(),
+        IpcCommand::ListEvents.as_u16(),
+        IpcCommand::AnswerAsk.as_u16(),
+        IpcCommand::CompleteAction.as_u16(),
+        IpcCommand::FailAction.as_u16(),
+        IpcCommand::DrainTrace.as_u16(),
+        IpcCommand::Health.as_u16(),
+        IpcCommand::Shutdown.as_u16(),
+    ];
+
+    // Since we have 11 elements that must be between 1 and 11,
+    // uniqueness is equivalent to each i from 1..=11 appearing exactly once.
+    // We verify that each declared discriminant has the expected value.
+    for i in 0..ids.len() {
+        for j in (i + 1)..ids.len() {
+             == 11, "Shutdown discriminant must be 11");
 
     // Verify discriminant uniqueness: collect all values and check no duplicates.
     let ids: [u16; 11] = [
@@ -185,6 +211,29 @@ fn kani_command_count_and_discriminants() {
 /// PO-KANI-004: Roundtrip identity for all 11 semantic variants.
 ///
 /// Proves: from_u16(as_u16(c)) == Ok(c) for every semantic variant c.
+/// This is a structural property ensuring the encoder and parser form
+/// a bijection on the set of valid command IDs.
+#[kani::proof]
+fn kani_roundtrip_identity() {
+    let commands: [IpcCommand; 11] = [
+        IpcCommand::SubmitRun,
+        IpcCommand::SubmitRunInline,
+        IpcCommand::CancelRun,
+        IpcCommand::InspectRun,
+        IpcCommand::ListEvents,
+        IpcCommand::AnswerAsk,
+        IpcCommand::CompleteAction,
+        IpcCommand::FailAction,
+        IpcCommand::DrainTrace,
+        IpcCommand::Health,
+        IpcCommand::Shutdown,
+    ];
+
+    for cmd in &commands {
+        let wire_id = cmd.as_u16();
+        let roundtripped = IpcCommand::from_u16(wire_id);
+        match roundtripped {
+            Ok(v) => ) == Ok(c) for every semantic variant c.
 /// This is a structural property ensuring the encoder and parser form
 /// a bijection on the set of valid command IDs.
 #[kani::proof]

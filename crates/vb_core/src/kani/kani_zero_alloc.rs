@@ -32,18 +32,18 @@ mod harnesses {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             let code = SymbolicCode::from_static(entry.symbolic);
-            kani::assert(code.is_some(), "Construction must succeed without alloc");
+            kani::assert(code.is_some(, "assertion failed"), "Construction must succeed without alloc");
             if let Some(code) = code {
                 // Copy: SymbolicCode is Copy, no alloc
                 let _copy = code;
 
                 // as_str: returns &'static str, no alloc
                 let s: &str = code.as_str();
-                kani::assert(!s.is_empty(), "as_str returns valid string");
+                kani::assert(!s.is_empty(, "assertion failed"), "as_str returns valid string");
 
                 // as_diagnostic_code: const fn lookup, no alloc
                 let dc = as_diagnostic_code_stub(code);
-                kani::assert(dc.code() != 0, "DiagnosticCode should be non-zero");
+                kani::assert(dc.code(, "assertion failed") != 0, "DiagnosticCode should be non-zero");
 
                 // numeric_code resolution: inline const lookup, no alloc
                 let _num = dc.code();

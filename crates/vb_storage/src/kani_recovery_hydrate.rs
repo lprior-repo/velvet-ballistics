@@ -116,8 +116,16 @@ fn replay_next_seq_overflow_boundary() {
     let result = crate::codec::next_seq(EventSeq::new(raw));
 
     if raw == u64::MAX {
-        kani::assert(
-            matches!(&result, Err(JournalError::SequenceOverflow)),
+        kani::assert(matches!(&result, Err(JournalError::SequenceOverflow), "assertion failed"),
+            "next_seq returns SequenceOverflow at u64::MAX",
+        );
+    } else {
+        let expected = raw.checked_add(1);
+        let ok = match (&result, expected) {
+            (Ok(seq), Some(expected_raw)) => seq.get() == expected_raw,
+            _ => false,
+        };
+        ,
             "next_seq returns SequenceOverflow at u64::MAX",
         );
     } else {
@@ -210,6 +218,15 @@ fn snapshot_metadata_rejects_run_mismatch() {
             snapshot_run: actual_run,
             snapshot_seq: actual_seq,
         }) => {
+             == 0, "snapshot seq domain includes zero");
+
+    let result = validate_snapshot_metadata(snapshot_run, snapshot_seq, run_id);
+
+    match result {
+        Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            snapshot_run: actual_run,
+            snapshot_seq: actual_seq,
+        }) => {
             kani::assert(
                 actual_run == snapshot_run,
                 "snapshot mismatch preserves run",
@@ -240,6 +257,8 @@ fn tail_run_scan_matches_any_metadata_batch_len_le_4() {
     match (has_mismatch, result) {
         (true, Err(SnapshotRecoveryInputViolation::TailRunMismatch { .. })) => {}
         (false, Ok(())) => {}
+        _ => ) => {}
+        (false, Ok(())) => {}
         _ => kani::assert(
             false,
             "tail run scan result matches metadata mismatch predicate",
@@ -264,6 +283,8 @@ fn tail_seq_scan_matches_any_metadata_batch_len_le_4() {
     match (has_invalid_seq, result) {
         (true, Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })) => {}
         (false, Ok(())) => {}
+        _ => ) => {}
+        (false, Ok(())) => {}
         _ => kani::assert(false, "tail seq scan result matches sequence predicate"),
     }
 }
@@ -281,9 +302,11 @@ fn recovery_data_presence_rejects_only_all_empty() {
 
     match (all_empty, result) {
         (true, Err(SnapshotRecoveryInputViolation::NoRecoveryData { run })) => {
+            ) => {
             kani::assert(run == run_id, "NoRecoveryData preserves requested run");
         }
         (false, Ok(())) => {}
+        _ => ) => {}
         _ => kani::assert(false, "recovery data presence rejects only all-empty input"),
     }
 }
@@ -304,8 +327,20 @@ fn slot_taint_resolution_fails_closed_on_read_failure() {
 fn slot_taint_resolution_defaults_clean_only_for_uninitialized() {
     let decision = resolve_slot_taint_read(SlotTaintReadObservation::Uninitialized);
 
-    kani::assert(
-        matches!(decision, SlotTaintResolution::Use(Taint::Clean)),
+    kani::assert(matches!(decision, SlotTaintResolution::Use(Taint::Clean), "assertion failed"),
+        "uninitialized slots are the only Clean default path",
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(8)]
+fn slot_taint_resolution_preserves_existing_taint() {
+    let taint = arbitrary_taint();
+    let decision = resolve_slot_taint_read(SlotTaintReadObservation::Existing(taint));
+
+    match decision {
+        SlotTaintResolution::Use(actual) => {
+            ,
         "uninitialized slots are the only Clean default path",
     );
 }
@@ -319,6 +354,9 @@ fn slot_taint_resolution_preserves_existing_taint() {
     match decision {
         SlotTaintResolution::Use(actual) => {
             kani::assert(actual == taint, "existing taint is preserved exactly");
+        }
+        SlotTaintResolution::FailClosed => {
+            actual == taint, "existing taint is preserved exactly");
         }
         SlotTaintResolution::FailClosed => {
             kani::assert(false, "successful taint reads must not fail closed");

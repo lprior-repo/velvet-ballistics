@@ -52,19 +52,19 @@ fn check_runkilled_construction_preserves_fields() {
     };
 
     // Verify field preservation through accessors
-    kani::assert(event.run_id().get() == run_val,
+    kani::assert(event.run_id(, "assertion failed").get() == run_val,
         "RunKilled run_id must preserve the constructed RunId value");
-    kani::assert(event.seq().get() == seq_val,
+    kani::assert(event.seq(, "assertion failed").get() == seq_val,
         "RunKilled seq must preserve the constructed EventSeq value");
-    kani::assert(event.attempt() == Some(attempt_val),
+    kani::assert(event.attempt(, "assertion failed") == Some(attempt_val),
         "RunKilled attempt must preserve the constructed attempt value");
 
     // Verify structural validity for well-formed inputs
-    kani::assert(event.is_valid(),
+    kani::assert(event.is_valid(, "assertion failed"),
         "RunKilled with valid fields (non-zero run, non-MAX seq, non-zero attempt) must be valid");
 
     // Verify record kind identity
-    kani::assert(matches!(event.record_kind(), vb_storage::RecordKind::RunKilled),
+    kani::assert(matches!(event.record_kind(), vb_storage::RecordKind::RunKilled, "assertion failed"),
         "RunKilled event must return RecordKind::RunKilled");
 }
 
@@ -77,7 +77,7 @@ fn check_runkilled_zero_run_invalid() {
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
     };
-    kani::assert(!event.is_valid(),
+    kani::assert(!event.is_valid(, "assertion failed"),
         "RunKilled with RunId(0) must be rejected as invalid");
 }
 
@@ -92,7 +92,7 @@ fn check_runkilled_overflow_seq_invalid() {
         seq: vb_storage::EventSeq::new(u64::MAX),
         attempt: 1,
     };
-    kani::assert(!event.is_valid(),
+    kani::assert(!event.is_valid(, "assertion failed"),
         "RunKilled with EventSeq(u64::MAX) must be rejected as invalid");
 }
 
@@ -108,7 +108,16 @@ fn check_runkilled_zero_attempt_invalid() {
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: 0,
     };
-    kani::assert(!event.is_valid(),
+    kani::assert(!event.is_valid(, "assertion failed"),
+        "RunKilled with attempt(0) must be rejected as invalid");
+}
+
+/// PO-KANI-001-H5: is_known_record_kind(28) returns true.
+/// Production: validation.rs:23 with extended range 10..=28.
+#[kani::proof]
+fn check_kind_28_is_known_record_kind() {
+    let result = vb_storage::codec::validation::is_known_record_kind(28);
+    ,
         "RunKilled with attempt(0) must be rejected as invalid");
 }
 
@@ -118,6 +127,18 @@ fn check_runkilled_zero_attempt_invalid() {
 fn check_kind_28_is_known_record_kind() {
     let result = vb_storage::codec::validation::is_known_record_kind(28);
     kani::assert(result, "kind 28 (RunKilled) must be a known record kind");
+}
+
+/// PO-KANI-001-H6: validate_kind_family(MAGIC_JOURNAL_EVENT, 28) returns Ok(()).
+/// Production: validation.rs:46 with extended range 10..=28.
+#[kani::proof]
+fn check_kind_28_journal_family_valid() {
+    let result = vb_storage::codec::validation::validate_kind_family(
+        vb_storage::constants::MAGIC_JOURNAL_EVENT, 28);
+    match result {
+        Ok(()) => {},
+        Err(e) => {
+             must be a known record kind");
 }
 
 /// PO-KANI-001-H6: validate_kind_family(MAGIC_JOURNAL_EVENT, 28) returns Ok(()).
@@ -151,15 +172,40 @@ fn check_validate_kind_family_exhaustive() {
         Ok(()) => {
             // If magic is MAGIC_JOURNAL_EVENT, kind must be in 10..=28
             if magic == vb_storage::constants::MAGIC_JOURNAL_EVENT {
-                kani::assert(
-                    (10u16..=28u16).contains(&kind),
+                kani::assert((10u16..=28u16, "assertion failed").contains(&kind),
                     &format!("journal kind {kind} returned Ok but not in 10..=28"));
             }
         }
         Err(e) => {
             // Errors must be typed, not panics
-            kani::assert(
-                matches!(e, vb_storage::JournalError::RecordKindFamilyMismatch { .. }),
+            kani::assert(matches!(e, vb_storage::JournalError::RecordKindFamilyMismatch { .. }, "assertion failed"),
+                "validate_kind_family errors must be RecordKindFamilyMismatch");
+        }
+    }
+}
+
+// ============================================================================
+// PO-KANI-002: Single Terminal Winner — IndexMap/IndexSet semantics
+// ============================================================================
+// Production: handle_cancel and handle_kill both use swap_remove on self.runs
+// (IndexMap<RunId, RunState>). After first successful swap_remove, the second
+// call to either handler finds the run absent → no-op.
+
+/// PO-KANI-002-H1: swap_remove on absent key returns None (IndexMap guarantee).
+/// Production: chunk_002:110,126 — the if-let Some(state) guard gates journal events.
+#[kani::proof]
+fn check_swap_remove_absent_returns_none() {
+    // Model: IndexMap::swap_remove returns None when key not present.
+    // This is the fundamental property that makes handle_cancel/handle_kill
+    // safe to call on missing or already-terminalized runs.
+    let present: bool = kani::any();
+
+    // In production: if swap_remove returns Some → append journal event
+    //                if swap_remove returns None → no journal event
+    let journal_events: u32 = if present { 1 } else { 0 };
+
+    if !present {
+        ,
                 "validate_kind_family errors must be RecordKindFamilyMismatch");
         }
     }
@@ -221,6 +267,19 @@ fn check_cancel_kill_identical_swap_remove() {
     let cancel_events: u32 = if run_present { 1 } else { 0 };
     let kill_events: u32 = if run_present { 1 } else { 0 };
 
+    ");
+}
+
+/// PO-KANI-002-H3: handle_cancel and handle_kill have identical swap_remove behavior.
+/// Production: both use IndexMap::swap_remove — only difference is journal event variant.
+#[kani::proof]
+fn check_cancel_kill_identical_swap_remove() {
+    let run_present: bool = kani::any();
+
+    // Both handlers check the same swap_remove result
+    let cancel_events: u32 = if run_present { 1 } else { 0 };
+    let kill_events: u32 = if run_present { 1 } else { 0 };
+
     kani::assert(cancel_events == kill_events,
         "handle_cancel and handle_kill produce same event count for same run state");
 }
@@ -268,6 +327,7 @@ fn check_terminal_runs_insert_idempotent() {
         "first insert into terminal_runs adds the element");
     kani::assert(!second_insert_added,
         "second insert into terminal_runs does not add the element (already present)");
+    ");
     kani::assert(first_insert_added != second_insert_added,
         "terminal_runs insert result correctly distinguishes first from subsequent insertions");
 }

@@ -37,23 +37,22 @@ fn vb_ajc40_empty_path_root_accessor() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len() == 1, "assertion failed");
-            kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0));
+            kani::assert(admitted.len(, "assertion failed") == 1, "assertion failed");
+            kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0, "assertion failed"));
         }
         Err(_) => kani::assert(false),
     }
 
     match validate_compiled_queries(
         CompiledQueries {
-            queries: vec![empty_path_query()].into_boxed_slice(),
+            queries: vec![empty_path_query(, "assertion failed")].into_boxed_slice(),
             total_yield_cost: 0,
         },
         0,
     ) {
         Ok(admitted) => {
             assert_eq!(admitted.len(), 1);
-            kani::assert(
-                matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0),
+            kani::assert(matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0, "assertion failed"),
             );
         }
         Err(_) => assert!(false),

@@ -15,6 +15,23 @@ fn kani_foreach_delimiter_byte_not_in_yaml_id() {
     let byte_val: u8 = kani::any();
     let is_yaml_id = byte_val.is_ascii_alphanumeric() || byte_val == b'_' || byte_val == b'-';
     if is_yaml_id {
+        // Verification artifact: kani_digest_foreach_delimiter.rs
+// PO: PO-K-FE-10 | Command: cargo kani --harness kani_foreach_delimiter_byte_not_in_yaml_id -p vb_compile
+// Bead: vb-xi2f.28 | State: 5 (proof-writer)
+// Model bounds: delimiter=0x3A, yaml_id_chars=[a-zA-Z0-9_-], char_range=full u8, tool: --unwind 2
+
+#![cfg(kani)]
+#![allow(unused_must_use)]
+
+use vb_yaml::ast::StepPrimitive;
+
+/// H1: Delimiter byte 0x3A (':') is NOT a valid YAML identifier character.
+#[kani::proof]
+#[kani::unwind(4)]
+fn kani_foreach_delimiter_byte_not_in_yaml_id() {
+    let byte_val: u8 = kani::any();
+    let is_yaml_id = byte_val.is_ascii_alphanumeric() || byte_val == b'_' || byte_val == b'-';
+    if is_yaml_id {
         kani::assert(byte_val != b':', "assertion failed");
     }
 }
@@ -75,5 +92,5 @@ fn kani_foreach_delimiter_prevents_boundary_collision() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
-    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes(), "assertion failed");
+    kani::assert(ha.finalize(, "assertion failed").as_bytes() != hb.finalize().as_bytes(), "assertion failed");
 }

@@ -26,7 +26,12 @@ use crate::error::JournalError;
 fn ps_004_zero_length_rejected() {
     let bytes: Vec<u8> = Vec::new();
     let result = decode_accepted_artifact_envelope(&bytes);
-    kani::assert(result.is_err(), "zero-length input must be rejected");
+    kani::assert(result.is_err(, "assertion failed"), "zero-length input must be rejected");
+    match result {
+        Err(JournalError::ArtifactMalformed) => {}
+        Err(_) => {} // Other errors also acceptable
+        Ok(_) => {
+            , "zero-length input must be rejected");
     match result {
         Err(JournalError::ArtifactMalformed) => {}
         Err(_) => {} // Other errors also acceptable
@@ -66,7 +71,13 @@ fn ps_004_truncated_header_rejected() {
     kani::assume(len >= 1 && len <= 4);
     let bytes: Vec<u8> = (0..len).map(|_| kani::any()).collect();
     let result = decode_accepted_artifact_envelope(&bytes);
-    kani::assert(result.is_err(), "truncated header must be rejected");
+    kani::assert(result.is_err(, "assertion failed"), "truncated header must be rejected");
+    match result {
+        Err(JournalError::ArtifactMalformed) => {}
+        Err(JournalError::UnexpectedEof) => {}
+        Err(_) => {}
+        Ok(_) => {
+            , "truncated header must be rejected");
     match result {
         Err(JournalError::ArtifactMalformed) => {}
         Err(JournalError::UnexpectedEof) => {}

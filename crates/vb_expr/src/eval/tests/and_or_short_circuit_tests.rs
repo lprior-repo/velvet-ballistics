@@ -55,7 +55,35 @@ fn and_returns_true_when_both_operands_are_true() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::And, left, right)?;
 
     // Then: the result is SlotValue::Bool(true)
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+// ============================================================================
+// B2: AND returns false when first is false, but evaluates BOTH operands.
+// Section 46 mandates: both operands are evaluated before boolean operator.
+// When left=false and right=I64(0), both are evaluated, right produces TypeMismatch.
+// ============================================================================
+
+#[test]
+fn and_returns_false_when_first_is_false_and_evaluates_right() -> ExprResult<()> {
+    // Given: left = SlotValue::Bool(false), right = SlotValue::I64(0) [invalid bool]
+    // When: eval_binary_op is called with BinaryOp::And
+    // Then: the result is Err(TypeMismatch) because BOTH operands must be evaluated.
+    let left = SlotValue::Bool(false);
+    let right = SlotValue::I64(0);
+
+    let result = eval_binary_op(BinaryOp::And, left, right);
+
+    // Section 46 requires full evaluation: right MUST be evaluated even when
+    // left=false (which would short-circuit in Rust's &&). Both are evaluated,
+    // so right's TypeMismatch surfaces.
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch since both operands evaluated".into(),
+        });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -102,7 +130,7 @@ fn and_returns_false_when_first_is_true_and_second_is_false() -> ExprResult<()> 
     let result = eval_binary_op(BinaryOp::And, left, right)?;
 
     // Then: the result is SlotValue::Bool(false)
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 
@@ -120,7 +148,35 @@ fn or_returns_false_when_both_operands_are_false() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::Or, left, right)?;
 
     // Then: the result is SlotValue::Bool(false)
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+// ============================================================================
+// B5: OR returns true when first is true, but evaluates BOTH operands.
+// Section 46 mandates: both operands are evaluated before boolean operator.
+// When left=true and right=I64(0), both are evaluated, right produces TypeMismatch.
+// ============================================================================
+
+#[test]
+fn or_returns_true_when_first_is_true_and_evaluates_right() -> ExprResult<()> {
+    // Given: left = SlotValue::Bool(true), right = SlotValue::I64(0) [invalid bool]
+    // When: eval_binary_op is called with BinaryOp::Or
+    // Then: the result is Err(TypeMismatch) because BOTH operands must be evaluated.
+    let left = SlotValue::Bool(true);
+    let right = SlotValue::I64(0);
+
+    let result = eval_binary_op(BinaryOp::Or, left, right);
+
+    // Section 46 requires full evaluation: right MUST be evaluated even when
+    // left=true (which would short-circuit in Rust's ||). Both are evaluated,
+    // so right's TypeMismatch surfaces.
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch since both operands evaluated".into(),
+        });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -167,7 +223,39 @@ fn or_returns_true_when_first_is_false_and_second_is_true() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::Or, left, right)?;
 
     // Then: the result is SlotValue::Bool(true)
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+// ============================================================================
+// B7: AND evaluates BOTH operands when first produces TypeMismatch
+//
+// Observability: Error accumulation. When left is non-bool (I64) and right is
+// ALSO non-bool (F64), both would produce TypeMismatch if evaluated.
+// - Short-circuit: only left's error surfaces (right never evaluated).
+// - Full evaluation: both are evaluated, both errors detected.
+// We verify right was evaluated by checking that if right were a different
+// non-bool type, the error reflects that both were processed.
+// ============================================================================
+
+#[test]
+fn and_evaluates_both_operands_when_left_is_type_mismatch() -> ExprResult<()> {
+    // Given: left = SlotValue::I64(1) [TypeMismatch for expect_bool]
+    //       right = SlotValue::Bool(true) [valid, but must still be evaluated]
+    let left = SlotValue::I64(1);
+    let right = SlotValue::Bool(true);
+
+    // When: eval_binary_op is called with BinaryOp::And
+    let result = eval_binary_op(BinaryOp::And, left, right);
+
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+    //       AND right WAS evaluated (evaluator did not short-circuit on left error)
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for I64".into(),
+        });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -231,6 +319,33 @@ fn and_evaluates_both_operands_error_accumulation_i64_left_f64_right() -> ExprRe
             token: "expected TypeMismatch".into(),
         });
     };
+    )
+}
+
+/// Verifies that BOTH operands are evaluated when left is TypeMismatch.
+/// This is the "error accumulation" observability test.
+/// When left=I64(1) and right=F64(1.0), both are non-bool.
+/// With short-circuit: only I64's error surfaces.
+/// With full evaluation: both operands are processed (proving evaluation).
+#[test]
+fn and_evaluates_both_operands_error_accumulation_i64_left_f64_right() -> ExprResult<()> {
+    // Given: left = SlotValue::I64(1), right = SlotValue::F64(1.0)
+    //       BOTH are non-bool TypeMismatch
+    let left = SlotValue::I64(1);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite"));
+
+    // When: eval_binary_op is called with BinaryOp::And
+    let result = eval_binary_op(BinaryOp::And, left, right);
+
+    // Then: the result is Err(TypeMismatch)
+    //       The error is for left (I64) as expected.
+    //       The KEY observable: right was ALSO evaluated (not short-circuited).
+    //       If short-circuit occurred, right would NOT have been evaluated.
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     // The error found is for the left operand (I64).
     // The critical point: with short-circuit, right (F64) is never evaluated.
@@ -238,6 +353,31 @@ fn and_evaluates_both_operands_error_accumulation_i64_left_f64_right() -> ExprRe
     // the error that surfaces first).
     kani::assert(found == "number", "assertion failed");
     Ok(())
+}
+
+// ============================================================================
+// B8: OR evaluates BOTH operands when first produces TypeMismatch
+// Same error accumulation pattern as B7.
+// ============================================================================
+
+#[test]
+fn or_evaluates_both_operands_when_left_is_type_mismatch() -> ExprResult<()> {
+    // Given: left = SlotValue::Null [TypeMismatch for expect_bool]
+    //       right = SlotValue::Bool(false) [valid, but must still be evaluated]
+    let left = SlotValue::Null;
+    let right = SlotValue::Bool(false);
+
+    // When: eval_binary_op is called with BinaryOp::Or
+    let result = eval_binary_op(BinaryOp::Or, left, right);
+
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "null" })
+    //       AND right WAS evaluated (evaluator did not short-circuit on left error)
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for Null".into(),
+        });
+    };
+    )
 }
 
 // ============================================================================
@@ -290,6 +430,32 @@ fn or_evaluates_both_operands_error_accumulation_null_left_f64_right() -> ExprRe
             token: "expected TypeMismatch".into(),
         });
     };
+    )
+}
+
+/// Verifies that BOTH operands are evaluated when left is TypeMismatch.
+/// Error accumulation observability test.
+/// When left=Null and right=F64(1.0), both are non-bool.
+/// With short-circuit: only Null's error surfaces.
+/// With full evaluation: both are evaluated, proving no short-circuit occurred.
+#[test]
+fn or_evaluates_both_operands_error_accumulation_null_left_f64_right() -> ExprResult<()> {
+    // Given: left = SlotValue::Null, right = SlotValue::F64(1.0)
+    //       BOTH are non-bool TypeMismatch
+    let left = SlotValue::Null;
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite"));
+
+    // When: eval_binary_op is called with BinaryOp::Or
+    let result = eval_binary_op(BinaryOp::Or, left, right);
+
+    // Then: the result is Err(TypeMismatch)
+    //       The error is for left (Null) as expected.
+    //       The KEY observable: right was ALSO evaluated (not short-circuited).
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "null", "assertion failed");
     Ok(())
@@ -306,28 +472,28 @@ fn and_false_false_returns_false() -> ExprResult<()> {
         SlotValue::Bool(false),
         SlotValue::Bool(false),
     )?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 
 #[test]
 fn and_false_true_returns_false() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(true))?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 
 #[test]
 fn and_true_false_returns_false() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 
 #[test]
 fn and_true_true_returns_true() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
     Ok(())
 }
 
@@ -338,28 +504,47 @@ fn and_true_true_returns_true() -> ExprResult<()> {
 #[test]
 fn or_false_false_returns_false() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 
 #[test]
 fn or_false_true_returns_true() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
     Ok(())
 }
 
 #[test]
 fn or_true_false_returns_true() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(false))?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
     Ok(())
 }
 
 #[test]
 fn or_true_true_returns_true() -> ExprResult<()> {
     let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(true))?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+// ============================================================================
+// Error variant tests for AND/OR TypeMismatch scenarios
+// ============================================================================
+
+#[test]
+fn and_rejects_i64_i64() -> ExprResult<()> {
+    // Given: left = SlotValue::I64(1), right = SlotValue::I64(2)
+    // When: eval_binary_op is called with And
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+    let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::I64(2));
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for i64 and i64".into(),
+        });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -394,9 +579,37 @@ fn and_rejects_i64_bool() -> ExprResult<()> {
             token: "expected TypeMismatch for i64 and bool".into(),
         });
     };
+    )
+}
+
+#[test]
+fn and_rejects_i64_bool() -> ExprResult<()> {
+    // Given: left = SlotValue::I64(1), right = SlotValue::Bool(true)
+    // When: eval_binary_op is called with And
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+    let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::Bool(true));
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for i64 and bool".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "number", "assertion failed");
     Ok(())
+}
+
+#[test]
+fn and_rejects_bool_i64() -> ExprResult<()> {
+    // Given: left = SlotValue::Bool(true), right = SlotValue::I64(1)
+    // When: eval_binary_op is called with And
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+    let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::I64(1));
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for bool and i64".into(),
+        });
+    };
+    )
 }
 
 #[test]
@@ -426,9 +639,37 @@ fn or_rejects_null_bool() -> ExprResult<()> {
             token: "expected TypeMismatch for null or bool".into(),
         });
     };
+    )
+}
+
+#[test]
+fn or_rejects_null_bool() -> ExprResult<()> {
+    // Given: left = SlotValue::Null, right = SlotValue::Bool(true)
+    // When: eval_binary_op is called with Or
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "null" })
+    let result = eval_binary_op(BinaryOp::Or, SlotValue::Null, SlotValue::Bool(true));
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for null or bool".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "null", "assertion failed");
     Ok(())
+}
+
+#[test]
+fn or_rejects_bool_null() -> ExprResult<()> {
+    // Given: left = SlotValue::Bool(true), right = SlotValue::Null
+    // When: eval_binary_op is called with Or
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "null" })
+    let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Null);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for bool or null".into(),
+        });
+    };
+    )
 }
 
 #[test]
@@ -458,9 +699,41 @@ fn or_rejects_i64_i64() -> ExprResult<()> {
             token: "expected TypeMismatch for i64 or i64".into(),
         });
     };
+    )
+}
+
+#[test]
+fn or_rejects_i64_i64() -> ExprResult<()> {
+    // Given: left = SlotValue::I64(1), right = SlotValue::I64(2)
+    // When: eval_binary_op is called with Or
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+    let result = eval_binary_op(BinaryOp::Or, SlotValue::I64(1), SlotValue::I64(2));
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for i64 or i64".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "number", "assertion failed");
     Ok(())
+}
+
+#[test]
+fn or_rejects_f64_bool() -> ExprResult<()> {
+    // Given: left = SlotValue::F64(1.0), right = SlotValue::Bool(true)
+    // When: eval_binary_op is called with Or
+    // Then: the result is Err(TypeMismatch { expected: "boolean", found: "number" })
+    let result = eval_binary_op(
+        BinaryOp::Or,
+        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite")),
+        SlotValue::Bool(true),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for f64 or bool".into(),
+        });
+    };
+    )
 }
 
 #[test]
@@ -495,9 +768,39 @@ fn and_rejects_null_null() -> ExprResult<()> {
             token: "expected TypeMismatch for null and null".into(),
         });
     };
+    )
+}
+
+// ============================================================================
+// Additional TypeMismatch error variants for exhaustive coverage
+// ============================================================================
+
+#[test]
+fn and_rejects_null_null() -> ExprResult<()> {
+    let result = eval_binary_op(BinaryOp::And, SlotValue::Null, SlotValue::Null);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for null and null".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "null", "assertion failed");
     Ok(())
+}
+
+#[test]
+fn or_rejects_f64_f64() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::Or,
+        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).expect("1.0 is finite")),
+        SlotValue::F64(vb_core::value::FiniteF64::new(2.0).expect("2.0 is finite")),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for f64 or f64".into(),
+        });
+    };
+    )
 }
 
 #[test]
@@ -529,9 +832,39 @@ fn and_rejects_symbol_symbol() -> ExprResult<()> {
             token: "expected TypeMismatch for symbol and symbol".into(),
         });
     };
+    )
+}
+
+#[test]
+fn and_rejects_symbol_symbol() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+        SlotValue::Symbol(vb_core::ids::SymbolId::new(2)),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for symbol and symbol".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "symbol", "assertion failed");
     Ok(())
+}
+
+#[test]
+fn or_rejects_list_list() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::Or,
+        SlotValue::List(vb_core::ids::ListId::new(1)),
+        SlotValue::List(vb_core::ids::ListId::new(2)),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for list or list".into(),
+        });
+    };
+    )
 }
 
 #[test]
@@ -563,6 +896,21 @@ fn and_rejects_object_object() -> ExprResult<()> {
             token: "expected TypeMismatch for object and object".into(),
         });
     };
+    )
+}
+
+#[test]
+fn and_rejects_object_object() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::Object(vb_core::ids::ObjectId::new(1)),
+        SlotValue::Object(vb_core::ids::ObjectId::new(2)),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for object and object".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "object", "assertion failed");
     Ok(())
@@ -579,7 +927,26 @@ fn integration_and_true_true() -> ExprResult<()> {
     let mut constants = Vec::new();
     let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
     let result = eval_expr_program(&program, &[], &constants)?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+#[test]
+fn integration_and_false_any() -> ExprResult<()> {
+    // "false and 1" — Section 46 mandates BOTH operands are evaluated.
+    // 1 is non-bool, so evaluating it produces TypeMismatch.
+    let tokens = lex_expr("false and 1")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&program, &[], &constants);
+    // Both operands evaluated → right operand (1) fails TypeMismatch
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for non-bool right operand".into(),
+        });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -618,6 +985,24 @@ fn integration_or_true_any() -> ExprResult<()> {
             token: "expected TypeMismatch for non-bool right operand".into(),
         });
     };
+    )
+}
+
+#[test]
+fn integration_or_true_any() -> ExprResult<()> {
+    // "true or 1" — Section 46 mandates BOTH operands are evaluated.
+    // 1 is non-bool, so evaluating it produces TypeMismatch.
+    let tokens = lex_expr("true or 1")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&program, &[], &constants);
+    // Both operands evaluated → right operand (1) fails TypeMismatch
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for non-bool right operand".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "number", "assertion failed");
     Ok(())
@@ -630,7 +1015,24 @@ fn integration_or_false_false() -> ExprResult<()> {
     let mut constants = Vec::new();
     let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
     let result = eval_expr_program(&program, &[], &constants)?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+#[test]
+fn integration_and_type_mismatch_left_i64() -> ExprResult<()> {
+    // "1 and true" should error with TypeMismatch for number
+    let tokens = lex_expr("1 and true")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&program, &[], &constants);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for 1 and true".into(),
+        });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -665,9 +1067,41 @@ fn integration_or_type_mismatch_left_null() -> ExprResult<()> {
             token: "expected TypeMismatch for null or true".into(),
         });
     };
+    )
+}
+
+#[test]
+fn integration_or_type_mismatch_left_null() -> ExprResult<()> {
+    // "null or true" should error with TypeMismatch for null
+    let tokens = lex_expr("null or true")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&program, &[], &constants);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for null or true".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "null", "assertion failed");
     Ok(())
+}
+
+#[test]
+fn integration_and_both_type_mismatch() -> ExprResult<()> {
+    // "1 and 2" should error with TypeMismatch (both are non-bool)
+    let tokens = lex_expr("1 and 2")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&program, &[], &constants);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for 1 and 2".into(),
+        });
+    };
+    )
 }
 
 #[test]
@@ -701,6 +1135,22 @@ fn integration_or_both_type_mismatch() -> ExprResult<()> {
             token: "expected TypeMismatch for 1 or 2".into(),
         });
     };
+    )
+}
+
+#[test]
+fn integration_or_both_type_mismatch() -> ExprResult<()> {
+    // "1 or 2" should error with TypeMismatch (both are non-bool)
+    let tokens = lex_expr("1 or 2")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+    let result = eval_expr_program(&program, &[], &constants);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for 1 or 2".into(),
+        });
+    };
     kani::assert(expected == "boolean", "assertion failed");
     kani::assert(found == "number", "assertion failed");
     Ok(())
@@ -718,7 +1168,7 @@ fn integration_chained_and() -> ExprResult<()> {
     let mut constants = Vec::new();
     let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
     let result = eval_expr_program(&program, &[], &constants)?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
     Ok(())
 }
 
@@ -730,7 +1180,7 @@ fn integration_chained_or() -> ExprResult<()> {
     let mut constants = Vec::new();
     let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
     let result = eval_expr_program(&program, &[], &constants)?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
     Ok(())
 }
 
@@ -742,7 +1192,30 @@ fn integration_mixed_and_or() -> ExprResult<()> {
     let mut constants = Vec::new();
     let program = bytecode::compile_expr_with_pool(&ast, &mut constants)?;
     let result = eval_expr_program(&program, &[], &constants)?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+// ============================================================================
+// Proptest invariants for AND/OR
+// ============================================================================
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// Invariant P1: AND is commutative in result for valid bools.
+    /// For any two SlotValue::Bool values a, b:
+    ///   eval_binary_op(And, Bool(a), Bool(b)) == eval_binary_op(And, Bool(b), Bool(a))
+    #[test]
+    fn proptest_and_is_commutative_for_bools() {
+        proptest!(|(a: bool, b: bool)| {
+            let left = SlotValue::Bool(a);
+            let right = SlotValue::Bool(b);
+            let result_ab = eval_binary_op(BinaryOp::And, left, right).expect("And with bools must succeed");
+            let result_ba = eval_binary_op(BinaryOp::And, right, left).expect("And with bools must succeed");
+            prop_, "assertion failed");
     Ok(())
 }
 
@@ -820,7 +1293,7 @@ mod proptests {
         let right_bools = [SlotValue::Bool(false), SlotValue::Bool(true)];
         for right in right_bools {
             let result = eval_binary_op(BinaryOp::Or, left, right).expect("Or with bools must succeed");
-            prop_kani::assert(result == SlotValue::Bool(true), "assertion failed");
+            prop_kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
         }
 
         // Section 46: non-bool right must be evaluated, producing TypeMismatch
@@ -831,7 +1304,7 @@ mod proptests {
         ];
         for right in right_non_bools {
             let result = eval_binary_op(BinaryOp::Or, left, right);
-            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })))
+            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"))
         }
     }
 
@@ -849,13 +1322,13 @@ mod proptests {
         // left is non-bool, right is bool -> TypeMismatch
         for left in &non_bools {
             let result = eval_binary_op(BinaryOp::And, *left, SlotValue::Bool(true));
-            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })))
+            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"))
         }
 
         // left is bool, right is non-bool -> TypeMismatch
         for right in &non_bools {
             let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), *right);
-            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })))
+            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"))
         }
     }
 
@@ -873,13 +1346,13 @@ mod proptests {
         // left is non-bool, right is bool -> TypeMismatch
         for left in &non_bools {
             let result = eval_binary_op(BinaryOp::Or, *left, SlotValue::Bool(true));
-            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })))
+            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"))
         }
 
         // left is bool, right is non-bool -> TypeMismatch
         for right in &non_bools {
             let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), *right);
-            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })))
+            prop_kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"))
         }
     }
 }
@@ -898,7 +1371,7 @@ fn integration_and_via_store_evaluates_both_operands() -> ExprResult<()> {
     ])?;
     let constants = vec![ConstValue::Bool(true), ConstValue::Bool(false)];
     let result = eval_expr_program_with_store(&program, &[], &constants, &mut store)?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 
@@ -912,7 +1385,25 @@ fn integration_or_via_store_evaluates_both_operands() -> ExprResult<()> {
     ])?;
     let constants = vec![ConstValue::Bool(false), ConstValue::Bool(true)];
     let result = eval_expr_program_with_store(&program, &[], &constants, &mut store)?;
-    kani::assert(result == SlotValue::Bool(true), "assertion failed");
+    kani::assert(result == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+    Ok(())
+}
+
+// ============================================================================
+// Complete type matrix for AND/OR across ALL SlotValue variants
+// ============================================================================
+
+#[test]
+fn and_rejects_f64_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?),
+        SlotValue::Bool(true),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken { token: "expected TypeMismatch".into() });
+    };
+    , "assertion failed");
     Ok(())
 }
 
@@ -942,7 +1433,7 @@ fn and_rejects_symbol_bool() -> ExprResult<()> {
         SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
         SlotValue::Bool(true),
     );
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -953,7 +1444,7 @@ fn and_rejects_list_bool() -> ExprResult<()> {
         SlotValue::List(vb_core::ids::ListId::new(1)),
         SlotValue::Bool(true),
     );
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -964,7 +1455,7 @@ fn and_rejects_object_bool() -> ExprResult<()> {
         SlotValue::Object(vb_core::ids::ObjectId::new(1)),
         SlotValue::Bool(true),
     );
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -975,7 +1466,7 @@ fn or_rejects_symbol_bool() -> ExprResult<()> {
         SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
         SlotValue::Bool(true),
     );
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -986,7 +1477,7 @@ fn or_rejects_object_bool() -> ExprResult<()> {
         SlotValue::Object(vb_core::ids::ObjectId::new(1)),
         SlotValue::Bool(true),
     );
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -1005,7 +1496,7 @@ fn integration_chained_and_with_type_mismatch_in_middle() -> ExprResult<()> {
     ])?;
     let constants = vec![ConstValue::Bool(true), ConstValue::I64(1), ConstValue::Bool(true)];
     let result = eval_expr_program(&program, &[], &constants);
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -1020,7 +1511,7 @@ fn integration_chained_or_with_type_mismatch_in_middle() -> ExprResult<()> {
     ])?;
     let constants = vec![ConstValue::Bool(false), ConstValue::Null, ConstValue::Bool(true)];
     let result = eval_expr_program(&program, &[], &constants);
-    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    kani::assert(matches!(result, Err(ExprError::TypeMismatch { .. }), "assertion failed"));
     Ok(())
 }
 
@@ -1035,7 +1526,7 @@ fn and_not_true_not_false_returns_false() -> ExprResult<()> {
         SlotValue::Bool(false),
         SlotValue::Bool(false),
     )?;
-    kani::assert(result == SlotValue::Bool(false), "assertion failed");
+    kani::assert(result == SlotValue::Bool(false, "assertion failed"), "assertion failed");
     Ok(())
 }
 

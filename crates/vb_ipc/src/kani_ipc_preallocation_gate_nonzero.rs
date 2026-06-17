@@ -52,6 +52,60 @@ fn kani_min_payload_bytes_rejects_all_nonzero() {
         // payload_len >= 2 (strictly > bound of 1) must be rejected
         match result {
             Err(IpcError::PayloadTooLarge { actual, limit }) => {
+                #![forbid(unsafe_code)]
+#![cfg(kani)]
+//! VB-IPC-PREALLOCATION-GATE-NONZERO: PO-KANI-002 and PO-KANI-003 continuation
+//!
+//! See kani_ipc_preallocation_gate.rs for PO-KANI-001 harnesses and full documentation.
+
+use crate::bounded::MaxPayloadBytes;
+use crate::commands::IpcCommand;
+use crate::error::IpcError;
+use crate::frame::validate_frame_bounds;
+use crate::frame::read_frame_payload_bounded;
+use crate::frame_types::IpcFrameHeader;
+use std::io::Cursor;
+
+// PO-KANI-002 H1: MaxPayloadBytes(1) rejects all payload_len >= 1
+// ---------------------------------------------------------------------------
+
+/// **PO-KANI-002 H1**: With `MaxPayloadBytes(1)` (the minimum possible bound),
+/// any header with `payload_len > 1` (strictly greater than the bound) produces
+/// `Err(PayloadTooLarge { limit: 1 })`.
+///
+/// NOTE: The production code uses `>` (strictly greater than) in
+/// `validate_frame_bounds` (frame.rs:78):
+///   `if payload_len > max_payload.get()`
+/// This means payload_len=1 passes when max=1 (you may send exactly up to the bound).
+/// Payload_len=0 also passes. Payload_len >= 2 is rejected.
+///
+/// The proof plan (PO-KANI-002) specifies "rejects ALL payload_len ≥ 1" but this
+/// was an off-by-one error in the plan — the implementation uses `>`, not `>=`.
+/// See proof-evidence.md §"Plan Discrepancy PO-KANI-002" for analysis.
+#[kani::proof]
+fn kani_min_payload_bytes_rejects_all_nonzero() {
+    // MinPayloadBytes = NonZeroUsize::MIN = 1
+    let max_payload = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+
+    // Symbolic payload_len — Kani explores all u32 values
+    let payload_len: u32 = kani::any();
+
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 0, payload_len);
+
+    let result = validate_frame_bounds(&header, max_payload);
+
+    let Ok(payload_len_usize) = usize::try_from(payload_len) else {
+        // 32-bit path (waived on 64-bit per WVR-001)
+        return;
+    };
+
+    // The production check is `>` (strictly greater), so:
+    // - payload_len > 1 → Err(PayloadTooLarge{limit:1})
+    // - payload_len ≤ 1 → Ok(())
+    if payload_len_usize > 1 {
+        // payload_len >= 2 (strictly > bound of 1) must be rejected
+        match result {
+            Err(IpcError::PayloadTooLarge { actual, limit }) => {
                 kani::assert(
                     actual == payload_len_usize,
                     "actual must match payload_len",
@@ -66,9 +120,21 @@ fn kani_min_payload_bytes_rejects_all_nonzero() {
                 );
             }
             Ok(()) => {
+                ",
+                );
+                kani::cover!(
+                    true,
+                    "payload_len > 1 rejected with MinPayloadBytes(1)"
+                );
+            }
+            Ok(()) => {
                 kani::assert(
                     false,
                     "payload_len > 1 must NOT pass MinPayloadBytes(1) gate",
+                );
+            }
+            Err(_) => {
+                 gate",
                 );
             }
             Err(_) => {
@@ -82,6 +148,9 @@ fn kani_min_payload_bytes_rejects_all_nonzero() {
         // payload_len ∈ {0, 1} — must pass (both ≤ bound of 1)
         match result {
             Ok(()) => {
+            }
+            Err(_) => {
+                ) => {
             }
             Err(_) => {
                 kani::assert(
@@ -116,8 +185,7 @@ fn kani_min_payload_bytes_accepts_zero() {
 
     match result {
         Ok(payload) => {
-            kani::assert(
-                payload.is_empty(),
+            kani::assert(payload.is_empty(, "assertion failed"),
                 "zero-length payload must produce empty vec",
             );
         }

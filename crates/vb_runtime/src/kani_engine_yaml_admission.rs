@@ -92,8 +92,7 @@ fn engine_yaml_admission_rejects_raw_ir() {
         artifact_digest,
         CapabilitySet::empty(),
     );
-    kani::assert(
-        matches!(result, Err(AdmissionError::ArtifactEnvelopeDecodeFailed)),
+    kani::assert(matches!(result, Err(AdmissionError::ArtifactEnvelopeDecodeFailed), "assertion failed"),
         "raw IR bytes must not admit as an accepted artifact",
     );
 }
@@ -112,11 +111,9 @@ fn engine_yaml_admission_rejects_dummy_proof() {
         artifact_digest,
         CapabilitySet::empty(),
     );
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result,
-            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" })
-        ),
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }), "assertion failed"),
         "dummy proof with missing bounded flag must reject",
     );
 }
@@ -137,8 +134,7 @@ fn engine_yaml_admission_rejects_digest_mismatch() {
         requested_digest,
         CapabilitySet::empty(),
     );
-    kani::assert(
-        matches!(result, Err(AdmissionError::ArtifactNotFound { digest }) if digest == requested_digest),
+    kani::assert(matches!(result, Err(AdmissionError::ArtifactNotFound { digest }) if digest == requested_digest, "assertion failed"),
         "digest mismatch or missing accepted artifact must reject",
     );
 }
@@ -164,8 +160,7 @@ fn engine_yaml_admission_requires_capability_gate() {
         artifact_digest,
         CapabilitySet::empty(),
     );
-    kani::assert(
-        matches!(result, Err(AdmissionError::CapabilityDenied { .. })),
+    kani::assert(matches!(result, Err(AdmissionError::CapabilityDenied { .. }), "assertion failed"),
         "accepted artifact admission must require matching capability grants",
     );
 }

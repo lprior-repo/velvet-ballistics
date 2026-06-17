@@ -78,39 +78,33 @@ fn bench_inherits_release_correctly() {
 
     // Verify inherited keys from release
     let lto = resolved_get(&resolved, ProfileKey::Lto);
-    kani::assert(
-        lto == Some(&SettingValue::String(StrVal::Thin)),
+    kani::assert(lto == Some(&SettingValue::String(StrVal::Thin), "assertion failed"),
         "Bench should inherit lto='thin' from release",
     );
 
     let cgu = resolved_get(&resolved, ProfileKey::CodegenUnits);
-    kani::assert(
-        cgu == Some(&SettingValue::U16(1)),
+    kani::assert(cgu == Some(&SettingValue::U16(1), "assertion failed"),
         "Bench should inherit codegen-units=1 from release",
     );
 
     let strip = resolved_get(&resolved, ProfileKey::Strip);
-    kani::assert(
-        strip == Some(&SettingValue::String(StrVal::Symbols)),
+    kani::assert(strip == Some(&SettingValue::String(StrVal::Symbols), "assertion failed"),
         "Bench should inherit strip='symbols' from release",
     );
 
     // Verify explicit bench overrides
     let debug = resolved_get(&resolved, ProfileKey::Debug);
-    kani::assert(
-        debug == Some(&SettingValue::Bool(true)),
+    kani::assert(debug == Some(&SettingValue::Bool(true), "assertion failed"),
         "Bench should have debug=true (explicit override)",
     );
 
     let opt_level = resolved_get(&resolved, ProfileKey::OptLevel);
-    kani::assert(
-        opt_level == Some(&SettingValue::U8(3)),
+    kani::assert(opt_level == Some(&SettingValue::U8(3), "assertion failed"),
         "Bench should inherit opt-level=3 from release",
     );
 
     // Verify inherits source
-    kani::assert(
-        bench_config.inherits_from(ProfileName::Release),
+    kani::assert(bench_config.inherits_from(ProfileName::Release, "assertion failed"),
         "Bench should inherit from release",
     );
 }
@@ -184,45 +178,38 @@ fn hardened_inherits_release_with_overrides() {
 
     // Override checks (hardened explicit keys take precedence)
     let debug_assertions = resolved_get(&resolved, ProfileKey::DebugAssertions);
-    kani::assert(
-        debug_assertions == Some(&SettingValue::Bool(true)),
+    kani::assert(debug_assertions == Some(&SettingValue::Bool(true), "assertion failed"),
         "Hardened should have debug-assertions=true (explicit)",
     );
 
     let overflow = resolved_get(&resolved, ProfileKey::OverflowChecks);
-    kani::assert(
-        overflow == Some(&SettingValue::Bool(true)),
+    kani::assert(overflow == Some(&SettingValue::Bool(true), "assertion failed"),
         "Hardened should have overflow-checks=true (explicit)",
     );
 
     let panic = resolved_get(&resolved, ProfileKey::Panic);
-    kani::assert(
-        panic == Some(&SettingValue::String(StrVal::Abort)),
+    kani::assert(panic == Some(&SettingValue::String(StrVal::Abort), "assertion failed"),
         "Hardened should have panic='abort' (explicit)",
     );
 
     let debug = resolved_get(&resolved, ProfileKey::Debug);
-    kani::assert(
-        debug == Some(&SettingValue::DebugMode(DebugMode::LineTablesOnly)),
+    kani::assert(debug == Some(&SettingValue::DebugMode(DebugMode::LineTablesOnly), "assertion failed"),
         "Hardened should have debug=line-tables-only (explicit)",
     );
 
     // Inherited keys from custom release
     let lto = resolved_get(&resolved, ProfileKey::Lto);
-    kani::assert(
-        lto == Some(&SettingValue::String(StrVal::Thin)),
+    kani::assert(lto == Some(&SettingValue::String(StrVal::Thin), "assertion failed"),
         "Hardened should inherit lto='thin' from custom release",
     );
 
     let cgu = resolved_get(&resolved, ProfileKey::CodegenUnits);
-    kani::assert(
-        cgu == Some(&SettingValue::U16(1)),
+    kani::assert(cgu == Some(&SettingValue::U16(1), "assertion failed"),
         "Hardened should have codegen-units=1",
     );
 
     let strip = resolved_get(&resolved, ProfileKey::Strip);
-    kani::assert(
-        strip == Some(&SettingValue::String(StrVal::Symbols)),
+    kani::assert(strip == Some(&SettingValue::String(StrVal::Symbols), "assertion failed"),
         "Hardened should have strip='symbols'",
     );
 }
@@ -243,8 +230,8 @@ fn inheritance_depth_bounded_and_cycle_free() {
     let ws: WorkspaceProfileSet = kani::any();
 
     // Assert the workspace set is bounded (per type model: 1..=6 profiles)
-    kani::assert(ws.len() >= 1, "Workspace must have at least 1 profile");
-    kani::assert(ws.len() <= 6, "Workspace bounded to at most 6 profiles");
+    kani::assert(ws.len(, "assertion failed") >= 1, "Workspace must have at least 1 profile");
+    kani::assert(ws.len(, "assertion failed") <= 6, "Workspace bounded to at most 6 profiles");
 
     // For each profile, try resolving inheritance
     // If resolution succeeds, verify depth/resolved invariants
@@ -255,8 +242,15 @@ fn inheritance_depth_bounded_and_cycle_free() {
             Ok(resolved) => {
                 // Success: resolved profile must be non-empty
                 // (at minimum the profile's own explicit settings are present)
-                kani::assert(
-                    !resolved.is_empty(),
+                kani::assert(!resolved.is_empty(, "assertion failed"),
+                    "Resolved profile should contain at least explicit settings",
+                );
+
+                // Each key appears at most once (override semantics)
+                let mut seen_keys: Vec<ProfileKey> = Vec::new();
+                for (k, _v) in &resolved {
+                    if seen_keys.contains(k) {
+                        ,
                     "Resolved profile should contain at least explicit settings",
                 );
 
@@ -334,8 +328,7 @@ fn inheritance_depth_bounded_and_cycle_free() {
         let result = resolve_inheritance(last, &depth_ws);
         // Should succeed because the chain is: Dev→Test→Fuzz→Hardened→Bench→Release
         // Depth = 5, well within MAX_INHERITANCE_DEPTH
-        kani::assert(
-            result.is_ok(),
+        kani::assert(result.is_ok(, "assertion failed"),
             "Chain of depth 5 should resolve within MAX_INHERITANCE_DEPTH",
         );
     }

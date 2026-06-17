@@ -93,12 +93,149 @@ fn kani_choose_replay_true_branch() {
 
     match &result {
         Ok(ReplayAction::Continue(target)) => {
+            //!
+//! Kani harnesses for ChooseSlot replay — TLA bridge RRO-TLA-CHOOSE-REPLAY-001.
+//!
+//! Bead: vb-282my
+//! Obligations: PO-vb282my-CR-KANI-001 through PO-vb282my-CR-KANI-006
+//!
+//! Target: crate::replay::choose::replay_choose_slot
+//!
+//! GOD RULE 1: All inputs use kani::any() with bounded assumptions.
+//! GOD RULE 2: Calls actual production replay_choose_slot.
+
+#![forbid(unsafe_code)]
+#![cfg(kani)]
+
+use vb_core::{
+    ReplayAction, ReplayError,
+    frame::RunFrame,
+    ids::{RunId, SlotIdx, StepIdx},
+    value::SlotValue,
+    workflow::SlotBranch,
+    replay::choose::replay_choose_slot,
+};
+
+// =========================================================================
+// Bounded generators
+// =========================================================================
+
+fn any_run_frame(slot_count: u16, step_count: u16) -> RunFrame {
+    let run_id = RunId::new(kani::any::<u64>());
+    // Use expect for construction that should not fail with valid params
+    match RunFrame::new(run_id, StepIdx::new(0), step_count, slot_count) {
+        Ok(frame) => frame,
+        Err(_) => {
+            kani::assume(false);
+            loop {}
+        }
+    }
+}
+
+fn any_slot_idx(max: u16) -> SlotIdx {
+    let raw = kani::any::<u16>();
+    kani::assume(raw < max);
+    SlotIdx::new(raw)
+}
+
+fn any_step_idx(max: u16) -> StepIdx {
+    let raw = kani::any::<u16>();
+    kani::assume(raw < max);
+    StepIdx::new(raw)
+}
+
+// =========================================================================
+// PO-vb282my-CR-KANI-001: First true branch selected
+// branch with Bool(true) slot → Ok(Continue(target)) and pc set
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(65)]
+fn kani_choose_replay_true_branch() {
+    let slot_count: u16 = 16;
+    let step_count: u16 = 200;
+    let mut frame = any_run_frame(slot_count, step_count);
+
+    // Initialize slots with values
+    for i in 0..slot_count {
+        let _ = frame.write_slot(SlotIdx::new(i), SlotValue::Bool(false));
+    }
+
+    // Set one slot to true
+    let true_slot_idx: u16 = kani::any();
+    kani::assume(true_slot_idx < slot_count);
+    let true_target = any_step_idx(step_count);
+    let _ = frame.write_slot(SlotIdx::new(true_slot_idx), SlotValue::Bool(true));
+
+    // Create branches with one true condition
+    let branches: Vec<SlotBranch> = kani::any();
+    kani::assume(branches.len() <= 64);
+    kani::assume(!branches.is_empty());
+
+    // Ensure at least the first branch has the true condition
+    let first_branch = SlotBranch {
+        condition: SlotIdx::new(true_slot_idx),
+        target: true_target,
+    };
+    let mut branches_with_true = vec![first_branch];
+    for b in &branches {
+        branches_with_true.push(*b);
+    }
+    kani::assume(branches_with_true.len() <= 64);
+
+    let otherwise = Some(any_step_idx(step_count));
+    let result = replay_choose_slot(&mut frame, &branches_with_true, otherwise);
+
+    match &result {
+        Ok(ReplayAction::Continue(target)) => {
             kani::assert(
                 *target == true_target,
                 "first true branch returns Continue with correct target",
             );
             kani::assert(
                 frame.pc() == true_target,
+                "pc set to true branch target",
+            );
+        }
+        Ok(action) => {
+        }
+        Err(e) => {
+        }
+    }
+    kani::cover!(result.is_ok(), "true_branch_ok");
+}
+
+// =========================================================================
+// PO-vb282my-CR-KANI-002: Otherwise fallback
+// all branches false, otherwise.is_some() → Ok(Continue(otherwise_target))
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(65)]
+fn kani_choose_replay_otherwise_fallback() {
+    let slot_count: u16 = 16;
+    let step_count: u16 = 200;
+    let mut frame = any_run_frame(slot_count, step_count);
+
+    // Initialize all referenced slots to Bool(false)
+    for i in 0..slot_count {
+        let _ = frame.write_slot(SlotIdx::new(i), SlotValue::Bool(false));
+    }
+
+    let branches: Vec<SlotBranch> = kani::any();
+    kani::assume(branches.len() <= 64);
+    kani::assume(!branches.is_empty());
+
+    // Ensure all branch conditions point to false (Bool(false)) slots
+    // Since all slots are false, all branches will evaluate to false
+    let otherwise_target = any_step_idx(step_count);
+    let otherwise = Some(otherwise_target);
+
+    let result = replay_choose_slot(&mut frame, &branches, otherwise);
+
+    match result {
+        Ok(ReplayAction::Continue(target)) => {
+             == true_target,
                 "pc set to true branch target",
             );
         }
@@ -181,8 +318,12 @@ fn kani_choose_replay_no_match() {
 
     match &result {
         Err(ReplayError::Internal { reason }) => {
-            kani::assert(
-                reason.contains("no branch matched"),
+            kani::assert(reason.contains("no branch matched", "assertion failed"),
+                "no-match error must mention no branch matched",
+            );
+        }
+        Ok(_) => {
+            ,
                 "no-match error must mention no branch matched",
             );
         }
@@ -224,8 +365,12 @@ fn kani_choose_replay_non_bool_condition() {
 
     match &result {
         Err(ReplayError::Internal { reason }) => {
-            kani::assert(
-                reason.contains("not boolean"),
+            kani::assert(reason.contains("not boolean", "assertion failed"),
+                "non-bool condition must produce 'condition is not boolean'",
+            );
+        }
+        Ok(_) => {
+            ,
                 "non-bool condition must produce 'condition is not boolean'",
             );
         }
@@ -325,8 +470,7 @@ fn kani_choose_replay_index_safety() {
         }
     }
     // Key assertion: no panic occurred (implicit — Kani checks panic freedom)
-    kani::assert(
-        result.is_ok() || result.is_err(),
+    kani::assert(result.is_ok(, "assertion failed") || result.is_err(),
         "replay_choose_slot returns Ok or Err, never panics",
     );
 }

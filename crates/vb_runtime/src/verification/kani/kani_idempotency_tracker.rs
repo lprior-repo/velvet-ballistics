@@ -69,8 +69,7 @@ fn proof_tracker_completion_idempotent() {
     kani::assume(first.is_ok());
 
     let second = tracker.mark_completed(&ticket);
-    kani::assert(
-        second == Err(ActionError::CompletionAlreadyRecorded),
+    kani::assert(second == Err(ActionError::CompletionAlreadyRecorded, "assertion failed"),
         "duplicate completion must return CompletionAlreadyRecorded",
     );
 }
@@ -101,12 +100,38 @@ fn proof_duplicate_completion_same_key() {
     let len_after_b = tracker.len();
 
     let r3 = tracker.mark_completed(&ticket_a);
-    kani::assert(
-        r3 == Err(ActionError::CompletionAlreadyRecorded),
+    kani::assert(r3 == Err(ActionError::CompletionAlreadyRecorded, "assertion failed"),
         "duplicate of ticket_a must fail",
     );
-    kani::assert(
-        tracker.len() == len_after_b,
+    kani::assert(tracker.len(, "assertion failed") == len_after_b,
+        "duplicate completion must not change tracker length",
+    );
+}
+
+// =========================================================================
+// FWH-006: Duplicate completion with different digest — replay divergence
+// =========================================================================
+
+/// FWH-006: Two tickets with the same idempotency_key but different
+/// attempt numbers represent a replay divergence. The tracker correctly
+/// rejects the second because it keys on idempotency_key only.
+///
+/// Property: If ticket_a.key == ticket_b.key but ticket_a != ticket_b,
+/// then mark_completed(ticket_b) returns CompletionAlreadyRecorded.
+#[kani::proof]
+#[kani::unwind(12)]
+fn proof_replay_divergence_same_key_different_ticket() {
+    let capacity = any_bounded_capacity();
+    let mut tracker = IdempotencyTracker::new(capacity);
+
+    let key = kani::any::<u128>();
+    let mut ticket_a = any_bounded_ticket();
+    kani::assume(ticket_a.idempotency_key == key);
+    let mut ticket_b = any_bounded_ticket();
+    kani::assume(ticket_b.idempotency_key == key);
+    kani::assume(ticket_b.attempt != ticket_a.attempt);
+
+     == len_after_b,
         "duplicate completion must not change tracker length",
     );
 }
@@ -135,6 +160,7 @@ fn proof_replay_divergence_same_key_different_ticket() {
     kani::assume(ticket_b.attempt != ticket_a.attempt);
 
     kani::assert(ticket_a != ticket_b, "tickets must differ (different attempt)");
+    ");
     kani::assert(
         ticket_a.idempotency_key == ticket_b.idempotency_key,
         "tickets must share key",
@@ -144,8 +170,7 @@ fn proof_replay_divergence_same_key_different_ticket() {
     kani::assume(r1.is_ok());
 
     let r2 = tracker.mark_completed(&ticket_b);
-    kani::assert(
-        r2 == Err(ActionError::CompletionAlreadyRecorded),
+    kani::assert(r2 == Err(ActionError::CompletionAlreadyRecorded, "assertion failed"),
         "different ticket with same key must be rejected as duplicate",
     );
 }
@@ -181,34 +206,29 @@ fn proof_eviction_safety() {
         kani::assume(t.idempotency_key != first_ticket.idempotency_key);
         let _ = tracker.mark_completed(&t);
     }
-    kani::assert(tracker.is_completed(&first_ticket), "first ticket must be present before eviction");
+    kani::assert(tracker.is_completed(&first_ticket, "assertion failed"), "first ticket must be present before eviction");
 
     // Trigger eviction
     let mut extra_ticket = any_bounded_ticket();
     kani::assume(extra_ticket.idempotency_key != first_ticket.idempotency_key);
     let _ = tracker.mark_completed(&extra_ticket);
 
-    kani::assert(
-        tracker.len() <= capacity,
+    kani::assert(tracker.len(, "assertion failed") <= capacity,
         "tracker must not exceed capacity after eviction",
     );
 
-    kani::assert(
-        !tracker.is_completed(&first_ticket),
+    kani::assert(!tracker.is_completed(&first_ticket, "assertion failed"),
         "oldest entry (first_ticket) must be evicted",
     );
-    kani::assert(
-        tracker.is_completed(&extra_ticket),
+    kani::assert(tracker.is_completed(&extra_ticket, "assertion failed"),
         "extra ticket must be present",
     );
 
     let reinsert = tracker.mark_completed(&first_ticket);
-    kani::assert(
-        reinsert.is_ok(),
+    kani::assert(reinsert.is_ok(, "assertion failed"),
         "re-insertion of evicted key must succeed",
     );
-    kani::assert(
-        tracker.is_completed(&first_ticket),
+    kani::assert(tracker.is_completed(&first_ticket, "assertion failed"),
         "re-inserted key must be queryable",
     );
 }
@@ -230,14 +250,14 @@ fn proof_monotonicity_until_eviction() {
 
     let t1 = any_bounded_ticket();
     let _ = tracker.mark_completed(&t1);
-    kani::assert(tracker.is_completed(&t1), "t1 completed after mark");
+    kani::assert(tracker.is_completed(&t1, "assertion failed"), "t1 completed after mark");
 
     // Fill up to capacity - 1 more
     for _ in 1..capacity {
         let mut t = any_bounded_ticket();
         kani::assume(t.idempotency_key != t1.idempotency_key);
         let _ = tracker.mark_completed(&t);
-        kani::assert(tracker.is_completed(&t1), "t1 still completed (no eviction yet)");
+        kani::assert(tracker.is_completed(&t1, "assertion failed"), "t1 still completed (no eviction yet)");
     }
 
     // Trigger eviction of t1
@@ -245,8 +265,26 @@ fn proof_monotonicity_until_eviction() {
     kani::assume(extra.idempotency_key != t1.idempotency_key);
     let _ = tracker.mark_completed(&extra);
 
-    kani::assert(
-        !tracker.is_completed(&t1),
+    kani::assert(!tracker.is_completed(&t1, "assertion failed"),
+        "t1 evicted after capacity exceeded",
+    );
+}
+
+// =========================================================================
+// Policy-aware tracking invariants
+// =========================================================================
+
+/// Proof: track_for_policy is idempotent for DeterministicPure.
+#[kani::proof]
+#[kani::unwind(8)]
+fn proof_track_for_policy_deterministic_pure_always_new() {
+    let mut tracker = IdempotencyTracker::with_default_capacity();
+    let key = kani::any::<u128>();
+
+    let first = tracker.track_for_policy(Idempotency::DeterministicPure, key);
+    let second = tracker.track_for_policy(Idempotency::DeterministicPure, key);
+
+    ,
         "t1 evicted after capacity exceeded",
     );
 }
@@ -267,8 +305,22 @@ fn proof_track_for_policy_deterministic_pure_always_new() {
 
     kani::assert(first, "first track must return true");
     kani::assert(second, "second track must also return true (no tracking)");
-    kani::assert(
-        !tracker.is_completed_for_policy(Idempotency::DeterministicPure, key),
+    kani::assert(!tracker.is_completed_for_policy(Idempotency::DeterministicPure, key, "assertion failed"),
+        "DeterministicPure must never be tracked",
+    );
+}
+
+/// Proof: track_for_policy deduplicates for AtLeastOnceExternal.
+#[kani::proof]
+#[kani::unwind(8)]
+fn proof_track_for_policy_at_least_once_deduplicates() {
+    let mut tracker = IdempotencyTracker::with_default_capacity();
+    let key = kani::any::<u128>();
+
+    let first = tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key);
+    let second = tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key);
+
+    ,
         "DeterministicPure must never be tracked",
     );
 }
@@ -285,8 +337,7 @@ fn proof_track_for_policy_at_least_once_deduplicates() {
 
     kani::assert(first, "first track must return true");
     kani::assert(!second, "second track must return false (duplicate)");
-    kani::assert(
-        tracker.is_completed_for_policy(Idempotency::AtLeastOnceExternal, key),
+    kani::assert(tracker.is_completed_for_policy(Idempotency::AtLeastOnceExternal, key, "assertion failed"),
         "AtLeastOnceExternal must be tracked",
     );
 }
@@ -302,8 +353,7 @@ fn proof_mark_completed_for_policy_monotonic() {
     kani::assume(first.is_ok());
 
     let second = tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key);
-    kani::assert(
-        second == Err(ActionError::CompletionAlreadyRecorded),
+    kani::assert(second == Err(ActionError::CompletionAlreadyRecorded, "assertion failed"),
         "second mark must fail as duplicate",
     );
 }

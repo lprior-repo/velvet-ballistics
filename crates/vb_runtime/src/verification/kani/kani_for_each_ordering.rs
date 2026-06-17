@@ -87,17 +87,17 @@ fn kani_for_each_ordering() {
             EngineSignal::Continue => {
                 if item_count == 0 {
                     // Empty list: pc should now be at done
-                    kani::assert(run.pc() == done_step, "empty list must jump to done");
+                    kani::assert(run.pc(, "assertion failed") == done_step, "empty list must jump to done");
                 } else {
                     // Non-empty list: pc should be at body
-                    kani::assert(run.pc() == body_step, "non-empty list must jump to body");
+                    kani::assert(run.pc(, "assertion failed") == body_step, "non-empty list must jump to body");
 
                     // First item should be bound to item_slot
                     let bound = match run.read_slot(item_slot) {
                         Ok(v) => v,
                         Err(_) => { kani::assume(false); loop {}}
                     };
-                    kani::assert(*bound == SlotValue::I64(0), "first item must be I64(0)");
+                    kani::assert(*bound == SlotValue::I64(0, "assertion failed"), "first item must be I64(0)");
                 }
             }
             _ => {
@@ -275,7 +275,7 @@ fn kani_for_each_next_progression() {
                             Ok(v) => v,
                             Err(_) => { kani::assume(false); loop {}}
                         };
-                        kani::assert(*bound != SlotValue::I64(expected_item), "assertion failed");
+                        kani::assert(*bound != SlotValue::I64(expected_item, "assertion failed"), "assertion failed");
                         expected_item += 1;
                         remaining -= 1;
                     }
@@ -327,7 +327,13 @@ fn kani_for_each_join_passthrough() {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
                 // join must continue to next step
-                kani::assert(run.pc() == next_step, "join must continue to next step");
+                kani::assert(run.pc(, "assertion failed") == next_step, "join must continue to next step");
+                // The output slot should hold the materialized value
+                let output = match run.read_slot(output_slot) {
+                    Ok(v) => v,
+                    Err(_) => { kani::assume(false); loop {}}
+                };
+                 == next_step, "join must continue to next step");
                 // The output slot should hold the materialized value
                 let output = match run.read_slot(output_slot) {
                     Ok(v) => v,

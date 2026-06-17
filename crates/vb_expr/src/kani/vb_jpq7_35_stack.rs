@@ -42,8 +42,8 @@ fn check_push_on_empty_stack_succeeds() {
     let mut stack: ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE> = ArrayVec::new();
     let result = stack_push(&mut stack, SlotValue::Bool(true));
 
-    kani::assert(result.is_ok(), "push on empty stack must succeed");
-    kani::assert(stack.len() == 1, "stack must have 1 element after push");
+    kani::assert(result.is_ok(, "assertion failed"), "push on empty stack must succeed");
+    kani::assert(stack.len(, "assertion failed") == 1, "stack must have 1 element after push");
 }
 
 /// PO-KANI-004 H2: push on full stack returns StackOverflow.
@@ -56,15 +56,18 @@ fn check_push_on_full_stack_returns_overflow() {
         let _ = stack_push(&mut stack, SlotValue::Bool(true));
     }
 
-    kani::assert(
-        stack.len() == MAX_EXPRESSION_STACK_USIZE,
+    kani::assert(stack.len(, "assertion failed") == MAX_EXPRESSION_STACK_USIZE,
         "stack must be full",
     );
 
     // Push one more — must fail
     let result = stack_push(&mut stack, SlotValue::Bool(false));
 
-    kani::assert(result.is_err(), "push on full stack must return error");
+    kani::assert(result.is_err(, "assertion failed"), "push on full stack must return error");
+
+    match result {
+        Err(ExprError::StackOverflow { max }) => {
+            , "push on full stack must return error");
 
     match result {
         Err(ExprError::StackOverflow { max }) => {
@@ -92,7 +95,17 @@ fn check_pop_on_empty_stack_returns_underflow() {
 
     let result = stack_pop(&mut stack);
 
-    kani::assert(result.is_err(), "pop on empty stack must return error");
+    kani::assert(result.is_err(, "assertion failed"), "pop on empty stack must return error");
+
+    match result {
+        Err(ExprError::StackUnderflow) => {
+            // Correct
+        }
+        Err(_) => {
+            // Any typed error
+        }
+        Ok(_) => {
+            , "pop on empty stack must return error");
 
     match result {
         Err(ExprError::StackUnderflow) => {
@@ -117,7 +130,11 @@ fn check_push_pop_roundtrip() {
     // Pop it back
     let result = stack_pop(&mut stack);
 
-    kani::assert(result.is_ok(), "pop after push must succeed");
+    kani::assert(result.is_ok(, "assertion failed"), "pop after push must succeed");
+
+    match result {
+        Ok(SlotValue::I64(v)) => {
+            , "pop after push must succeed");
 
     match result {
         Ok(SlotValue::I64(v)) => {
@@ -145,23 +162,21 @@ fn check_push_many_pop_all() {
     for i in 0..n {
         let val = i64::try_from(i).unwrap_or(0);
         let result = stack_push(&mut stack, SlotValue::I64(val));
-        kani::assert(result.is_ok(), "push within capacity must succeed");
+        kani::assert(result.is_ok(, "assertion failed"), "push within capacity must succeed");
     }
 
-    kani::assert(
-        stack.len() == n,
+    kani::assert(stack.len(, "assertion failed") == n,
         "stack must have n elements after n pushes",
     );
 
     // Pop all n values
     for _ in 0..n {
         let result = stack_pop(&mut stack);
-        kani::assert(result.is_ok(), "pop of pushed value must succeed");
+        kani::assert(result.is_ok(, "assertion failed"), "pop of pushed value must succeed");
     }
 
     // Stack must be empty
-    kani::assert(
-        stack.is_empty(),
+    kani::assert(stack.is_empty(, "assertion failed"),
         "stack must be empty after n pushes + n pops",
     );
 }
@@ -178,7 +193,11 @@ fn check_expr_stack_bound_oversized() {
 
     let result = crate::bytecode::check_expr_stack_bound(&ops);
 
-    kani::assert(result.is_err(), "65 LoadConst ops must be rejected");
+    kani::assert(result.is_err(, "assertion failed"), "65 LoadConst ops must be rejected");
+
+    match result {
+        Err(ExprError::StackOverflow { max }) => {
+            , "65 LoadConst ops must be rejected");
 
     match result {
         Err(ExprError::StackOverflow { max }) => {
@@ -203,18 +222,21 @@ fn check_pop_pair_underflow() {
 
     // pop_pair logic: pop right, then pop left
     let right = stack_pop(&mut stack);
-    kani::assert(right.is_ok(), "first pop should succeed");
+    kani::assert(right.is_ok(, "assertion failed"), "first pop should succeed");
 
     let left = stack_pop(&mut stack);
-    kani::assert(
-        left.is_err(),
+    kani::assert(left.is_err(, "assertion failed"),
         "second pop on single-element stack must fail",
     );
     match left {
         Err(ExprError::StackUnderflow) => {}
         Err(e) => {
-            kani::assert(
-                matches!(e, ExprError::StackUnderflow),
+            kani::assert(matches!(e, ExprError::StackUnderflow, "assertion failed"),
+                "second pop on single-element stack must return StackUnderflow",
+            );
+        }
+        Ok(_) => {
+            ,
                 "second pop on single-element stack must return StackUnderflow",
             );
         }

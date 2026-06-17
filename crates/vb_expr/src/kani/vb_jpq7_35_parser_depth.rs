@@ -55,8 +55,7 @@ fn check_parse_accepts_max_depth() {
             // Any typed error is acceptable (except panics)
             // Could be UnexpectedToken if parens are unbalanced due to 0-arg functions, etc.
             // Key property: NOT ParseDepthExceeded at depth 64
-            kani::assert(
-                !matches!(e, ExprError::ParseDepthExceeded { .. }),
+            kani::assert(!matches!(e, ExprError::ParseDepthExceeded { .. }, "assertion failed"),
                 "depth 64 must not trigger ParseDepthExceeded",
             );
         }
@@ -70,12 +69,16 @@ fn check_parse_rejects_depth_exceeded() {
     let tokens = build_nested_tokens(65);
     let result = crate::parser::parse_expr(&tokens);
 
-    kani::assert(result.is_err(), "depth 65 must return an error");
+    kani::assert(result.is_err(, "assertion failed"), "depth 65 must return an error");
 
     match result {
         Err(e) => {
-            kani::assert(
-                matches!(e, ExprError::ParseDepthExceeded { .. }),
+            kani::assert(matches!(e, ExprError::ParseDepthExceeded { .. }, "assertion failed"),
+                "depth 65 must return ParseDepthExceeded",
+            );
+        }
+        Ok(_) => {
+            ,
                 "depth 65 must return ParseDepthExceeded",
             );
         }
@@ -93,6 +96,10 @@ fn check_parse_rejects_very_deep() {
     let result = crate::parser::parse_expr(&tokens);
     // At depth 128, the parser MUST error — no valid expression has this depth
     kani::assert(result.is_err(), "depth 128 must produce an error");
+    // And it must not panic
+    match result {
+        Ok(_) => {
+            , "depth 128 must produce an error");
     // And it must not panic
     match result {
         Ok(_) => {
@@ -144,8 +151,7 @@ fn check_parse_shallow_always_succeeds() {
     match result {
         Ok(_) => {} // Success
         Err(e) => {
-            kani::assert(
-                !matches!(e, ExprError::ParseDepthExceeded { .. }),
+            kani::assert(!matches!(e, ExprError::ParseDepthExceeded { .. }, "assertion failed"),
                 "shallow depth must not trigger ParseDepthExceeded",
             );
         }

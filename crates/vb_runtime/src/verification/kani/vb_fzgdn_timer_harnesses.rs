@@ -38,7 +38,11 @@ mod harnesses {
         let now = Instant::now();
         // First insertion starts generation at 1
         let result = wheel.insert(run, now, crate::shard::PendingTimerKind::Wait);
-        kani::assert(result.is_ok(), "timer harness assertion");
+        kani::assert(result.is_ok(, "assertion failed"), "timer harness assertion");
+        // Verify generation is 1 via get_entry
+        let entry = wheel.get_entry(run);
+        match entry {
+            Some(v) => , "timer harness assertion");
         // Verify generation is 1 via get_entry
         let entry = wheel.get_entry(run);
         match entry {
@@ -62,6 +66,8 @@ mod harnesses {
         // Insert first timer
         kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
         match wheel.get_entry(run) {
+            Some(v) => .is_ok(), "timer harness assertion");
+        match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
             None => {
                 kani::assume(false);
@@ -71,6 +77,8 @@ mod harnesses {
 
         // Replace — generation should be 2
         kani::assert(wheel.insert(run, future, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
+        match wheel.get_entry(run) {
+            Some(v) => .is_ok(), "timer harness assertion");
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 2, "expected generation 2"),
             None => {
@@ -136,6 +144,31 @@ mod harnesses {
         };
 
         // Verify fields are stored
+        , "MAX generation + 1 must overflow to None", "timer harness assertion");
+    }
+
+    // =========================================================================
+    // PS-002: Timer admission stores numeric fields only (POB-vb-fzgdn-007)
+    // Target: PendingTimer type in types.rs, await_timer in transitions.rs
+    // =========================================================================
+
+    /// PS-002-H1: PendingTimer struct contains generation, step, kind, deadline.
+    /// Proves no Instant::now capture in immutable fields.
+    #[kani::proof]
+    fn ps_002_pending_timer_fields_are_numeric_and_deadline() {
+        let step: StepIdx = StepIdx::new(kani::any());
+        let generation: u64 = kani::any();
+        let kind = if kani::any() { crate::shard::PendingTimerKind::Wait } else { crate::shard::PendingTimerKind::Ask };
+        let deadline = Instant::now(); // Instant is opaque but deterministic in test
+
+        let timer = crate::shard::PendingTimer {
+            step,
+            kind,
+            generation,
+            deadline,
+        };
+
+        // Verify fields are stored
         kani::assert(timer.step == step, "assertion failed");
         kani::assert(timer.generation == generation, "assertion failed");
         kani::assert(timer.kind == kind, "assertion failed");
@@ -156,15 +189,15 @@ mod harnesses {
         kani::assert(timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Wait), "timer harness assertion");
 
         // Wrong generation
-        kani::assert(!timer.matches_authority(4, timer.deadline, crate::shard::PendingTimerKind::Wait), "timer harness assertion");
-        kani::assert(!timer.matches_authority(6, timer.deadline, crate::shard::PendingTimerKind::Wait), "timer harness assertion");
+        kani::assert(!timer.matches_authority(4, timer.deadline, crate::shard::PendingTimerKind::Wait, "assertion failed"), "timer harness assertion");
+        kani::assert(!timer.matches_authority(6, timer.deadline, crate::shard::PendingTimerKind::Wait, "assertion failed"), "timer harness assertion");
 
         // Wrong kind
-        kani::assert(!timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Ask), "timer harness assertion");
+        kani::assert(!timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Ask, "assertion failed"), "timer harness assertion");
 
         // Wrong deadline
         let other_deadline = timer.deadline + std::time::Duration::from_secs(1);
-        kani::assert(!timer.matches_authority(5, other_deadline, crate::shard::PendingTimerKind::Wait), "timer harness assertion");
+        kani::assert(!timer.matches_authority(5, other_deadline, crate::shard::PendingTimerKind::Wait, "assertion failed"), "timer harness assertion");
     }
 
     // =========================================================================
@@ -185,7 +218,7 @@ mod harnesses {
         // Any generation != 42 must fail
         let gen: u64 = kani::any();
         kani::assume(gen != 42);
-        kani::assert(!timer.matches_authority(gen, timer.deadline, crate::shard::PendingTimerKind::Wait), "timer harness assertion");
+        kani::assert(!timer.matches_authority(gen, timer.deadline, crate::shard::PendingTimerKind::Wait, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-003-H2: PendingTimer::matches_authority rejects wrong kind.
@@ -198,7 +231,7 @@ mod harnesses {
             deadline: Instant::now(),
         };
         // Ask kind must fail against Wait timer
-        kani::assert(!timer.matches_authority(1, timer.deadline, crate::shard::PendingTimerKind::Ask), "timer harness assertion");
+        kani::assert(!timer.matches_authority(1, timer.deadline, crate::shard::PendingTimerKind::Ask, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-003-H3: PendingTimer::matches_authority rejects wrong deadline.
@@ -211,7 +244,22 @@ mod harnesses {
             deadline: Instant::now(),
         };
         let different_deadline = timer.deadline + std::time::Duration::from_nanos(1);
-        kani::assert(!timer.matches_authority(1, different_deadline, crate::shard::PendingTimerKind::Wait), "timer harness assertion");
+        kani::assert(!timer.matches_authority(1, different_deadline, crate::shard::PendingTimerKind::Wait, "assertion failed"), "timer harness assertion");
+    }
+
+    // =========================================================================
+    // PS-004: Generation advancement (POB-vb-fzgdn-016)
+    // Target: Shard::next_pending_timer_generation in transitions.rs
+    // =========================================================================
+
+    /// PS-004-H1: checked_add(1) on u64 works correctly within bounds.
+    #[kani::proof]
+    fn ps_004_checked_add_within_bounds() {
+        let gen: u64 = kani::any();
+        kani::assume(gen < u64::MAX);
+        let next = gen.checked_add(1);
+        match next {
+            Some(v) => , "timer harness assertion");
     }
 
     // =========================================================================
@@ -257,14 +305,14 @@ mod harnesses {
         let later = now + std::time::Duration::from_secs(10);
 
         // Insert Wait timer
-        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.len() == 1, "assertion failed");
-        kani::assert(wheel.get_kind(run) == Some(crate::shard::PendingTimerKind::Wait), "assertion failed");
+        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
+        kani::assert(wheel.get_kind(run, "assertion failed") == Some(crate::shard::PendingTimerKind::Wait), "assertion failed");
 
         // Insert with same run but different kind and deadline — replaces
-        kani::assert(wheel.insert(run, later, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
-        kani::assert(wheel.len() == 1, "assertion failed");
-        kani::assert(wheel.get_kind(run) == Some(crate::shard::PendingTimerKind::Ask), "assertion failed");
+        kani::assert(wheel.insert(run, later, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
+        kani::assert(wheel.get_kind(run, "assertion failed") == Some(crate::shard::PendingTimerKind::Ask), "assertion failed");
     }
 
     /// PS-005-H2: TimerWheel::cancel removes entry and returns true.
@@ -275,19 +323,19 @@ mod harnesses {
         let run = RunId::new(1);
         let now = Instant::now();
 
-        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.len() == 1, "assertion failed");
+        kani::assert(wheel.insert(run, now, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
 
-        kani::assert(wheel.cancel(run), "timer harness assertion");
-        kani::assert(wheel.len() == 0, "assertion failed");
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(wheel.cancel(run, "assertion failed"), "timer harness assertion");
+        kani::assert(wheel.len(, "assertion failed") == 0, "assertion failed");
+        kani::assert(wheel.is_empty(, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-005-H3: TimerWheel::cancel on nonexistent returns false.
     #[kani::proof]
     fn ps_005_cancel_nonexistent_returns_false() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        kani::assert(!wheel.cancel(RunId::new(99)), "timer harness assertion");
+        kani::assert(!wheel.cancel(RunId::new(99), "assertion failed"), "timer harness assertion");
     }
 
     // =========================================================================
@@ -348,7 +396,7 @@ mod harnesses {
             action_contracts: Box::new([]),
         last_snapshot_executed: 0,
         };
-        kani::assert(crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO), "timer harness assertion");
+        kani::assert(crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-006-H2: timer_registration_required returns false for Do node.
@@ -405,7 +453,7 @@ mod harnesses {
             action_contracts: Box::new([]),
         last_snapshot_executed: 0,
         };
-        kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO), "timer harness assertion");
+        kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-006-H3: timer_registration_required returns false for missing step.
@@ -463,7 +511,7 @@ mod harnesses {
         last_snapshot_executed: 0,
         };
         // Step 99 doesn't exist
-        kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::new(99)), "timer harness assertion");
+        kani::assert(!crate::shard::helpers::timer_registration_required(&state, StepIdx::new(99), "assertion failed"), "timer harness assertion");
     }
 
     // =========================================================================
@@ -480,14 +528,14 @@ mod harnesses {
         let past = now - std::time::Duration::from_millis(100);
         let future = now + std::time::Duration::from_secs(60);
 
-        kani::assert(wheel.insert(RunId::new(1), past, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.insert(RunId::new(2), future, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), past, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(2), future, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
 
         let fired = wheel.fire_expired(now);
-        kani::assert(fired.len() == 1, "assertion failed");
-        kani::assert(fired[0].run == RunId::new(1), "assertion failed");
+        kani::assert(fired.len(, "assertion failed") == 1, "assertion failed");
+        kani::assert(fired[0].run == RunId::new(1, "assertion failed"), "assertion failed");
         // Future timer not fired
-        kani::assert(wheel.len() == 1, "assertion failed");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
     }
 
     /// PS-007-H2: TimerWheel::fire_expired drains all expired timers.
@@ -499,12 +547,12 @@ mod harnesses {
         let d1 = now - std::time::Duration::from_millis(200);
         let d2 = now - std::time::Duration::from_millis(100);
 
-        kani::assert(wheel.insert(RunId::new(1), d1, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.insert(RunId::new(2), d2, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), d1, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(2), d2, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
 
         let fired = wheel.fire_expired(now);
-        kani::assert(fired.len() == 2, "assertion failed");
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(fired.len(, "assertion failed") == 2, "assertion failed");
+        kani::assert(wheel.is_empty(, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-007-H3: TimerWheel::next_deadline returns earliest pending deadline.
@@ -516,13 +564,13 @@ mod harnesses {
         let early = now + std::time::Duration::from_millis(10);
         let late = now + std::time::Duration::from_millis(100);
 
-        kani::assert(wheel.insert(RunId::new(1), late, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.insert(RunId::new(2), early, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), late, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(2), early, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
 
         let next = wheel.next_deadline();
-        kani::assert(next.is_some(), "timer harness assertion");
+        kani::assert(next.is_some(, "assertion failed"), "timer harness assertion");
         // Due to BTreeMap ordering, earliest deadline comes first
-        kani::assert(next == Some(early), "assertion failed");
+        kani::assert(next == Some(early, "assertion failed"), "assertion failed");
     }
 
     // =========================================================================
@@ -535,31 +583,31 @@ mod harnesses {
     #[kani::unwind(5)]
     fn ps_008_len_tracks_active_timers() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        kani::assert(wheel.len() == 0, "assertion failed");
+        kani::assert(wheel.len(, "assertion failed") == 0, "assertion failed");
 
         let now = Instant::now();
-        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.len() == 1, "assertion failed");
+        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
 
-        kani::assert(wheel.insert(RunId::new(2), now, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
-        kani::assert(wheel.len() == 2, "assertion failed");
+        kani::assert(wheel.insert(RunId::new(2), now, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.len(, "assertion failed") == 2, "assertion failed");
 
         wheel.cancel(RunId::new(1));
-        kani::assert(wheel.len() == 1, "assertion failed");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
     }
 
     /// PS-008-H2: TimerWheel::is_empty reflects empty state.
     #[kani::proof]
     fn ps_008_is_empty_reflects_state() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(wheel.is_empty(, "assertion failed"), "timer harness assertion");
 
         let now = Instant::now();
-        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(!wheel.is_empty(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(!wheel.is_empty(, "assertion failed"), "timer harness assertion");
 
         wheel.cancel(RunId::new(1));
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(wheel.is_empty(, "assertion failed"), "timer harness assertion");
     }
 
     // =========================================================================
@@ -574,10 +622,10 @@ mod harnesses {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let deadline = Instant::now();
 
-        kani::assert(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
         let fired = wheel.fire_expired(deadline);
-        kani::assert(fired.len() == 1, "assertion failed");
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(fired.len(, "assertion failed") == 1, "assertion failed");
+        kani::assert(wheel.is_empty(, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-009-H2: Timer just after Instant::now() does not fire.
@@ -588,10 +636,10 @@ mod harnesses {
         let now = Instant::now();
         let future = now + std::time::Duration::from_millis(1);
 
-        kani::assert(wheel.insert(RunId::new(1), future, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), future, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
         let fired = wheel.fire_expired(now);
-        kani::assert(fired.len() == 0, "assertion failed");
-        kani::assert(wheel.len() == 1, "assertion failed");
+        kani::assert(fired.len(, "assertion failed") == 0, "assertion failed");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
     }
 
     // =========================================================================
@@ -606,13 +654,13 @@ mod harnesses {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
         let deadline = Instant::now();
 
-        kani::assert(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.insert(RunId::new(2), deadline, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
-        kani::assert(wheel.insert(RunId::new(3), deadline, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), deadline, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(2), deadline, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(3), deadline, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
 
         let fired = wheel.fire_expired(deadline);
-        kani::assert(fired.len() == 3, "assertion failed");
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(fired.len(, "assertion failed") == 3, "assertion failed");
+        kani::assert(wheel.is_empty(, "assertion failed"), "timer harness assertion");
     }
 
     /// PS-010-H2: Replacement preserves correct entry after insert.
@@ -623,10 +671,19 @@ mod harnesses {
         let now = Instant::now();
         let later = now + std::time::Duration::from_secs(5);
 
-        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait).is_ok(), "timer harness assertion");
-        kani::assert(wheel.insert(RunId::new(1), later, crate::shard::PendingTimerKind::Ask).is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait, "assertion failed").is_ok(), "timer harness assertion");
+        kani::assert(wheel.insert(RunId::new(1), later, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
 
-        kani::assert(wheel.len() == 1, "assertion failed");
+        kani::assert(wheel.len(, "assertion failed") == 1, "assertion failed");
+        let entry = wheel.get_entry(RunId::new(1));
+        let e = match entry {
+            Some(v) => v,
+            None => {
+                kani::assume(false);
+                return;
+            }
+        };
+         == 1, "assertion failed");
         let entry = wheel.get_entry(RunId::new(1));
         let e = match entry {
             Some(v) => v,
@@ -636,7 +693,9 @@ mod harnesses {
             }
         };
         kani::assert(e.kind == crate::shard::PendingTimerKind::Ask, "assertion failed");
+        e.kind == crate::shard::PendingTimerKind::Ask, "assertion failed");
         kani::assert(e.deadline == later, "assertion failed");
+        e.deadline == later, "assertion failed");
         kani::assert(e.generation == 2, "assertion failed");
     }
 }

@@ -231,8 +231,7 @@ fn verify_idempotency_missing_key_symbolic_contract_no_frame_write() {
         matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "symbolic missing key covered"
     );
-    kani::assert(
-        matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+    kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_)), "assertion failed"),
         "symbolic KeyRequired side-effecting contract with empty key returns MissingKey",
     );
 }
@@ -249,8 +248,7 @@ fn verify_idempotency_symbolic_key_taints_are_classified() {
         0 => {
             let result = verify_idempotency(&contract, &[], &frame);
             kani::cover!(result.is_err(), "missing key failure covered");
-            kani::assert(
-                matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+            kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_)), "assertion failed"),
                 "empty KeyRequired key set returns MissingKey",
             );
         }
@@ -287,8 +285,7 @@ fn check_symbolic_key_array<const N: usize>(
         matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
         "secret key failure covered"
     );
-    kani::assert(
-        result.is_ok() || matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
+    kani::assert(result.is_ok(, "assertion failed") || matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
         "non-empty bounded key only succeeds or reports the first tainted key ingredient",
     );
 }
@@ -365,8 +362,7 @@ fn verify_idempotency_duplicate_invocation_is_stable() {
         first.is_err() && second.is_err(),
         "duplicate failure covered"
     );
-    kani::assert(
-        first.is_ok() == second.is_ok(),
+    kani::assert(first.is_ok(, "assertion failed") == second.is_ok(),
         "same contract/key/frame verification is idempotent",
     );
 }
@@ -380,8 +376,7 @@ fn verify_idempotency_duplicate_success_clean_key() {
     let first = verify_idempotency(&contract, &key_slots, &frame);
     let second = verify_idempotency(&contract, &key_slots, &frame);
     kani::cover!(first.is_ok() && second.is_ok(), "duplicate success covered");
-    kani::assert(
-        first.is_ok() && second.is_ok(),
+    kani::assert(first.is_ok(, "assertion failed") && second.is_ok(),
         "clean key duplicate succeeds twice",
     );
 }
@@ -404,8 +399,7 @@ fn verify_idempotency_duplicate_failure_tainted_key() {
         first.is_err() && second.is_err(),
         "duplicate failure covered"
     );
-    kani::assert(
-        first.is_err() && second.is_err(),
+    kani::assert(first.is_err(, "assertion failed") && second.is_err(),
         "tainted key duplicate fails twice",
     );
 }
@@ -426,7 +420,71 @@ fn verify_idempotency_boundary_key_lengths_pass_clean_frame() {
     let max = verify_idempotency(&contract, &max_key, &frame);
     kani::cover!(one.is_ok(), "minimum key length success covered");
     kani::cover!(max.is_ok(), "maximum bounded key length success covered");
-    kani::assert(one.is_ok() && max.is_ok(), "boundary clean keys pass");
+    kani::assert(one.is_ok(, "assertion failed") && max.is_ok(), "boundary clean keys pass");
+}
+
+#[kani::proof]
+#[kani::unwind(6)]
+fn verify_idempotency_frame_slot_bounds_no_panic() {
+    let contract = bounded_contract_for_retry(RetrySafety::RequiresIdempotencyKey);
+    let frame = four_slot_clean_frame();
+    let use_oob: bool = kani::any();
+    let key = if use_oob {
+        SlotIdx::new(4)
+    } else {
+        bounded_key_slot()
+    };
+    let key_slots = [key];
+    let result = verify_idempotency(&contract, &key_slots, &frame);
+    kani::cover!(!use_oob && result.is_ok(), "in-bounds key slot covered");
+    kani::cover!(
+        use_oob && result.is_ok(),
+        "out-of-bounds ignored slot covered"
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(4)]
+fn verify_idempotency_retry_policy_matrix_no_frame_write() {
+    let contract = symbolic_contract_no_caps();
+    let frame = match RunFrame::new(RunId::new(kani::any()), StepIdx::new(0), 1, 1) {
+        Ok(value) => value,
+        Err(_) => unreachable_for_kani_frame_bounds(),
+    };
+    let result = verify_idempotency(&contract, &[], &frame);
+    kani::cover!(
+        contract.side_effect == SideEffect::Pure && result.is_ok(),
+        "no side-effect bypass covered"
+    );
+    kani::cover!(
+        contract.side_effect != SideEffect::Pure
+            && contract.retry_safety == RetrySafety::Idempotent
+            && result.is_ok(),
+        "safe retry covered"
+    );
+    kani::cover!(
+        contract.side_effect != SideEffect::Pure
+            && contract.retry_safety == RetrySafety::RequiresIdempotencyKey
+            && matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+        "key-required missing-key covered"
+    );
+    kani::cover!(
+        contract.side_effect != SideEffect::Pure
+            && contract.retry_safety == RetrySafety::NotRetrySafe
+            && matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+        "unsafe retry covered"
+    );
+}
+
+#[kani::proof]
+#[kani::unwind(40)]
+fn idempotency_divergent_digest_symbolic_certificate_rejected() {
+    let first = WorkflowDigest::from_bytes(kani::any::<[u8; 32]>());
+    let second = WorkflowDigest::from_bytes(kani::any::<[u8; 32]>());
+    kani::assume(first != second);
+    let accepted = first == second;
+    kani::cover!(!accepted, "divergent digest rejection covered");
+     && max.is_ok(), "boundary clean keys pass");
 }
 
 #[kani::proof]
@@ -506,7 +564,7 @@ fn validate_action_outcome_certificate_stale_nonterminal() {
         matches!(result, Err(crate::action::ActionError::DispatchFailed)),
         "stale/nonterminal certificate covered"
     );
-    kani::assert(result.is_err(), "nonterminal suspended outcome is rejected");
+    kani::assert(result.is_err(, "assertion failed"), "nonterminal suspended outcome is rejected");
 }
 
 #[kani::proof]
@@ -528,8 +586,7 @@ fn validate_action_outcome_certificate_conflict_oob() {
         ),
         "conflict certificate covered"
     );
-    kani::assert(
-        result.is_err(),
+    kani::assert(result.is_err(, "assertion failed"),
         "out-of-bounds completion certificate is rejected",
     );
 }
@@ -617,8 +674,55 @@ fn validate_action_outcome_symbolic_completion_matrix() {
         ),
         "payload too large error covered"
     );
-    kani::assert(
-        result.is_ok()
+    kani::assert(result.is_ok(, "assertion failed")
+            || matches!(
+                result,
+                Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
+            )
+            || matches!(
+                result,
+                Err(crate::action::ActionError::TaintViolation { .. })
+            )
+            || matches!(
+                result,
+                Err(crate::action::ActionError::PayloadTooLarge { .. })
+            )
+            || matches!(result, Err(crate::action::ActionError::DispatchFailed)),
+        "all outcomes produce only expected error variants or Ok",
+    );
+}
+
+// ============================================================================
+// vb-8mdp.6: Idempotency Hydration — vb_core action.rs Kani harnesses
+// PO-VB-IDEM-012a, 017a
+// ============================================================================
+
+/// PO-VB-IDEM-012a: action_ticket_has_valid_key returns true when
+/// ticket.idempotency_key == compute_action_idempotency_key(run, seq, action).
+#[kani::proof]
+#[kani::unwind(6)]
+fn kani_action_ticket_has_valid_key() {
+    use crate::action::{action_ticket_has_valid_key, compute_action_idempotency_key};
+
+    let run = RunId::new(kani::any::<u64>());
+    let seq = SeqNo::new(kani::any::<u64>());
+    let action = ActionId::new(kani::any::<u16>());
+
+    let canonical_key = compute_action_idempotency_key(run, seq, action);
+
+    // Canonical ticket — should validate
+    let canonical_ticket = ActionTicket {
+        run,
+        step: StepIdx::new(kani::any::<u16>()),
+        seq,
+        action,
+        attempt: kani::any(),
+        idempotency_key: canonical_key,
+        capacity: kani::any(),
+        ..ActionTicket::default()
+    };
+    let canonical_result = action_ticket_has_valid_key(canonical_ticket);
+    
             || matches!(
                 result,
                 Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
@@ -742,11 +846,9 @@ fn kani_verify_idempotency_missing_key() {
         matches!(result_empty, Err(IdempotencyViolation::MissingKey(_))),
         "KeyRequired + empty keys covered"
     );
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
-        ),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite)), "assertion failed"),
         "KeyRequired empty returns MissingKey(Writes)",
     );
 
@@ -760,11 +862,9 @@ fn kani_verify_idempotency_missing_key() {
         ),
         "Unsafe + empty covered"
     );
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result_unsafe_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
-        ),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite)), "assertion failed"),
         "Unsafe returns MissingKey even with empty key_slots",
     );
 
@@ -776,11 +876,9 @@ fn kani_verify_idempotency_missing_key() {
         ),
         "Unsafe + non-empty key_slots still MissingKey covered"
     );
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result_unsafe_with_key,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
-        ),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite)), "assertion failed"),
         "Unsafe with keys still returns MissingKey",
     );
 
@@ -791,7 +889,7 @@ fn kani_verify_idempotency_missing_key() {
         result_safe.is_ok(),
         "Safe retry passes without keys covered"
     );
-    kani::assert(result_safe.is_ok(), "Safe returns Ok");
+    kani::assert(result_safe.is_ok(, "assertion failed"), "Safe returns Ok");
 
     // None side-effect -> always Ok regardless of retry_safety
     let contract_none = ActionContract {
@@ -800,5 +898,5 @@ fn kani_verify_idempotency_missing_key() {
         ..make_contract(RetrySafety::Idempotent)
     };
     let result_none = verify_idempotency(&contract_none, &[], &frame);
-    kani::assert(result_none.is_ok(), "SideEffect::Pure always passes");
+    kani::assert(result_none.is_ok(, "assertion failed"), "SideEffect::Pure always passes");
 }

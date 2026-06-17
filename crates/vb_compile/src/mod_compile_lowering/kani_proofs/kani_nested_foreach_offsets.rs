@@ -96,21 +96,27 @@ fn check_nested_foreach_offset_arithmetic() {
         Ok(computed) => {
             // When it succeeds, computed must equal id + offset
             let expected_raw = id.get().checked_add(offset);
-            kani::assert(
-                expected_raw.is_some(),
+            kani::assert(expected_raw.is_some(, "assertion failed"),
                 "If checked_step_offset returned Ok, then u16::checked_add must also succeed",
             );
             if let Some(exp) = expected_raw {
-                kani::assert(
-                    computed.get() == exp,
+                kani::assert(computed.get(, "assertion failed") == exp,
                     "checked_step_offset result must equal id + offset",
                 );
             }
         }
         Err(_) => {
             // Error means overflow: id + offset > u16::MAX
-            kani::assert(
-                id.get() as u32 + offset as u32 > u16::MAX as u32,
+            kani::assert(id.get(, "assertion failed") as u32 + offset as u32 > u16::MAX as u32,
+                "checked_step_offset Err implies id + offset exceeds u16::MAX",
+            );
+        }
+    }
+
+    // --- Sub-proof 2: body_width for single Set step ---
+    let body = make_single_set_body(42);
+    if let Ok(width) = body_width(&body, 0) {
+         as u32 + offset as u32 > u16::MAX as u32,
                 "checked_step_offset Err implies id + offset exceeds u16::MAX",
             );
         }
@@ -154,8 +160,7 @@ fn check_nested_foreach_offset_arithmetic() {
             let next_step_result = checked_step_offset(id, off_val, "for_each", "next");
             if let Ok(next_step) = next_step_result {
                 let expected_next = id.get().saturating_add(1).saturating_add(bw as u16);
-                kani::assert(
-                    next_step.get() == expected_next,
+                kani::assert(next_step.get(, "assertion failed") == expected_next,
                     "next_step must be id + 1 + body_width(body, 0)",
                 );
             }
@@ -208,12 +213,11 @@ fn check_nested_foreach_panic_freedom() {
         Ok(()) => {
             // Verify successful lowering produced nodes
             let nodes = &builder.nodes;
-            kani::assert(!nodes.is_empty(), "successful lowering must produce nodes");
+            kani::assert(!nodes.is_empty(, "assertion failed"), "successful lowering must produce nodes");
 
             // First node must be ForEachStart
             if let Some(first) = nodes.first() {
-                kani::assert(
-                    matches!(first.kind, CompiledNodeKind::ForEachStart { .. }),
+                kani::assert(matches!(first.kind, CompiledNodeKind::ForEachStart { .. }, "assertion failed"),
                     "first emitted node must be ForEachStart",
                 );
             }
@@ -261,25 +265,27 @@ fn check_foreach_forward_edges() {
                 ..
             } => {
                 // (1) ForEachStart.body == id + 1
-                kani::assert(
-                    body_edge.get() == id.get().saturating_add(1),
+                kani::assert(body_edge.get(, "assertion failed") == id.get().saturating_add(1),
                     "ForEachStart.body must be id + 1",
                 );
                 // (6) ForEachStart.id < ForEachNext.id (where ForEachNext is at index 2)
                 if nodes.len() >= 3 {
                     let for_each_next_id = nodes[2].id;
-                    kani::assert(
-                        nodes[0].id.get() < for_each_next_id.get(),
+                    kani::assert(nodes[0].id.get(, "assertion failed") < for_each_next_id.get(),
                         "ForEachStart.id < ForEachNext.id (monotonic)",
                     );
                     // (4) done > ForEachNext.id
-                    kani::assert(
-                        done.get() > for_each_next_id.get(),
+                    kani::assert(done.get(, "assertion failed") > for_each_next_id.get(),
                         "done must be forward (done > ForEachNext.id)",
                     );
                     // (3) done is forward of ForEachStart: done >= id + 3
-                    kani::assert(
-                        u16::from(done.get()) >= id.get().saturating_add(3),
+                    kani::assert(u16::from(done.get(), "assertion failed") >= id.get().saturating_add(3),
+                        "done must be at least id + 3 (forward of Start → Body → Next)",
+                    );
+                }
+            }
+            _ => {
+                 >= id.get().saturating_add(3),
                         "done must be at least id + 3 (forward of Start → Body → Next)",
                     );
                 }
@@ -303,13 +309,16 @@ fn check_foreach_forward_edges() {
                         "ForEachNext.body must be id + 1 (same as ForEachStart.body)",
                     );
                     // (5) ForEachNext.id is forward of id: >= id + 2
-                    kani::assert(
-                        u16::from(nodes[2].id.get()) >= id.get().saturating_add(2),
+                    kani::assert(u16::from(nodes[2].id.get(), "assertion failed") >= id.get().saturating_add(2),
                         "ForEachNext.id must be at least id + 2 (forward of Start → Body)",
                     );
                     // done == id + 3
-                    kani::assert(
-                        done.get() == id.get().saturating_add(3),
+                    kani::assert(done.get(, "assertion failed") == id.get().saturating_add(3),
+                        "ForEachNext.done must be id + 3",
+                    );
+                }
+                _ => {
+                     == id.get().saturating_add(3),
                         "ForEachNext.done must be id + 3",
                     );
                 }

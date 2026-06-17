@@ -26,8 +26,12 @@ fn kani_ipc_header_rejects_oversize_payload() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
-    kani::assert(
-        decoded.is_err(),
+    kani::assert(decoded.is_err(, "assertion failed"),
+        "payload exceeding bound should return error",
+    );
+
+    if let Err(IpcError::PayloadTooLarge { actual, limit }) = decoded {
+        ,
         "payload exceeding bound should return error",
     );
 
@@ -56,7 +60,7 @@ fn kani_ipc_header_accepts_within_bound() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
-    kani::assert(decoded.is_ok(), "payload within bound should succeed");
+    kani::assert(decoded.is_ok(, "assertion failed"), "payload within bound should succeed");
 }
 
 /// VB-IPC-DECODE-002 H3: decode rejects exactly at boundary + 1
@@ -75,8 +79,7 @@ fn kani_ipc_header_rejects_exactly_over_limit() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
-    kani::assert(
-        decoded.is_err(),
+    kani::assert(decoded.is_err(, "assertion failed"),
         "payload exactly over limit should return error",
     );
 }
@@ -97,7 +100,7 @@ fn kani_ipc_header_accepts_exactly_at_limit() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
-    kani::assert(decoded.is_ok(), "payload exactly at limit should succeed");
+    kani::assert(decoded.is_ok(, "assertion failed"), "payload exactly at limit should succeed");
 }
 
 /// VB-IPC-DECODE-002 H5: decode with zero max_payload rejects any payload
@@ -112,8 +115,7 @@ fn kani_ipc_header_rejects_any_payload_when_max_zero() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
-    kani::assert(
-        decoded.is_err(),
+    kani::assert(decoded.is_err(, "assertion failed"),
         "any non-zero payload should be rejected when max is 0",
     );
 }
@@ -131,8 +133,7 @@ fn kani_ipc_header_accepts_large_with_large_max() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
-    kani::assert(
-        decoded.is_ok(),
+    kani::assert(decoded.is_ok(, "assertion failed"),
         "large payload within large max should succeed",
     );
 }

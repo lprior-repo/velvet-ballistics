@@ -94,9 +94,66 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     let result = replay_step(node, &mut run, &mut store, &plan);
 
     if !slot_a && !slot_b && !has_otherwise {
-        kani::assert(result.is_err(), "kani harness assertion");
+        kani::assert(result.is_err(, "assertion failed"), "kani harness assertion");
     } else {
-        kani::assert(result.is_ok(), "kani harness assertion");
+        kani::assert(result.is_ok(, "assertion failed"), "kani harness assertion");
+    }
+}
+
+#[kani::proof]
+fn verify_choose_slot_output_in_input_set() {
+    let slot_a: bool = kani::any();
+    let slot_b: bool = kani::any();
+    let plan = match two_branch_plan() {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
+
+    let mut run = match RunFrame::new(
+        RunId::new(0),
+        StepIdx::new(0),
+        plan.node_count(),
+        plan.slot_count(),
+    ) {
+        Ok(v) => v,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
+    match run.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_a)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    }
+    match run.write_slot(SlotIdx::new(1), SlotValue::Bool(slot_b)) {
+        Ok(_) => {}
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    }
+
+    let mut store = ValueStore::new();
+    let node = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false);
+            return;
+        }
+    };
+    let result = replay_step(node, &mut run, &mut store, &plan);
+
+    match result {
+        Ok(ReplayAction::Continue(target)) => {
+            let valid =
+                target == StepIdx::new(1) || target == StepIdx::new(2) || target == StepIdx::new(3);
+            , "kani harness assertion");
     }
 }
 
@@ -175,6 +232,31 @@ fn verify_replay_deterministic_for_same_input() {
         }
     };
     let node = match plan.node(StepIdx::new(0)) {
+        Some(v) => v,
+        None => {
+            kani::assume(false);
+            return;
+        }
+    };
+
+    let result_a = replay_bool_slot(
+        &plan,
+        node,
+        slot_val,
+        "frame a failed",
+        "write slot a failed",
+    );
+    let result_b = replay_bool_slot(
+        &plan,
+        node,
+        slot_val,
+        "frame b failed",
+        "write slot b failed",
+    );
+
+    match (result_a, result_b) {
+        (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
+            ) {
         Some(v) => v,
         None => {
             kani::assume(false);

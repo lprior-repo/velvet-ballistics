@@ -80,8 +80,7 @@ fn kani_admission_error_conversion() {
         RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
             // Source is preserved as Arc<JournalError>
             // The source is an Arc-wrapped JournalError
-            kani::assert(
-                Arc::strong_count(&source) >= 1,
+            kani::assert(Arc::strong_count(&source, "assertion failed") >= 1,
                 "Arc must have at least one strong reference",
             );
         }
@@ -95,11 +94,9 @@ fn kani_admission_error_conversion() {
             source: Arc::new(JournalError::KeyCapacity),
         },
     );
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             double_wrapped,
-            RuntimeError::AdmissionHeaderPersistenceFailed { .. }
-        ),
+            RuntimeError::AdmissionHeaderPersistenceFailed { .. }, "assertion failed"),
         "admission_header_persistence_failed is idempotent on already-wrapped errors",
     );
 }
@@ -120,8 +117,7 @@ fn kani_admission_run_submitted_before_insert() {
     shard.apply(run, RuntimeEvent::Submit);
 
     let state = shard.runtime_state_get(run);
-    kani::assert(
-        state == Some(RuntimeState::Initial),
+    kani::assert(state == Some(RuntimeState::Initial, "assertion failed"),
         "apply(Submit) must set Initial state",
     );
 }
@@ -142,8 +138,7 @@ fn kani_admission_run_admission_before_insert() {
     shard.apply(run, RuntimeEvent::Submit);
 
     let state = shard.runtime_state_get(run);
-    kani::assert(
-        state == Some(RuntimeState::Initial),
+    kani::assert(state == Some(RuntimeState::Initial, "assertion failed"),
         "apply(Submit) produces Initial state",
     );
 }
@@ -165,23 +160,21 @@ fn kani_admission_run_submitted_failure() {
     };
     let result = RuntimeError::admission_header_persistence_failed(source_error);
 
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result,
-            RuntimeError::AdmissionHeaderPersistenceFailed { .. }
-        ),
+            RuntimeError::AdmissionHeaderPersistenceFailed { .. }, "assertion failed"),
         "append failure must be converted to AdmissionHeaderPersistenceFailed",
     );
     // Test 2: discard_journal_sequence removes the journal sequence entry
     let mut shard = new_shard();
     let seq = StorageEventSeq(42);
     shard.journal_seq_insert(run, seq);
-    kani::kani::assert(shard.journal_seq_contains(run), "sequence must be present before discard")
+    kani::kani::assert(shard.journal_seq_contains(run, "assertion failed"), "sequence must be present before discard")
 
     // Call production discard_journal_sequence
     shard.discard_journal_sequence(run);
 
-    kani::kani::assert(!shard.journal_seq_contains(run),
+    kani::kani::assert(!shard.journal_seq_contains(run, "assertion failed"),
         "discard_journal_sequence must remove the sequence entry", )
 }
 
@@ -202,19 +195,19 @@ fn kani_admission_run_admission_failure() {
     shard.journal_seq_insert(run, seq);
 
     // Verify it exists
-    kani::kani::assert(shard.journal_seq_contains(run),
+    kani::kani::assert(shard.journal_seq_contains(run, "assertion failed"),
         "sequence must exist before cleanup", )
 
     // Simulate RunAdmission failure → discard_journal_sequence called
     shard.discard_journal_sequence(run);
 
     // Verify sequence is cleaned up
-    kani::kani::assert(!shard.journal_seq_contains(run),
+    kani::kani::assert(!shard.journal_seq_contains(run, "assertion failed"),
         "discard_journal_sequence must remove sequence on RunAdmission failure", )
 
     // Verify that apply(Submit) was never called — no state in runtime_states
     let state = shard.runtime_state_get(run);
-    kani::kani::assert(state.is_none(),
+    kani::kani::assert(state.is_none(, "assertion failed"),
         "on RunAdmission failure, no runtime state must exist", )
 }
 
@@ -230,7 +223,7 @@ fn kani_admission_no_live_state_on_failure() {
     let run = any_run_id();
 
     // Before submit, runs does NOT contain the run
-    kani::kani::assert(!shard.run_state_contains(run),
+    kani::kani::assert(!shard.run_state_contains(run, "assertion failed"),
         "run must not exist before submission", )
 
     // Test: admission_header_persistence_failed returns an error
@@ -238,20 +231,20 @@ fn kani_admission_no_live_state_on_failure() {
         RuntimeError::admission_header_persistence_failed(RuntimeError::StorageJournalAppend {
             source: Arc::new(JournalError::QueueFull),
         });
-    kani::kani::assert(matches!(error, RuntimeError::AdmissionHeaderPersistenceFailed { .. }),
+    kani::kani::assert(matches!(error, RuntimeError::AdmissionHeaderPersistenceFailed { .. }, "assertion failed"),
         "error conversion must produce AdmissionHeaderPersistenceFailed", )
 
     // The error call itself doesn't mutate shard state
-    kani::kani::assert(!shard.run_state_contains(run),
+    kani::kani::assert(!shard.run_state_contains(run, "assertion failed"),
         "runs must not contain run after error conversion (no side effect)", )
 
     // On success: apply(Submit) sets Initial but does NOT insert into runs
     shard.apply(run, RuntimeEvent::Submit);
     let state = shard.runtime_state_get(run);
-    kani::kani::assert(state == Some(RuntimeState::Initial),
+    kani::kani::assert(state == Some(RuntimeState::Initial, "assertion failed"),
         "apply(Submit) sets Initial in runtime_states", )
     // runs is still empty — apply only touches runtime_states
-    kani::kani::assert(!shard.run_state_contains(run),
+    kani::kani::assert(!shard.run_state_contains(run, "assertion failed"),
         "apply does not insert into runs", )
 }
 
@@ -290,8 +283,7 @@ fn kani_admission_error_path_coverage() {
     // All paths must produce AdmissionHeaderPersistenceFailed
     kani::kani::assert(matches!(
             result,
-            RuntimeError::AdmissionHeaderPersistenceFailed { .. }
-        ),
+            RuntimeError::AdmissionHeaderPersistenceFailed { .. }, "assertion failed"),
         "all JournalError variants convert to AdmissionHeaderPersistenceFailed", )
 
     kani::cover!(variant == 0, "error_KeyCapacity");

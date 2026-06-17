@@ -185,8 +185,12 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(
-                    state.is_ok(),
+                kani::assert(state.is_ok(, "assertion failed"),
+                    "step_state should be readable after for_each_next",
+                );
+            }
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ,
                     "step_state should be readable after for_each_next",
                 );
             }
@@ -302,8 +306,12 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(
-                    state.is_ok(),
+                kani::assert(state.is_ok(, "assertion failed"),
+                    "step_state should be readable after reduce_next",
+                );
+            }
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ,
                     "step_state should be readable after reduce_next",
                 );
             }
@@ -436,8 +444,12 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(
-                    state.is_ok(),
+                kani::assert(state.is_ok(, "assertion failed"),
+                    "step_state should be readable after collect_next",
+                );
+            }
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ,
                     "step_state should be readable after collect_next",
                 );
             }
@@ -561,8 +573,12 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(
-                    state.is_ok(),
+                kani::assert(state.is_ok(, "assertion failed"),
+                    "step_state should be readable after collect_page",
+                );
+            }
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ,
                     "step_state should be readable after collect_page",
                 );
             }
@@ -665,8 +681,12 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(
-                    state.is_ok(),
+                kani::assert(state.is_ok(, "assertion failed"),
+                    "step_state should be readable after repeat_attempt",
+                );
+            }
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ,
                     "step_state should be readable after repeat_attempt",
                 );
             }
@@ -737,9 +757,96 @@ pub mod reentry_harnesses {
                     return;
                 }
             };
+            , SlotValue::I64(8)],
+        );
+
+        let body_step = StepIdx::new(1);
+
+        // Body completes execution → Succeeded
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
+        match run.mark_succeeded(body_step) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        }
+
+        // for_each_next re-enters for next item
+        let result = for_each_next(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            body,
+            done,
+            Some(output_slot),
+        );
+
+        // If re-entry succeeded (Continue), body state must be Running.
+        if let Ok(vb_core::EngineSignal::Continue) = result {
+            let state_after = match run.step_state(body_step) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            };
             kani::assert(
                 state_after == StepState::Running,
                 "for_each_next re-entry must mark body step Running (PO-KANI-008)",
+            );
+        }
+    }
+
+    /// PO-KANI-009: reduce_next body state re-entry.
+    #[kani::proof]
+    fn kani_reduce_reentry_body_state_immutable() {
+        let mut run = fresh_frame(4, 8);
+        let mut store = ValueStore::new();
+
+        let iterator_slot = SlotIdx::new(0);
+        let accumulator = SlotIdx::new(1);
+        let output_slot = SlotIdx::new(2);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+
+        list_in_slot(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            vec![SlotValue::I64(5), SlotValue::I64(6)],
+        );
+
+        let body_step = StepIdx::new(1);
+
+        // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
+        match run.mark_succeeded(body_step) {
+            Ok(_) => {}
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        }
+
+        let result = reduce_next(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            accumulator,
+            body,
+            done,
+            Some(output_slot),
+        );
+
+        if let Ok(vb_core::EngineSignal::Continue) = result {
+            let state_after = match run.step_state(body_step) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            };
+            ",
             );
         }
     }
@@ -861,6 +968,73 @@ pub mod reentry_harnesses {
                         return;
                     }
                 };
+                ",
+            );
+        }
+    }
+
+    /// PO-KANI-010: Combined harness for collect_next, collect_page,
+    /// repeat_attempt, and repeat_check body state re-entry.
+    /// Bounded: step_count ≤ 16, pages ≤ 4, attempts ≤ 4.
+    #[kani::proof]
+    fn kani_remaining_primitives_reentry_body_state_immutable() {
+        // ---- collect_next ----
+        {
+            let mut run = fresh_frame(4, 8);
+            let mut store = ValueStore::new();
+            let mut states = CollectStates::new();
+
+            let collector_slot = SlotIdx::new(0);
+            let body = StepIdx::new(1);
+            let done = StepIdx::new(2);
+            let source = SlotIdx::new(3);
+
+            list_in_slot(
+                &mut run,
+                &mut store,
+                source,
+                vec![SlotValue::I64(10), SlotValue::I64(20)],
+            );
+
+            let _ = collect_start(
+                &mut run,
+                &mut store,
+                &mut states,
+                source,
+                100,
+                2,
+                body,
+                done,
+                Some(collector_slot),
+                None,
+            );
+
+            let body_step = StepIdx::new(1);
+            // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
+            match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            }
+            let result = collect_next(
+                &mut run,
+                &mut store,
+                &mut states,
+                collector_slot,
+                body,
+                done,
+            );
+
+            if let Ok(vb_core::EngineSignal::Continue) = result {
+                let state_after = match run.step_state(body_step) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        kani::assume(false);
+                        return;
+                    }
+                };
                 kani::assert(
                     state_after == StepState::Running,
                     "collect_next must mark body state Running (PO-KANI-010)",
@@ -903,9 +1077,89 @@ pub mod reentry_harnesses {
                         return;
                     }
                 };
+                ",
+                );
+            }
+        }
+
+        // ---- repeat_attempt ----
+        {
+            let mut run = fresh_frame(4, 8);
+            let attempt_slot = SlotIdx::new(0);
+            let body = StepIdx::new(1);
+            let done = StepIdx::new(2);
+
+            let packed: i64 = (3_i64 << 32) | 1_i64;
+            match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            }
+
+            let body_step = StepIdx::new(1);
+            // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
+            match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            }
+            let result = repeat_attempt(&mut run, attempt_slot, body, done);
+
+            if let Ok(vb_core::EngineSignal::Continue) = result {
+                let state_after = match run.step_state(body_step) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        kani::assume(false);
+                        return;
+                    }
+                };
                 kani::assert(
                     state_after == StepState::Running,
                     "repeat_attempt must mark body state Running (PO-KANI-010)",
+                );
+            }
+        }
+
+        // ---- repeat_check ----
+        {
+            let mut run = fresh_frame(4, 8);
+            let attempt_slot = SlotIdx::new(0);
+            let done = StepIdx::new(2);
+            let next_body = StepIdx::new(1);
+
+            let packed: i64 = (3_i64 << 32) | 1_i64;
+            match run.write_slot(attempt_slot, SlotValue::I64(packed)) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            }
+
+            let body_step = StepIdx::new(1);
+            // mark_running removed: terminal states are absorbing (P0 fix vb-o5zb.2)
+            match run.mark_succeeded(body_step) {
+                Ok(_) => {}
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            }
+            let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
+
+            if let Ok(vb_core::EngineSignal::Continue) = result {
+                let state_after = match run.step_state(body_step) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        kani::assume(false);
+                        return;
+                    }
+                };
+                ",
                 );
             }
         }
@@ -1051,9 +1305,130 @@ pub mod reentry_harnesses {
         if result.is_err() {
             // If it fails, it should only be for non-state-transition reasons
             // (e.g., PC out of bounds — but we set up valid bounds)
+            ",
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // PO-KANI-011: jump_to_body re-entry transition
+    // -----------------------------------------------------------------------
+    // jump_to_body routes Succeeded bodies through Pending->Running via
+    // mark_pending followed by mark_running (the explicit re-entry admission
+    // path), and leaves all other states unchanged.
+
+    /// PO-KANI-011: jump_to_body must use Succeeded->Pending->Running for
+    /// re-entry (terminal states are absorbing; the direct Succeeded->Running
+    /// edge is invalid). Verifies that after jump_to_body(run, body),
+    /// Succeeded becomes Running and all other states stay unchanged.
+    #[kani::proof]
+    fn kani_jump_to_body_no_state_mutation() {
+        let mut run = fresh_frame(8, 4);
+
+        let body = StepIdx::new(3);
+        let body_state_raw: u8 = kani::any();
+        let body_state = step_state_from_u8(body_state_raw);
+
+        // Set the body step to a symbolic state
+        match body_state {
+            StepState::Pending => match run.mark_pending(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Running => match run.mark_running(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Succeeded => match run.mark_succeeded(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Failed => match run.mark_failed(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Skipped => match run.mark_skipped(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Waiting => match run.mark_waiting(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Asking => match run.mark_asking(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            StepState::Cancelled => match run.mark_cancelled(body) {
+                Ok(v) => v,
+                Err(_) => {
+                    kani::assume(false);
+                    return;
+                }
+            },
+            _ => {}
+        }
+
+        let state_before = match run.step_state(body) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        };
+        let pc_before = run.pc();
+        let executed_before = run.executed();
+
+        // Call jump_to_body (the production function)
+        let result = crate::primitives::helpers::jump::jump_to_body(&mut run, body);
+
+        // The function should succeed (only PC jump, no invalid state transition)
+        // If it fails, it should not be because of invalid state transition
+        if result.is_err() {
+            // If it fails, it should only be for non-state-transition reasons
+            // (e.g., PC out of bounds — but we set up valid bounds)
             kani::assert(
                 false,
                 "jump_to_body should succeed for any body state (PO-KANI-011)",
+            );
+        }
+
+        // Body state must follow the explicit re-entry contract.
+        let state_after = match run.step_state(body) {
+            Ok(v) => v,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        };
+        let expected = if state_before == StepState::Succeeded {
+            StepState::Running
+        } else {
+            state_before
+        };
+        ",
             );
         }
 
@@ -1173,8 +1548,12 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(
-                    state.is_ok(),
+                kani::assert(state.is_ok(, "assertion failed"),
+                    "step_state should be readable after repeat_check",
+                );
+            }
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ,
                     "step_state should be readable after repeat_check",
                 );
             }

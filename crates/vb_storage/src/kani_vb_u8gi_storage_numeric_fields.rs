@@ -26,8 +26,7 @@ pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
 
     write_u32(&mut header, 0, found);
     if found != MAGIC_JOURNAL_EVENT {
-        kani::assert(
-            matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::BadMagic { found: observed }) if observed == found),
+        kani::assert(matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::BadMagic { found: observed }) if observed == found, "assertion failed"),
             "BadMagic preserves numeric field",
         );
     }
@@ -35,8 +34,7 @@ pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
     write_u32(&mut header, 0, MAGIC_JOURNAL_EVENT);
     write_u16(&mut header, 4, version);
     if version > CURRENT_SCHEMA_VERSION {
-        kani::assert(
-            matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::UnsupportedSchemaVersion { version: observed }) if observed == version),
+        kani::assert(matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::UnsupportedSchemaVersion { version: observed }) if observed == version, "assertion failed"),
             "UnsupportedSchemaVersion preserves numeric field",
         );
     }
@@ -44,8 +42,7 @@ pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
     write_u16(&mut header, 4, CURRENT_SCHEMA_VERSION);
     write_u16(&mut header, 6, kind);
     if !matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50) {
-        kani::assert(
-            matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::UnknownRecordKind { kind: observed }) if observed == kind),
+        kani::assert(matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::UnknownRecordKind { kind: observed }) if observed == kind, "assertion failed"),
             "UnknownRecordKind preserves numeric field",
         );
     }
@@ -53,8 +50,7 @@ pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
     write_u16(&mut header, 6, 10_u16);
     write_u32(&mut header, 8, found);
     if found != RECORD_HEADER_LEN {
-        kani::assert(
-            matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::HeaderLengthMismatch { found: observed }) if observed == found),
+        kani::assert(matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::HeaderLengthMismatch { found: observed }) if observed == found, "assertion failed"),
             "HeaderLengthMismatch preserves numeric field",
         );
     }
@@ -62,8 +58,7 @@ pub fn vb_u8gi_storage_numeric_fields_arbitrary() {
     write_u32(&mut header, 8, RECORD_HEADER_LEN);
     write_u32(&mut header, 12, found);
     if found > max {
-        kani::assert(
-            matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::PayloadTooLarge { len: observed_len, max: observed_max }) if observed_len == found && observed_max == max),
+        kani::assert(matches!(decode_record_header(&header, MAGIC_JOURNAL_EVENT, max), Err(JournalError::PayloadTooLarge { len: observed_len, max: observed_max }) if observed_len == found && observed_max == max, "assertion failed"),
             "PayloadTooLarge preserves numeric fields",
         );
     }

@@ -70,8 +70,7 @@ fn ps_007_verification_digest_match() {
     let result = validate_accepted_artifact_digest(&artifact, record_digest);
 
     // Must be an error: verification.digest != record.digest
-    kani::assert(
-        result.is_err(),
+    kani::assert(result.is_err(, "assertion failed"),
         "verification.digest mismatch must be rejected",
     );
 

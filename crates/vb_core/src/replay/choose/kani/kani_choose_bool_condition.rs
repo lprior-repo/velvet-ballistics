@@ -71,13 +71,13 @@ fn kani_choose_bool_condition() {
 
     match slot_value {
         SlotValue::Bool(true) => {
-            kani::assert(result.is_ok(), "Bool(true) must produce Ok result");
+            kani::assert(result.is_ok(, "assertion failed"), "Bool(true) must produce Ok result");
         }
         SlotValue::Bool(false) => {
-            kani::assert(result.is_ok(), "Bool(false) must produce Ok with otherwise");
+            kani::assert(result.is_ok(, "assertion failed"), "Bool(false) must produce Ok with otherwise");
         }
         _ => {
-            kani::assert(result.is_err(), "non-Bool condition must produce Err");
+            kani::assert(result.is_err(, "assertion failed"), "non-Bool condition must produce Err");
         }
     }
 }

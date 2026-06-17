@@ -44,30 +44,30 @@ fn push_constant_overflow() {
 
     // Unrolled concrete verification
     let r0 = bounded_compiler.push_constant(fill_values[0]);
-    kani::assert(r0.is_ok(), "index 0 should succeed");
-    if let Ok(idx) = r0 { kani::assert(idx == ConstIdx::new(0), "index 0"); }
+    kani::assert(r0.is_ok(, "assertion failed"), "index 0 should succeed");
+    if let Ok(idx) = r0 { kani::assert(idx == ConstIdx::new(0, "assertion failed"), "index 0"); }
 
     let r1 = bounded_compiler.push_constant(fill_values[1]);
-    kani::assert(r1.is_ok(), "index 1 should succeed");
-    if let Ok(idx) = r1 { kani::assert(idx == ConstIdx::new(1), "index 1"); }
+    kani::assert(r1.is_ok(, "assertion failed"), "index 1 should succeed");
+    if let Ok(idx) = r1 { kani::assert(idx == ConstIdx::new(1, "assertion failed"), "index 1"); }
 
     let r2 = bounded_compiler.push_constant(fill_values[2]);
-    kani::assert(r2.is_ok(), "index 2 should succeed");
-    if let Ok(idx) = r2 { kani::assert(idx == ConstIdx::new(2), "index 2"); }
+    kani::assert(r2.is_ok(, "assertion failed"), "index 2 should succeed");
+    if let Ok(idx) = r2 { kani::assert(idx == ConstIdx::new(2, "assertion failed"), "index 2"); }
 
     let r3 = bounded_compiler.push_constant(fill_values[3]);
-    kani::assert(r3.is_ok(), "index 3 should succeed");
-    if let Ok(idx) = r3 { kani::assert(idx == ConstIdx::new(3), "index 3"); }
+    kani::assert(r3.is_ok(, "assertion failed"), "index 3 should succeed");
+    if let Ok(idx) = r3 { kani::assert(idx == ConstIdx::new(3, "assertion failed"), "index 3"); }
 
     let r4 = bounded_compiler.push_constant(fill_values[4]);
-    kani::assert(r4.is_ok(), "index 4 should succeed");
-    if let Ok(idx) = r4 { kani::assert(idx == ConstIdx::new(4), "index 4"); }
+    kani::assert(r4.is_ok(, "assertion failed"), "index 4 should succeed");
+    if let Ok(idx) = r4 { kani::assert(idx == ConstIdx::new(4, "assertion failed"), "index 4"); }
 
     // The 6th push (index 5) should also succeed (well within u16::MAX)
     let sixth = bounded_compiler.push_constant(ConstValue::Null);
-    kani::assert(sixth.is_ok(), "index 5 should succeed (within u16::MAX)");
+    kani::assert(sixth.is_ok(, "assertion failed"), "index 5 should succeed (within u16::MAX)");
     if let Ok(idx) = sixth {
-        kani::assert(idx == ConstIdx::new(5), "6th constant should have index 5");
+        kani::assert(idx == ConstIdx::new(5, "assertion failed"), "6th constant should have index 5");
     }
 
     // ----------------------------------------------------------------
@@ -81,20 +81,25 @@ fn push_constant_overflow() {
     let mut i = 0u16;
     while i <= n {
         let result = sym_compiler.push_constant(ConstValue::I64(i as i64));
-        kani::assert(result.is_ok(), "push up to n should succeed when n < 20");
+        kani::assert(result.is_ok(, "assertion failed"), "push up to n should succeed when n < 20");
         i += 1;
     }
 
     // One more push at index n+1 should also succeed (still <= 20 < u16::MAX)
     let one_more = sym_compiler.push_constant(ConstValue::Null);
-    kani::assert(one_more.is_ok(), "push at n+1 (where n+1 <= 20) should succeed");
+    kani::assert(one_more.is_ok(, "assertion failed"), "push at n+1 (where n+1 <= 20) should succeed");
 
     // ----------------------------------------------------------------
     // Test 3: slot_count on empty builder = 0
     // ----------------------------------------------------------------
     let empty_compiler = SlotCompiler::new();
     let empty_count = empty_compiler.slot_count();
-    kani::assert(empty_count.is_ok(), "slot_count on empty builder should be Ok");
+    kani::assert(empty_count.is_ok(, "assertion failed"), "slot_count on empty builder should be Ok");
+    let empty_count_val = match empty_count {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false); loop {}}
+    };
+    , "slot_count on empty builder should be Ok");
     let empty_count_val = match empty_count {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
@@ -106,27 +111,27 @@ fn push_constant_overflow() {
     // ----------------------------------------------------------------
     let mut test_compiler = SlotCompiler::new();
     kani::assert(test_compiler.push_constant(ConstValue::Null).is_ok(), "Null succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::Bool(true)).is_ok(), "Bool(true) succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::Bool(false)).is_ok(), "Bool(false) succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::I64(0)).is_ok(), "I64(0) succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::I64(-1)).is_ok(), "I64(-1) succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MAX)).is_ok(), "I64::MAX succeeds");
-    kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MIN)).is_ok(), "I64::MIN succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::Bool(true), "assertion failed").is_ok(), "Bool(true) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::Bool(false), "assertion failed").is_ok(), "Bool(false) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::I64(0), "assertion failed").is_ok(), "I64(0) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::I64(-1), "assertion failed").is_ok(), "I64(-1) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MAX), "assertion failed").is_ok(), "I64::MAX succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::I64(i64::MIN), "assertion failed").is_ok(), "I64::MIN succeeds");
     let f64_0 = match vb_core::FiniteF64::new(0.0) {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_0)).is_ok(), "F64(0.0) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_0), "assertion failed").is_ok(), "F64(0.0) succeeds");
     let f64_1 = match vb_core::FiniteF64::new(1.5) {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_1)).is_ok(), "F64(1.5) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_1), "assertion failed").is_ok(), "F64(1.5) succeeds");
     let f64_2 = match vb_core::FiniteF64::new(-3.14) {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
     };
-    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_2)).is_ok(), "F64(-3.14) succeeds");
+    kani::assert(test_compiler.push_constant(ConstValue::F64(f64_2), "assertion failed").is_ok(), "F64(-3.14) succeeds");
 }
 
 /// KANI-CONSTANT-POOL-001b: push_constant does not affect slot recording.
@@ -141,7 +146,12 @@ fn push_constant_isolation() {
     let _ = compiler.push_constant(ConstValue::Bool(true));
 
     let count = compiler.slot_count();
-    kani::assert(count.is_ok(), "slot_count should be Ok");
+    kani::assert(count.is_ok(, "assertion failed"), "slot_count should be Ok");
+    let count_val = match count {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false); loop {}}
+    };
+    , "slot_count should be Ok");
     let count_val = match count {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
@@ -153,7 +163,12 @@ fn push_constant_isolation() {
     compiler.record_slot(vb_core::SlotIdx::new(7));
 
     let count_after = compiler.slot_count();
-    kani::assert(count_after.is_ok(), "slot_count should be Ok after recording");
+    kani::assert(count_after.is_ok(, "assertion failed"), "slot_count should be Ok after recording");
+    let count_after_val = match count_after {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false); loop {}}
+    };
+    , "slot_count should be Ok after recording");
     let count_after_val = match count_after {
         Ok(v) => v,
         Err(_) => { kani::assume(false); loop {}}
@@ -185,5 +200,5 @@ fn slot_count_overflow_at_max() {
     // slot_count() computes max_slot + 1 = 65535 + 1 = 65536.
     // u16::try_from(65536) fails -> Err(SlotIndexOutOfRange)
     let result = compiler.slot_count();
-    kani::assert(result.is_err(), "slot_count should overflow at u16::MAX");
+    kani::assert(result.is_err(, "assertion failed"), "slot_count should overflow at u16::MAX");
 }

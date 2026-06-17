@@ -41,5 +41,5 @@ fn kani_foreach_variable_reaches_hasher() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
-    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes(), "assertion failed");
+    kani::assert(ha.finalize(, "assertion failed").as_bytes() != hb.finalize().as_bytes(), "assertion failed");
 }

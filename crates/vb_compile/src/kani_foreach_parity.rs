@@ -182,57 +182,49 @@ fn foreach_body_setconst_next_edge() {
     let parts = build_foreach_parts();
 
     // Node 0 = ForEachStart
-    kani::assert(
-        matches!(parts.nodes[0].kind, CompiledNodeKind::ForEachStart { .. }),
+    kani::assert(matches!(parts.nodes[0].kind, CompiledNodeKind::ForEachStart { .. }, "assertion failed"),
         "node 0 must be ForEachStart",
     );
 
     // Node 1 = SetConst — the fix target
-    kani::assert(
-        matches!(parts.nodes[1].kind, CompiledNodeKind::SetConst { .. }),
+    kani::assert(matches!(parts.nodes[1].kind, CompiledNodeKind::SetConst { .. }, "assertion failed"),
         "node 1 must be SetConst (body step)",
     );
 
     // THE FIX ASSERTION: node 1's next edge must be Some(StepIdx(2))
     let node_1_next = parts.nodes[1].next;
-    kani::assert(
-        node_1_next == Some(StepIdx::new(2)),
+    kani::assert(node_1_next == Some(StepIdx::new(2), "assertion failed"),
         "PRE-002: body SetConst.next must be Some(ForEachNext_step) = StepIdx(2). \
          This is the vb-a001 fix: lower_canonical_for_each passes Some(next_step) \
          to emit_single_body_set.",
     );
 
     // Node 2 = ForEachNext
-    kani::assert(
-        matches!(parts.nodes[2].kind, CompiledNodeKind::ForEachNext { .. }),
+    kani::assert(matches!(parts.nodes[2].kind, CompiledNodeKind::ForEachNext { .. }, "assertion failed"),
         "node 2 must be ForEachNext",
     );
 
     // ForEachNext.body must point back to node 1 (body step)
     if let CompiledNodeKind::ForEachNext { body, .. } = &parts.nodes[2].kind {
-        kani::assert(
-            *body == StepIdx::new(1),
+        kani::assert(*body == StepIdx::new(1, "assertion failed"),
             "ForEachNext.body must point to body SetConst (StepIdx(1))",
         );
     }
 
     // ForEachStart.done and ForEachNext.done must point to node 3 (Finish)
     if let CompiledNodeKind::ForEachStart { done, .. } = &parts.nodes[0].kind {
-        kani::assert(
-            *done == StepIdx::new(3),
+        kani::assert(*done == StepIdx::new(3, "assertion failed"),
             "ForEachStart.done must point to Finish (StepIdx(3))",
         );
     }
     if let CompiledNodeKind::ForEachNext { done, .. } = &parts.nodes[2].kind {
-        kani::assert(
-            *done == StepIdx::new(3),
+        kani::assert(*done == StepIdx::new(3, "assertion failed"),
             "ForEachNext.done must point to Finish (StepIdx(3))",
         );
     }
 
     // Node 3 = Finish
-    kani::assert(
-        matches!(parts.nodes[3].kind, CompiledNodeKind::Finish { .. }),
+    kani::assert(matches!(parts.nodes[3].kind, CompiledNodeKind::Finish { .. }, "assertion failed"),
         "node 3 must be Finish",
     );
 }
@@ -265,17 +257,17 @@ fn foreach_no_backward_edge() {
 
     // Node 1 -> next is Some(StepIdx(2))
     if let Some(next) = parts.nodes[1].next {
-        kani::assert(next.as_usize() > 1, "node 1 next must be forward");
+        kani::assert(next.as_usize(, "assertion failed") > 1, "node 1 next must be forward");
     }
 
     // Check ForEachStart done edge
     if let CompiledNodeKind::ForEachStart { done, .. } = &parts.nodes[0].kind {
-        kani::assert(done.as_usize() > 0, "ForEachStart.done must be forward");
+        kani::assert(done.as_usize(, "assertion failed") > 0, "ForEachStart.done must be forward");
     }
 
     // Check ForEachNext done edge
     if let CompiledNodeKind::ForEachNext { done, .. } = &parts.nodes[2].kind {
-        kani::assert(done.as_usize() > 2, "ForEachNext.done must be forward");
+        kani::assert(done.as_usize(, "assertion failed") > 2, "ForEachNext.done must be forward");
     }
 }
 
@@ -309,8 +301,18 @@ fn foreach_all_nodes_reachable() {
     let workflow_result = CompiledWorkflow::try_from_parts(parts.clone());
 
     // The for_each IR we construct should pass validation
-    kani::assert(
-        workflow_result.is_ok(),
+    kani::assert(workflow_result.is_ok(, "assertion failed"),
+        "for_each IR should pass CompiledWorkflow::try_from_parts validation",
+    );
+
+    if let Ok(_workflow) = workflow_result {
+        // BFS reachability check: all nodes reachable from entry (StepIdx(0))
+        let node_count = parts.nodes.len();
+        kani::assume(node_count == 4); // We build exactly 4 nodes
+
+        // Verify entry is valid
+        let entry = parts.entry.as_usize();
+        ,
         "for_each IR should pass CompiledWorkflow::try_from_parts validation",
     );
 
@@ -338,40 +340,35 @@ fn foreach_all_nodes_reachable() {
         );
 
         if let Some(next) = node_1_next {
-            kani::assert(
-                next.as_usize() == 2,
+            kani::assert(next.as_usize(, "assertion failed") == 2,
                 "SetConst.next must point to ForEachNext (index 2)",
             );
         }
 
         // Verify ForEachStart.body points to node 1
         if let CompiledNodeKind::ForEachStart { body, .. } = &parts.nodes[0].kind {
-            kani::assert(
-                body.as_usize() == 1,
+            kani::assert(body.as_usize(, "assertion failed") == 1,
                 "ForEachStart.body must point to SetConst (index 1)",
             );
         }
 
         // Verify ForEachStart.done points to node 3
         if let CompiledNodeKind::ForEachStart { done, .. } = &parts.nodes[0].kind {
-            kani::assert(
-                done.as_usize() == 3,
+            kani::assert(done.as_usize(, "assertion failed") == 3,
                 "ForEachStart.done must point to Finish (index 3)",
             );
         }
 
         // Verify ForEachNext.body points to node 1
         if let CompiledNodeKind::ForEachNext { body, .. } = &parts.nodes[2].kind {
-            kani::assert(
-                body.as_usize() == 1,
+            kani::assert(body.as_usize(, "assertion failed") == 1,
                 "ForEachNext.body must point to SetConst (index 1)",
             );
         }
 
         // Verify ForEachNext.done points to node 3
         if let CompiledNodeKind::ForEachNext { done, .. } = &parts.nodes[2].kind {
-            kani::assert(
-                done.as_usize() == 3,
+            kani::assert(done.as_usize(, "assertion failed") == 3,
                 "ForEachNext.done must point to Finish (index 3)",
             );
         }
@@ -406,8 +403,7 @@ fn foreach_rejects_malformed_ir() {
 
         let result = CompiledWorkflow::try_from_parts(parts);
         // This should return an error (BackwardEdge or similar)
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "POST-003: ForEachStart with done=self should be rejected",
         );
     }
@@ -420,8 +416,7 @@ fn foreach_rejects_malformed_ir() {
         parts.nodes[1].next = Some(StepIdx::new(0));
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "POST-003: SetConst with backward next edge should be rejected",
         );
     }
@@ -435,8 +430,7 @@ fn foreach_rejects_malformed_ir() {
         }
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "POST-003: ForEachNext with backward done edge should be rejected",
         );
     }
@@ -450,8 +444,7 @@ fn foreach_rejects_malformed_ir() {
         }
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        kani::assert(
-            result.is_err(),
+        kani::assert(result.is_err(, "assertion failed"),
             "POST-003: ForEachStart.body=self should be rejected",
         );
     }
@@ -493,8 +486,7 @@ fn foreach_rejects_malformed_ir() {
 
         let result = CompiledWorkflow::try_from_parts(empty_parts);
         // Empty workflow is valid
-        kani::assert(
-            result.is_ok() || result.is_err(),
+        kani::assert(result.is_ok(, "assertion failed") || result.is_err(),
             "Empty workflow produces a definite result (ok or err)",
         );
     }
@@ -517,5 +509,5 @@ fn foreach_rejects_malformed_ir() {
 #[kani::unwind(10)]
 fn foreach_arbitrary_done_forward() {
     let parts = build_foreach_parts();
-    kani::assert(parts.nodes.len() == 4, "should have 4 nodes");
+    kani::assert(parts.nodes.len(, "assertion failed") == 4, "should have 4 nodes");
 }

@@ -54,8 +54,7 @@ fn kani_unknown_command_returns_bad_request() {
     kani::assume(value == 0 || value >= 12);
 
     let command = IpcCommand::from_u16(value);
-    kani::assert(
-        command.is_ok(),
+    kani::assert(command.is_ok(, "assertion failed"),
         "from_u16({}) must return Ok for unknown values",
         value,
     );
@@ -124,8 +123,7 @@ fn kani_unknown_command_returns_bad_request() {
     kani::assume(value == 0 || value >= 12);
 
     let command = IpcCommand::from_u16(value);
-    kani::assert(
-        command.is_ok(),
+    kani::assert(command.is_ok(, "assertion failed"),
         "from_u16({}) must return Ok for unknown values",
         value,
     );
@@ -138,7 +136,27 @@ fn kani_unknown_command_returns_bad_request() {
     };
 
     // Verify the decoding produced the expected variant.
-    kani::assert(command != IpcCommand::UnknownCommand(value), "assertion failed");
+    kani::assert(command != IpcCommand::UnknownCommand(value, "assertion failed"), "assertion failed");
+
+    // Exercise the production dispatch function.
+    let header = make_header(command);
+    let payload: &[u8] = &[];
+    let mut runtime = make_runtime();
+
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+
+    // Invariant: UnknownCommand MUST return BadRequest.
+    ;
+
+    // Exercise the production dispatch function.
+    let header = make_header(command);
+    let payload: &[u8] = &[];
+    let mut runtime = make_runtime();
+
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+
+    // Invariant: UnknownCommand MUST return BadRequest.
+    , "assertion failed");
 
     // Exercise the production dispatch function.
     let header = make_header(command);
@@ -176,7 +194,52 @@ fn kani_dispatch_arm_count() {
     let mut runtime = make_runtime();
 
     // Verify count is exactly 11.
+    response != IpcResponse::BadRequest, "assertion failed");
+}
+
+/// PO-KANI-005: Dispatch match has exactly 12 arms and routes correctly.
+///
+/// Proves:
+/// 1. All 11 semantic variants dispatch without panicking.
+/// 2. The UnknownCommand variant dispatches to BadRequest.
+/// 3. Total dispatch coverage: 12 match arms verified.
+///
+/// Each semantic variant is exercised with an empty payload. Handlers may
+/// return error responses (PayloadError, BadRequest, etc.) — what matters
+/// is that the dispatch routing is correct and no arm panics.
+#[kani::proof]
+fn kani_dispatch_arm_count() {
+    let mut runtime = make_runtime();
+
+    // Verify count is exactly 11.
     kani::assert(11 == 11, "Exactly 11 semantic command variants must exist");
+
+    // Verify a single symbolic semantic command dispatches without panicking.
+    let cmd_raw: u16 = kani::any();
+    kani::assume(cmd_raw >= 1 && cmd_raw <= 11);
+    let command = match IpcCommand::from_u16(cmd_raw) {
+        Ok(c) => c,
+        Err(_) => {
+            kani::assume(false);
+            return;
+        }
+    };
+    let header = make_header(command);
+    let payload: &[u8] = &[];
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+
+    // Any response is acceptable — we only verify no panic occurred.
+    let _ = response;
+
+    // Verify UnknownCommand arm (12th arm) dispatches to BadRequest.
+    let unknown_value: u16 = kani::any();
+    kani::assume(unknown_value == 0 || unknown_value >= 12);
+    let unknown = IpcCommand::UnknownCommand(unknown_value);
+    let header = make_header(unknown);
+    let payload: &[u8] = &[];
+    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+
+    11 == 11, "Exactly 11 semantic command variants must exist");
 
     // Verify a single symbolic semantic command dispatches without panicking.
     let cmd_raw: u16 = kani::any();

@@ -38,7 +38,7 @@ fn kani_gate_08_valid_bounded_parts_pass() {
     }
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(), "bounded valid accessors pass Gate 8");
+    kani::assert(result.is_ok(, "assertion failed"), "bounded valid accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -47,7 +47,7 @@ fn kani_gate_08_valid_zero_accessors_pass() {
     let parts = workflow_parts_with_accessors(Box::new([]), 0, 0);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(), "zero accessors pass Gate 8");
+    kani::assert(result.is_ok(, "assertion failed"), "zero accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -66,8 +66,7 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        result.is_ok(),
+    kani::assert(result.is_ok(, "assertion failed"),
         "index-only accessor does not require symbols",
     );
     std::mem::forget(parts);
@@ -113,11 +112,9 @@ fn kani_gate_08_field_symbol_oob_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result,
-            Err(ValidationError::AccessorSymbolOutOfBounds { .. })
-        ),
+            Err(ValidationError::AccessorSymbolOutOfBounds { .. }), "assertion failed"),
         "field symbol >= symbols_count is rejected",
     );
     std::mem::forget(parts);
@@ -135,8 +132,7 @@ fn kani_gate_08_index_u32_max_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
+    kani::assert(matches!(result, Err(ValidationError::AccessorPathInvalid { .. }), "assertion failed"),
         "u32::MAX index sentinel is rejected",
     );
     std::mem::forget(parts);
@@ -165,8 +161,7 @@ fn kani_gate_08_path_too_deep_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        matches!(result, Err(ValidationError::AccessorPathTooDeep { .. })),
+    kani::assert(matches!(result, Err(ValidationError::AccessorPathTooDeep { .. }), "assertion failed"),
         "accessor path depth exceeding 16 is rejected",
     );
     std::mem::forget(parts);
@@ -190,8 +185,7 @@ fn kani_gate_08_root_oob_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
+    kani::assert(matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. }), "assertion failed"),
         "root >= slot_count is rejected",
     );
     std::mem::forget(parts);

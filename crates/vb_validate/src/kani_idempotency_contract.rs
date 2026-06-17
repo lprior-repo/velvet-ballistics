@@ -68,8 +68,7 @@ fn kani_decision_001_all_combinations() {
                 let result1 = static_check(&contract);
                 let result2 = static_check(&contract);
 
-                kani::assert(
-                    result1.is_ok() == result2.is_ok(),
+                kani::assert(result1.is_ok(, "assertion failed") == result2.is_ok(),
                     "is_statically_idempotent_contract must be deterministic",
                 );
 
@@ -134,8 +133,7 @@ fn decision_table_ok_branch() {
             };
 
             let result = static_check(&contract);
-            kani::assert(
-                result.is_ok(),
+            kani::assert(result.is_ok(, "assertion failed"),
                 "side_effect==None must be Ok regardless of retry/idempotency",
             );
 
@@ -187,8 +185,7 @@ fn decision_table_ok_branch() {
             };
 
             let result = static_check(&contract);
-            kani::assert(
-                result.is_ok(),
+            kani::assert(result.is_ok(, "assertion failed"),
                 "side_effect!=None with IdempotentExternal and Safe/KeyRequired must be Ok",
             );
 
@@ -253,7 +250,11 @@ fn decision_table_unsafe_rejected() {
             };
 
             let result = static_check(&contract);
-            kani::assert(result.is_err(), "side_effect!=None with Unsafe must be Err");
+            kani::assert(result.is_err(, "assertion failed"), "side_effect!=None with Unsafe must be Err");
+            if let Err(err) = &result {
+                let reason = err.reason_category();
+                // Unsafe always returns RetryUnsafe regardless of idempotency (match arm order)
+                , "side_effect!=None with Unsafe must be Err");
             if let Err(err) = &result {
                 let reason = err.reason_category();
                 // Unsafe always returns RetryUnsafe regardless of idempotency (match arm order)
@@ -328,6 +329,11 @@ fn decision_table_at_least_once_rejected() {
             );
             if let Err(err) = &result {
                 let reason = err.reason_category();
+                ,
+                "side_effect!=None with AtLeastOnceExternal must be Err",
+            );
+            if let Err(err) = &result {
+                let reason = err.reason_category();
                 kani::assert(
                     reason == "IDEMPOTENCY_AT_LEAST_ONCE_EXTERNAL",
                     "Error must be IDEMPOTENCY_AT_LEAST_ONCE_EXTERNAL",
@@ -397,6 +403,11 @@ fn decision_table_deterministic_rejected() {
             let result = static_check(&contract);
             kani::assert(
                 result.is_err(),
+                "side_effect!=None with DeterministicPure must be Err",
+            );
+            if let Err(err) = &result {
+                let reason = err.reason_category();
+                ,
                 "side_effect!=None with DeterministicPure must be Err",
             );
             if let Err(err) = &result {

@@ -27,6 +27,35 @@ fn check_compute_action_idempotency_key_panic_free() {
 
     // Verify the key is always a valid u128 (no overflow panics).
     // The wrapping arithmetic guarantees the result is in [0, u128::MAX].
+    //! Kani harnesses for vb_core action module.
+//!
+//! Verifier lane: kani
+//! Obligations: OBL-004, OBL-005, OBL-006, OBL-013
+//!
+//! Tests panic-freedom, serialization bounds.
+//! All harnesses use kani::any() for structural inputs — no hardcoded data.
+
+#![allow(unused)]
+
+// ─── OBL-004: Panic freedom for compute_action_idempotency_key ──────────────────
+
+/// compute_action_idempotency_key uses only wrapping arithmetic.
+/// This harness proves it never panics for any input.
+#[kani::proof]
+fn check_compute_action_idempotency_key_panic_free() {
+    // Use kani::any() for all inputs — no hardcoded values.
+    let run: u64 = kani::any();
+    let seq: u64 = kani::any();
+    let action: u64 = kani::any();
+
+    let key = crate::action::compute_action_idempotency_key(
+        crate::ids::RunId::new(run),
+        crate::ids::SeqNo::new(seq),
+        crate::ids::ActionId::new(action),
+    );
+
+    // Verify the key is always a valid u128 (no overflow panics).
+    // The wrapping arithmetic guarantees the result is in [0, u128::MAX].
     kani::assert(key >= 0, "Idempotency key must be non-negative");
     kani::assert(key <= u128::MAX, "Idempotency key must fit in u128");
 }
@@ -135,7 +164,7 @@ fn check_action_ticket_serialization_size() {
     //   u128 (1): max 17 bytes
     //   Total: 59 bytes (with postcard overhead)
     kani::assert(serialized.len() >= 7, "Serialized ticket must contain at least 7 bytes (7 fields minimum)");
-    kani::assert(serialized.len() <= 64, "Serialized ticket must fit within 64 bytes (7 fields with max varint overhead)");
+    kani::assert(serialized.len(, "assertion failed") <= 64, "Serialized ticket must fit within 64 bytes (7 fields with max varint overhead)");
 }
 
 // ─── OBL-005 extended: Valid key check — ticket with computed key is valid ──────
@@ -170,5 +199,5 @@ fn check_action_ticket_has_valid_key_with_computed_key() {
     };
 
     // The validation check must return true.
-    kani::assert(crate::action::action_ticket_has_valid_key(ticket), "Ticket with computed key must pass validation");
+    kani::assert(crate::action::action_ticket_has_valid_key(ticket, "assertion failed"), "Ticket with computed key must pass validation");
 }

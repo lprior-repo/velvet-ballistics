@@ -58,8 +58,14 @@ fn kani_harness_bad_magic_no_allocation() {
     let result = decode_record_header(&header, expected_magic, DEFAULT_MAX_PAYLOAD);
 
     // Assert: result must be an error
-    kani::assert(
-        result.is_err(),
+    kani::assert(result.is_err(, "assertion failed"),
+        "decode_record_header must return error for wrong magic",
+    );
+
+    // Assert: the error must be BadMagic
+    match result {
+        Err(JournalError::BadMagic { found }) => {
+            ,
         "decode_record_header must return error for wrong magic",
     );
 
@@ -121,8 +127,13 @@ fn kani_harness_payload_len_bounds() {
     let result = decode_record_header(&header, valid_magic, max_payload);
 
     // Assert: must return error for oversized payload
-    kani::assert(
-        result.is_err(),
+    kani::assert(result.is_err(, "assertion failed"),
+        "decode must fail for oversized payload_len",
+    );
+
+    match result {
+        Err(JournalError::PayloadTooLarge { len, max }) => {
+            ,
         "decode must fail for oversized payload_len",
     );
 
@@ -148,6 +159,48 @@ fn kani_harness_payload_len_bounds() {
     // COVER: PayloadTooLarge path reached
     kani::cover!(
         matches!(result, Err(JournalError::PayloadTooLarge { .. })),
+        "PayloadTooLarge path"
+    );
+}
+
+/// VB-STORAGE-POSTCARD-ENVELOPE-001 H3:
+/// Prove decode order: magic check must precede all other validations.
+/// For any arbitrary header bytes, if magic is wrong, no later validation runs.
+#[kani::proof]
+#[kani::unwind(4)]
+fn kani_harness_storage_decode_order() {
+    // Generate arbitrary header bytes
+    let mut header: [u8; RECORD_HEADER_BYTES] = kani::any();
+    let expected_magic: u32 = kani::any();
+
+    // Set an arbitrary magic at offset 0 (may or may not match expected)
+    let magic: u32 = kani::any();
+    header[0..4].copy_from_slice(&magic.to_le_bytes());
+    // Fill other fields with valid-appearing data
+    header[4..6].copy_from_slice(&CURRENT_SCHEMA_VERSION.to_le_bytes());
+    header[6..8].copy_from_slice(&RecordKind::RunAccepted.id().to_le_bytes());
+    header[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes());
+    header[12..16].copy_from_slice(&0u32.to_le_bytes());
+    header[16..24].copy_from_slice(&0u64.to_le_bytes());
+    for i in 0..DIGEST_BYTES {
+        header[24 + i] = kani::any();
+    }
+    let crc = crc32c::crc32c(&header[..CRC_OFFSET]);
+    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&crc.to_le_bytes());
+
+    let result = decode_record_header(&header, expected_magic, DEFAULT_MAX_PAYLOAD);
+
+    // If magic is wrong, we MUST get BadMagic
+    if magic != expected_magic {
+        match result {
+            Err(JournalError::BadMagic { .. }) => {
+                kani::cover!(
+                    matches!(result, Err(JournalError::BadMagic { .. })),
+                    "BadMagic returned for wrong magic"
+                );
+            }
+            Ok(_) => {
+                ,
         "PayloadTooLarge path"
     );
 }
@@ -242,7 +295,23 @@ fn kani_harness_crc_before_digest() {
     let result = decode_record_header(&header, valid_magic, DEFAULT_MAX_PAYLOAD);
 
     // Must fail with HeaderChecksumMismatch, not PayloadDigestMismatch
-    kani::assert(result.is_err(), "decode must fail with bad CRC");
+    kani::assert(result.is_err(, "assertion failed"), "decode must fail with bad CRC");
+
+    match result {
+        Err(JournalError::HeaderChecksumMismatch) => {
+            kani::cover!(
+                matches!(result, Err(JournalError::HeaderChecksumMismatch)),
+                "HeaderChecksumMismatch returned"
+            );
+        }
+        Err(JournalError::BadMagic { .. }) => {
+            // Magic check may fail first (unlikely with correct magic)
+        }
+        Err(_) => {
+            // Other errors acceptable before digest
+        }
+        Ok(_) => {
+            , "decode must fail with bad CRC");
 
     match result {
         Err(JournalError::HeaderChecksumMismatch) => {

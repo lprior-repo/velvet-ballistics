@@ -922,9 +922,9 @@ mod harnesses {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             let result = SymbolicCode::from_static(entry.symbolic);
-            kani::assert(result.is_some(), "Registered code should return Some");
+            kani::assert(result.is_some(, "assertion failed"), "Registered code should return Some");
             if let Some(code) = result {
-                kani::assert(code.as_str() == entry.symbolic, "SymbolicCode should preserve the symbolic string");
+                kani::assert(code.as_str(, "assertion failed") == entry.symbolic, "SymbolicCode should preserve the symbolic string");
             }
         }
     }
@@ -941,11 +941,11 @@ mod harnesses {
 
         // Verify that a clearly unregistered string returns None
         let result = SymbolicCode::from_static("__DEFINITELY_NOT_REGISTERED__");
-        kani::assert(result.is_none(), "Unregistered string must return None");
+        kani::assert(result.is_none(, "assertion failed"), "Unregistered string must return None");
 
         // Verify that an empty string returns None (no empty symbolic codes exist)
         let empty_result = SymbolicCode::from_static("");
-        kani::assert(empty_result.is_none(), "Empty string must return None");
+        kani::assert(empty_result.is_none(, "assertion failed"), "Empty string must return None");
 
         // Verify: for every registered string, from_static returns Some
         // We already proved this in H1. Here we also verify that the result
@@ -953,7 +953,7 @@ mod harnesses {
         for i in 0..CODE_REGISTRY.len() {
             let entry = &CODE_REGISTRY[i];
             let result = SymbolicCode::from_static(entry.symbolic);
-            kani::assert(result.is_some(), "kani harness assertion");
+            kani::assert(result.is_some(, "assertion failed"), "kani harness assertion");
         }
     }
 }

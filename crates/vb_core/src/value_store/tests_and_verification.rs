@@ -17,12 +17,13 @@ mod kani_harnesses {
             Ok(_) => {}
                 Err(_) => { kani::assume(false); return; },
         }
-        kani::assert(store.total_arena_count() == 1, "kani harness assertion");
+        kani::assert(store.total_arena_count(, "assertion failed") == 1, "kani harness assertion");
 
         let result = store.insert_blob(bytes::Bytes::new());
         match &result {
             Err(super::CoreError::BudgetExceeded { budget, limit }) => {
-                kani::assert(same_static_str(budget, "max_slots"));
+                kani::assert(same_static_str(budget, "max_slots", "assertion failed"));
+                );
                 kani::assert(*limit == 1, "kani harness assertion");
             }
             Ok(_) => { kani::assume(false); return; },
@@ -212,7 +213,7 @@ mod tests {
         let result = store.symbol(SymbolId::new(0));
         kani::assert(result == Err(CoreError::SymbolOutOfBounds {
                 symbol: SymbolId::new(0),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -221,7 +222,7 @@ mod tests {
         let result = store.list(ListId::new(0));
         kani::assert(result == Err(CoreError::ListOutOfBounds {
                 list: ListId::new(0),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -230,7 +231,7 @@ mod tests {
         let result = store.object(ObjectId::new(0));
         kani::assert(result == Err(CoreError::ObjectOutOfBounds {
                 object: ObjectId::new(0),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -239,7 +240,393 @@ mod tests {
         let result = store.blob(BlobId::new(0));
         kani::assert(result == Err(CoreError::BlobOutOfBounds {
                 blob: BlobId::new(0),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
+    }
+
+    #[test]
+    fn value_store_symbol_handle_high_id_rejected() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id0 = store
+            .insert_symbol(Box::<str>::from("first"))
+            .map_err(|e| e.to_string())?;
+        let result = store.symbol(SymbolId::new(1));
+        if result
+            != Err(CoreError::SymbolOutOfBounds {
+                symbol: SymbolId::new(1),
+            })
+        {
+            return Err(String::from("id 1 must fail when only id 0 exists"));
+        }
+        if store.symbol(id0).map_err(|e| e.to_string())? != "first" {
+            return Err(String::from("valid id must resolve"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_list_handle_high_id_rejected() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id0 = store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        if store.list(ListId::new(1))
+            != Err(CoreError::ListOutOfBounds {
+                list: ListId::new(1),
+            })
+        {
+            return Err(String::from("expected list bounds error for id 1"));
+        }
+        let items = store.list(id0).map_err(|e| e.to_string())?;
+        if items.len() != 1 {
+            return Err(String::from("expected 1 item"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_object_handle_high_id_rejected() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id0 = store
+            .insert_object(
+                vec![ObjectField {
+                    key: SymbolId::new(0),
+                    value: SlotValue::Null,
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        if store.object(ObjectId::new(1))
+            != Err(CoreError::ObjectOutOfBounds {
+                object: ObjectId::new(1),
+            })
+        {
+            return Err(String::from("expected object bounds error for id 1"));
+        }
+        let fields = store.object(id0).map_err(|e| e.to_string())?;
+        if fields.len() != 1 {
+            return Err(String::from("expected 1 field"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_blob_handle_high_id_rejected() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id0 = store
+            .insert_blob(Bytes::from_static(b"a"))
+            .map_err(|e| e.to_string())?;
+        if store.blob(BlobId::new(1))
+            != Err(CoreError::BlobOutOfBounds {
+                blob: BlobId::new(1),
+            })
+        {
+            return Err(String::from("expected blob bounds error for id 1"));
+        }
+        if store.blob(id0).map_err(|e| e.to_string())? != b"a" {
+            return Err(String::from("valid blob must resolve"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_list_item_index_zero_on_empty_list_fails() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let list_id = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let result = store.list_item(list_id, 0);
+        if result != Err(CoreError::ListIndexOutOfBounds { index: 0 }) {
+            return Err(String::from("empty list must reject index 0"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_list_item_max_u32_index_rejected() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let list_id = store
+            .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let result = store.list_item(list_id, u32::MAX);
+        if result != Err(CoreError::ListIndexOutOfBounds { index: u32::MAX }) {
+            return Err(String::from("u32::MAX index must be rejected"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_object_field_missing_key_returns_not_found() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let key_present = SymbolId::new(10);
+        let key_absent = SymbolId::new(99);
+        let obj_id = store
+            .insert_object(
+                vec![ObjectField {
+                    key: key_present,
+                    value: SlotValue::Bool(true),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        if store.object_field(obj_id, key_absent)
+            != Err(CoreError::ObjectFieldNotFound { field: key_absent })
+        {
+            return Err(String::from(
+                "missing field must return ObjectFieldNotFound",
+            ));
+        }
+        if store
+            .object_field(obj_id, key_present)
+            .map_err(|e| e.to_string())?
+            != SlotValue::Bool(true)
+        {
+            return Err(String::from("present key must resolve"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_object_field_returns_first_duplicate_key() -> Result<(), String> {
+        // If the same key appears twice, linear scan finds the FIRST one.
+        let mut store = ValueStore::new();
+        let dup_key = SymbolId::new(1);
+        let obj_id = store
+            .insert_object(
+                vec![
+                    ObjectField {
+                        key: dup_key,
+                        value: SlotValue::I64(100),
+                        taint: Taint::Clean,
+                    },
+                    ObjectField {
+                        key: dup_key,
+                        value: SlotValue::I64(200),
+                        taint: Taint::Clean,
+                    },
+                ]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        if store
+            .object_field(obj_id, dup_key)
+            .map_err(|e| e.to_string())?
+            != SlotValue::I64(100)
+        {
+            return Err(String::from("linear scan must return first match"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_insert_symbol_empty_string_is_valid() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id = store
+            .insert_symbol(Box::<str>::from(""))
+            .map_err(|e| e.to_string())?;
+        if !store.symbol(id).map_err(|e| e.to_string())?.is_empty() {
+            return Err(String::from("empty symbol must round-trip"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_insert_list_empty_is_valid() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let items = store.list(id).map_err(|e| e.to_string())?;
+        if !items.is_empty() {
+            return Err(String::from("empty list must be empty"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_insert_object_empty_is_valid() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id = store
+            .insert_object(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let fields = store.object(id).map_err(|e| e.to_string())?;
+        if !fields.is_empty() {
+            return Err(String::from("empty object must be empty"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_insert_blob_empty_is_valid() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let id = store.insert_blob(Bytes::new()).map_err(|e| e.to_string())?;
+        if store.blob(id).map_err(|e| e.to_string())?.is_empty() {
+            Ok(())
+        } else {
+            Err(String::from("empty blob must be empty"))
+        }
+    }
+
+    #[test]
+    fn value_store_counts_track_insertions() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        if store.symbol_count() != 0 {
+            return Err(String::from("initial symbol count must be 0"));
+        }
+        if store.list_count() != 0 {
+            return Err(String::from("initial list count must be 0"));
+        }
+        if store.object_count() != 0 {
+            return Err(String::from("initial object count must be 0"));
+        }
+        if store.blob_count() != 0 {
+            return Err(String::from("initial blob count must be 0"));
+        }
+
+        store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        store
+            .insert_symbol(Box::<str>::from("b"))
+            .map_err(|e| e.to_string())?;
+        if store.symbol_count() != 2 {
+            return Err(String::from("symbol count must be 2 after two inserts"));
+        }
+
+        store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        if store.list_count() != 1 {
+            return Err(String::from("list count must be 1 after one insert"));
+        }
+
+        store
+            .insert_object(
+                vec![ObjectField {
+                    key: SymbolId::new(0),
+                    value: SlotValue::Null,
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        if store.object_count() != 1 {
+            return Err(String::from("object count must be 1 after one insert"));
+        }
+
+        store
+            .insert_blob(Bytes::from_static(b"x"))
+            .map_err(|e| e.to_string())?;
+        if store.blob_count() != 1 {
+            return Err(String::from("blob count must be 1 after one insert"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_symbol_at_exact_max_length_is_accepted() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let value = "x".repeat(MAX_SYMBOL_BYTES_PER_VALUE);
+        let id = store
+            .insert_symbol(value.into_boxed_str())
+            .map_err(|e| e.to_string())?;
+        let retrieved = store.symbol(id).map_err(|e| e.to_string())?;
+        if retrieved.len() != MAX_SYMBOL_BYTES_PER_VALUE {
+            return Err(String::from("symbol length mismatch"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_list_at_exact_max_length_is_accepted() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let values = vec![SlotValue::Null; MAX_LIST_ITEMS_PER_VALUE];
+        let id = store
+            .insert_list(values.into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let retrieved = store.list(id).map_err(|e| e.to_string())?;
+        if retrieved.len() != MAX_LIST_ITEMS_PER_VALUE {
+            return Err(String::from("list length mismatch"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "max-size object fixture is too slow under Miri")]
+    fn value_store_object_at_exact_max_fields_is_accepted() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let field = ObjectField {
+            key: SymbolId::new(0),
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        };
+        let fields = vec![field; MAX_OBJECT_FIELDS_PER_VALUE];
+        let id = store
+            .insert_object(fields.into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let retrieved = store.object(id).map_err(|e| e.to_string())?;
+        if retrieved.len() != MAX_OBJECT_FIELDS_PER_VALUE {
+            return Err(String::from("object field count mismatch"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_blob_at_exact_max_bytes_is_accepted() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let data = vec![0u8; MAX_BLOB_BYTES_PER_VALUE];
+        let id = store
+            .insert_blob(Bytes::from(data))
+            .map_err(|e| e.to_string())?;
+        let retrieved = store.blob(id).map_err(|e| e.to_string())?;
+        if retrieved.len() != MAX_BLOB_BYTES_PER_VALUE {
+            return Err(String::from("blob length mismatch"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_sequential_ids_are_monotonic() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let s0 = store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        let s1 = store
+            .insert_symbol(Box::<str>::from("b"))
+            .map_err(|e| e.to_string())?;
+        let s2 = store
+            .insert_symbol(Box::<str>::from("c"))
+            .map_err(|e| e.to_string())?;
+        if s0.get() != 0 || s1.get() != 1 || s2.get() != 2 {
+            return Err(String::from("symbol ids must be 0, 1, 2"));
+        }
+
+        let l0 = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let l1 = store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        if l0.get() != 0 || l1.get() != 1 {
+            return Err(String::from("list ids must be 0, 1"));
+        }
+
+        let b0 = store.insert_blob(Bytes::new()).map_err(|e| e.to_string())?;
+        let b1 = store
+            .insert_blob(Bytes::from_static(b"z"))
+            .map_err(|e| e.to_string())?;
+        if b0.get() != 0 || b1.get() != 1 {
+            return Err(String::from("blob ids must be 0, 1"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_default_is_same_as_new() {
+        let default: ValueStore = Default::default();
+        let constructed = ValueStore::new();
+        , "assertion failed");
     }
 
     #[test]
@@ -998,24 +1385,24 @@ mod tests {
     #[test]
     fn value_store_with_max_slots_allows_inserts_up_to_cap() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(3);
-        kani::assert(store.max_arena_entries() == 3, "assertion failed");
-        kani::assert(store.total_arena_count() == 0, "assertion failed");
+        kani::assert(store.max_arena_entries(, "assertion failed") == 3, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 0, "assertion failed");
 
         // Insert 3 entries total (1 symbol + 1 list + 1 blob) -- should succeed
         store
             .insert_symbol(Box::<str>::from("a"))
             .map_err(|e| e.to_string())?;
-        kani::assert(store.total_arena_count() == 1, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 1, "assertion failed");
 
         store
             .insert_list(vec![SlotValue::Null].into_boxed_slice())
             .map_err(|e| e.to_string())?;
-        kani::assert(store.total_arena_count() == 2, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 2, "assertion failed");
 
         store
             .insert_blob(Bytes::from_static(b"x"))
             .map_err(|e| e.to_string())?;
-        kani::assert(store.total_arena_count() == 3, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 3, "assertion failed");
 
         // 4th insert should fail
         match store.insert_symbol(Box::<str>::from("b")) {
@@ -1034,7 +1421,7 @@ mod tests {
         store
             .insert_symbol(Box::<str>::from("a"))
             .map_err(|e| e.to_string())?;
-        kani::assert(store.total_arena_count() == 1, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 1, "assertion failed");
         // Second insert fails because cap is reached
         match store.insert_symbol(Box::<str>::from("b")) {
             Err(CoreError::BudgetExceeded {
@@ -1048,7 +1435,7 @@ mod tests {
     #[test]
     fn value_store_new_has_no_cap_and_allows_unlimited_inserts() -> Result<(), String> {
         let mut store = ValueStore::new();
-        kani::assert(store.max_arena_entries() == 0, "assertion failed");
+        kani::assert(store.max_arena_entries(, "assertion failed") == 0, "assertion failed");
         let mut expected_count = 0u64;
         for _ in 0..100u64 {
             store
@@ -1061,7 +1448,15 @@ mod tests {
                 return Err(String::from("total_arena_count mismatch"));
             }
         }
-        kani::assert(store.total_arena_count() == 100, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 100, "assertion failed");
+        Ok(())
+    }
+
+    #[test]
+    fn value_store_default_equals_new() {
+        let default: ValueStore = Default::default();
+        let constructed = ValueStore::new();
+         == 100, "assertion failed");
         Ok(())
     }
 
@@ -1084,7 +1479,7 @@ mod tests {
         let result = store.symbol(SymbolId::new(u32::MAX));
         kani::assert(result == Err(CoreError::SymbolOutOfBounds {
                 symbol: SymbolId::new(u32::MAX),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -1093,7 +1488,7 @@ mod tests {
         let result = store.list(ListId::new(u32::MAX));
         kani::assert(result == Err(CoreError::ListOutOfBounds {
                 list: ListId::new(u32::MAX),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -1102,7 +1497,7 @@ mod tests {
         let result = store.object(ObjectId::new(u32::MAX));
         kani::assert(result == Err(CoreError::ObjectOutOfBounds {
                 object: ObjectId::new(u32::MAX),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -1111,7 +1506,7 @@ mod tests {
         let result = store.blob(BlobId::new(u64::MAX));
         kani::assert(result == Err(CoreError::BlobOutOfBounds {
                 blob: BlobId::new(u64::MAX),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     #[test]
@@ -1131,23 +1526,23 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         // Verify valid handles work
-        kani::assert(store.symbol(sym).map_err(|e| e.to_string())? == "a", "assertion failed");
-        kani::assert(store.list(list).map_err(|e| e.to_string())?.len() == 1, "assertion failed");
-        kani::assert(store.object(obj).map_err(|e| e.to_string())?.len() == 0, "assertion failed");
-        kani::assert(store.blob(blob).map_err(|e| e.to_string())?.len() == 1, "assertion failed");
+        kani::assert(store.symbol(sym, "assertion failed").map_err(|e| e.to_string())? == "a", "assertion failed");
+        kani::assert(store.list(list, "assertion failed").map_err(|e| e.to_string())?.len() == 1, "assertion failed");
+        kani::assert(store.object(obj, "assertion failed").map_err(|e| e.to_string())?.len() == 0, "assertion failed");
+        kani::assert(store.blob(blob, "assertion failed").map_err(|e| e.to_string())?.len() == 1, "assertion failed");
 
         // Forged one-past handles must fail
         let forged_sym = SymbolId::new(sym.get().saturating_add(1));
-        kani::assert(store.symbol(forged_sym) == Err(CoreError::SymbolOutOfBounds { symbol: forged_sym }), "assertion failed");
+        kani::assert(store.symbol(forged_sym, "assertion failed") == Err(CoreError::SymbolOutOfBounds { symbol: forged_sym }), "assertion failed");
 
         let forged_list = ListId::new(list.get().saturating_add(1));
-        kani::assert(store.list(forged_list) == Err(CoreError::ListOutOfBounds { list: forged_list }), "assertion failed");
+        kani::assert(store.list(forged_list, "assertion failed") == Err(CoreError::ListOutOfBounds { list: forged_list }), "assertion failed");
 
         let forged_obj = ObjectId::new(obj.get().saturating_add(1));
-        kani::assert(store.object(forged_obj) == Err(CoreError::ObjectOutOfBounds { object: forged_obj }), "assertion failed");
+        kani::assert(store.object(forged_obj, "assertion failed") == Err(CoreError::ObjectOutOfBounds { object: forged_obj }), "assertion failed");
 
         let forged_blob = BlobId::new(blob.get().saturating_add(1));
-        kani::assert(store.blob(forged_blob) == Err(CoreError::BlobOutOfBounds { blob: forged_blob }), "assertion failed");
+        kani::assert(store.blob(forged_blob, "assertion failed") == Err(CoreError::BlobOutOfBounds { blob: forged_blob }), "assertion failed");
 
         Ok(())
     }
@@ -1165,15 +1560,15 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         // Third insert must fail
-        kani::assert(store.insert_symbol(Box::<str>::from("overflow")) == Err(CoreError::BudgetExceeded {
+        kani::assert(store.insert_symbol(Box::<str>::from("overflow"), "assertion failed") == Err(CoreError::BudgetExceeded {
                 budget: "max_slots",
                 limit: 2,
             }), "assertion failed");
 
         // Existing entries must be untouched
-        kani::assert(store.symbol(sym).map_err(|e| e.to_string())? == "preserved", "assertion failed");
-        kani::assert(store.list_item(list, 0).map_err(|e| e.to_string())? == SlotValue::I64(42), "assertion failed");
-        kani::assert(store.total_arena_count() == 2, "assertion failed");
+        kani::assert(store.symbol(sym, "assertion failed").map_err(|e| e.to_string())? == "preserved", "assertion failed");
+        kani::assert(store.list_item(list, 0, "assertion failed").map_err(|e| e.to_string())? == SlotValue::I64(42), "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 2, "assertion failed");
 
         Ok(())
     }
@@ -1187,19 +1582,19 @@ mod tests {
         let sym_id = store
             .insert_symbol(Box::<str>::from("symbol_zero"))
             .map_err(|e| e.to_string())?;
-        kani::assert(sym_id.get() == 0, "assertion failed");
+        kani::assert(sym_id.get(, "assertion failed") == 0, "assertion failed");
 
         // Insert a list at index 0
         let list_id = store
             .insert_list(vec![SlotValue::Bool(true)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
-        kani::assert(list_id.get() == 0, "assertion failed");
+        kani::assert(list_id.get(, "assertion failed") == 0, "assertion failed");
 
         // SymbolId(0) resolves to the symbol, not the list
-        kani::assert(store.symbol(sym_id).map_err(|e| e.to_string())? == "symbol_zero", "assertion failed");
+        kani::assert(store.symbol(sym_id, "assertion failed").map_err(|e| e.to_string())? == "symbol_zero", "assertion failed");
 
         // ListId(0) resolves to the list, not the symbol
-        kani::assert(store.list_item(list_id, 0).map_err(|e| e.to_string())? == SlotValue::Bool(true), "assertion failed");
+        kani::assert(store.list_item(list_id, 0, "assertion failed").map_err(|e| e.to_string())? == SlotValue::Bool(true), "assertion failed");
 
         Ok(())
     }
@@ -1234,16 +1629,16 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         // Each object must resolve its own field
-        kani::assert(store.object_field(obj0, key).map_err(|e| e.to_string())? == SlotValue::I64(100), "assertion failed");
-        kani::assert(store.object_field(obj1, key).map_err(|e| e.to_string())? == SlotValue::I64(200), "assertion failed");
+        kani::assert(store.object_field(obj0, key, "assertion failed").map_err(|e| e.to_string())? == SlotValue::I64(100), "assertion failed");
+        kani::assert(store.object_field(obj1, key, "assertion failed").map_err(|e| e.to_string())? == SlotValue::I64(200), "assertion failed");
 
         // Raw field slices must also be distinct
         let fields0 = store.object(obj0).map_err(|e| e.to_string())?;
         let fields1 = store.object(obj1).map_err(|e| e.to_string())?;
-        kani::assert(fields0.len() == 1, "assertion failed");
-        kani::assert(fields1.len() == 1, "assertion failed");
-        kani::assert(fields0[0].value == SlotValue::I64(100), "assertion failed");
-        kani::assert(fields1[0].value == SlotValue::I64(200), "assertion failed");
+        kani::assert(fields0.len(, "assertion failed") == 1, "assertion failed");
+        kani::assert(fields1.len(, "assertion failed") == 1, "assertion failed");
+        kani::assert(fields0[0].value == SlotValue::I64(100, "assertion failed"), "assertion failed");
+        kani::assert(fields1[0].value == SlotValue::I64(200, "assertion failed"), "assertion failed");
 
         Ok(())
     }
@@ -1278,9 +1673,9 @@ mod tests {
             let slot = crate::ids::SlotIdx::new(
                 u16::try_from(i).map_err(|_| String::from("index overflow"))?,
             );
-            kani::assert(frame.read_taint(slot).map_err(|e| e.to_string())? == *expected_taint, "taint mismatch at slot {i}");
+            kani::assert(frame.read_taint(slot, "assertion failed").map_err(|e| e.to_string())? == *expected_taint, "taint mismatch at slot {i}");
             let slot_val = frame.read_slot(slot).map_err(|e| e.to_string())?;
-            kani::assert(*slot_val == SlotValue::I64(i64::try_from(i).unwrap_or(0)), "slot value mismatch at index {i}");
+            kani::assert(*slot_val == SlotValue::I64(i64::try_from(i).unwrap_or(0), "assertion failed"), "slot value mismatch at index {i}");
         }
 
         Ok(())
@@ -1294,7 +1689,7 @@ mod tests {
         let result = store.list_item(ListId::new(0), 0);
         kani::assert(result == Err(CoreError::ListOutOfBounds {
                 list: ListId::new(0),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     // --- Defensive: object_field on forged object handle ---
@@ -1305,7 +1700,7 @@ mod tests {
         let result = store.object_field(ObjectId::new(0), SymbolId::new(0));
         kani::assert(result == Err(CoreError::ObjectOutOfBounds {
                 object: ObjectId::new(0),
-            }), "assertion failed");
+            }, "assertion failed"), "assertion failed");
     }
 
     // --- Defensive: large arena cap edge case ---
@@ -1313,12 +1708,12 @@ mod tests {
     #[test]
     fn security_with_max_slots_u16_max_allows_inserts() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(u16::MAX);
-        kani::assert(store.max_arena_entries() == u64::from(u16::MAX), "assertion failed");
+        kani::assert(store.max_arena_entries(, "assertion failed") == u64::from(u16::MAX), "assertion failed");
         // Insert should succeed -- arena is not full
         store
             .insert_symbol(Box::<str>::from("ok"))
             .map_err(|e| e.to_string())?;
-        kani::assert(store.total_arena_count() == 1, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 1, "assertion failed");
         Ok(())
     }
 
@@ -1349,8 +1744,8 @@ mod tests {
         }
 
         // Baseline must be untouched
-        kani::assert(store.list_count() == 1, "failed insert must not change count");
-        kani::assert(store.list_item(baseline, 0).map_err(|e| e.to_string())? == SlotValue::I64(1), "assertion failed");
+        kani::assert(store.list_count(, "assertion failed") == 1, "failed insert must not change count");
+        kani::assert(store.list_item(baseline, 0, "assertion failed").map_err(|e| e.to_string())? == SlotValue::I64(1), "assertion failed");
 
         Ok(())
     }
@@ -1367,7 +1762,7 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         // Verify the first symbol got ID 0
-        kani::assert(sym.get() == 0, "assertion failed");
+        kani::assert(sym.get(, "assertion failed") == 0, "assertion failed");
 
         // Second insert must fail with BudgetExceeded, not ResourceLimitExceeded
         // (arena cap check happens before ID overflow check)
@@ -1388,13 +1783,13 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         // Empty list resolves to empty slice
-        kani::assert(store.list(list_id).map_err(|e| e.to_string())?.len() == 0, "assertion failed");
+        kani::assert(store.list(list_id, "assertion failed").map_err(|e| e.to_string())?.len() == 0, "assertion failed");
 
         // Any index must fail
-        kani::assert(store.list_item(list_id, 0) == Err(CoreError::ListIndexOutOfBounds { index: 0 }), "assertion failed");
+        kani::assert(store.list_item(list_id, 0, "assertion failed") == Err(CoreError::ListIndexOutOfBounds { index: 0 }), "assertion failed");
 
         // list_item_with_taint also fails on empty list
-        kani::assert(store.list_item_with_taint(list_id, 0) == Err(CoreError::ListIndexOutOfBounds { index: 0 }), "assertion failed");
+        kani::assert(store.list_item_with_taint(list_id, 0, "assertion failed") == Err(CoreError::ListIndexOutOfBounds { index: 0 }), "assertion failed");
 
         Ok(())
     }
@@ -1425,16 +1820,41 @@ mod tests {
             .map_err(|e| e.to_string())?;
 
         // object_field returns the first value
-        kani::assert(store.object_field(obj_id, key).map_err(|e| e.to_string())? == SlotValue::I64(100), "assertion failed");
+        kani::assert(store.object_field(obj_id, key, "assertion failed").map_err(|e| e.to_string())? == SlotValue::I64(100), "assertion failed");
 
         // object_field_with_taint must also return the first taint
         let (value, taint) = store
             .object_field_with_taint(obj_id, key)
             .map_err(|e| e.to_string())?;
-        kani::assert(value == SlotValue::I64(100), "assertion failed");
+        kani::assert(value == SlotValue::I64(100, "assertion failed"), "assertion failed");
+        , "assertion failed");
         kani::assert(taint == Taint::Secret, "first-wins must apply to taint index too");
 
         Ok(())
+    }
+
+    // --- Attack: value confusion between list_taints and lists arrays ---
+
+    #[test]
+    fn security_list_taints_are_per_list_not_global() -> Result<(), String> {
+        let mut store = ValueStore::new();
+
+        let clean_list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+
+        let secret_list = store
+            .insert_list_with_taint(
+                vec![SlotValue::I64(2)].into_boxed_slice(),
+                vec![Taint::Secret].into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+
+        // Verify each list has its own taint
+        let (_, clean_taint) = store
+            .list_item_with_taint(clean_list, 0)
+            .map_err(|e| e.to_string())?;
+        )
     }
 
     // --- Attack: value confusion between list_taints and lists arrays ---
@@ -1463,6 +1883,7 @@ mod tests {
         let (_, secret_taint) = store
             .list_item_with_taint(secret_list, 0)
             .map_err(|e| e.to_string())?;
+        )?;
         kani::assert(secret_taint == Taint::Secret, "assertion failed");
 
         Ok(())
@@ -1475,7 +1896,7 @@ mod tests {
         // Verify that total_arena_count doesn't overflow with large counts
         let store = ValueStore::new();
         // Empty store should report 0
-        kani::assert(store.total_arena_count() == 0, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 0, "assertion failed");
         Ok(())
     }
 
@@ -1510,13 +1931,15 @@ mod tests {
                     Err(e) => panic!("unexpected error: {:?}", e),
                 }
                 // Arena count must never exceed cap (or be uncapped)
-                prop_kani::assert(store.total_arena_count() <= max_entries, "kani harness assertion")
+                prop_kani::assert(store.total_arena_count(, "assertion failed") <= max_entries, "kani harness assertion")
             }
 
             // If cap > 0: succeeded == min(insert_count, cap)
             // If cap == 0: all inserts succeed (uncapped)
             if cap > 0 {
-                prop_kani::assert(succeeded == (insert_count as u64).min(u64::from(cap)), "assertion failed");
+                prop_kani::assert(succeeded == (insert_count as u64, "assertion failed").min(u64::from(cap)), "assertion failed");
+            } else {
+                prop_.min(u64::from(cap)), "assertion failed");
             } else {
                 prop_kani::assert(succeeded == insert_count as u64, "assertion failed");
             }
@@ -1541,9 +1964,33 @@ mod tests {
         let (_, taint1) = store
             .list_item_with_taint(list_id, 1)
             .map_err(|e| e.to_string())?;
+        )?;
+        let (_, taint0) = store
+            .list_item_with_taint(list_id, 0)
+            .map_err(|e| e.to_string())?;
+        let (_, taint1) = store
+            .list_item_with_taint(list_id, 1)
+            .map_err(|e| e.to_string())?;
         kani::assert(taint0 == Taint::Clean, "assertion failed");
         kani::assert(taint1 == Taint::Clean, "assertion failed");
         Ok(())
+    }
+
+    #[test]
+    fn value_store_list_with_explicit_taint_secret() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let values = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
+        let taints = vec![Taint::Secret, Taint::DerivedFromSecret].into_boxed_slice();
+        let list_id = store
+            .insert_list_with_taint(values, taints)
+            .map_err(|e| e.to_string())?;
+        let (_, taint0) = store
+            .list_item_with_taint(list_id, 0)
+            .map_err(|e| e.to_string())?;
+        let (_, taint1) = store
+            .list_item_with_taint(list_id, 1)
+            .map_err(|e| e.to_string())?;
+        )
     }
 
     #[test]
@@ -1584,9 +2031,11 @@ mod tests {
         let (val2, taint2) = store
             .object_field_with_taint(obj_id, SymbolId::new(2))
             .map_err(|e| e.to_string())?;
-        kani::assert(val1 == SlotValue::I64(100), "assertion failed");
+        kani::assert(val1 == SlotValue::I64(100, "assertion failed"), "assertion failed");
+        , "assertion failed");
         kani::assert(taint1 == Taint::Secret, "assertion failed");
         kani::assert(val2 == SlotValue::I64(200), "assertion failed");
+        , "assertion failed");
         kani::assert(taint2 == Taint::DerivedFromSecret, "assertion failed");
         Ok(())
     }
@@ -1604,7 +2053,8 @@ mod tests {
         let (value, taint) = store
             .list_item_with_taint(list_id, 0)
             .map_err(|e| e.to_string())?;
-        kani::assert(value == SlotValue::Bool(true), "assertion failed");
+        kani::assert(value == SlotValue::Bool(true, "assertion failed"), "assertion failed");
+        , "assertion failed");
         kani::assert(taint == Taint::Clean, "assertion failed");
         Ok(())
     }
@@ -1618,9 +2068,60 @@ mod tests {
         let (value, taint) = store
             .object_field_with_taint(obj_id, SymbolId::new(5))
             .map_err(|e| e.to_string())?;
-        kani::assert(value == SlotValue::I64(42), "assertion failed");
+        kani::assert(value == SlotValue::I64(42, "assertion failed"), "assertion failed");
+        , "assertion failed");
         kani::assert(taint == Taint::Clean, "assertion failed");
         Ok(())
+    }
+
+    #[test]
+    fn value_store_list_item_with_taint_index_out_of_bounds() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let list_id = store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let result = store.list_item_with_taint(list_id, u32::MAX);
+        match result {
+            Err(CoreError::ListIndexOutOfBounds { .. }) => Ok(()),
+            other => Err(format!("expected ListIndexOutOfBounds, got {:?}", other)),
+        }
+    }
+
+    #[test]
+    fn value_store_object_field_with_taint_object_not_found() -> Result<(), String> {
+        let store = ValueStore::new();
+        let result = store.object_field_with_taint(ObjectId::new(0), SymbolId::new(0));
+        match result {
+            Err(CoreError::ObjectOutOfBounds { .. }) => Ok(()),
+            other => Err(format!("expected ObjectOutOfBounds, got {:?}", other)),
+        }
+    }
+
+    #[test]
+    fn value_store_object_field_with_taint_field_not_found() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let fields = vec![ObjectField::clean(SymbolId::new(1), SlotValue::Null)].into_boxed_slice();
+        let obj_id = store.insert_object(fields).map_err(|e| e.to_string())?;
+        let result = store.object_field_with_taint(obj_id, SymbolId::new(99));
+        match result {
+            Err(CoreError::ObjectFieldNotFound { .. }) => Ok(()),
+            other => Err(format!("expected ObjectFieldNotFound, got {:?}", other)),
+        }
+    }
+
+    // =========================================================================
+    // Additional coverage: Blob operations
+    // =========================================================================
+
+    #[test]
+    fn value_store_blob_non_empty_data() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let data = vec![0xDE, 0xAD, 0xBE, 0xEF];
+        let blob_id = store
+            .insert_blob(Bytes::from(data.clone()))
+            .map_err(|e| e.to_string())?;
+        let retrieved = store.blob(blob_id).map_err(|e| e.to_string())?;
+        )
     }
 
     #[test]
@@ -1686,9 +2187,9 @@ mod tests {
         let blob2 = store
             .insert_blob(Bytes::from_static(b"third"))
             .map_err(|e| e.to_string())?;
-        kani::assert(store.blob(blob0).map_err(|e| e.to_string())? == b"first", "assertion failed");
-        kani::assert(store.blob(blob1).map_err(|e| e.to_string())? == b"second", "assertion failed");
-        kani::assert(store.blob(blob2).map_err(|e| e.to_string())? == b"third", "assertion failed");
+        kani::assert(store.blob(blob0, "assertion failed").map_err(|e| e.to_string())? == b"first", "assertion failed");
+        kani::assert(store.blob(blob1, "assertion failed").map_err(|e| e.to_string())? == b"second", "assertion failed");
+        kani::assert(store.blob(blob2, "assertion failed").map_err(|e| e.to_string())? == b"third", "assertion failed");
         Ok(())
     }
 
@@ -1700,8 +2201,8 @@ mod tests {
             .insert_blob(Bytes::from(data.clone()))
             .map_err(|e| e.to_string())?;
         let retrieved = store.blob(blob_id).map_err(|e| e.to_string())?;
-        kani::assert(retrieved.len() == 100, "assertion failed");
-        kani::assert(retrieved.iter().all(|&b| b == 0), "kani harness assertion");
+        kani::assert(retrieved.len(, "assertion failed") == 100, "assertion failed");
+        kani::assert(retrieved.iter(, "assertion failed").all(|&b| b == 0), "kani harness assertion");
         Ok(())
     }
 
@@ -1712,7 +2213,7 @@ mod tests {
     #[test]
     fn value_store_total_arena_count_empty() -> Result<(), String> {
         let store = ValueStore::new();
-        kani::assert(store.total_arena_count() == 0, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 0, "assertion failed");
         Ok(())
     }
 
@@ -1731,21 +2232,21 @@ mod tests {
         store
             .insert_blob(Bytes::from_static(b"x"))
             .map_err(|e| e.to_string())?;
-        kani::assert(store.total_arena_count() == 4, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 4, "assertion failed");
         Ok(())
     }
 
     #[test]
     fn value_store_max_arena_entries_zero_uncapped() -> Result<(), String> {
         let store = ValueStore::new();
-        kani::assert(store.max_arena_entries() == 0, "assertion failed");
+        kani::assert(store.max_arena_entries(, "assertion failed") == 0, "assertion failed");
         Ok(())
     }
 
     #[test]
     fn value_store_max_arena_entries_from_with_max_slots() -> Result<(), String> {
         let store = ValueStore::with_max_slots(100);
-        kani::assert(store.max_arena_entries() == 100, "assertion failed");
+        kani::assert(store.max_arena_entries(, "assertion failed") == 100, "assertion failed");
         Ok(())
     }
 
@@ -1757,7 +2258,40 @@ mod tests {
                 .insert_symbol(Box::<str>::from("x"))
                 .map_err(|e| e.to_string())?;
         }
-        kani::assert(store.total_arena_count() == 1000, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 1000, "assertion failed");
+        Ok(())
+    }
+
+    // =========================================================================
+    // Additional coverage: Arena cap near limit
+    // =========================================================================
+
+    #[test]
+    fn value_store_arena_cap_fills_and_rejects() -> Result<(), String> {
+        let mut store = ValueStore::with_max_slots(2);
+        store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        match store.insert_object(vec![].into_boxed_slice()) {
+            Err(CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: 2,
+            }) => Ok(()),
+            other => Err(format!("expected BudgetExceeded, got {:?}", other)),
+        }
+    }
+
+    // =========================================================================
+    // Additional coverage: ObjectField accessors
+    // =========================================================================
+
+    #[test]
+    fn object_field_clean_creates_clean_taint() -> Result<(), String> {
+        let field = ObjectField::clean(SymbolId::new(1), SlotValue::I64(42));
+         == 1000, "assertion failed");
         Ok(())
     }
 
@@ -1792,7 +2326,14 @@ mod tests {
         let field = ObjectField::clean(SymbolId::new(1), SlotValue::I64(42));
         kani::assert(field.taint == Taint::Clean, "assertion failed");
         kani::assert(field.key == SymbolId::new(1), "assertion failed");
-        kani::assert(field.value == SlotValue::I64(42), "assertion failed");
+        kani::assert(field.value == SlotValue::I64(42, "assertion failed"), "assertion failed");
+        Ok(())
+    }
+
+    #[test]
+    fn object_field_with_taint_preserves_taint() -> Result<(), String> {
+        let field = ObjectField::with_taint(SymbolId::new(2), SlotValue::Bool(true), Taint::Secret);
+        , "assertion failed");
         Ok(())
     }
 
@@ -1801,7 +2342,7 @@ mod tests {
         let field = ObjectField::with_taint(SymbolId::new(2), SlotValue::Bool(true), Taint::Secret);
         kani::assert(field.taint == Taint::Secret, "assertion failed");
         kani::assert(field.key == SymbolId::new(2), "assertion failed");
-        kani::assert(field.value == SlotValue::Bool(true), "assertion failed");
+        kani::assert(field.value == SlotValue::Bool(true, "assertion failed"), "assertion failed");
         Ok(())
     }
 
@@ -1813,7 +2354,7 @@ mod tests {
     fn value_store_debug_format() -> Result<(), String> {
         let store = ValueStore::new();
         let debug = format!("{:?}", store);
-        kani::assert(debug.contains("ValueStore"), "kani harness assertion");
+        kani::assert(debug.contains("ValueStore", "assertion failed"), "kani harness assertion");
         Ok(())
     }
 
@@ -1821,7 +2362,7 @@ mod tests {
     fn object_field_debug_format() -> Result<(), String> {
         let field = ObjectField::clean(SymbolId::new(1), SlotValue::Null);
         let debug = format!("{:?}", field);
-        kani::assert(debug.contains("ObjectField"), "kani harness assertion");
+        kani::assert(debug.contains("ObjectField", "assertion failed"), "kani harness assertion");
         Ok(())
     }
 
@@ -1838,8 +2379,8 @@ mod tests {
         let id1 = store
             .insert_symbol(Box::<str>::from("b"))
             .map_err(|e| e.to_string())?;
-        kani::assert(id0.get() == 0, "assertion failed");
-        kani::assert(id1.get() == 1, "assertion failed");
+        kani::assert(id0.get(, "assertion failed") == 0, "assertion failed");
+        kani::assert(id1.get(, "assertion failed") == 1, "assertion failed");
         Ok(())
     }
 
@@ -1852,8 +2393,8 @@ mod tests {
         let id1 = store
             .insert_list(vec![SlotValue::Null].into_boxed_slice())
             .map_err(|e| e.to_string())?;
-        kani::assert(id0.get() == 0, "assertion failed");
-        kani::assert(id1.get() == 1, "assertion failed");
+        kani::assert(id0.get(, "assertion failed") == 0, "assertion failed");
+        kani::assert(id1.get(, "assertion failed") == 1, "assertion failed");
         Ok(())
     }
 
@@ -1866,8 +2407,8 @@ mod tests {
         let id1 = store
             .insert_object(vec![].into_boxed_slice())
             .map_err(|e| e.to_string())?;
-        kani::assert(id0.get() == 0, "assertion failed");
-        kani::assert(id1.get() == 1, "assertion failed");
+        kani::assert(id0.get(, "assertion failed") == 0, "assertion failed");
+        kani::assert(id1.get(, "assertion failed") == 1, "assertion failed");
         Ok(())
     }
 
@@ -1878,8 +2419,8 @@ mod tests {
         let id1 = store
             .insert_blob(Bytes::from_static(b"x"))
             .map_err(|e| e.to_string())?;
-        kani::assert(id0.get() == 0, "assertion failed");
-        kani::assert(id1.get() == 1, "assertion failed");
+        kani::assert(id0.get(, "assertion failed") == 0, "assertion failed");
+        kani::assert(id1.get(, "assertion failed") == 1, "assertion failed");
         Ok(())
     }
 
@@ -2043,8 +2584,8 @@ mod tests {
     #[test]
     fn value_store_default_has_zero_arena_entries() -> Result<(), String> {
         let store: ValueStore = Default::default();
-        kani::assert(store.total_arena_count() == 0, "assertion failed");
-        kani::assert(store.max_arena_entries() == 0, "assertion failed");
+        kani::assert(store.total_arena_count(, "assertion failed") == 0, "assertion failed");
+        kani::assert(store.max_arena_entries(, "assertion failed") == 0, "assertion failed");
         Ok(())
     }
 }

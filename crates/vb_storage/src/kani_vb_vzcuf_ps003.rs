@@ -46,6 +46,54 @@ mod kani_errors_ps003 {
         let ptl = JournalError::PayloadTooLarge { len: 100, max: 50 };
         match ptl {
             JournalError::PayloadTooLarge { len, max } => {
+                // Kani proof harness for error variant discrimination (PS-003, C4, C6).
+//
+// Obligation ID: POB-vb-vzcuf-010
+// Verifier: kani
+// Command: cargo kani --harness check_error_variants_distinct -p vb_storage
+//
+// Domain claim: Accumulated budget rejection is distinct from
+// QueueFull and PayloadTooLarge under controlled unrelated guards.
+//
+// PRODUCTION BINDING:
+//   Imports actual JournalError enum from crates/vb_storage/src/error/mod.rs.
+//   Tests that QueueFull and PayloadTooLarge are distinct variants
+//   and distinguishable via pattern matching.
+//
+//   Also tests encode_record error discrimination (production codec).
+//
+// Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-010
+
+#[cfg(kani)]
+mod kani_errors_ps003 {
+    use crate::codec::encode_record;
+    use crate::constants::{
+        MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN,
+    };
+    use crate::error::JournalError;
+    use crate::events::JournalEvent;
+    use crate::records::RecordKind;
+    use crate::types::EventSeq;
+    use vb_core::{RunId, WorkflowDigest};
+
+    /// C4: QueueFull and PayloadTooLarge are distinguishable variants.
+    /// Production binding: tests actual JournalError enum pattern matching.
+    #[kani::proof]
+    fn check_error_variants_distinct() {
+        // QueueFull has no payload — simple variant
+        let qf = JournalError::QueueFull;
+        match qf {
+            JournalError::QueueFull => {} // OK
+            _ => {
+                kani::assume(false);
+                loop {}
+            }
+        }
+
+        // PayloadTooLarge has payload fields
+        let ptl = JournalError::PayloadTooLarge { len: 100, max: 50 };
+        match ptl {
+            JournalError::PayloadTooLarge { len, max } => {
                 kani::assert(len == 100, "PayloadTooLarge.len == 100");
                 kani::assert(max == 50, "PayloadTooLarge.max == 50");
             }
@@ -152,8 +200,8 @@ mod kani_errors_ps003 {
         };
         let msg = format!("{err}");
         // Error message must contain the diagnostic fields
-        kani::assert(msg.contains("5000"), "error message missing len: {msg}");
-        kani::assert(msg.contains("1000"), "error message missing max: {msg}");
+        kani::assert(msg.contains("5000", "assertion failed"), "error message missing len: {msg}");
+        kani::assert(msg.contains("1000", "assertion failed"), "error message missing max: {msg}");
     }
 
     /// C4: QueueFull error message is descriptive.
@@ -161,9 +209,8 @@ mod kani_errors_ps003 {
     fn check_queue_full_error_message() {
         let err = JournalError::QueueFull;
         let msg = format!("{err}");
-        kani::assert(!msg.is_empty(), "QueueFull must have error message");
-        kani::assert(
-            msg.contains("full") || msg.contains("queue"),
+        kani::assert(!msg.is_empty(, "assertion failed"), "QueueFull must have error message");
+        kani::assert(msg.contains("full", "assertion failed") || msg.contains("queue"),
             "QueueFull message should indicate queue fullness: {msg}",
         );
     }

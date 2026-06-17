@@ -53,9 +53,67 @@ mod kani_encoding_ps005 {
         ) {
             Ok(value) => {
                 let len = value.len();
+                // Kani proof harness for encoded byte accounting (PS-005, C2).
+//
+// Obligation ID: POB-vb-vzcuf-018
+// Verifier: kani
+// Command: cargo kani --harness check_encoded_length_accounting -p vb_storage
+//
+// Domain claim: Encoded byte accounting uses full encoded journal event
+// value length returned by encode_record, not payload-only length.
+//
+// PRODUCTION BINDING:
+//   Directly tests encode_record from crates/vb_storage/src/codec/mod.rs:20-32.
+//   Tests the full Vec<u8>.len() output against RECORD_HEADER_LEN constant.
+//   The production append_event uses value.len() for byte accounting.
+//
+//   Production constants used:
+//     - RECORD_HEADER_LEN = 60 (constants.rs:46)
+//     - MAX_JOURNAL_EVENT_PAYLOAD_BYTES = 1_048_576 (constants.rs:78)
+//     - MAGIC_JOURNAL_EVENT = 0x5642_4A45 (constants.rs:52)
+//
+// Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-018
+
+#[cfg(kani)]
+mod kani_encoding_ps005 {
+    use crate::codec::encode_record;
+    use crate::constants::{
+        MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN,
+    };
+    use crate::events::JournalEvent;
+    use crate::records::RecordKind;
+    use crate::types::EventSeq;
+    use vb_core::{RunId, WorkflowDigest};
+
+    /// C2: encode_record output length >= RECORD_HEADER_LEN.
+    /// The full Vec<u8>.len() always includes the 60-byte header.
+    #[kani::proof]
+    fn check_encoded_length_minimum() {
+        let run: u64 = kani::any();
+        kani::assume(run > 0);
+        kani::assume(run <= 1000);
+
+        let event = JournalEvent::RunAccepted {
+            run: RunId::new(run),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+        };
+
+        match encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunAccepted,
+            0,
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        ) {
+            Ok(value) => {
+                let len = value.len();
                 kani::assert(
                     len >= RECORD_HEADER_LEN as usize,
                     "encoded record len >= RECORD_HEADER_LEN (60)",
+                );
+                // Verify that len includes header overhead
+                ",
                 );
                 // Verify that len includes header overhead
                 kani::assert(
@@ -140,8 +198,22 @@ mod kani_encoding_ps005 {
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             ) {
                 Ok(value) => {
-                    kani::assert(
-                        value.len() >= RECORD_HEADER_LEN as usize,
+                    kani::assert(value.len(, "assertion failed") >= RECORD_HEADER_LEN as usize,
+                        "event kind {i}: encoded len >= RECORD_HEADER_LEN",
+                    );
+                }
+                Err(_) => {}
+            }
+        }
+    }
+
+    /// C2: Maximum payload produces encoded length < u64::MAX.
+    /// Ensures accumulated byte accounting cannot overflow u64.
+    #[kani::proof]
+    fn check_max_encoded_fits_u64() {
+        use crate::constants::RECORD_HEADER_LEN;
+        let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+         >= RECORD_HEADER_LEN as usize,
                         "event kind {i}: encoded len >= RECORD_HEADER_LEN",
                     );
                 }

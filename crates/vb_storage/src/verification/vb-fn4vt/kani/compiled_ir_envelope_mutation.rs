@@ -96,7 +96,7 @@ fn arbitrary_envelope_mutation() {
     }
 
     // Core assertion: mutated record with same digest key must fail validation
-    kani::assert(result.is_err(), "Mutated envelope with same digest key must fail validation");
+    kani::assert(result.is_err(, "assertion failed"), "Mutated envelope with same digest key must fail validation");
 }
 
 /// PO-002b: Prove that validation succeeds when envelope is NOT mutated.

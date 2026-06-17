@@ -216,8 +216,38 @@ fn finish_string_result_injectivity() {
 
     // Universal claim: distinct inputs produce distinct encodings.
     // Kani must verify this for ALL input pairs within bounds.
-    kani::assert(
-        encodings_differ(&encoded1, &encoded2),
+    kani::assert(encodings_differ(&encoded1, &encoded2, "assertion failed"),
+        "distinct byte slices must produce distinct Finish String encodings",
+    );
+}
+
+// =========================================================================
+// PO-KANI-FINISH-002: Integer result injectivity
+// =========================================================================
+
+/// Prove that distinct `i64` values produce distinct Finish encodings.
+///
+/// Production path: `ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes())`
+///
+/// Since `i64::to_le_bytes()` is bijective, distinct i64 values produce
+/// distinct [u8; 8] arrays. This harness proves the property through the
+/// actual Finish encoding path.
+///
+/// ## Bounds
+/// - All 2^64 i64 values (Kani exhaustively explores the domain).
+/// - Unwind 8 covers the single `to_le_bytes` call.
+#[kani::proof]
+#[kani::unwind(8)]
+fn finish_integer_result_injectivity() {
+    let i1: i64 = kani::any();
+    let i2: i64 = kani::any();
+    kani::assume(i1 != i2);
+
+    let encoded1 = encode_finish_integer(i1);
+    let encoded2 = encode_finish_integer(i2);
+
+    // Distinct i64 ⇒ distinct [u8; 8] (i64::to_le_bytes is bijective).
+    ,
         "distinct byte slices must produce distinct Finish String encodings",
     );
 }
@@ -305,8 +335,7 @@ fn finish_scalarvalue_variant_discrimination() {
     // With the edge case excluded, String and Integer encodings always
     // differ: either the lengths differ (len != 8) or the content
     // differs (slice[..8] != i.to_le_bytes()).
-    kani::assert(
-        string_vs_integer_differ(&encoded_string, &encoded_integer),
+    kani::assert(string_vs_integer_differ(&encoded_string, &encoded_integer, "assertion failed"),
         "String and Integer Finish encodings must differ \
          (edge case excluded via assume, see TB-FINISH-003)",
     );

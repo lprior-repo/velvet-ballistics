@@ -172,16 +172,17 @@ fn vt2f_shard_lower_semantics() {
     let absent_lower = ShardKernelState::explicit(RuntimePolicy::Relaxed, StoreMode::AlwaysPresent);
     kani::assert(matches!(
         absent_lower.action_failed_lower(run),
-        Err(KernelRuntimeError::RunNotFound)
-    ));
+        Err(KernelRuntimeError::RunNotFound), "assertion failed"));
 
     let active_lower = ShardKernelState::with_active_run(RuntimePolicy::Relaxed, run);
     let ticket_run = if selector & 1 == 0 { run } else { other };
     let facade_result = active_lower.runtime_action_failed(ticket_run);
     kani::assert(matches!(
         facade_result,
-        Err(KernelRuntimeError::InvalidActionCompletion)
-    ));
+        Err(KernelRuntimeError::InvalidActionCompletion), "assertion failed"));
+
+    let explicit = ShardKernelState::explicit(selected_policy, selected_store);
+    );
 
     let explicit = ShardKernelState::explicit(selected_policy, selected_store);
     kani::assert(explicit.runtime_policy == selected_policy, "assertion failed");
@@ -204,10 +205,11 @@ fn vt2f_shard_lower_semantics() {
     let executed_before = frame.executed;
     let ask_result = frame.ask();
     if matches!(prompt_value(selector), SlotValue::Bool(_)) {
-        kani::assert(ask_result.is_err(), "kani harness assertion");
+        kani::assert(ask_result.is_err(, "assertion failed"), "kani harness assertion");
+        , "kani harness assertion");
         kani::assert(frame.executed == executed_before, "assertion failed");
     } else {
         kani::assert(ask_result.is_ok(), "kani harness assertion");
-        kani::assert(frame.executed == executed_before.saturating_add(1), "assertion failed");
+        kani::assert(frame.executed == executed_before.saturating_add(1, "assertion failed"), "assertion failed");
     }
 }

@@ -13,7 +13,7 @@ fn kani_expr_stack_bound_accepts_valid_program() {
     let ops = [ExprOp::LoadConst(ConstIdx::new(0))];
     let result = check_expr_stack_bound(&ops);
 
-    kani::assert(matches!(result, Ok(1)), "single load needs stack depth one");
+    kani::assert(matches!(result, Ok(1), "assertion failed"), "single load needs stack depth one");
 }
 
 /// VB-EXPR-002 H2: check_expr_stack_bound rejects underflowing programs.
@@ -22,8 +22,7 @@ fn kani_expr_stack_bound_rejects_underflow() {
     let ops = [ExprOp::Add];
     let result = check_expr_stack_bound(&ops);
 
-    kani::assert(
-        matches!(result, Err(ExprError::StackUnderflow)),
+    kani::assert(matches!(result, Err(ExprError::StackUnderflow), "assertion failed"),
         "binary op on empty stack underflows",
     );
 }
@@ -36,11 +35,9 @@ fn kani_expr_stack_bound_rejects_oversized_program() {
     let ops = [ExprOp::LoadConst(ConstIdx::new(0)); 65];
     let result = check_expr_stack_bound(&ops);
 
-    kani::assert(
-        matches!(
+    kani::assert(matches!(
             result,
-            Err(ExprError::StackOverflow { max }) if max == MAX_EXPRESSION_STACK
-        ),
+            Err(ExprError::StackOverflow { max }) if max == MAX_EXPRESSION_STACK, "assertion failed"),
         "program requiring 65 stack entries exceeds capacity 64",
     );
 }
