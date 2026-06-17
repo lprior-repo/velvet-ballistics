@@ -60,6 +60,7 @@ verus! {
         ensures
             spec_payload_len(0, 0) == 0,
     {
+        assert(spec_payload_len(0, 0) == 0);
     }
 
     // ── Lemma: payload_len is non-negative ─────────────────────────────
@@ -67,6 +68,7 @@ verus! {
         ensures
             spec_payload_len(hi, lo) >= 0,
     {
+        assert(spec_payload_len(hi, lo) >= 0);
     }
 
     // ── Lemma: validate_magic of correct magic is true ─────────────────
@@ -74,6 +76,7 @@ verus! {
         ensures
             spec_validate_magic(MAGIC_VALUE()),
     {
+        assert(spec_validate_magic(MAGIC_VALUE()));
     }
 
     // ── Lemma: validate_magic of wrong magic is false ──────────────────
@@ -81,6 +84,7 @@ verus! {
         ensures
             !spec_validate_magic(MAGIC_VALUE() + 1),
     {
+        assert(!spec_validate_magic(MAGIC_VALUE() + 1));
     }
 
     // ── Lemma: new header (magic + zero payload) validates against any max ─
@@ -95,6 +99,9 @@ verus! {
         ensures
             spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok,
     {
+        assert(spec_payload_len(hi, lo) == 0);
+        assert(spec_payload_len(hi, lo) <= max);
+        assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok);
     }
 
     // ── Lemma: bad magic always yields InvalidMagic ─────────────────────
@@ -108,6 +115,8 @@ verus! {
         ensures
             spec_validate_before_alloc(MAGIC_VALUE() + 1, hi, lo, max) == ValidationSpecResult::InvalidMagic,
     {
+        assert(!spec_validate_magic(MAGIC_VALUE() + 1));
+        assert(spec_validate_before_alloc(MAGIC_VALUE() + 1, hi, lo, max) == ValidationSpecResult::InvalidMagic);
     }
 
     // ── Lemma: oversized payload yields PayloadTooLarge (when magic valid) ─
@@ -122,6 +131,9 @@ verus! {
         ensures
             spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::PayloadTooLarge,
     {
+        assert(spec_validate_magic(MAGIC_VALUE()));
+        assert(spec_payload_len(hi, lo) > max);
+        assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::PayloadTooLarge);
     }
 
     // ── Lemma: both checks pass yields Ok ──────────────────────────────
@@ -136,6 +148,8 @@ verus! {
         ensures
             spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok,
     {
+        assert(spec_validate_magic(MAGIC_VALUE()));
+        assert(spec_validate_before_alloc(MAGIC_VALUE(), hi, lo, max) == ValidationSpecResult::Ok);
     }
 
     // ── Lemma: validate_before_alloc is total (always returns a result) ──
@@ -154,6 +168,13 @@ verus! {
                 ValidationSpecResult::PayloadTooLarge => true,
             },
     {
+        // spec_validate_before_alloc is a total if-then-else function over
+        // three outcomes; one must hold.
+        assert(match spec_validate_before_alloc(magic, hi, lo, max) {
+            ValidationSpecResult::Ok => true,
+            ValidationSpecResult::InvalidMagic => true,
+            ValidationSpecResult::PayloadTooLarge => true,
+        });
     }
 
     // ── Lemma: payload_len monotone in hi ──────────────────────────────
@@ -163,6 +184,7 @@ verus! {
         ensures
             spec_payload_len(hi1, lo) < spec_payload_len(hi2, lo),
     {
+        assert(spec_payload_len(hi1, lo) < spec_payload_len(hi2, lo));
     }
 
     // ── Lemma: payload_len monotone in lo ──────────────────────────────
@@ -172,6 +194,26 @@ verus! {
         ensures
             spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2),
     {
+        assert(spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2));
+    }
+
+    // ── Exec: validate_before_alloc — header validation before allocation ──
+    pub fn validate_before_alloc(
+        magic: nat,
+        payload_len_hi: nat,
+        payload_len_u32: nat,
+        max_payload: nat,
+    ) -> (result: ValidationSpecResult)
+        ensures
+            result == spec_validate_before_alloc(magic, payload_len_hi, payload_len_u32, max_payload),
+    {
+        if !spec_validate_magic(magic) {
+            ValidationSpecResult::InvalidMagic
+        } else if spec_payload_len(payload_len_hi, payload_len_u32) > max_payload {
+            ValidationSpecResult::PayloadTooLarge
+        } else {
+            ValidationSpecResult::Ok
+        }
     }
 
 } // verus!
