@@ -369,7 +369,7 @@ fn kani_resume_apply_state_transitions() {
     s8.runtime_state_insert(r8, RuntimeState::Initial);
     s8.apply(r8, RuntimeEvent::TerminalRemove);
     let state8 = s8.runtime_state_get(r8);
-    kani::assert(state8.is_none(, "assertion failed"),
+    kani::assert(state8.is_none(),
         "TerminalRemove must remove state from runtime_states",
     );
     // Test DriveFinished → swap_remove (state is removed)
@@ -378,7 +378,7 @@ fn kani_resume_apply_state_transitions() {
     s9.runtime_state_insert(r9, RuntimeState::Running);
     s9.apply(r9, RuntimeEvent::DriveFinished);
     let state9 = s9.runtime_state_get(r9);
-    kani::assert(state9.is_none(, "assertion failed"),
+    kani::assert(state9.is_none(),
         "DriveFinished must remove state from runtime_states",
     );
 }
