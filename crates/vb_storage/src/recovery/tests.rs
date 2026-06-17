@@ -3745,7 +3745,7 @@ mod hydrate_run_frame_tests {
     #[test]
     fn apply_tail_events_fails_closed_when_taint_read_fails() {
         let run = RunId::new(1);
-        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 0).unwrap();
+        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 0).expect("RunFrame::new must succeed for valid parameters");
         let tail = vec![JournalEvent::SlotWrittenEvent {
             run,
             seq: EventSeq::new(1),
