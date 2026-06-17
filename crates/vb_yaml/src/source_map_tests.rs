@@ -215,7 +215,7 @@ fn adversarial_source_map_malformed_yaml_returns_error() {
     );
 }
 
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn adversarial_source_map_multi_line_scalar_tracks_spans() {
     let yaml = "key: |\n  line1\n  line2\n  line3\n";
@@ -225,7 +225,7 @@ fn adversarial_source_map_multi_line_scalar_tracks_spans() {
             assert!(!map.is_empty(), "expected non-empty source map");
           let first = map.span_for_node(0);
             let Some(span) = first else {
-                unreachable!("expected span for node 0, got None");
+                assert!(false, "expected span for node 0, got None");
                 return;
             };
             assert!(span.start_line > 0, "start_line should be > 0");
@@ -335,14 +335,14 @@ fn adversarial_source_map_large_input_tracked() {
 // -----------------------------------------------------------------------
 
 /// Semantic source map tracks $.when.event trigger container.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_trigger_when_event() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    name: invoice\nsteps:\n  - id: first\n    set:\n      output: result\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.event");
     let Some(span) = trigger else {
-        unreachable!("expected $.when.event trigger span");
+        assert!(false, "expected $.when.event trigger span");
         return;
     };
     assert!(
@@ -353,14 +353,14 @@ fn semantic_source_map_trigger_when_event() {
 }
 
 /// Semantic source map tracks $.when.manual trigger container.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_trigger_when_manual() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: first\n    set:\n      output: result\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.manual");
     let Some(span) = trigger else {
-        unreachable!("expected $.when.manual trigger span");
+        assert!(false, "expected $.when.manual trigger span");
         return;
     };
     assert!(
@@ -370,14 +370,14 @@ fn semantic_source_map_trigger_when_manual() {
 }
 
 /// Semantic source map tracks $.when.schedule trigger container.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_trigger_when_schedule() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  schedule:\n    cron: '0 * * * *'\nsteps:\n  - id: first\n    set:\n      output: result\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.schedule");
     let Some(span) = trigger else {
-        unreachable!("expected $.when.schedule trigger span");
+        assert!(false, "expected $.when.schedule trigger span");
         return;
     };
     assert!(
@@ -387,14 +387,14 @@ fn semantic_source_map_trigger_when_schedule() {
 }
 
 /// Semantic source map tracks $.when.webhook trigger container.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_trigger_when_webhook() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  webhook: {}\nsteps:\n  - id: first\n    set:\n      output: result\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.webhook");
     let Some(span) = trigger else {
-        unreachable!("expected $.when.webhook trigger span");
+        assert!(false, "expected $.when.webhook trigger span");
         return;
     };
     assert!(
@@ -404,21 +404,21 @@ fn semantic_source_map_trigger_when_webhook() {
 }
 
 /// Non-trigger containers like $.next_key should NOT be trigger paths.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_non_trigger_not_flagged_as_trigger() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  event:\n    name: invoice\nsteps:\n  - id: first\n    set:\n      output: result\nnext_key: after\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     // $.next_key is not a trigger container path
     let Some(span) = map.span_for_path("$.next_key") else {
-        unreachable!("non-trigger $.next_key should still be tracked in source map");
+        assert!(false, "non-trigger $.next_key should still be tracked in source map");
         return;
     };
     assert!(span.end_offset >= span.start_offset, "span must have valid range");
 }
 
 /// Sequence indices in semantic paths are 0-based and sequential.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_sequence_indices_sequential() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: a\n    set:\n      output: r1\n  - id: b\n    set:\n      output: r2\n  - id: c\n    set:\n      output: r3\n";
@@ -427,15 +427,15 @@ fn semantic_source_map_sequence_indices_sequential() {
     let b = map.span_for_path("$.steps[1].id");
     let c = map.span_for_path("$.steps[2].id");
     let Some(sa) = a else {
-        unreachable!("expected $.steps[0].id");
+        assert!(false, "expected $.steps[0].id");
         return;
     };
     let Some(sb) = b else {
-        unreachable!("expected $.steps[1].id");
+        assert!(false, "expected $.steps[1].id");
         return;
     };
     let Some(_sc) = c else {
-        unreachable!("expected $.steps[2].id");
+        assert!(false, "expected $.steps[2].id");
         return;
     };
     // Each should resolve to a different text value
@@ -450,7 +450,7 @@ fn semantic_source_map_sequence_indices_sequential() {
 }
 
 /// Semantic source map tracks nested set paths.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_nested_set_paths() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: first\n    set:\n      output: result\n      value: one\n";
@@ -458,11 +458,11 @@ fn semantic_source_map_nested_set_paths() {
     let output = map.span_for_path("$.steps[0].set.output");
     let value = map.span_for_path("$.steps[0].set.value");
     let Some(so) = output else {
-        unreachable!("expected $.steps[0].set.output");
+        assert!(false, "expected $.steps[0].set.output");
         return;
     };
     let Some(sv) = value else {
-        unreachable!("expected $.steps[0].set.value");
+        assert!(false, "expected $.steps[0].set.value");
         return;
     };
     assert_eq!(span_text(yaml, so), "result");
@@ -470,28 +470,28 @@ fn semantic_source_map_nested_set_paths() {
 }
 
 /// Semantic source map with finish step.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_finish_step() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: first\n    finish:\n      result: complete\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let result = map.span_for_path("$.steps[0].finish.result");
     let Some(span) = result else {
-        unreachable!("expected $.steps[0].finish.result");
+        assert!(false, "expected $.steps[0].finish.result");
         return;
     };
     assert_eq!(span_text(yaml, span), "complete");
 }
 
 /// Semantic source map tracks root-level scalar.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_root_scalar() {
     let yaml = "version: velvet-ballistics/v1\nname: root_test\nwhen:\n  manual: {}\nsteps: []\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let version = map.span_for_path("$.version");
     let Some(span) = version else {
-        unreachable!("expected $.version path");
+        assert!(false, "expected $.version path");
         return;
     };
     assert!(
@@ -501,14 +501,14 @@ fn semantic_source_map_root_scalar() {
 }
 
 /// Semantic source map with deeply nested paths.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_deep_nesting() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: nested\n    set:\n      config:\n        db:\n          host: localhost\n          port: 5432\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let db = map.span_for_path("$.steps[0].set.config.db");
     let Some(span) = db else {
-        unreachable!("expected $.steps[0].set.config.db");
+        assert!(false, "expected $.steps[0].set.config.db");
         return;
     };
     assert!(
@@ -551,7 +551,7 @@ fn build_source_map_rejects_multiple_documents() {
 }
 
 /// Build source map produces correct line/column for multi-line YAML.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn build_source_map_multi_line_span_accuracy() {
     let yaml = "first: 1\nsecond: 2\nthird: 3\n";
@@ -559,7 +559,7 @@ fn build_source_map_multi_line_span_accuracy() {
     // Node 0 should be "first: 1" on line 1
     let span0 = map.span_for_node(0);
     let Some(s) = span0 else {
-        unreachable!("expected span for node 0");
+        assert!(false, "expected span for node 0");
         return;
     };
     assert_eq!(s.start_line, 1);
@@ -576,7 +576,7 @@ fn build_source_map_handles_mixed_indentation() {
 }
 
 /// Source map handles YAML with flow style sequences.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn build_source_map_flow_style_sequence() {
     let yaml = "items: [a, b, c]\n";
@@ -584,7 +584,7 @@ fn build_source_map_flow_style_sequence() {
     let map = match result {
         Ok(map) => map,
         Err(e) => {
-            unreachable!("flow-style sequence should be accepted: {e}");
+            assert!(false, "flow-style sequence should be accepted: {e}");
             unreachable!()
         }
     };
@@ -595,7 +595,7 @@ fn build_source_map_flow_style_sequence() {
 }
 
 /// Source map handles YAML with flow style mappings.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn build_source_map_flow_style_mapping() {
     let yaml = "obj: {key: value}\n";
@@ -603,7 +603,7 @@ fn build_source_map_flow_style_mapping() {
     let map = match result {
         Ok(map) => map,
         Err(e) => {
-            unreachable!("flow-style mapping should be accepted: {e}");
+            assert!(false, "flow-style mapping should be accepted: {e}");
             unreachable!()
         }
     };
@@ -628,13 +628,13 @@ fn build_source_map_empty_containers() {
 }
 
 /// Semantic source map with no steps produces minimal paths.
-#[allow(unreachable_code)]
+#[allow(clippy::assertions_on_constants)]
 #[test]
 fn semantic_source_map_no_steps() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let Some(span) = map.span_for_path("$.version") else {
-        unreachable!("expected $.version path");
+        assert!(false, "expected $.version path");
         return;
     };
     assert!(
@@ -642,7 +642,7 @@ fn semantic_source_map_no_steps() {
         "version span must contain version string"
     );
     let Some(name_span) = map.span_for_path("$.name") else {
-        unreachable!("expected $.name path");
+        assert!(false, "expected $.name path");
         return;
     };
     assert_eq!(span_text(yaml, name_span), "test", "name span must contain 'test'");
