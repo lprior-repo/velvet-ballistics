@@ -67,9 +67,12 @@ verus! {
                 && !spec_valid_transition(terminal, StepState::Waiting)
                 && !spec_valid_transition(terminal, StepState::Asking),
     {
-        // Structural property: terminal states have only self-transitions.
-        // The spec_valid_transition only lists self-transitions for
-        // Succeeded, Failed, Cancelled, and Skipped.
+        // Only Succeeded, Failed, Cancelled, Skipped are terminal.
+        // Each has only self-transition; none transition to Pending/Running/Waiting/Asking.
+        assert(!spec_valid_transition(terminal, StepState::Pending));
+        assert(!spec_valid_transition(terminal, StepState::Running));
+        assert(!spec_valid_transition(terminal, StepState::Waiting));
+        assert(!spec_valid_transition(terminal, StepState::Asking));
     }
 
     // ── Lemma: pending is non-terminal ────────────────────────────────────
@@ -77,7 +80,7 @@ verus! {
         ensures
             !spec_is_terminal(StepState::Pending),
     {
-        // Structural: Pending is not in {Succeeded, Failed, Cancelled, Skipped}.
+        assert(!spec_is_terminal(StepState::Pending));
     }
 
     // ── Lemma: running is non-terminal ────────────────────────────────────
@@ -85,7 +88,7 @@ verus! {
         ensures
             !spec_is_terminal(StepState::Running),
     {
-        // Structural: Running is not in {Succeeded, Failed, Cancelled, Skipped}.
+        assert(!spec_is_terminal(StepState::Running));
     }
 
     // ── Lemma: waiting is non-terminal ────────────────────────────────────
@@ -93,7 +96,7 @@ verus! {
         ensures
             !spec_is_terminal(StepState::Waiting),
     {
-        // Structural: Waiting is not in {Succeeded, Failed, Cancelled, Skipped}.
+        assert(!spec_is_terminal(StepState::Waiting));
     }
 
     // ── Lemma: asking is non-terminal ─────────────────────────────────────
@@ -101,7 +104,7 @@ verus! {
         ensures
             !spec_is_terminal(StepState::Asking),
     {
-        // Structural: Asking is not in {Succeeded, Failed, Cancelled, Skipped}.
+        assert(!spec_is_terminal(StepState::Asking));
     }
 
     // ── Lemma: succeeded is terminal ──────────────────────────────────────
@@ -109,7 +112,7 @@ verus! {
         ensures
             spec_is_terminal(StepState::Succeeded),
     {
-        // Direct: Succeeded is in the terminal set.
+        assert(spec_is_terminal(StepState::Succeeded));
     }
 
     // ── Lemma: failed is terminal ─────────────────────────────────────────
@@ -117,7 +120,7 @@ verus! {
         ensures
             spec_is_terminal(StepState::Failed),
     {
-        // Direct: Failed is in the terminal set.
+        assert(spec_is_terminal(StepState::Failed));
     }
 
     // ── Lemma: cancelled is terminal ──────────────────────────────────────
@@ -125,7 +128,7 @@ verus! {
         ensures
             spec_is_terminal(StepState::Cancelled),
     {
-        // Direct: Cancelled is in the terminal set.
+        assert(spec_is_terminal(StepState::Cancelled));
     }
 
     // ── Lemma: skipped is terminal ────────────────────────────────────────
@@ -133,7 +136,7 @@ verus! {
         ensures
             spec_is_terminal(StepState::Skipped),
     {
-        // Direct: Skipped is in the terminal set.
+        assert(spec_is_terminal(StepState::Skipped));
     }
 
     // ── Lemma: terminal self-transitions are always valid ─────────────────
