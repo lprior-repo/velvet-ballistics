@@ -434,7 +434,7 @@ fn recovery_error_action_abi_mismatch_includes_action_id() {
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,
-        Err(RecoveryError::ActionAbiMismatch { action_id: _, .. })
+        Err(RecoveryError::ActionAbiMismatch { .. })
     ));
 }
 
