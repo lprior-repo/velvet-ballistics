@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 // Proptest: verification.digest cross-field consistency (Gate 10).
 //
 // Obligation: PO-vb-h09wf-022

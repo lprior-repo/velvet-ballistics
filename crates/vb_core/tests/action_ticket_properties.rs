@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Properties of `ActionTicket` that hold regardless of feature flags.
 //!
 //! Covers: Copy trait, equality across all 7 fields, hash stability,
