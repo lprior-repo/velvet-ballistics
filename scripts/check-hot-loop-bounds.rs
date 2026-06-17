@@ -349,11 +349,21 @@ fn has_full_slice(text: &str) -> bool {
     text.contains("[..]")
 }
 
+fn is_verus_macro_open(code: &str) -> bool {
+    if let Some(pos) = find_word_byte(code, b"verus!") {
+        let after = &code[pos + b"verus!".len()..];
+        let trimmed = after.trim_start();
+        return trimmed.starts_with('{');
+    }
+    false
+}
+
 fn audit_file(rel_path: &str, text: &str) -> Vec<Finding> {
     let mut findings: Vec<Finding> = Vec::new();
     let mut state = TestSkipState::Normal;
     let mut range_loop_depth: usize = 0;
     let mut flux_trusted_depth: i32 = 0;
+    let mut verus_brace_depth: i32 = 0;
 
     for (index, raw_line) in text.lines().enumerate() {
         let line_no = index + 1;
@@ -363,6 +373,24 @@ fn audit_file(rel_path: &str, text: &str) -> Vec<Finding> {
         }
         let line = without_comment(raw_line);
         let code = line.trim();
+
+        if verus_brace_depth > 0 {
+            let (opens, closes) = brace_delta(line);
+            verus_brace_depth += opens as i32 - closes as i32;
+            if verus_brace_depth <= 0 {
+                verus_brace_depth = 0;
+            }
+            continue;
+        }
+
+        if is_verus_macro_open(code) {
+            let (opens, closes) = brace_delta(line);
+            verus_brace_depth += opens as i32 - closes as i32;
+            if verus_brace_depth <= 0 {
+                verus_brace_depth = 0;
+            }
+            continue;
+        }
 
         match state {
             TestSkipState::Armed => {
@@ -572,6 +600,22 @@ const SELF_TEST_BAD_FINDINGS_FILE: &str = concat!(
     "pub fn use_path_index() { let arr = vec![1u8, 2, 3]; let _ = arr[0]; }\n",
 );
 
+const SELF_TEST_VERUS_FILE: &str = concat!(
+    "#[cfg(verus)]\n",
+    "verus! {\n",
+    "    pub proof fn spec_with_index(arr: Vec<u8>, idx: usize) -> bool\n",
+    "        ensures\n",
+    "            forall|i: usize| i < arr.len() ==> arr[i] == arr@[i as int],\n",
+    "    {\n",
+    "        assert(arr[idx] == arr@[idx as int]);\n",
+    "    }\n",
+    "}\n",
+    "verus! {\n",
+    "    let all_taints = [Taint::Clean, Taint::Derived, Taint::Secret];\n",
+    "    assert(all_taints[0] != all_taints[1]);\n",
+    "}\n",
+);
+
 fn fresh_fixture_root() -> Result<PathBuf, String> {
     let root = std::env::temp_dir().join(format!("hot-loop-bounds-{}", std::process::id()));
     match fs::remove_dir_all(&root) {
@@ -597,6 +641,7 @@ fn write_self_test_fixtures(root: &Path) -> Result<(), String> {
     write_fixture_checked(&root.join("crates/vb_core/src/cfg_test_check.rs"), SELF_TEST_CFG_TEST_FILE)?;
     write_fixture_checked(&root.join("crates/vb_runtime/src/type_literal_check.rs"), SELF_TEST_TYPE_LITERAL_FILE)?;
     write_fixture_checked(&root.join("crates/vb_storage/src/slice_sig_check.rs"), SELF_TEST_SLICE_SIG_FILE)?;
+    write_fixture_checked(&root.join("crates/vb_core/src/verus_check.rs"), SELF_TEST_VERUS_FILE)?;
     write_fixture_checked(&root.join("crates/vb_ipc/src/bad_findings_check.rs"), SELF_TEST_BAD_FINDINGS_FILE)
 }
 
@@ -647,6 +692,11 @@ fn run_self_test() -> Result<(), String> {
         &findings,
         "crates/vb_storage/src/slice_sig_check.rs",
         "slice-sig-fixture",
+    )?;
+    ensure_no_findings(
+        &findings,
+        "crates/vb_core/src/verus_check.rs",
+        "verus-block-fixture",
     )?;
 
     let bad_findings_path = "crates/vb_ipc/src/bad_findings_check.rs";
