@@ -97,15 +97,20 @@ fn ps_009_concurrent_insert_and_fire() {
         let w2 = wheel.clone();
         let t2 = thread::spawn(move || {
             let mut guard = w2.lock().unwrap();
-            let _ = guard.fire_expired(100);
+            guard.fire_expired(100)
         });
 
         t1.join().unwrap();
-        t2.join().unwrap();
-
+        let fired = t2.join().unwrap();
         let guard = wheel.lock().unwrap();
-        // If inserted at deadline=50 and fired at now=100, entry should be gone
-        assert_eq!(guard.len(), 0);
+
+        // Concurrent insert + fire: the timer is observed by exactly one
+        // operation regardless of ordering. Both serializations are valid:
+        //   1. insert then fire -> fired_len=1, wheel_len=0
+        //   2. fire then insert -> fired_len=0, wheel_len=1
+        // The mutex serializes the operations, so the sum is always 1 and
+        // the wheel is never left in a corrupted or duplicated state.
+        assert_eq!(fired.len() + guard.len(), 1);
     });
 }
 
