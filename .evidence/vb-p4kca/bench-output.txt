@@ -1,0 +1,10 @@
+    Finished `bench` profile [optimized + debuginfo] target(s) in 0.09s
+     Running benches/aggregate_resource_budget.rs (target/release/deps/aggregate_resource_budget-80c17e4964c97e68)
+Gnuplot not found, using plotters backend
+test aggregate_resource_budget/1000_runs ... bench:         399 ns/iter (+/- 7)
+
+    Finished `bench` profile [optimized + debuginfo] target(s) in 0.09s
+     Running benches/aggregate_resource_budget.rs (target/release/deps/aggregate_resource_budget-80c17e4964c97e68)
+Gnuplot not found, using plotters backend
+test aggregate_resource_budget/1000_runs ... bench:         396 ns/iter (+/- 7)
+

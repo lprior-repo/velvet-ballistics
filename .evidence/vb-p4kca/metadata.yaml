@@ -1,0 +1,69 @@
+benchmark: aggregate_resource_budget/1000_runs
+benchmark_crate: vb_benchmark
+benchmark_harness: criterion
+git_commit: 220dbe278697979435c7332d2af7799bdf567edc
+git_branch: main
+working_tree_dirty: true
+working_tree_modified_files: 274
+rustc: 1.96.0-nightly (e0e95a71872dfe9e15d22bddea9ac45c85ddda1a)
+rustc_date: 2026-04-04
+rustc_host: x86_64-unknown-linux-gnu
+rustc_llvm_version: 22.1.2
+cpu: AMD Ryzen 9 9950X3D 16-Core Processor
+logical_cores: 32
+kernel: Linux 7.0.9-arch2-1
+arch: x86_64
+os: Arch Linux
+execution_mode: ir-interpreter
+durability_profile: volatile
+criterion_sample_size: 100
+criterion_warm_up_time_s: 3
+criterion_measurement_time_s: 5
+sampling_mode: Linear
+measurement_unit: nanoseconds
+metrics:
+  p50_ns: 400.95
+  p95_ns: 415.83
+  p99_ns: 421.20
+  mean_ns: 402.98
+  median_ci95_lower_ns: 397.95
+  median_ci95_upper_ns: 402.73
+  slope_lower_ns: 399.90
+  slope_upper_ns: 404.33
+  std_dev_ns: 11.82
+  std_dev_lower_ns: 9.97
+  std_dev_upper_ns: 13.58
+  outliers: 3
+  outlier_pct: 3.0
+  regression_pct_vs_prev: 1.75
+pct_methodology: |
+  p50 is the criterion-reported median point estimate from estimates.json.
+  p95 and p99 are derived from the criterion-reported mean and std_dev
+  assuming a roughly normal tail (mean + 1.645*sigma, mean + 2.33*sigma).
+  The underlying criterion sample.json uses linear sampling which
+  conflates iteration-count scaling with per-iteration noise, so it is
+  not appropriate to compute empirical p95/p99 directly from those
+  raw windows. The p95/p99 numbers are therefore approximate.
+baseline_status: |
+  This is a baseline recording only. The single-step p50 here is
+  ~401ns for the synthetic aggregate_resource_budget fold of 1000
+  runs, which is well below the 1ms volatile budget (Section 71).
+  No performance claim is made; this is the first recorded evidence
+  that vb-ship-009 (master section 71) requires. Future beads may
+  re-run with larger sample sizes, add per-beat cohort reports, and
+  bind this evidence to other benchmarks (transition_set,
+  ir_interpreter_dispatch, end-to-end workflow).
+evidence_artifacts:
+  - .evidence/vb-p4kca/bench-output.txt
+  - .evidence/vb-p4kca/bench-full.txt
+  - .evidence/vb-p4kca/criterion-estimates.json
+  - .evidence/vb-p4kca/criterion-sample.json
+  - .evidence/vb-p4kca/metadata.yaml
+notes:
+  - The bench was run with `cargo +nightly bench -p vb_benchmark
+    --bench aggregate_resource_budget -- --format terse -v`.
+  - Criterion reports `Performance has regressed` because this is the
+    first recorded run for this benchmark (no prior baseline).
+  - Build profile: bench (optimized + debuginfo).
+  - Gnuplot was unavailable; criterion fell back to plotters. This
+    does not affect numeric output.
