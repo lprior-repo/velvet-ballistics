@@ -4431,11 +4431,7 @@ fn missing_journal_writer_group_commit_1(c: &mut Criterion) {
     let Some((journal, queue)) = (journal_dir.as_ref()).ok().and_then(|dir| {
         vb_storage::FjallJournal::open(dir.path(), None)
             .ok()
-            .and_then(|j| {
-                JournalWriterQueue::new(64, 1, vb_storage::StorageLimits::DEFAULT)
-                    .ok()
-                    .map(|q| (j, q))
-            })
+            .zip(JournalWriterQueue::new(64, 1, vb_storage::StorageLimits::DEFAULT).ok())
     }) else {
         return;
     };
@@ -4476,11 +4472,7 @@ fn missing_journal_writer_group_commit_64(c: &mut Criterion) {
     let Some((journal, queue)) = (journal_dir.as_ref()).ok().and_then(|dir| {
         vb_storage::FjallJournal::open(dir.path(), None)
             .ok()
-            .and_then(|j| {
-                JournalWriterQueue::new(256, 64, vb_storage::StorageLimits::DEFAULT)
-                    .ok()
-                    .map(|q| (j, q))
-            })
+            .zip(JournalWriterQueue::new(256, 64, vb_storage::StorageLimits::DEFAULT).ok())
     }) else {
         return;
     };
@@ -4520,11 +4512,7 @@ fn missing_journal_writer_group_commit_1024(c: &mut Criterion) {
     let Some((journal, queue)) = (journal_dir.as_ref()).ok().and_then(|dir| {
         vb_storage::FjallJournal::open(dir.path(), None)
             .ok()
-            .and_then(|j| {
-                JournalWriterQueue::new(2048, 1024, vb_storage::StorageLimits::DEFAULT)
-                    .ok()
-                    .map(|q| (j, q))
-            })
+            .zip(JournalWriterQueue::new(2048, 1024, vb_storage::StorageLimits::DEFAULT).ok())
     }) else {
         return;
     };
