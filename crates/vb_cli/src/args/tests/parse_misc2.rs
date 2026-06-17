@@ -1,5 +1,8 @@
 use super::*;
 use crate::args::run_ops::CANCEL_REASON_MAX_CHARS;
+use crate::args::shared::{named_flag, parse_output_format, positional_str};
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
 
 #[test]
 fn parse_system_status_rejects_unknown_profile() {
@@ -385,4 +388,168 @@ fn parse_cancel_accepts_reason_exactly_256_chars() {
         matches!(parsed, Ok(Command::Cancel { .. })),
         "unexpected: {parsed:?}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Shared-module edge-case tests (parse_output_format, positional_str, named_flag)
+// Recovered from stash@{6} (feat(vb-chaah): add AI PR contract gate with self-tests)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn parse_args_empty_vector_returns_no_command() {
+    let parsed = parse_args(&[]);
+    assert!(
+        matches!(parsed, Err(ParseError::NoCommand)),
+        "expected NoCommand, got {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_args_binary_only_returns_no_command() {
+    let parsed = parse_args(&args(&["velvet-ballistics"]));
+    assert!(
+        matches!(parsed, Err(ParseError::NoCommand)),
+        "expected NoCommand, got {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_args_empty_vec_returns_no_command_not_unknown() {
+    let parsed = parse_args(&[]);
+    match parsed {
+        Err(ParseError::NoCommand) => {}
+        other => panic!("expected NoCommand, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_output_format_empty_vec_returns_text_default() {
+    let format = parse_output_format(&[]);
+    assert_eq!(format, OutputFormat::Text);
+}
+
+#[test]
+fn parse_output_format_binary_only_returns_text_default() {
+    let format = parse_output_format(&args(&["velvet-ballistics"]));
+    assert_eq!(format, OutputFormat::Text);
+}
+
+#[test]
+fn parse_output_format_emit_yaml_returns_yaml() {
+    let format = parse_output_format(&args(&["--emit", "yaml"]));
+    assert_eq!(format, OutputFormat::Yaml);
+}
+
+#[test]
+fn parse_output_format_emit_postcard_returns_postcard() {
+    let format = parse_output_format(&args(&["--emit", "postcard"]));
+    assert_eq!(format, OutputFormat::Postcard);
+}
+
+#[test]
+fn parse_output_format_emit_text_returns_text() {
+    let format = parse_output_format(&args(&["--emit", "text"]));
+    assert_eq!(format, OutputFormat::Text);
+}
+
+#[test]
+fn parse_output_format_emit_unknown_value_returns_text() {
+    let format = parse_output_format(&args(&["--emit", "cson"]));
+    assert_eq!(format, OutputFormat::Text);
+}
+
+#[test]
+fn parse_output_format_json_flag_returns_text() {
+    let format = parse_output_format(&args(&["--json"]));
+    assert_eq!(format, OutputFormat::Text);
+}
+
+#[test]
+fn parse_output_format_jsonl_flag_returns_text() {
+    let format = parse_output_format(&args(&["--jsonl"]));
+    assert_eq!(format, OutputFormat::Text);
+}
+
+#[test]
+fn positional_str_beyond_bounds_returns_missing_argument() {
+    let result = positional_str(&args(&["one", "two"]), 5, "target");
+    assert!(
+        matches!(result, Err(ParseError::MissingArgument("target"))),
+        "expected MissingArgument(\"target\"), got {result:?}"
+    );
+}
+
+#[test]
+fn positional_str_exact_last_index_succeeds() {
+    let result = positional_str(&args(&["one", "two"]), 1, "arg");
+    assert!(result.is_ok());
+    if let Ok(val) = result {
+        assert_eq!(val, "two");
+    }
+}
+
+#[test]
+fn positional_str_one_past_end_returns_missing_argument() {
+    let result = positional_str(&args(&["one"]), 1, "target");
+    assert!(
+        matches!(result, Err(ParseError::MissingArgument("target"))),
+        "expected MissingArgument(\"target\"), got {result:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn positional_str_non_utf8_returns_missing_argument() {
+    use std::os::unix::ffi::OsStrExt;
+    let non_utf8: Vec<OsString> = vec![
+        OsString::from("valid"),
+        std::ffi::OsStr::from_bytes(b"\xff").to_os_string(),
+    ];
+    let result = positional_str(&non_utf8, 1, "target");
+    assert!(
+        matches!(result, Err(ParseError::MissingArgument("target"))),
+        "expected MissingArgument(\"target\"), got {result:?}"
+    );
+}
+
+#[test]
+fn named_flag_at_last_position_no_value_returns_none() {
+    let result = named_flag(&args(&["--emit"]), "--emit");
+    assert!(
+        result.is_none(),
+        "expected None when flag is the last argument, got {result:?}"
+    );
+}
+
+#[test]
+fn named_flag_with_value_returns_some() {
+    let result = named_flag(&args(&["--emit", "yaml"]), "--emit");
+    assert_eq!(result, Some("yaml".to_string()));
+}
+
+#[test]
+fn named_flag_not_present_returns_none() {
+    let result = named_flag(&args(&["one", "two"]), "--missing");
+    assert!(result.is_none());
+}
+
+#[test]
+fn named_flag_value_starting_with_double_dash_returns_value() {
+    let result = named_flag(&args(&["--db", "--some-other-flag"]), "--db");
+    assert_eq!(result, Some("--some-other-flag".to_string()));
+}
+
+#[test]
+fn named_flag_switch_at_end_returns_none() {
+    let result = named_flag(&args(&["run", "w.yaml", "--dry-run"]), "--dry-run");
+    assert!(result.is_none());
+}
+
+#[test]
+fn named_flag_first_occurrence_wins() {
+    let result = named_flag(
+        &args(&["--emit", "yaml", "--emit", "postcard"]),
+        "--emit",
+    );
+    assert_eq!(result, Some("yaml".to_string()));
 }
