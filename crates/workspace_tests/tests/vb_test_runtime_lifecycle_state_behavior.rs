@@ -348,13 +348,14 @@ fn submit_action_then_finish(
 }
 
 fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
+    use vb_core::action::compute_action_idempotency_key;
     ActionTicket {
         run,
         step: StepIdx::ZERO,
         seq: SeqNo::ZERO,
         action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(run, SeqNo::ZERO, action),
         capacity: 1,
         ..Default::default()
     }
@@ -365,7 +366,7 @@ fn action_output(value: SlotValue) -> ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: postcard::to_allocvec(&value).map_or(0, |v| v.len() as u32),
     }
 }
 
@@ -424,9 +425,7 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
 }
 
 /// L1-2: Action suspension transitions run from Running to Resumable
-// Pre-existing issue: test fails with assertion on step state
 #[test]
-#[ignore]
 fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -439,16 +438,18 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
     );
     tick_count(&mut runtime, 2)?;
 
-    // After first tick, action was scheduled (run is now suspended/resumable)
+    // After first tick, action was scheduled (run is now suspended/resumable).
+    // The runtime emits ActionScheduledTicket (not ActionScheduled) as the
+    // journal event for action scheduling.
     let events = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
         events.iter().any(
-            |e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, .. }
-            if *r == run && *step == StepIdx::ZERO)
+            |e| matches!(e, RuntimeJournalEvent::ActionScheduledTicket { ticket, input, output }
+            if ticket.run == run && *input == SlotIdx::ZERO && *output == SlotIdx::new(1))
         ),
-        "journal must contain ActionScheduled event for step 0"
+        "journal must contain ActionScheduledTicket event for step 0"
     );
 
     // Counters: submitted, waiting for action completion
@@ -663,9 +664,7 @@ fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
 }
 
 /// L2-2: ActionScheduled lifecycle event is recorded when action is triggered
-// Pre-existing issue: test fails with ActionScheduled not journaled
 #[test]
-#[ignore]
 fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -678,16 +677,17 @@ fn action_scheduled_lifecycle_event_recorded() -> Result<(), String> {
     );
     tick_and_drain(&mut runtime)?;
 
-    // ActionScheduled event must be in journal
+    // ActionScheduledTicket event must be in journal (runtime emits this
+    // instead of bare ActionScheduled during normal operation).
     let events = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
     assert!(
         events.iter().any(
-            |e| matches!(e, RuntimeJournalEvent::ActionScheduled { run: r, step, action: a }
-            if *r == run && *step == StepIdx::ZERO && *a == ActionId::new(7))
+            |e| matches!(e, RuntimeJournalEvent::ActionScheduledTicket { ticket, .. }
+            if ticket.run == run && ticket.action == ActionId::new(7))
         ),
-        "ActionScheduled must be journaled for action_id=7, step=0"
+        "ActionScheduledTicket must be journaled for action_id=7, step=0"
     );
     Ok(())
 }

@@ -161,7 +161,9 @@ fn create_cue_file(dir: &TempDir, name: &str, kind: &str, version: &str) -> Path
 schema_version: "{version}"
 "#,
     );
-    fs::write(&path, content).expect("Failed to write cue file");
+    fs::write(&path, content).unwrap_or_else(|_| {
+        panic!("Failed to write cue file at {path:?}")
+    });
     path
 }
 
@@ -173,7 +175,9 @@ fn create_bad_kind_cue(dir: &TempDir, name: &str, bad_kind: &str) -> PathBuf {
 schema_version: "1.0.0"
 "#,
     );
-    fs::write(&path, content).expect("Failed to write cue file");
+    fs::write(&path, content).unwrap_or_else(|_| {
+        panic!("Failed to write cue file at {path:?}")
+    });
     path
 }
 
@@ -184,7 +188,9 @@ fn create_missing_kind_cue(dir: &TempDir, name: &str, version: &str) -> PathBuf 
         r#"schema_version: "{version}"
 "#,
     );
-    fs::write(&path, content).expect("Failed to write cue file");
+    fs::write(&path, content).unwrap_or_else(|_| {
+        panic!("Failed to write cue file at {path:?}")
+    });
     path
 }
 
@@ -195,7 +201,9 @@ fn create_missing_version_cue(dir: &TempDir, name: &str, kind: &str) -> PathBuf 
         r#"kind: "{kind}"
 "#,
     );
-    fs::write(&path, content).expect("Failed to write cue file");
+    fs::write(&path, content).unwrap_or_else(|_| {
+        panic!("Failed to write cue file at {path:?}")
+    });
     path
 }
 
@@ -207,7 +215,9 @@ fn create_bad_version_cue(dir: &TempDir, name: &str, kind: &str, bad_ver: &str) 
 schema_version: "{bad_ver}"
 "#,
     );
-    fs::write(&path, content).expect("Failed to write cue file");
+    fs::write(&path, content).unwrap_or_else(|_| {
+        panic!("Failed to write cue file at {path:?}")
+    });
     path
 }
 
