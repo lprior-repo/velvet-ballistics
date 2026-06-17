@@ -13,6 +13,7 @@ flux-rs = { git = "https://github.com/flux-rs/flux.git" }
 [features]
 default = []
 flux = []
+verus = []
 
 [lints]
 workspace = true
