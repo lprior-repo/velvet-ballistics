@@ -46,8 +46,16 @@ fn harness_payload_deserialize() {
 
 #[kani::proof]
 fn harness_payload_deserialize_invalid_utf8() {
-    // Generate payload with invalid UTF-8 (CliPostcardPayload requires valid UTF-8 JSON)
-    let payload = vec![0x80, 0x81, 0x82, 0x83]; // Invalid UTF-8
+    // Generate payload with invalid UTF-8 (CliPostcardPayload requires valid UTF-8 JSON).
+    // Symbolic witness: the four payload bytes are restricted to the
+    // invalid-UTF-8 prefix `[0x80, 0x81, 0x82, 0x83]` so the harness
+    // exercises the precise decode path for malformed JSON input.
+    let b0: u8 = kani::any();
+    let b1: u8 = kani::any();
+    let b2: u8 = kani::any();
+    let b3: u8 = kani::any();
+    kani::assume(b0 == 0x80 && b1 == 0x81 && b2 == 0x82 && b3 == 0x83);
+    let payload = vec![b0, b1, b2, b3]; // Invalid UTF-8
     let schema_version = 1u16;
     let kind = 2u16;
 

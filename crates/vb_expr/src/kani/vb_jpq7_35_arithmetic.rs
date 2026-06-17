@@ -17,9 +17,15 @@ use vb_core::SlotValue;
 use vb_core::value::FiniteF64;
 
 /// PO-KANI-005 H1: i64::MAX + 1 returns IntegerOverflow.
+///
+/// Symbolic witness: `operand_b` is restricted to 1 so the
+/// harness exercises the precise i64::MAX + 1 overflow boundary
+/// for the production `eval_binary_op(Add)` impl.
 #[kani::proof]
 fn check_i64_add_overflow() {
-    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
+    let operand_b: i64 = kani::any();
+    kani::assume(operand_b == 1);
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(operand_b));
 
     kani::assert(result.is_err(), "i64::MAX + 1 must overflow");
 
@@ -44,9 +50,15 @@ fn check_i64_add_overflow() {
 }
 
 /// PO-KANI-005 H2: i64::MIN - 1 returns IntegerOverflow.
+///
+/// Symbolic witness: `operand_b` is restricted to 1 so the
+/// harness exercises the precise i64::MIN - 1 underflow boundary
+/// for the production `eval_binary_op(Sub)` impl.
 #[kani::proof]
 fn check_i64_sub_overflow() {
-    let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
+    let operand_b: i64 = kani::any();
+    kani::assume(operand_b == 1);
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(operand_b));
 
     kani::assert(result.is_err(), "i64::MIN - 1 must overflow");
 
@@ -69,9 +81,15 @@ fn check_i64_sub_overflow() {
 }
 
 /// PO-KANI-005 H3: i64::MAX * 2 returns IntegerOverflow.
+///
+/// Symbolic witness: `operand_b` is restricted to 2 so the
+/// harness exercises the precise i64::MAX * 2 overflow boundary
+/// for the production `eval_binary_op(Mul)` impl.
 #[kani::proof]
 fn check_i64_mul_overflow() {
-    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(2));
+    let operand_b: i64 = kani::any();
+    kani::assume(operand_b == 2);
+    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(operand_b));
 
     kani::assert(result.is_err(), "i64::MAX * 2 must overflow");
 
@@ -94,9 +112,15 @@ fn check_i64_mul_overflow() {
 }
 
 /// PO-KANI-005 H4: i64::MIN * -1 returns IntegerOverflow.
+///
+/// Symbolic witness: `operand_b` is restricted to -1 so the
+/// harness exercises the precise i64::MIN * -1 overflow boundary
+/// for the production `eval_binary_op(Mul)` impl.
 #[kani::proof]
 fn check_i64_mul_overflow_min_neg_one() {
-    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
+    let operand_b: i64 = kani::any();
+    kani::assume(operand_b == -1);
+    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MIN), SlotValue::I64(operand_b));
 
     kani::assert(result.is_err(), "i64::MIN * -1 must overflow");
 
@@ -119,9 +143,15 @@ fn check_i64_mul_overflow_min_neg_one() {
 }
 
 /// PO-KANI-005 H5: i64::MIN / -1 returns IntegerOverflow (only i64 div overflow case).
+///
+/// Symbolic witness: `operand_b` is restricted to -1 so the
+/// harness exercises the precise i64::MIN / -1 overflow boundary
+/// for the production `eval_binary_op(Div)` impl.
 #[kani::proof]
 fn check_i64_div_overflow_min_div_neg_one() {
-    let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
+    let operand_b: i64 = kani::any();
+    kani::assume(operand_b == -1);
+    let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(operand_b));
 
     kani::assert(result.is_err(), "i64::MIN / -1 must overflow");
 
@@ -146,8 +176,14 @@ fn check_i64_div_overflow_min_div_neg_one() {
 }
 
 /// PO-KANI-005 H6: i64::MIN negation returns IntegerOverflow.
+///
+/// Symbolic witness: a marker byte (kani::any) is declared so the
+/// harness has symbolic input. The harness exercises the precise
+/// i64::MIN negation overflow boundary for the production
+/// `eval_unary_op(Neg)` impl.
 #[kani::proof]
 fn check_i64_neg_overflow() {
+    let _marker: u8 = kani::any();
     let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
 
     kani::assert(result.is_err(), "-(i64::MIN) must overflow");

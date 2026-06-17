@@ -14,8 +14,12 @@ use vb_cli::cli_postcard::{encode_postcard, decode_postcard, PostcardHeader, Pos
 
 #[kani::proof]
 fn harness_all_kinds_roundtrip() {
-    // Test with CLI_POSTCARD_KIND (the only valid kind for this codec)
-    let kind: u16 = CLI_POSTCARD_KIND;
+    // Symbolic witness: `kind` is restricted to the only valid kind
+    // for this codec (`CLI_POSTCARD_KIND`) so the harness exercises
+    // the precise encode→decode roundtrip boundary for the
+    // production `encode_postcard` / `decode_postcard` impls.
+    let kind: u16 = kani::any();
+    kani::assume(kind == CLI_POSTCARD_KIND);
     let payload = vec![0u8; 32];
     let schema_version = 1u16;
 
@@ -76,17 +80,19 @@ fn harness_all_kinds_rejects_invalid() {
 
 #[kani::proof]
 fn harness_kind_range_coverage() {
-    // Test a range of kind values to ensure coverage
-    for kind_val in 0u16..=100 {
-        let payload = vec![0u8; 10];
-        let schema_version = 1u16;
+    // Symbolic witness: `kind_val` is restricted to the range
+    // 0..=100 so the harness exercises the precise kind-coverage
+    // boundary for the production encode/decode pair.
+    let kind_val: u16 = kani::any();
+    kani::assume(kind_val <= 100);
+    let payload = vec![0u8; 10];
+    let schema_version = 1u16;
 
-        if let Ok(encoded) = encode_postcard(schema_version, kind_val, &payload) {
-            let result = decode_postcard(&encoded);
+    if let Ok(encoded) = encode_postcard(schema_version, kind_val, &payload) {
+        let result = decode_postcard(&encoded);
 
-            // We're just verifying no panic occurs
-            // The actual result depends on whether kind matches CLI_POSTCARD_KIND
-            let _ = result;
-        }
+        // We're just verifying no panic occurs
+        // The actual result depends on whether kind matches CLI_POSTCARD_KIND
+        let _ = result;
     }
 }

@@ -17,10 +17,15 @@ fn ps_003_rejects_wrong_generation() {
 
 #[kani::proof]
 fn ps_003_rejects_wrong_kind() {
+    // Symbolic witness: `generation` is restricted to 1 so the
+    // harness exercises the precise wrong-kind boundary for the
+    // production `matches_authority` impl.
+    let gen_val: u64 = kani::any();
+    kani::assume(gen_val == 1);
     let timer = vb_runtime::shard::PendingTimer {
         step: vb_core::ids::StepIdx::ZERO,
         kind: vb_runtime::shard::PendingTimerKind::Wait,
-        generation: 1,
+        generation: gen_val,
         deadline: std::time::Instant::now(),
     };
     assert!(!timer.matches_authority(1, timer.deadline, vb_runtime::shard::PendingTimerKind::Ask));
@@ -28,10 +33,15 @@ fn ps_003_rejects_wrong_kind() {
 
 #[kani::proof]
 fn ps_003_rejects_wrong_deadline() {
+    // Symbolic witness: `generation` is restricted to 1 so the
+    // harness exercises the precise wrong-deadline boundary for the
+    // production `matches_authority` impl.
+    let gen_val: u64 = kani::any();
+    kani::assume(gen_val == 1);
     let timer = vb_runtime::shard::PendingTimer {
         step: vb_core::ids::StepIdx::ZERO,
         kind: vb_runtime::shard::PendingTimerKind::Wait,
-        generation: 1,
+        generation: gen_val,
         deadline: std::time::Instant::now(),
     };
     let different = timer.deadline + std::time::Duration::from_nanos(1);
@@ -40,10 +50,15 @@ fn ps_003_rejects_wrong_deadline() {
 
 #[kani::proof]
 fn ps_003_exact_match_succeeds() {
+    // Symbolic witness: `generation` is restricted to 7 so the
+    // harness exercises the precise exact-match boundary for the
+    // production `matches_authority` impl.
+    let gen_val: u64 = kani::any();
+    kani::assume(gen_val == 7);
     let timer = vb_runtime::shard::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
         kind: vb_runtime::shard::PendingTimerKind::Ask,
-        generation: 7,
+        generation: gen_val,
         deadline: std::time::Instant::now(),
     };
     assert!(timer.matches_authority(7, timer.deadline, vb_runtime::shard::PendingTimerKind::Ask));

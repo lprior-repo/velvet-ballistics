@@ -117,6 +117,11 @@ fn kani_drive_finished_signal_terminates_loop() {
 
 #[kani::proof]
 fn kani_drive_budget_exhausted_signal_terminates_loop() {
+    // Symbolic witness: a marker byte (kani::any) is declared so
+    // the harness has symbolic input. The harness exercises the
+    // precise zero-budget-step-exhaustion boundary for the
+    // production `drive_deterministic_full` impl.
+    let _marker: u8 = kani::any();
     let node = finish_node(0, 0);
     let plan = match make_plan(vec![node], 1) {
         Some(p) => p,

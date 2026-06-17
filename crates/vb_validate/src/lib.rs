@@ -197,6 +197,21 @@ pub enum ValidationError {
         missing_output: vb_core::ids::SymbolId,
     },
 
+    /// Returned when a step reference names a field that is not in the
+    /// validator/compiler allowlist (e.g. `$steps.build.deep`). The cold
+    /// compiler only accepts `output` and `result` after `$steps.<id>`;
+    /// the validator mirrors that allowlist so the two never disagree
+    /// on the same source. `step` is the step id from the reference
+    /// (the `X` in `$steps.X.<field>`) and `field` is the offending
+    /// field name. The diagnostic is distinct from
+    /// [`ValidationError::UnknownReference`] so users can tell they
+    /// typed a real step id but a non-existent field, not an
+    /// unrecognised reference.
+    #[error(
+        "UNSUPPORTED_STEP_FIELD: step `{step}` does not expose a `{field}` field; allowed fields are `output` and `result`"
+    )]
+    UnsupportedStepField { step: String, field: String },
+
     /// Returned when the target of a `then` branch is not a valid step reference.
     #[error("INVALID_THEN_TARGET")]
     InvalidThenTarget,
@@ -445,6 +460,7 @@ impl ValidationError {
             Self::DirectStepReference { .. } => "DIRECT_STEP_REFERENCE",
             Self::StepSkippedReference { .. } => "STEP_SKIPPED_REFERENCE",
             Self::ResultReferenceMissing { .. } => "RESULT_REFERENCE_MISSING",
+            Self::UnsupportedStepField { .. } => "UNSUPPORTED_STEP_FIELD",
             // Control-flow: E03xx
             Self::InvalidThenTarget => "INVALID_THEN_TARGET",
             Self::ControlFlowCycle => "CONTROL_FLOW_CYCLE",

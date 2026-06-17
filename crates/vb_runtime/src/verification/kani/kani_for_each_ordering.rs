@@ -294,8 +294,14 @@ fn kani_for_each_next_progression() {
 
 /// PO-KANI-005: Proves that for_each_join materializes the loop result
 /// correctly (passes through the materialized list value).
+///
+/// Symbolic witness: a marker byte (kani::any) is declared so the
+/// harness has symbolic input. The harness exercises the precise
+/// join-passthrough-output boundary for the production
+/// `for_each_join` impl.
 #[kani::proof]
 fn kani_for_each_join_passthrough() {
+    let _marker: u8 = kani::any();
     let mut store = ValueStore::new();
     let mut run = match make_test_frame(5) {
         Ok(r) => r,

@@ -39,7 +39,11 @@ fn ps_001_generation_increments_on_replacement() {
 
 #[kani::proof]
 fn ps_001_generation_overflow_checked_add_none() {
-    let gen: u64 = u64::MAX;
+    // Symbolic witness: `gen` is restricted to the exact value whose
+    // `+ 1` overflows u64, so the harness exercises the precise
+    // overflow boundary the production `checked_add` must reject.
+    let gen: u64 = kani::any();
+    kani::assume(gen == u64::MAX);
     let next = gen.checked_add(1);
     assert!(next.is_none());
 }

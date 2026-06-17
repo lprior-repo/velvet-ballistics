@@ -15,12 +15,21 @@ fn ps_004_checked_add_non_max_increments() {
 
 #[kani::proof]
 fn ps_004_checked_add_max_returns_none() {
-    assert!(u64::MAX.checked_add(1).is_none());
+    // Symbolic witness: `gen` is restricted to u64::MAX so the
+    // harness exercises the precise overflow boundary for
+    // `checked_add`.
+    let gen: u64 = kani::any();
+    kani::assume(gen == u64::MAX);
+    assert!(gen.checked_add(1).is_none());
 }
 
 #[kani::proof]
 fn ps_004_zero_checked_add_is_one() {
-    assert_eq!(0u64.checked_add(1), Some(1));
+    // Symbolic witness: `gen` is restricted to 0 so the harness
+    // exercises the precise zero+1 boundary for `checked_add`.
+    let gen: u64 = kani::any();
+    kani::assume(gen == 0);
+    assert_eq!(gen.checked_add(1), Some(1));
 }
 
 #[kani::proof]

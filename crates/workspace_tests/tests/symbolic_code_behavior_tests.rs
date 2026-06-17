@@ -376,6 +376,10 @@ fn runtime_error_all_symbolic_codes_are_registered() {
         RuntimeError::FramePoolUnavailable,
         RuntimeError::EncodeFailed,
         RuntimeError::MigrateSelf,
+        RuntimeError::InputMappingFailed {
+            kind: vb_runtime::InputMappingFailureKind::EmptyInputBin,
+            source: Box::new(vb_core::errors::CoreError::InvalidCompiledWorkflow { reason: "x" }),
+        },
     ];
     for error in &errors {
         let code = error.symbolic_code();

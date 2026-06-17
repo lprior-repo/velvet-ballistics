@@ -112,6 +112,10 @@ fn runtime_error_symbolic_codes_are_registered() {
         RuntimeError::EncodeFailed,
         RuntimeError::SecretResultNotAllowed,
         RuntimeError::MigrateSelf,
+        RuntimeError::InputMappingFailed {
+            kind: vb_runtime::InputMappingFailureKind::EmptyInputBin,
+            source: Box::new(vb_core::errors::CoreError::InvalidCompiledWorkflow { reason: "x" }),
+        },
     ];
 
     for error in &errors {

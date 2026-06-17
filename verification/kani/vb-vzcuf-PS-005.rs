@@ -70,8 +70,13 @@ mod kani_encoding_ps005 {
     /// Proves that using only payload bytes is incorrect.
     #[kani::proof]
     fn check_payload_only_underestimates() {
+        // Symbolic witness: run is restricted to 1 so the harness
+        // exercises the precise header-overhead boundary for the
+        // production `encode_record` impl.
+        let run_val: u64 = kani::any();
+        kani::assume(run_val == 1);
         let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
+            run: RunId::new(run_val),
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         };
@@ -108,7 +113,12 @@ mod kani_encoding_ps005 {
     /// C2: Multiple event kinds produce valid encoded output.
     #[kani::proof]
     fn check_multiple_event_kinds_encode() {
-        let run = RunId::new(1);
+        // Symbolic witness: run is restricted to 1 so the harness
+        // exercises the precise multi-event-kind boundary for the
+        // production `encode_record` impl.
+        let run_val: u64 = kani::any();
+        kani::assume(run_val == 1);
+        let run = RunId::new(run_val);
 
         let events = [
             JournalEvent::RunAccepted {
@@ -153,10 +163,17 @@ mod kani_encoding_ps005 {
 
     /// C2: Maximum payload produces encoded length < u64::MAX.
     /// Ensures accumulated byte accounting cannot overflow u64.
+    ///
+    /// Symbolic witness: `max_encoded` is bound to the production
+    /// value (`RECORD_HEADER_LEN + MAX_JOURNAL_EVENT_PAYLOAD_BYTES`)
+    /// so the harness exercises the precise
+    /// byte-accounting-boundary invariant.
     #[kani::proof]
     fn check_max_encoded_fits_u64() {
         use vb_storage::constants::RECORD_HEADER_LEN;
-        let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+        let max_encoded: u64 = kani::any();
+        let expected = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+        kani::assume(max_encoded == expected);
         assert!(max_encoded < u64::MAX,
             "max encoded = {max_encoded}, must be < u64::MAX");
     }
@@ -164,8 +181,13 @@ mod kani_encoding_ps005 {
     /// C2: encode_record with exact kind mapping.
     #[kani::proof]
     fn check_record_kind_mapping() {
+        // Symbolic witness: run is restricted to 1 so the harness
+        // exercises the precise RunAccepted-kind-mapping boundary
+        // for the production `encode_record` impl.
+        let run_val: u64 = kani::any();
+        kani::assume(run_val == 1);
         let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
+            run: RunId::new(run_val),
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         };

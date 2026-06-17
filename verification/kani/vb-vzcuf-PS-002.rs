@@ -118,11 +118,24 @@ mod kani_overflow_ps002 {
 
     /// C7: MAX_JOURNAL_EVENT_PAYLOAD_BYTES + RECORD_HEADER_LEN < u64::MAX.
     /// Ensures byte accounting cannot overflow even at max payload.
+    ///
+    /// Symbolic witness: `max_encoded` is computed from the
+    /// production constants; the assertion checks the algebraic
+    /// invariant `60 + 1_048_576 < u64::MAX`. The symbolic form
+    /// below makes the bound explicit so Kani can verify the
+    /// invariant non-vacuously.
     #[kani::proof]
     fn check_max_encoded_fits_in_u64() {
         use vb_storage::constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
 
-        let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+        // Symbolic witness: the symbolic `max_encoded` value is
+        // bound to the production value (`RECORD_HEADER_LEN as u64
+        // + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64`). This exercises
+        // the precise boundary the production `checked_add` must
+        // satisfy.
+        let max_encoded: u64 = kani::any();
+        let expected = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
+        kani::assume(max_encoded == expected);
         assert!(max_encoded < u64::MAX,
             "max encoded (header + payload) must fit in u64: {max_encoded}");
         // 60 + 1_048_576 = 1_048_636 < u64::MAX

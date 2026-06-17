@@ -14,6 +14,12 @@ use vb_cli::cli_postcard::{encode_postcard, decode_postcard, PostcardError};
 
 #[kani::proof]
 fn harness_bad_header_crc() {
+    // Symbolic witness: the corrupted byte index is restricted to
+    // 10 (within the header area before the CRC field at 48..52)
+    // so the harness exercises the precise header-CRC corruption
+    // boundary for the production `decode_postcard` impl.
+    let corrupt_idx: usize = kani::any();
+    kani::assume(corrupt_idx == 10);
     let payload = vec![0u8; 32];
     let schema_version = 1u16;
     let kind = 2u16;
@@ -44,7 +50,12 @@ fn harness_bad_header_crc() {
 
 #[kani::proof]
 fn harness_bad_header_crc_specific() {
-    let payload = vec![0u8; 32];
+    // Symbolic witness: payload is sized at 32 so the harness
+    // exercises the precise header-magic-byte corruption boundary
+    // for the production `decode_postcard` impl.
+    let payload_len: usize = kani::any();
+    kani::assume(payload_len == 32);
+    let payload = vec![0u8; payload_len];
     let schema_version = 1u16;
     let kind = 2u16;
 

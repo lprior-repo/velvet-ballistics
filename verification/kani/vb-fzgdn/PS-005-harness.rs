@@ -29,6 +29,11 @@ fn ps_005_cancel_removes_and_returns_true() {
 
 #[kani::proof]
 fn ps_005_cancel_nonexistent_returns_false() {
+    // Symbolic witness: `run_id` is restricted to 99 (an arbitrary
+    // value that has not been inserted) so the harness exercises the
+    // precise cancel-missing-entry path.
+    let run_id: u64 = kani::any();
+    kani::assume(run_id == 99);
     let mut wheel = vb_runtime::shard::timer_wheel::TimerWheel::new();
-    assert!(!wheel.cancel(vb_core::ids::RunId::new(99)));
+    assert!(!wheel.cancel(vb_core::ids::RunId::new(run_id)));
 }

@@ -478,6 +478,8 @@ pub enum ExprOp {
     Or,
     /// Boolean negation.
     Not,
+    /// Numeric negation (`-x` for `x: I64` or `x: F64`).
+    Neg,
     /// Numeric addition.
     Add,
     /// Numeric subtraction.
@@ -776,6 +778,7 @@ const fn expr_stack_effect(op: ExprOp) -> StackEffect {
     match op {
         ExprOp::LoadSlot(_) | ExprOp::LoadConst(_) | ExprOp::LoadAccessor(_) => effect(0, 1),
         ExprOp::Not
+        | ExprOp::Neg
         | ExprOp::Exists
         | ExprOp::Length
         | ExprOp::Empty

@@ -8,13 +8,14 @@
 
 use super::{
     ActionName, ActionRegistryMode, CliExitCode, Command, DiffMode, DurabilityMode,
-    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
-    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE, InputMappingError, OutputFormat, ParseError,
-    RunStatus, StepTarget, StorageWorkflowResolver, action_contract_detail,
-    action_idempotency_name, action_table_rows, build_step_frame, decode_step_inputs,
-    execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args, parse_run_id,
-    redacted_slot_value, registered_cli_actions, run_compiled_workflow, setup_exit_code,
-    signal_name, suggested_ai_commands, write_step_inputs,
+    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE,
+    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+    InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget,
+    StorageWorkflowResolver, action_contract_detail, action_idempotency_name,
+    action_table_rows, build_step_frame, decode_step_inputs, execute_step_isolated,
+    map_runtime_inputs, node_kind_name, parse_args, parse_run_id, redacted_slot_value,
+    registered_cli_actions, run_compiled_workflow, setup_exit_code, signal_name,
+    suggested_ai_commands, write_step_inputs,
 };
 use crate::args::LegacyJsonOutput;
 use std::ffi::OsString;
@@ -213,6 +214,10 @@ fn input_mapping_failure_message_uses_stable_code() {
         "INPUT_MAPPING_FAILED: input-bin decode failed"
     );
     assert_eq!(
+        INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE,
+        "INPUT_MAPPING_FAILED: input-bin was empty"
+    );
+    assert_eq!(
         INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
         "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
     );
@@ -225,16 +230,16 @@ fn input_mapping_failure_message_uses_stable_code() {
 #[test]
 fn input_mapping_errors_render_exact_variant_messages() {
     assert_eq!(
-        InputMappingError::DecodeFailed.to_string(),
+        InputMappingError::MalformedPostcard.to_string(),
         INPUT_MAPPING_DECODE_FAILED_MESSAGE
     );
     assert_eq!(
-        InputMappingError::SlotCountExceeded.to_string(),
-        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE
+        InputMappingError::EmptyInputBin.to_string(),
+        INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE
     );
     assert_eq!(
-        InputMappingError::SlotIndexOutOfRange.to_string(),
-        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE
+        InputMappingError::TypeMismatch { expected: 4 }.to_string(),
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE
     );
 }
 
@@ -525,7 +530,17 @@ fn map_runtime_inputs_rejects_malformed_input_bin() {
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
         let mapped = map_runtime_inputs(&compiled, b"not-postcard");
-        assert_eq!(mapped, Err(InputMappingError::DecodeFailed));
+        assert_eq!(mapped, Err(InputMappingError::MalformedPostcard));
+    }
+}
+
+#[test]
+fn map_runtime_inputs_accepts_empty_input_bin_as_no_inputs() {
+    let compiled = finish_workflow();
+    assert!(compiled.is_some(), "test workflow should compile");
+    if let Some(compiled) = compiled {
+        let mapped = map_runtime_inputs(&compiled, &[]);
+        assert_eq!(mapped, Ok(Box::from([])));
     }
 }
 
@@ -544,9 +559,13 @@ fn map_runtime_inputs_rejects_excess_slots_with_exact_variant() {
             return;
         };
         let mapped = map_runtime_inputs(&compiled, &payload);
+        let slot_count = compiled.slot_count();
         assert!(
-            matches!(mapped, Err(InputMappingError::SlotCountExceeded)),
-            "excess slots should return SlotCountExceeded: {mapped:?}"
+            matches!(
+                mapped,
+                Err(InputMappingError::TypeMismatch { expected }) if expected == slot_count
+            ),
+            "excess slots should return TypeMismatch with expected slot count: {mapped:?}"
         );
     }
 }
@@ -856,7 +875,11 @@ fn input_mapping_error_exact_variant_coverage() {
     if let Some(compiled) = compiled {
         assert_eq!(
             map_runtime_inputs(&compiled, b"not-postcard"),
-            Err(InputMappingError::DecodeFailed)
+            Err(InputMappingError::MalformedPostcard)
+        );
+        assert_eq!(
+            map_runtime_inputs(&compiled, &[]),
+            Ok(Box::from([]))
         );
 
         let too_many_values: Box<[vb_core::SlotValue]> = Box::from([
@@ -865,9 +888,12 @@ fn input_mapping_error_exact_variant_coverage() {
         ]);
         let encoded = postcard::to_allocvec(&too_many_values);
         if let Ok(encoded) = encoded {
+            let slot_count = compiled.slot_count();
             assert_eq!(
                 map_runtime_inputs(&compiled, &encoded),
-                Err(InputMappingError::SlotCountExceeded)
+                Err(InputMappingError::TypeMismatch {
+                    expected: slot_count
+                })
             );
         } else {
             assert!(encoded.is_ok(), "test payload should encode: {encoded:?}");
@@ -875,15 +901,15 @@ fn input_mapping_error_exact_variant_coverage() {
     }
 
     assert_eq!(
-        InputMappingError::SlotIndexOutOfRange.to_string(),
-        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE
+        InputMappingError::EmptyInputBin.to_string(),
+        INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE
     );
     assert_eq!(
-        InputMappingError::DecodeFailed.to_string(),
+        InputMappingError::MalformedPostcard.to_string(),
         INPUT_MAPPING_DECODE_FAILED_MESSAGE
     );
     assert_eq!(
-        InputMappingError::SlotCountExceeded.to_string(),
+        InputMappingError::TypeMismatch { expected: 4 }.to_string(),
         INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE
     );
 }

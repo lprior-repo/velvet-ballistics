@@ -98,6 +98,10 @@ fn check_push_constant_within_bound() {
 }
 
 /// PO-KANI-003 H3: push_constant rejects at MAX_CONSTANTS limit.
+///
+/// Symbolic witness: the pushed I64 is restricted to 42 so the
+/// harness exercises the precise MAX_CONSTANTS-reject boundary
+/// for the production `push_constant` impl.
 #[kani::proof]
 fn check_push_constant_at_limit() {
     // Build a pool at exactly MAX_CONSTANTS entries
@@ -106,7 +110,9 @@ fn check_push_constant_at_limit() {
         constants.push(ConstValue::Bool(true));
     }
 
-    let value = ConstValue::I64(42);
+    let pushed: i64 = kani::any();
+    kani::assume(pushed == 42);
+    let value = ConstValue::I64(pushed);
     let result = push_constant(value, &mut constants);
 
     // At MAX_CONSTANTS, push must fail

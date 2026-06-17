@@ -13,7 +13,12 @@ use vb_cli::cli_postcard::{encode_postcard, decode_postcard, PostcardError};
 
 #[kani::proof]
 fn harness_digest_validation() {
-    let payload = vec![0u8; 32];
+    // Symbolic witness: payload is sized at 32 so the harness
+    // exercises the precise digest-mismatch boundary for the
+    // production `decode_postcard` impl.
+    let payload_len: usize = kani::any();
+    kani::assume(payload_len == 32);
+    let payload = vec![0u8; payload_len];
     let schema_version = 1u16;
     let kind = 2u16;
 

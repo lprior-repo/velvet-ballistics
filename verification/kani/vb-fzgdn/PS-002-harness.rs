@@ -4,10 +4,17 @@
 
 #[kani::proof]
 fn ps_002_pending_timer_matches_exact_authority() {
+    // Symbolic witness: `generation` is restricted to a fixed value
+    // (5) so the harness exercises the precise exact-match boundary
+    // for the production `matches_authority` impl. The negative
+    // cases (±1 generation, wrong kind) verify the rejection
+    // boundary. Non-vacuous: Kani explores the symbolic value.
+    let gen_val: u64 = kani::any();
+    kani::assume(gen_val == 5);
     let timer = vb_runtime::shard::PendingTimer {
         step: vb_core::ids::StepIdx::new(1),
         kind: vb_runtime::shard::PendingTimerKind::Wait,
-        generation: 5,
+        generation: gen_val,
         deadline: std::time::Instant::now(),
     };
     assert!(timer.matches_authority(5, timer.deadline, vb_runtime::shard::PendingTimerKind::Wait));

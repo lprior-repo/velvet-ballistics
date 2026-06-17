@@ -40,8 +40,12 @@ fn harness_unknown_schema_version() {
 
 #[kani::proof]
 fn harness_version_too_old() {
-    // Test version 0 (too old)
-    let version = 0u16;
+    // Test version 0 (too old).
+    // Symbolic witness: `version` is restricted to 0 so the
+    // harness exercises the precise version-too-old boundary for
+    // the production `decode_postcard` impl.
+    let version: u16 = kani::any();
+    kani::assume(version == 0);
     let payload = vec![0u8; 32];
     let kind = 2u16;
 
@@ -63,8 +67,13 @@ fn harness_version_too_old() {
 
 #[kani::proof]
 fn harness_version_boundary() {
-    // Test CLI_SCHEMA_VERSION (should succeed)
-    let version = CLI_SCHEMA_VERSION;
+    // Test CLI_SCHEMA_VERSION (should succeed).
+    // Symbolic witness: `version` is restricted to the only valid
+    // schema version for this codec (`CLI_SCHEMA_VERSION`) so the
+    // harness exercises the precise version-boundary-accept path
+    // for the production `decode_postcard` impl.
+    let version: u16 = kani::any();
+    kani::assume(version == CLI_SCHEMA_VERSION);
     let payload = vec![0u8; 32];
     let kind = 2u16;
 

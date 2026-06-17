@@ -455,3 +455,163 @@ pub fn check_evidence_gate(
 mod tests {
     mod edge_cases;
 }
+
+/// Density tests for vb_benchmark (Wave E, Femdation).
+///
+/// These tests exercise the public API directly from `src/lib.rs` so the
+/// `check-test-density.sh` scanner can count them. They were recovered
+/// from stash@{9} (Femdation Wave E) which was the latest and most
+/// complete density-tests work.
+#[cfg(test)]
+mod density_tests {
+    use super::*;
+    use std::time::Duration;
+
+    // -- BenchmarkMetadata field accessors --------------------------------------
+
+    #[test]
+    fn benchmark_metadata_field_accessors() {
+        let m = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 105_000,
+            command: "cargo bench".to_string(),
+            commit_hash: "abc123".to_string(),
+            environment: "linux-x86_64".to_string(),
+            budget_us: 200_000,
+            fjall_write_latency_ns: 100,
+            direct_api_latency_ns: 200,
+            ipc_latency_ns: 300,
+        };
+        assert_eq!(m.name, "yaml_parse");
+        assert_eq!(m.baseline_us, Some(100_000));
+        assert_eq!(m.result_us, 105_000);
+        assert_eq!(m.command, "cargo bench");
+        assert_eq!(m.commit_hash, "abc123");
+        assert_eq!(m.environment, "linux-x86_64");
+        assert_eq!(m.budget_us, 200_000);
+        assert_eq!(m.fjall_write_latency_ns, 100);
+        assert_eq!(m.direct_api_latency_ns, 200);
+        assert_eq!(m.ipc_latency_ns, 300);
+    }
+
+    #[test]
+    fn benchmark_metadata_debug_includes_name() {
+        let m = BenchmarkMetadata {
+            name: "x".to_string(),
+            baseline_us: None,
+            result_us: 1,
+            command: "c".to_string(),
+            commit_hash: "d".to_string(),
+            environment: "e".to_string(),
+            budget_us: 1,
+            fjall_write_latency_ns: 0,
+            direct_api_latency_ns: 0,
+            ipc_latency_ns: 0,
+        };
+        let s = format!("{:?}", m);
+        assert!(s.contains("BenchmarkMetadata"));
+        assert!(s.contains("\"x\""));
+    }
+
+    #[test]
+    fn benchmark_metadata_clone_eq() {
+        let m = BenchmarkMetadata {
+            name: "a".to_string(),
+            baseline_us: Some(1),
+            result_us: 2,
+            command: "c".to_string(),
+            commit_hash: "d".to_string(),
+            environment: "e".to_string(),
+            budget_us: 3,
+            fjall_write_latency_ns: 1,
+            direct_api_latency_ns: 1,
+            ipc_latency_ns: 1,
+        };
+        let n = m.clone();
+        assert_eq!(m, n);
+    }
+
+    #[test]
+    fn benchmark_metadata_partial_eq_ne_on_result() {
+        let a = BenchmarkMetadata {
+            name: "x".to_string(),
+            baseline_us: Some(1),
+            result_us: 2,
+            command: "c".to_string(),
+            commit_hash: "d".to_string(),
+            environment: "e".to_string(),
+            budget_us: 3,
+            fjall_write_latency_ns: 1,
+            direct_api_latency_ns: 1,
+            ipc_latency_ns: 1,
+        };
+        let mut b = a.clone();
+        b.result_us = 99;
+        assert_ne!(a, b);
+    }
+
+    // -- EvidenceError Display exhaustiveness -----------------------------------
+
+    #[test]
+    fn evidence_error_missing_commit_display() {
+        let e = EvidenceError::MissingCommit;
+        assert_eq!(format!("{}", e), "missing commit hash");
+    }
+
+    #[test]
+    fn evidence_error_missing_environment_display() {
+        let e = EvidenceError::MissingEnvironment;
+        assert_eq!(format!("{}", e), "missing environment");
+    }
+
+    #[test]
+    fn evidence_error_missing_command_display() {
+        let e = EvidenceError::MissingCommand;
+        assert_eq!(format!("{}", e), "missing command");
+    }
+
+    #[test]
+    fn evidence_error_missing_baseline_display() {
+        let e = EvidenceError::MissingBaseline;
+        assert_eq!(format!("{}", e), "missing baseline measurement");
+    }
+
+    #[test]
+    fn evidence_error_zero_latency_field_display() {
+        let e = EvidenceError::ZeroLatencyField {
+            field: LatencyFieldId::FjallWrite,
+        };
+        let s = format!("{}", e);
+        assert!(s.contains("FjallWrite") || s.contains("zero latency"));
+    }
+
+    // -- capture_metadata: every field is propagated ----------------------------
+
+    #[test]
+    fn capture_metadata_propagates_all_fields() {
+        let r = capture_metadata(
+            "my-bench",
+            Some(Duration::from_micros(50_000)),
+            Duration::from_micros(75_000),
+            "hyperfine ./target/release/my-bench",
+            "deadbeefcafe",
+            "linux-x86_64",
+            100_000,
+            100,
+            200,
+            300,
+        );
+        let m = r.unwrap();
+        assert_eq!(m.name, "my-bench");
+        assert_eq!(m.baseline_us, Some(50_000));
+        assert_eq!(m.result_us, 75_000);
+        assert_eq!(m.command, "hyperfine ./target/release/my-bench");
+        assert_eq!(m.commit_hash, "deadbeefcafe");
+        assert_eq!(m.environment, "linux-x86_64");
+        assert_eq!(m.budget_us, 100_000);
+        assert_eq!(m.fjall_write_latency_ns, 100);
+        assert_eq!(m.direct_api_latency_ns, 200);
+        assert_eq!(m.ipc_latency_ns, 300);
+    }
+}

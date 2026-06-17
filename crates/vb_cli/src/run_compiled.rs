@@ -13,8 +13,8 @@ use crate::output::{
 };
 use crate::output_utils::*;
 use crate::run::{
-    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
-    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE,
+    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
 };
 use crate::run_compiled_runtime::{
     admitted_workflow_for_durability, map_runtime_inputs, run_compiled_workflow,
@@ -110,17 +110,17 @@ pub(crate) fn cmd_run_compiled(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InputMappingError {
-    DecodeFailed,
-    SlotCountExceeded,
-    SlotIndexOutOfRange,
+    EmptyInputBin,
+    MalformedPostcard,
+    TypeMismatch { expected: u16 },
 }
 
 impl std::fmt::Display for InputMappingError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(match self {
-            Self::DecodeFailed => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-            Self::SlotCountExceeded => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
-            Self::SlotIndexOutOfRange => INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+            Self::EmptyInputBin => INPUT_MAPPING_EMPTY_INPUT_BIN_MESSAGE,
+            Self::MalformedPostcard => INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+            Self::TypeMismatch { expected: _ } => INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
         })
     }
 }

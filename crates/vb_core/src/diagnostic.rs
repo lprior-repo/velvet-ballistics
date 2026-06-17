@@ -612,7 +612,7 @@ pub const CODE_REGISTRY: &[CodeEntry] = &[
         category: CodeCategory::Accessor,
         deprecated: false,
     },
-    // ---- Runtime storage/journal errors (from RuntimeError): E20xx (0x2001–0x201E) ----
+    // ---- Runtime storage/journal errors (from RuntimeError): E20xx (0x2001–0x201F) ----
     CodeEntry {
         symbolic: "QUEUE_FULL",
         numeric: 0x2001,

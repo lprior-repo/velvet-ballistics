@@ -13,19 +13,19 @@ use vb_runtime::trace::TraceEvent;
 
 #[non_exhaustive]
 pub(crate) enum InputMappingError {
-    DecodeFailed,
-    SlotCountExceeded,
-    SlotIndexOutOfRange,
+    EmptyInputBin,
+    MalformedPostcard,
+    TypeMismatch { expected: u16 },
 }
 
 impl std::fmt::Display for InputMappingError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
-            Self::DecodeFailed => "INPUT_MAPPING_FAILED: input-bin decode failed",
-            Self::SlotCountExceeded => {
+            Self::EmptyInputBin => "INPUT_MAPPING_FAILED: input-bin was empty",
+            Self::MalformedPostcard => "INPUT_MAPPING_FAILED: input-bin decode failed",
+            Self::TypeMismatch { expected: _ } => {
                 "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
             }
-            Self::SlotIndexOutOfRange => "INPUT_MAPPING_FAILED: input slot index out of range",
         };
         write!(formatter, "{msg}")
     }
@@ -171,26 +171,26 @@ mod tests {
     }
 
     #[test]
-    fn input_mapping_error_decode_failed_displays_correct_message() {
+    fn input_mapping_error_malformed_postcard_displays_correct_message() {
         assert_eq!(
-            InputMappingError::DecodeFailed.to_string(),
+            InputMappingError::MalformedPostcard.to_string(),
             "INPUT_MAPPING_FAILED: input-bin decode failed"
         );
     }
 
     #[test]
-    fn input_mapping_error_slot_count_exceeded_displays_correct_message() {
+    fn input_mapping_error_type_mismatch_displays_correct_message() {
         assert_eq!(
-            InputMappingError::SlotCountExceeded.to_string(),
+            InputMappingError::TypeMismatch { expected: 4 }.to_string(),
             "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
         );
     }
 
     #[test]
-    fn input_mapping_error_slot_index_out_of_range_displays_correct_message() {
+    fn input_mapping_error_empty_input_bin_displays_correct_message() {
         assert_eq!(
-            InputMappingError::SlotIndexOutOfRange.to_string(),
-            "INPUT_MAPPING_FAILED: input slot index out of range"
+            InputMappingError::EmptyInputBin.to_string(),
+            "INPUT_MAPPING_FAILED: input-bin was empty"
         );
     }
 

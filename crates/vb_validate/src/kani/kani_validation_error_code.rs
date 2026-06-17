@@ -6,8 +6,8 @@
 //! that (a) is in the registry, (b) has non-zero numeric code, (c) matches
 //! the expected code for that variant per the error taxonomy.
 //!
-//! Bound: 58 variants (unwind=1 per variant)
-//! Assumptions: 58 ValidationError variants are exhaustively enumerated;
+//! Bound: 64 variants (unwind=1 per variant)
+//! Assumptions: 64 ValidationError variants are exhaustively enumerated;
 //! CODE_REGISTRY is available at compile time.
 
 /// Known registered symbolic code names (subset of full registry).
@@ -31,6 +31,8 @@ const REGISTERED_CODES: &[&str] = &[
     "DIRECT_LOOP_REFERENCE",
     "DIRECT_STEP_REFERENCE",
     "STEP_SKIPPED_REFERENCE",
+    "RESULT_REFERENCE_MISSING",
+    "UNSUPPORTED_STEP_FIELD",
     "INVALID_THEN_TARGET",
     "CONTROL_FLOW_CYCLE",
     "UNREACHABLE_STEP",
@@ -94,7 +96,7 @@ mod harnesses {
     #[kani::proof]
     #[kani::unwind(60)]
     fn kani_validation_error_code_registered() {
-        // Exhaustive proof: test all 58 production variants.
+        // Exhaustive proof: test all 64 production variants.
         // Dummy data is sufficient since code() ignores field values.
         let _ = {
             // Schema errors (E01xx)
@@ -249,6 +251,26 @@ mod harnesses {
             let name = code.as_str();
             kani::assert(is_registered(name, "assertion failed"), "kani harness assertion");
             kani::assert(!name.is_empty(, "assertion failed"), "kani harness assertion");
+        };
+        let _ = {
+            let e: ValidationError = ValidationError::ResultReferenceMissing {
+                step: vb_core::ids::StepIdx::new(0),
+                missing_output: vb_core::ids::SymbolId::new(0),
+            };
+            let code = e.code();
+            let name = code.as_str();
+            assert!(is_registered(name));
+            assert!(!name.is_empty());
+        };
+        let _ = {
+            let e: ValidationError = ValidationError::UnsupportedStepField {
+                step: String::new(),
+                field: String::new(),
+            };
+            let code = e.code();
+            let name = code.as_str();
+            assert!(is_registered(name));
+            assert!(!name.is_empty());
         };
         let _ = {
             let e: ValidationError = ValidationError::InvalidThenTarget;

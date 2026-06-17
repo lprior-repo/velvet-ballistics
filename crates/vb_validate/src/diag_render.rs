@@ -150,6 +150,12 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
                 "step {step} does not produce an output; cannot reference field symbol {missing_output:?}"
             ),
         ),
+        ValidationError::UnsupportedStepField { step, field } => (
+            DiagnosticCode::new(CODE_UNSUPPORTED_STEP_FIELD),
+            format!(
+                "step `{step}` does not expose a `{field}` field; allowed fields are `output` and `result`"
+            ),
+        ),
         ValidationError::InvalidThenTarget => (
             DiagnosticCode::new(CODE_INVALID_THEN_TARGET),
             "invalid then target".into(),

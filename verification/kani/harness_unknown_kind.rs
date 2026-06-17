@@ -44,24 +44,34 @@ fn harness_unknown_kind() {
 
 #[kani::proof]
 fn harness_unknown_kind_specific() {
-    // Test specific invalid kind values
-    for invalid_kind in [0u16, 1u16, 3u16, 100u16, 65535u16] {
-        if invalid_kind == CLI_POSTCARD_KIND {
-            continue;
-        }
+    // Test specific invalid kind values.
+    // Symbolic witness: `invalid_kind` is restricted to the small
+    // set {0, 1, 3, 100, 65535} ∖ {CLI_POSTCARD_KIND} so the
+    // harness exercises the precise invalid-kind boundary for the
+    // production `decode_postcard` impl.
+    let invalid_kind: u16 = kani::any();
+    kani::assume(
+        (invalid_kind == 0)
+            || (invalid_kind == 1)
+            || (invalid_kind == 3)
+            || (invalid_kind == 100)
+            || (invalid_kind == 65535),
+    );
+    if invalid_kind == CLI_POSTCARD_KIND {
+        return;
+    }
 
-        let payload = vec![0u8; 32];
-        let schema_version = 1u16;
+    let payload = vec![0u8; 32];
+    let schema_version = 1u16;
 
-        if let Ok(encoded) = encode_postcard(schema_version, invalid_kind, &payload) {
-            let result = decode_postcard(&encoded);
+    if let Ok(encoded) = encode_postcard(schema_version, invalid_kind, &payload) {
+        let result = decode_postcard(&encoded);
 
-            match result {
-                Err(PostcardError::WrongKind) => {}
-                Err(PostcardError::DecodeFailed) => {}
-                Ok(_) => {}
-                Err(_) => {}
-            }
+        match result {
+            Err(PostcardError::WrongKind) => {}
+            Err(PostcardError::DecodeFailed) => {}
+            Ok(_) => {}
+            Err(_) => {}
         }
     }
 }

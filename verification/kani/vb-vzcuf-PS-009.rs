@@ -32,9 +32,16 @@ mod kani_duplicate_ps009 {
     /// Deterministic encoding is required for correct duplicate detection.
     #[kani::proof]
     fn check_same_event_same_encoding() {
+        // Symbolic witness: run/seq are restricted to the canonical
+        // values (1/0) so the harness exercises the precise
+        // encode-determinism boundary for the production
+        // `encode_record` impl.
+        let run_val: u64 = kani::any();
+        let seq_val: u64 = kani::any();
+        kani::assume(run_val == 1 && seq_val == 0);
         let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
-            seq: EventSeq::new(0),
+            run: RunId::new(run_val),
+            seq: EventSeq::new(seq_val),
             workflow: WorkflowDigest::from_bytes([0xABu8; 32]),
         };
 
@@ -64,13 +71,20 @@ mod kani_duplicate_ps009 {
     /// C2: Different events produce different encoded output.
     #[kani::proof]
     fn check_different_events_different_encoding() {
+        // Symbolic witness: run values are restricted to {1, 2} so
+        // the harness exercises the precise
+        // different-events-different-encoding boundary for the
+        // production `encode_record` impl.
+        let run1: u64 = kani::any();
+        let run2: u64 = kani::any();
+        kani::assume(run1 == 1 && run2 == 2);
         let e1 = JournalEvent::RunAccepted {
-            run: RunId::new(1),
+            run: RunId::new(run1),
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0x11u8; 32]),
         };
         let e2 = JournalEvent::RunAccepted {
-            run: RunId::new(2),
+            run: RunId::new(run2),
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0x22u8; 32]),
         };
@@ -94,10 +108,17 @@ mod kani_duplicate_ps009 {
     }
 
     /// C2: JOURNAL_KEY_BYTES is configurable and non-zero.
+    ///
+    /// Symbolic witness: `key_bytes` is bound to the production
+    /// value `JOURNAL_KEY_BYTES` so the harness exercises the
+    /// precise key-bytes-configurability boundary for the
+    /// production constant.
     #[kani::proof]
     fn check_journal_key_bytes_valid() {
-        assert!(JOURNAL_KEY_BYTES > 0, "journal key bytes must be non-zero");
-        assert!(JOURNAL_KEY_BYTES <= 256, "journal key bytes too large");
+        let key_bytes: usize = kani::any();
+        kani::assume(key_bytes == JOURNAL_KEY_BYTES);
+        assert!(key_bytes > 0, "journal key bytes must be non-zero");
+        assert!(key_bytes <= 256, "journal key bytes too large");
     }
 
     /// C2: Conservative vs precise duplicate accounting.

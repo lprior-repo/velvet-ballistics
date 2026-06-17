@@ -188,15 +188,17 @@ fn lowers_binary_expression_to_postfix_bytecode() -> Result<(), String> {
 
 #[test]
 fn lowers_unary_not_and_numeric_negation() -> Result<(), String> {
+    // `-1` is lowered to `LoadConst(1); Neg`. The bytecode pre-lowering of
+    // `-x` as `0 - x` was removed in favour of a polymorphic `ExprOp::Neg`
+    // runtime opcode that handles I64 and F64 without a mixed-type `Sub`.
     let (ops, constants, max_stack) = lower("not -1")?;
 
     let expected_ops = vec![
         ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Sub,
+        ExprOp::Neg,
         ExprOp::Not,
     ];
-    let expected_constants = vec![ConstValue::I64(0), ConstValue::I64(1)];
+    let expected_constants = vec![ConstValue::I64(1)];
     if ops != expected_ops {
         return Err(format!(
             "ops mismatch: expected {expected_ops:?}, got {ops:?}"
@@ -207,8 +209,8 @@ fn lowers_unary_not_and_numeric_negation() -> Result<(), String> {
             "constants mismatch: expected {expected_constants:?}, got {constants:?}"
         ));
     }
-    if max_stack != 2 {
-        return Err(format!("max_stack mismatch: expected 2, got {max_stack}"));
+    if max_stack != 1 {
+        return Err(format!("max_stack mismatch: expected 1, got {max_stack}"));
     }
     Ok(())
 }
@@ -608,14 +610,16 @@ fn deeply_nested_arithmetic_produces_valid_bytecode() -> Result<(), String> {
 
 #[test]
 fn nested_negation_produces_correct_bytecode() -> Result<(), String> {
-    // --5 should produce: LoadConst(0), LoadConst(0), LoadConst(5), Sub, Sub
+    // `--5` lowers to: LoadConst(5), Neg, Neg. The previous `0 - x` pre-
+    // lowering pattern was replaced by a polymorphic `ExprOp::Neg` opcode
+    // that handles I64 and F64 without a mixed-type `Sub`.
     let (ops, _constants, _max_stack) = lower("--5")?;
-    adv_ensure(ops.len() == 5, "nested negation should produce 5 ops")?;
-    // Check last two ops are Sub
-    let fourth = ops.get(3).ok_or("missing 4th op")?;
-    let fifth = ops.get(4).ok_or("missing 5th op")?;
-    adv_ensure(matches!(fourth, ExprOp::Sub), "4th op should be Sub")?;
-    adv_ensure(matches!(fifth, ExprOp::Sub), "5th op should be Sub")?;
+    adv_ensure(ops.len() == 3, "nested negation should produce 3 ops")?;
+    // Check last two ops are Neg
+    let second = ops.get(1).ok_or("missing 2nd op")?;
+    let third = ops.get(2).ok_or("missing 3rd op")?;
+    adv_ensure(matches!(second, ExprOp::Neg), "2nd op should be Neg")?;
+    adv_ensure(matches!(third, ExprOp::Neg), "3rd op should be Neg")?;
     Ok(())
 }
 
@@ -704,12 +708,12 @@ fn near_min_integer_constant_lowers_correctly() -> Result<(), String> {
     // through the negation path correctly.
     let (ops, constants, _max_stack) = lower("-9999999999")?;
     adv_ensure(
-        constants == vec![ConstValue::I64(0), ConstValue::I64(9999999999)],
-        "large negative should produce 0 and absolute value constants",
+        constants == vec![ConstValue::I64(9999999999)],
+        "large negative should produce only the absolute value constant",
     )?;
-    adv_ensure(ops.len() == 3, "negation should produce 3 ops")?;
+    adv_ensure(ops.len() == 2, "negation should produce 2 ops")?;
     let last = ops.last().ok_or("missing last op")?;
-    adv_ensure(matches!(last, ExprOp::Sub), "should end with Sub")?;
+    adv_ensure(matches!(last, ExprOp::Neg), "should end with Neg")?;
     Ok(())
 }
 
@@ -717,12 +721,12 @@ fn near_min_integer_constant_lowers_correctly() -> Result<(), String> {
 fn negative_one_integer_constant_lowers_correctly() -> Result<(), String> {
     let (ops, constants, _max_stack) = lower("-1")?;
     adv_ensure(
-        constants == vec![ConstValue::I64(0), ConstValue::I64(1)],
-        "negation of 1 should produce 0 and 1 constants",
+        constants == vec![ConstValue::I64(1)],
+        "negation of 1 should produce only the 1 constant",
     )?;
-    adv_ensure(ops.len() == 3, "negation should produce 3 ops")?;
+    adv_ensure(ops.len() == 2, "negation should produce 2 ops")?;
     let last = ops.last().ok_or("missing last op")?;
-    adv_ensure(matches!(last, ExprOp::Sub), "negation should end with Sub")?;
+    adv_ensure(matches!(last, ExprOp::Neg), "negation should end with Neg")?;
     Ok(())
 }
 
@@ -1713,20 +1717,20 @@ fn nested_parens_override_all_precedence() -> Result<(), String> {
 fn unary_negation_has_highest_precedence() -> Result<(), String> {
     // -1 + 2 => the negation is applied to 1 first
     let (ops, constants, _max_stack) = lower("-1 + 2")?;
-    // Const 0, Const 1, Sub, Const 2, Add
+    // Const 1, Neg, Const 2, Add
     adv_ensure(
-        constants == vec![ConstValue::I64(0), ConstValue::I64(1), ConstValue::I64(2)],
-        "negation constants should be 0, 1, 2",
+        constants == vec![ConstValue::I64(1), ConstValue::I64(2)],
+        "negation constants should be 1, 2",
     )?;
-    let sub_pos = ops
+    let neg_pos = ops
         .iter()
-        .position(|op| matches!(op, ExprOp::Sub))
-        .ok_or("no Sub")?;
+        .position(|op| matches!(op, ExprOp::Neg))
+        .ok_or("no Neg")?;
     let add_pos = ops
         .iter()
         .position(|op| matches!(op, ExprOp::Add))
         .ok_or("no Add")?;
-    adv_ensure(sub_pos < add_pos, "Sub (negation) should come before Add")?;
+    adv_ensure(neg_pos < add_pos, "Neg should come before Add")?;
     Ok(())
 }
 
@@ -1751,21 +1755,21 @@ fn not_has_higher_precedence_than_comparison() -> Result<(), String> {
 #[test]
 fn helper_with_negated_argument() -> Result<(), String> {
     let (ops, constants, _max_stack) = lower("exists(-1)")?;
-    // Const 0, Const 1, Sub, Exists
-    adv_ensure(constants.len() == 2, "should have 2 constants (0 and 1)")?;
-    let has_sub = ops.iter().any(|op| matches!(op, ExprOp::Sub));
+    // Const 1, Neg, Exists (no longer pre-lowered to 0 - x).
+    adv_ensure(constants.len() == 1, "should have 1 constant (1)")?;
+    let has_neg = ops.iter().any(|op| matches!(op, ExprOp::Neg));
     let has_exists = ops.iter().any(|op| matches!(op, ExprOp::Exists));
-    adv_ensure(has_sub, "should contain Sub for negation")?;
+    adv_ensure(has_neg, "should contain Neg for negation")?;
     adv_ensure(has_exists, "should contain Exists")?;
     let exists_pos = ops
         .iter()
         .position(|op| matches!(op, ExprOp::Exists))
         .ok_or("no Exists")?;
-    let sub_pos = ops
+    let neg_pos = ops
         .iter()
-        .position(|op| matches!(op, ExprOp::Sub))
-        .ok_or("no Sub")?;
-    adv_ensure(sub_pos < exists_pos, "Sub should come before Exists")?;
+        .position(|op| matches!(op, ExprOp::Neg))
+        .ok_or("no Neg")?;
+    adv_ensure(neg_pos < exists_pos, "Neg should come before Exists")?;
     Ok(())
 }
 
@@ -1831,10 +1835,10 @@ fn nested_helpers_in_binary_expression() -> Result<(), String> {
 fn double_negation_in_helper() -> Result<(), String> {
     // exists(--5) => exists evaluated on (-(- 5))
     let (ops, constants, _max_stack) = lower("exists(--5)")?;
-    // Const 0, Const 0, Const 5, Sub, Sub, Exists
-    adv_ensure(constants.len() == 3, "should have 3 constants")?;
-    let sub_count = ops.iter().filter(|op| matches!(op, ExprOp::Sub)).count();
-    adv_ensure(sub_count == 2, "should have 2 Sub ops for double negation")?;
+    // Const 5, Neg, Neg, Exists (no longer pre-lowered to 0 - x).
+    adv_ensure(constants.len() == 1, "should have 1 constant (5)")?;
+    let neg_count = ops.iter().filter(|op| matches!(op, ExprOp::Neg)).count();
+    adv_ensure(neg_count == 2, "should have 2 Neg ops for double negation")?;
     let has_exists = ops.iter().any(|op| matches!(op, ExprOp::Exists));
     adv_ensure(has_exists, "should contain Exists")?;
     Ok(())
@@ -2041,26 +2045,26 @@ fn mixed_add_mul_left_assoc_same_precedence() -> Result<(), String> {
 // ── Edge-case: negation of helper result ────────────────────────────────
 
 #[test]
-fn negation_of_helper_result_produces_sub() -> Result<(), String> {
-    // -length(1) => Const 0, Const 1, Length, Sub
+fn negation_of_helper_result_produces_neg() -> Result<(), String> {
+    // -length(1) => Const 1, Length, Neg (no longer pre-lowered to 0 - x).
     let (ops, constants, _max_stack) = lower("-length(1)")?;
     adv_ensure(
-        constants.first() == Some(&ConstValue::I64(0)),
-        "first constant should be 0 for negation",
+        constants.first() == Some(&ConstValue::I64(1)),
+        "first constant should be 1 for length(1) input",
     )?;
     let has_length = ops.iter().any(|op| matches!(op, ExprOp::Length));
-    let has_sub = ops.iter().any(|op| matches!(op, ExprOp::Sub));
+    let has_neg = ops.iter().any(|op| matches!(op, ExprOp::Neg));
     adv_ensure(has_length, "should contain Length")?;
-    adv_ensure(has_sub, "should contain Sub for negation")?;
-    let sub_pos = ops
+    adv_ensure(has_neg, "should contain Neg for negation")?;
+    let neg_pos = ops
         .iter()
-        .position(|op| matches!(op, ExprOp::Sub))
-        .ok_or("no Sub")?;
+        .position(|op| matches!(op, ExprOp::Neg))
+        .ok_or("no Neg")?;
     let length_pos = ops
         .iter()
         .position(|op| matches!(op, ExprOp::Length))
         .ok_or("no Length")?;
-    adv_ensure(length_pos < sub_pos, "Length should come before Sub")?;
+    adv_ensure(length_pos < neg_pos, "Length should come before Neg")?;
     Ok(())
 }
 

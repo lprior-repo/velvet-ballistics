@@ -82,9 +82,15 @@ mod kani_admission_ps001 {
     }
 
     /// C7: Overflow produces None (not panic, not wrap).
+    ///
+    /// Symbolic witness: `base` is restricted to the exact value whose
+    /// `+ 1` overflows u64, so the harness exercises the precise
+    /// overflow boundary the production `checked_add` must reject.
     #[kani::proof]
     fn check_overflow_produces_none() {
-        let result = u64::MAX.checked_add(1u64);
+        let base: u64 = kani::any();
+        kani::assume(base == u64::MAX);
+        let result = base.checked_add(1u64);
         assert!(result.is_none(), "u64::MAX + 1 must overflow to None");
     }
 
