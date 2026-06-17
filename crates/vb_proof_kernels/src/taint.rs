@@ -167,7 +167,106 @@ verus! {
             Taint::Clean != Taint::Secret,
             Taint::DerivedFromSecret != Taint::Secret,
     {
-        // Different variants of a non-exhaustive enum.
+        assert(Taint::Clean != Taint::DerivedFromSecret);
+        assert(Taint::Clean != Taint::Secret);
+        assert(Taint::DerivedFromSecret != Taint::Secret);
+    }
+
+    // ── Exec: join_taint — executable lattice supremum ─────────────────────
+    pub fn join_taint(a: Taint, b: Taint) -> (result: Taint)
+        ensures
+            result == spec_join(a, b),
+    {
+        if spec_rank(a) >= spec_rank(b) { a } else { b }
+    }
+
+    // ── Exec: is_commutative — verifies join is commutative ────────────────
+    pub fn is_commutative(a: Taint, b: Taint) -> (equal: bool)
+        ensures
+            equal == (join_taint(a, b) == join_taint(b, a)),
+    {
+        lemma_join_is_commutative(a, b);
+        join_taint(a, b) == join_taint(b, a)
+    }
+
+    // ── Exec: is_associative — verifies join is associative ────────────────
+    pub fn is_associative(a: Taint, b: Taint, c: Taint) -> (equal: bool)
+        ensures
+            equal == (join_taint(join_taint(a, b), c) == join_taint(a, join_taint(b, c))),
+    {
+        assert(spec_join(spec_join(a, b), c) == spec_join(a, spec_join(b, c)));
+        join_taint(join_taint(a, b), c) == join_taint(a, join_taint(b, c))
+    }
+
+    // ── Exec: is_idempotent — verifies join is idempotent ──────────────────
+    pub fn is_idempotent(a: Taint) -> (equal: bool)
+        ensures
+            equal == (join_taint(a, a) == a),
+    {
+        lemma_join_is_idempotent(a);
+        join_taint(a, a) == a
+    }
+
+    // ── Exec: has_identity — verifies Clean is identity ────────────────────
+    pub fn has_identity(a: Taint) -> (equal: bool)
+        ensures
+            equal == (join_taint(a, Taint::Clean) == a),
+    {
+        lemma_clean_join(a);
+        join_taint(a, Taint::Clean) == a
+    }
+
+    // ── Exec: secret_never_downgrades — verifies no downgrade from Secret ──
+    pub fn secret_never_downgrades() -> (no_downgrade: bool)
+        ensures
+            no_downgrade,
+    {
+        lemma_no_secret_downgrade();
+        join_taint(Taint::Clean, Taint::Secret) == Taint::Secret
+    }
+
+    // ── Exec: derived_never_downgrades — verifies no downgrade from Derived ─
+    pub fn derived_never_downgrades() -> (no_downgrade: bool)
+        ensures
+            no_downgrade,
+    {
+        lemma_no_derived_downgrade();
+        join_taint(Taint::Clean, Taint::DerivedFromSecret) == Taint::DerivedFromSecret
+    }
+
+    // ── Exec: join_many — fold over taint lattice with loop invariant ──────
+    pub fn join_many(taints: &[Taint]) -> (result: Taint)
+        ensures
+            // Result rank is >= rank of every element in the slice
+            forall|i: nat, #![trigger spec_rank(taints[i])]| i < taints.len() ==>
+                spec_rank(result) >= spec_rank(taints[i]),
+            // Result rank <= max rank in slice (result IS the join)
+            exists|i: nat, #![exists_trigger spec_rank(taints[i])]| i < taints.len() && spec_rank(result) == spec_rank(taints[i]),
+    {
+        let mut result = Taint::Clean;
+        let mut i = 0usize;
+        while i < taints.len()
+            invariant(
+                forall|j: nat, #![trigger spec_rank(taints[j])]| j < i ==> spec_rank(result) >= spec_rank(taints[j]),
+            )
+        {
+            result = join_taint(result, taints[i]);
+            i += 1;
+        }
+        result
+    }
+
+    // ── Exec: all_lattice_laws — composite lattice law checker ─────────────
+    pub fn all_lattice_laws(a: Taint, b: Taint, c: Taint) -> (holds: bool)
+        ensures
+            holds == (is_commutative(a, b) && is_associative(a, b, c) && is_idempotent(a) && has_identity(a) && secret_never_downgrades() && derived_never_downgrades()),
+    {
+        is_commutative(a, b)
+            && is_associative(a, b, c)
+            && is_idempotent(a)
+            && has_identity(a)
+            && secret_never_downgrades()
+            && derived_never_downgrades()
     }
 
 } // verus!
