@@ -78,11 +78,9 @@ mod kani_taint_guard {
             idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean;
 
         if expected_fires {
-            kani::assert(result == Some(Taint::Clean, "assertion failed"), "guard must fire with required=Clean for DeterministicPure + non-Clean input");
+            kani::assert(result == Some(Taint::Clean), "guard must fire with required=Clean for DeterministicPure + non-Clean input");
         } else {
-            , "guard must fire with required=Clean for DeterministicPure + non-Clean input");
-        } else {
-            kani::assert(result == None, "guard must NOT fire when idempotency≠DeterministicPure or input=Clean");
+            kani::assert(result == None, "guard must NOT fire when idempotency!=DeterministicPure or input=Clean");
         }
     }
 
@@ -102,27 +100,7 @@ mod kani_taint_guard {
     fn clean_input_never_triggers_guard() {
         let idempotency = any_idempotency();
         let result = guard_decision(idempotency, Taint::Clean);
-        , "DeterministicPure + non-Clean input must always fire the guard");
-    }
-
-    /// Clean input never triggers the guard, regardless of idempotency.
-    #[kani::proof]
-    #[kani::unwind(10)]
-    fn clean_input_never_triggers_guard() {
-        let idempotency = any_idempotency();
-        let result = guard_decision(idempotency, Taint::Clean);
         kani::assert(result == None, "Clean input must never trigger the guard for any idempotency");
-    }
-
-    /// Non-DeterministicPure idempotency levels never trigger the guard.
-    #[kani::proof]
-    #[kani::unwind(10)]
-    fn non_deterministicpure_never_triggers_guard() {
-        let input_taint = any_taint();
-        let idempotency = any_idempotency();
-        kani::assume(idempotency != Idempotency::DeterministicPure);
-        let result = guard_decision(idempotency, input_taint);
-        result == None, "Clean input must never trigger the guard for any idempotency");
     }
 
     /// Non-DeterministicPure idempotency levels never trigger the guard.

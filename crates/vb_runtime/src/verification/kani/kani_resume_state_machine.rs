@@ -320,7 +320,7 @@ fn kani_resume_apply_state_transitions() {
     let r2 = any_run_id();
     s2.apply(r2, RuntimeEvent::Resume);
     let state2 = s2.runtime_state_get(r2);
-    kani::assert(state2 == Some(RuntimeState::Resuming, "assertion failed"),
+    kani::assert(state2 == Some(RuntimeState::Resuming),
         "Resume must set Resuming state",
     );
     // Test ResumeRollback → Resumable
@@ -328,7 +328,7 @@ fn kani_resume_apply_state_transitions() {
     let r3 = any_run_id();
     s3.apply(r3, RuntimeEvent::ResumeRollback);
     let state3 = s3.runtime_state_get(r3);
-    kani::assert(state3 == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::assert(state3 == Some(RuntimeState::Resumable),
         "ResumeRollback must set Resumable state",
     );
     // Test DriveContinue → Running
@@ -336,7 +336,7 @@ fn kani_resume_apply_state_transitions() {
     let r4 = any_run_id();
     s4.apply(r4, RuntimeEvent::DriveContinue);
     let state4 = s4.runtime_state_get(r4);
-    kani::assert(state4 == Some(RuntimeState::Running, "assertion failed"),
+    kani::assert(state4 == Some(RuntimeState::Running),
         "DriveContinue must set Running state",
     );
     // Test AwaitAction → Resumable
@@ -344,7 +344,7 @@ fn kani_resume_apply_state_transitions() {
     let r5 = any_run_id();
     s5.apply(r5, RuntimeEvent::AwaitAction);
     let state5 = s5.runtime_state_get(r5);
-    kani::assert(state5 == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::assert(state5 == Some(RuntimeState::Resumable),
         "AwaitAction must set Resumable state",
     );
     // Test AwaitTimer → Resumable
@@ -352,7 +352,7 @@ fn kani_resume_apply_state_transitions() {
     let r6 = any_run_id();
     s6.apply(r6, RuntimeEvent::AwaitTimer);
     let state6 = s6.runtime_state_get(r6);
-    kani::assert(state6 == Some(RuntimeState::Resumable, "assertion failed"),
+    kani::assert(state6 == Some(RuntimeState::Resumable),
         "AwaitTimer must set Resumable state",
     );
     // Test Fail → Failed
@@ -360,7 +360,7 @@ fn kani_resume_apply_state_transitions() {
     let r7 = any_run_id();
     s7.apply(r7, RuntimeEvent::Fail);
     let state7 = s7.runtime_state_get(r7);
-    kani::assert(state7 == Some(RuntimeState::Failed, "assertion failed"),
+    kani::assert(state7 == Some(RuntimeState::Failed),
         "Fail must set Failed state",
     );
     // Test TerminalRemove → swap_remove (state is removed)
