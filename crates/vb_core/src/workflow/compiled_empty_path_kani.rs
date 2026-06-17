@@ -37,7 +37,7 @@ fn vb_ajc40_empty_path_root_accessor() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
+            kani::assert(admitted.len() == 1, "assertion failed");
             kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0));
         }
         Err(_) => kani::assert(false),

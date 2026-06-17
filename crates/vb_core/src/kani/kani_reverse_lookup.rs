@@ -32,11 +32,7 @@ mod harnesses {
                 entry.numeric,
             );
             if let Some(sym) = result {
-                kani::assert_eq!(
-                    sym.as_str(),
-                    entry.symbolic,
-                    "symbolic_code() must return the matching SymbolicCode"
-                );
+                kani::assert(sym.as_str() == entry.symbolic, "symbolic_code() must return the matching SymbolicCode");
             }
         }
     }

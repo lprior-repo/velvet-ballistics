@@ -83,12 +83,10 @@ fn kani_retry_cursor_bounds() {
 
     // --- initial_cursor ---
     let initial = policy.initial_cursor();
-    kani::assert_eq!(initial.attempt, 1);
-    kani::assert_eq!(initial.remaining, policy.max_attempts);
-    kani::assert_eq!(initial.delay_ms, 0);
-    kani::assert_eq!(initial.exhausted,
-        policy.max_attempts == 0,
-        "initial cursor exhausted only when max_attempts == 0");
+    kani::assert(initial.attempt == 1, "assertion failed");
+    kani::assert(initial.remaining == policy.max_attempts, "assertion failed");
+    kani::assert(initial.delay_ms == 0, "assertion failed");
+    kani::assert(initial.exhausted == policy.max_attempts == 0, "initial cursor exhausted only when max_attempts == 0");
     kani::cover!(initial.exhausted == false);
     kani::cover!(initial.exhausted == true);
 
@@ -105,9 +103,7 @@ fn kani_retry_cursor_bounds() {
     match policy.next_cursor(max_interval, cursor) {
         Ok(next) => {
             // Invariant: exhausted ⟺ remaining == 0
-            kani::assert_eq!(next.exhausted,
-                next.remaining == 0,
-                "exhausted must be true iff remaining is 0");
+            kani::assert(next.exhausted == next.remaining == 0, "exhausted must be true iff remaining is 0");
 
             if !next.exhausted {
                 // Non-exhausted: attempt must be ≤ max_attempts
@@ -126,9 +122,7 @@ fn kani_retry_cursor_bounds() {
                 
                 // remaining must have decreased or be 0
                 if cursor.remaining > 1 {
-                    kani::assert_eq!(next.remaining,
-                        cursor.remaining - 1,
-                        "remaining must decrease by 1");
+                    kani::assert(next.remaining == cursor.remaining - 1, "remaining must decrease by 1");
                 }
             }
             kani::cover!(next.exhausted == true);

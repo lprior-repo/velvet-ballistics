@@ -79,9 +79,9 @@ fn prove_encoding_no_collision() {
     let encoded_a = encode_contract_bytes(&a);
     let encoded_b = encode_contract_bytes(&b);
 
-    kani::assert_ne!(encoded_a, encoded_b,
+    kani::assert(encoded_a != encoded_b,
         "Domain-tagged encoding must be injective: different contracts produce different encodings.\n\
-         a={:?}\nb={:?}", a, b);
+         a={:?}\nb={:?}", a, b, 'assertion failed');
 }
 
 /// PO-K12 variant: All-zeros vs all-ones edge case.
@@ -113,6 +113,5 @@ fn prove_encoding_no_collision_zeros_vs_ones() {
     let encoded_zeros = encode_contract_bytes(&all_zeros);
     let encoded_ones = encode_contract_bytes(&all_ones);
 
-    kani::assert_ne!(encoded_zeros, encoded_ones,
-        "All-zeros contract must encode differently from all-ones contract");
+    kani::assert(encoded_zeros != encoded_ones, "All-zeros contract must encode differently from all-ones contract");
 }

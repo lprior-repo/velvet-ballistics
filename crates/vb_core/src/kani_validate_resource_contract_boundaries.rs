@@ -85,7 +85,7 @@ fn parts_with_contract(contract: ResourceContract) -> WorkflowParts {
 fn kani_validate_resource_contract_accepts_default() {
     let parts = parts_with_contract(ResourceContract::DEFAULT);
     let result = validate_resource_contract(&parts);
-    kani::assert_eq!(result, Ok(()));
+    kani::assert(result == Ok(()), "assertion failed");
 }
 
 // ============================================================================
@@ -117,7 +117,7 @@ fn kani_validate_resource_contract_rejects_zero_max_steps() {
     // 0 is not > 1_000 (master §13 line 479), so the function returns Ok.
     // Asserting the function's actual contract here is mandatory under
     // GOD RULE 4 (no cheating the math).
-    kani::assert_eq!(result, Ok(()));
+    kani::assert(result == Ok(()), "assertion failed");
 }
 
 // ============================================================================

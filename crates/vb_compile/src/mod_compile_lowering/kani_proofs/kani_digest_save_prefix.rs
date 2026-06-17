@@ -57,11 +57,7 @@ fn kani_digest_step_primitive_save_prefix_is_set() {
     crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_primitive).unwrap_or(());
     let actual = h1.finalize().into();
 
-    kani::assert_eq!(
-        actual,
-        expected,
-        "digest_step_primitive(Save{{String}}) must produce blake3(b\"set\" + value_bytes)",
-    );
+    kani::assert(actual == expected, "digest_step_primitive(Save{{String}}) must produce blake3(b\"set\" + value_bytes)");
 }
 
 /// PO-KANI-002b: digest_step_primitive(Save{Integer}) starts with b"set" tag.
@@ -82,11 +78,7 @@ fn kani_digest_step_primitive_save_integer_prefix_is_set() {
     crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_primitive).unwrap_or(());
     let actual = h1.finalize().into();
 
-    kani::assert_eq!(
-        actual,
-        expected,
-        "digest_step_primitive(Save{{Integer}}) must produce blake3(b\"set\" + i64_le_bytes)",
-    );
+    kani::assert(actual == expected, "digest_step_primitive(Save{{Integer}}) must produce blake3(b\"set\" + i64_le_bytes)");
 }
 
 /// PO-KANI-002c: Save and Set digest both start with b"set" tag prefix.
@@ -126,16 +118,8 @@ fn kani_digest_save_and_set_both_use_set_tag() {
     let set_actual = h_set.finalize().into();
 
     // Both must match their expected digests
-    kani::assert_eq!(
-        save_actual,
-        save_expected,
-        "Save digest must be blake3(b\"set\" + value_bytes)",
-    );
-    kani::assert_eq!(
-        set_actual,
-        set_expected,
-        "Set digest must be blake3(b\"set\" + value_bytes)",
-    );
+    kani::assert(save_actual == save_expected, "Save digest must be blake3(b\"set\" + value_bytes)");
+    kani::assert(set_actual == set_expected, "Set digest must be blake3(b\"set\" + value_bytes)");
 }
 
 /// PO-KANI-002d: Save digest is deterministic (same input → same output).
@@ -153,9 +137,5 @@ fn kani_digest_save_deterministic() {
     crate::mod_compile_lowering::digest_step_primitive(&mut h1, &save_prim).unwrap_or(());
     crate::mod_compile_lowering::digest_step_primitive(&mut h2, &save_prim).unwrap_or(());
 
-    kani::assert_eq!(
-        h1.finalize().as_bytes(),
-        h2.finalize().as_bytes(),
-        "Save digest must be deterministic",
-    );
+    kani::assert(h1.finalize().as_bytes() == h2.finalize().as_bytes(), "Save digest must be deterministic");
 }

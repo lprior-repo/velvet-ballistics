@@ -1,0 +1,39 @@
+thread 'rustc' panicked at /rustc-dev/e0e95a71872dfe9e15d22bddea9ac45c85ddda1a/compiler/rustc_middle/src/query/on_disk_cache.rs:663:9:
+cannot decode `AttrId` with `CacheDecoder`
+stack backtrace:
+   0:     0x7fce4c3986fb - <std[c82a07581ab36d97]::backtrace::Backtrace>::create
+   1:     0x7fce4c398645 - <std[c82a07581ab36d97]::backtrace::Backtrace>::force_capture
+   2:     0x7fce4b3b1b7b - std[c82a07581ab36d97]::panicking::update_hook::<alloc[e0fd5946fcb5232b]::boxed::Box<rustc_driver_impl[fcffb9a9f258d7fb]::install_ice_hook::{closure#1}>>::{closure#0}
+   3:     0x7fce4c3aac72 - std[c82a07581ab36d97]::panicking::panic_with_hook
+   4:     0x7fce4c38d68a - std[c82a07581ab36d97]::panicking::panic_handler::{closure#0}
+   5:     0x7fce4c384389 - std[c82a07581ab36d97]::sys::backtrace::__rust_end_short_backtrace::<std[c82a07581ab36d97]::panicking::panic_handler::{closure#0}, !>
+   6:     0x7fce4c38f0bd - __rustc[ef23d2ce7c7066b]::rust_begin_unwind
+   7:     0x7fce48e9775c - core[6f5cb5f9f702ad34]::panicking::panic_fmt
+   8:     0x7fce4defa82d - <rustc_middle[b131f75fcb3a20c8]::query::on_disk_cache::OnDiskCache>::load_side_effect
+   9:     0x7fce4defbd8d - <rustc_query_impl[2ee90f16474df6d4]::dep_kind_vtables::non_query::SideEffect::{closure#0} as core[6f5cb5f9f702ad34]::ops::function::FnOnce<(rustc_middle[b131f75fcb3a20c8]::ty::context::TyCtxt, rustc_middle[b131f75fcb3a20c8]::dep_graph::dep_node::DepNode, rustc_middle[b131f75fcb3a20c8]::dep_graph::serialized::SerializedDepNodeIndex)>>::call_once
+  10:     0x7fce4cab71f4 - <rustc_middle[b131f75fcb3a20c8]::dep_graph::graph::DepGraphData>::try_mark_previous_green
+  11:     0x7fce4cab43a9 - <rustc_middle[b131f75fcb3a20c8]::dep_graph::graph::DepGraph>::try_mark_green
+  12:     0x7fce4cab41ee - rustc_query_impl[2ee90f16474df6d4]::execution::ensure_can_skip_execution::<rustc_middle[b131f75fcb3a20c8]::query::caches::DefaultCache<rustc_span[6ce826da1f1e8bb5]::def_id::LocalModDefId, rustc_middle[b131f75fcb3a20c8]::query::erase::ErasedData<[u8; 0usize]>>>
+  13:     0x7fce4d9f5bb4 - rustc_query_impl[2ee90f16474df6d4]::query_impl::check_mod_deathness::execute_query_incr::__rust_end_short_backtrace
+  14:     0x7fce4d9f5663 - rustc_interface[cc58e57bc9720a30]::passes::analysis::{closure#0}::{closure#0}::{closure#1}
+  15:     0x7fce4d9f4162 - rustc_data_structures[8395d95a7a3102cd]::sync::parallel::par_fns
+  16:     0x7fce4d9f40fc - rustc_interface[cc58e57bc9720a30]::passes::analysis::{closure#0}::{closure#0}
+  17:     0x7fce4d9f4162 - rustc_data_structures[8395d95a7a3102cd]::sync::parallel::par_fns
+  18:     0x7fce4cab81e3 - rustc_interface[cc58e57bc9720a30]::passes::analysis
+  19:     0x7fce4df5bdfe - rustc_query_impl[2ee90f16474df6d4]::execution::try_execute_query::<rustc_middle[b131f75fcb3a20c8]::query::caches::SingleCache<rustc_middle[b131f75fcb3a20c8]::query::erase::ErasedData<[u8; 0usize]>>, true>
+  20:     0x7fce4df5b76a - rustc_query_impl[2ee90f16474df6d4]::query_impl::analysis::execute_query_incr::__rust_end_short_backtrace
+  21:     0x7fce4dc05d1e - rustc_interface[cc58e57bc9720a30]::interface::run_compiler::<(), rustc_driver_impl[fcffb9a9f258d7fb]::run_compiler::{closure#0}>::{closure#1}
+  22:     0x7fce4dbeccbe - std[c82a07581ab36d97]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[cc58e57bc9720a30]::util::run_in_thread_with_globals<rustc_interface[cc58e57bc9720a30]::util::run_in_thread_pool_with_globals<rustc_interface[cc58e57bc9720a30]::interface::run_compiler<(), rustc_driver_impl[fcffb9a9f258d7fb]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>
+  23:     0x7fce4dbed560 - <std[c82a07581ab36d97]::thread::lifecycle::spawn_unchecked<rustc_interface[cc58e57bc9720a30]::util::run_in_thread_with_globals<rustc_interface[cc58e57bc9720a30]::util::run_in_thread_pool_with_globals<rustc_interface[cc58e57bc9720a30]::interface::run_compiler<(), rustc_driver_impl[fcffb9a9f258d7fb]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>::{closure#1} as core[6f5cb5f9f702ad34]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  24:     0x7fce4dbee46c - <std[c82a07581ab36d97]::sys::thread::unix::Thread>::new::thread_start
+  25:     0x7fce474981b9 - <unknown>
+  26:     0x7fce4751d21c - <unknown>
+  27:                0x0 - <unknown>
+
+
+rustc version: 1.96.0-nightly (e0e95a718 2026-04-04)
+platform: x86_64-unknown-linux-gnu
+
+query stack during panic:
+#0 [analysis] running analysis passes on crate `vb_storage`
+end of query stack

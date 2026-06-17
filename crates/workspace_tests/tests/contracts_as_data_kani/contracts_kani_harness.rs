@@ -386,7 +386,7 @@ fn kani_schema_version_accepts_valid() {
             return;
         }
     };
-    kani::assert_eq!(validated, version, "Validated version must equal input");
+    kani::assert(validated == version, "Validated version must equal input");
 }
 
 /// OBL-002: parse_contract_kind exhaustively covers all 6 variants.
@@ -546,11 +546,7 @@ fn kani_gate_evidence_parity() {
             matches!(evidence.status, GateStatus::Pass),
             "Status should be Pass when invalid == 0",
         );
-        kani::assert_eq!(
-            evidence.exit_code,
-            0,
-            "Exit code should be 0 when invalid == 0"
-        );
+        kani::assert(evidence.exit_code == 0, "Exit code should be 0 when invalid == 0");
         kani::assert(
             evidence.why_failed.is_none(),
             "why_failed should be None when invalid == 0",
@@ -560,11 +556,7 @@ fn kani_gate_evidence_parity() {
             matches!(evidence.status, GateStatus::Fail),
             "Status should be Fail when invalid > 0",
         );
-        kani::assert_eq!(
-            evidence.exit_code,
-            1,
-            "Exit code should be 1 when invalid > 0"
-        );
+        kani::assert(evidence.exit_code == 1, "Exit code should be 1 when invalid > 0");
         kani::assert(
             evidence.why_failed.is_some(),
             "why_failed should be Some when invalid > 0",
@@ -572,8 +564,8 @@ fn kani_gate_evidence_parity() {
     }
 
     // Postcondition: kind and gate_name are always correct
-    kani::assert_eq!(evidence.kind, "contract-discovery");
-    kani::assert_eq!(evidence.gate_name, "contracts");
+    kani::assert(evidence.kind == "contract-discovery", "assertion failed");
+    kani::assert(evidence.gate_name == "contracts", "assertion failed");
 
     // Postcondition: total == valid + invalid (invariant)
     kani::assert(
@@ -599,7 +591,7 @@ fn kani_gate_evidence_empty() {
     };
 
     kani::assert(matches!(evidence.status, GateStatus::Pass));
-    kani::assert_eq!(evidence.exit_code, 0);
+    kani::assert(evidence.exit_code == 0, "assertion failed");
     kani::assert(evidence.why_failed.is_none(), "kani harness assertion");
 }
 
@@ -625,6 +617,6 @@ fn kani_gate_evidence_all_invalid() {
     };
 
     kani::assert(matches!(evidence.status, GateStatus::Fail));
-    kani::assert_eq!(evidence.exit_code, 1);
+    kani::assert(evidence.exit_code == 1, "assertion failed");
     kani::assert(evidence.why_failed.is_some(), "kani harness assertion");
 }

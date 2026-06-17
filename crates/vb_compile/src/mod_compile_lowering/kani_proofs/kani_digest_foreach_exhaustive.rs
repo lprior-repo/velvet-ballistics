@@ -73,7 +73,7 @@ fn kani_foreach_all_fields_hashed() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
-    kani::assert_ne!(ha.finalize().as_bytes(), hb.finalize().as_bytes());
+    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes(), "assertion failed");
 }
 
 /// H2: ForEach arm does not fall through to the catch-all.
@@ -95,8 +95,5 @@ fn kani_foreach_arm_not_fallthrough() {
 
     // After the ForEach fix, this should be assert_ne! because
     // the ForEach arm adds field hashing beyond just the name.
-    kani::assert_ne!(
-        hasher.finalize().as_bytes(),
-        name_hasher.finalize().as_bytes()
-    );
+    kani::assert(hasher.finalize().as_bytes() != name_hasher.finalize().as_bytes(), "assertion failed");
 }

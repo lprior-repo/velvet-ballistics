@@ -56,8 +56,8 @@ fn vb_ajc40_slug_decode_smoke_cases() {
     ) {
         Ok(admitted) => {
             kani::assert(admitted.is_empty());
-            kani::assert_eq!(admitted.len(), 0);
-            kani::assert_eq!(admitted.remaining_budget(), 0);
+            kani::assert(admitted.len() == 0, "assertion failed");
+            kani::assert(admitted.remaining_budget() == 0, "assertion failed");
         }
         Err(_) => kani::assert(false),
     }
@@ -70,7 +70,7 @@ fn vb_ajc40_slug_decode_smoke_cases() {
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
+            kani::assert(admitted.len() == 1, "assertion failed");
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
@@ -139,8 +139,8 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
-            kani::assert_eq!(admitted.remaining_budget(), 0);
+            kani::assert(admitted.len() == 1, "assertion failed");
+            kani::assert(admitted.remaining_budget() == 0, "assertion failed");
         }
         Err(_) => kani::assert(false),
     }
@@ -153,7 +153,7 @@ fn vb_ajc40_slug_budget_boundaries() {
         1,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
+            kani::assert(admitted.len() == 1, "assertion failed");
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
@@ -167,7 +167,7 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Err(SlugParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert_eq!(total, 1);
+            kani::assert(total == 1, "assertion failed");
             assert_eq!(max, 0);
         }
         _ => kani::assert(false),
@@ -185,7 +185,7 @@ fn vb_ajc40_slug_path_depth_16_17() {
         },
         0,
     ) {
-        Ok(admitted) => kani::assert_eq!(admitted.len(), 1),
+        Ok(admitted) => kani::assert(admitted.len() == 1, "assertion failed"),
         Err(_) => kani::assert(false),
     }
 
@@ -218,8 +218,8 @@ fn vb_ajc40_slug_count_65535_65536() {
 
     match validate_compiled_slug_count(SLUG_COUNT_OVER_LIMIT) {
         Err(SlugParseError::TooManySlugs { count, max }) => {
-            kani::assert_eq!(count, SLUG_COUNT_OVER_LIMIT);
-            kani::assert_eq!(max, MAX_SLUGS_PER_WORKFLOW);
+            kani::assert(count == SLUG_COUNT_OVER_LIMIT, "assertion failed");
+            kani::assert(max == MAX_SLUGS_PER_WORKFLOW, "assertion failed");
         }
         _ => assert!(false),
     }

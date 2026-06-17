@@ -46,15 +46,9 @@ fn vb_mrwe6_duplicate_arbitrary_facts() {
         mrwe6_duplicate_retry_decision_from_facts(equal_payload, retry_class, marker_present);
 
     if equal_payload {
-        kani::assert_eq!(
-            decision,
-            expected_equal_payload_decision(retry_class, marker_present)
-        );
+        kani::assert(decision == expected_equal_payload_decision(retry_class, marker_present), "assertion failed");
     } else {
-        kani::assert_eq!(
-            decision,
-            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict
-        );
+        kani::assert(decision == Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict, "assertion failed");
     }
     kani::assert(unsupported_never_idempotent(retry_class, decision));
 }

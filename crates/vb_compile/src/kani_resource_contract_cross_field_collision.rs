@@ -60,25 +60,20 @@ fn prove_no_cross_field_collision() {
     contract_2.max_steps = field_b_val;
     contract_2.max_slots = field_a_val;
 
-    kani::assert_ne!(contract_1.max_steps, contract_2.max_steps,
-        "Swapped pair: max_steps values must differ");
-    kani::assert_ne!(contract_1.max_slots, contract_2.max_slots,
-        "Swapped pair: max_slots values must differ");
+    kani::assert(contract_1.max_steps != contract_2.max_steps, "Swapped pair: max_steps values must differ");
+    kani::assert(contract_1.max_slots != contract_2.max_slots, "Swapped pair: max_slots values must differ");
 
     // Encoding must differ due to field tags
     let enc_1 = encode_contract_bytes(&contract_1);
     let enc_2 = encode_contract_bytes(&contract_2);
 
-    kani::assert_ne!(enc_1, enc_2,
-        "Field-tagged encoding must prevent cross-field collision: \
-         swapping max_steps and max_slots values must produce different encodings");
+    kani::assert(enc_1 != enc_2, "Field-tagged encoding must prevent cross-field collision: \\\n         swapping max_steps and max_slots values must produce different encodings");
 
     // Digest must also differ
     let source = representative_source();
     let digest_1 = crate::mod_compile_lowering::canonical_digest(&source, contract_1);
     let digest_2 = crate::mod_compile_lowering::canonical_digest(&source, contract_2);
-    kani::assert_ne!(digest_1, digest_2,
-        "canonical_digest must prevent cross-field collisions");
+    kani::assert(digest_1 != digest_2, "canonical_digest must prevent cross-field collisions");
 
     kani::cover!(enc_1 != enc_2 && digest_1 != digest_2);
 }
@@ -101,14 +96,13 @@ fn prove_no_cross_field_collision_u32() {
     contract_2.max_input_bytes = val_b;
     contract_2.max_output_bytes = val_a;
 
-    kani::assert_ne!(contract_1.max_input_bytes, contract_2.max_input_bytes);
-    kani::assert_ne!(contract_1.max_output_bytes, contract_2.max_output_bytes);
+    kani::assert(contract_1.max_input_bytes != contract_2.max_input_bytes, "assertion failed");
+    kani::assert(contract_1.max_output_bytes != contract_2.max_output_bytes, "assertion failed");
 
     let enc_1 = encode_contract_bytes(&contract_1);
     let enc_2 = encode_contract_bytes(&contract_2);
 
-    kani::assert_ne!(enc_1, enc_2,
-        "Field-tagged encoding must prevent u32 cross-field collision");
+    kani::assert(enc_1 != enc_2, "Field-tagged encoding must prevent u32 cross-field collision");
 }
 
 /// PO-K03 H3: Test same-type field collision for u64 pairs (max_step_budget_per_tick vs max_transitions_per_tick).
@@ -129,14 +123,11 @@ fn prove_no_cross_field_collision_u64() {
     contract_2.max_step_budget_per_tick = val_b;
     contract_2.max_transitions_per_tick = val_a;
 
-    kani::assert_ne!(contract_1.max_step_budget_per_tick,
-        contract_2.max_step_budget_per_tick);
-    kani::assert_ne!(contract_1.max_transitions_per_tick,
-        contract_2.max_transitions_per_tick);
+    kani::assert(contract_1.max_step_budget_per_tick != contract_2.max_step_budget_per_tick, "assertion failed");
+    kani::assert(contract_1.max_transitions_per_tick != contract_2.max_transitions_per_tick, "assertion failed");
 
     let enc_1 = encode_contract_bytes(&contract_1);
     let enc_2 = encode_contract_bytes(&contract_2);
 
-    kani::assert_ne!(enc_1, enc_2,
-        "Field-tagged encoding must prevent u64 cross-field collision");
+    kani::assert(enc_1 != enc_2, "Field-tagged encoding must prevent u64 cross-field collision");
 }

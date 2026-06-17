@@ -416,7 +416,7 @@ mod profile_tests {
     fn resource_contract_fits_within_profiles() {
         let contract = ResourceContract::DEFAULT;
         let strict = RuntimeLimitsProfile::strict();
-        let relaxed = RuntimeLimitsProfile::relaxed();
+        let _relaxed = RuntimeLimitsProfile::relaxed();
 
         // Strict has very conservative limits — DEFAULT does not fit
         let strict_result = contract.fits_within_profile(&strict);

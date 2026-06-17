@@ -57,8 +57,8 @@ fn vb_ajc40_query_decode_smoke_cases() {
     ) {
         Ok(admitted) => {
             kani::assert(admitted.is_empty());
-            kani::assert_eq!(admitted.len(), 0);
-            kani::assert_eq!(admitted.remaining_budget(), 0);
+            kani::assert(admitted.len() == 0, "assertion failed");
+            kani::assert(admitted.remaining_budget() == 0, "assertion failed");
         }
         Err(_) => kani::assert(false),
     }
@@ -71,7 +71,7 @@ fn vb_ajc40_query_decode_smoke_cases() {
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
+            kani::assert(admitted.len() == 1, "assertion failed");
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
@@ -140,8 +140,8 @@ fn vb_ajc40_query_budget_boundaries() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
-            kani::assert_eq!(admitted.remaining_budget(), 0);
+            kani::assert(admitted.len() == 1, "assertion failed");
+            kani::assert(admitted.remaining_budget() == 0, "assertion failed");
         }
         Err(_) => kani::assert(false),
     }
@@ -154,7 +154,7 @@ fn vb_ajc40_query_budget_boundaries() {
         1,
     ) {
         Ok(admitted) => {
-            kani::assert_eq!(admitted.len(), 1);
+            kani::assert(admitted.len() == 1, "assertion failed");
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => kani::assert(false),
@@ -168,7 +168,7 @@ fn vb_ajc40_query_budget_boundaries() {
         0,
     ) {
         Err(QueryParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert_eq!(total, 1);
+            kani::assert(total == 1, "assertion failed");
             assert_eq!(max, 0);
         }
         _ => kani::assert(false),
@@ -186,7 +186,7 @@ fn vb_ajc40_query_path_depth_16_17() {
         },
         0,
     ) {
-        Ok(admitted) => kani::assert_eq!(admitted.len(), 1),
+        Ok(admitted) => kani::assert(admitted.len() == 1, "assertion failed"),
         Err(_) => kani::assert(false),
     }
 
@@ -219,8 +219,8 @@ fn vb_ajc40_query_count_65535_65536() {
 
     match validate_compiled_query_count(QUERY_COUNT_OVER_LIMIT) {
         Err(QueryParseError::TooManyQueries { count, max }) => {
-            kani::assert_eq!(count, QUERY_COUNT_OVER_LIMIT);
-            kani::assert_eq!(max, MAX_QUERIES_PER_WORKFLOW);
+            kani::assert(count == QUERY_COUNT_OVER_LIMIT, "assertion failed");
+            kani::assert(max == MAX_QUERIES_PER_WORKFLOW, "assertion failed");
         }
         _ => assert!(false),
     }

@@ -56,12 +56,11 @@ fn prove_secret_result_not_allowed_enforcement() {
     let mut contract_opposite = contract;
     contract_opposite.allows_secret_results = !allows;
 
-    kani::assert_ne!(contract.allows_secret_results, contract_opposite.allows_secret_results,
-        "allows_secret_results must distinguish contracts");
+    kani::assert(contract.allows_secret_results != contract_opposite.allows_secret_results, "allows_secret_results must distinguish contracts");
 
     // Verify the field is preserved in copies (value semantics)
     let copy = contract;
-    kani::assert_eq!(copy.allows_secret_results, contract.allows_secret_results);
+    kani::assert(copy.allows_secret_results == contract.allows_secret_results, "assertion failed");
 
     // Conservative default check
     let default = ResourceContract::DEFAULT;
@@ -88,6 +87,5 @@ fn prove_secret_results_field_is_behavior_affecting() {
     contract.allows_secret_results = !before;
     let after = contract.allows_secret_results;
 
-    kani::assert_ne!(before, after,
-        "allows_secret_results must be independently mutable (behavior-affecting)");
+    kani::assert(before != after, "allows_secret_results must be independently mutable (behavior-affecting)");
 }

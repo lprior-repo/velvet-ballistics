@@ -77,8 +77,7 @@ fn source_digest_equals_digest() {
             };
 
             // source_digest must equal digest after roundtrip
-            kani::assert_eq!(decoded.source_digest, decoded.digest,
-                "source_digest == digest invariant must hold after roundtrip");
+            kani::assert(decoded.source_digest == decoded.digest, "source_digest == digest invariant must hold after roundtrip");
         }
         Err(_) => {
             // Serialization failed - not expected for valid artifact
@@ -211,6 +210,5 @@ fn accepted_artifact_sets_source_correctly() {
     };
 
     // Verify the invariant holds
-    kani::assert_eq!(artifact.source_digest, artifact.digest,
-        "source_digest must equal digest for direct compilation artifacts");
+    kani::assert(artifact.source_digest == artifact.digest, "source_digest must equal digest for direct compilation artifacts");
 }

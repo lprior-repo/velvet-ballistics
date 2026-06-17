@@ -43,15 +43,12 @@ fn prove_migration_digest_relationship() {
     contract_modified.max_steps = 5000; // Different from DEFAULT's 10000
     contract_modified.max_slots = 512; // Different from DEFAULT's 1024
 
-    kani::assert_ne!(contract_default, contract_modified,
-        "Contracts must differ for migration test");
+    kani::assert(contract_default != contract_modified, "Contracts must differ for migration test");
 
     let digest_default = crate::mod_compile_lowering::canonical_digest(&source, contract_default);
     let digest_modified = crate::mod_compile_lowering::canonical_digest(&source, contract_modified);
 
-    kani::assert_ne!(digest_default, digest_modified,
-        "Post-fix canonical_digest must incorporate contract encoding: \
-         different contracts → different digests");
+    kani::assert(digest_default != digest_modified, "Post-fix canonical_digest must incorporate contract encoding: \\\n         different contracts → different digests");
 
     kani::cover!(digest_default != digest_modified);
 }
@@ -66,6 +63,5 @@ fn prove_contract_encoding_is_stable() {
     let encoding_1 = encode_contract_bytes(&contract);
     let encoding_2 = encode_contract_bytes(&contract);
 
-    kani::assert_eq!(encoding_1, encoding_2,
-        "Contract encoding must be stable across calls");
+    kani::assert(encoding_1 == encoding_2, "Contract encoding must be stable across calls");
 }

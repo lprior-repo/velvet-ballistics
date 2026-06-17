@@ -924,11 +924,7 @@ mod harnesses {
             let result = SymbolicCode::from_static(entry.symbolic);
             kani::assert(result.is_some(), "Registered code should return Some");
             if let Some(code) = result {
-                kani::assert_eq!(
-                    code.as_str(),
-                    entry.symbolic,
-                    "SymbolicCode should preserve the symbolic string"
-                );
+                kani::assert(code.as_str() == entry.symbolic, "SymbolicCode should preserve the symbolic string");
             }
         }
     }

@@ -1,7 +1,8 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::arithmetic_side_effects, clippy::indexing_slicing, clippy::let_underscore_must_use, clippy::panic, clippy::panic_in_result_fn, clippy::bool_comparison, clippy::manual_div_ceil, clippy::clone_on_copy, clippy::len_zero, clippy::redundant_clone, clippy::collapsible_if, clippy::needless_return, clippy::needless_borrow, clippy::useless_format, clippy::redundant_pub_crate, clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::missing_safety_doc, clippy::wildcard_enum_match_arm, clippy::large_futures, clippy::unused_async, clippy::unused_self, clippy::let_underscore_drop, clippy::filter_map_next, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::implicit_clone, clippy::inefficient_to_string, clippy::inconsistent_struct_constructor, clippy::iter_filter_is_ok, clippy::iter_filter_is_some, clippy::iter_not_returning_iterator, clippy::iter_over_hash_type, clippy::iter_without_into_iter, clippy::large_digit_groups, clippy::large_types_passed_by_value, clippy::let_and_return, clippy::misnamed_getters, clippy::mutable_key_type, clippy::needless_collect, clippy::nonminimal_bool, clippy::option_if_let_else, clippy::or_fun_call, clippy::path_buf_push_overwrite, clippy::print_stderr, clippy::print_stdout, clippy::pub_with_shorthand, clippy::range_minus_one, clippy::range_plus_one, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::single_match_else, clippy::suspicious_operation_groupings, clippy::trivially_copy_pass_by_ref, clippy::uninlined_format_args, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unused_io_amount, clippy::unused_trait_names, clippy::vec_init_then_push, clippy::wildcard_imports, clippy::approximate_const, clippy::absurd_extreme_comparisons)]
+
+
 #![forbid(unsafe_code)]
 //! Adversarial bytecode tests.
-
-#![allow(dead_code, unused_imports)]
 
 use vb_core::{ConstIdx, ConstValue, ExprOp};
 
@@ -247,7 +248,7 @@ fn blackhat_bc_007_stack_bound_rejects_empty() -> crate::ExprResult<()> {
 fn blackhat_bc_008_unresolved_reference() -> crate::ExprResult<()> {
     fn reject_all(_s: &str) -> Option<vb_core::SlotIdx> {
         None
-    };
+    }
     let r = compile_expr("$missing", &reject_all);
     let Err(crate::ExprError::InvalidReference { reference }) = r else {
         return Err(crate::ExprError::UnexpectedToken {
@@ -263,7 +264,7 @@ fn blackhat_bc_008_unresolved_reference() -> crate::ExprResult<()> {
 fn blackhat_bc_009_text_literal_rejected() -> crate::ExprResult<()> {
     fn reject_all(_s: &str) -> Option<vb_core::SlotIdx> {
         None
-    };
+    }
     let r = compile_expr("\"hello\"", &reject_all);
     let Err(crate::ExprError::UnsupportedLiteral { literal }) = r else {
         return Err(crate::ExprError::UnexpectedToken {
@@ -287,7 +288,7 @@ fn blackhat_bc_009_text_literal_rejected() -> crate::ExprResult<()> {
 fn blackhat_ev_001_i64_min_div_neg_one_is_overflow() -> crate::ExprResult<()> {
     use crate::ExprError;
     use crate::eval::eval_binary_op;
-    use crate::lexer::{BinaryOp, UnaryOp};
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
@@ -304,8 +305,7 @@ fn blackhat_ev_001_i64_min_div_neg_one_is_overflow() -> crate::ExprResult<()> {
 fn blackhat_ev_001b_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
     use crate::ExprError;
     use crate::eval::eval_expr_program;
-    use vb_core::limits::MAX_EXPRESSION_STACK;
-    use vb_core::{ExprProgram, SlotValue};
+    use vb_core::ExprProgram;
 
     let program = ExprProgram {
         ops: vec![

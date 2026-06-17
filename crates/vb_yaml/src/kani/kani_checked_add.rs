@@ -71,7 +71,7 @@ fn check_checked_add_counters_depth() {
         Err(_) => {
             kani::cover!(depth == u16::MAX, "depth_overflow");
             // Overflow path: depth was u16::MAX, checked_add returns None.
-            kani::assert_eq!(depth, u16::MAX);
+            kani::assert(depth == u16::MAX, "assertion failed");
         }
     }
 }
@@ -101,7 +101,7 @@ fn check_checked_add_counters_node_count() {
         }
         Err(_) => {
             kani::cover!(node_count == u32::MAX, "node_count_overflow");
-            kani::assert_eq!(node_count, u32::MAX);
+            kani::assert(node_count == u32::MAX, "assertion failed");
         }
     }
 }
@@ -122,7 +122,7 @@ fn check_checked_add_counters_document_count() {
         }
         Err(_) => {
             kani::cover!(document_count == usize::MAX, "document_count_overflow");
-            kani::assert_eq!(document_count, usize::MAX);
+            kani::assert(document_count == usize::MAX, "assertion failed");
         }
     }
 }
@@ -160,7 +160,7 @@ fn check_checked_add_counters_sequence() {
         }
         Err(_) => {
             kani::cover!(count == usize::MAX, "sequence_count_overflow");
-            kani::assert_eq!(count, usize::MAX);
+            kani::assert(count == usize::MAX, "assertion failed");
         }
     }
 }
@@ -198,7 +198,7 @@ fn check_checked_add_counters_mapping() {
         }
         Err(_) => {
             kani::cover!(count == usize::MAX, "mapping_count_overflow");
-            kani::assert_eq!(count, usize::MAX);
+            kani::assert(count == usize::MAX, "assertion failed");
         }
     }
 }

@@ -190,8 +190,8 @@ fn capability_opaque_dotted_names_siblings_do_not_cross_grant() -> Result<(), St
 #[test]
 fn capability_expiration_api_note_no_time_fields_on_capability() {
     let c = cap("network", ActionId::new(1));
-    kani::assert_eq!(c.name(), "network");
-    kani::assert_eq!(c.action_id(), ActionId::new(1));
+    kani::assert(c.name() == "network", "assertion failed");
+    kani::assert(c.action_id() == ActionId::new(1), "assertion failed");
 }
 
 #[test]

@@ -35,12 +35,8 @@ fn kani_parallel_in_flight_lifecycle() {
     };
 
     // Initial state
-    kani::assert_eq!(frame.parallel_in_flight(), 0, "PIF must start at 0");
-    kani::assert_eq!(
-        frame.max_parallel_in_flight(),
-        max_pif,
-        "max_PIF must match configured limit"
-    );
+    kani::assert(frame.parallel_in_flight() == 0, "PIF must start at 0");
+    kani::assert(frame.max_parallel_in_flight() == max_pif, "max_PIF must match configured limit");
 
     kani::cover!(frame.parallel_in_flight() == 0);
     kani::cover!(frame.max_parallel_in_flight() == max_pif);
@@ -139,11 +135,7 @@ fn kani_parallel_in_flight_overflow_rejection() {
         }
         Err(_) => {
             // Overflow rejected — PIF must be unchanged
-            kani::assert_eq!(
-                frame.parallel_in_flight(),
-                pif_before,
-                "PIF must be unchanged after overflow rejection"
-            );
+            kani::assert(frame.parallel_in_flight() == pif_before, "PIF must be unchanged after overflow rejection");
         }
     }
 
@@ -165,11 +157,7 @@ fn kani_parallel_in_flight_underflow_rejection() {
         result.is_err(),
         "sub_parallel_in_flight(1) from PIF=0 must return error",
     );
-    kani::assert_eq!(
-        frame.parallel_in_flight(),
-        0,
-        "PIF must remain 0 after underflow rejection"
-    );
+    kani::assert(frame.parallel_in_flight() == 0, "PIF must remain 0 after underflow rejection");
 
     kani::cover!(result.is_err());
 }

@@ -79,7 +79,7 @@ fn kani_foreach_body_set_content_reaches_hasher() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
-    kani::assert_ne!(ha.finalize().as_bytes(), hb.finalize().as_bytes());
+    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes(), "assertion failed");
 }
 
 /// H2: Changing Finish body step value changes digest.
@@ -139,7 +139,7 @@ fn kani_foreach_body_finish_content_reaches_hasher() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_a);
     super::super::digest_step_primitive(&mut hb, &foreach_b);
-    kani::assert_ne!(ha.finalize().as_bytes(), hb.finalize().as_bytes());
+    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes(), "assertion failed");
 }
 
 /// H3: Empty body vs one-step body changes digest.
@@ -189,5 +189,5 @@ fn kani_foreach_body_count_reaches_hasher() {
     let mut hb = blake3::Hasher::new();
     super::super::digest_step_primitive(&mut ha, &foreach_empty);
     super::super::digest_step_primitive(&mut hb, &foreach_one);
-    kani::assert_ne!(ha.finalize().as_bytes(), hb.finalize().as_bytes());
+    kani::assert(ha.finalize().as_bytes() != hb.finalize().as_bytes(), "assertion failed");
 }

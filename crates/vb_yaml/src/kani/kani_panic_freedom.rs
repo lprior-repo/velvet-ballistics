@@ -68,11 +68,7 @@ fn check_parse_yaml_events_panic_free() {
                 let code = error.symbolic_code();
                 let _name = code.as_str();
                 // Code must not be the sentinel.
-                kani::assert_ne!(
-                    code,
-                    vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT,
-                    "YamlError must not use INTERNAL_INVARIANT sentinel"
-                );
+                kani::assert(code != vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT, "YamlError must not use INTERNAL_INVARIANT sentinel");
             }
         }
     }
@@ -95,7 +91,7 @@ fn check_validate_yaml_profile_panic_free() {
             Err(error) => {
                 // Must be a registered symbolic code.
                 let code = error.symbolic_code();
-                kani::assert_ne!(code, vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT);
+                kani::assert(code != vb_core::diagnostic::SymbolicCode::INTERNAL_INVARIANT, "assertion failed");
             }
         }
     }

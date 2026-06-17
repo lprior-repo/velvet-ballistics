@@ -49,8 +49,7 @@ fn prove_dual_path_digest_equivalence() {
     };
     let digest_compiled = workflow.digest();
 
-    kani::assert_eq!(digest_direct, digest_compiled,
-        "Direct canonical_digest must match the digest in CompiledWorkflow");
+    kani::assert(digest_direct == digest_compiled, "Direct canonical_digest must match the digest in CompiledWorkflow");
 
     kani::cover!(digest_direct == digest_compiled);
 }
@@ -69,9 +68,7 @@ fn prove_dual_path_digest_equivalence_non_default() {
         Err(_) => { kani::assume(false); loop {}}
     };
 
-    kani::assert_eq!(digest_direct,
-        workflow.digest(),
-        "Direct digest must match compiled workflow digest for non-DEFAULT contract");
+    kani::assert(digest_direct == workflow.digest(), "Direct digest must match compiled workflow digest for non-DEFAULT contract");
 
     kani::cover!(digest_direct == workflow.digest());
 }

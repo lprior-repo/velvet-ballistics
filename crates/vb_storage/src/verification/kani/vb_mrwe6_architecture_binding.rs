@@ -43,11 +43,11 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let intent = generated_intent_kind();
     let required = mrwe6_required_intent_kind_for_class(class);
     let kernel_required = mrwe6_kernel_required_intent_kind_for_class(class);
-    kani::assert_eq!(required, kernel_required);
+    kani::assert(required == kernel_required, "assertion failed");
     let valid_match = mrwe6_intent_kind_matches_event_class(class, intent);
     let kernel_valid_match = mrwe6_kernel_intent_kind_matches_event_class(class, intent);
-    kani::assert_eq!(valid_match, kernel_valid_match);
-    kani::assert_eq!(valid_match, required == intent);
+    kani::assert(valid_match == kernel_valid_match, "assertion failed");
+    kani::assert(valid_match == required == intent, "assertion failed");
 
     let atom = mrwe6_validated_atom(class, intent);
     if valid_match {
@@ -66,7 +66,7 @@ fn vb_mrwe6_architecture_binding_all_domains() {
             scheduled_atom.map(|validated| validated.atom_kind()),
             Ok(Mrwe6AtomKind::EventAndPutPending)
         ));
-        kani::assert_eq!(kernel_scheduled_atom, Ok(Mrwe6AtomKind::EventAndPutPending));
+        kani::assert(kernel_scheduled_atom == Ok(Mrwe6AtomKind::EventAndPutPending), "assertion failed");
     } else {
         kani::assert(scheduled_atom.is_err(), "kani harness assertion");
         kani::assert(kernel_scheduled_atom.is_err(), "kani harness assertion");
@@ -87,18 +87,12 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     let duplicate = mrwe6_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
     let kernel_duplicate =
         mrwe6_kernel_duplicate_retry_decision_from_facts(equal_payload, class, marker_present);
-    kani::assert_eq!(duplicate, kernel_duplicate);
+    kani::assert(duplicate == kernel_duplicate, "assertion failed");
     if !equal_payload {
-        kani::assert_eq!(
-            duplicate,
-            Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict
-        );
+        kani::assert(duplicate == Mrwe6DuplicateRetryDecision::DivergentDuplicateConflict, "assertion failed");
     }
     if equal_payload && !matches!(class, Mrwe6EventClass::Scheduled) {
-        kani::assert_eq!(
-            duplicate,
-            Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected
-        );
+        kani::assert(duplicate == Mrwe6DuplicateRetryDecision::UnsupportedDuplicateClassRejected, "assertion failed");
     }
 
     let is_resolution_event = kani::any::<bool>();
@@ -114,12 +108,9 @@ fn vb_mrwe6_architecture_binding_all_domains() {
         key_matches_pending,
         commit_success,
     );
-    kani::assert_eq!(resolution, kernel_resolution);
+    kani::assert(resolution == kernel_resolution, "assertion failed");
     if !is_resolution_event {
-        kani::assert_eq!(
-            resolution,
-            Mrwe6ResolutionCommitDecision::NonResolutionRejected
-        );
+        kani::assert(resolution == Mrwe6ResolutionCommitDecision::NonResolutionRejected, "assertion failed");
     }
     let committed = mrwe6_committed_resolution_from_facts(
         is_resolution_event,

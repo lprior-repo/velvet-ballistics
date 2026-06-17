@@ -383,9 +383,480 @@ proptest! {
         // Expected: 1 (CollectStart) + limit * body_node_count + 1 (CollectFinish) + 1 (Finish)
         let expected_steps: u64 = 1 + (limit as u64) * (body_node_count as u64) + 1 + 1;
 
-        prop_kani::assert_eq!(budget.max_total_steps, expected_steps,
+        prop_kani::assert(budget.max_total_steps == expected_steps,
             "CollectStart with limit={} and body_count={} should have {} total steps, got {}",
-            limit, body_node_count, expected_steps, budget.max_total_steps);
+            limit, body_node_count, expected_steps, budget.max_total_steps, 'assertion failed');
+        prop_kani::assert(budget.max_gather_items >= limit,
+            "max_gather_items {} should be at least limit {}",
+            budget.max_gather_items, limit);
+    }
+
+    /// PROP-BUD-001 P2: RepeatStart body is counted once at the cold-AST-conservative
+    /// iter count of 1, regardless of declared `max_attempts`. The declared
+    /// `max_attempts` is tracked separately via `max_repeat_attempts`.
+    ///
+    /// Cold-AST invariant (master §45) drops body, so the runtime attempt
+    /// count cannot be bounded from the compiled IR alone. The conservative
+    /// default iter count is 1.
+    #[test]
+    fn prop_repeat_body_multiplies_with_max_attempts(
+        max_attempts in 1u16..=10u16,
+        body_node_count in 1u16..=5u16,
+    ) {
+        let body_end = 1 + body_node_count as u16;
+        let repeat_done = body_end + 1;
+
+        let mut nodes: Vec<CompiledNode> = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::RepeatStart {
+                    max_attempts,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(repeat_done),
+                },
+            },
+        ];
+
+        for i in 1..=body_node_count as usize {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i as u16),
+                output: None,
+                next: if i < body_node_count as usize {
+                    Some(StepIdx::new((i + 1) as u16))
+                } else {
+                    None
+                },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+
+        let finish_idx = repeat_done + 1;
+        nodes.push(CompiledNode {
+            id: StepIdx::new(repeat_done),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatFinish {
+                result: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(finish_idx),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+
+        let contract = test_contract(nodes.len() as u16 + 10, 4);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
+
+        prop_kani::assert(budget.is_ok(), "RepeatStart workflow should compute budget successfully");
+
+        let budget = budget.unwrap();
+
+        // Expected: 1 (RepeatStart) + 1 * body_node_count + 1 (RepeatFinish) + 1 (Finish)
+        // The cold-AST-conservative iter count is 1, so the body is counted once.
+        let expected_steps: u64 = 1 + (body_node_count as u64) + 1 + 1;
+
+        prop_//! vb-qi37.2.4 State 8: Failing-first tests for proof obligations
+//!
+//! KANI-BUD-001: Checked nested arithmetic rejects overflow
+//! PROP-BUD-001: Nested accepted budgets fit policy
+//! PROP-DIAG-001: Diagnostic parity for rejected nested growth
+//!
+//! These tests are written in failing-first style: they express the desired
+//! behavior and will fail until the production code implements the required
+//! contracts.
+//!
+//! RED PHASE: These tests COMPILE but FAIL because the implementation contains
+//! intentional gaps documented in the test plan's Open Questions.
+
+#![forbid(unsafe_code)]
+
+use crate::budget::{
+    AggregateBudgetError, AggregateResourceBudget, AggregateResourceUsage, BoundednessPolicy,
+    BudgetError, WholeWorkflowBudget,
+};
+use crate::ids::{SlotIdx, StepIdx};
+use crate::workflow::WorkflowError;
+use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+use proptest::prelude::*;
+
+// ============================================================================
+// KANI-BUD-001: Checked nested arithmetic rejects overflow
+// ============================================================================
+//
+// KANI-BUD-001 proof obligation:
+//
+// Property: For bounded node/body/factor dimensions, sum/product budget
+// arithmetic either equals mathematical expected value or returns typed
+// overflow/rejection before admission.
+//
+// Bound: small node graphs up to 6 nodes, loop factors in {0,1,2,u16::MAX},
+// and u32/u64 dimensions around overflow boundaries.
+//
+// These Kani harnesses test the `count_and_push_loop_body` and
+// `count_nested_for_region` functions that perform checked_mul and
+// checked_add for loop iteration multiplication.
+//
+// NOTE: These tests use concrete values designed to trigger overflow paths.
+// They fail because production code currently has gaps in overflow detection
+// for nested loop multiplication.
+
+// ---------------------------------------------------------------------------
+// Kani Harness: overflow detection in nested loop body multiplication
+// ---------------------------------------------------------------------------
+
+#[cfg(kani)]
+mod kani_overflow_harnesses {
+    use super::*;
+
+    /// KANI-BUD-001 K1: body_count * iter_count overflow at u64::MAX boundary
+    ///
+    /// When body_count * iter_count > u64::MAX, the function must return
+    /// an error, not silently saturate or wrap.
+    ///
+    /// Bound: body_count = u64::MAX / 2 + 1, iter_count = 2
+    /// Expected: Err(BudgetError::TotalStepsExceeded { actual: u64::MAX, limit: u64::MAX })
+    #[kani::proof]
+    fn kani_nested_mul_overflow_u64_max() {
+        // This test explores the overflow path in count_and_push_loop_body
+        // where body_count.checked_mul(iter_count) returns None
+        let body_count: u64 = (u64::MAX / 2) + 2; // Will overflow when multiplied by 2
+        let iter_count: u64 = 2;
+
+        // The expected behavior: checked_mul returns None for overflow
+        let product = body_count.checked_mul(iter_count);
+        match product {
+            Some(_) => {
+                // FAIL: overflow should have been detected
+                kani::assert(false, "overflow not detected");
+            }
+            None => {
+                // PASS: overflow correctly detected
+            }
+        }
+    }
+
+    /// KANI-BUD-001 K2: body_count * iter_count where body_count = u64::MAX and iter_count = 2
+    ///
+    /// Edge case: multiplying u64::MAX by any value > 1 must reject.
+    #[kani::proof]
+    fn kani_nested_mul_max_times_two_overflow() {
+        let body_count: u64 = u64::MAX;
+        let iter_count: u64 = 2;
+
+        let product = body_count.checked_mul(iter_count);
+        match product {
+            Some(_) => {
+                kani::assert(false, "u64::MAX * 2 should overflow");
+            }
+            None => {}
+        }
+    }
+
+    /// KANI-BUD-001 K3: total.checked_add(product) overflow at u64::MAX
+    ///
+    /// After multiplication, the result is added to the running total.
+    /// If total + product > u64::MAX, the addition must also fail.
+    #[kani::proof]
+    fn kani_total_plus_product_overflow() {
+        let total: u64 = u64::MAX - 1;
+        let product: u64 = 2;
+
+        let sum = total.checked_add(product);
+        match sum {
+            Some(_) => {
+                kani::assert(false, "total + product should overflow");
+            }
+            None => {}
+        }
+    }
+
+    /// KANI-BUD-001 K4: near-boundary multiplication that should NOT overflow
+    ///
+    /// 1000 * 100 = 100000, well within u64::MAX
+    #[kani::proof]
+    fn kani_nested_mul_no_overflow_small_values() {
+        let body_count: u64 = 1000;
+        let iter_count: u64 = 100;
+
+        let product = body_count.checked_mul(iter_count);
+        match product {
+            Some(p) => {
+                kani::cover!(p == 100_000, "1000 * 100 = 100000");
+            }
+            None => {
+                kani::assert(false, "1000 * 100 should not overflow");
+            }
+        }
+    }
+
+    /// KANI-BUD-001 K5: CollectStart with limit=0 should use minimum of 1 iteration
+    ///
+    /// The budget computation uses iter_count.max(1) to handle the degenerate case.
+    #[kani::proof]
+    fn kani_collect_zero_limit_uses_min_one() {
+        let body_count: u64 = 5;
+        let iter_count: u64 = 0;
+
+        // Code does: let iter_count = iter_count.max(1);
+        let effective_iter = iter_count.max(1);
+        let product = body_count * effective_iter; // 5 * 1 = 5
+
+        kani::cover!(effective_iter == 1, "zero limit becomes 1");
+        kani::cover!(product == 5, "5 * 1 = 5");
+    }
+
+    /// KANI-BUD-001 K6: Aggregate add_dim overflow detection
+    ///
+    /// AggregateResourceUsage::try_add_budget uses checked_add for each dimension.
+    /// Overflow must return AggregateBudgetError::Overflow.
+    #[kani::proof]
+    fn kani_aggregate_add_budget_overflow() {
+        let usage = AggregateResourceUsage {
+            max_steps_executable: u64::MAX,
+            max_action_tickets: 0,
+            max_parallel_in_flight: 0,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_result_bytes: 0,
+            max_total_slots_written: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_active_runs: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_ipc_payload_bytes: 0,
+            max_blob_bytes: 0,
+            max_input_bytes: 0,
+            max_step_budget_per_tick: 0,
+            max_transitions_per_tick: 0,
+        };
+
+        let budget = AggregateResourceBudget {
+            max_steps_executable: 1,
+            max_action_tickets: 0,
+            max_parallel_in_flight: 0,
+            max_retries_per_action: 0,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_for_each_iterations: 0,
+            max_together_branches: 0,
+            max_repeat_attempts: 0,
+            max_run_time_seconds: 0,
+            max_result_bytes: 0,
+            max_total_slots_written: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_ipc_payload_bytes: 0,
+            max_blob_bytes: 0,
+            max_input_bytes: 0,
+            max_step_budget_per_tick: 0,
+            max_transitions_per_tick: 0,
+        };
+
+        let result = usage.try_add_budget(&budget);
+        match result {
+            Err(AggregateBudgetError::Overflow { resource }) => {
+                kani::cover!(
+                    resource == "max_steps_executable",
+                    "overflow detected for max_steps_executable"
+                );
+            }
+            _ => {
+                kani::assert(false, "adding to u64::MAX should overflow");
+            }
+        }
+    }
+
+    /// KANI-BUD-001 K7: Aggregate sub_dim underflow detection
+    ///
+    /// Subtracting more than available must return Underflow error.
+    #[kani::proof]
+    fn kani_aggregate_sub_budget_underflow() {
+        let usage = AggregateResourceUsage {
+            max_steps_executable: 5,
+            max_action_tickets: 0,
+            max_parallel_in_flight: 0,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_result_bytes: 0,
+            max_total_slots_written: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_active_runs: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_ipc_payload_bytes: 0,
+            max_blob_bytes: 0,
+            max_input_bytes: 0,
+            max_step_budget_per_tick: 0,
+            max_transitions_per_tick: 0,
+        };
+
+        let budget = AggregateResourceBudget {
+            max_steps_executable: 10, // Trying to subtract more than available
+            max_action_tickets: 0,
+            max_parallel_in_flight: 0,
+            max_retries_per_action: 0,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_for_each_iterations: 0,
+            max_together_branches: 0,
+            max_repeat_attempts: 0,
+            max_run_time_seconds: 0,
+            max_result_bytes: 0,
+            max_total_slots_written: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+            max_timer_entries: 0,
+            max_trace_events: 0,
+            max_ipc_payload_bytes: 0,
+            max_blob_bytes: 0,
+            max_input_bytes: 0,
+            max_step_budget_per_tick: 0,
+            max_transitions_per_tick: 0,
+        };
+
+        let result = usage.try_subtract_budget(&budget);
+        match result {
+            Err(AggregateBudgetError::Underflow { resource }) => {
+                kani::cover!(resource == "max_steps_executable", "underflow detected");
+            }
+            _ => {
+                kani::assert(false, "subtracting 10 from 5 should underflow");
+            }
+        }
+    }
+}
+
+// ============================================================================
+// PROP-BUD-001: Nested accepted budgets fit policy
+// ============================================================================
+//
+// PROP-BUD-001 proof obligation:
+//
+// Invariant: For any generated structurally valid nested workflow with finite
+// declared limits under policy, WholeWorkflowBudget::compute returns dimensions
+// <= ResourceContract and <= BoundednessPolicy, and
+// AggregateResourceBudget::from_workflow preserves those dimensions.
+//
+// Anti-invariant: Any generated workflow with a dimension over policy must
+// return the exact budget error variant and actual/limit pair.
+
+// ---------------------------------------------------------------------------
+// Proptest: CollectStart body multiplication with finite limit
+// ---------------------------------------------------------------------------
+
+proptest! {
+    /// PROP-BUD-001 P1: CollectStart with finite limit multiplies body cost correctly.
+    ///
+    /// When a CollectStart with limit=N is in the workflow, the total steps
+    /// should include N * body_steps + overhead.
+    ///
+    /// This test FAILS in red phase because the implementation does not
+    /// properly account for CollectStart multiplication in all cases.
+    #[test]
+    fn prop_collect_body_multiplies_with_finite_limit(
+        limit in 1u32..=10u32,
+        body_node_count in 1u16..=5u16,
+    ) {
+        // Build a workflow: CollectStart -> [body nodes] -> CollectFinish -> Finish
+        let body_end = 1 + body_node_count as u16;
+        let collect_done = body_end + 1;
+
+        let mut nodes: Vec<CompiledNode> = vec![
+            // CollectStart at node 0
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::CollectStart {
+                    source: SlotIdx::new(0),
+                    limit,
+                    page_size: 1,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(collect_done),
+                },
+            },
+        ];
+
+        // Body nodes: Nop chain
+        for i in 1..=body_node_count as usize {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i as u16),
+                output: None,
+                next: if i < body_node_count as usize {
+                    Some(StepIdx::new((i + 1) as u16))
+                } else {
+                    None
+                },
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+
+        // CollectFinish and Finish
+        let finish_idx = collect_done + 1;
+        nodes.push(CompiledNode {
+            id: StepIdx::new(collect_done),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(1),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(finish_idx),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+
+        let contract = test_contract(nodes.len() as u16 + 10, 4);
+        let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
+
+        prop_kani::assert(budget.is_ok(), "CollectStart workflow should compute budget successfully");
+
+        let budget = budget.unwrap();
+
+        // Expected: 1 (CollectStart) + limit * body_node_count + 1 (CollectFinish) + 1 (Finish)
+        let expected_steps: u64 = 1 + (limit as u64) * (body_node_count as u64) + 1 + 1;
+
+        prop_kani::assert(budget.max_total_steps == expected_steps,
+            "CollectStart with limit={} and body_count={} should have {} total steps, got {}",
+            limit, body_node_count, expected_steps, budget.max_total_steps, 'assertion failed');
         prop_kani::assert(budget.max_gather_items >= limit,
             "max_gather_items {} should be at least limit {}",
             budget.max_gather_items, limit);
@@ -472,9 +943,9 @@ proptest! {
         prop_kani::assert_eq!(budget.max_total_steps, expected_steps,
             "RepeatStart with max_attempts={} and body_count={} should have {} total steps (cold-AST-conservative), got {}",
             max_attempts, body_node_count, expected_steps, budget.max_total_steps);
-        prop_kani::assert_eq!(budget.max_repeat_attempts, max_attempts,
+        prop_kani::assert(budget.max_repeat_attempts == max_attempts,
             "max_repeat_attempts should be {}",
-            max_attempts);
+            max_attempts, 'assertion failed');
     }
 
     /// PROP-BUD-001 P3: Nested loops multiply correctly through multiple levels.
@@ -585,12 +1056,12 @@ proptest! {
         let inner_loop_steps: u64 = 1 + (inner_limit as u64) * inner_body_steps + 1;
         let expected_steps: u64 = 1 + (outer_limit as u64) * inner_loop_steps + 1 + 1;
 
-        prop_kani::assert_eq!(budget.max_total_steps, expected_steps,
+        prop_kani::assert(budget.max_total_steps == expected_steps,
             "Nested loops with outer={}, inner={}, inner_body={} should have {} steps, got {}",
-            outer_limit, inner_limit, inner_body_count, expected_steps, budget.max_total_steps);
-        prop_kani::assert_eq!(budget.max_nesting_depth, 2,
+            outer_limit, inner_limit, inner_body_count, expected_steps, budget.max_total_steps, 'assertion failed');
+        prop_kani::assert(budget.max_nesting_depth == 2,
             "Nested loops should have depth 2, got {}",
-            budget.max_nesting_depth);
+            budget.max_nesting_depth, 'assertion failed');
     }
 
     /// PROP-BUD-001 P4: TogetherStart fanout is counted correctly.
@@ -661,15 +1132,15 @@ proptest! {
 
         let budget = budget.unwrap();
 
-        prop_kani::assert_eq!(budget.max_fanout, branch_count,
+        prop_kani::assert(budget.max_fanout == branch_count,
             "max_fanout should be {}, got {}",
-            branch_count, budget.max_fanout);
-        prop_kani::assert_eq!(budget.max_together_branches, branch_count,
+            branch_count, budget.max_fanout, 'assertion failed');
+        prop_kani::assert(budget.max_together_branches == branch_count,
             "max_together_branches should be {}, got {}",
-            branch_count, budget.max_together_branches);
-        prop_kani::assert_eq!(budget.max_parallel_in_flight, branch_count,
+            branch_count, budget.max_together_branches, 'assertion failed');
+        prop_kani::assert(budget.max_parallel_in_flight == branch_count,
             "max_parallel_in_flight should be {}, got {}",
-            branch_count, budget.max_parallel_in_flight);
+            branch_count, budget.max_parallel_in_flight, 'assertion failed');
     }
 
     /// PROP-BUD-001 P5: AggregateResourceBudget::from_workflow preserves verified dimensions.
@@ -755,10 +1226,8 @@ proptest! {
 
         let aggregate = aggregate.unwrap();
 
-        prop_kani::assert_eq!(aggregate.max_steps_executable, whole_budget.max_steps_executable,
-            "aggregate.max_steps_executable should equal whole_budget.max_steps_executable");
-        prop_kani::assert_eq!(aggregate.max_gather_items, whole_budget.max_gather_items,
-            "aggregate.max_gather_items should equal whole_budget.max_gather_items");
+        prop_kani::assert(aggregate.max_steps_executable == whole_budget.max_steps_executable, "aggregate.max_steps_executable should equal whole_budget.max_steps_executable");
+        prop_kani::assert(aggregate.max_gather_items == whole_budget.max_gather_items, "aggregate.max_gather_items should equal whole_budget.max_gather_items");
     }
 }
 
@@ -893,8 +1362,8 @@ proptest! {
         match result {
             Err(BudgetError::TotalStepsExceeded { actual, limit }) => {
                 // These fields ARE present in the current implementation
-                prop_kani::assert_eq!(actual, total_steps);
-                prop_kani::assert_eq!(limit, policy_limit);
+                prop_kani::assert(actual == total_steps, "assertion failed");
+                prop_kani::assert(limit == policy_limit, "assertion failed");
 
                 // FAIL: The error does not include the primitive kind or node index
                 // PROP-DIAG-001 requires: primitive, node/step index, structural path
@@ -989,8 +1458,8 @@ proptest! {
 
         match validation_result {
             Err(BudgetError::FanoutExceeded { actual, limit }) => {
-                prop_kani::assert_eq!(actual, branch_count);
-                prop_kani::assert_eq!(limit, policy_fanout);
+                prop_kani::assert(actual == branch_count, "assertion failed");
+                prop_kani::assert(limit == policy_fanout, "assertion failed");
                 // FAIL: Missing primitive kind (TogetherStart) and node index (0)
                 // PROP-DIAG-001 requires structural provenance
             }
@@ -1055,9 +1524,9 @@ proptest! {
         match result {
             Ok(budget) => {
                 let expected_steps = 1 + 1 + 1; // header + 1 iteration + finish
-                prop_kani::assert_eq!(budget.max_total_steps, expected_steps,
+                prop_kani::assert(budget.max_total_steps == expected_steps,
                     "ReduceStart should compute {} steps with cold-AST conservative iter count",
-                    expected_steps);
+                    expected_steps, 'assertion failed');
             }
             Err(WorkflowError::StepCountOverflow { actual }) => {
                 prop_kani::assert(false,
@@ -1169,8 +1638,7 @@ proptest! {
             }
             Ok(budget) => {
                 // If accepted, the nesting depth should be 2
-                prop_kani::assert_eq!(budget.max_nesting_depth, 2,
-                    "Should have nesting depth 2");
+                prop_kani::assert(budget.max_nesting_depth == 2, "Should have nesting depth 2");
             }
             Err(other) => {
                 prop_kani::assert(false,
@@ -1253,9 +1721,7 @@ proptest! {
         let added = added.unwrap();
 
         let subtracted = added.try_subtract_budget(&budget);
-        prop_kani::assert_eq!(subtracted,
-            Ok(usage),
-            "add then subtract same budget must roundtrip to original usage");
+        prop_kani::assert(subtracted == Ok(usage), "add then subtract same budget must roundtrip to original usage");
     }
 
     #[test]
@@ -1298,8 +1764,7 @@ proptest! {
                 let expected = base.checked_add(u64::from(delta));
                 match expected {
                     Some(exp) => {
-                        prop_kani::assert_eq!(added.max_steps_executable, exp,
-                            "Ok result must equal checked_add");
+                        prop_kani::assert(added.max_steps_executable == exp, "Ok result must equal checked_add");
                     }
                     None => {
                         prop_kani::assert(false, "add returned Ok which overflows checked_add")
@@ -1307,8 +1772,7 @@ proptest! {
                 }
             }
             Err(AggregateBudgetError::Overflow { resource }) => {
-                prop_kani::assert_eq!(resource, "max_steps_executable",
-                    "overflow must identify the correct resource dimension");
+                prop_kani::assert(resource == "max_steps_executable", "overflow must identify the correct resource dimension");
                 let checked = base.checked_add(u64::from(delta));
                 prop_kani::assert(checked.is_none(), "Err(Overflow) must correspond to real overflow")
             }
@@ -1366,8 +1830,7 @@ proptest! {
             }
             Ok(subtracted) => {
                 prop_kani::assert(base_steps >= u64::from(delta_steps), "subtract returned Ok but base < delta")
-                prop_kani::assert_eq!(subtracted.max_steps_executable,
-                    base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX));
+                prop_kani::assert(subtracted.max_steps_executable == base_steps.checked_sub(u64::from(delta_steps)).unwrap_or(u64::MAX), "assertion failed");
             }
             Err(_other) => {
                 prop_kani::assert(false, "expected Ok or Underflow, got unexpected error")
@@ -1425,24 +1888,23 @@ proptest! {
         let added_a = result_a.unwrap();
         let added_b = result_b.unwrap();
 
-        prop_kani::assert_ne!(added_a.max_steps_executable, added_b.max_steps_executable,
-            "changing max_steps_executable must change that dimension");
-        prop_kani::assert_eq!(added_a.max_action_tickets, added_b.max_action_tickets);
-        prop_kani::assert_eq!(added_a.max_parallel_in_flight, added_b.max_parallel_in_flight);
-        prop_kani::assert_eq!(added_a.max_gather_pages, added_b.max_gather_pages);
-        prop_kani::assert_eq!(added_a.max_gather_items, added_b.max_gather_items);
-        prop_kani::assert_eq!(added_a.max_result_bytes, added_b.max_result_bytes);
-        prop_kani::assert_eq!(added_a.max_total_slots_written, added_b.max_total_slots_written);
-        prop_kani::assert_eq!(added_a.max_timer_entries, added_b.max_timer_entries);
-        prop_kani::assert_eq!(added_a.max_trace_events, added_b.max_trace_events);
-        prop_kani::assert_eq!(added_a.max_active_runs, added_b.max_active_runs);
-        prop_kani::assert_eq!(added_a.max_queue_depth, added_b.max_queue_depth);
-        prop_kani::assert_eq!(added_a.max_journal_batch_bytes, added_b.max_journal_batch_bytes);
-        prop_kani::assert_eq!(added_a.max_ipc_payload_bytes, added_b.max_ipc_payload_bytes);
-        prop_kani::assert_eq!(added_a.max_blob_bytes, added_b.max_blob_bytes);
-        prop_kani::assert_eq!(added_a.max_input_bytes, added_b.max_input_bytes);
-        prop_kani::assert_eq!(added_a.max_step_budget_per_tick, added_b.max_step_budget_per_tick);
-        prop_kani::assert_eq!(added_a.max_transitions_per_tick, added_b.max_transitions_per_tick);
+        prop_kani::assert(added_a.max_steps_executable != added_b.max_steps_executable, "changing max_steps_executable must change that dimension");
+        prop_kani::assert(added_a.max_action_tickets == added_b.max_action_tickets, "assertion failed");
+        prop_kani::assert(added_a.max_parallel_in_flight == added_b.max_parallel_in_flight, "assertion failed");
+        prop_kani::assert(added_a.max_gather_pages == added_b.max_gather_pages, "assertion failed");
+        prop_kani::assert(added_a.max_gather_items == added_b.max_gather_items, "assertion failed");
+        prop_kani::assert(added_a.max_result_bytes == added_b.max_result_bytes, "assertion failed");
+        prop_kani::assert(added_a.max_total_slots_written == added_b.max_total_slots_written, "assertion failed");
+        prop_kani::assert(added_a.max_timer_entries == added_b.max_timer_entries, "assertion failed");
+        prop_kani::assert(added_a.max_trace_events == added_b.max_trace_events, "assertion failed");
+        prop_kani::assert(added_a.max_active_runs == added_b.max_active_runs, "assertion failed");
+        prop_kani::assert(added_a.max_queue_depth == added_b.max_queue_depth, "assertion failed");
+        prop_kani::assert(added_a.max_journal_batch_bytes == added_b.max_journal_batch_bytes, "assertion failed");
+        prop_kani::assert(added_a.max_ipc_payload_bytes == added_b.max_ipc_payload_bytes, "assertion failed");
+        prop_kani::assert(added_a.max_blob_bytes == added_b.max_blob_bytes, "assertion failed");
+        prop_kani::assert(added_a.max_input_bytes == added_b.max_input_bytes, "assertion failed");
+        prop_kani::assert(added_a.max_step_budget_per_tick == added_b.max_step_budget_per_tick, "assertion failed");
+        prop_kani::assert(added_a.max_transitions_per_tick == added_b.max_transitions_per_tick, "assertion failed");
     }
 }
 

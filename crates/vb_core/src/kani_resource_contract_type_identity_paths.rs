@@ -35,10 +35,7 @@ fn prove_type_identity_across_paths() {
     // If the duplicate type has been resolved (either deleted and re-exported
     // as an alias, or fully unified), these TypeIds will match.
     // If they differ, the duplicate 15-field type still exists — a bug.
-    kani::assert_eq!(canonical_type_id,
-        compiled_wf_type_id,
-        "ResourceContract types must be identical across all code paths. \
-         canonical_type_id={canonical_type_id:?}, compiled_wf_type_id={compiled_wf_type_id:?}");
+    kani::assert(canonical_type_id == compiled_wf_type_id, "ResourceContract types must be identical across all code paths. \\\n         canonical_type_id={canonical_type_id:?}, compiled_wf_type_id={compiled_wf_type_id:?}");
 
     // Also verify that WorkflowParts uses the same ResourceContract type
     // by checking that it accepts a canonical ResourceContract.
@@ -48,8 +45,8 @@ fn prove_type_identity_across_paths() {
     // if CompiledWorkflowWorkflowParts.resource_contract uses the old type,
     // this will show as a type mismatch at the struct level.
     let parts_contract: CanonicalResourceContract = contract;
-    kani::assert_eq!(parts_contract.max_transitions_per_tick, contract.max_transitions_per_tick);
-    kani::assert_eq!(parts_contract.allows_secret_results, contract.allows_secret_results);
+    kani::assert(parts_contract.max_transitions_per_tick == contract.max_transitions_per_tick, "assertion failed");
+    kani::assert(parts_contract.allows_secret_results == contract.allows_secret_results, "assertion failed");
 
     kani::cover!(canonical_type_id == compiled_wf_type_id);
 }

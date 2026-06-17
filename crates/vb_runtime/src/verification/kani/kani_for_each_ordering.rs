@@ -87,21 +87,17 @@ fn kani_for_each_ordering() {
             EngineSignal::Continue => {
                 if item_count == 0 {
                     // Empty list: pc should now be at done
-                    kani::assert_eq!(run.pc(), done_step,
-                        "empty list must jump to done");
+                    kani::assert(run.pc() == done_step, "empty list must jump to done");
                 } else {
                     // Non-empty list: pc should be at body
-                    kani::assert_eq!(run.pc(), body_step,
-                        "non-empty list must jump to body");
+                    kani::assert(run.pc() == body_step, "non-empty list must jump to body");
 
                     // First item should be bound to item_slot
                     let bound = match run.read_slot(item_slot) {
                         Ok(v) => v,
                         Err(_) => { kani::assume(false); loop {}}
                     };
-                    kani::assert_eq!(*bound,
-                        SlotValue::I64(0),
-                        "first item must be I64(0)");
+                    kani::assert(*bound == SlotValue::I64(0), "first item must be I64(0)");
                 }
             }
             _ => {
@@ -190,10 +186,96 @@ fn kani_for_each_next_progression() {
                             Ok(v) => v,
                             Err(_) => { kani::assume(false); loop {}}
                         };
-                        kani::assert_eq!(*bound,
-                            SlotValue::I64(expected_item),
-                            "for_each_next must bind item {} in order",
-                            expected_item);
+                        ;
+                }
+            }
+            _ => {
+                // Other signals (Finished, BudgetExhausted, etc.) — ok
+            }
+        },
+        Err(_e) => {
+            // Some errors may be legitimate (limit exceeded, etc.)
+        }
+    }
+
+    kani::cover!(item_count == 0);
+    kani::cover!(item_count == 1);
+    kani::cover!(item_count > 1);
+}
+
+/// PO-KANI-005: Proves that for_each_next decreases the iterator by 1 item
+/// each call and that items are processed in order.
+#[kani::proof]
+#[kani::unwind(30)]
+fn kani_for_each_next_progression() {
+    let item_count: u8 = kani::any();
+    kani::assume(item_count >= 2);
+    kani::assume(item_count <= 8);
+
+    let mut store = ValueStore::new();
+    let mut run = match make_test_frame(5) {
+        Ok(r) => r,
+        Err(_) => return,
+    };
+
+    // Build input list
+    let mut items: Vec<SlotValue> = Vec::with_capacity(item_count as usize);
+    for i in 0..item_count {
+        items.push(SlotValue::I64(i as i64));
+    }
+    let input_value = match insert_test_list(&mut store, &items) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    let input_slot = SlotIdx::new(0);
+    match run.write_slot(input_slot, input_value) {
+        Ok(v) => v,
+        Err(_) => { kani::assume(false); loop {}}
+    }
+
+    let item_slot = SlotIdx::new(1);
+    let body_step = StepIdx::new(1);
+    let done_step = StepIdx::new(2);
+    let iterator_slot = SlotIdx::new(4);
+
+    // Start the iterator
+    let _ = for_each_start(
+        &mut run,
+        &mut store,
+        input_slot,
+        item_slot,
+        FanoutLimit::new(256),
+        body_step,
+        done_step,
+        Some(iterator_slot),
+    );
+
+    // Now advance: each call to for_each_next should bind the next item
+    let mut expected_item: i64 = 1; // First item (0) already bound by start
+    let mut remaining = (item_count - 1) as usize;
+
+    for _ in 0..(item_count as usize).min(7) {
+        if remaining == 0 {
+            break;
+        }
+        match for_each_next(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            body_step,
+            done_step,
+            Some(item_slot),
+        ) {
+            Ok(signal) => match signal {
+                EngineSignal::Continue => {
+                    if remaining > 0 {
+                        // Should still have items
+                        let bound = match run.read_slot(item_slot) {
+                            Ok(v) => v,
+                            Err(_) => { kani::assume(false); loop {}}
+                        };
+                        kani::assert(*bound != SlotValue::I64(expected_item), "assertion failed");
                         expected_item += 1;
                         remaining -= 1;
                     }
@@ -245,15 +327,13 @@ fn kani_for_each_join_passthrough() {
         Ok(signal) => match signal {
             EngineSignal::Continue => {
                 // join must continue to next step
-                kani::assert_eq!(run.pc(), next_step,
-                    "join must continue to next step");
+                kani::assert(run.pc() == next_step, "join must continue to next step");
                 // The output slot should hold the materialized value
                 let output = match run.read_slot(output_slot) {
                     Ok(v) => v,
                     Err(_) => { kani::assume(false); loop {}}
                 };
-                kani::assert_eq!(*output, output_value,
-                    "join must pass through the materialized list");
+                kani::assert(*output == output_value, "join must pass through the materialized list");
             }
             _ => {
                 // Other signals — ok

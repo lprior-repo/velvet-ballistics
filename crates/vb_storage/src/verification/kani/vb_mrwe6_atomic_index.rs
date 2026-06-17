@@ -106,11 +106,11 @@ fn vb_mrwe6_atomic_index_all_cases() {
 
     let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
     let index_staged = matches!(verification_event_and_index_keys_exist(&event), Ok(true));
-    kani::assert_eq!(event_staged, index_staged);
+    kani::assert(event_staged == index_staged, "assertion failed");
 
     let event_committed = matches!(commit, CommitResult::Success) && event_staged;
     let index_committed = matches!(commit, CommitResult::Success) && index_staged;
-    kani::assert_eq!(event_committed, index_committed);
+    kani::assert(event_committed == index_committed, "assertion failed");
 
     match variant {
         ScheduleVariant::Legacy => {

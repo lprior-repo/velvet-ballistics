@@ -28,7 +28,9 @@
 // latency fields, EvidenceError variants, LatencyFieldId enum, and
 // MASTER_METADATA_FIELDS constant. Serde/serde_json are dependencies.
 
+#[cfg(kani)]
 use std::time::Duration;
+#[cfg(kani)]
 use vb_benchmark::*;
 
 #[cfg(kani)]
