@@ -2,6 +2,8 @@
 //!
 //! Tests: equality, hash, size, Send/Sync, Result context
 
+#![allow(clippy::unwrap_used, clippy::unnecessary_literal_unwrap)]
+
 use crate::boundary_inventory::BoundaryInventoryError;
 
 // =============================================================================

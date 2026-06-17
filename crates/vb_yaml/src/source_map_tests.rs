@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::expect_used)]
+#![allow(clippy::expect_used, clippy::panic)]
 //! Source map module tests.
 
 use super::*;

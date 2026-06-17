@@ -48,7 +48,7 @@ proptest! {
         let result = vb_compile::compile_workflow(yaml.as_bytes());
         // Valid YAML with otherwise → Ok
         prop_assert!(
-            matches!(result, Ok(_)),
+            result.is_ok(),
             "choose with otherwise must compile Ok, got {:?}",
             result
         );
@@ -59,7 +59,7 @@ proptest! {
         let yaml = make_choose_yaml(&body_counts, true);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
         prop_assert!(
-            matches!(result, Ok(_)),
+            result.is_ok(),
             "choose with otherwise must compile Ok, got {:?}",
             result
         );

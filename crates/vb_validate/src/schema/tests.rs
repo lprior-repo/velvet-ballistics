@@ -959,7 +959,7 @@ fn get_mapping_returns_some_for_existing_mapping() {
     let result = doc.get_mapping("when");
     // Then it returns Some with the mapping entries
     assert!(
-        matches!(result, Some(ref m) if m.len() == 1),
+        matches!(result, Some(m) if m.len() == 1),
         "get_mapping(\"when\") should return Some with 1 entry"
     );
     let Some(mapping) = result else {
@@ -996,7 +996,7 @@ fn get_sequence_returns_some_for_existing_sequence() {
     let result = doc.get_sequence("steps");
     // Then it returns Some with the steps
     assert!(
-        matches!(result, Some(ref s) if s.len() == 1),
+        matches!(result, Some(s) if s.len() == 1),
         "get_sequence(\"steps\") should return Some with 1 entry"
     );
     let Some(seq) = result else {
@@ -1067,7 +1067,7 @@ fn get_mapping_with_nested_data_returns_correct_mapping() {
     let result = doc.get_mapping("when");
     // Then it returns the mapping with the nested value
     assert!(
-        matches!(result, Some(ref m) if m.len() == 1),
+        matches!(result, Some(m) if m.len() == 1),
         "get_mapping(\"when\") with nested data should return Some with 1 entry"
     );
     let Some(mapping) = result else {
@@ -1098,7 +1098,7 @@ fn get_sequence_with_multiple_entries_returns_correct_one() {
     let result = doc.get_sequence("steps");
     // Then it returns both steps in order
     assert!(
-        matches!(result, Some(ref s) if s.len() == 2),
+        matches!(result, Some(s) if s.len() == 2),
         "get_sequence(\"steps\") with 2 entries should return Some with 2"
     );
     let Some(seq) = result else {

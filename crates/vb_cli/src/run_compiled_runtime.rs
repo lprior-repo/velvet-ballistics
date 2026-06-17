@@ -111,6 +111,7 @@ pub(crate) fn open_storage_runtime_journal(
     Ok(vb_runtime::journal::StorageRuntimeJournal::shared_journaled(journal))
 }
 
+#[allow(clippy::collapsible_if)]
 pub(crate) fn run_compiled_workflow(
     run_id: vb_core::RunId,
     admitted_workflow: vb_core::CompiledWorkflow,
@@ -210,8 +211,7 @@ pub(crate) fn run_compiled_workflow(
     // events.  Fjall's `persist()` only syncs the WAL; memtables must be
     // explicitly rotated and waited on to be written to disk.
     if durability != DurabilityMode::None {
-        let shared_journal = runtime.journal();
-        if let Some(ref storage_journal) = shared_journal.storage_journal() {
+        if let Some(ref storage_journal) = runtime.journal().storage_journal() {
             if let Err(e) = storage_journal.flush_memtables() {
                 report_runtime_error(
                     format_args!("journal memtable flush error: {e}"),

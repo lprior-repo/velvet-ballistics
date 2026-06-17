@@ -7,6 +7,7 @@
 //! Placed inside the crate (not tests/) because lower_canonical_choose is pub(crate).
 
 #![cfg(test)]
+#![allow(clippy::indexing_slicing)]
 
 use crate::mod_compile_lowering::{SlotCompiler, lower_canonical_choose};
 use crate::CompileError;
@@ -74,7 +75,7 @@ proptest! {
                 result
             );
             // Verify at least one node was produced (the choose node itself).
-            prop_assert!(builder.nodes.len() >= 1,
+            prop_assert!(!builder.nodes.is_empty(),
                 "lower_canonical_choose must produce at least one node, got {}", builder.nodes.len());
         } else if otherwise.is_some() && !otherwise_label_known {
             prop_assert!(

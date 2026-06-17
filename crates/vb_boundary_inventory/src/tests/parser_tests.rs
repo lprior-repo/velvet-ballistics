@@ -6,7 +6,7 @@
 // bound the value. The assertion is the documented "this branch is unreachable"
 // marker with a clear diagnostic message. `panic!`/`unreachable!` are forbidden
 // by workspace lints, so we suppress `assertions_on_constants` at module scope.
-#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::assertions_on_constants, clippy::indexing_slicing)]
 
 use crate::boundary_inventory::{BoundaryClass, BoundaryInventoryError, parse_inventory};
 

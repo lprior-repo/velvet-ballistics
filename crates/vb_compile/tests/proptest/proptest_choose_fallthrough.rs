@@ -48,7 +48,7 @@ proptest! {
 
         // Valid YAML → Ok; iterate nodes to verify body chain integrity.
         prop_assert!(
-            matches!(result, Ok(_)),
+            result.is_ok(),
             "choose yaml must compile Ok, got {:?}",
             result
         );

@@ -160,7 +160,6 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use postcard;
 use vb_core::action::{
     ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
     RetrySafety, SideEffect, compute_action_idempotency_key,

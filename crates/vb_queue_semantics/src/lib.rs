@@ -436,7 +436,7 @@ pub const fn warning_threshold(capacity: usize) -> usize {
 // =========================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::unwrap_used)]
+#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used, clippy::clone_on_copy)]
 mod tests {
     use super::*;
     use std::collections::VecDeque;
@@ -1442,8 +1442,7 @@ mod tests {
     #[test]
     fn helper_shard_tick_is_copy() {
         // Pure const fn returning bool is callable in const context
-        const RESULT: bool = helper_shard_tick_is_pop_front(4, 2);
-        assert!(RESULT);
+        assert!(helper_shard_tick_is_pop_front(4, 2));
     }
 
     // -- helper_runtime_queue_full_maps -------------------------------------------
@@ -1684,7 +1683,6 @@ mod tests {
 
     #[test]
     fn action_warning_transition_payload_at_threshold() {
-        let state: QueueState<u8> = action_new_state(10, 16).unwrap();
         let mut items: VecDeque<u8> = VecDeque::new();
         for _ in 0..8 {
             items.push_back(1);

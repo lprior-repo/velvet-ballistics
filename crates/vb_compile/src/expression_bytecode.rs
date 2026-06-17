@@ -472,37 +472,6 @@ fn lower_numeric_negation(
 /// The lowering pass uses this to decide whether the synthetic `0`
 /// constant in `lower_numeric_negation` must be an `F64(0.0)` (so the
 /// trailing `Sub` opcode operates on two F64 values) or an `I64(0)`
-/// (the default). Conservative answer: only return `true` when every
-/// recursive type analysis concludes F64, and propagate `false` for
-/// any mixed-type or unknown-type branch.
-fn expr_static_type_is_f64(expr: &ParsedExpression) -> bool {
-    match expr {
-        ParsedExpression::Literal(ExpressionLiteral::F64(_)) => true,
-        ParsedExpression::Literal(_) => false,
-        ParsedExpression::Unary {
-            op: UnaryOp::Neg,
-            expr,
-        } => expr_static_type_is_f64(expr),
-        ParsedExpression::Unary { .. } => false,
-        ParsedExpression::Binary { op, left, right } => {
-            // The cold AST mirrors `apply_binary`: equality / inequality
-            // comparisons always return Bool, so a binary expression
-            // rooted in Eq/NotEq is never an F64 value regardless of
-            // operand types. Arithmetic ops (Add/Sub/Mul/Div) are F64
-            // only when BOTH operands are F64.
-            match op {
-                BinaryOp::Eq | BinaryOp::NotEq => false,
-                _ => expr_static_type_is_f64(left) && expr_static_type_is_f64(right),
-            }
-        }
-        // References and helper calls have runtime-determined types.
-        // The conservative answer is "not F64" so we default to the
-        // I64(0) path, matching the historical behaviour. A future
-        // type-inference pass can refine this.
-        ParsedExpression::Reference(_) | ParsedExpression::HelperCall { .. } => false,
-    }
-}
-
 fn lower_binary(
     op: BinaryOp,
     left: &ParsedExpression,
