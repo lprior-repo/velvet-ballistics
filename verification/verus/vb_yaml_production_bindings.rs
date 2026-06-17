@@ -89,7 +89,6 @@ pub proof fn lemma_spec_kind_total(idx: int)
     ensures
         spec_kind(idx) is SpecKindTag,
 {
-    assume(0 <= idx && idx < 21);
     assert(spec_kind(idx) is SpecKindTag);
 }
 
@@ -169,7 +168,6 @@ pub proof fn lemma_kind_and_code_agree(idx: int)
         spec_kind(idx) is SpecKindTag,
         spec_symbolic_code(idx) is SpecCodeCategory,
 {
-    assume(0 <= idx && idx < 21);
     assert(spec_kind(idx) is SpecKindTag);
     assert(spec_symbolic_code(idx) is SpecCodeCategory);
 }

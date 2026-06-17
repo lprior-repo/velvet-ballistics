@@ -180,6 +180,16 @@ pub proof fn lemma_kind_mapping_consistency(
 // PO-YAML-005: Exhaustiveness over all 21 variants
 // ─────────────────────────────────────────────────────────────────
 
+/// Lemma: A single variant index produces a valid kind.
+pub proof fn lemma_single_variant_map_to_kind(idx: int)
+    requires
+        0 <= idx && idx < YAML_ERROR_VARIANT_COUNT,
+    ensures
+        spec_error_to_kind(idx) is SpecYamlErrorKind,
+{
+    assert(spec_error_to_kind(idx) is SpecYamlErrorKind);
+}
+
 /// Lemma: All 21 variant indices produce a valid kind.
 pub proof fn lemma_all_variants_map_to_kind()
     ensures
@@ -187,8 +197,31 @@ pub proof fn lemma_all_variants_map_to_kind()
             0 <= idx && idx < YAML_ERROR_VARIANT_COUNT
             ==> spec_error_to_kind(idx) is SpecYamlErrorKind,
 {
-    assume(0 <= idx && idx < YAML_ERROR_VARIANT_COUNT);
-    assert(spec_error_to_kind(idx) is SpecYamlErrorKind);
+    // Prove by case analysis over all 21 valid indices
+    assert(spec_error_to_kind(0) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(1) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(2) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(3) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(4) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(5) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(6) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(7) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(8) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(9) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(10) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(11) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(12) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(13) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(14) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(15) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(16) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(17) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(18) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(19) is SpecYamlErrorKind);
+    assert(spec_error_to_kind(20) is SpecYamlErrorKind);
+    assert(forall|idx: int|
+        0 <= idx && idx < YAML_ERROR_VARIANT_COUNT
+        ==> spec_error_to_kind(idx) is SpecYamlErrorKind);
 }
 
 /// Lemma: The fallback arm (unreachable for valid indices) does not affect valid inputs.

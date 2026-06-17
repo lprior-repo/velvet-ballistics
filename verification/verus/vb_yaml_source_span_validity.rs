@@ -203,7 +203,6 @@ pub proof fn lemma_span_at_some_for_valid_index(map: SpecSourceMap, node_index: 
     ensures
         map.span_at(node_index) == Option::Some(map.spans[node_index]),
 {
-    assume(0 <= node_index && node_index < map.len());
     assert(map.span_at(node_index) == Option::Some(map.spans[node_index]));
 }
 
@@ -236,7 +235,6 @@ pub proof fn lemma_non_empty_source_map_has_valid_span(map: SpecSourceMap)
     ensures
         exists|span: SpecSourceSpan| map.span_at(0) == Option::Some(span),
 {
-    assume(map.len() > 0);
     assert(map.span_at(0) == Option::Some(map.spans[0]));
 }
 

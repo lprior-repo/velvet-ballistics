@@ -271,7 +271,6 @@ pub proof fn lemma_schedule_trigger_has_cron(trigger: SpecTriggerAst)
             _ => true,
         },
 {
-    assume(trigger.is_exactly_one());
     match trigger {
         SpecTriggerAst::Schedule { cron } => {
             assert(!cron.is_empty());
@@ -292,7 +291,6 @@ pub proof fn lemma_event_trigger_has_event_type(trigger: SpecTriggerAst)
             _ => true,
         },
 {
-    assume(trigger.is_exactly_one());
     match trigger {
         SpecTriggerAst::Event { event_type } => {
             assert(!event_type.is_empty());
@@ -317,7 +315,6 @@ pub proof fn lemma_set_primitive_fields_valid(prim: SpecStepPrimitive)
             _ => true,
         },
 {
-    assume(prim.has_required_fields());
     match prim {
         SpecStepPrimitive::Set { output, value } => {
             assert(!output.is_empty() && !value.is_empty());
@@ -338,7 +335,6 @@ pub proof fn lemma_repeat_primitive_has_attempts(prim: SpecStepPrimitive)
             _ => true,
         },
 {
-    assume(prim.has_required_fields());
     match prim {
         SpecStepPrimitive::Repeat { max_attempts, .. } => {
             assert(max_attempts > 0);
@@ -359,7 +355,6 @@ pub proof fn lemma_ask_primitive_has_prompt(prim: SpecStepPrimitive)
             _ => true,
         },
 {
-    assume(prim.has_required_fields());
     match prim {
         SpecStepPrimitive::Ask { prompt, .. } => {
             assert(!prompt.is_empty());
@@ -380,7 +375,6 @@ pub proof fn lemma_do_primitive_fields_valid(prim: SpecStepPrimitive)
             _ => true,
         },
 {
-    assume(prim.has_required_fields());
     match prim {
         SpecStepPrimitive::Do { action, input } => {
             assert(!action.is_empty() && !input.is_empty());
