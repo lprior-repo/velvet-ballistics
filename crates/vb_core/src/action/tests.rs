@@ -671,7 +671,7 @@ fn verify_idempotency_pure_action_always_passes() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(result, Ok(()));
@@ -693,7 +693,7 @@ fn verify_idempotency_safe_action_with_side_effect_passes() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(result, Ok(()));
@@ -715,7 +715,7 @@ fn verify_idempotency_unsafe_action_rejected() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
     assert_eq!(
@@ -740,7 +740,7 @@ fn verify_idempotency_key_required_empty_keys_rejected() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(
@@ -765,7 +765,7 @@ fn verify_idempotency_key_required_clean_keys_passes() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     let result = verify_idempotency(&action, &key_slots, &frame);
@@ -788,11 +788,11 @@ fn verify_idempotency_key_required_secret_key_rejected() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let mut frame = frame.ok().expect("test setup");
     let write_result =
         frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
-    assert!(write_result.is_ok());
+    assert!(matches!(write_result, Ok(_)));
     let key_slots = [SlotIdx::new(0)];
     let result = verify_idempotency(&action, &key_slots, &frame);
     assert_eq!(result, Err(IdempotencyViolation::SecretInKey(0)));
@@ -801,7 +801,7 @@ fn verify_idempotency_key_required_secret_key_rejected() {
 #[test]
 fn validate_key_ingredients_clean_slots_pass() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
     let result = validate_idempotency_key_ingredients(&key_slots, &frame);
@@ -811,14 +811,14 @@ fn validate_key_ingredients_clean_slots_pass() {
 #[test]
 fn validate_key_ingredients_derived_secret_rejected() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let mut frame = frame.ok().expect("test setup");
     let write_result = frame.write_slot_with_taint(
         SlotIdx::new(1),
         SlotValue::I64(99),
         Taint::DerivedFromSecret,
     );
-    assert!(write_result.is_ok());
+    assert!(matches!(write_result, Ok(_)));
     let key_slots = [SlotIdx::new(1)];
     let result = validate_idempotency_key_ingredients(&key_slots, &frame);
     assert_eq!(result, Err(IdempotencyViolation::SecretInKey(1)));
@@ -840,7 +840,7 @@ fn verify_idempotency_sends_side_effect_key_required_rejected_without_key() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(
@@ -865,7 +865,7 @@ fn verify_idempotency_creates_side_effect_unsafe_rejected() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
     assert_eq!(
@@ -890,10 +890,10 @@ fn action_contract_serializes_with_new_fields() {
         required_capabilities: Box::new([]),
     };
     let bytes = postcard::to_allocvec(&contract);
-    assert!(bytes.is_ok(), "postcard serialization should succeed");
+    assert!(matches!(bytes, Ok(_)), "postcard serialization should succeed");
     let bytes = bytes.ok().expect("test setup");
     let recovered: Result<ActionContract, _> = postcard::from_bytes(&bytes);
-    assert!(recovered.is_ok(), "postcard deserialization should succeed");
+    assert!(matches!(recovered, Ok(_)), "postcard deserialization should succeed");
     let recovered = recovered.ok().expect("test setup");
     assert_eq!(recovered.id, contract.id);
     assert_eq!(recovered.side_effect, contract.side_effect);
@@ -934,7 +934,7 @@ fn verify_idempotency_writes_with_safe_passes() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(50), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(result, Ok(()));
@@ -956,7 +956,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_even_with_keys() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(51), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     // Even though we supply key slots, Unsafe is always rejected.
     let key_slots = [SlotIdx::new(0), SlotIdx::new(1)];
@@ -983,7 +983,7 @@ fn verify_idempotency_destroys_with_unsafe_rejected_without_keys() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(52), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(
@@ -1008,7 +1008,7 @@ fn verify_idempotency_key_required_rejects_secret_tainted_key_slot() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(53), StepIdx::new(0), 4, 4);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let mut frame = frame.ok().expect("test setup");
     // Slot 0 has a clean value.
     let write_clean =
@@ -1055,7 +1055,7 @@ fn verify_idempotency_key_required_rejects_when_first_slot_clean_but_second_secr
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(54), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let mut frame = frame.ok().expect("test setup");
     let write_clean =
         frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
@@ -1085,7 +1085,7 @@ fn verify_idempotency_none_side_effect_always_passes_even_unsafe() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(55), StepIdx::new(0), 1, 1);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[], &frame);
     assert_eq!(result, Ok(()));
@@ -1107,7 +1107,7 @@ fn verify_idempotency_sends_side_effect_unsafe_rejected() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(56), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = verify_idempotency(&action, &[SlotIdx::new(0)], &frame);
     assert_eq!(
@@ -1138,7 +1138,7 @@ fn validate_action_dispatch_succeeds_with_populated_input_and_output_slot() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let mut frame = frame.ok().expect("test setup");
     // Populate both input and output slots before dispatch.
     let write_input = frame.write_slot(SlotIdx::new(0), SlotValue::I64(42));
@@ -1165,7 +1165,7 @@ fn validate_action_dispatch_fails_on_uninitialized_input() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     // Slot 0 is not populated, so dispatch should fail.
     let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(0), SlotIdx::new(1));
@@ -1188,7 +1188,7 @@ fn validate_action_dispatch_fails_on_out_of_bounds_input() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     let result = validate_action_dispatch(&contract, &frame, SlotIdx::new(99), SlotIdx::new(1));
     assert_eq!(result, Err(ActionError::DispatchFailed));
@@ -1210,7 +1210,7 @@ fn validate_action_dispatch_succeeds_with_zero_output_count() {
         required_capabilities: Box::new([]),
     };
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.ok().expect("test setup");
     // Even with output_slot_count=0, the output slot is within frame bounds
     // so the taint check passes. But input is uninitialized, so dispatch fails.
@@ -1733,10 +1733,10 @@ fn journal_event_completed_serialization_roundtrip() {
         output_taint: Taint::DerivedFromSecret,
     };
     let bytes = postcard::to_allocvec(&event);
-    assert!(bytes.is_ok());
+    assert!(matches!(bytes, Ok(_)));
     let bytes = bytes.ok().expect("test setup");
     let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
-    assert!(recovered.is_ok());
+    assert!(matches!(recovered, Ok(_)));
     assert_eq!(recovered.ok().expect("test setup"), event);
 }
 
@@ -1759,10 +1759,10 @@ fn journal_event_failed_serialization_roundtrip() {
         retry_policy: RetryPolicy::NonRetryable,
     };
     let bytes = postcard::to_allocvec(&event);
-    assert!(bytes.is_ok());
+    assert!(matches!(bytes, Ok(_)));
     let bytes = bytes.ok().expect("test setup");
     let recovered: Result<ActionJournalEvent, _> = postcard::from_bytes(&bytes);
-    assert!(recovered.is_ok());
+    assert!(matches!(recovered, Ok(_)));
     assert_eq!(recovered.ok().expect("test setup"), event);
 }
 
@@ -2174,7 +2174,7 @@ fn verify_idempotency_requires_idempotency_key_passes_with_key() {
     let mut frame = frame.ok().expect("test setup");
     let write_result =
         frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Clean);
-    assert!(write_result.is_ok());
+    assert!(matches!(write_result, Ok(_)));
     let key_slots = [SlotIdx::new(0)];
     let result = verify_idempotency(&action, &key_slots, &frame);
     assert_eq!(result, Ok(()));
@@ -2347,7 +2347,7 @@ fn retry_safety_round_trip_json() {
         RetrySafety::Unknown,
     ] {
         let json = serde_json::to_string(&variant);
-        assert!(json.is_ok(), "json serialize must succeed for {variant:?}");
+        assert!(matches!(json, Ok(_)), "json serialize must succeed for {variant:?}");
         let json = json.ok().expect("test setup");
         let recovered: Result<RetrySafety, _> = serde_json::from_str(&json);
         assert!(

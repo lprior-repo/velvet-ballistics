@@ -7,8 +7,6 @@
 // GOD RULE 2: Binds to compile_workflow.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::expect_used)]
-
 use proptest::prelude::*;
 
 /// Build a YAML workflow with a single choose step with varying complexity.
@@ -50,13 +48,17 @@ proptest! {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             vb_compile::compile_workflow(yaml.as_bytes())
         }));
-        prop_assert!(result.is_ok(), "compile_workflow must never panic");
+        prop_assert!(
+            result.is_ok(),
+            "compile_workflow must never panic; catch_unwind returned Ok"
+        );
 
            // The YAML produced by varied_choose_yaml is structurally valid, but
         // large inputs may exceed the YAML mapping size limit (1024 entries).
         // The primary goal is to verify the compiler never panics; compilation
         // may fail with a limit_exceeded error for very large inputs.
-        let inner = result.expect("catch_unwind succeeded; unwrap is safe");
+        #[allow(clippy::unwrap_used)]
+        let inner = result.unwrap();
         prop_assert!(
             matches!(inner, Ok(_) | Err(_)),
             "varied_choose_yaml compiles or errors gracefully (never panics), got {:?}",

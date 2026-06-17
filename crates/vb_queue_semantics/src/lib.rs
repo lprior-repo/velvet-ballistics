@@ -436,7 +436,6 @@ pub const fn warning_threshold(capacity: usize) -> usize {
 // =========================================================================
 
 #[cfg(test)]
-#[allow(clippy::panic, clippy::unwrap_used, clippy::expect_used, clippy::clone_on_copy)]
 mod tests {
     use super::*;
     use std::collections::VecDeque;
@@ -526,7 +525,7 @@ mod tests {
     fn queue_state_new_one_capacity_accepted() {
         let state: QueueState<u32> = match QueueState::new(1, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(1,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(1,16) should succeed, got Err({e:?})"),
         };
         assert_eq!(state.capacity(), 1);
         assert_eq!(state.len(), 0);
@@ -539,7 +538,7 @@ mod tests {
     fn queue_state_new_maximum_accepted() {
         let state: QueueState<u32> = match QueueState::new(16, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(16,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(16,16) should succeed, got Err({e:?})"),
         };
         assert_eq!(state.capacity(), 16);
         assert!(state.is_empty());
@@ -550,7 +549,7 @@ mod tests {
     fn queue_state_new_is_empty_until_first_push() {
         let state: QueueState<u32> = match QueueState::new(4, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(4,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(4,16) should succeed, got Err({e:?})"),
         };
         assert!(state.is_empty());
         assert_eq!(state.len(), 0);
@@ -610,7 +609,7 @@ mod tests {
         items.push_back(2);
         let state = match QueueState::<u32>::from_vec_deque(2, 16, items) {
             Ok(s) => s,
-            Err(e) => panic!("from_vec_deque(2,16,[1,2]) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("from_vec_deque(2,16,[1,2]) should succeed, got Err({e:?})"),
         };
         assert_eq!(state.len(), 2);
         assert!(state.is_full());
@@ -624,7 +623,7 @@ mod tests {
         items.push_back(30);
         let state = match QueueState::<u32>::from_vec_deque(5, 16, items) {
             Ok(s) => s,
-            Err(e) => panic!("from_vec_deque(5,16,[10,20,30]) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("from_vec_deque(5,16,[10,20,30]) should succeed, got Err({e:?})"),
         };
         let out = state.into_vec_deque();
         let v: Vec<u32> = out.into_iter().collect();
@@ -678,7 +677,7 @@ mod tests {
     fn queue_state_capacity_returns_const_value() {
         let state: QueueState<u8> = match QueueState::new(7, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(7,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(7,16) should succeed, got Err({e:?})"),
         };
         assert_eq!(state.capacity(), 7);
     }
@@ -687,7 +686,7 @@ mod tests {
     fn queue_state_len_tracks_pushes() {
         let state: QueueState<u8> = match QueueState::new(4, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(4,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(4,16) should succeed, got Err({e:?})"),
         };
         assert_eq!(state.len(), 0);
         // We exercise enqueue helper that mutates
@@ -701,7 +700,7 @@ mod tests {
     fn queue_state_is_empty_inverts_len() {
         let state: QueueState<u8> = match QueueState::new(2, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(2,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(2,16) should succeed, got Err({e:?})"),
         };
         assert!(state.is_empty());
         assert_eq!(state.len(), 0);
@@ -711,7 +710,7 @@ mod tests {
     fn queue_state_is_full_at_capacity() {
         let state: QueueState<u8> = match QueueState::new(1, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(1,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(1,16) should succeed, got Err({e:?})"),
         };
         // Empty (len 0) is not full because 0 < 1
         assert!(!state.is_full());
@@ -722,7 +721,7 @@ mod tests {
     fn queue_state_is_full_false_below_capacity() {
         let state: QueueState<u8> = match QueueState::new(4, 16) {
             Ok(s) => s,
-            Err(e) => panic!("new(4,16) should succeed, got Err({e:?})"),
+            Err(e) => unreachable!("new(4,16) should succeed, got Err({e:?})"),
         };
         assert!(!state.is_full());
     }
@@ -732,7 +731,7 @@ mod tests {
     #[test]
     fn enqueue_decision_accepted_clone_eq() {
         let a = EnqueueDecision::Accepted;
-        let b = a.clone();
+        let b = a;
         assert_eq!(a, b);
     }
 
@@ -772,7 +771,7 @@ mod tests {
 
     #[test]
     fn pop_transition_empty_branch_carries_state() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let result: PopTransition<u8> = action_dequeue_transition(state);
         match result {
             PopTransition::Empty { state } => {
@@ -780,14 +779,14 @@ mod tests {
                 assert!(state.is_empty());
             }
             PopTransition::Popped { .. } => {
-                panic!("empty queue must yield Empty, not Popped");
+                unreachable!("empty queue must yield Empty, not Popped");
             }
         }
     }
 
     #[test]
     fn pop_transition_popped_branch_returns_front() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let (state, _) = action_enqueue_transition(state, 2);
         let (state, _) = action_enqueue_transition(state, 3);
@@ -798,14 +797,14 @@ mod tests {
                 assert_eq!(state.len(), 2);
             }
             PopTransition::Empty { .. } => {
-                panic!("non-empty queue must yield Popped");
+                unreachable!("non-empty queue must yield Popped");
             }
         }
     }
 
     #[test]
     fn pop_transition_preserves_tail_after_pop() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 11);
         let (state, _) = action_enqueue_transition(state, 22);
         let (state, _) = action_enqueue_transition(state, 33);
@@ -813,7 +812,7 @@ mod tests {
         let result = action_dequeue_transition(state);
         let (state, item) = match result {
             PopTransition::Popped { state, item } => (state, item),
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(item, 11);
         let out = state.into_vec_deque();
@@ -823,7 +822,7 @@ mod tests {
 
     #[test]
     fn pop_transition_clone_eq() {
-        let state: QueueState<u8> = QueueState::new(2, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let a: PopTransition<u8> = action_dequeue_transition(state);
         let b = a.clone();
         assert_eq!(a, b);
@@ -831,9 +830,9 @@ mod tests {
 
     #[test]
     fn pop_transition_empty_vs_popped_ne() {
-        let state: QueueState<u8> = QueueState::new(2, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let empty: PopTransition<u8> = action_dequeue_transition(state);
-        let state2: QueueState<u8> = QueueState::new(2, 16).unwrap();
+        let state2: QueueState<u8> = QueueState::new(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state2, _) = action_enqueue_transition(state2, 1);
         let popped: PopTransition<u8> = action_dequeue_transition(state2);
         // Different variants must not be equal (Popped carries an item)
@@ -930,7 +929,7 @@ mod tests {
             depth: 3,
             capacity: 7,
         };
-        let b = a.clone();
+        let b = a;
         assert_eq!(a, b);
     }
 
@@ -974,7 +973,7 @@ mod tests {
 
     #[test]
     fn warning_transition_carries_outcome_delivered_no_payload() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Delivered);
         assert_eq!(t.outcome, WarningSendOutcome::Delivered);
@@ -984,7 +983,7 @@ mod tests {
 
     #[test]
     fn warning_transition_full_outcome_preserved() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Full);
         assert_eq!(t.outcome, WarningSendOutcome::Full);
@@ -992,7 +991,7 @@ mod tests {
 
     #[test]
     fn warning_transition_disconnected_outcome_preserved() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Disconnected);
         assert_eq!(t.outcome, WarningSendOutcome::Disconnected);
@@ -1000,7 +999,7 @@ mod tests {
 
     #[test]
     fn warning_transition_state_unchanged() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Delivered);
@@ -1010,7 +1009,7 @@ mod tests {
 
     #[test]
     fn warning_transition_clone_eq() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Delivered);
         let u = t.clone();
@@ -1046,7 +1045,7 @@ mod tests {
     #[test]
     fn runtime_queue_surface_clone_eq() {
         let a = RuntimeQueueSurface::Cancel;
-        let b = a.clone();
+        let b = a;
         assert_eq!(a, b);
     }
 
@@ -1068,7 +1067,7 @@ mod tests {
             depth: 4,
             rejected_without_admission: true,
         };
-        let b = a.clone();
+        let b = a;
         assert_eq!(a, b);
     }
 
@@ -1135,21 +1134,21 @@ mod tests {
 
     #[test]
     fn shard_tick_transition_empty_branch() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let result: ShardTickTransition<u8> = shard_tick_transition(state);
         match result {
             ShardTickTransition::Empty { state } => {
                 assert!(state.is_empty());
             }
             ShardTickTransition::ConsumedOne { .. } => {
-                panic!("empty queue must yield Empty");
+                unreachable!("empty queue must yield Empty");
             }
         }
     }
 
     #[test]
     fn shard_tick_transition_consumes_one() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 99);
         let (state, _) = command_enqueue_transition(state, 100);
         let result: ShardTickTransition<u8> = shard_tick_transition(state);
@@ -1159,14 +1158,14 @@ mod tests {
                 assert_eq!(state.len(), 1);
             }
             ShardTickTransition::Empty { .. } => {
-                panic!("non-empty queue must consume one");
+                unreachable!("non-empty queue must consume one");
             }
         }
     }
 
     #[test]
     fn shard_tick_transition_clone_eq() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: ShardTickTransition<u8> = shard_tick_transition(state);
         let u = t.clone();
         // Empty variants clone-eq cleanly
@@ -1175,25 +1174,25 @@ mod tests {
 
     #[test]
     fn shard_tick_transition_consumed_one_carries_command() {
-        let state: QueueState<u8> = QueueState::new(2, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 7);
         let result: ShardTickTransition<u8> = shard_tick_transition(state);
         match result {
             ShardTickTransition::ConsumedOne { command, .. } => {
                 assert_eq!(command, 7);
             }
-            ShardTickTransition::Empty { .. } => panic!(),
+            ShardTickTransition::Empty { .. } => unreachable!(),
         }
     }
 
     #[test]
     fn shard_tick_transition_then_empty_again() {
-        let state: QueueState<u8> = QueueState::new(2, 16).unwrap();
+        let state: QueueState<u8> = QueueState::new(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let result: ShardTickTransition<u8> = shard_tick_transition(state);
         let state = match result {
             ShardTickTransition::ConsumedOne { state, .. } => state,
-            ShardTickTransition::Empty { .. } => panic!(),
+            ShardTickTransition::Empty { .. } => unreachable!(),
         };
         // Now empty
         let result2: ShardTickTransition<u8> = shard_tick_transition(state);
@@ -1501,20 +1500,20 @@ mod tests {
 
     #[test]
     fn action_new_state_accepts_valid() {
-        let state: QueueState<u8> = action_new_state(8, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(8, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         assert_eq!(state.capacity(), 8);
         assert!(state.is_empty());
     }
 
     #[test]
     fn action_new_state_accepts_maximum() {
-        let state: QueueState<u8> = action_new_state(16, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(16, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         assert_eq!(state.capacity(), 16);
     }
 
     #[test]
     fn action_new_state_accepts_one() {
-        let state: QueueState<u8> = action_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         assert_eq!(state.capacity(), 1);
     }
 
@@ -1522,7 +1521,7 @@ mod tests {
 
     #[test]
     fn action_enqueue_transition_empty_accepts() {
-        let state: QueueState<u8> = action_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, decision) = action_enqueue_transition(state, 1);
         assert!(matches!(decision, EnqueueDecision::Accepted));
         assert_eq!(state.len(), 1);
@@ -1530,7 +1529,7 @@ mod tests {
 
     #[test]
     fn action_enqueue_transition_full_rejects() {
-        let state: QueueState<u8> = action_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let (state, decision) = action_enqueue_transition(state, 2);
         assert!(matches!(decision, EnqueueDecision::QueueFull { capacity: 1 }));
@@ -1540,7 +1539,7 @@ mod tests {
 
     #[test]
     fn action_enqueue_transition_appends_in_order() {
-        let state: QueueState<u8> = action_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let (state, _) = action_enqueue_transition(state, 2);
         let (state, _) = action_enqueue_transition(state, 3);
@@ -1551,7 +1550,7 @@ mod tests {
 
     #[test]
     fn action_enqueue_transition_to_capacity_then_reject() {
-        let state: QueueState<u8> = action_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 10);
         let (state, _) = action_enqueue_transition(state, 20);
         let (state, decision) = action_enqueue_transition(state, 30);
@@ -1563,7 +1562,7 @@ mod tests {
 
     #[test]
     fn action_enqueue_transition_full_preserves_existing_member() {
-        let state: QueueState<u8> = action_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 42);
         let (state, decision) = action_enqueue_transition(state, 99);
         assert!(!matches!(decision, EnqueueDecision::Accepted));
@@ -1576,14 +1575,14 @@ mod tests {
 
     #[test]
     fn action_dequeue_transition_empty_returns_empty() {
-        let state: QueueState<u8> = action_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let result: PopTransition<u8> = action_dequeue_transition(state);
         assert!(matches!(result, PopTransition::Empty { .. }));
     }
 
     #[test]
     fn action_dequeue_transition_one_yields_front() {
-        let state: QueueState<u8> = action_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 5);
         let (state, _) = action_enqueue_transition(state, 6);
         let result = action_dequeue_transition(state);
@@ -1592,13 +1591,13 @@ mod tests {
                 assert_eq!(item, 5);
                 assert_eq!(state.len(), 1);
             }
-            PopTransition::Empty { .. } => panic!(),
+            PopTransition::Empty { .. } => unreachable!(),
         }
     }
 
     #[test]
     fn action_dequeue_transition_drains_to_empty() {
-        let state: QueueState<u8> = action_new_state(3, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(3, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let (state, _) = action_enqueue_transition(state, 2);
         let (state, _) = action_enqueue_transition(state, 3);
@@ -1617,30 +1616,30 @@ mod tests {
 
     #[test]
     fn action_dequeue_transition_fifo_order() {
-        let state: QueueState<u8> = action_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let (state, _) = action_enqueue_transition(state, 2);
         let (state, _) = action_enqueue_transition(state, 3);
         let (state, popped) = match action_dequeue_transition(state) {
             PopTransition::Popped { state, item } => (state, item),
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(popped, 1);
         let (state, popped) = match action_dequeue_transition(state) {
             PopTransition::Popped { state, item } => (state, item),
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(popped, 2);
         let popped = match action_dequeue_transition(state) {
             PopTransition::Popped { item, .. } => item,
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(popped, 3);
     }
 
     #[test]
     fn action_dequeue_transition_preserves_empty_state_invariant() {
-        let state: QueueState<u8> = action_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let result = action_dequeue_transition(state);
         match result {
             PopTransition::Empty { state } => {
@@ -1648,7 +1647,7 @@ mod tests {
                 assert!(state.is_empty());
                 assert!(!state.is_full());
             }
-            PopTransition::Popped { .. } => panic!(),
+            PopTransition::Popped { .. } => unreachable!(),
         }
     }
 
@@ -1656,7 +1655,7 @@ mod tests {
 
     #[test]
     fn action_warning_transition_empty_unchanged_state() {
-        let state: QueueState<u8> = action_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Delivered);
         assert_eq!(t.state.len(), 0);
@@ -1664,7 +1663,7 @@ mod tests {
 
     #[test]
     fn action_warning_transition_full_unchanged_state() {
-        let state: QueueState<u8> = action_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = action_enqueue_transition(state, 1);
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Delivered);
@@ -1673,7 +1672,7 @@ mod tests {
 
     #[test]
     fn action_warning_transition_no_payload_below_threshold() {
-        let state: QueueState<u8> = action_new_state(10, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(10, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         // Threshold for 10 is 10*8/10 = 8
         // Empty (depth 0) is below threshold
         let t: WarningTransition<u8> =
@@ -1687,17 +1686,17 @@ mod tests {
         for _ in 0..8 {
             items.push_back(1);
         }
-        let state = QueueState::<u8>::from_vec_deque(10, 16, items).unwrap();
+        let state = QueueState::<u8>::from_vec_deque(10, 16, items).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Delivered);
-        let p = t.payload.expect("payload at threshold");
+        let p = t.payload.unwrap_or_else(|| unreachable!("expect failed: payload at threshold"));
         assert_eq!(p.depth, 8);
         assert_eq!(p.capacity, 10);
     }
 
     #[test]
     fn action_warning_transition_clone_preserves_outcome() {
-        let state: QueueState<u8> = action_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = action_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let t: WarningTransition<u8> =
             action_warning_transition(state, WarningSendOutcome::Full);
         let u = t.clone();
@@ -1724,20 +1723,20 @@ mod tests {
 
     #[test]
     fn command_new_state_accepts_one() {
-        let state: QueueState<u8> = command_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         assert_eq!(state.capacity(), 1);
     }
 
     #[test]
     fn command_new_state_accepts_max() {
-        let state: QueueState<u8> = command_new_state(16, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(16, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         assert_eq!(state.capacity(), 16);
     }
 
     #[test]
     fn command_new_state_matches_action_new_state() {
-        let s1: QueueState<u8> = action_new_state(4, 16).unwrap();
-        let s2: QueueState<u8> = command_new_state(4, 16).unwrap();
+        let s1: QueueState<u8> = action_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
+        let s2: QueueState<u8> = command_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         assert_eq!(s1.capacity(), s2.capacity());
         assert_eq!(s1.len(), s2.len());
         assert_eq!(s1.is_empty(), s2.is_empty());
@@ -1748,14 +1747,14 @@ mod tests {
 
     #[test]
     fn command_enqueue_transition_empty_accepts() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (_state, decision) = command_enqueue_transition(state, 1);
         assert!(matches!(decision, EnqueueDecision::Accepted));
     }
 
     #[test]
     fn command_enqueue_transition_full_rejects() {
-        let state: QueueState<u8> = command_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let (state, decision) = command_enqueue_transition(state, 2);
         assert!(matches!(decision, EnqueueDecision::QueueFull { capacity: 1 }));
@@ -1764,7 +1763,7 @@ mod tests {
 
     #[test]
     fn command_enqueue_transition_appends_in_order() {
-        let state: QueueState<u8> = command_new_state(3, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(3, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 7);
         let (state, _) = command_enqueue_transition(state, 8);
         let (state, _) = command_enqueue_transition(state, 9);
@@ -1775,7 +1774,7 @@ mod tests {
 
     #[test]
     fn command_enqueue_transition_full_at_max() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let (state, _) = command_enqueue_transition(state, 2);
         let (_state, decision) = command_enqueue_transition(state, 3);
@@ -1784,7 +1783,7 @@ mod tests {
 
     #[test]
     fn command_enqueue_transition_preserves_tail() {
-        let state: QueueState<u8> = command_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 100);
         let (state, _) = command_enqueue_transition(state, 200);
         let out = state.into_vec_deque();
@@ -1796,14 +1795,14 @@ mod tests {
 
     #[test]
     fn command_pop_transition_empty() {
-        let state: QueueState<u8> = command_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let result = command_pop_transition(state);
         assert!(matches!(result, PopTransition::Empty { .. }));
     }
 
     #[test]
     fn command_pop_transition_nonempty() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let (state, _) = command_enqueue_transition(state, 2);
         let result = command_pop_transition(state);
@@ -1812,39 +1811,39 @@ mod tests {
                 assert_eq!(item, 1);
                 assert_eq!(state.len(), 1);
             }
-            PopTransition::Empty { .. } => panic!(),
+            PopTransition::Empty { .. } => unreachable!(),
         }
     }
 
     #[test]
     fn command_pop_transition_fifo_order() {
-        let state: QueueState<u8> = command_new_state(3, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(3, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let (state, _) = command_enqueue_transition(state, 2);
         let (state, _) = command_enqueue_transition(state, 3);
         let (state, popped) = match command_pop_transition(state) {
             PopTransition::Popped { state, item } => (state, item),
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(popped, 1);
         let (state, popped) = match command_pop_transition(state) {
             PopTransition::Popped { state, item } => (state, item),
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(popped, 2);
         let popped = match command_pop_transition(state) {
             PopTransition::Popped { item, .. } => item,
-            PopTransition::Empty { .. } => panic!("expected Popped"),
+            PopTransition::Empty { .. } => unreachable!("expected Popped"),
         };
         assert_eq!(popped, 3);
     }
 
     #[test]
     fn command_pop_transition_equals_action_dequeue() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let popped_a = command_pop_transition(state);
-        let state_b: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state_b: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state_b, _) = command_enqueue_transition(state_b, 1);
         let popped_b = action_dequeue_transition(state_b);
         match (&popped_a, &popped_b) {
@@ -1855,13 +1854,13 @@ mod tests {
                 assert_eq!(ia, ib);
                 assert_eq!(sa.len(), sb.len());
             }
-            _ => panic!("both must be Popped"),
+            _ => unreachable!("both must be Popped"),
         }
     }
 
     #[test]
     fn command_pop_transition_drain_to_empty() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let (state, _) = command_enqueue_transition(state, 2);
         let state = match command_pop_transition(state) {
@@ -1912,7 +1911,7 @@ mod tests {
     fn runtime_queue_full_error_transition_at_depth_capacity() {
         let t = runtime_queue_full_error_transition(4, 4, RuntimeQueueSurface::Submit);
         assert!(t.is_some());
-        let t = t.unwrap();
+        let t = t.unwrap_or_else(|| unreachable!("unwrap failed"));
         assert_eq!(t.surface, RuntimeQueueSurface::Submit);
         assert_eq!(t.capacity, 4);
         assert_eq!(t.depth, 4);
@@ -1941,7 +1940,7 @@ mod tests {
     #[test]
     fn runtime_queue_full_error_transition_preserves_surface() {
         let t =
-            runtime_queue_full_error_transition(2, 2, RuntimeQueueSurface::Inspect).unwrap();
+            runtime_queue_full_error_transition(2, 2, RuntimeQueueSurface::Inspect).unwrap_or_else(|| unreachable!("unwrap failed"));
         assert_eq!(t.surface, RuntimeQueueSurface::Inspect);
         assert!(t.rejected_without_admission);
     }
@@ -1950,14 +1949,14 @@ mod tests {
 
     #[test]
     fn shard_tick_transition_empty_branch_helper() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let result: ShardTickTransition<u8> = shard_tick_transition(state);
         assert!(matches!(result, ShardTickTransition::Empty { .. }));
     }
 
     #[test]
     fn shard_tick_transition_consume_one_helper() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 5);
         let (state, _) = command_enqueue_transition(state, 6);
         let result: ShardTickTransition<u8> = shard_tick_transition(state);
@@ -1966,13 +1965,13 @@ mod tests {
                 assert_eq!(command, 5);
                 assert_eq!(state.len(), 1);
             }
-            ShardTickTransition::Empty { .. } => panic!(),
+            ShardTickTransition::Empty { .. } => unreachable!(),
         }
     }
 
     #[test]
     fn shard_tick_transition_two_consumes_leave_empty() {
-        let state: QueueState<u8> = command_new_state(2, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(2, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 1);
         let (state, _) = command_enqueue_transition(state, 2);
         let state = match shard_tick_transition(state) {
@@ -1987,7 +1986,7 @@ mod tests {
 
     #[test]
     fn shard_tick_transition_one_item_then_empty() {
-        let state: QueueState<u8> = command_new_state(1, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(1, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 99);
         let state = match shard_tick_transition(state) {
             ShardTickTransition::Empty { state } | ShardTickTransition::ConsumedOne { state, .. } => state,
@@ -2000,7 +1999,7 @@ mod tests {
     fn shard_tick_transition_consume_state_size_preserved() {
         // shard_tick consumes exactly one or zero; length either decreases by 1
         // or stays the same.
-        let state: QueueState<u8> = command_new_state(4, 16).unwrap();
+        let state: QueueState<u8> = command_new_state(4, 16).unwrap_or_else(|e| { eprintln!("unwrap failed: {:?}", e); unreachable!() });
         let (state, _) = command_enqueue_transition(state, 11);
         let (state, _) = command_enqueue_transition(state, 22);
         let (state, _) = command_enqueue_transition(state, 33);
@@ -2095,7 +2094,7 @@ mod tests {
     #[test]
     fn warning_payload_at_threshold_is_some() {
         let p = warning_payload(10, 8);
-        let payload = p.expect("at threshold");
+        let payload = p.unwrap_or_else(|| unreachable!("expect failed: at threshold"));
         assert_eq!(payload.depth, 8);
         assert_eq!(payload.capacity, 10);
     }

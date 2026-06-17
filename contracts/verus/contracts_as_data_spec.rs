@@ -288,13 +288,13 @@ verus! {
     spec fn spec_compare_semver(old: &str, new: &str) -> i32 {
         match (parse_semver_components(old), parse_semver_components(new)) {
             (Some((o_major, o_minor, o_patch)), Some((n_major, n_minor, n_patch))) => {
-                if o_major > n_major { 1 }
-                else if o_major < n_major { -1 }
-                else if o_minor > n_minor { 1 }
-                else if o_minor < n_minor { -1 }
-                else if o_patch > n_patch { 1 }
-                else if o_patch < n_patch { -1 }
-                else { 0 }
+                if o_major > n_major { 1i32 }
+                else if o_major < n_major { -1i32 }
+                else if o_minor > n_minor { 1i32 }
+                else if o_minor < n_minor { -1i32 }
+                else if o_patch > n_patch { 1i32 }
+                else if o_patch < n_patch { -1i32 }
+                else { 0i32 }
             }
             _ => 0,
         }
@@ -538,7 +538,7 @@ verus! {
         requires is_valid_semver(a) && is_valid_semver(b) && is_valid_semver(c)
         ensures
             // Irreflexivity: cmp(a,a) < 0 is false for all a
-            spec_compare_semver(a, a) < 0 == false
+            (spec_compare_semver(a, a) < 0) == false
             // Asymmetry: cmp(a,b) < 0 implies cmp(b,a) > 0
             && (spec_compare_semver(a, b) < 0 ==> spec_compare_semver(b, a) > 0)
             // Transitivity: cmp(a,b) < 0 && cmp(b,c) < 0 implies cmp(a,c) < 0
@@ -548,7 +548,7 @@ verus! {
         // 1. Irreflexivity: compare_semver(a, a) == 0 (from reflexivity proof),
         //    so 0 < 0 is false.
         assert(spec_compare_semver(a, a) == 0);
-        assert(spec_compare_semver(a, a) < 0 == false);
+        assert((spec_compare_semver(a, a) < 0) == false);
 
         // 2. Asymmetry: from the antisymmetric proof, cmp(a,b) = -cmp(b,a).
         //    If cmp(a,b) < 0 (i.e., cmp(a,b) == -1), then cmp(b,a) == 1 > 0.

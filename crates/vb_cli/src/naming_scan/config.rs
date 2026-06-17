@@ -342,12 +342,11 @@ mod tests {
     fn validate_scan_config_rejects_empty_entries() {
         let raw = RawScanConfig::empty();
         let result = validate_scan_config(raw);
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            NamingScanError::InvalidConfiguration { reason } => {
+        match result {
+            Err(NamingScanError::InvalidConfiguration { reason }) => {
                 assert_eq!(reason, "empty scan configuration");
             }
-            _ => panic!("wrong error variant"),
+            _ => panic!("expected InvalidConfiguration error variant"),
         }
     }
 
@@ -397,7 +396,11 @@ mod tests {
             path: "src/main.rs".into(),
         }];
         let result = validate_scan_config(raw);
-        assert!(result.is_ok());
+        let config = result.expect("repository_path allowlist must be accepted");
+        assert!(
+            matches!(config.allowlist_policy, AllowlistPolicy::Exact(rules) if !rules.is_empty()),
+            "allowlist_policy must contain the allowed rule"
+        );
     }
 
     #[test]
@@ -409,7 +412,11 @@ mod tests {
             legacy_text: "old".into(),
         }];
         let result = validate_scan_config(raw);
-        assert!(result.is_ok());
+        let config = result.expect("migration_reference allowlist must be accepted");
+        assert!(
+            matches!(config.allowlist_policy, AllowlistPolicy::Exact(rules) if !rules.is_empty()),
+            "allowlist_policy must contain the allowed rule"
+        );
     }
 
     #[test]
@@ -428,7 +435,8 @@ mod tests {
         let mut raw = valid_config();
         raw.scan_patterns = vec!["[abc]".into()];
         let result = validate_scan_config(raw);
-        assert!(result.is_ok());
+        let config = result.expect("closed character class must be accepted");
+        assert_eq!(config.scan_patterns, vec!["[abc]".to_string()]);
     }
 
     #[test]

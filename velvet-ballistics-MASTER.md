@@ -6082,3 +6082,68 @@ The Makepad UI is accepted only when:
 8. Motion is bounded, meaningful, and can be disabled or frozen for deterministic snapshots.
 9. UI code does not introduce Makepad, HTTP, JSON, async runtimes, or web dependencies into runtime core crates.
 10. UI snapshot, token, model, parity, redaction, performance-smoke, lint, and test gates pass with evidence.
+
+## 78. Tier A — Backend / IR Interpreter Complete v1.0
+
+### Scope
+Tier A is the milestone that satisfies all 24 DoD points of §44 (Backend / IR Interpreter Definition of Done). It is the first v1.0 release tier of `velvet-ballistics`. Tier A does **not** include the §76 UI/Makepad command center (deferred per §76 header), the §58 codegen residue (deferred), or the §74 multi-binary split (single binary remains).
+
+### Tier A waves
+Tier A is structured as 13 sequential-or-parallel waves. Each wave is a batch of `bd close` events against existing tracker beads, plus the creation of NEW beads for items that have no tracker entry. A wave is "complete" only when every constituent bead is closed with command evidence (`moon ci` exit 0 + `.evidence/<bead-id>.toml` artifact + `.beads/moon-ci-status.txt` shows `EXIT_CODE: 0`).
+
+| Wave | Name | Bead count | Critical-path? |
+|---|---|---|---|
+| 0 | Gate repair | 2 + 6 NEW | YES (moon ci must turn green) |
+| 1 | Storage envelope + digest integrity | 6 | YES |
+| 2 | Core semantics (taint + step state + ResourceContract) | 3 | YES |
+| 3 | Compiler source-to-IR | 10 + 2 NEW | YES (full v1 primitive set) |
+| 4 | Verification gate wiring | 12 + 1 NEW | parallel after 0 |
+| 5 | Runtime decomposition | 5 | parallel after 2 |
+| 6 | Security & concurrency | 5 NEW | parallel after 0 |
+| 7 | Hot-path bounds + recovery hydration | 5 + 1 NEW | depends on 1, 5 |
+| 8 | Benchmark evidence | 8 | parallel after 0 |
+| 9 | Kani God-Rule (no hardcoded inputs) | 3 + 1 NEW | parallel after 4 |
+| 10 | CLI parity (typed Postcard, action inspect) | 6 | parallel after 1 |
+| 11 | Idempotency hardening | 3 | depends on 2 |
+| 12 | Release artifacts | 5 NEW | LAST |
+| 13 | Final verification + epic closure | 2 | LAST |
+
+Total: 21 NEW beads + ~55 existing tracker beads (re-closed with Tier A acceptance criteria) + 1 master amendment. Wall-clock: ~9 weeks parallel (≤ 5 agents/wave per §77.9), ~19 weeks serial.
+
+### Tier A.0 prerequisites (must close before any wave starts)
+
+The following `o5zb` P0/P1 set is the safety spine. Master §44.24 is unrecoverable until these close:
+
+- `vb-o5zb` (parent epic)
+- `vb-o5zb.1` — restore 3-level `Clean<DerivedFromSecret<Secret` taint lattice
+- `vb-o5zb.2` — make terminal `StepState` absorbing
+- `vb-o5zb.3` — reconcile `ResourceContract` 18-field shape with master
+- `vb-t7srg` — restore `moon ci` exit 0
+
+### Tier A acceptance criteria (closes the bead, opens release)
+
+Tier A is "complete" when ALL of the following are true simultaneously:
+
+1. `moon ci` exits 0 on a clean `main` checkout at the v1.0 tag.
+2. `.beads/moon-ci-status.txt` shows `EXIT_CODE: 0`.
+3. Every wave 0-13 bead is closed with `.evidence/<bead-id>.toml`.
+4. `RELEASE_CHECKLIST.md` exists at repo root.
+5. `CHANGELOG.md` has `## [0.1.0]` entry listing closed waves.
+6. `git tag -s v0.1.0 -m 'Tier A complete'` is created and pushed.
+7. `bd list --filter "tier-a" --status open` returns 0.
+8. `bd list --filter "P0" --status open` returns 0.
+
+### Tier A forbidden-construct audit gates
+
+Every Tier A wave must include in its `.evidence/<bead>.toml`:
+
+- `cargo +nightly fmt --all -- --check` exit 0
+- `cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` exit 0
+- `cargo +nightly check --workspace --all-targets --all-features` exit 0
+- `cargo +nightly nextest run --workspace --all-features` exit 0
+- `cargo +nightly cargo-geiger --fail-build` exit 0
+- `cargo +nightly cargo-deny check advisories` exit 0
+- `scripts/check-spelling.sh` exit 0
+- `scripts/forbid-runtime-fmt.sh` exit 0
+- `scripts/source-length-gate.py` exit 0
+- `moon run :nightly-feature-gate` exit 0

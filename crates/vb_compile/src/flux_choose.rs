@@ -74,16 +74,16 @@ mod tests {
     fn slot_from_text_valid_and_invalid() {
         // Valid: "5" → SlotIdx(5)
         let result = slot_from_text("5", 0, "test");
-        assert!(result.is_ok(), "valid slot text must succeed");
+        assert!(matches!(result, Ok(_)), "valid slot text must succeed");
         assert_eq!(result.unwrap().as_usize(), 5);
 
         // Invalid: empty text
         let result = slot_from_text("", 0, "test");
-        assert!(result.is_err(), "empty text must fail");
+        assert!(matches!(result, Err(crate::CompileErrors(_))), "empty text must fail");
 
         // Invalid: non-numeric
         let result = slot_from_text("abc", 0, "test");
-        assert!(result.is_err(), "non-numeric text must fail");
+        assert!(matches!(result, Err(crate::CompileErrors(_))), "non-numeric text must fail");
     }
 
     #[test]
@@ -91,18 +91,18 @@ mod tests {
         // Within bounds
         let id = StepIdx::new(10);
         let result = id.checked_add(20);
-        assert!(result.is_some(), "10+20=30 within u16 range");
+        assert!(matches!(result, Some(_)), "10+20=30 within u16 range");
         assert_eq!(result.unwrap().as_usize(), 30);
 
         // At boundary
         let id = StepIdx::new(u16::MAX);
         let result = id.checked_add(0);
-        assert!(result.is_some(), "MAX+0 within u16 range");
+        assert!(matches!(result, Some(_)), "MAX+0 within u16 range");
         assert_eq!(result.unwrap().as_usize(), u16::MAX as usize);
 
         // Overflow
         let id = StepIdx::new(u16::MAX);
         let result = id.checked_add(1);
-        assert!(result.is_none(), "MAX+1 overflows u16");
+        assert!(matches!(result, None), "MAX+1 overflows u16");
     }
 }

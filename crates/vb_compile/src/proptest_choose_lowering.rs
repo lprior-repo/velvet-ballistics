@@ -7,7 +7,6 @@
 //! Placed inside the crate (not tests/) because lower_canonical_choose is pub(crate).
 
 #![cfg(test)]
-#![allow(clippy::indexing_slicing)]
 
 use crate::mod_compile_lowering::{SlotCompiler, lower_canonical_choose};
 use crate::CompileError;
@@ -78,21 +77,44 @@ proptest! {
             prop_assert!(!builder.nodes.is_empty(),
                 "lower_canonical_choose must produce at least one node, got {}", builder.nodes.len());
         } else if otherwise.is_some() && !otherwise_label_known {
+            let errs = match &result {
+                Err(e) => e,
+                _ => unreachable!(),
+            };
             prop_assert!(
-                matches!(result, Err(ref errs) if errs.0.len() == 1
-                    && matches!(&errs.0[0],
-                        CompileError::UnknownStepLabel { step: 0, .. })),
-                "choose with unknown otherwise must return UnknownStepLabel, got {:?}",
+                errs.0.len() == 1,
+                "choose with unknown otherwise must return single error, got {:?}",
                 result
             );
-        } else {
+            let err0 = match errs.0.first() {
+                Some(v) => v,
+                None => unreachable!(),
+            };
             prop_assert!(
-                matches!(result, Err(ref errs) if errs.0.len() == 1
-                    && matches!(&errs.0[0],
-                        CompileError::Workflow(we) if matches!(we,
-                            vb_core::WorkflowError::EmptyBranchTable))),
-                "empty choose without otherwise must return EmptyBranchTable, got {:?}",
+                matches!(err0, CompileError::UnknownStepLabel { step: 0, .. }),
+                "expected UnknownStepLabel(step=0), got {:?}",
+                err0
+            );
+        } else {
+            let errs = match &result {
+                Err(e) => e,
+                _ => unreachable!(),
+            };
+            prop_assert!(
+                errs.0.len() == 1,
+                "empty choose without otherwise must return single error, got {:?}",
                 result
+            );
+            let err0 = match errs.0.first() {
+                Some(v) => v,
+                None => unreachable!(),
+            };
+            prop_assert!(
+                matches!(err0, CompileError::Workflow(we) if matches!(
+                    we, vb_core::WorkflowError::EmptyBranchTable
+                )),
+                "expected EmptyBranchTable, got {:?}",
+                err0
             );
         }
     }

@@ -7,8 +7,6 @@
 // GOD RULE 2: Binds to compile_workflow.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::expect_used)]
-
 use proptest::prelude::*;
 use vb_core::{CompiledNodeKind, StepIdx};
 
@@ -47,12 +45,13 @@ proptest! {
         let result = vb_compile::compile_workflow(yaml.as_bytes());
 
         // Valid YAML → Ok; iterate nodes to verify body chain integrity.
-        prop_assert!(
+        assert!(
             result.is_ok(),
             "choose yaml must compile Ok, got {:?}",
             result
         );
-        let workflow = result.expect("matches! above guarantees Ok");
+        #[allow(clippy::unwrap_used)]
+        let workflow = result.unwrap();
         let nc = workflow.node_count();
         let mut found_choose = false;
         for i in 0..nc {
@@ -61,14 +60,16 @@ proptest! {
                 && matches!(n.kind, CompiledNodeKind::ChooseSlot { .. })
             {
                 found_choose = true;
-                let next_i = i.checked_add(1).expect("i < nc so i+1 fits in usize");
+                let next_i = i.saturating_add(1);
                 for j in next_i..nc {
                     if let Some(bn) = workflow.node(StepIdx::new(j)) {
                         match &bn.kind {
                             CompiledNodeKind::Finish { .. } => break,
                             _ => {
-                                prop_assert!(bn.next.is_some(),
-                                    "body node {} must have next pointer", j);
+                                prop_assert!(
+                bn.next.is_some(),
+                "body node {} must have next pointer", j
+            );
                             }
                         }
                     }

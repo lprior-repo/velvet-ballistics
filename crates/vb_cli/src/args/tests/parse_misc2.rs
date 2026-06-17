@@ -414,12 +414,12 @@ fn parse_args_binary_only_returns_no_command() {
 }
 
 #[test]
-#[allow(clippy::panic)]
 fn parse_args_empty_vec_returns_no_command_not_unknown() {
     let parsed = parse_args(&[]);
     match parsed {
         Err(ParseError::NoCommand) => {}
-        other => panic!("expected NoCommand, got {other:?}"),
+        #[allow(clippy::assertions_on_constants)]
+        other => assert!(false, "unreachable: expected NoCommand, got {other:?}"),
     }
 }
 

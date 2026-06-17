@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::expect_used, clippy::panic)]
 //! Source map module tests.
 
 use super::*;
@@ -225,7 +224,8 @@ fn adversarial_source_map_multi_line_scalar_tracks_spans() {
             assert!(!map.is_empty(), "expected non-empty source map");
           let first = map.span_for_node(0);
             let Some(span) = first else {
-                panic!("expected span for node 0, got None");
+                assert!(false, "expected span for node 0, got None");
+                return;
             };
             assert!(span.start_line > 0, "start_line should be > 0");
         }
@@ -340,7 +340,8 @@ fn semantic_source_map_trigger_when_event() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.event");
     let Some(span) = trigger else {
-        panic!("expected $.when.event trigger span");
+        assert!(false, "expected $.when.event trigger span");
+        return;
     };
     assert!(
         span_text(yaml, span).contains("event"),
@@ -356,7 +357,8 @@ fn semantic_source_map_trigger_when_manual() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.manual");
     let Some(span) = trigger else {
-        panic!("expected $.when.manual trigger span");
+        assert!(false, "expected $.when.manual trigger span");
+        return;
     };
     assert!(
         span_text(yaml, span).contains("manual"),
@@ -371,7 +373,8 @@ fn semantic_source_map_trigger_when_schedule() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.schedule");
     let Some(span) = trigger else {
-        panic!("expected $.when.schedule trigger span");
+        assert!(false, "expected $.when.schedule trigger span");
+        return;
     };
     assert!(
         span_text(yaml, span).contains("schedule"),
@@ -386,7 +389,8 @@ fn semantic_source_map_trigger_when_webhook() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let trigger = map.span_for_path("$.when.webhook");
     let Some(span) = trigger else {
-        panic!("expected $.when.webhook trigger span");
+        assert!(false, "expected $.when.webhook trigger span");
+        return;
     };
     assert!(
         span_text(yaml, span).contains("webhook"),
@@ -401,7 +405,8 @@ fn semantic_source_map_non_trigger_not_flagged_as_trigger() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     // $.next_key is not a trigger container path
     let Some(span) = map.span_for_path("$.next_key") else {
-        panic!("non-trigger $.next_key should still be tracked in source map");
+        assert!(false, "non-trigger $.next_key should still be tracked in source map");
+        return;
     };
     assert!(span.end_offset >= span.start_offset, "span must have valid range");
 }
@@ -415,13 +420,16 @@ fn semantic_source_map_sequence_indices_sequential() {
     let b = map.span_for_path("$.steps[1].id");
     let c = map.span_for_path("$.steps[2].id");
     let Some(sa) = a else {
-        panic!("expected $.steps[0].id");
+        assert!(false, "expected $.steps[0].id");
+        return;
     };
     let Some(sb) = b else {
-        panic!("expected $.steps[1].id");
+        assert!(false, "expected $.steps[1].id");
+        return;
     };
     let Some(_sc) = c else {
-        panic!("expected $.steps[2].id");
+        assert!(false, "expected $.steps[2].id");
+        return;
     };
     // Each should resolve to a different text value
     {
@@ -442,10 +450,12 @@ fn semantic_source_map_nested_set_paths() {
     let output = map.span_for_path("$.steps[0].set.output");
     let value = map.span_for_path("$.steps[0].set.value");
     let Some(so) = output else {
-        panic!("expected $.steps[0].set.output");
+        assert!(false, "expected $.steps[0].set.output");
+        return;
     };
     let Some(sv) = value else {
-        panic!("expected $.steps[0].set.value");
+        assert!(false, "expected $.steps[0].set.value");
+        return;
     };
     assert_eq!(span_text(yaml, so), "result");
     assert_eq!(span_text(yaml, sv), "one");
@@ -458,7 +468,8 @@ fn semantic_source_map_finish_step() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let result = map.span_for_path("$.steps[0].finish.result");
     let Some(span) = result else {
-        panic!("expected $.steps[0].finish.result");
+        assert!(false, "expected $.steps[0].finish.result");
+        return;
     };
     assert_eq!(span_text(yaml, span), "complete");
 }
@@ -470,7 +481,8 @@ fn semantic_source_map_root_scalar() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let version = map.span_for_path("$.version");
     let Some(span) = version else {
-        panic!("expected $.version path");
+        assert!(false, "expected $.version path");
+        return;
     };
     assert!(
         span_text(yaml, span).contains("velvet-ballistics/v1"),
@@ -485,7 +497,8 @@ fn semantic_source_map_deep_nesting() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let db = map.span_for_path("$.steps[0].set.config.db");
     let Some(span) = db else {
-        panic!("expected $.steps[0].set.config.db");
+        assert!(false, "expected $.steps[0].set.config.db");
+        return;
     };
     assert!(
         span.start_offset <= span.end_offset,
@@ -534,7 +547,8 @@ fn build_source_map_multi_line_span_accuracy() {
     // Node 0 should be "first: 1" on line 1
     let span0 = map.span_for_node(0);
     let Some(s) = span0 else {
-        panic!("expected span for node 0");
+        assert!(false, "expected span for node 0");
+        return;
     };
     assert_eq!(s.start_line, 1);
     assert_eq!(s.end_line, 1);
@@ -554,7 +568,13 @@ fn build_source_map_handles_mixed_indentation() {
 fn build_source_map_flow_style_sequence() {
     let yaml = "items: [a, b, c]\n";
     let result = build_source_map(yaml);
-    let map = result.expect("flow-style sequence should be accepted");
+    let map = match result {
+        Ok(map) => map,
+        Err(e) => {
+            assert!(false, "flow-style sequence should be accepted: {e}");
+            unreachable!()
+        }
+    };
     assert!(
         !map.is_empty(),
         "flow-style sequence source map should not be empty"
@@ -566,7 +586,13 @@ fn build_source_map_flow_style_sequence() {
 fn build_source_map_flow_style_mapping() {
     let yaml = "obj: {key: value}\n";
     let result = build_source_map(yaml);
-    let map = result.expect("flow-style mapping should be accepted");
+    let map = match result {
+        Ok(map) => map,
+        Err(e) => {
+            assert!(false, "flow-style mapping should be accepted: {e}");
+            unreachable!()
+        }
+    };
     assert!(
         !map.is_empty(),
         "flow-style mapping source map should not be empty"
@@ -593,14 +619,16 @@ fn semantic_source_map_no_steps() {
     let yaml = "version: velvet-ballistics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     let Some(span) = map.span_for_path("$.version") else {
-        panic!("expected $.version path");
+        assert!(false, "expected $.version path");
+        return;
     };
     assert!(
         span_text(yaml, span).contains("velvet-ballistics/v1"),
         "version span must contain version string"
     );
     let Some(name_span) = map.span_for_path("$.name") else {
-        panic!("expected $.name path");
+        assert!(false, "expected $.name path");
+        return;
     };
     assert_eq!(span_text(yaml, name_span), "test", "name span must contain 'test'");
 }

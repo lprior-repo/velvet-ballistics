@@ -58,8 +58,8 @@ fn parse_event_accepts_valid_slot_written_event() {
             assert_eq!(run, RunId::new(42), "run_id must match");
             assert_eq!(seq, EventSeq::new(5), "seq must match");
             assert_eq!(slot, SlotIdx::new(3), "slot must match");
-            assert!(value.is_none(), "value must be None");
-            assert!(extra.is_none(), "extra must be None");
+            assert!(matches!(value, None), "value must be None");
+            assert!(matches!(extra, None), "extra must be None");
             assert_eq!(attempt, 2, "attempt must match");
         }
         other => panic!("expected SlotWrittenEvent, got {:?}", other),

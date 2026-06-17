@@ -2,8 +2,6 @@
 //!
 //! Tests: equality, hash, size, Send/Sync, Result context
 
-#![allow(clippy::unwrap_used, clippy::unnecessary_literal_unwrap)]
-
 use crate::boundary_inventory::BoundaryInventoryError;
 
 // =============================================================================
@@ -147,8 +145,6 @@ fn error_in_result_workspace_not_discoverable() {
         result,
         Err(BoundaryInventoryError::WorkspaceNotDiscoverable)
     ));
-    // Mutation gate: swapping the error variant must fail the exact-match above.
-    let _variant = result.unwrap_err();
 }
 
 #[test]
@@ -159,7 +155,7 @@ fn error_in_result_inventory_parse_failure() {
         result,
         Err(BoundaryInventoryError::InventoryParseFailure)
     ));
-    let _variant = result.unwrap_err();
+    assert!(result.is_err());
 }
 
 #[test]
@@ -170,7 +166,7 @@ fn error_in_result_schema_version_unsupported() {
         result,
         Err(BoundaryInventoryError::SchemaVersionUnsupported)
     ));
-    let _variant = result.unwrap_err();
+    assert!(result.is_err());
 }
 
 // =============================================================================

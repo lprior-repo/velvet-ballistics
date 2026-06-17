@@ -811,7 +811,7 @@ mod tests {
     fn ids_from_str_invalid() {
         use super::SymbolId;
         let result: Result<SymbolId, _> = "not_a_number".parse();
-        assert!(result.is_err(), "non-numeric string must fail to parse");
+        assert!(matches!(result, Err(_)), "non-numeric string must fail to parse");
     }
 
     #[test]
@@ -952,31 +952,31 @@ mod tests {
     #[test]
     fn from_str_rejects_empty_string() {
         let result: Result<StepIdx, _> = "".parse();
-        assert!(result.is_err(), "empty string must fail to parse");
+        assert!(matches!(result, Err(_)), "empty string must fail to parse");
     }
 
     #[test]
     fn from_str_rejects_negative() {
         let result: Result<StepIdx, _> = "-1".parse();
-        assert!(result.is_err(), "negative string must fail to parse");
+        assert!(matches!(result, Err(_)), "negative string must fail to parse");
     }
 
     #[test]
     fn from_str_rejects_overflow_for_u16() {
         let result: Result<StepIdx, _> = "65536".parse();
-        assert!(result.is_err(), "u16 overflow must fail to parse");
+        assert!(matches!(result, Err(_)), "u16 overflow must fail to parse");
     }
 
     #[test]
     fn from_str_rejects_overflow_for_u32() {
         let result: Result<WorkflowId, _> = "4294967296".parse();
-        assert!(result.is_err(), "u32 overflow must fail to parse");
+        assert!(matches!(result, Err(_)), "u32 overflow must fail to parse");
     }
 
     #[test]
     fn from_str_rejects_leading_whitespace() {
         let result: Result<StepIdx, _> = " 42".parse();
-        assert!(result.is_err(), "leading whitespace must fail");
+        assert!(matches!(result, Err(_)), "leading whitespace must fail");
     }
 
     // --- BranchIdx edge cases ---
@@ -1033,7 +1033,7 @@ mod tests {
     fn max_attempts_zero_is_rejected() {
         use super::MaxAttempts;
         let result = MaxAttempts::try_new(0);
-        assert!(result.is_err(), "max_attempts=0 must be rejected");
+        assert!(matches!(result, Err(crate::EngineError::InternalInvariantViolation { .. })), "max_attempts=0 must be rejected");
     }
 
     // --- RetryCount edge cases ---
