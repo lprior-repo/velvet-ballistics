@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::as_conversions)]
 #![forbid(unsafe_code)]
 
 use criterion::{Criterion, criterion_group, criterion_main};

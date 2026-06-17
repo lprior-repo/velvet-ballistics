@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::as_conversions)]
 //!
 //! Proptest properties for ChooseSlot replay — supplementary to Kani harnesses.
 //!

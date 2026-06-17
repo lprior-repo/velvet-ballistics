@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 use proptest::prelude::*;
 use vb_storage::constants::{MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
 

@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 #![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]

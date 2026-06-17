@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 use super::{encoded_record, flip_byte, scribble_u32};
 use crate::JournalError;
 use crate::codec::decode_journal_event;

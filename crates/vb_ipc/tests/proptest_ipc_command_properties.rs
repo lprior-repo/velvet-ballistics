@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Property-based tests: IPC v1 command set reconciliation.
 //!
 //! PO-PROP-001: Command count and discriminant range (exactly 11 semantic variants).

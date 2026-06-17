@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 #![forbid(unsafe_code)]
 //! Tests for type_taint module (extracted from type_taint.rs)
 

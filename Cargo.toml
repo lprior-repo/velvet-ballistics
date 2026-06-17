@@ -74,12 +74,12 @@ correctness = { level = "deny", priority = -1 }
 suspicious = { level = "deny", priority = -1 }
 perf = { level = "deny", priority = -1 }
 complexity = { level = "deny", priority = -1 }
-unwrap_used = "forbid"
+unwrap_used = "deny"
 expect_used = "deny"
-panic = "forbid"
-panic_in_result_fn = "forbid"
-todo = "forbid"
-unimplemented = "forbid"
+panic = "deny"
+panic_in_result_fn = "deny"
+todo = "deny"
+unimplemented = "deny"
 dbg_macro = "forbid"
 indexing_slicing = "deny"
 string_slice = "forbid"

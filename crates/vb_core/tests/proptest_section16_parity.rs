@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Property test: Section 16 master contract parity against CODE_REGISTRY.
 //!
 //! Verifies that all 36 Section 16 symbolic codes from the master contract

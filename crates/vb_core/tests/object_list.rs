@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Tests for object_list module.
 
 use vb_core::errors::EngineError;

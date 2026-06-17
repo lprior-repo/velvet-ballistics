@@ -158,3 +158,300 @@ impl RunState {
         self.lifecycle.is_terminal()
     }
 }
+
+// =========================================================================
+// Lifecycle state machine unit tests
+// =========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -- Valid transitions --
+
+    #[test]
+    fn cancel_from_active_is_valid() {
+        assert!(check_lifecycle_transition(
+            LifecycleState::Active,
+            LifecycleCommand::Cancel
+        ));
+    }
+
+    #[test]
+    fn cancel_from_waiting_answer_is_valid() {
+        assert!(check_lifecycle_transition(
+            LifecycleState::WaitingAnswer,
+            LifecycleCommand::Cancel
+        ));
+    }
+
+    #[test]
+    fn resume_from_waiting_answer_is_valid() {
+        assert!(check_lifecycle_transition(
+            LifecycleState::WaitingAnswer,
+            LifecycleCommand::Resume
+        ));
+    }
+
+    #[test]
+    fn retry_from_failed_is_valid() {
+        assert!(check_lifecycle_transition(
+            LifecycleState::Failed,
+            LifecycleCommand::Retry
+        ));
+    }
+
+    #[test]
+    fn answer_from_waiting_answer_is_valid() {
+        assert!(check_lifecycle_transition(
+            LifecycleState::WaitingAnswer,
+            LifecycleCommand::Answer
+        ));
+    }
+
+    // -- Invalid transitions: Cancel is the only command from Active --
+
+    #[test]
+    fn resume_from_active_is_invalid() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Active,
+            LifecycleCommand::Resume
+        ));
+    }
+
+    #[test]
+    fn retry_from_active_is_invalid() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Active,
+            LifecycleCommand::Retry
+        ));
+    }
+
+    #[test]
+    fn answer_from_active_is_invalid() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Active,
+            LifecycleCommand::Answer
+        ));
+    }
+
+    // -- Invalid transitions: Failed only accepts Retry --
+
+    #[test]
+    fn cancel_from_failed_is_invalid() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Failed,
+            LifecycleCommand::Cancel
+        ));
+    }
+
+    #[test]
+    fn resume_from_failed_is_invalid() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Failed,
+            LifecycleCommand::Resume
+        ));
+    }
+
+    #[test]
+    fn answer_from_failed_is_invalid() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Failed,
+            LifecycleCommand::Answer
+        ));
+    }
+
+    // -- Terminal states: Cancelled and Completed are absorbing --
+
+    #[test]
+    fn cancelled_rejects_cancel() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Cancelled,
+            LifecycleCommand::Cancel
+        ));
+    }
+
+    #[test]
+    fn cancelled_rejects_resume() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Cancelled,
+            LifecycleCommand::Resume
+        ));
+    }
+
+    #[test]
+    fn cancelled_rejects_retry() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Cancelled,
+            LifecycleCommand::Retry
+        ));
+    }
+
+    #[test]
+    fn cancelled_rejects_answer() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Cancelled,
+            LifecycleCommand::Answer
+        ));
+    }
+
+    #[test]
+    fn completed_rejects_cancel() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Completed,
+            LifecycleCommand::Cancel
+        ));
+    }
+
+    #[test]
+    fn completed_rejects_resume() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Completed,
+            LifecycleCommand::Resume
+        ));
+    }
+
+    #[test]
+    fn completed_rejects_retry() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Completed,
+            LifecycleCommand::Retry
+        ));
+    }
+
+    #[test]
+    fn completed_rejects_answer() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Completed,
+            LifecycleCommand::Answer
+        ));
+    }
+
+    // -- Pending state: no commands valid --
+
+    #[test]
+    fn pending_rejects_cancel() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Pending,
+            LifecycleCommand::Cancel
+        ));
+    }
+
+    #[test]
+    fn pending_rejects_resume() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Pending,
+            LifecycleCommand::Resume
+        ));
+    }
+
+    #[test]
+    fn pending_rejects_retry() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Pending,
+            LifecycleCommand::Retry
+        ));
+    }
+
+    #[test]
+    fn pending_rejects_answer() {
+        assert!(!check_lifecycle_transition(
+            LifecycleState::Pending,
+            LifecycleCommand::Answer
+        ));
+    }
+
+    // -- Terminal state checks --
+
+    #[test]
+    fn pending_is_not_terminal() {
+        assert!(!LifecycleState::Pending.is_terminal());
+    }
+
+    #[test]
+    fn active_is_not_terminal() {
+        assert!(!LifecycleState::Active.is_terminal());
+    }
+
+    #[test]
+    fn waiting_answer_is_not_terminal() {
+        assert!(!LifecycleState::WaitingAnswer.is_terminal());
+    }
+
+    #[test]
+    fn failed_is_not_terminal() {
+        assert!(!LifecycleState::Failed.is_terminal());
+    }
+
+    #[test]
+    fn cancelled_is_terminal() {
+        assert!(LifecycleState::Cancelled.is_terminal());
+    }
+
+    #[test]
+    fn completed_is_terminal() {
+        assert!(LifecycleState::Completed.is_terminal());
+    }
+
+    // -- RunState integration --
+
+    #[test]
+    fn run_state_terminal_propagates() {
+        let active_run = RunState {
+            lifecycle: LifecycleState::Active,
+            run_id: RunId::new(1),
+        };
+        assert!(!active_run.is_terminal());
+
+        let completed_run = RunState {
+            lifecycle: LifecycleState::Completed,
+            run_id: RunId::new(2),
+        };
+        assert!(completed_run.is_terminal());
+    }
+
+    // -- Exhaustive transition matrix --
+
+    #[test]
+    fn exhaustive_transition_matrix() {
+        let states = [
+            LifecycleState::Pending,
+            LifecycleState::Active,
+            LifecycleState::WaitingAnswer,
+            LifecycleState::Failed,
+            LifecycleState::Cancelled,
+            LifecycleState::Completed,
+        ];
+        let commands = [
+            LifecycleCommand::Cancel,
+            LifecycleCommand::Resume,
+            LifecycleCommand::Retry,
+            LifecycleCommand::Answer,
+        ];
+
+        let expected: [[bool; 4]; 6] = [
+            // Pending
+            [false, false, false, false],
+            // Active
+            [true, false, false, false],
+            // WaitingAnswer
+            [true, true, false, true],
+            // Failed
+            [false, false, true, false],
+            // Cancelled
+            [false, false, false, false],
+            // Completed
+            [false, false, false, false],
+        ];
+
+        for (si, state) in states.iter().enumerate() {
+            for (ci, cmd) in commands.iter().enumerate() {
+                let result = check_lifecycle_transition(*state, *cmd);
+                assert_eq!(
+                    result, expected[si][ci],
+                    "transition ({state:?}, {cmd:?}) expected {expected:?}, got {result}"
+                );
+            }
+        }
+    }
+}

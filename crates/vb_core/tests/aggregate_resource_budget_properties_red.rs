@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 use proptest::prelude::{ProptestConfig, *};
 
 const BUDGET_RS: &str = concat!(

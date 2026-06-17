@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Miri-testable harnesses proving decode functions handle truncated/malformed data safely.
 //!
 //! These tests verify that no UB occurs on malformed input - all decode functions

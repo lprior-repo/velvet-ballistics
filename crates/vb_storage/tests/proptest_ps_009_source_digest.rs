@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 // Proptest: source_digest == digest through public submission API (Gate 3).
 //
 // Obligation: PO-vb-h09wf-027

@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Dispatch generic mock derivation tests.
 //!
 //! Verifies that dispatch_generic routes action names to the correct

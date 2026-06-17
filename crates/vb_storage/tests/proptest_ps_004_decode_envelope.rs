@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 // Proptest: Envelope decode boundary (Gate 2a) through public API.
 //
 // Obligation: PO-vb-h09wf-012

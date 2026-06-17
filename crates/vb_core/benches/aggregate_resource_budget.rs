@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 #![allow(missing_docs)]
 
 use criterion::{Criterion, criterion_group, criterion_main};

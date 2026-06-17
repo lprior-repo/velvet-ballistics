@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 #![forbid(unsafe_code)]
 
 //! Proptest artifact for `obl-vb-mrwe-5-ps003-proptest-014`.

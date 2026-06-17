@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Property tests for Diagnostic::new constructor consistency.
 //!
 //! Compensates: BLOCKED PO-005 (diagnostic_constructor_consistency),

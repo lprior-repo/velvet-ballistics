@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
 //! Property tests for CODE_REGISTRY consistency invariants.
 //!
 //! Compensates: BLOCKED PO-002 H1/H3 (registry_bijection unique_symbolic + roundtrip),

@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! MockMarker discriminant tests.
 //!
 //! These tests describe the expected behavior of MockMarker once implemented.

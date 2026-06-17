@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
 //! ActionTicket 8-field postcard roundtrip.
 //!
 //! Verifies that all 8 fields (including mock) are preserved through

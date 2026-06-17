@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //! Property tests for SymbolicCode serde round-trip.
 //!
 //! Compensates: BLOCKED PO-009 H1 (serde_roundtrip).

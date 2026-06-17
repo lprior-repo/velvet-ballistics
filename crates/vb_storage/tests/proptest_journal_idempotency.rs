@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
 //!
 //! Proptest properties for journal idempotency — supplementary to Kani harnesses.
 //!
