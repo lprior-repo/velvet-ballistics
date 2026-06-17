@@ -241,10 +241,15 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-// Pre-existing issue: package name drift check not working
-#[test]
-#[ignore]
-fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
+// Package name drift reports exact member and expected name
+ // Re-ignore: write_manifest only writes vb_cli Cargo.toml, but the
+ // check-workspace-assertions script also checks vb_core features and
+ // workspace.exclude against the real repo state. The test setup does
+ // not provide matching vb_core manifests, so the assertion for the
+ // vb_cli package name error is drowned out by unrelated drift errors.
+ #[test]
+ #[ignore]
+ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     let dir = workspace()?;
     write_manifest(dir.path(), "crates/vb_cli", "velvet-ballistics")?;
     let output = run_assertions(dir.path())?;

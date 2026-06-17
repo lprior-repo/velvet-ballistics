@@ -390,6 +390,8 @@ proptest! {
 fn recovery_replay_empty_sequence_is_ok() {
     let mut tracker = ActionReplayTracker::new();
     let result = replay_events(&[], &mut tracker, &[]);
-    assert!(result.is_ok(), "empty replay must be Ok, got {result:?}");
-    assert!(result.unwrap().is_empty());
+    assert!(
+        matches!(result, Ok(ref v) if v.is_empty()),
+        "empty replay must return Ok(vec![]), got {result:?}"
+    );
 }

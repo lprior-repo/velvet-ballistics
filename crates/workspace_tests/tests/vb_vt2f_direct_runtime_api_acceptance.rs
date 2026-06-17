@@ -143,7 +143,7 @@ use std::sync::Arc;
 
 use vb_core::action::{
     ActionContract, ActionFailure, ActionFailureCode, ActionName, ActionOutputReady, ActionTicket,
-    Idempotency, RetryPolicy, RetrySafety, SideEffect,
+    Idempotency, RetryPolicy, RetrySafety, SideEffect, compute_action_idempotency_key,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -392,7 +392,7 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
         seq: SeqNo::ZERO,
         action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(run, SeqNo::ZERO, action),
         capacity: 1,
         ..Default::default()
     }
@@ -403,7 +403,7 @@ fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint,
-        encoded_len: 8,
+        encoded_len: postcard::to_allocvec(&value).map_or(0, |v| v.len() as u32),
     }
 }
 
@@ -595,6 +595,7 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
     Ok(())
 }
 
+// Pre-existing issue: run doesn't reach Finished after action completion
 #[test]
 #[ignore]
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
@@ -611,7 +612,6 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
         submit_action_workflow(&runtime, unrelated, action_then_finish_workflow()?),
         Ok(())
     );
-    run_one_tick(&mut runtime)?;
     run_one_tick(&mut runtime)?;
     let unrelated_before = runtime.snapshot_run(unrelated, 44);
     let unrelated_events_before = trace_events(&runtime, unrelated)?;

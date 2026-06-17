@@ -207,8 +207,19 @@ fn adversarial_batch_commit_with_5_puts_persists_all() {
         .put_status_index(IndexStatusState::Submitted, 0, run)
         .expect("put5");
     batch.commit().expect("commit");
-    assert!(journal.workflow_source(d1).expect("g1").is_some());
-    assert!(journal.compiled_ir(compiled.digest).expect("g2").is_some());
-    assert!(journal.run_header(run).expect("g3").is_some());
-    assert!(journal.blob(blob_digest).expect("g4").is_some());
+    let ws = journal.workflow_source(d1).expect("g1");
+    assert!(
+        ws.is_some(),
+        "workflow source must persist after 5-put batch commit"
+    );
+    assert_eq!(ws.unwrap().source, b"s".to_vec());
+    let ir = journal.compiled_ir(compiled.digest).expect("g2");
+    assert!(ir.is_some(), "compiled IR must persist after 5-put batch commit");
+    assert_eq!(ir.unwrap(), compiled);
+    let rh = journal.run_header(run).expect("g3");
+    assert!(rh.is_some(), "run header must persist after 5-put batch commit");
+    assert_eq!(rh.unwrap().run, run);
+    let bl = journal.blob(blob_digest).expect("g4");
+    assert!(bl.is_some(), "blob must persist after 5-put batch commit");
+    assert_eq!(bl.unwrap().bytes, b"b".to_vec());
 }

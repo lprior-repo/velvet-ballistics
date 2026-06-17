@@ -148,6 +148,15 @@ pub(crate) fn run_compiled_workflow(
         return CliExitCode::RuntimeFailed.into();
     }
 
+    // Drain all queued journal writes before counting or exiting.
+    // The QueuedStorageRuntimeJournal enqueues events asynchronously;
+    // without this drain, events would still be in the queue when we
+    // try to flush memtables, resulting in empty event stores.
+    if let Err(e) = runtime.shutdown_graceful() {
+        report_runtime_error(format_args!("runtime shutdown error: {e}"), output);
+        return CliExitCode::RuntimeFailed.into();
+    }
+
     let counters = runtime.counters_snapshot();
     let traces = runtime.drain_trace();
     let status = if counters.runs_failed != 0 {
@@ -192,6 +201,24 @@ pub(crate) fn run_compiled_workflow(
             crate::outln!("run completed");
         } else {
             crate::outln!("run accepted but not terminal after one runtime tick");
+        }
+    }
+
+   // Flush memtables to SST files and sync WAL before returning so that
+    // subsequent `events` / `inspect` commands (which open a fresh
+    // database connection in a new process) can read the written
+    // events.  Fjall's `persist()` only syncs the WAL; memtables must be
+    // explicitly rotated and waited on to be written to disk.
+    if durability != DurabilityMode::None {
+        let shared_journal = runtime.journal();
+        if let Some(ref storage_journal) = shared_journal.storage_journal() {
+            if let Err(e) = storage_journal.flush_memtables() {
+                report_runtime_error(
+                    format_args!("journal memtable flush error: {e}"),
+                    output,
+                );
+                return CliExitCode::StorageError.into();
+            }
         }
     }
 

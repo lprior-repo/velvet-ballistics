@@ -157,9 +157,10 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
+use postcard;
 use vb_core::action::{
     ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
-    RetrySafety, SideEffect,
+    RetrySafety, SideEffect, compute_action_idempotency_key,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -347,18 +348,19 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
         seq: SeqNo::ZERO,
         action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(run, SeqNo::ZERO, action),
         capacity: 1,
         ..Default::default()
     }
 }
 
 fn action_output(value: SlotValue, taint: Taint) -> ActionOutputReady {
+    let encoded = postcard::to_allocvec(&value).unwrap();
     ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint,
-        encoded_len: 8,
+        encoded_len: encoded.len() as u32,
     }
 }
 
@@ -583,10 +585,13 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
 // =============================================================================
 
 // Scenario D1: Complete action resumes at correct step
-// KNOWN ISSUE: Returns InvalidActionCompletion - pre-existing bug
-#[test]
-#[ignore]
-fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), String> {
+ // KNOWN ISSUE: Returns InvalidActionCompletion — pre-existing bug in action
+ // completion pipeline after submit+tick. The tick fails with
+ // InvalidActionCompletion during handle_action_completion because the
+ // preflight validation rejects a valid ticket.
+ #[test]
+ #[ignore]
+ fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal);
     let run = RunId::new(3001);

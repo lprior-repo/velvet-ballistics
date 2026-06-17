@@ -103,15 +103,27 @@ fn write_batch_commits_cross_keyspace_atomically() {
         .expect("put_run_header must succeed");
     batch.commit().expect("batch.commit must succeed");
 
-    let source = journal
+let source = journal
         .workflow_source(digest)
         .expect("workflow source roundtrip");
-    assert!(source.is_some());
-    assert_eq!(source.unwrap().source, b"test workflow".to_vec());
+    assert!(
+        source.is_some(),
+        "workflow source must be present after cross-keyspace commit"
+    );
+    let source_record = source.unwrap();
+    assert_eq!(source_record.source, b"test workflow".to_vec());
+    assert_eq!(source_record.digest, digest);
 
     let header = journal.run_header(run).expect("run header roundtrip");
-    assert!(header.is_some());
-    assert_eq!(header.unwrap().run, run);
+    assert!(
+        header.is_some(),
+        "run header must be present after cross-keyspace commit"
+    );
+    let header_record = header.unwrap();
+    assert_eq!(header_record.run, run);
+    assert_eq!(header_record.workflow_id, WorkflowId::new(7));
+    assert_eq!(header_record.compiled_digest, digest);
+    assert_eq!(header_record.status, 1);
 }
 
 #[test]
@@ -131,8 +143,14 @@ fn write_batch_strict_commits_with_durability() {
     batch.commit().expect("batch.commit must succeed");
 
     let blob = journal.blob(digest).expect("blob roundtrip");
-    assert!(blob.is_some());
-    assert_eq!(blob.unwrap().bytes, b"blob data".to_vec());
+    assert!(
+        blob.is_some(),
+        "blob must be present after strict batch commit, got {:?}",
+        blob
+    );
+    let blob_record = blob.unwrap();
+    assert_eq!(blob_record.bytes, b"blob data".to_vec());
+    assert_eq!(blob_record.digest, digest);
 }
 
 #[test]

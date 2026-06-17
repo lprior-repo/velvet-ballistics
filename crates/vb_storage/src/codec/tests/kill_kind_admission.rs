@@ -58,7 +58,7 @@ fn is_known_record_kind_28_returns_true() {
 fn validate_kind_family_journal_event_28_returns_ok() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 28);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "kind 28 must be accepted for MAGIC_JOURNAL_EVENT, got {:?}",
         result
     );
@@ -122,15 +122,10 @@ fn encode_record_runkilled_produces_valid_bytes() {
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     );
-    assert!(result.is_ok(), "RunKilled event must encode successfully");
-    let bytes = result.unwrap();
     assert!(
-        !bytes.is_empty(),
-        "encoded RunKilled must produce non-empty bytes"
-    );
-    assert!(
-        bytes.len() > RECORD_HEADER_BYTES,
-        "encoded RunKilled must be larger than header alone"
+        matches!(result, Ok(ref b) if !b.is_empty() && b.len() > RECORD_HEADER_BYTES),
+        "RunKilled event must encode successfully to non-empty bytes larger than header, got {:?}",
+        result
     );
 }
 
@@ -260,7 +255,7 @@ fn decode_journal_event_runkilled_zero_attempt_rejected() {
 fn validate_known_kind_28_returns_ok() {
     let result = validate_known_kind(28);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "validate_known_kind(28) must return Ok, got {:?}",
         result
     );
@@ -311,7 +306,7 @@ fn is_known_record_kind_0xffff_returns_false() {
 fn validate_kind_family_journal_event_29_returns_ok() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 29);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "kind 29 must be accepted for MAGIC_JOURNAL_EVENT, got {:?}",
         result
     );
@@ -325,7 +320,7 @@ fn validate_kind_family_journal_event_29_returns_ok() {
 fn validate_kind_family_accepts_kind_10_with_journal_magic() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 10);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "kind 10 (RunAccepted) must be accepted for MAGIC_JOURNAL_EVENT, got {:?}",
         result
     );
@@ -335,7 +330,7 @@ fn validate_kind_family_accepts_kind_10_with_journal_magic() {
 fn validate_kind_family_accepts_kind_27_with_journal_magic() {
     let result = validate_kind_family(MAGIC_JOURNAL_EVENT, 27);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "kind 27 (RunAnswered) must be accepted for MAGIC_JOURNAL_EVENT, got {:?}",
         result
     );
@@ -449,17 +444,21 @@ fn unknown_record_kind_value_known_returns_none_for_kind_1() {
 #[test]
 fn validate_known_kind_accepts_kind_29() {
     let result = validate_known_kind(29);
-    assert!(
-        result.is_ok(),
-        "validate_known_kind must accept StepSucceeded kind 29, got {:?}",
-        result
-    );
+        assert!(
+            matches!(result, Ok(_)),
+            "validate_known_kind must accept StepSucceeded kind 29, got {:?}",
+            result
+        );
 }
 
 #[test]
 fn validate_known_kind_accepts_kind_10() {
     let result = validate_known_kind(10);
-    assert!(result.is_ok(), "validate_known_kind(10) must return Ok");
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_known_kind(10) must return Ok, got {:?}",
+        result
+    );
 }
 
 // =============================================================================

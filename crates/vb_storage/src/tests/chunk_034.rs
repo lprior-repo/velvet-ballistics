@@ -37,11 +37,25 @@ fn batch_commit_with_header_and_events_cross_keyspace() {
         .expect("append_event must succeed");
     batch.commit().expect("commit must succeed");
     let header = journal.run_header(run).expect("run_header must succeed");
-    assert!(header.is_some(), "header must be present");
+    assert!(
+        header.is_some(),
+        "header must be present after cross-keyspace batch commit, got {:?}",
+        header
+    );
+    let header_record = header.unwrap();
+    assert_eq!(header_record.run, run);
+    assert_eq!(header_record.workflow_id, WorkflowId::new(1));
+    assert_eq!(header_record.compiled_digest, digest);
+    assert_eq!(header_record.status, 1);
     let events = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(events.len(), 1, "event must be present");
+    assert!(
+        matches!(&events[0], JournalEvent::RunAccepted { run: r, .. } if *r == run),
+        "replayed event must be RunAccepted for run {:?}",
+        run
+    );
 }
 
 #[test]
@@ -143,16 +157,35 @@ fn batch_commit_after_multiple_puts_persists_all() {
         })
         .expect("put 5 must succeed");
     batch.commit().expect("commit must succeed");
-    assert!(journal.workflow_source(digest_1).expect("ws").is_some());
-    assert!(journal.compiled_ir(compiled.digest).expect("ir").is_some());
-    assert!(journal.run_header(run).expect("rh").is_some());
-    assert!(journal.blob(blob_digest).expect("bl").is_some());
+    let ws = journal.workflow_source(digest_1).expect("ws");
     assert!(
-        journal
-            .snapshot(run, EventSeq::new(0))
-            .expect("sn")
-            .is_some()
+        ws.is_some(),
+        "workflow source must be present after multi-put batch commit"
     );
+    assert_eq!(ws.unwrap().source, b"ws".to_vec());
+    let ir = journal.compiled_ir(compiled.digest).expect("ir");
+    assert!(
+        ir.is_some(),
+        "compiled IR must be present after multi-put batch commit"
+    );
+    assert_eq!(ir.unwrap(), compiled);
+    let rh = journal.run_header(run).expect("rh");
+    assert!(rh.is_some(), "run header must be present after multi-put batch commit");
+    assert_eq!(rh.unwrap().run, run);
+    let bl = journal.blob(blob_digest).expect("bl");
+    assert!(
+        bl.is_some(),
+        "blob must be present after multi-put batch commit"
+    );
+    assert_eq!(bl.unwrap().bytes, b"blob".to_vec());
+    let sn = journal
+        .snapshot(run, EventSeq::new(0))
+        .expect("sn");
+    assert!(
+        sn.is_some(),
+        "snapshot must be present after multi-put batch commit"
+    );
+    assert_eq!(sn.unwrap().run, run);
 }
 
 #[test]

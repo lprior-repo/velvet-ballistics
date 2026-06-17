@@ -208,9 +208,17 @@ fn batch_atomic_all_or_nothing_workflow_source_and_ir() {
         .expect("compiled_ir must succeed");
     assert!(
         source.is_some(),
-        "source must be present after atomic commit"
+        "source must be present after atomic commit, got {:?}",
+        source
     );
-    assert!(ir.is_some(), "IR must be present after atomic commit");
-    assert_eq!(source.unwrap().source, b"atomic_source".to_vec());
-    assert_eq!(ir.unwrap(), compiled);
+    assert!(
+        ir.is_some(),
+        "IR must be present after atomic commit, got {:?}",
+        ir
+    );
+    let source_record = source.unwrap();
+    assert_eq!(source_record.source, b"atomic_source".to_vec());
+    assert_eq!(source_record.digest, digest);
+    let ir_record = ir.unwrap();
+    assert_eq!(ir_record, compiled);
 }

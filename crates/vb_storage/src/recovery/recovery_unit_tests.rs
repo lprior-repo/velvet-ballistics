@@ -449,12 +449,19 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(
+            matches!(result, Ok(_)),
+            "summarize_recovery_events with RunAccepted+StepStarted+RunFinished must succeed, got {:?}",
+            result
+        );
         let hydration = result.unwrap();
         let summary = hydration.summary();
         assert_eq!(summary.run, run);
         assert_eq!(summary.workflow, Some(workflow));
         assert_eq!(summary.steps_started, 1);
+        assert_eq!(summary.steps_succeeded, 0);
+        assert_eq!(summary.actions_scheduled, 0);
+        assert_eq!(summary.actions_resolved, 0);
         assert_eq!(
             summary.terminal,
             Some(RecoveryTerminalState::Finished {
@@ -479,10 +486,16 @@ mod tests {
                 reason: None,
             },
         ];
-        let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+       let result = summarize_recovery_events(&events);
+        assert!(
+            matches!(result, Ok(_)),
+            "summarize_recovery_events with RunAccepted+RunCancelled must succeed, got {:?}",
+            result
+        );
         let hydration = result.unwrap();
         let summary = hydration.summary();
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.workflow, Some(sample_digest(8)));
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
     }
 
@@ -502,9 +515,15 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(
+            matches!(result, Ok(_)),
+            "summarize_recovery_events with RunAccepted+RunFailed must succeed, got {:?}",
+            result
+        );
         let hydration = result.unwrap();
         let summary = hydration.summary();
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.workflow, Some(sample_digest(9)));
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Failed));
     }
 
@@ -560,16 +579,23 @@ mod tests {
             },
         ];
         let result = summarize_recovery_events(&events);
-        assert!(result.is_ok());
+        assert!(
+            matches!(result, Ok(_)),
+            "summarize_recovery_events with all event types must succeed, got {:?}",
+            result
+        );
         let hydration = result.unwrap();
         let summary = hydration.summary();
+        assert_eq!(summary.run, run);
+        assert_eq!(summary.workflow, Some(sample_digest(10)));
         assert_eq!(summary.steps_started, 1);
         assert_eq!(summary.steps_succeeded, 1);
         assert_eq!(summary.actions_scheduled, 1);
         assert_eq!(summary.actions_resolved, 1);
         assert_eq!(summary.slots_written, 1);
-        assert_eq!(summary.slots_written, 1);
         assert_eq!(summary.suspensions, 1);
+        assert_eq!(summary.first_seq, EventSeq::new(0));
+        assert_eq!(summary.last_seq, EventSeq::new(6));
     }
 
     // =========================================================================
@@ -603,10 +629,14 @@ mod tests {
             },
         ];
         let admission = recover_run_admission_from_events(&events);
-        assert!(admission.is_some());
+        assert!(
+            admission.is_some(),
+            "recover_run_admission_from_events with multiple admissions must return Some"
+        );
         let admission = admission.unwrap();
         assert_eq!(admission.run_id, run);
         assert_eq!(admission.artifact_digest, latest);
+        assert_eq!(admission.granted_capabilities, CapabilitySet::empty());
         assert_eq!(admission.policy, RuntimePolicy::Strict);
     }
 
@@ -656,10 +686,16 @@ mod tests {
             },
         ];
         let seed = recover_runtime_frame_seed_from_events(&events);
-        assert!(seed.is_ok());
+        assert!(
+            matches!(seed, Ok(_)),
+            "recover_runtime_frame_seed_from_events with StepStarted events must succeed, got {:?}",
+            seed
+        );
         let seed = seed.unwrap();
         assert_eq!(seed.pc, StepIdx::new(3));
         assert_eq!(seed.step_count, 4);
+        assert_eq!(seed.first_step, StepIdx::new(0));
+        assert_eq!(seed.steps.len(), 2);
     }
 
     #[test]
@@ -671,11 +707,16 @@ mod tests {
             workflow: sample_digest(12),
         }];
         let seed = recover_runtime_frame_seed_from_events(&events);
-        assert!(seed.is_ok());
+        assert!(
+            matches!(seed, Ok(_)),
+            "recover_runtime_frame_seed_from_events with only RunAccepted must succeed, got {:?}",
+            seed
+        );
         let seed = seed.unwrap();
         assert_eq!(seed.step_count, 0);
         assert_eq!(seed.first_step, StepIdx::ZERO);
         assert_eq!(seed.pc, StepIdx::ZERO);
+        assert!(seed.steps.is_empty());
     }
 
     #[test]
@@ -696,12 +737,18 @@ mod tests {
             },
         ];
         let seed = recover_runtime_frame_seed_from_events(&events);
-        assert!(seed.is_ok());
+        assert!(
+            matches!(seed, Ok(_)),
+            "recover_runtime_frame_seed_from_events with AskScheduledEvent must succeed, got {:?}",
+            seed
+        );
         let seed = seed.unwrap();
-        assert!(seed.steps.iter().any(|e| {
-            e.step == StepIdx::new(0)
-                && e.state == crate::recovery::types::RecoveredStepState::Asking
-        }));
+        assert_eq!(seed.steps.len(), 1);
+        assert_eq!(
+            seed.steps[0].state,
+            crate::recovery::types::RecoveredStepState::Asking
+        );
+        assert_eq!(seed.steps[0].step, StepIdx::new(0));
     }
 
     #[test]
@@ -722,12 +769,18 @@ mod tests {
             },
         ];
         let seed = recover_runtime_frame_seed_from_events(&events);
-        assert!(seed.is_ok());
+        assert!(
+            matches!(seed, Ok(_)),
+            "recover_runtime_frame_seed_from_events with WaitScheduledEvent must succeed, got {:?}",
+            seed
+        );
         let seed = seed.unwrap();
-        assert!(seed.steps.iter().any(|e| {
-            e.step == StepIdx::new(1)
-                && e.state == crate::recovery::types::RecoveredStepState::Waiting
-        }));
+        assert_eq!(seed.steps.len(), 1);
+        assert_eq!(
+            seed.steps[0].state,
+            crate::recovery::types::RecoveredStepState::Waiting
+        );
+        assert_eq!(seed.steps[0].step, StepIdx::new(1));
     }
 
     #[test]
@@ -963,9 +1016,21 @@ mod tests {
         ];
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker, &[]);
-        assert!(result.is_ok());
+        assert!(
+            matches!(result, Ok(_)),
+            "replay_events with contiguous events must succeed, got {:?}",
+            result
+        );
         let replayed = result.unwrap();
         assert_eq!(replayed.len(), 2);
+        assert!(
+            matches!(&replayed[0], JournalEvent::StepStarted { step, .. } if *step == StepIdx::new(0)),
+            "first replayed event must be StepStarted at step 0"
+        );
+        assert!(
+            matches!(&replayed[1], JournalEvent::StepStarted { step, .. } if *step == StepIdx::new(0)),
+            "second replayed event must be StepStarted at step 0 (latest attempt)"
+        );
     }
 
     #[test]
@@ -991,16 +1056,27 @@ mod tests {
         ];
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker, &[]);
-        assert!(result.is_ok());
+        assert!(
+            matches!(result, Ok(_)),
+            "replay_events with action scheduled+completed must succeed, got {:?}",
+            result
+        );
         assert!(tracker.is_resolved(action, step));
+        assert!(
+            matches!(result, Ok(replayed) if replayed.len() == 2),
+            "replay must return exactly 2 events (scheduled + completed)"
+        );
     }
 
     #[test]
     fn replay_events_empty_input_succeeds() {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&[], &mut tracker, &[]);
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_empty());
+        assert!(
+            matches!(result, Ok(ref v) if v.is_empty()),
+            "replay_events with empty input must return Ok(vec![]), got {:?}",
+            result
+        );
     }
 
     // =========================================================================
@@ -1112,7 +1188,6 @@ mod tests {
             },
         ];
         let terminal = extract_terminal(&events);
-        assert!(terminal.is_some());
         assert!(matches!(terminal, Some(JournalEvent::RunCancelled { .. })));
     }
 
@@ -1131,7 +1206,6 @@ mod tests {
             },
         ];
         let terminal = extract_terminal(&events);
-        assert!(terminal.is_some());
         assert!(matches!(
             terminal,
             Some(JournalEvent::RunFailedEvent { .. })
@@ -1160,7 +1234,6 @@ mod tests {
             },
         ];
         let terminal = extract_terminal(&events);
-        assert!(terminal.is_some());
         assert!(matches!(
             terminal,
             Some(JournalEvent::RunFinished { attempt: 2, .. })
@@ -1189,7 +1262,6 @@ mod tests {
             },
         ];
         let terminal = extract_terminal(&events);
-        assert!(terminal.is_some());
         assert!(matches!(terminal, Some(JournalEvent::RunCancelled { .. })));
     }
 

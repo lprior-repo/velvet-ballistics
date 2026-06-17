@@ -33,9 +33,17 @@ fn write_batch_snapshot_round_trips() {
         .expect("batch.put_snapshot must succeed");
     batch.commit().expect("batch.commit must succeed");
 
-    let loaded = journal.snapshot(run, seq).expect("snapshot roundtrip");
-    assert!(loaded.is_some());
-    assert_eq!(loaded.unwrap().run, run);
+  let loaded = journal.snapshot(run, seq).expect("snapshot roundtrip");
+    assert!(
+        loaded.is_some(),
+        "snapshot must be present after batch roundtrip"
+    );
+    let loaded = loaded.unwrap();
+    assert_eq!(loaded.run, run);
+    assert_eq!(loaded.seq, seq);
+    assert_eq!(loaded.workflow, WorkflowDigest::from_bytes([5u8; 32]));
+    assert_eq!(loaded.slots, b"slot_data".to_vec());
+    assert!(loaded.taint.is_empty());
 }
 
 #[test]

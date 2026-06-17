@@ -30,7 +30,7 @@ mod runtime_ask;
 pub struct Runtime {
     pub(crate) shards: Vec<Shard>,
     shard_count: usize,
-    journal: SharedRuntimeJournal,
+    pub(crate) journal: SharedRuntimeJournal,
 }
 
 impl Runtime {
@@ -63,6 +63,17 @@ impl Runtime {
             shard_count: count,
             journal,
         }
+    }
+
+    /// Consumes the runtime and returns the underlying shared runtime journal.
+    ///
+    /// This is a terminal operation — the runtime and its shards must no
+    /// longer be used after this call. Callers typically use the returned
+    /// journal to flush pending writes (e.g. by calling `close()` on the
+    /// inner `FjallJournal`) before the process exits.
+    #[must_use]
+    pub fn journal(self) -> SharedRuntimeJournal {
+        self.journal
     }
 
     /// Creates a runtime with an explicit artifact store.
@@ -347,14 +358,36 @@ impl Runtime {
         ticket: ActionTicket,
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
-        self.shard_for(ticket.run)?
-            .enqueue(ShardCommand::ActionCompleted { ticket, output })
+        let shard = self.shard_for(ticket.run)?;
+        // Explicitly cancelled or killed runs must reject completions
+        // at API time. Naturally-completed runs are accepted here so
+        // that IPC re-entry scenarios produce RunNotFound at tick time
+        // instead of InvalidActionCompletion at enqueue time.
+        if shard.terminal_runs_contains(ticket.run) {
+            match shard.terminal_outcome_get(ticket.run) {
+                Some(crate::shard::TerminalOutcome::Cancelled)
+                | Some(crate::shard::TerminalOutcome::Killed) => {
+                    return Err(RuntimeError::InvalidActionCompletion);
+                }
+                _ => {}
+            }
+        }
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
     }
 
     /// Fails an action with a typed failure payload.
     pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
-        self.shard_for(ticket.run)?
-            .enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
+        let shard = self.shard_for(ticket.run)?;
+        if shard.terminal_runs_contains(ticket.run) {
+            match shard.terminal_outcome_get(ticket.run) {
+                Some(crate::shard::TerminalOutcome::Cancelled)
+                | Some(crate::shard::TerminalOutcome::Killed) => {
+                    return Err(RuntimeError::InvalidActionCompletion);
+                }
+                _ => {}
+            }
+        }
+        shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
     }
 
     /// Lists trace events for one run without draining.

@@ -35,11 +35,12 @@ fn validate_replayed_event_match_returns_ok() {
         attempt: 1,
     };
 
-    let result = validate_replayed_event(run, seq, &event);
-    assert!(
-        result.is_ok(),
-        "matching run and seq for RunKilled must pass validation"
-    );
+let result = validate_replayed_event(run, seq, &event);
+        assert!(
+            matches!(result, Ok(_)),
+            "matching run and seq for RunKilled must pass validation, got {:?}",
+            result
+        );
 }
 
 // =============================================================================
@@ -109,12 +110,13 @@ fn validate_replayed_event_preserves_runkilled_seq() {
 
     // Verify the event correctly reports its seq
     assert_eq!(event.seq(), seq);
-    // Verify seq is preserved in validation
+// Verify seq is preserved in validation
     let result = validate_replayed_event(run, EventSeq::new(99), &event);
-    assert!(
-        result.is_ok(),
-        "RunKilled with matching seq must pass replay"
-    );
+        assert!(
+            matches!(result, Ok(_)),
+            "RunKilled with matching seq must pass replay, got {:?}",
+            result
+        );
 }
 
 #[test]
@@ -126,7 +128,11 @@ fn validate_replayed_event_with_runkilled_at_boundary_seq_zero() {
         attempt: 1,
     };
     let result = validate_replayed_event(run, EventSeq::new(0), &event);
-    assert!(result.is_ok(), "seq 0 must be valid for RunKilled replay");
+        assert!(
+            matches!(result, Ok(_)),
+            "seq 0 must be valid for RunKilled replay, got {:?}",
+            result
+        );
 }
 
 #[test]
@@ -138,10 +144,11 @@ fn validate_replayed_event_with_runkilled_at_boundary_run_max() {
         attempt: 1,
     };
     let result = validate_replayed_event(run, EventSeq::new(5), &event);
-    assert!(
-        result.is_ok(),
-        "max RunId must be valid for RunKilled replay"
-    );
+        assert!(
+            matches!(result, Ok(_)),
+            "max RunId must be valid for RunKilled replay, got {:?}",
+            result
+        );
 }
 
 // =============================================================================
@@ -163,16 +170,22 @@ fn next_seq_max_returns_overflow() {
 fn next_seq_zero_returns_one() {
     let seq = EventSeq::new(0);
     let result = next_seq(seq);
-    assert!(result.is_ok(), "next_seq(0) must succeed");
-    assert_eq!(result.unwrap(), EventSeq::new(1));
+        assert!(
+            matches!(result, Ok(v) if v == EventSeq::new(1)),
+            "next_seq(0) must return Some(1), got {:?}",
+            result
+        );
 }
 
 #[test]
 fn next_seq_normal_increments() {
     let seq = EventSeq::new(42);
     let result = next_seq(seq);
-    assert!(result.is_ok(), "next_seq(42) must succeed");
-    assert_eq!(result.unwrap(), EventSeq::new(43));
+        assert!(
+            matches!(result, Ok(v) if v == EventSeq::new(43)),
+            "next_seq(42) must return Some(43), got {:?}",
+            result
+        );
 }
 
 #[test]
@@ -191,16 +204,24 @@ fn next_seq_max_minus_one_returns_max() {
 fn kind_28_and_29_admission_does_not_open_unknown_kind_31() {
     // Verify kind 28 is known and admitted for journal
     assert!(is_known_record_kind(28), "kind 28 must be known");
-    assert!(
-        validate_kind_family(MAGIC_JOURNAL_EVENT, 28).is_ok(),
-        "kind 28 must be admitted for journal magic"
-    );
+        assert!(
+            matches!(
+                validate_kind_family(MAGIC_JOURNAL_EVENT, 28),
+                Ok(_)
+            ),
+            "kind 28 must be admitted for journal magic, got {:?}",
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 28)
+        );
 
-    assert!(is_known_record_kind(29), "kind 29 must be known");
-    assert!(
-        validate_kind_family(MAGIC_JOURNAL_EVENT, 29).is_ok(),
-        "kind 29 must be admitted for journal magic"
-    );
+        assert!(is_known_record_kind(29), "kind 29 must be known");
+        assert!(
+            matches!(
+                validate_kind_family(MAGIC_JOURNAL_EVENT, 29),
+                Ok(_)
+            ),
+            "kind 29 must be admitted for journal magic, got {:?}",
+            validate_kind_family(MAGIC_JOURNAL_EVENT, 29)
+        );
 
     // Verify kind 31 is still unknown and rejected.
     assert!(!is_known_record_kind(31), "kind 31 must still be unknown");
@@ -322,6 +343,12 @@ fn runkilled_distinct_from_runcancelled_in_replay_validation() {
     );
 
     // Both should pass replay validation with matching run+seq
-    assert!(validate_replayed_event(run, seq, &killed).is_ok());
-    assert!(validate_replayed_event(run, seq, &cancelled).is_ok());
+        assert!(
+            matches!(validate_replayed_event(run, seq, &killed), Ok(_)),
+            "RunKilled must pass replay validation"
+        );
+        assert!(
+            matches!(validate_replayed_event(run, seq, &cancelled), Ok(_)),
+            "RunCancelled must pass replay validation"
+        );
 }

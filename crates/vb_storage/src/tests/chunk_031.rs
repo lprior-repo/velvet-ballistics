@@ -214,5 +214,10 @@ fn status_index_stores_and_queries_by_state() {
         .index_status
         .get(key.as_slice())
         .expect("get must succeed");
-    assert!(value.is_some(), "status index entry must exist after put");
+    assert!(
+        value.is_some(),
+        "status index entry must exist after put at key {:?}, got {:?}",
+        key,
+        value
+    );
 }

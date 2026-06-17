@@ -89,11 +89,26 @@ fn adversarial_batch_commit_then_reopen_preserves_all_keys() {
     drop(journal);
     let journal2 = FjallJournal::open(temp_dir.path(), None).expect("setup: journal reopen");
     let source = journal2.workflow_source(digest).expect("get source");
-    assert!(source.is_some(), "workflow source must survive reopen");
+    assert!(
+        source.is_some(),
+        "workflow source must survive reopen, got {:?}",
+        source
+    );
+    assert_eq!(source.unwrap().source, b"source".to_vec());
     let header = journal2.run_header(run).expect("get header");
-    assert!(header.is_some(), "run header must survive reopen");
+    assert!(
+        header.is_some(),
+        "run header must survive reopen, got {:?}",
+        header
+    );
+    assert_eq!(header.unwrap().run, run);
     let blob = journal2.blob(blob_digest).expect("get blob");
-    assert!(blob.is_some(), "blob must survive reopen");
+    assert!(
+        blob.is_some(),
+        "blob must survive reopen, got {:?}",
+        blob
+    );
+    assert_eq!(blob.unwrap().bytes, b"blob".to_vec());
 }
 
 #[test]
@@ -183,7 +198,15 @@ fn adversarial_multiple_snapshots_same_run_different_seq_all_retrievable() {
     }
     for seq_val in [0u64, 5, 10] {
         let loaded = journal.snapshot(run, EventSeq::new(seq_val)).expect("get");
-        assert!(loaded.is_some(), "snapshot at seq {seq_val} must exist");
+        assert!(
+            loaded.is_some(),
+            "snapshot at seq {} must exist, got {:?}",
+            seq_val,
+            loaded
+        );
+        let snap = loaded.unwrap();
+        assert_eq!(snap.run, run);
+        assert_eq!(snap.seq, EventSeq::new(seq_val));
     }
 }
 
@@ -211,6 +234,16 @@ fn adversarial_batch_two_sequential_commits_both_visible() {
         })
         .expect("put2");
     batch2.commit().expect("commit2");
-    assert!(journal.workflow_source(digest1).expect("get1").is_some());
-    assert!(journal.workflow_source(digest2).expect("get2").is_some());
+    let ws1 = journal.workflow_source(digest1).expect("get1");
+    assert!(
+        ws1.is_some(),
+        "first workflow source must be visible after second commit"
+    );
+    assert_eq!(ws1.unwrap().source, b"first".to_vec());
+    let ws2 = journal.workflow_source(digest2).expect("get2");
+    assert!(
+        ws2.is_some(),
+        "second workflow source must be visible after second commit"
+    );
+    assert_eq!(ws2.unwrap().source, b"second".to_vec());
 }

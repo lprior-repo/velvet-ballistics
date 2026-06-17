@@ -194,6 +194,62 @@ impl FjallJournal {
         self.persist_strict()
     }
 
+    /// Forces a strict durability barrier without closing the database.
+    ///
+    /// Unlike `close()`, this method takes `&self` so it can be called through
+    /// an `Arc<FjallJournal>` (e.g., from `Arc::into_inner` consumers or shared
+    /// references). It performs the same `SyncAll` fsync but does not release
+    /// the process lock or attempt to shut down the database.
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if the underlying storage fails to persist.
+    pub fn persist(&self) -> Result<(), JournalError> {
+        self.persist_strict()
+    }
+
+   /// Flushes all memtables to SST files synchronously and then syncs the WAL.
+    ///
+    /// This method is critical for cross-process durability: when the `run` command
+    /// exits, memtable data would normally be lost. By rotating and waiting for each
+    /// memtable to be flushed to SST files (via Fjall's `rotate_memtable_and_wait`),
+    /// subsequent processes (e.g., `events`, `inspect`) can read the data from disk.
+    ///
+    /// The sequence is:
+    /// 1. For each keyspace, rotate the memtable and wait for flush to complete
+    /// 2. Sync the WAL journal via `persist_strict()`
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if any keyspace flush or WAL sync fails.
+    pub fn flush_memtables(&self) -> Result<(), JournalError> {
+        // Rotate and wait for each keyspace's memtable to be flushed to SST files.
+        // This is the synchronous equivalent of waiting for background flush workers
+        // to drain all sealed memtables.
+        self.events.rotate_memtable_and_wait()?;
+        self.run_header.rotate_memtable_and_wait()?;
+        self.run_snapshot.rotate_memtable_and_wait()?;
+        self.workflow_source.rotate_memtable_and_wait()?;
+        self.compiled_ir.rotate_memtable_and_wait()?;
+        self.blob.rotate_memtable_and_wait()?;
+        self.index_status.rotate_memtable_and_wait()?;
+        self.index_workflow.rotate_memtable_and_wait()?;
+        self.index_action.rotate_memtable_and_wait()?;
+        self.recovery_stamp.rotate_memtable_and_wait()?;
+
+        // Sync the WAL journal after memtables are flushed.
+        self.persist_strict()
+    }
+
+    /// Returns the approximate number of events in the events keyspace.
+    ///
+    /// This is an estimate and may not reflect the exact count if writes are
+    /// in flight. It is useful for diagnostics and testing.
+    #[allow(dead_code)]
+    pub fn events_approximate_len(&self) -> usize {
+        self.events.approximate_len()
+    }
+
     #[cfg(test)]
     pub(crate) fn fail_next_persist_for_test(&self) {
         self.fail_next_persist.store(true, Ordering::SeqCst);

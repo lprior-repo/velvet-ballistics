@@ -160,9 +160,10 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
+use postcard;
 use vb_core::action::{
     ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency, RetryPolicy,
-    RetrySafety, SideEffect,
+    RetrySafety, SideEffect, compute_action_idempotency_key,
 };
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
@@ -175,6 +176,7 @@ use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::{InspectResponse, ShardConfig, TerminalOutcome};
 use vb_runtime::trace::TraceEvent;
+use vb_runtime::RuntimeError;
 
 fn shard_count(value: usize) -> Result<NonZeroUsize, String> {
     NonZeroUsize::new(value).ok_or_else(|| format!("expected non-zero shard count, got {value}"))
@@ -352,18 +354,19 @@ fn action_ticket(run: RunId, action: ActionId) -> ActionTicket {
         seq: SeqNo::ZERO,
         action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key: compute_action_idempotency_key(run, SeqNo::ZERO, action),
         capacity: 1,
         ..Default::default()
     }
 }
 
 fn action_output(value: SlotValue) -> ActionOutputReady {
+    let encoded = postcard::to_allocvec(&value).unwrap();
     ActionOutputReady {
         output_slot: SlotIdx::new(1),
         value,
         taint: Taint::Clean,
-        encoded_len: 8,
+        encoded_len: encoded.len() as u32,
     }
 }
 
@@ -444,9 +447,8 @@ fn hp1_cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
 /// Given a run suspended waiting for an action (Resumable state),
 /// when cancel_run is called, then the pending action is removed
 /// and subsequent action completion returns error.
-// HP-3 and HP-4 tests require runtime fix that was reverted - skip for now
+// HP-3: Cancel removes pending action for action-suspended run.
 #[test]
-#[ignore]
 fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -483,7 +485,6 @@ fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String
 
 /// HP-4: Action completion after cancel returns error.
 #[test]
-#[ignore]
 fn hp4_action_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
@@ -792,20 +793,13 @@ fn action_completion_after_cancel_returns_error() -> Result<(), String> {
     assert_eq!(runtime.cancel_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // C4: enqueue succeeds; error is returned during tick processing.
+    // C4: enqueue rejects immediately for cancelled runs.
     assert_eq!(
         runtime.complete_action_with_output(
             action_ticket(run, ActionId::new(7)),
             action_output(SlotValue::I64(42)),
         ),
-        Ok(())
-    );
-
-    let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for stale action completion, got {:?}",
-        tick_result
+        Err(RuntimeError::InvalidActionCompletion)
     );
 
     Ok(())
@@ -834,17 +828,10 @@ fn action_failure_after_cancel_returns_error() -> Result<(), String> {
         detail: None,
         encoded_len: 0,
     };
-    // C4: enqueue succeeds; error is returned during tick processing.
+    // C4: enqueue rejects immediately for cancelled runs.
     assert_eq!(
         runtime.fail_action(action_ticket(run, ActionId::new(7)), failure),
-        Ok(())
-    );
-
-    let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for stale action failure, got {:?}",
-        tick_result
+        Err(RuntimeError::InvalidActionCompletion)
     );
 
     Ok(())
@@ -1070,20 +1057,13 @@ fn action_completion_after_kill_returns_error() -> Result<(), String> {
     assert_eq!(runtime.kill_run(run), Ok(()));
     tick_and_drain(&mut runtime)?;
 
-    // C4: enqueue succeeds; error returned during tick processing.
+    // C4: enqueue rejects immediately for killed runs.
     assert_eq!(
         runtime.complete_action_with_output(
             action_ticket(run, ActionId::new(7)),
             action_output(SlotValue::I64(42)),
         ),
-        Ok(())
-    );
-
-    let tick_result = runtime.tick_all();
-    assert!(
-        tick_result.is_err(),
-        "tick must return error for stale action completion after kill, got {:?}",
-        tick_result
+        Err(RuntimeError::InvalidActionCompletion)
     );
 
     Ok(())
