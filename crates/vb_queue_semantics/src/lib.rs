@@ -436,6 +436,7 @@ pub const fn warning_threshold(capacity: usize) -> usize {
 // =========================================================================
 
 #[cfg(test)]
+#[allow(clippy::panic, clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::collections::VecDeque;
@@ -466,7 +467,7 @@ mod tests {
     #[test]
     fn capacity_rejection_zero_clone_eq() {
         let a = CapacityRejection::Zero;
-        let b = a.clone();
+        let b = a;
         assert_eq!(a, b);
     }
 
@@ -523,7 +524,10 @@ mod tests {
 
     #[test]
     fn queue_state_new_one_capacity_accepted() {
-        let state: QueueState<u32> = QueueState::new(1, 16).unwrap();
+        let state: QueueState<u32> = match QueueState::new(1, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(1,16) should succeed, got Err({e:?})"),
+        };
         assert_eq!(state.capacity(), 1);
         assert_eq!(state.len(), 0);
         assert!(state.is_empty());
@@ -533,7 +537,10 @@ mod tests {
 
     #[test]
     fn queue_state_new_maximum_accepted() {
-        let state: QueueState<u32> = QueueState::new(16, 16).unwrap();
+        let state: QueueState<u32> = match QueueState::new(16, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(16,16) should succeed, got Err({e:?})"),
+        };
         assert_eq!(state.capacity(), 16);
         assert!(state.is_empty());
         assert!(!state.is_full());
@@ -541,7 +548,10 @@ mod tests {
 
     #[test]
     fn queue_state_new_is_empty_until_first_push() {
-        let state: QueueState<u32> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u32> = match QueueState::new(4, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(4,16) should succeed, got Err({e:?})"),
+        };
         assert!(state.is_empty());
         assert_eq!(state.len(), 0);
     }
@@ -598,7 +608,10 @@ mod tests {
         let mut items: VecDeque<u32> = VecDeque::new();
         items.push_back(1);
         items.push_back(2);
-        let state = QueueState::<u32>::from_vec_deque(2, 16, items).unwrap();
+        let state = match QueueState::<u32>::from_vec_deque(2, 16, items) {
+            Ok(s) => s,
+            Err(e) => panic!("from_vec_deque(2,16,[1,2]) should succeed, got Err({e:?})"),
+        };
         assert_eq!(state.len(), 2);
         assert!(state.is_full());
     }
@@ -609,7 +622,10 @@ mod tests {
         items.push_back(10);
         items.push_back(20);
         items.push_back(30);
-        let state = QueueState::<u32>::from_vec_deque(5, 16, items).unwrap();
+        let state = match QueueState::<u32>::from_vec_deque(5, 16, items) {
+            Ok(s) => s,
+            Err(e) => panic!("from_vec_deque(5,16,[10,20,30]) should succeed, got Err({e:?})"),
+        };
         let out = state.into_vec_deque();
         let v: Vec<u32> = out.into_iter().collect();
         assert_eq!(v, vec![10, 20, 30]);
@@ -660,13 +676,19 @@ mod tests {
 
     #[test]
     fn queue_state_capacity_returns_const_value() {
-        let state: QueueState<u8> = QueueState::new(7, 16).unwrap();
+        let state: QueueState<u8> = match QueueState::new(7, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(7,16) should succeed, got Err({e:?})"),
+        };
         assert_eq!(state.capacity(), 7);
     }
 
     #[test]
     fn queue_state_len_tracks_pushes() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = match QueueState::new(4, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(4,16) should succeed, got Err({e:?})"),
+        };
         assert_eq!(state.len(), 0);
         // We exercise enqueue helper that mutates
         let (state, _decision) = action_enqueue_transition(state, 1);
@@ -677,14 +699,20 @@ mod tests {
 
     #[test]
     fn queue_state_is_empty_inverts_len() {
-        let state: QueueState<u8> = QueueState::new(2, 16).unwrap();
+        let state: QueueState<u8> = match QueueState::new(2, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(2,16) should succeed, got Err({e:?})"),
+        };
         assert!(state.is_empty());
         assert_eq!(state.len(), 0);
     }
 
     #[test]
     fn queue_state_is_full_at_capacity() {
-        let state: QueueState<u8> = QueueState::new(1, 16).unwrap();
+        let state: QueueState<u8> = match QueueState::new(1, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(1,16) should succeed, got Err({e:?})"),
+        };
         // Empty (len 0) is not full because 0 < 1
         assert!(!state.is_full());
         assert_eq!(state.len(), 0);
@@ -692,7 +720,10 @@ mod tests {
 
     #[test]
     fn queue_state_is_full_false_below_capacity() {
-        let state: QueueState<u8> = QueueState::new(4, 16).unwrap();
+        let state: QueueState<u8> = match QueueState::new(4, 16) {
+            Ok(s) => s,
+            Err(e) => panic!("new(4,16) should succeed, got Err({e:?})"),
+        };
         assert!(!state.is_full());
     }
 
