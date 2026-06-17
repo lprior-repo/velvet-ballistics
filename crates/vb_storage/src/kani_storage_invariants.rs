@@ -104,7 +104,7 @@ fn kani_queue_capacity_contract_preservation() {
     };
 
     let result = JournalWriterQueue::with_contracts(cap, batch, StorageLimits::DEFAULT);
-    kani::assert(result.is_ok(, "assertion failed"), "valid contracts must construct queue");
+    kani::assert(result.is_ok(), "valid contracts must construct queue");
 
     kani::assert(cap.get(, "assertion failed") == cap_raw, "JournalQueueCapacity get must roundtrip");
     kani::assert(batch.get(, "assertion failed") == batch_raw, "JournalBatchSize get must roundtrip");

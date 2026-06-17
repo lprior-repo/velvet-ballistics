@@ -217,7 +217,7 @@ mod kani_capability_harnesses {
             CapabilitySet::empty(),
         );
 
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "digest mismatch must reject before admission",
         );
     }
@@ -234,7 +234,7 @@ mod kani_capability_harnesses {
             CapabilitySet::empty(),
         );
 
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "strict presence-only bypass must reject before admission",
         );
     }
@@ -251,7 +251,7 @@ mod kani_capability_harnesses {
             CapabilitySet::empty(),
         );
 
-        kani::assert(result.is_ok(, "assertion failed"), "valid strict accepted artifact admits");
+        kani::assert(result.is_ok(), "valid strict accepted artifact admits");
     }
 
     #[kani::proof]
@@ -345,7 +345,7 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(result.is_ok(, "assertion failed"), "action match + name grants → Ok");
+        kani::assert(result.is_ok(), "action match + name grants → Ok");
     }
 
     #[kani::proof]

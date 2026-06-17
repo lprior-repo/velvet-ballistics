@@ -137,9 +137,9 @@ fn kani_choose_fanout() {
     );
 
     if branch_count > 64 {
-        kani::assert(result.is_err(, "assertion failed"), ">64 branches must be rejected");
+        kani::assert(result.is_err(), ">64 branches must be rejected");
     } else {
-        kani::assert(result.is_ok(, "assertion failed"), "0..64 branches with otherwise must succeed");
+        kani::assert(result.is_ok(), "0..64 branches with otherwise must succeed");
     }
 }
 

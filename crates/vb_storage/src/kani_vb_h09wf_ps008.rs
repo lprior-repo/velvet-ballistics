@@ -104,7 +104,7 @@ fn ps_008_proof_flags_exhaustive() {
             "all flags true: missing_proof_flag must return None",
         );
     } else {
-        kani::assert(missing.is_some(, "assertion failed"),
+        kani::assert(missing.is_some(),
             "missing flag must be detected: {bounded} {taint_safe} {retry_safe} {idempotency_verified} {replayable}",
         );
         // Verify the returned flag name matches the first missing one

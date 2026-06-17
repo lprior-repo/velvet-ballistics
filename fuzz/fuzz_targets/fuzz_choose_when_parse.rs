@@ -33,8 +33,31 @@ fn fuzz_choose_when(when_strings: &[String]) {
     yaml.push_str("      otherwise: done\n");
     yaml.push_str("  - id: done\n    finish:\n      result: \"ok\"\n");
 
-    // compile_workflow must never panic
-    let _ = vb_compile::compile_workflow(yaml.as_bytes());
+    // compile_workflow must never panic and must return a typed Result.
+    // On success, the workflow must have at least one node and valid slot count.
+    let result = vb_compile::compile_workflow(yaml.as_bytes());
+    match result {
+        Ok(workflow) => {
+            // Compiled workflow must have at least one node (the finish step)
+            assert!(
+                workflow.node_count() >= 1,
+                "compiled workflow must have at least 1 node"
+            );
+            // Slot count must be at least 1 for workflows with slots
+            assert!(
+                workflow.slot_count() >= 1,
+                "compiled workflow must have at least 1 slot"
+            );
+        }
+        Err(errors) => {
+            // Compilation errors are expected for some inputs.
+            // Verify that errors are well-formed and non-empty.
+            assert!(
+                !errors.is_empty(),
+                "compile errors must contain at least one error"
+            );
+        }
+    }
 }
 
 fuzz_target!(|data: &[u8]| {

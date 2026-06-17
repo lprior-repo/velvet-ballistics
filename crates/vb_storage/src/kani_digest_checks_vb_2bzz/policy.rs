@@ -150,7 +150,7 @@ fn kani_check_policy_all_match() {
     let d = arbitrary_digest();
     let entries = [(step, d, d)];
     let result = first_policy_mismatch(&entries);
-    kani::assert(result.is_none(, "assertion failed"),
+    kani::assert(result.is_none(),
         "all-matching policy list should have no mismatch",
     );
 }

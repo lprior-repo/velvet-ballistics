@@ -185,7 +185,7 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(, "assertion failed"),
+                kani::assert(state.is_ok(),
                     "step_state should be readable after for_each_next",
                 );
             }
@@ -306,7 +306,7 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(, "assertion failed"),
+                kani::assert(state.is_ok(),
                     "step_state should be readable after reduce_next",
                 );
             }
@@ -444,7 +444,7 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(, "assertion failed"),
+                kani::assert(state.is_ok(),
                     "step_state should be readable after collect_next",
                 );
             }
@@ -573,7 +573,7 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(, "assertion failed"),
+                kani::assert(state.is_ok(),
                     "step_state should be readable after collect_page",
                 );
             }
@@ -681,7 +681,7 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(, "assertion failed"),
+                kani::assert(state.is_ok(),
                     "step_state should be readable after repeat_attempt",
                 );
             }
@@ -1548,7 +1548,7 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(, "assertion failed"),
+                kani::assert(state.is_ok(),
                     "step_state should be readable after repeat_check",
                 );
             }

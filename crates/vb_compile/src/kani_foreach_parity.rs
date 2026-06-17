@@ -301,7 +301,7 @@ fn foreach_all_nodes_reachable() {
     let workflow_result = CompiledWorkflow::try_from_parts(parts.clone());
 
     // The for_each IR we construct should pass validation
-    kani::assert(workflow_result.is_ok(, "assertion failed"),
+    kani::assert(workflow_result.is_ok(),
         "for_each IR should pass CompiledWorkflow::try_from_parts validation",
     );
 
@@ -403,7 +403,7 @@ fn foreach_rejects_malformed_ir() {
 
         let result = CompiledWorkflow::try_from_parts(parts);
         // This should return an error (BackwardEdge or similar)
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "POST-003: ForEachStart with done=self should be rejected",
         );
     }
@@ -416,7 +416,7 @@ fn foreach_rejects_malformed_ir() {
         parts.nodes[1].next = Some(StepIdx::new(0));
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "POST-003: SetConst with backward next edge should be rejected",
         );
     }
@@ -430,7 +430,7 @@ fn foreach_rejects_malformed_ir() {
         }
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "POST-003: ForEachNext with backward done edge should be rejected",
         );
     }
@@ -444,7 +444,7 @@ fn foreach_rejects_malformed_ir() {
         }
 
         let result = CompiledWorkflow::try_from_parts(parts);
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "POST-003: ForEachStart.body=self should be rejected",
         );
     }
@@ -486,7 +486,7 @@ fn foreach_rejects_malformed_ir() {
 
         let result = CompiledWorkflow::try_from_parts(empty_parts);
         // Empty workflow is valid
-        kani::assert(result.is_ok(, "assertion failed") || result.is_err(),
+        kani::assert(result.is_ok() || result.is_err(),
             "Empty workflow produces a definite result (ok or err)",
         );
     }

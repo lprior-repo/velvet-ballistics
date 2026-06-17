@@ -119,9 +119,9 @@ fn verify_replay_choose_slot_two_branches_no_panic() {
     let _result = replay_step(node, &mut run, &mut store, &plan);
 
     if !slot_a && !slot_b && !has_otherwise {
-        kani::assert(_result.is_err(, "assertion failed"), "kani harness assertion");
+        kani::assert(_result.is_err(), "kani harness assertion");
     } else {
-        kani::assert(_result.is_ok(, "assertion failed"), "kani harness assertion");
+        kani::assert(_result.is_ok(), "kani harness assertion");
     }
 }
 

@@ -256,8 +256,8 @@ fn vt2f_runtime_facade_semantics() {
     // ERR-004 / LETHAL-001 fix: Stale ask MUST return RunNotFound (matching is Ok).
     // The else branch now correctly covers Stale, WrongRun, and AbsentRun.
     if matches!(shape, TicketShape::Matching) {
-        kani::assert(answer_result.is_ok(, "assertion failed"), "kani harness assertion");
-        kani::assert(tick_result.is_ok(, "assertion failed"), "kani harness assertion");
+        kani::assert(answer_result.is_ok(), "kani harness assertion");
+        kani::assert(tick_result.is_ok(), "kani harness assertion");
         kani::assert(ask_state.answer_value == Some(value, "assertion failed"), "assertion failed");
         , "assertion failed");
         kani::assert(ask_state.answer_taint == Taint::Clean, "assertion failed");

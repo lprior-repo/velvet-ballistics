@@ -207,7 +207,7 @@ fn kani_admission_run_admission_failure() {
 
     // Verify that apply(Submit) was never called — no state in runtime_states
     let state = shard.runtime_state_get(run);
-    kani::kani::assert(state.is_none(, "assertion failed"),
+    kani::kani::assert(state.is_none(),
         "on RunAdmission failure, no runtime state must exist", )
 }
 

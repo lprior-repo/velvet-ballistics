@@ -225,7 +225,7 @@ fn proof_eviction_safety() {
     );
 
     let reinsert = tracker.mark_completed(&first_ticket);
-    kani::assert(reinsert.is_ok(, "assertion failed"),
+    kani::assert(reinsert.is_ok(),
         "re-insertion of evicted key must succeed",
     );
     kani::assert(tracker.is_completed(&first_ticket, "assertion failed"),

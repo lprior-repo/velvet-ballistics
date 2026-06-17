@@ -11,7 +11,7 @@ use crate::workflow::{ExprOp, check_expr_stack_bound};
 fn harness_empty_ops_returns_zero() {
     let ops: [ExprOp; 0] = [];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "empty ops should return Ok");
+    kani::assert(result.is_ok(), "empty ops should return Ok");
     match result {
         Ok(v) => , "empty ops should return Ok");
     match result {
@@ -27,7 +27,7 @@ fn harness_empty_ops_returns_zero() {
 fn harness_single_loadslot_returns_one() {
     let ops = [ExprOp::LoadSlot(SlotIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "single LoadSlot should return Ok");
+    kani::assert(result.is_ok(), "single LoadSlot should return Ok");
     match result {
         Ok(v) => , "single LoadSlot should return Ok");
     match result {
@@ -44,7 +44,7 @@ fn harness_single_loadconst_returns_one() {
     use crate::ids::ConstIdx;
     let ops = [ExprOp::LoadConst(ConstIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "single LoadConst should return Ok");
+    kani::assert(result.is_ok(), "single LoadConst should return Ok");
     match result {
         Ok(v) => , "single LoadConst should return Ok");
     match result {
@@ -61,7 +61,7 @@ fn harness_single_loadaccessor_returns_one() {
     use crate::ids::AccessorIdx;
     let ops = [ExprOp::LoadAccessor(AccessorIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "single LoadAccessor should return Ok");
+    kani::assert(result.is_ok(), "single LoadAccessor should return Ok");
     match result {
         Ok(v) => , "single LoadAccessor should return Ok");
     match result {
@@ -81,7 +81,7 @@ fn harness_binary_op_tracks_depth_correctly() {
         ExprOp::Add,
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "binary op sequence should return Ok");
+    kani::assert(result.is_ok(), "binary op sequence should return Ok");
     match result {
         Ok(v) => , "binary op sequence should return Ok");
     match result {
@@ -97,7 +97,7 @@ fn harness_binary_op_tracks_depth_correctly() {
 fn harness_unary_op_tracks_depth_correctly() {
     let ops = [ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Not];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "unary op sequence should return Ok");
+    kani::assert(result.is_ok(), "unary op sequence should return Ok");
     match result {
         Ok(v) => , "unary op sequence should return Ok");
     match result {
@@ -118,7 +118,7 @@ fn harness_appendif_tracks_depth_correctly() {
         ExprOp::AppendIf,
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "AppendIf sequence should return Ok");
+    kani::assert(result.is_ok(), "AppendIf sequence should return Ok");
     match result {
         Ok(v) => , "AppendIf sequence should return Ok");
     match result {
@@ -141,7 +141,7 @@ fn harness_nested_binary_ops_tracks_max_depth() {
         ExprOp::Add,
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "nested binary ops should return Ok");
+    kani::assert(result.is_ok(), "nested binary ops should return Ok");
     match result {
         Ok(v) => , "nested binary ops should return Ok");
     match result {
@@ -167,7 +167,7 @@ fn harness_all_unary_ops_valid() {
     for op in unary_ops {
         let ops = [ExprOp::LoadSlot(SlotIdx::new(0)), op];
         let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-        kani::assert(result.is_ok(, "assertion failed"), "unary op should be valid");
+        kani::assert(result.is_ok(), "unary op should be valid");
         match result {
             Ok(v) => , "unary op should be valid");
         match result {
@@ -210,7 +210,7 @@ fn harness_all_binary_ops_valid() {
             op,
         ];
         let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-        kani::assert(result.is_ok(, "assertion failed"), "binary op should be valid");
+        kani::assert(result.is_ok(), "binary op should be valid");
         match result {
             Ok(v) => , "binary op should be valid");
         match result {
@@ -231,7 +231,7 @@ fn harness_no_overflow_within_capacity() {
         ExprOp::LoadAccessor(crate::ids::AccessorIdx::new(0)),
     ] {
         let result = check_expr_stack_bound(&[op], MAX_EXPRESSION_STACK);
-        kani::assert(result.is_ok(, "assertion failed"), "load op should be ok within capacity");
+        kani::assert(result.is_ok(), "load op should be ok within capacity");
     }
 }
 
@@ -239,7 +239,7 @@ fn harness_no_overflow_within_capacity() {
 fn harness_checked_sub_underflow_detection() {
     let ops = [ExprOp::Not, ExprOp::LoadSlot(SlotIdx::new(0))];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_err(, "assertion failed"), "Not with empty stack should error");
+    kani::assert(result.is_err(), "Not with empty stack should error");
 }
 
 #[kani::proof]
@@ -253,7 +253,7 @@ fn harness_complex_expression_correct() {
         ExprOp::Not,
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "complex expression should be valid");
+    kani::assert(result.is_ok(), "complex expression should be valid");
     match result {
         Ok(v) => , "complex expression should be valid");
     match result {
@@ -275,7 +275,7 @@ fn harness_multiple_loads_max_correct() {
         ExprOp::Add,
     ];
     let result = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK);
-    kani::assert(result.is_ok(, "assertion failed"), "multiple loads should be valid");
+    kani::assert(result.is_ok(), "multiple loads should be valid");
     match result {
         Ok(v) => , "multiple loads should be valid");
     match result {

@@ -74,8 +74,8 @@ fn branch_count_overflow_harness() {
     let result = crate::mod_compile_lowering::validate_branch_counts(&source);
 
     if branch_count > usize::from(u16::MAX) {
-        kani::assert(result.is_err(, "assertion failed"), "validate_branch_counts must reject branches.len() > u16::MAX");
+        kani::assert(result.is_err(), "validate_branch_counts must reject branches.len() > u16::MAX");
     } else {
-        kani::assert(result.is_ok(, "assertion failed"), "validate_branch_counts must accept branches.len() == u16::MAX");
+        kani::assert(result.is_ok(), "validate_branch_counts must accept branches.len() == u16::MAX");
     }
 }

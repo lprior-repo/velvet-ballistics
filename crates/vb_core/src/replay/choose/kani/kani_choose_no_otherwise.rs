@@ -55,7 +55,7 @@ fn kani_choose_no_otherwise() {
         Ok(_) => {}
         Err(_) => {}
     }
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "all branches false with no otherwise: replay_choose_slot MUST return Internal error",
     );
 }

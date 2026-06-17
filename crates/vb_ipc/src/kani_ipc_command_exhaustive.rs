@@ -22,7 +22,7 @@ fn kani_from_u16_exhaustive() {
 
     // Invariant 1: from_u16 must never panic or return Err for any u16.
     let result = IpcCommand::from_u16(value);
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "from_u16({}) must return Ok); got {:?}",
         value,
         result,

@@ -38,7 +38,7 @@ mod harnesses {
         let now = Instant::now();
         // First insertion starts generation at 1
         let result = wheel.insert(run, now, crate::shard::PendingTimerKind::Wait);
-        kani::assert(result.is_ok(, "assertion failed"), "timer harness assertion");
+        kani::assert(result.is_ok(), "timer harness assertion");
         // Verify generation is 1 via get_entry
         let entry = wheel.get_entry(run);
         match entry {
@@ -568,7 +568,7 @@ mod harnesses {
         kani::assert(wheel.insert(RunId::new(2), early, crate::shard::PendingTimerKind::Ask, "assertion failed").is_ok(), "timer harness assertion");
 
         let next = wheel.next_deadline();
-        kani::assert(next.is_some(, "assertion failed"), "timer harness assertion");
+        kani::assert(next.is_some(), "timer harness assertion");
         // Due to BTreeMap ordering, earliest deadline comes first
         kani::assert(next == Some(early, "assertion failed"), "assertion failed");
     }

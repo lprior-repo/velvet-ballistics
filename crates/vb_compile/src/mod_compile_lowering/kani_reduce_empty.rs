@@ -114,7 +114,7 @@ fn check_reduce_emit_single_body_set_empty() {
     );
 
     kani::cover!(result.is_err(), "empty body rejection path reached");
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "emit_single_body_set must reject empty body",
     );
 }

@@ -95,7 +95,7 @@ fn kani_record_schema_rejects_future_version() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "future schema version should return error");
+    kani::assert(result.is_err(), "future schema version should return error");
 
     if let Err(JournalError::UnsupportedSchemaVersion { version }) = result {
         , "future schema version should return error");
@@ -123,7 +123,7 @@ fn kani_record_schema_rejects_old_version() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "old schema version should return error");
+    kani::assert(result.is_err(), "old schema version should return error");
 
     match result {
         Err(JournalError::MigrationRequired { .. })
@@ -158,5 +158,5 @@ fn kani_record_schema_zero_returns_migration_required() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "version 0 should return error");
+    kani::assert(result.is_err(), "version 0 should return error");
 }

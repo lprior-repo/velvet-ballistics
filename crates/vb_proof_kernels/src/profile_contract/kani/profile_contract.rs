@@ -265,7 +265,7 @@ fn hardened_debug_assertions_enabled() {
 fn maxperf_rejected_by_construction() {
     // 1. Direct check
     let result = ProfileName::new("maxperf");
-    kani::assert(result.is_err(, "assertion failed"), "assertion failed");
+    kani::assert(result.is_err(), "assertion failed");
 
     // 2. Exhaustive: all valid ProfileName variants are not maxperf
     let name: ProfileName = kani::any();

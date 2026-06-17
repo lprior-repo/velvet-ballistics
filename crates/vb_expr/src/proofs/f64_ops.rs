@@ -48,7 +48,7 @@ fn kani_f64_add_preserves_finiteness() {
     let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(left), SlotValue::F64(right));
 
     // PO-001: Result must be Ok and the F64 must be finite
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "eval_add_op with bounded finite inputs must not error",
     );
     let Ok(SlotValue::F64(f)) = result else {
@@ -89,7 +89,7 @@ fn kani_f64_sub_preserves_finiteness() {
 
     let result = eval_binary_op(BinaryOp::Sub, SlotValue::F64(left), SlotValue::F64(right));
 
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "eval_sub_op with bounded finite inputs must not error",
     );
     let Ok(SlotValue::F64(f)) = result else {
@@ -134,7 +134,7 @@ fn kani_f64_mul_preserves_finiteness() {
 
     let result = eval_binary_op(BinaryOp::Mul, SlotValue::F64(left), SlotValue::F64(right));
 
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "eval_mul_op with bounded finite inputs must not error",
     );
     let Ok(SlotValue::F64(f)) = result else {
@@ -162,7 +162,7 @@ fn kani_f64_neg_preserves_finiteness() {
 
     let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(val));
 
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "eval_neg_op with finite input must not error",
     );
     let Ok(SlotValue::F64(f)) = result else {

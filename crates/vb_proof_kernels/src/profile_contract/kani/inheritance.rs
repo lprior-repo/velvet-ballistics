@@ -328,7 +328,7 @@ fn inheritance_depth_bounded_and_cycle_free() {
         let result = resolve_inheritance(last, &depth_ws);
         // Should succeed because the chain is: Dev→Test→Fuzz→Hardened→Bench→Release
         // Depth = 5, well within MAX_INHERITANCE_DEPTH
-        kani::assert(result.is_ok(, "assertion failed"),
+        kani::assert(result.is_ok(),
             "Chain of depth 5 should resolve within MAX_INHERITANCE_DEPTH",
         );
     }

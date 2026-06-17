@@ -83,7 +83,7 @@ fn assert_concrete_chain_within_depth() {
 
     if let Some(last) = depth_ws.find(ProfileName::Dev) {
         let result = resolve_inheritance(last, &depth_ws);
-        kani::assert(result.is_ok(, "assertion failed"),
+        kani::assert(result.is_ok(),
             "Chain of depth 5 should resolve within MAX_INHERITANCE_DEPTH",
         );
     }

@@ -110,7 +110,7 @@ fn check_push_constant_at_limit() {
     let result = push_constant(value, &mut constants);
 
     // At MAX_CONSTANTS, push must fail
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "push_constant at MAX_CONSTANTS limit must return error",
     );
 
@@ -168,7 +168,7 @@ fn check_compile_rejects_too_many_ops() {
 
     let result = compile_expr_to_bytecode(&ast);
 
-    kani::assert(result.is_err(, "assertion failed"), "130-add chain (259 ops) must be rejected");
+    kani::assert(result.is_err(), "130-add chain (259 ops) must be rejected");
 
     match result {
         Err(ExprError::BytecodeTooLong { len, max }) => {
@@ -210,7 +210,7 @@ fn check_push_constant_u16_overflow() {
     let result = push_constant(value, &mut constants);
 
     // At len = u16::MAX + 1 = 65536, u16::try_from fails -> ConstantPoolOverflow
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "push_constant at u16::MAX+1 must return error",
     );
 

@@ -95,7 +95,7 @@ fn kani_record_payload_len_exceeds_max() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
-    kani::assert(result.is_err(, "assertion failed"), "payload exceeding max should return error");
+    kani::assert(result.is_err(), "payload exceeding max should return error");
 
     if let Err(JournalError::PayloadTooLarge { len, max }) = result {
         , "payload exceeding max should return error");
@@ -125,7 +125,7 @@ fn kani_record_payload_len_exactly_over_max() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "payload exactly over max should return error",
     );
 }
@@ -202,7 +202,7 @@ fn kani_record_payload_len_rejects_nonzero_when_max_zero() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "non-zero payload with zero max should return error",
     );
 }

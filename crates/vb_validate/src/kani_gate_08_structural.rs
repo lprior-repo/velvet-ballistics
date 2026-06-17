@@ -29,7 +29,7 @@ fn kani_gate_08_arbitrary_parts_valid_accessors_pass() {
     let parts = bounded_parts_with_valid_accessors();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"), "arbitrary valid accessors pass Gate 8");
+    kani::assert(result.is_ok(), "arbitrary valid accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -334,7 +334,7 @@ fn kani_gate_08_empty_nodes_valid_accessors_pass() {
     let parts = bounded_empty_nodes_with_valid_accessors();
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "empty nodes with valid accessors pass Gate 8",
     );
     std::mem::forget(parts);
@@ -417,7 +417,7 @@ fn kani_gate_08_expressions_with_accessor_refs() {
     };
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"), "expressions with accessor refs pass Gate 8");
+    kani::assert(result.is_ok(), "expressions with accessor refs pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -509,7 +509,7 @@ fn kani_gate_08_mixed_accessor_paths() {
     parts.step_names = Box::new([Box::from("root")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"), "mixed accessor paths pass Gate 8");
+    kani::assert(result.is_ok(), "mixed accessor paths pass Gate 8");
 }
 
 /// Harness 12: All CompiledNodeKind variants present — stress test structural variety.
@@ -582,7 +582,7 @@ fn kani_gate_08_constants_with_symbols() {
     parts.step_names = Box::new([Box::from("set"), Box::from("finish")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"), "constants with symbols pass Gate 8");
+    kani::assert(result.is_ok(), "constants with symbols pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -674,7 +674,7 @@ fn kani_gate_08_many_accessors_varied_depths() {
     parts.step_names = Box::new([Box::from("root")]);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "many accessors with varied depths pass Gate 8",
     );
     std::mem::forget(parts);

@@ -229,7 +229,7 @@ fn forbidden_states_rejected_and_pure_functions_no_panic() {
     // ===================================================================
     {
         let result = ProfileName::new("maxperf");
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "ProfileName::new('maxperf') must return Err",
         );
     }

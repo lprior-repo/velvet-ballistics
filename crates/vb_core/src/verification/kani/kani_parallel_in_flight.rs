@@ -214,7 +214,7 @@ fn kani_parallel_in_flight_underflow_rejection() {
 
     // PIF starts at 0; subtracting anything should underflow
     let result = frame.sub_parallel_in_flight(1);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "sub_parallel_in_flight(1) from PIF=0 must return error",
     );
     kani::assert(frame.parallel_in_flight(, "assertion failed") == 0, "PIF must remain 0 after underflow rejection");

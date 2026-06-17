@@ -372,7 +372,7 @@ fn kani_next_generation_monotonicity() {
 
     // next_generation on a u64::MAX entry must fail
     let overflow_result = wheel_overflow.next_generation(max_run);
-    kani::assert(overflow_result.is_err(, "assertion failed"),
+    kani::assert(overflow_result.is_err(),
         "next_generation must fail at u64::MAX",
     );
 }
@@ -458,7 +458,7 @@ fn kani_retry_attempt_monotonicity() {
 
     // record_retry_attempt should succeed when attempt < max_attempts
     let result = record_retry_attempt(&mut state, ticket, policy);
-    kani::assert(result.is_ok(, "assertion failed") || result.is_err(),
+    kani::assert(result.is_ok() || result.is_err(),
         "record_retry_attempt must not panic",
     );
 
@@ -468,7 +468,7 @@ fn kani_retry_attempt_monotonicity() {
         ..ticket
     };
     let at_max_result = record_retry_attempt(&mut state, ticket_at_max, policy);
-    kani::assert(at_max_result.is_err(, "assertion failed"),
+    kani::assert(at_max_result.is_err(),
         "attempt == max_attempts must be rejected",
     );
 }
@@ -598,7 +598,7 @@ fn kani_idempotency_key_canonical() {
         ..ticket
     };
     let wrong_result = reject_invalid_ticket_key(wrong_ticket);
-    kani::assert(wrong_result.is_err(, "assertion failed"), "mismatched key must be rejected");
+    kani::assert(wrong_result.is_err(), "mismatched key must be rejected");
 }
 
 // =========================================================================

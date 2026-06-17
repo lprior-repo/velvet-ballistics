@@ -57,14 +57,14 @@ mod harnesses {
 
             // Deserialize
             let deserialized = deserialize_symbolic_code(&serialized);
-            kani::assert(deserialized.is_ok(, "assertion failed"),
+            kani::assert(deserialized.is_ok(),
                 "Deserialization must succeed for registered codes",
             );
             kani::assert(deserialized.map(|code| code.as_str(), "assertion failed") == Ok(entry.symbolic), "Deserialized SymbolicCode must match original");
 
             // Round-trip identity
             let rt = roundtrip(&code);
-            kani::assert(rt.is_ok(, "assertion failed"), "Round-trip must succeed");
+            kani::assert(rt.is_ok(), "Round-trip must succeed");
             kani::assert(rt.map(|code| code.as_str(), "assertion failed") == Ok(code.as_str()), "Round-trip identity must hold");
         }
     }
@@ -81,7 +81,7 @@ mod harnesses {
         ];
         for s in unknown.iter() {
             let result = deserialize_symbolic_code(s);
-            kani::assert(result.is_err(, "assertion failed"), "Unknown code '{}' must be rejected", s);
+            kani::assert(result.is_err(), "Unknown code '{}' must be rejected", s);
         }
     }
 }

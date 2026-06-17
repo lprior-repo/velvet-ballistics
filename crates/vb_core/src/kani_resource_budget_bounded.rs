@@ -84,7 +84,7 @@ fn kani_resource_add_small_values() {
     };
 
     let result = usage.try_add_budget(&budget);
-    kani::assert(result.is_ok(, "assertion failed"), "small budget addition succeeds");
+    kani::assert(result.is_ok(), "small budget addition succeeds");
 }
 
 /// VB-CORE-RESOURCE-004 H2: try_add_budget with overflow returns error
@@ -102,7 +102,7 @@ fn kani_resource_add_overflow() {
     };
 
     let result = usage.try_add_budget(&budget);
-    kani::assert(result.is_err(, "assertion failed"), "MAX+1 overflow returns error");
+    kani::assert(result.is_err(), "MAX+1 overflow returns error");
 }
 
 /// VB-CORE-RESOURCE-004 H3: try_subtract_budget with underflow returns error
@@ -120,7 +120,7 @@ fn kani_resource_sub_underflow() {
     };
 
     let result = usage.try_subtract_budget(&budget);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "subtracting more than available returns error",
     );
 }
@@ -141,7 +141,7 @@ fn kani_resource_sub_exact_match() {
     };
 
     let result = usage.try_subtract_budget(&budget);
-    kani::assert(result.is_ok(, "assertion failed"), "exact match subtraction succeeds");
+    kani::assert(result.is_ok(), "exact match subtraction succeeds");
 }
 
 /// VB-CORE-RESOURCE-004 H5: try_add_budget with MAX values
@@ -159,7 +159,7 @@ fn kani_resource_add_max_values() {
     };
 
     let result = usage.try_add_budget(&budget);
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "MAX/2 + MAX/2 succeeds and stays within bounds",
     );
 }

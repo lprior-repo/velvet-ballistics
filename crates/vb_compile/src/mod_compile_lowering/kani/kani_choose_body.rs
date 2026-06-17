@@ -156,7 +156,7 @@ fn kani_emit_choose_branch_body_count() {
                 "builder node count must match",
             );
             for node in &builder.nodes {
-                kani::assert(node.next.is_some(, "assertion failed"), "body nodes must have next pointer set");
+                kani::assert(node.next.is_some(), "body nodes must have next pointer set");
             }
             if let Some(last) = builder.nodes.last() {
                 if let Some(ln) = last.next {

@@ -91,7 +91,7 @@ fn kani_record_crc_rejects_mismatch() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&0xDEADBEEFu32.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "mismatched CRC should return error");
+    kani::assert(result.is_err(), "mismatched CRC should return error");
 
     if let Err(JournalError::HeaderChecksumMismatch) = result {
         , "mismatched CRC should return error");
@@ -120,7 +120,7 @@ fn kani_record_crc_rejects_zero() {
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&0u32.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "zero CRC should return error when correct is non-zero",
     );
 }
@@ -181,5 +181,5 @@ fn kani_record_crc_detects_single_bit_flip() {
     header_bytes[10] ^= 0x01;
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "single bit flip should be detected by CRC");
+    kani::assert(result.is_err(), "single bit flip should be detected by CRC");
 }

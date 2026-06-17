@@ -38,7 +38,7 @@ fn kani_record_magic_rejects_wrong_magic() {
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "wrong magic should return error");
+    kani::assert(result.is_err(), "wrong magic should return error");
 
     if let Err(JournalError::BadMagic { found }) = result {
         , "wrong magic should return error");
@@ -125,7 +125,7 @@ fn kani_record_magic_rejects_zero() {
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "zero magic should return error");
+    kani::assert(result.is_err(), "zero magic should return error");
 }
 
 /// VB-STORAGE-DECODE-001 H4: decode rejects all-ones magic
@@ -146,5 +146,5 @@ fn kani_record_magic_rejects_all_ones() {
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(, "assertion failed"), "all-ones magic should return error");
+    kani::assert(result.is_err(), "all-ones magic should return error");
 }

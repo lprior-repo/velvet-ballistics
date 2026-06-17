@@ -28,7 +28,7 @@ fn kani_ipc_header_decode_valid() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
-    kani::assert(decoded.is_ok(, "assertion failed"), "valid header decodes successfully");
+    kani::assert(decoded.is_ok(), "valid header decodes successfully");
 
     if let Ok(h) = decoded {
         , "valid header decodes successfully");
@@ -58,7 +58,7 @@ fn kani_ipc_header_rejects_bad_magic() {
     // rest zeros (valid reserved, etc.)
 
     let decoded = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-    kani::assert(decoded.is_err(, "assertion failed"), "invalid magic should return error");
+    kani::assert(decoded.is_err(), "invalid magic should return error");
 }
 
 /// VB-IPC-DECODE-001/003 H3: decode rejects unsupported version
@@ -71,7 +71,7 @@ fn kani_ipc_header_rejects_bad_version() {
     // rest zeros
 
     let decoded = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-    kani::assert(decoded.is_err(, "assertion failed"), "unsupported version should return error");
+    kani::assert(decoded.is_err(), "unsupported version should return error");
 }
 
 /// VB-IPC-DECODE-001/003 H4: decode rejects non-zero reserved field
@@ -84,7 +84,7 @@ fn kani_ipc_header_rejects_reserved_nonzero() {
     bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // non-zero reserved
 
     let decoded = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-    kani::assert(decoded.is_err(, "assertion failed"), "non-zero reserved should return error");
+    kani::assert(decoded.is_err(), "non-zero reserved should return error");
 }
 
 /// VB-IPC-DECODE-001/003 H5: decode with various valid commands
@@ -104,7 +104,7 @@ fn kani_ipc_header_decode_various_commands() {
     let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
-    kani::assert(decoded.is_ok(, "assertion failed"), "command decodes successfully");
+    kani::assert(decoded.is_ok(), "command decodes successfully");
 }
 
 /// VB-IPC-DECODE-001/003 H6: decode preserves all header fields

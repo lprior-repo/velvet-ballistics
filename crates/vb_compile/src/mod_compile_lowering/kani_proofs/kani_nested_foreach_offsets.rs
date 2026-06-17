@@ -96,7 +96,7 @@ fn check_nested_foreach_offset_arithmetic() {
         Ok(computed) => {
             // When it succeeds, computed must equal id + offset
             let expected_raw = id.get().checked_add(offset);
-            kani::assert(expected_raw.is_some(, "assertion failed"),
+            kani::assert(expected_raw.is_some(),
                 "If checked_step_offset returned Ok, then u16::checked_add must also succeed",
             );
             if let Some(exp) = expected_raw {

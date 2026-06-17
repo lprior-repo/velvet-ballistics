@@ -40,7 +40,7 @@ fn compile_expr_to_bytecode_overflow() {
     let empty: [ExprOp; 0] = [];
     let empty_result = check_expr_stack_bound(&empty, MAX_EXPRESSION_STACK);
     // Empty ops produce underflow at final depth validation
-    kani::assert(empty_result.is_err(, "assertion failed"),
+    kani::assert(empty_result.is_err(),
         "empty ops should fail final depth check (underflow)",
     );
 
@@ -54,7 +54,7 @@ fn compile_expr_to_bytecode_overflow() {
     ];
     let single_load = [load_ops[0]];
     let single_result = check_expr_stack_bound(&single_load, MAX_EXPRESSION_STACK);
-    kani::assert(single_result.is_ok(, "assertion failed"),
+    kani::assert(single_result.is_ok(),
         "single LoadSlot should produce Ok with max_stack = 1",
     );
     if let Ok(depth) = single_result {
@@ -100,7 +100,7 @@ fn compile_expr_to_bytecode_overflow() {
     // ----------------------------------------------------------------
     let underflow_postfix = [binary_ops[0], binary_ops[0]];
     let underflow_result = check_expr_stack_bound(&underflow_postfix, MAX_EXPRESSION_STACK);
-    kani::assert(underflow_result.is_err(, "assertion failed"),
+    kani::assert(underflow_result.is_err(),
         "[binary, binary] should underflow on second binary",
     );
 
@@ -125,7 +125,7 @@ fn compile_expr_to_bytecode_overflow() {
     }
     // Stack at end: 1 (valid)
     let result_256 = check_expr_stack_bound(&ops_256, MAX_EXPRESSION_STACK);
-    kani::assert(result_256.is_ok(, "assertion failed"), "256 structurally-valid ops should succeed");
+    kani::assert(result_256.is_ok(), "256 structurally-valid ops should succeed");
 
     // ----------------------------------------------------------------
     // Test 6: compile_expr_to_bytecode parity — parse simple expressions
@@ -138,7 +138,7 @@ fn compile_expr_to_bytecode_overflow() {
     let mut constants = Vec::new();
     let compile_result = compile_expr_to_bytecode(&expr, &mut constants);
     // 1 + 2: two LoadConst ops + one Add = 3 ops, max_stack = 2
-    kani::assert(compile_result.is_ok(, "assertion failed"), "1 + 2 should compile successfully");
+    kani::assert(compile_result.is_ok(), "1 + 2 should compile successfully");
     if let Ok(program) = compile_result {
         , "1 + 2 should compile successfully");
     if let Ok(program) = compile_result {
@@ -161,7 +161,7 @@ fn compile_expr_to_bytecode_overflow() {
     };
     let mut consts2 = Vec::new();
     let arity_result = compile_expr_to_bytecode(&wrong_arity_expr, &mut consts2);
-    kani::assert(arity_result.is_err(, "assertion failed"),
+    kani::assert(arity_result.is_err(),
         "wrong helper arity should return Err",
     );
 
@@ -171,7 +171,7 @@ fn compile_expr_to_bytecode_overflow() {
     let text_literal = ParsedExpression::Literal(ExpressionLiteral::Text(Box::from("hello")));
     let mut consts3 = Vec::new();
     let text_result = compile_expr_to_bytecode(&text_literal, &mut consts3);
-    kani::assert(text_result.is_err(, "assertion failed"),
+    kani::assert(text_result.is_err(),
         "text literals should be rejected",
     );
 
@@ -181,7 +181,7 @@ fn compile_expr_to_bytecode_overflow() {
     let unknown_ref = ParsedExpression::Reference(Box::from("$unknown.5"));
     let mut consts4 = Vec::new();
     let unknown_result = compile_expr_to_bytecode(&unknown_ref, &mut consts4);
-    kani::assert(unknown_result.is_err(, "assertion failed"),
+    kani::assert(unknown_result.is_err(),
         "unknown reference root should return Err",
     );
 
@@ -191,7 +191,7 @@ fn compile_expr_to_bytecode_overflow() {
     let non_numeric_ref = ParsedExpression::Reference(Box::from("$slot.xyz"));
     let mut consts5 = Vec::new();
     let non_numeric_result = compile_expr_to_bytecode(&non_numeric_ref, &mut consts5);
-    kani::assert(non_numeric_result.is_err(, "assertion failed"),
+    kani::assert(non_numeric_result.is_err(),
         "non-numeric slot index should return Err",
     );
 }

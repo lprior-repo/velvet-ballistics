@@ -121,12 +121,12 @@ fn check_terminal_events_journal_family() {
 
     // Both RunKilled and RunCancelled must be valid in the journal event family
     let killed_result = validate_kind_family(MAGIC_JOURNAL_EVENT, 28);
-    kani::assert(killed_result.is_ok(, "assertion failed"),
+    kani::assert(killed_result.is_ok(),
         "RunKilled (kind=28) must be valid in journal event family",
     );
 
     let cancelled_result = validate_kind_family(MAGIC_JOURNAL_EVENT, 27);
-    kani::assert(cancelled_result.is_ok(, "assertion failed"),
+    kani::assert(cancelled_result.is_ok(),
         "RunCancelled (kind=27) must be valid in journal event family",
     );
 }

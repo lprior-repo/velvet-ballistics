@@ -133,7 +133,7 @@ fn decision_table_ok_branch() {
             };
 
             let result = static_check(&contract);
-            kani::assert(result.is_ok(, "assertion failed"),
+            kani::assert(result.is_ok(),
                 "side_effect==None must be Ok regardless of retry/idempotency",
             );
 
@@ -185,7 +185,7 @@ fn decision_table_ok_branch() {
             };
 
             let result = static_check(&contract);
-            kani::assert(result.is_ok(, "assertion failed"),
+            kani::assert(result.is_ok(),
                 "side_effect!=None with IdempotentExternal and Safe/KeyRequired must be Ok",
             );
 
@@ -250,7 +250,7 @@ fn decision_table_unsafe_rejected() {
             };
 
             let result = static_check(&contract);
-            kani::assert(result.is_err(, "assertion failed"), "side_effect!=None with Unsafe must be Err");
+            kani::assert(result.is_err(), "side_effect!=None with Unsafe must be Err");
             if let Err(err) = &result {
                 let reason = err.reason_category();
                 // Unsafe always returns RetryUnsafe regardless of idempotency (match arm order)

@@ -145,7 +145,7 @@ fn kani_check_action_abi_all_match() {
     let d = arbitrary_digest();
     let entries = [(action, d, d)];
     let result = first_action_abi_mismatch(&entries);
-    kani::assert(result.is_none(, "assertion failed"),
+    kani::assert(result.is_none(),
         "all-matching ABI list should have no mismatch",
     );
 }

@@ -1741,7 +1741,7 @@ mod tests {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1).unwrap();
         let pc = StepIdx::new(step_count); // PC >= step_count (out of bounds);
         let result = frame.set_pc(pc);
-        kani::assert(result.is_err(, "assertion failed"), "set_pc must reject out-of-bounds index");
+        kani::assert(result.is_err(), "set_pc must reject out-of-bounds index");
         match result {
             Err(CoreError::InvalidProgramCounter { step }) => {
                 assert_eq!(step, pc, "error should contain the invalid PC");
@@ -1757,7 +1757,7 @@ mod tests {
         let pc = StepIdx::new(step_count - 1); // PC < step_count (in bounds);
         let mut frame = frame;
         let result = frame.set_pc(pc);
-        kani::assert(result.is_ok(, "assertion failed"), "set_pc must accept in-bounds index");
+        kani::assert(result.is_ok(), "set_pc must accept in-bounds index");
         assert_eq!(frame.pc(), pc, "program counter should be updated");
     }
 }
@@ -2471,7 +2471,7 @@ mod frame_kani_harnesses {
         };
 
         let result = frame.set_pc(pc);
-        kani::assert(result.is_ok(, "assertion failed"), "set_pc with valid idx returns Ok");
+        kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
     }
 
     /// K-PC2: increment_executed never panics.
@@ -2516,7 +2516,7 @@ mod frame_kani_harnesses {
         };
 
         let result = frame.set_pc(pc);
-        kani::assert(result.is_err(, "assertion failed"), "set_pc with out-of-bounds idx returns Err");
+        kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
     }
 
     /// K-S1: read_slot never panics for SlotIdx within valid bounds.
@@ -2638,7 +2638,7 @@ mod frame_kani_harnesses {
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
         // slot_count 0 and 1 are both valid, just create empty or single-element arrays
-        kani::assert(frame.is_ok(, "assertion failed"), "slot_count 0 and 1 are valid");
+        kani::assert(frame.is_ok(), "slot_count 0 and 1 are valid");
     }
 
     /// K-S6: write_slot_with_taint sets both value and taint atomically.
@@ -2665,7 +2665,7 @@ mod frame_kani_harnesses {
         };
 
         let result = frame.write_slot_with_taint(slot, value, taint);
-        kani::assert(result.is_ok(, "assertion failed"),
+        kani::assert(result.is_ok(),
             "write_slot_with_taint succeeds for valid slot",
         );
     }
@@ -2698,7 +2698,7 @@ mod frame_kani_harnesses {
 
         let before = frame.executed();
         let result = frame.increment_executed();
-        kani::assert(result.is_ok(, "assertion failed"), "increment_executed returns Ok");
+        kani::assert(result.is_ok(), "increment_executed returns Ok");
         kani::assert(frame.executed(, "assertion failed") == before + 1, "executed increments by 1");
     }
 
@@ -2729,7 +2729,7 @@ mod frame_kani_harnesses {
         let new_pc = StepIdx::ZERO;
 
         let result = frame.reinitialize(new_run_id, new_pc, step_count, slot_count);
-        kani::assert(result.is_ok(, "assertion failed"), "reinitialize succeeds with valid params");
+        kani::assert(result.is_ok(), "reinitialize succeeds with valid params");
         kani::assert(frame.executed(, "assertion failed") == 0,
             "executed reset to 0 after reinitialize",
         );
@@ -2759,7 +2759,7 @@ mod frame_kani_harnesses {
         kani::assume(delta <= 100);
 
         let result = frame.add_parallel_in_flight(delta);
-        kani::assert(result.is_ok(, "assertion failed"), "add_parallel_in_flight returns Ok");
+        kani::assert(result.is_ok(), "add_parallel_in_flight returns Ok");
         kani::assert(frame.parallel_in_flight(, "assertion failed") == before + delta,
             "parallel_in_flight increases by delta",
         );
@@ -2786,7 +2786,7 @@ mod frame_kani_harnesses {
         kani::assume(delta <= before);
 
         let result = frame.sub_parallel_in_flight(delta);
-        kani::assert(result.is_ok(, "assertion failed"), "sub_parallel_in_flight returns Ok");
+        kani::assert(result.is_ok(), "sub_parallel_in_flight returns Ok");
         kani::assert(frame.parallel_in_flight(, "assertion failed") == before - delta,
             "parallel_in_flight decreases by delta",
         );

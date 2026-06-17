@@ -104,7 +104,7 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let dc = DiagnosticCode::new(entry.numeric);
             let result = dc.symbolic_code();
-            kani::assert(result.is_some(, "assertion failed"), "Registered code must resolve");
+            kani::assert(result.is_some(), "Registered code must resolve");
             let result2 = dc.symbolic_code();
             , "Registered code must resolve");
             let result2 = dc.symbolic_code();

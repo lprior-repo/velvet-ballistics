@@ -168,7 +168,7 @@ fn check_set_do_unchanged_with_foreach_present() {
         }];
         let mut builder = SlotCompiler::new();
         let result = emit_single_body_set(&set_body, id, 0, slot, None, &mut builder, false);
-        kani::assert(result.is_ok(, "assertion failed"), "Set body must compile successfully");
+        kani::assert(result.is_ok(), "Set body must compile successfully");
         kani::assert(!builder.nodes.is_empty(, "assertion failed"), "Set must emit a node");
     }
 
@@ -189,7 +189,7 @@ fn check_set_do_unchanged_with_foreach_present() {
         }];
         let mut builder = SlotCompiler::new();
         let result = emit_single_body_set(&do_body, id, 0, slot, None, &mut builder, false);
-        kani::assert(result.is_ok(, "assertion failed"), "Do body must compile successfully");
+        kani::assert(result.is_ok(), "Do body must compile successfully");
         kani::assert(!builder.nodes.is_empty(, "assertion failed"), "Do must emit a node");
     }
 }

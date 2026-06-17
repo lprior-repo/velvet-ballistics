@@ -32,7 +32,7 @@ fn lower_accessor_reference_numeric() {
     // ----------------------------------------------------------------
     let source = "$slots.2.7";
     let parsed = parse_expression(source);
-    kani::assert(parsed.is_ok(, "assertion failed"), "$slots.2.7 should parse");
+    kani::assert(parsed.is_ok(), "$slots.2.7 should parse");
 
     if let Ok(expr) = parsed {
         let mut constants = Vec::new();
@@ -43,7 +43,7 @@ fn lower_accessor_reference_numeric() {
             &mut accessors,
         );
 
-        kani::assert(result.is_ok(, "assertion failed"), "$slots.2.7 should compile successfully");
+        kani::assert(result.is_ok(), "$slots.2.7 should compile successfully");
         if let Ok(program) = result {
             kani::assert(!accessors.is_empty(, "assertion failed"),
                 "$slots.2.7 should create one accessor entry",
@@ -101,7 +101,7 @@ fn lower_accessor_reference_numeric() {
             &mut acc2,
         );
 
-        kani::assert(res2.is_ok(, "assertion failed"), "$slots.1.2.3.4 should compile successfully");
+        kani::assert(res2.is_ok(), "$slots.1.2.3.4 should compile successfully");
         if let Ok(program2) = res2 {
             kani::assert(acc2.len(, "assertion failed") == 1,
                 "$slots.1.2.3.4 should create exactly one accessor",
@@ -131,7 +131,7 @@ fn lower_accessor_reference_numeric() {
     // ----------------------------------------------------------------
     let source3 = "$slot.1.name";
     let parsed3 = parse_expression(source3);
-    kani::assert(parsed3.is_ok(, "assertion failed"), "$slot.1.name should parse");
+    kani::assert(parsed3.is_ok(), "$slot.1.name should parse");
 
     if let Ok(expr3) = parsed3 {
         let mut consts3 = Vec::new();
@@ -143,7 +143,7 @@ fn lower_accessor_reference_numeric() {
         );
 
         // Must fail: field accessor requires symbol table (not available in v1)
-        kani::assert(res3.is_err(, "assertion failed"),
+        kani::assert(res3.is_err(),
             "$slot.1.name must be rejected (field accessor not in v1)",
         );
         kani::assert(acc3.is_empty(, "assertion failed"),
@@ -175,7 +175,7 @@ fn accessor_index_assignment() {
 
     // First — index 0
     let res1 = compile_expr_to_bytecode_with_accessors(&expr1, &mut consts, &mut acc);
-    kani::assert(res1.is_ok(, "assertion failed"), "first accessor should compile");
+    kani::assert(res1.is_ok(), "first accessor should compile");
     if let Ok(prog1) = res1 {
         if let vb_core::ExprOp::LoadAccessor(idx1) = prog1.ops[0] {
             kani::assert(idx1 == AccessorIdx::new(0, "assertion failed"), "first accessor index should be 0");
@@ -184,7 +184,7 @@ fn accessor_index_assignment() {
 
     // Second — index 1
     let res2 = compile_expr_to_bytecode_with_accessors(&expr2, &mut consts, &mut acc);
-    kani::assert(res2.is_ok(, "assertion failed"), "second accessor should compile");
+    kani::assert(res2.is_ok(), "second accessor should compile");
     if let Ok(prog2) = res2 {
         if let vb_core::ExprOp::LoadAccessor(idx2) = prog2.ops[0] {
             kani::assert(idx2 == AccessorIdx::new(1, "assertion failed"), "second accessor index should be 1");
@@ -193,7 +193,7 @@ fn accessor_index_assignment() {
 
     // Third — index 2
     let res3 = compile_expr_to_bytecode_with_accessors(&expr3, &mut consts, &mut acc);
-    kani::assert(res3.is_ok(, "assertion failed"), "third accessor should compile");
+    kani::assert(res3.is_ok(), "third accessor should compile");
     if let Ok(prog3) = res3 {
         if let vb_core::ExprOp::LoadAccessor(idx3) = prog3.ops[0] {
             kani::assert(idx3 == AccessorIdx::new(2, "assertion failed"), "third accessor index should be 2");
@@ -218,6 +218,6 @@ fn rejects_non_numeric_accessor_path() {
         &mut Vec::new(),
         &mut acc,
     );
-    kani::assert(res.is_err(, "assertion failed"), "non-numeric path segment should be rejected");
+    kani::assert(res.is_err(), "non-numeric path segment should be rejected");
     kani::assert(acc.is_empty(, "assertion failed"), "rejected path should not create accessor");
 }

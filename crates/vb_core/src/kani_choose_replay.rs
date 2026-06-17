@@ -470,7 +470,7 @@ fn kani_choose_replay_index_safety() {
         }
     }
     // Key assertion: no panic occurred (implicit — Kani checks panic freedom)
-    kani::assert(result.is_ok(, "assertion failed") || result.is_err(),
+    kani::assert(result.is_ok() || result.is_err(),
         "replay_choose_slot returns Ok or Err, never panics",
     );
 }

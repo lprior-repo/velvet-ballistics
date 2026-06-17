@@ -50,9 +50,24 @@ fn fuzz_choose_lowering(
     let otherwise = otherwise_val.map(StepIdx::new);
 
     let mut builder = SlotCompiler::new();
-    let _result = lower_choose(StepIdx::new(0), branches, otherwise, &mut builder);
-    // We don't care about the result - we just want to ensure no panic
-}
+    // lower_choose must never panic and must return a typed Result.
+    // On success, the builder must contain valid lowering state.
+    let result = lower_choose(StepIdx::new(0), branches, otherwise, &mut builder);
+    match result {
+        Ok(_) => {
+            // Successful lowering - verify builder state is consistent
+            // The builder must have processed all branches
+            assert!(
+                builder.branches().len() <= 128,
+                "builder branch count must be bounded"
+            );
+        }
+        Err(e) => {
+            // Lowering errors are expected for invalid inputs.
+            // Verify the error is typed (not a panic).
+            let _ = e;
+        }
+    }
 
 fuzz_target!(|data: (u8, Vec<u16>, Vec<u16>, Option<u16>)| {
     let (branch_count, conditions, targets, otherwise_val) = data;

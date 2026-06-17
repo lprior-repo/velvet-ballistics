@@ -448,7 +448,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget.is_ok(, "assertion failed"), "CollectStart workflow should compute budget successfully");
+        prop_kani::assert(budget.is_ok(), "CollectStart workflow should compute budget successfully");
 
         let budget = budget.unwrap();
 
@@ -540,7 +540,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget.is_ok(, "assertion failed"), "RepeatStart workflow should compute budget successfully");
+        prop_kani::assert(budget.is_ok(), "RepeatStart workflow should compute budget successfully");
 
         let budget = budget.unwrap();
 
@@ -1006,7 +1006,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget.is_ok(, "assertion failed"), "CollectStart workflow should compute budget successfully");
+        prop_kani::assert(budget.is_ok(), "CollectStart workflow should compute budget successfully");
 
         let budget = budget.unwrap();
 
@@ -1098,7 +1098,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget.is_ok(, "assertion failed"), "RepeatStart workflow should compute budget successfully");
+        prop_kani::assert(budget.is_ok(), "RepeatStart workflow should compute budget successfully");
 
         let budget = budget.unwrap();
 
@@ -1224,7 +1224,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 6);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget.is_ok(, "assertion failed"), "Nested ForEach workflow should compute budget successfully");
+        prop_kani::assert(budget.is_ok(), "Nested ForEach workflow should compute budget successfully");
 
         let budget = budget.unwrap();
 
@@ -1314,7 +1314,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget.is_ok(, "assertion failed"), "TogetherStart workflow should compute budget successfully")
+        prop_kani::assert(budget.is_ok(), "TogetherStart workflow should compute budget successfully")
 
         let budget = budget.unwrap();
 
@@ -1405,14 +1405,14 @@ proptest! {
         // Compute whole workflow budget
         let whole_budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(whole_budget.is_ok(, "assertion failed"), "WholeWorkflowBudget should compute successfully")
+        prop_kani::assert(whole_budget.is_ok(), "WholeWorkflowBudget should compute successfully")
 
         let whole_budget = whole_budget.unwrap();
 
         // Create aggregate from whole workflow budget
         let aggregate = AggregateResourceBudget::from_whole_workflow_budget(whole_budget, contract);
 
-        prop_kani::assert(aggregate.is_ok(, "assertion failed"), "AggregateResourceBudget should create successfully from whole budget")
+        prop_kani::assert(aggregate.is_ok(), "AggregateResourceBudget should create successfully from whole budget")
 
         let aggregate = aggregate.unwrap();
 
@@ -1651,7 +1651,7 @@ proptest! {
         let contract = test_contract(nodes.len() as u16 + 10, 4);
         let budget_result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
-        prop_kani::assert(budget_result.is_ok(, "assertion failed"), "WholeWorkflowBudget::compute should succeed even with large fanout")
+        prop_kani::assert(budget_result.is_ok(), "WholeWorkflowBudget::compute should succeed even with large fanout")
 
         let budget = budget_result.unwrap();
 
@@ -2089,7 +2089,7 @@ proptest! {
             Err(AggregateBudgetError::Overflow { resource }) => {
                 prop_kani::assert(resource == "max_steps_executable", "overflow must identify the correct resource dimension");
                 let checked = base.checked_add(u64::from(delta));
-                prop_kani::assert(checked.is_none(, "assertion failed"), "Err(Overflow) must correspond to real overflow")
+                prop_kani::assert(checked.is_none(), "Err(Overflow) must correspond to real overflow")
             }
             Err(_other) => {
                 prop_, "Err(Overflow) must correspond to real overflow")

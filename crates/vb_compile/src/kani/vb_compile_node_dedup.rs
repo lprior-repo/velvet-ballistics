@@ -74,7 +74,7 @@ fn node_id_uniqueness() {
         ResourceContract::DEFAULT,
     );
 
-    kani::assert(result.is_ok(, "assertion failed"), "unique StepIdx nodes should compile successfully");
+    kani::assert(result.is_ok(), "unique StepIdx nodes should compile successfully");
 
     // ----------------------------------------------------------------
     // Test 2: duplicate StepIdx — must be rejected
@@ -127,7 +127,7 @@ fn node_id_uniqueness() {
     );
 
     // Duplicate StepIdx should be rejected by vb_validate shared validation
-    kani::assert(dup_result.is_err(, "assertion failed"),
+    kani::assert(dup_result.is_err(),
         "duplicate StepIdx nodes must be rejected",
     );
 }
@@ -164,7 +164,7 @@ fn step_idx_ordering_preserved() {
         ResourceContract::DEFAULT,
     );
 
-    kani::assert(result.is_ok(, "assertion failed"), "ordered nodes should compile");
+    kani::assert(result.is_ok(), "ordered nodes should compile");
 
     // Verify node count and ordering
     if let Ok(workflow) = result {

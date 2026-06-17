@@ -98,7 +98,7 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     if valid_match {
         kani::assert(atom.is_ok(), "kani harness assertion");
     } else {
-        kani::assert(atom.is_err(, "assertion failed"), "kani harness assertion");
+        kani::assert(atom.is_err(), "kani harness assertion");
     }
 
     let scheduled_atom = mrwe6_valid_scheduled_atom(class, intent);
@@ -112,18 +112,18 @@ fn vb_mrwe6_architecture_binding_all_domains() {
             Ok(Mrwe6AtomKind::EventAndPutPending), "assertion failed"));
         kani::assert(kernel_scheduled_atom == Ok(Mrwe6AtomKind::EventAndPutPending, "assertion failed"), "assertion failed");
     } else {
-        kani::assert(scheduled_atom.is_err(, "assertion failed"), "kani harness assertion");
-        kani::assert(kernel_scheduled_atom.is_err(, "assertion failed"), "kani harness assertion");
+        kani::assert(scheduled_atom.is_err(), "kani harness assertion");
+        kani::assert(kernel_scheduled_atom.is_err(), "kani harness assertion");
     }
 
     let queued_relevant = mrwe6_valid_queued_relevant_intent(class, intent);
     let kernel_queued_relevant = mrwe6_kernel_checked_queued_relevant_atom_kind(class, intent);
     if valid_match && !matches!(intent, Mrwe6IntentKind::None) {
-        kani::assert(queued_relevant.is_ok(, "assertion failed"), "kani harness assertion");
-        kani::assert(kernel_queued_relevant.is_ok(, "assertion failed"), "kani harness assertion");
+        kani::assert(queued_relevant.is_ok(), "kani harness assertion");
+        kani::assert(kernel_queued_relevant.is_ok(), "kani harness assertion");
     } else {
-        kani::assert(queued_relevant.is_err(, "assertion failed"), "kani harness assertion");
-        kani::assert(kernel_queued_relevant.is_err(, "assertion failed"), "kani harness assertion");
+        kani::assert(queued_relevant.is_err(), "kani harness assertion");
+        kani::assert(kernel_queued_relevant.is_err(), "kani harness assertion");
     }
 
     let equal_payload = kani::any::<bool>();
@@ -175,7 +175,7 @@ fn vb_mrwe6_architecture_binding_all_domains() {
     ) {
         kani::assert(committed.is_ok(), "kani harness assertion");
     } else {
-        kani::assert(committed.is_err(, "assertion failed"), "kani harness assertion");
+        kani::assert(committed.is_err(), "kani harness assertion");
     }
 
     let resolution_present = kani::any::<bool>();

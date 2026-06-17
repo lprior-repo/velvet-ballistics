@@ -144,7 +144,7 @@ mod harnesses {
         for code in 0x0601u16..=0x0603 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(result.is_ok(, "assertion failed"),
+            kani::assert(result.is_ok(),
                 "New ContractDiscovery code {:04X} must parse",
                 code,
             );
@@ -152,7 +152,7 @@ mod harnesses {
         // Extended boundary code
         let e_str = format_e_code(0x401C);
         let result = from_str_diagnostic_code(&e_str);
-        kani::assert(result.is_ok(, "assertion failed"), "Extended boundary code 0x401C must parse");
+        kani::assert(result.is_ok(), "Extended boundary code 0x401C must parse");
     }
 
     /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).
@@ -215,7 +215,7 @@ mod harnesses {
         for code in 0x0601u16..=0x0603 {
             let e_str = format_e_code(code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(result.is_ok(, "assertion failed"),
+            kani::assert(result.is_ok(),
                 "New ContractDiscovery code {:04X} must parse",
                 code,
             );
@@ -223,7 +223,7 @@ mod harnesses {
         // Extended boundary code
         let e_str = format_e_code(0x401C);
         let result = from_str_diagnostic_code(&e_str);
-        kani::assert(result.is_ok(, "assertion failed"), "Extended boundary code 0x401C must parse");
+        kani::assert(result.is_ok(), "Extended boundary code 0x401C must parse");
     }
 
     /// PO-008 H3: Out-of-range codes return Err(UnsupportedCode).

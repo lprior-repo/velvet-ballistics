@@ -200,7 +200,7 @@ fn ps_001_forged_digest_rejected() {
     let result = validate_accepted_artifact_digest(&artifact, forged_digest);
 
     // This must return Err (either ArtifactChecksumMismatch or ArtifactMalformed)
-    kani::assert(result.is_err(, "assertion failed"), "Forged digest must be rejected");
+    kani::assert(result.is_err(), "Forged digest must be rejected");
 
     kani::cover!(result.is_err(), "Forged digest always rejected");
 }

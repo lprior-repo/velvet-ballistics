@@ -205,7 +205,7 @@ fn vt2f_shard_lower_semantics() {
     let executed_before = frame.executed;
     let ask_result = frame.ask();
     if matches!(prompt_value(selector), SlotValue::Bool(_)) {
-        kani::assert(ask_result.is_err(, "assertion failed"), "kani harness assertion");
+        kani::assert(ask_result.is_err(), "kani harness assertion");
         , "kani harness assertion");
         kani::assert(frame.executed == executed_before, "assertion failed");
     } else {

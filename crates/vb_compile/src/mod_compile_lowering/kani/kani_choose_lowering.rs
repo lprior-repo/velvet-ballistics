@@ -456,7 +456,7 @@ fn kani_choose_lowering_nonempty_branch_body() {
 
     if has_nonempty {
         // Non-empty branch bodies produce UnsupportedStepPrimitive
-        kani::assert(result.is_err(, "assertion failed"), "non-empty branch body must produce Err");
+        kani::assert(result.is_err(), "non-empty branch body must produce Err");
     }
     kani::cover!(result.is_err(), "nonempty_body_err");
     kani::cover!(result.is_ok(), "all_empty_body_ok");

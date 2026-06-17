@@ -364,7 +364,7 @@ fn proof_future_attempt_rejected_or_normalized() {
 
     // normalize_scheduled_ticket promotes to max
     let result = normalize_scheduled_ticket(&state, ticket);
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "future attempt within capacity must normalize OK",
     );
 

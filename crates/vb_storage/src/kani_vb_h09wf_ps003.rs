@@ -34,7 +34,7 @@ fn ps_003_size_bound() {
 
     if len <= MAX_COMPILED_IR_BYTES as usize {
         // Valid sizes pass
-        kani::assert(result.is_ok(, "assertion failed"),
+        kani::assert(result.is_ok(),
             "len {len} <= MAX ({MAX_COMPILED_IR_BYTES}) must be accepted",
         );
     } else {
@@ -119,5 +119,5 @@ fn ps_003_usize_max_rejected() {
     let result = reject_oversized_compiled_ir_value(usize::MAX);
     // Must be an error — either PayloadTooLarge (for 64-bit) or
     // the u32::try_from path returning ArtifactMalformed
-    kani::assert(result.is_err(, "assertion failed"), "usize::MAX must be rejected");
+    kani::assert(result.is_err(), "usize::MAX must be rejected");
 }

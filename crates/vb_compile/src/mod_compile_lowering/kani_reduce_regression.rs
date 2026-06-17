@@ -85,7 +85,7 @@ fn check_single_step_reference_behavior() {
                 kani::assert(node.id.get(, "assertion failed") == id_val,
                     "emitted node ID must match body_step id",
                 );
-                kani::assert(node.next.is_some(, "assertion failed"),
+                kani::assert(node.next.is_some(),
                     "emitted node must have next pointer set",
                 );
             }

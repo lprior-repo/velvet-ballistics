@@ -38,7 +38,7 @@ fn kani_gate_08_valid_bounded_parts_pass() {
     }
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"), "bounded valid accessors pass Gate 8");
+    kani::assert(result.is_ok(), "bounded valid accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -47,7 +47,7 @@ fn kani_gate_08_valid_zero_accessors_pass() {
     let parts = workflow_parts_with_accessors(Box::new([]), 0, 0);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"), "zero accessors pass Gate 8");
+    kani::assert(result.is_ok(), "zero accessors pass Gate 8");
     std::mem::forget(parts);
 }
 
@@ -66,7 +66,7 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "index-only accessor does not require symbols",
     );
     std::mem::forget(parts);

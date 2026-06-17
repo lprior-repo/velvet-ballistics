@@ -21,7 +21,7 @@ use vb_core::value_store::ValueStore;
 fn collect_page_pagination_bounds() {
     // Test page_size_from with zero.
     let zero_result = page_size_from(0);
-    kani::assert(zero_result.is_err(, "assertion failed"), "page_size=0 must return error");
+    kani::assert(zero_result.is_err(), "page_size=0 must return error");
 
     // Test with kani::any() page_size.
     let page_size: u32 = kani::any();
@@ -71,7 +71,7 @@ fn collect_page_pagination_bounds() {
     // Test copy_prefix with empty items.
     let empty_items: &[SlotValue] = &[];
     let copy_result = copy_prefix(empty_items, 1);
-    kani::assert(copy_result.is_ok(, "assertion failed"),
+    kani::assert(copy_result.is_ok(),
         "copy_prefix on empty items must succeed",
     );
     if let Ok(page) = copy_result {

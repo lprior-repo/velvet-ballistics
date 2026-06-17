@@ -58,7 +58,7 @@ fn kani_harness_bad_magic_no_allocation() {
     let result = decode_record_header(&header, expected_magic, DEFAULT_MAX_PAYLOAD);
 
     // Assert: result must be an error
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "decode_record_header must return error for wrong magic",
     );
 
@@ -127,7 +127,7 @@ fn kani_harness_payload_len_bounds() {
     let result = decode_record_header(&header, valid_magic, max_payload);
 
     // Assert: must return error for oversized payload
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "decode must fail for oversized payload_len",
     );
 
@@ -295,7 +295,7 @@ fn kani_harness_crc_before_digest() {
     let result = decode_record_header(&header, valid_magic, DEFAULT_MAX_PAYLOAD);
 
     // Must fail with HeaderChecksumMismatch, not PayloadDigestMismatch
-    kani::assert(result.is_err(, "assertion failed"), "decode must fail with bad CRC");
+    kani::assert(result.is_err(), "decode must fail with bad CRC");
 
     match result {
         Err(JournalError::HeaderChecksumMismatch) => {

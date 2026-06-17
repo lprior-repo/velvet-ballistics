@@ -22,7 +22,7 @@ fn kani_truncated_header_zero_bytes() {
     harness_for_length(0);
     let header: &[u8] = &[];
     let result = decode_record_header(header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
-    kani::assert(result.is_err(, "assertion failed"), "zero-byte header must be rejected");
+    kani::assert(result.is_err(), "zero-byte header must be rejected");
     match result {
         Err(_) => {
             , "zero-byte header must be rejected");
@@ -80,7 +80,7 @@ fn kani_bad_magic_bytes() {
     kani::assume(header.len() == RECORD_HEADER_BYTES);
     header[0..4].copy_from_slice(&0xDEADBEEFu32.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
-    kani::assert(result.is_err(, "assertion failed"), "bad magic must be rejected");
+    kani::assert(result.is_err(), "bad magic must be rejected");
     match result {
         Err(_) => {
             , "bad magic must be rejected");
@@ -108,7 +108,7 @@ fn kani_wrong_magic_any_value() {
     let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
     header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
-    kani::assert(result.is_err(, "assertion failed"), "wrong magic must be rejected");
+    kani::assert(result.is_err(), "wrong magic must be rejected");
     match result {
         Err(_) => {
             , "wrong magic must be rejected");
@@ -135,7 +135,7 @@ fn kani_future_schema_version() {
     let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
     header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
-    kani::assert(result.is_err(, "assertion failed"), "future schema must be rejected");
+    kani::assert(result.is_err(), "future schema must be rejected");
     match result {
         Err(_) => {
             , "future schema must be rejected");
@@ -163,7 +163,7 @@ fn kani_past_schema_version() {
     let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
     header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
-    kani::assert(result.is_err(, "assertion failed"), "past schema must be rejected");
+    kani::assert(result.is_err(), "past schema must be rejected");
     match result {
         Err(_) => {
             , "past schema must be rejected");
@@ -190,7 +190,7 @@ fn kani_bad_crc() {
     let bad_checksum = good_checksum.wrapping_add(1);
     header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&bad_checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
-    kani::assert(result.is_err(, "assertion failed"), "bad CRC must be rejected");
+    kani::assert(result.is_err(), "bad CRC must be rejected");
     match result {
         Err(_) => {
             , "bad CRC must be rejected");

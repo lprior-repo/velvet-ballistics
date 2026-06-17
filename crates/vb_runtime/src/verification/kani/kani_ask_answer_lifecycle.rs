@@ -430,7 +430,7 @@ fn kani_ask_answer_journal_monotonicity() {
     let low_raw: u64 = kani::any();
     kani::assume(low_raw < u64::MAX);
     let next = low_raw.checked_add(1);
-    kani::kani::assert(next.is_some(, "assertion failed"),
+    kani::kani::assert(next.is_some(),
         "checked_add must succeed for values below u64::MAX", )
     if let Some(n) = next {
         kani::,

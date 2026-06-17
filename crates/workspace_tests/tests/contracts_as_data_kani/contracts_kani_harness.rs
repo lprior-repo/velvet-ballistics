@@ -387,7 +387,7 @@ fn kani_schema_version_accepts_valid() {
     let version = format!("{}.{}.{}", major, minor, patch);
     let result = parse_schema_version(&version);
 
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "parse_schema_version should accept valid semver: '{}'",
         version,
     );
@@ -499,9 +499,9 @@ fn kani_vet_exit_code() {
 
     // Postcondition: exit_code == 0 => Ok, non-zero => Err
     if exit_code == 0 {
-        kani::assert(result.is_ok(, "assertion failed"), "Exit code 0 should always return Ok");
+        kani::assert(result.is_ok(), "Exit code 0 should always return Ok");
     } else {
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "Non-zero exit code {} should always return Err",
             exit_code,
         );
@@ -509,7 +509,7 @@ fn kani_vet_exit_code() {
 
     // No panic for negative exit codes (system errors)
     if exit_code < 0 {
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "Negative exit code {} should return Err",
             exit_code,
         );
@@ -517,7 +517,7 @@ fn kani_vet_exit_code() {
 
     // No panic for large positive exit codes
     if exit_code > 255 {
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "Large exit code {} should return Err",
             exit_code,
         );
@@ -543,7 +543,7 @@ fn kani_gate_evidence_parity() {
     // The function must never fail when precondition is met
     let result = gate_evidence_from_report(total, valid, invalid);
 
-    kani::assert(result.is_ok(, "assertion failed"),
+    kani::assert(result.is_ok(),
         "gate_evidence_from_report should always return Ok when valid + invalid == total",
     );
 
@@ -606,7 +606,7 @@ fn kani_gate_evidence_parity() {
 fn kani_gate_evidence_empty() {
     let result = gate_evidence_from_report(0, 0, 0);
 
-    kani::assert(result.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(result.is_ok(), "kani harness assertion");
     let evidence = match result {
         Ok(v) => v,
         Err(_e) => {
@@ -633,7 +633,7 @@ fn kani_gate_evidence_all_invalid() {
 
     let result = gate_evidence_from_report(invalid, 0, invalid);
 
-    kani::assert(result.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(result.is_ok(), "kani harness assertion");
     let evidence = match result {
         Ok(v) => v,
         Err(_e) => {

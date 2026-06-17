@@ -64,7 +64,7 @@ fn kani_replay_skips_terminal_states() {
 
     let mut store = ValueStore::new();
     let node_opt = plan.node(terminal_idx);
-    kani::assert(node_opt.is_some(, "assertion failed"),
+    kani::assert(node_opt.is_some(),
         "symbolic terminal index maps to a plan node",
     );
     let Some(node) = node_opt else {

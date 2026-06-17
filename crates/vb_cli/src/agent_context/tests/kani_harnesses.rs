@@ -52,7 +52,7 @@ fn kani_commands_includes_agent_context() {
     let result = crate::agent_context::build(&version);
 
     let commands = result.get("commands");
-    kani::assert(commands.is_some(, "assertion failed"), "OBL-004: commands must be present");
+    kani::assert(commands.is_some(), "OBL-004: commands must be present");
 
     if let Some(cmds) = commands {
         kani::assert(cmds.get("agent-context", "assertion failed").is_some(),
@@ -68,7 +68,7 @@ fn kani_exit_codes_has_defined_range() {
     let result = crate::agent_context::build("0.1.0");
 
     let exit_codes = result.get("exit_codes");
-    kani::assert(exit_codes.is_some(, "assertion failed"), "OBL-005: exit_codes must be present");
+    kani::assert(exit_codes.is_some(), "OBL-005: exit_codes must be present");
 
     if let Some(codes) = exit_codes {
         for code in 0..=8 {
@@ -87,7 +87,7 @@ fn kani_known_blockers_has_all_categories() {
     let result = crate::agent_context::build("0.1.0");
 
     let blockers = result.get("known_blockers");
-    kani::assert(blockers.is_some(, "assertion failed"),
+    kani::assert(blockers.is_some(),
         "OBL-006: known_blockers must be present",
     );
 
@@ -112,7 +112,7 @@ fn kani_output_size_bounded() {
     kani::assume(version.len() <= 64);
     let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
-    kani::assert(encoded.is_ok(, "assertion failed"),
+    kani::assert(encoded.is_ok(),
         "OBL-007: output must serialize to JSON without error",
     );
     let size = encoded.map(|s| s.len()).unwrap_or(usize::MAX);
@@ -163,7 +163,7 @@ fn kani_build_serializable_roundtrip() {
     kani::assume(version.len() <= 64);
     let result = crate::agent_context::build(&version);
     let encoded = serde_json::to_string(&result);
-    kani::assert(encoded.is_ok(, "assertion failed"), "OBL-009: serialization must succeed");
+    kani::assert(encoded.is_ok(), "OBL-009: serialization must succeed");
     let decoded: Result<serde_json::Value, _> = match encoded {
         Ok(s) => serde_json::from_str(&s),
         Err(_) => {
@@ -171,7 +171,7 @@ fn kani_build_serializable_roundtrip() {
             return;
         }
     };
-    kani::assert(decoded.is_ok(, "assertion failed"),
+    kani::assert(decoded.is_ok(),
         "OBL-009: deserialization roundtrip must succeed",
     );
 }
@@ -183,7 +183,7 @@ fn kani_agent_contract_booleans_are_bools() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let contract = result.get("agent_contract");
-    kani::assert(contract.is_some(, "assertion failed"),
+    kani::assert(contract.is_some(),
         "OBL-010: agent_contract must be present",
     );
     if let Some(c) = contract {
@@ -215,7 +215,7 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let policy = result.get("vocabulary_policy");
-    kani::assert(policy.is_some(, "assertion failed"),
+    kani::assert(policy.is_some(),
         "OBL-011: vocabulary_policy must be present",
     );
     if let Some(p) = policy {
@@ -240,7 +240,7 @@ fn kani_vocabulary_policy_arrays_are_arrays() {
 fn kani_known_blockers_policy_count_exact() {
     let result = crate::agent_context::build("0.1.0");
     let policy = result.pointer("/known_blockers/policy");
-    kani::assert(policy.is_some(, "assertion failed"), "OBL-012: policy pointer must be present");
+    kani::assert(policy.is_some(), "OBL-012: policy pointer must be present");
     if let Some(p) = policy {
         kani::assert(p.is_array(, "assertion failed"), "OBL-012: policy must be an array");
         kani::assert(p.as_array(, "assertion failed").map(|a| a.len()) == Some(8),
@@ -255,7 +255,7 @@ fn kani_known_blockers_policy_count_exact() {
 fn kani_known_blockers_resource_count_exact() {
     let result = crate::agent_context::build("0.1.0");
     let resource = result.pointer("/known_blockers/resource");
-    kani::assert(resource.is_some(, "assertion failed"),
+    kani::assert(resource.is_some(),
         "OBL-013: resource pointer must be present",
     );
     if let Some(r) = resource {
@@ -272,7 +272,7 @@ fn kani_known_blockers_resource_count_exact() {
 fn kani_known_blockers_capability_count_exact() {
     let result = crate::agent_context::build("0.1.0");
     let capability = result.pointer("/known_blockers/capability");
-    kani::assert(capability.is_some(, "assertion failed"),
+    kani::assert(capability.is_some(),
         "OBL-014: capability pointer must be present",
     );
     if let Some(c) = capability {
@@ -290,7 +290,7 @@ fn kani_all_commands_have_summary() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let commands = result.get("commands");
-    kani::assert(commands.is_some(, "assertion failed"), "OBL-015: commands must be present");
+    kani::assert(commands.is_some(), "OBL-015: commands must be present");
     if let Some(cmds) = commands {
         kani::assert(cmds.is_object(, "assertion failed"), "OBL-015: commands must be an object");
         if let Some(obj) = cmds.as_object() {
@@ -321,7 +321,7 @@ fn kani_enums_has_all_variants() {
     let version: String = kani::any();
     let result = crate::agent_context::build(&version);
     let enums = result.get("enums");
-    kani::assert(enums.is_some(, "assertion failed"), "OBL-017: enums must be present");
+    kani::assert(enums.is_some(), "OBL-017: enums must be present");
     if let Some(e) = enums {
         kani::assert(e.is_object(, "assertion failed"), "OBL-017: enums must be an object");
         for key in &["emit", "compile_emit", "durability", "verify_profile"] {

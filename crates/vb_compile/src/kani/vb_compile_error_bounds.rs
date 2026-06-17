@@ -95,15 +95,15 @@ fn validate_depth_bounds() {
 
     // depth at max_depth (64) passes
     let r = validate_depth(64, limits);
-    kani::assert(r.is_ok(, "assertion failed"), "depth 64 should pass");
+    kani::assert(r.is_ok(), "depth 64 should pass");
 
     // depth 65 fails
     let r = validate_depth(65, limits);
-    kani::assert(r.is_err(, "assertion failed"), "depth 65 should fail");
+    kani::assert(r.is_err(), "depth 65 should fail");
 
     // depth u16::MAX fails
     let r = validate_depth(u16::MAX, limits);
-    kani::assert(r.is_err(, "assertion failed"), "depth u16::MAX should fail");
+    kani::assert(r.is_err(), "depth u16::MAX should fail");
 }
 
 // ===========================================================================
@@ -126,7 +126,7 @@ fn next_visited_count_bounds() {
 
     // Test: visited=0 passes, produces 1
     let r = next_visited_count(0, limits);
-    kani::assert(r.is_ok(, "assertion failed"), "visited=0 should pass");
+    kani::assert(r.is_ok(), "visited=0 should pass");
     if let Ok(n) = r {
         , "visited=0 should pass");
     if let Ok(n) = r {
@@ -139,5 +139,5 @@ fn next_visited_count_bounds() {
 
     // Test: u32::MAX overflows on checked_add — should return Err
     let r = next_visited_count(u32::MAX, limits);
-    kani::assert(r.is_err(, "assertion failed"), "visited=u32::MAX should fail");
+    kani::assert(r.is_err(), "visited=u32::MAX should fail");
 }

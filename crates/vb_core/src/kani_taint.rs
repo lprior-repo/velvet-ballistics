@@ -108,7 +108,7 @@ fn read_taint_no_panic() {
     kani::assume(init_result.is_ok());
 
     let result = frame.read_taint(slot);
-    kani::assert(result.is_ok(, "assertion failed"), "read_taint with valid idx returns Ok");
+    kani::assert(result.is_ok(), "read_taint with valid idx returns Ok");
 }
 
 #[kani::proof]
@@ -137,5 +137,5 @@ fn write_taint_no_panic() {
     kani::assume(init_result.is_ok());
 
     let result = frame.write_taint(slot, taint);
-    kani::assert(result.is_ok(, "assertion failed"), "write_taint with valid idx returns Ok");
+    kani::assert(result.is_ok(), "write_taint with valid idx returns Ok");
 }

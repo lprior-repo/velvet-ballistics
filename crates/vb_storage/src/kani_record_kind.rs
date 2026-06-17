@@ -125,7 +125,7 @@ fn check_kind_28_snapshot_family_rejected() {
     let magic: u32 = crate::MAGIC_SNAPSHOT;
     let kind: u16 = 28;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "kind 28 with MAGIC_SNAPSHOT must return Err(RecordKindFamilyMismatch)",
     );
 }
@@ -136,7 +136,7 @@ fn check_kind_28_blob_family_rejected() {
     let magic: u32 = crate::MAGIC_BLOB;
     let kind: u16 = 28;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "kind 28 with MAGIC_BLOB must return Err(RecordKindFamilyMismatch)",
     );
 }
@@ -147,7 +147,7 @@ fn check_unknown_kind_rejected() {
     let kind: u16 = 29;
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
-    kani::assert(result.is_err(, "assertion failed"),
+    kani::assert(result.is_err(),
         "unknown kind 29 must be rejected by validate_kind_family",
     );
 }

@@ -74,7 +74,7 @@ fn kani_action_queue_capacity() {
         );
     } else {
         // Valid capacity (1..=MAX) must succeed
-        kani::assert(result.is_ok(, "assertion failed"), "valid capacity must be accepted");
+        kani::assert(result.is_ok(), "valid capacity must be accepted");
         if let Ok(queue) = result {
             kani::assert(queue.capacity(, "assertion failed") == capacity,
                 "queue reports the correct capacity",
@@ -105,7 +105,7 @@ fn kani_action_queue_full() {
     while i < capacity {
         let ticket = arbitrary_action_ticket(i as u64);
         let enqueued = queue.enqueue(ticket);
-        kani::assert(enqueued.is_ok(, "assertion failed"), "enqueue until capacity must succeed");
+        kani::assert(enqueued.is_ok(), "enqueue until capacity must succeed");
         i += 1;
     }
 
@@ -169,23 +169,23 @@ fn kani_action_queue_fifo() {
 
     // Dequeue must return in FIFO order: 0, then 1, then 2
     let first = queue.dequeue();
-    kani::assert(first.is_some(, "assertion failed"), "dequeue from non-empty queue returns Some");
+    kani::assert(first.is_some(), "dequeue from non-empty queue returns Some");
     if let Some(t) = first {
         kani::assert(t.seq.get(, "assertion failed") == 0, "first dequeued ticket has seq=0");
     }
 
     let second = queue.dequeue();
-    kani::assert(second.is_some(, "assertion failed"), "second dequeue returns Some");
+    kani::assert(second.is_some(), "second dequeue returns Some");
     if let Some(t) = second {
         kani::assert(t.seq.get(, "assertion failed") == 1, "second dequeued ticket has seq=1");
     }
 
     let third = queue.dequeue();
-    kani::assert(third.is_some(, "assertion failed"), "third dequeue returns Some");
+    kani::assert(third.is_some(), "third dequeue returns Some");
     if let Some(t) = third {
         kani::assert(t.seq.get(, "assertion failed") == 2, "third dequeued ticket has seq=2");
     }
 
     let fourth = queue.dequeue();
-    kani::assert(fourth.is_none(, "assertion failed"), "dequeue from empty queue returns None");
+    kani::assert(fourth.is_none(), "dequeue from empty queue returns None");
 }

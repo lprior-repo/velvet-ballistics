@@ -122,7 +122,7 @@ mod kani_guards_ps008 {
             &event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
-        kani::assert(result.is_ok(, "assertion failed"), "adequate max must accept");
+        kani::assert(result.is_ok(), "adequate max must accept");
     }
 
     /// C6: Sequencing proof: must not attempt byte admission before encoding.

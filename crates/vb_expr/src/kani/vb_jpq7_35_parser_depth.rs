@@ -69,7 +69,7 @@ fn check_parse_rejects_depth_exceeded() {
     let tokens = build_nested_tokens(65);
     let result = crate::parser::parse_expr(&tokens);
 
-    kani::assert(result.is_err(, "assertion failed"), "depth 65 must return an error");
+    kani::assert(result.is_err(), "depth 65 must return an error");
 
     match result {
         Err(e) => {

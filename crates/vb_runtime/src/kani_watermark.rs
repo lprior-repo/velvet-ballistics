@@ -39,7 +39,7 @@ fn kani_watermark_monotonic() {
 
     // Property 2: Complete seq=1 succeeds and advances boundary to 1
     let result1 = watermark.complete(run, 1);
-    kani::assert(result1.is_ok(, "assertion failed"), "complete(seq=1) must succeed for new watermark");
+    kani::assert(result1.is_ok(), "complete(seq=1) must succeed for new watermark");
 
     // After completing 1, boundary must be 1
     kani::assert(watermark.boundary(, "assertion failed") == 1,
@@ -48,7 +48,7 @@ fn kani_watermark_monotonic() {
 
     // Property 3: Complete seq=2 succeeds and advances boundary to 2
     let result2 = watermark.complete(run, 2);
-    kani::assert(result2.is_ok(, "assertion failed"), "complete(seq=2) must succeed when boundary=1");
+    kani::assert(result2.is_ok(), "complete(seq=2) must succeed when boundary=1");
 
     // After completing 2, boundary must be 2
     kani::assert(watermark.boundary(, "assertion failed") == 2,
@@ -79,7 +79,7 @@ fn kani_watermark_monotonic() {
 
     // Property 6: Complete seq=5 (gap in sequence) is accepted but boundary stays at 2
     let result_gap = watermark.complete(run, 5);
-    kani::assert(result_gap.is_ok(, "assertion failed"), "complete(seq=5) with gap must return Ok (queued as pending)");
+    kani::assert(result_gap.is_ok(), "complete(seq=5) with gap must return Ok (queued as pending)");
 
     // boundary must still be 2 because seq=3 and seq=4 are missing
     kani::assert(watermark.boundary(, "assertion failed") == 2,

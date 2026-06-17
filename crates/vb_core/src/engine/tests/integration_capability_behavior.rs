@@ -247,7 +247,7 @@ fn idempotency_same_key_slots_twice_yields_same_ok_result() -> Result<(), String
     };
     let mut frame = test_frame(2, 2);
     let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean);
-    kani::assert(write_result.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(write_result.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
     let result_b = verify_idempotency(&contract, &key_slots, &frame);
@@ -272,7 +272,7 @@ fn idempotency_same_key_twice_yields_same_err_result() -> Result<(), String> {
     };
     let mut frame = test_frame(2, 2);
     let write_result = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    kani::assert(write_result.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(write_result.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     let result_a = verify_idempotency(&contract, &key_slots, &frame);
     let result_b = verify_idempotency(&contract, &key_slots, &frame);
@@ -733,7 +733,7 @@ fn retry_safety_none_side_effect_passes_for_all_retry_safeties() -> Result<(), S
 fn taint_validation_secret_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
-    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(wr.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -745,7 +745,7 @@ fn taint_validation_secret_key_rejected() -> Result<(), String> {
 fn taint_validation_derived_from_secret_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(99), Taint::DerivedFromSecret);
-    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(wr.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(1)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -757,7 +757,7 @@ fn taint_validation_derived_from_secret_key_rejected() -> Result<(), String> {
 fn taint_validation_random_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(wr.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -769,7 +769,7 @@ fn taint_validation_random_key_rejected() -> Result<(), String> {
 fn taint_validation_time_dependent_key_rejected() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
-    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(wr.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -781,7 +781,7 @@ fn taint_validation_time_dependent_key_rejected() -> Result<(), String> {
 fn taint_validation_clean_key_passes() -> Result<(), String> {
     let mut frame = test_frame(2, 2);
     let wr = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
-    kani::assert(wr.is_ok(, "assertion failed"), "kani harness assertion");
+    kani::assert(wr.is_ok(), "kani harness assertion");
     let key_slots = [SlotIdx::new(0)];
     ensure_equal(
         validate_idempotency_key_ingredients(&key_slots, &frame),
@@ -1076,7 +1076,7 @@ mod kani {
         ];
 
         let result = validate_idempotency_key_ingredients(&key_slots, &frame);
-        kani::assert(result.is_err(, "assertion failed"),
+        kani::assert(result.is_err(),
             "validate must return Err when any key slot is tainted",
         );
 

@@ -63,11 +63,11 @@ fn lower_canonical_choose_otherwise_resolution() {
     match label_choice {
         0 | 1 | 2 => {
             // Exact match: must succeed (no panic)
-            kani::assert(result.is_ok(, "assertion failed"), "exact otherwise match must succeed");
+            kani::assert(result.is_ok(), "exact otherwise match must succeed");
         }
         _ => {
             // Missing label: must return an error (does not panic)
-            kani::assert(result.is_err(, "assertion failed"), "missing otherwise label must error");
+            kani::assert(result.is_err(), "missing otherwise label must error");
         }
     }
     std::mem::forget(builder);
