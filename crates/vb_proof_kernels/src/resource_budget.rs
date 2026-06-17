@@ -208,7 +208,84 @@ verus! {
         ensures
             spec_loop_mul(body, n).steps >= 0,
     {
-        // Product (or saturating product) of naturals is a natural.
+        assert(spec_loop_mul(body, n).steps >= 0);
+    }
+
+    // ── Exec: sequential_add — field-wise saturating add and max ────────────
+    pub fn sequential_add(a: Budget, b: Budget) -> (result: Budget)
+        ensures
+            result == spec_sequential_add(a, b),
+    {
+        Budget {
+            steps: a.steps.saturating_add(b.steps),
+            actions: a.actions.saturating_add(b.actions),
+            parallel: a.parallel.max(b.parallel),
+            retries: a.retries.max(b.retries),
+            gather_pages: a.gather_pages.saturating_add(b.gather_pages),
+            gather_items: a.gather_items.saturating_add(b.gather_items),
+            for_each_iters: a.for_each_iters.max(b.for_each_iters),
+            together_branches: a.together_branches.max(b.together_branches),
+            repeat_attempts: a.repeat_attempts.max(b.repeat_attempts),
+            run_time_secs: a.run_time_secs.saturating_add(b.run_time_secs),
+            result_bytes: a.result_bytes.max(b.result_bytes),
+            slots_written: a.slots_written.saturating_add(b.slots_written),
+        }
+    }
+
+    // ── Exec: branch_max — field-wise max ──────────────────────────────────
+    pub fn branch_max(a: Budget, b: Budget) -> (result: Budget)
+        ensures
+            result == spec_branch_max(a, b),
+    {
+        Budget {
+            steps: a.steps.max(b.steps),
+            actions: a.actions.max(b.actions),
+            parallel: a.parallel.max(b.parallel),
+            retries: a.retries.max(b.retries),
+            gather_pages: a.gather_pages.max(b.gather_pages),
+            gather_items: a.gather_items.max(b.gather_items),
+            for_each_iters: a.for_each_iters.max(b.for_each_iters),
+            together_branches: a.together_branches.max(b.together_branches),
+            repeat_attempts: a.repeat_attempts.max(b.repeat_attempts),
+            run_time_secs: a.run_time_secs.max(b.run_time_secs),
+            result_bytes: a.result_bytes.max(b.result_bytes),
+            slots_written: a.slots_written.max(b.slots_written),
+        }
+    }
+
+    // ── Exec: loop_mul — field-wise saturating multiply ────────────────────
+    pub fn loop_mul(body: Budget, iterations: u64) -> (result: Budget)
+        ensures
+            result == spec_loop_mul(body, iterations as nat),
+    {
+        Budget {
+            steps: body.steps.saturating_mul(iterations),
+            actions: body.actions.saturating_mul(iterations),
+            parallel: body.parallel.saturating_mul(iterations),
+            retries: body.retries.saturating_mul(iterations),
+            gather_pages: body.gather_pages.saturating_mul(iterations),
+            gather_items: body.gather_items.saturating_mul(iterations),
+            for_each_iters: body.for_each_iters.saturating_mul(iterations),
+            together_branches: body.together_branches.saturating_mul(iterations),
+            repeat_attempts: body.repeat_attempts.saturating_mul(iterations),
+            run_time_secs: body.run_time_secs.saturating_mul(iterations),
+            result_bytes: body.result_bytes.saturating_mul(iterations),
+            slots_written: body.slots_written.saturating_mul(iterations),
+        }
+    }
+
+    // ── Exec: is_zero_budget — all fields are zero ─────────────────────────
+    pub fn is_zero_budget(b: Budget) -> (zero: bool)
+        ensures
+            zero == (b.steps == 0 && b.actions == 0 && b.parallel == 0 && b.retries == 0
+                && b.gather_pages == 0 && b.gather_items == 0 && b.for_each_iters == 0
+                && b.together_branches == 0 && b.repeat_attempts == 0 && b.run_time_secs == 0
+                && b.result_bytes == 0 && b.slots_written == 0),
+    {
+        b.steps == 0 && b.actions == 0 && b.parallel == 0 && b.retries == 0
+            && b.gather_pages == 0 && b.gather_items == 0 && b.for_each_iters == 0
+            && b.together_branches == 0 && b.repeat_attempts == 0 && b.run_time_secs == 0
+            && b.result_bytes == 0 && b.slots_written == 0
     }
 
 } // verus!

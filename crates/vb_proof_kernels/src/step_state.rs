@@ -145,7 +145,62 @@ verus! {
         ensures
             spec_valid_transition(terminal, terminal),
     {
-        // Structural: all terminal states have self-transitions.
+        // Succeeded->Succeeded, Failed->Failed, Cancelled->Cancelled, Skipped->Skipped
+        // are all listed in spec_valid_transition.
+        assert(spec_valid_transition(terminal, terminal));
+    }
+
+    // ── Exec: is_valid_transition — state machine transition validator ─────
+    pub fn is_valid_transition(from: StepState, to: StepState) -> (valid: bool)
+        ensures
+            valid == spec_valid_transition(from, to),
+    {
+        from == to
+            || (from == StepState::Pending
+                && (to == StepState::Running
+                    || to == StepState::Succeeded
+                    || to == StepState::Failed
+                    || to == StepState::Cancelled
+                    || to == StepState::Skipped))
+            || (from == StepState::Running
+                && (to == StepState::Succeeded
+                    || to == StepState::Failed
+                    || to == StepState::Waiting
+                    || to == StepState::Asking
+                    || to == StepState::Cancelled
+                    || to == StepState::Skipped))
+            || (from == StepState::Waiting && to == StepState::Running)
+            || (from == StepState::Asking && to == StepState::Running)
+            || (from == StepState::Succeeded && to == StepState::Succeeded)
+            || (from == StepState::Failed && to == StepState::Failed)
+            || (from == StepState::Cancelled && to == StepState::Cancelled)
+            || (from == StepState::Skipped && to == StepState::Skipped)
+    }
+
+    // ── Exec: is_terminal — state classification ──────────────────────────
+    pub fn is_terminal(s: StepState) -> (terminal: bool)
+        ensures
+            terminal == spec_is_terminal(s),
+    {
+        s == StepState::Succeeded
+            || s == StepState::Failed
+            || s == StepState::Cancelled
+            || s == StepState::Skipped
+    }
+
+    // ── Exec: validate_transition — returns Ok if transition is valid ──────
+    pub fn validate_transition(from: StepState, to: StepState) -> (result: Result<StepState, &'static str>)
+        ensures
+            match result {
+                Ok(s) => s == to && spec_valid_transition(from, to),
+                Err(_) => !spec_valid_transition(from, to),
+            },
+    {
+        if spec_valid_transition(from, to) {
+            Ok(to)
+        } else {
+            Err("invalid_state_transition")
+        }
     }
 
 } // verus!
