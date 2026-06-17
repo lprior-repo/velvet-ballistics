@@ -88,9 +88,15 @@ tasks:
       runInCI: true
 
   check-ai-pr-contract:
-    command: 'bash scripts/check-ai-pr-contract.sh'
+    # Per-bead vb-yxr09: this gate runs the self-test for the AI PR
+    # contract script. The gate itself (check-ai-pr-contract.sh) requires
+    # a file argument and is tested by test-check-ai-pr-contract.sh
+    # against the positive/negative fixtures in fixtures/ai-pr-contract/.
+    # The CI gate is the self-test, not a direct invocation of the gate.
+    command: 'bash scripts/test-check-ai-pr-contract.sh'
     inputs:
       - 'scripts/check-ai-pr-contract.sh'
+      - 'scripts/test-check-ai-pr-contract.sh'
       - 'fixtures/ai-pr-contract/**/*'
       - '.moon/tasks/all.yml'
     options:
@@ -387,6 +393,9 @@ tasks:
     # Consolidates the 3 *.percentiles.jsonl sidecars from
     # evidence/benchmark-logs/ with section39-metadata.jsonl into
     # evidence/section39-latency.jsonl.
+    # why: section39-latency.jsonl is a post-merge evidence-consolidation
+    # step that depends on benchmark proof output (master §39). The
+    # evidence lives outside the release-gate path; reruns are ad-hoc.
     command: 'bash scripts/build-section39-latency.sh'
     deps:
       - 'bench-build'
@@ -487,6 +496,9 @@ tasks:
     # simultaneously accept the [package.metadata] form and the
     # [package.metadata.cargo-fuzz] form; this script bridges
     # between them so the fuzz harness builds.
+    # why: developer-only workspace maintenance that mutates fuzz/Cargo.toml
+    # in place; the canonical CI fuzz lane is `fuzz-smoke`. Running the
+    # minimization here would race with the active fuzz harness build.
     command: 'bash scripts/fuzz-minimization.sh'
     inputs:
       - 'scripts/fuzz-minimization.sh'
@@ -501,6 +513,10 @@ tasks:
     # region: extracts accepted helper bodies from
     # crates/vb_queue_semantics/src/lib.rs and rewrites only the
     # marked region in verification/verus/...
+    # why: developer-only mechanical code generator that is run by the
+    # verus proof author when the queue_state helper region needs to be
+    # rebuilt. It rewrites files in place and is owned by the vb-8mdp.8
+    # bead; the canonical CI verus lane is `verify-verus`.
     command: 'python scripts/generate_queue_state_verus_helpers.py'
     inputs:
       - 'scripts/generate_queue_state_verus_helpers.py'
@@ -516,6 +532,11 @@ tasks:
     # The smoke here just checks the script can be invoked; real
     # usage wraps cargo test args; that is up to per-bead task
     # bodies.
+    # why: the current body is a smoke (`--help`) and the real
+    # zero-test guard is owned by the per-bead tasks that wrap
+    # `cargo test` / `cargo nextest`. The standalone task would
+    # shadow that wiring; the canonical fail-closed test lane is
+    # `test` (cargo nextest).
     script: |
       set -euo pipefail
       bash scripts/guard-zero-tests.sh --help >/dev/null
@@ -547,6 +568,12 @@ tasks:
     # obligations lives in .moon/tasks/kani.yml / loom.yml
     # (vb-ybzsz parent bead); this task provides an off-cycle smoke
     # that exercises kani-list.sh on the same packages.
+    # why: off-CI developer smoke. The canonical Flux/Loom wiring is
+    # owned by the vb-ybzsz parent bead and the per-crate Kani lanes
+    # (`verify-kani*`) already cover the same packages. Running the
+    # enumeration in CI would not add evidence and `cargo kani list`
+    # requires the Kani toolchain to be installed (fail-closed
+    # otherwise).
     command: 'bash scripts/kani-list.sh vb_core vb_compile'
     toolchains:
       - rust
@@ -988,6 +1015,9 @@ tasks:
       runInCI: false
 
   benchmark-proof:
+    # why: master §41 removed generated Rust / PGO / maxperf workflows as
+    # current release gates. Saving a Criterion baseline is therefore not a
+    # Backend / IR Interpreter Complete milestone requirement.
     command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-targets --all-features -- --save-baseline vb-current'
     toolchains:
       - rust
@@ -1001,6 +1031,9 @@ tasks:
       runInCI: false
 
   pgo-instrument-build:
+    # why: master §41 removed PGO and the `maxperf` profile from current
+    # release gates; the binary is built via the regular release lane and
+    # the cargo `maxperf` profile in Cargo.toml is dormant.
     script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
       - rust
@@ -1014,6 +1047,9 @@ tasks:
       runInCI: false
 
   pgo-optimized-build:
+    # why: master §41 removed PGO and the `maxperf` profile from current
+    # release gates; the optimized PGO build is dormant and not a current
+    # milestone requirement.
     script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet-ballistics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
       - rust
@@ -1027,6 +1063,9 @@ tasks:
       runInCI: false
 
   maxperf:
+    # why: master §41 removed the `maxperf` profile and generated Rust
+    # execution from current release gates; the release build runs in the
+    # regular release lane and this dedicated `maxperf` target is dormant.
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
@@ -1069,6 +1108,11 @@ tasks:
       runInCI: false
 
   verify-fast:
+    # why: developer-only deep verification gauntlet (rust-verification-gauntlet.sh
+    # fast/standard/deep/proof/all); the canonical CI evidence is the per-tool
+    # `verify-kani*`, `verify-verus*`, `verify-tlc*`, and `loom-*` tasks that
+    # are owned by their respective beads. The fast lane is the smallest local
+    # catch-all and is not a release gate.
     command: 'bash scripts/rust-verification-gauntlet.sh fast'
     toolchains:
       - rust
@@ -1082,6 +1126,10 @@ tasks:
       runInCI: false
 
   verify-standard:
+    # why: developer-only deep verification gauntlet (see verify-fast for the
+    # rationale); `standard` is a longer local pass that overlaps the
+    # per-tool `verify-kani*` / `verify-verus*` / `verify-tlc*` / `loom-*`
+    # tasks that are owned by their respective beads.
     command: 'bash scripts/rust-verification-gauntlet.sh standard'
     toolchains:
       - rust
@@ -1095,6 +1143,10 @@ tasks:
       runInCI: false
 
   verify-deep:
+    # why: developer-only deep verification gauntlet (see verify-fast for the
+    # rationale); `deep` is the longest local pass that overlaps the
+    # per-tool `verify-kani*` / `verify-verus*` / `verify-tlc*` / `loom-*`
+    # tasks that are owned by their respective beads.
     command: 'bash scripts/rust-verification-gauntlet.sh deep'
     toolchains:
       - rust
@@ -1120,6 +1172,10 @@ tasks:
       runInCI: true
 
   verify-proof:
+    # why: developer-only deep verification gauntlet (see verify-fast for the
+    # rationale); `proof` is a long-running local pass that overlaps the
+    # per-tool `verify-kani*` / `verify-verus*` / `verify-tlc*` / `loom-*`
+    # tasks that are owned by their respective beads.
     command: 'bash scripts/rust-verification-gauntlet.sh proof'
     toolchains:
       - rust
@@ -1133,6 +1189,10 @@ tasks:
       runInCI: false
 
   verify-all:
+    # why: developer-only deep verification gauntlet (see verify-fast for the
+    # rationale); `all` is the longest local pass and requires an explicit
+    # ALLOW_BEAD_LOCKBUD_WAIVER environment variable, so it can never be a
+    # default CI lane.
     command: 'env VERIFY_BEAD_ID=vb-nf2u ALLOW_BEAD_LOCKBUD_WAIVER=1 bash scripts/rust-verification-gauntlet.sh all'
     toolchains:
       - rust
@@ -1161,6 +1221,10 @@ tasks:
       runInCI: false
 
   quick:
+    # why: developer-only short pipeline (fmt + lint-src + check +
+    # nightly-feature-gate) used as a fast pre-push local sanity check.
+    # The canonical CI pipeline is `moon ci`; running `quick` from CI would
+    # duplicate the per-tool tasks and slow the lane down.
     script: |
       moon run :fmt
       moon run :lint-src
