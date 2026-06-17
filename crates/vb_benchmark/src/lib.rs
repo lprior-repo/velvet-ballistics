@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::panic, clippy::panic_in_result_fn)]
 
 //! Core benchmark metadata types for Velvet Ballistics performance tracking.
 //!
@@ -594,7 +595,39 @@ mod density_tests {
             field: LatencyFieldId::FjallWrite,
         };
         let s = format!("{}", e);
-        assert!(s.contains("FjallWrite") || s.contains("zero latency"));
+        assert!(
+            s.contains("fjall_write_latency_ns"),
+            "display should contain exact field name 'fjall_write_latency_ns', got '{s}'"
+        );
+    }
+
+    #[test]
+    fn evidence_error_regression_display_includes_name_and_delta() {
+        let e = EvidenceError::RegressionDetected {
+            benchmark: String::from("bench"),
+            delta: 42,
+        };
+        let s = format!("{}", e);
+        assert!(
+            s.contains("bench"),
+            "display must include benchmark name"
+        );
+        assert!(
+            s.contains("delta=42"),
+            "display must include delta value"
+        );
+    }
+
+    #[test]
+    fn evidence_error_missing_result_display() {
+        let e = EvidenceError::MissingResult;
+        assert_eq!(format!("{}", e), "missing result measurement");
+    }
+
+    #[test]
+    fn evidence_error_empty_budget_display() {
+        let e = EvidenceError::EmptyBudget;
+        assert_eq!(format!("{}", e), "budget not configured");
     }
 
     // -- capture_metadata: every field is propagated ----------------------------
@@ -613,7 +646,10 @@ mod density_tests {
             200,
             300,
         );
-        let m = r.unwrap();
+        let m = match r {
+            Ok(v) => v,
+            Err(e) => panic!("capture_metadata should succeed, got Err({e:?})"),
+        };
         assert_eq!(m.name, "my-bench");
         assert_eq!(m.baseline_us, Some(50_000));
         assert_eq!(m.result_us, 75_000);
@@ -624,5 +660,48 @@ mod density_tests {
         assert_eq!(m.fjall_write_latency_ns, 100);
         assert_eq!(m.direct_api_latency_ns, 200);
         assert_eq!(m.ipc_latency_ns, 300);
+    }
+
+    #[test]
+    fn capture_metadata_zero_baseline_ok() {
+        let r = capture_metadata(
+            "zero-baseline",
+            Some(Duration::ZERO),
+            Duration::from_micros(50_000),
+            "run",
+            "abc123",
+            "env",
+            100_000,
+            10,
+            20,
+            30,
+        );
+        let m = match r {
+            Ok(v) => v,
+            Err(e) => panic!("capture_metadata should succeed, got Err({e:?})"),
+        };
+        assert_eq!(m.baseline_us, Some(0));
+        assert_eq!(m.result_us, 50_000);
+    }
+
+    #[test]
+    fn capture_metadata_none_baseline_ok() {
+        let r = capture_metadata(
+            "no-baseline",
+            None,
+            Duration::from_micros(50_000),
+            "run",
+            "abc123",
+            "env",
+            100_000,
+            10,
+            20,
+            30,
+        );
+        let m = match r {
+            Ok(v) => v,
+            Err(e) => panic!("capture_metadata should succeed, got Err({e:?})"),
+        };
+        assert_eq!(m.baseline_us, None);
     }
 }

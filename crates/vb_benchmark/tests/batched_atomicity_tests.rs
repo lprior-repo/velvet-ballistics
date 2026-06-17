@@ -19,8 +19,6 @@
     clippy::collapsible_match,
     clippy::duplicated_attributes,
     clippy::err_expect,
-    clippy::expect_fun_call,
-    clippy::expect_used,
     clippy::explicit_counter_loop,
     clippy::field_reassign_with_default,
     clippy::filter_map_next,
@@ -116,7 +114,6 @@
     clippy::unused_io_amount,
     clippy::unused_self,
     clippy::unused_trait_names,
-    clippy::unwrap_used,
     clippy::useless_asref,
     clippy::useless_conversion,
     clippy::useless_format,
@@ -176,11 +173,25 @@ impl CountingJournal {
             .map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)?;
         Ok(events.clone())
     }
+
+    pub fn append_count(&self) -> usize {
+        match self.append_count.lock() {
+            Ok(guard) => *guard,
+            Err(_) => panic!("append_count mutex poisoned"),
+        }
+    }
+
+    pub fn batch_count(&self) -> usize {
+        match self.batch_count.lock() {
+            Ok(guard) => *guard,
+            Err(_) => panic!("batch_count mutex poisoned"),
+        }
+    }
 }
 
 impl RuntimeJournal for CountingJournal {
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
-        *self.append_count.lock().unwrap() += 1;
+        *self.append_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         let mut events = self
             .events
             .lock()
@@ -204,7 +215,7 @@ impl RuntimeJournal for CountingJournal {
         event: RuntimeJournalEvent,
         _seq: EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        *self.append_count.lock().unwrap() += 1;
+        *self.append_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         let mut events = self
             .events
             .lock()
@@ -228,7 +239,7 @@ impl RuntimeJournal for CountingJournal {
         events: &[RuntimeJournalEvent],
         seq_start: EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        *self.batch_count.lock().unwrap() += 1;
+        *self.batch_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         for (offset, event) in events.iter().enumerate() {
             let offset_u64 =
                 u64::try_from(offset).map_err(|_| vb_runtime::RuntimeError::EncodeFailed)?;
@@ -255,7 +266,7 @@ impl RuntimeJournal for CountingJournal {
 // Helpers (duplicated from benches/batched_atomicity.rs)
 // ============================================================================
 
-fn build_finish_workflow() -> CompiledWorkflow {
+fn build_finish_workflow() -> Result<CompiledWorkflow, vb_core::workflow::WorkflowError> {
     let set_const = CompiledNode {
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
@@ -289,15 +300,24 @@ fn build_finish_workflow() -> CompiledWorkflow {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    CompiledWorkflow::try_from_parts(parts).expect("build_finish_workflow")
+    CompiledWorkflow::try_from_parts(parts)
 }
 
-fn drain_shard(shard: &mut Shard) {
+fn drain_shard(shard: &mut Shard) -> Result<(), vb_runtime::RuntimeError> {
     while shard.command_queue_len() > 0 {
-        shard.tick().expect("shard tick");
+        match shard.tick()? {
+            true => {}
+            false => break,
+        }
     }
     let _ = shard.enqueue(ShardCommand::Shutdown);
-    while shard.tick().expect("shard tick") {}
+    while {
+        match shard.tick()? {
+            true => true,
+            false => false,
+        }
+    } {}
+    Ok(())
 }
 
 fn build_shards() -> (Shard, Shard, Arc<CountingJournal>, Arc<CountingJournal>) {
@@ -342,7 +362,10 @@ fn build_shards() -> (Shard, Shard, Arc<CountingJournal>, Arc<CountingJournal>) 
 /// The coalescing ratio = batch_calls / total_events must be <= 0.5.
 #[test]
 fn coalescing_ratio_at_least_three() {
-    let workflow = build_finish_workflow();
+    let workflow = match build_finish_workflow() {
+        Ok(w) => w,
+        Err(e) => panic!("build_finish_workflow failed: {e:?}"),
+    };
 
     let (mut shard_a, mut shard_b, counting_a, counting_b) = build_shards();
 
@@ -360,13 +383,19 @@ fn coalescing_ratio_at_least_three() {
         });
     }
 
-    drain_shard(&mut shard_a);
-    drain_shard(&mut shard_b);
+    match drain_shard(&mut shard_a) {
+        Ok(()) => {}
+        Err(e) => panic!("drain shard_a failed: {e:?}"),
+    }
+    match drain_shard(&mut shard_b) {
+        Ok(()) => {}
+        Err(e) => panic!("drain shard_b failed: {e:?}"),
+    }
 
-    let append_a = *counting_a.append_count.lock().unwrap();
-    let batch_a = *counting_a.batch_count.lock().unwrap();
-    let append_b = *counting_b.append_count.lock().unwrap();
-    let batch_b = *counting_b.batch_count.lock().unwrap();
+    let append_a = counting_a.append_count();
+    let batch_a = counting_a.batch_count();
+    let append_b = counting_b.append_count();
+    let batch_b = counting_b.batch_count();
 
     // Both shards must write the same total events (same commands, same workflow).
     assert_eq!(
@@ -401,8 +430,14 @@ fn coalescing_ratio_at_least_three() {
     );
 
     // Verify event counts match append counts.
-    let events_a = counting_a.snapshot().unwrap().len();
-    let events_b = counting_b.snapshot().unwrap().len();
+    let events_a = match counting_a.snapshot() {
+        Ok(ev) => ev.len(),
+        Err(e) => panic!("snapshot_a failed: {e:?}"),
+    };
+    let events_b = match counting_b.snapshot() {
+        Ok(ev) => ev.len(),
+        Err(e) => panic!("snapshot_b failed: {e:?}"),
+    };
     assert_eq!(
         events_a, events_b,
         "event counts must match: events_a={events_a} events_b={events_b}"
@@ -421,7 +456,10 @@ fn coalescing_ratio_at_least_three() {
 /// and the >= 3.0x threshold. The test fails if the ratio is below 3.0x.
 #[test]
 fn records_evidence_json_with_ratio() {
-    let workflow = build_finish_workflow();
+    let workflow = match build_finish_workflow() {
+        Ok(w) => w,
+        Err(e) => panic!("build_finish_workflow failed: {e:?}"),
+    };
 
     let (mut shard_a, mut shard_b, counting_a, counting_b) = build_shards();
 
@@ -438,15 +476,27 @@ fn records_evidence_json_with_ratio() {
         });
     }
 
-    drain_shard(&mut shard_a);
-    drain_shard(&mut shard_b);
+    match drain_shard(&mut shard_a) {
+        Ok(()) => {}
+        Err(e) => panic!("drain shard_a failed: {e:?}"),
+    }
+    match drain_shard(&mut shard_b) {
+        Ok(()) => {}
+        Err(e) => panic!("drain shard_b failed: {e:?}"),
+    }
 
-    let append_a = *counting_a.append_count.lock().unwrap();
-    let batch_a = *counting_a.batch_count.lock().unwrap();
-    let append_b = *counting_b.append_count.lock().unwrap();
-    let batch_b = *counting_b.batch_count.lock().unwrap();
-    let events_a = counting_a.snapshot().unwrap().len();
-    let events_b = counting_b.snapshot().unwrap().len();
+    let append_a = counting_a.append_count();
+    let batch_a = counting_a.batch_count();
+    let append_b = counting_b.append_count();
+    let batch_b = counting_b.batch_count();
+    let events_a = match counting_a.snapshot() {
+        Ok(ev) => ev.len(),
+        Err(e) => panic!("snapshot_a failed: {e:?}"),
+    };
+    let events_b = match counting_b.snapshot() {
+        Ok(ev) => ev.len(),
+        Err(e) => panic!("snapshot_b failed: {e:?}"),
+    };
 
     // Ratio = (events written with window=1) / (batch calls with window=10).
     // This is the I/O-call reduction factor: with window=1 every event is
@@ -484,15 +534,21 @@ fn records_evidence_json_with_ratio() {
     // `CARGO_MANIFEST_DIR` is `crates/vb_benchmark`; the workspace root is
     // two parents up.
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let workspace_root = manifest_dir
-        .parent()
-        .and_then(|p| p.parent())
-        .expect("workspace root has two parents above crate manifest dir");
+    let workspace_root = match manifest_dir.parent().and_then(|p| p.parent()) {
+        Some(p) => p.to_path_buf(),
+        None => panic!("workspace root has two parents above crate manifest dir"),
+    };
     let evidence_dir = workspace_root.join(".evidence");
-    std::fs::create_dir_all(&evidence_dir).expect("create .evidence dir");
+    std::fs::create_dir_all(&evidence_dir).unwrap_or_else(|e| {
+        panic!("create .evidence dir: {e}");
+    });
     let evidence_path = evidence_dir.join("batched_atomicity_bench.json");
-    let pretty = serde_json::to_string_pretty(&evidence).expect("serialize evidence");
-    std::fs::write(&evidence_path, pretty).expect("write evidence JSON");
+    let pretty = serde_json::to_string_pretty(&evidence).unwrap_or_else(|e| {
+        panic!("serialize evidence: {e}");
+    });
+    std::fs::write(&evidence_path, pretty).unwrap_or_else(|e| {
+        panic!("write evidence JSON: {e}");
+    });
 
     eprintln!(
         "wrote {} (ratio={ratio:.2}x, threshold=3.0x)",

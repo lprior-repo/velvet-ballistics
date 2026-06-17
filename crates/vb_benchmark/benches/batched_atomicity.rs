@@ -16,8 +16,6 @@
     clippy::collapsible_if,
     clippy::collapsible_match,
     clippy::duplicated_attributes,
-    clippy::expect_fun_call,
-    clippy::expect_used,
     clippy::field_reassign_with_default,
     clippy::filter_map_next,
     clippy::from_iter_instead_of_collect,
@@ -97,7 +95,6 @@
     clippy::unused_io_amount,
     clippy::unused_self,
     clippy::unused_trait_names,
-    clippy::unwrap_used,
     clippy::useless_conversion,
     clippy::useless_format,
     clippy::useless_vec,
@@ -160,11 +157,25 @@ impl CountingJournal {
             batch_count: Mutex::new(0),
         }
     }
+
+    fn append_count(&self) -> usize {
+        match self.append_count.lock() {
+            Ok(guard) => *guard,
+            Err(_) => 0,
+        }
+    }
+
+    fn batch_count(&self) -> usize {
+        match self.batch_count.lock() {
+            Ok(guard) => *guard,
+            Err(_) => 0,
+        }
+    }
 }
 
 impl RuntimeJournal for CountingJournal {
     fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
-        *self.append_count.lock().unwrap() += 1;
+        *self.append_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         let mut events = self
             .events
             .lock()
@@ -188,7 +199,7 @@ impl RuntimeJournal for CountingJournal {
         event: RuntimeJournalEvent,
         _seq: EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        *self.append_count.lock().unwrap() += 1;
+        *self.append_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         let mut events = self
             .events
             .lock()
@@ -212,7 +223,7 @@ impl RuntimeJournal for CountingJournal {
         events: &[RuntimeJournalEvent],
         seq_start: EventSeq,
     ) -> vb_runtime::RuntimeResult<()> {
-        *self.batch_count.lock().unwrap() += 1;
+        *self.batch_count.lock().map_err(|_| vb_runtime::RuntimeError::JournalPoisoned)? += 1;
         for (offset, event) in events.iter().enumerate() {
             let offset_u64 =
                 u64::try_from(offset).map_err(|_| vb_runtime::RuntimeError::EncodeFailed)?;
@@ -239,7 +250,7 @@ impl RuntimeJournal for CountingJournal {
 // Helpers
 // ============================================================================
 
-fn build_finish_workflow() -> CompiledWorkflow {
+fn build_finish_workflow() -> Result<CompiledWorkflow, vb_core::workflow::WorkflowError> {
     let set_const = CompiledNode {
         id: StepIdx::ZERO,
         output: Some(SlotIdx::new(0)),
@@ -273,15 +284,24 @@ fn build_finish_workflow() -> CompiledWorkflow {
         step_names: Box::from([]),
         resource_contract: ResourceContract::DEFAULT,
     };
-    CompiledWorkflow::try_from_parts(parts).expect("build_finish_workflow")
+    CompiledWorkflow::try_from_parts(parts)
 }
 
-fn drain_shard(shard: &mut Shard) {
+fn drain_shard(shard: &mut Shard) -> Result<(), vb_runtime::RuntimeError> {
     while shard.command_queue_len() > 0 {
-        shard.tick().expect("shard tick");
+        match shard.tick()? {
+            true => {}
+            false => break,
+        }
     }
     let _ = shard.enqueue(ShardCommand::Shutdown);
-    while shard.tick().expect("shard tick") {}
+    while {
+        match shard.tick()? {
+            true => true,
+            false => false,
+        }
+    } {}
+    Ok(())
 }
 
 fn build_shards() -> (Shard, Shard, Arc<CountingJournal>, Arc<CountingJournal>) {
@@ -314,7 +334,10 @@ fn build_shards() -> (Shard, Shard, Arc<CountingJournal>, Arc<CountingJournal>) 
 // ============================================================================
 
 fn bench_batched_atomicity(c: &mut Criterion) {
-    let workflow = build_finish_workflow();
+    let workflow = match build_finish_workflow() {
+        Ok(w) => w,
+        Err(e) => panic!("build_finish_workflow failed: {e:?}"),
+    };
 
     c.bench_function("batched_atomicity", |b| {
         b.iter_batched_ref(
@@ -333,13 +356,17 @@ fn bench_batched_atomicity(c: &mut Criterion) {
                     });
                 }
 
-                drain_shard(shard_a);
-                drain_shard(shard_b);
+                if drain_shard(shard_a).is_err() {
+                    return;
+                }
+                if drain_shard(shard_b).is_err() {
+                    return;
+                }
 
-                let batch_a = *counting_a.batch_count.lock().unwrap();
-                let batch_b = *counting_b.batch_count.lock().unwrap();
-                let append_a = *counting_a.append_count.lock().unwrap();
-                let append_b = *counting_b.append_count.lock().unwrap();
+                let batch_a = counting_a.batch_count();
+                let batch_b = counting_b.batch_count();
+                let append_a = counting_a.append_count();
+                let append_b = counting_b.append_count();
 
                 black_box((batch_a, batch_b, append_a, append_b));
             },

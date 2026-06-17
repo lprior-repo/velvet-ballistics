@@ -124,6 +124,13 @@
 use crate::*;
 use std::time::Duration;
 
+fn expect_metadata(result: Result<BenchmarkMetadata, EvidenceError>) -> BenchmarkMetadata {
+    match result {
+        Ok(v) => v,
+        Err(e) => panic!("capture_metadata should succeed, got Err({e:?})"),
+    }
+}
+
 // ============================================================================
 // capture_metadata — empty name and command
 // ============================================================================
@@ -133,7 +140,7 @@ use std::time::Duration;
 /// `check_evidence_gate`, not by `capture_metadata`.
 #[test]
 fn capture_metadata_empty_name_and_command() {
-    let result = capture_metadata(
+    let meta = expect_metadata(capture_metadata(
         "",             // name
         None,           // baseline (new benchmark)
         Duration::ZERO, // result
@@ -144,31 +151,26 @@ fn capture_metadata_empty_name_and_command() {
         1,              // fjall_write_latency_ns
         1,              // direct_api_latency_ns
         1,              // ipc_latency_ns
-    );
+    ));
 
-    match result {
-        Ok(meta) => {
-            assert!(
-                meta.name.is_empty(),
-                "name should be empty string, got '{}'",
-                meta.name
-            );
-            assert!(
-                meta.command.is_empty(),
-                "command should be empty string, got '{}'",
-                meta.command
-            );
-            assert_eq!(
-                meta.baseline_us, None,
-                "baseline should be None for new benchmark"
-            );
-            assert_eq!(
-                meta.result_us, 0,
-                "result_us should be 0 for Duration::ZERO"
-            );
-        }
-        Err(e) => panic!("capture_metadata with empty name/command must return Ok, got Err({e:?})"),
-    }
+    assert!(
+        meta.name.is_empty(),
+        "name should be empty string, got '{}'",
+        meta.name
+    );
+    assert!(
+        meta.command.is_empty(),
+        "command should be empty string, got '{}'",
+        meta.command
+    );
+    assert_eq!(
+        meta.baseline_us, None,
+        "baseline should be None for new benchmark"
+    );
+    assert_eq!(
+        meta.result_us, 0,
+        "result_us should be 0 for Duration::ZERO"
+    );
 }
 
 // ============================================================================
@@ -182,7 +184,7 @@ fn capture_metadata_empty_name_and_command() {
 fn capture_metadata_duration_overflow_baseline() {
     let overflow_baseline = Duration::from_secs(u64::MAX);
 
-    let result = capture_metadata(
+    let meta = expect_metadata(capture_metadata(
         "overflow_test",
         Some(overflow_baseline),
         Duration::ZERO,
@@ -193,24 +195,19 @@ fn capture_metadata_duration_overflow_baseline() {
         1,
         1,
         1,
-    );
+    ));
 
-    match result {
-        Ok(meta) => {
-            assert_eq!(
-                meta.baseline_us,
-                Some(u64::MAX),
-                "baseline_us should be u64::MAX when Duration::as_micros overflows"
-            );
-            // result_us is 0 because Duration::ZERO was passed (not the overflow duration).
-            // This test verifies the overflow guard on the *baseline* path.
-            assert_eq!(
-                meta.result_us, 0,
-                "result_us should be 0 for Duration::ZERO (non-overflowing path)"
-            );
-        }
-        Err(e) => panic!("capture_metadata with overflow baseline must return Ok, got Err({e:?})"),
-    }
+    assert_eq!(
+        meta.baseline_us,
+        Some(u64::MAX),
+        "baseline_us should be u64::MAX when Duration::as_micros overflows"
+    );
+    // result_us is 0 because Duration::ZERO was passed (not the overflow duration).
+    // This test verifies the overflow guard on the *baseline* path.
+    assert_eq!(
+        meta.result_us, 0,
+        "result_us should be 0 for Duration::ZERO (non-overflowing path)"
+    );
 }
 
 /// `result` at `Duration::from_secs(u64::MAX)` should also saturate to `u64::MAX`.
@@ -218,7 +215,7 @@ fn capture_metadata_duration_overflow_baseline() {
 fn capture_metadata_result_duration_overflow() {
     let overflow_result = Duration::from_secs(u64::MAX);
 
-    let result = capture_metadata(
+    let meta = expect_metadata(capture_metadata(
         "result_overflow",
         None,
         overflow_result,
@@ -229,18 +226,13 @@ fn capture_metadata_result_duration_overflow() {
         5,
         3,
         2,
-    );
+    ));
 
-    match result {
-        Ok(meta) => {
-            assert_eq!(
-                meta.result_us,
-                u64::MAX,
-                "result_us should be u64::MAX on result Duration overflow"
-            );
-        }
-        Err(e) => panic!("capture_metadata with overflow result must return Ok, got Err({e:?})"),
-    }
+    assert_eq!(
+        meta.result_us,
+        u64::MAX,
+        "result_us should be u64::MAX on result Duration overflow"
+    );
 }
 
 // ============================================================================
@@ -290,7 +282,10 @@ fn check_evidence_gate_all_zero_latencies_returns_first() {
         ipc_latency_ns: 0,
     };
 
-    let err = check_evidence_gate(&meta, 10).unwrap_err();
+    let err = match check_evidence_gate(&meta, 10) {
+        Err(e) => e,
+        Ok(_) => panic!("expected Err, got Ok"),
+    };
     match err {
         EvidenceError::ZeroLatencyField { field } => {
             assert_eq!(
@@ -319,7 +314,10 @@ fn check_evidence_gate_only_direct_api_zero() {
         ipc_latency_ns: 30,
     };
 
-    let err = check_evidence_gate(&meta, 10).unwrap_err();
+    let err = match check_evidence_gate(&meta, 10) {
+        Err(e) => e,
+        Ok(_) => panic!("expected Err, got Ok"),
+    };
     match err {
         EvidenceError::ZeroLatencyField { field } => {
             assert_eq!(
@@ -348,7 +346,10 @@ fn check_evidence_gate_only_ipc_zero() {
         ipc_latency_ns: 0,
     };
 
-    let err = check_evidence_gate(&meta, 10).unwrap_err();
+    let err = match check_evidence_gate(&meta, 10) {
+        Err(e) => e,
+        Ok(_) => panic!("expected Err, got Ok"),
+    };
     match err {
         EvidenceError::ZeroLatencyField { field } => {
             assert_eq!(
@@ -369,7 +370,7 @@ fn check_evidence_gate_only_ipc_zero() {
 /// but `check_evidence_gate` must reject it with `MissingEnvironment`.
 #[test]
 fn capture_metadata_empty_environment_passes_gate_rejection() {
-    let meta = capture_metadata(
+    let meta = expect_metadata(capture_metadata(
         "env_test",
         Some(Duration::from_micros(500)),
         Duration::from_micros(520),
@@ -380,13 +381,7 @@ fn capture_metadata_empty_environment_passes_gate_rejection() {
         100,
         50,
         30,
-    );
-
-    // capture_metadata must succeed — it does not validate semantic content.
-    let meta = match meta {
-        Ok(m) => m,
-        Err(e) => panic!("capture_metadata with empty environment must return Ok, got Err({e:?})"),
-    };
+    ));
 
     assert!(
         meta.environment.is_empty(),
@@ -394,7 +389,10 @@ fn capture_metadata_empty_environment_passes_gate_rejection() {
     );
 
     // Downstream gate must reject.
-    let err = check_evidence_gate(&meta, 10).unwrap_err();
+    let err = match check_evidence_gate(&meta, 10) {
+        Err(e) => e,
+        Ok(_) => panic!("expected Err, got Ok"),
+    };
     match err {
         EvidenceError::MissingEnvironment => {}
         other => panic!(
