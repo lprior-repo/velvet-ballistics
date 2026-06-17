@@ -141,33 +141,34 @@ fn error_sync() {
 fn error_in_result_workspace_not_discoverable() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::WorkspaceNotDiscoverable);
-    assert!(result.is_err());
     assert!(matches!(
         result,
         Err(BoundaryInventoryError::WorkspaceNotDiscoverable)
     ));
+    // Mutation gate: swapping the error variant must fail the exact-match above.
+    let _variant = result.unwrap_err();
 }
 
 #[test]
 fn error_in_result_inventory_parse_failure() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::InventoryParseFailure);
-    assert!(result.is_err());
     assert!(matches!(
         result,
         Err(BoundaryInventoryError::InventoryParseFailure)
     ));
+    let _variant = result.unwrap_err();
 }
 
 #[test]
 fn error_in_result_schema_version_unsupported() {
     let result: Result<(), BoundaryInventoryError> =
         Err(BoundaryInventoryError::SchemaVersionUnsupported);
-    assert!(result.is_err());
     assert!(matches!(
         result,
         Err(BoundaryInventoryError::SchemaVersionUnsupported)
     ));
+    let _variant = result.unwrap_err();
 }
 
 // =============================================================================

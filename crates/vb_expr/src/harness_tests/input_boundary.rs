@@ -159,7 +159,7 @@ fn harness_returns_silently_for_invalid_utf8_ff_fe_fd() {
 // ── A-2: Empty bytes produce valid UTF-8, lex returns [End] ──
 
 #[test]
-fn harness_returns_silently_for_empty_bytes() {
+fn harness_returns_silently_for_empty_bytes() -> crate::ExprResult<()> {
     // Given: empty byte slice
     let data: &[u8] = b"";
     // When: validated as UTF-8
@@ -167,36 +167,34 @@ fn harness_returns_silently_for_empty_bytes() {
         validate_utf8_for_harness(data),
         "empty bytes are valid UTF-8"
     );
-    let text = std::str::from_utf8(data).expect("empty bytes must be valid UTF-8");
+    let text = std::str::from_utf8(data).map_err(|_| ExprError::UnexpectedEof)?;
     // Then: lex returns Ok with [End] (empty input is valid for lexing)
-    let tokens = lex_expr(text);
-    assert!(tokens.is_ok(), "empty string must lex successfully");
-    let tokens = tokens.expect("empty string must lex successfully");
+    let tokens = lex_expr(text)?;
     assert_eq!(
         tokens.len(),
         1,
         "empty input must produce exactly one End token"
     );
+    Ok(())
 }
 
 // ── A-3: Whitespace-only input is valid UTF-8, lex returns [End] ──
 
 #[test]
-fn harness_returns_silently_for_whitespace_only_input() {
+fn harness_returns_silently_for_whitespace_only_input() -> crate::ExprResult<()> {
     // Given: whitespace-only input
     let data: &[u8] = b"   \t\n  ";
     // When: validated as UTF-8
     assert!(validate_utf8_for_harness(data), "whitespace is valid UTF-8");
-    let text = std::str::from_utf8(data).expect("whitespace must be valid UTF-8");
+    let text = std::str::from_utf8(data).map_err(|_| ExprError::UnexpectedEof)?;
     // Then: lex returns Ok with [End]
-    let tokens = lex_expr(text);
-    assert!(tokens.is_ok(), "whitespace-only must lex successfully");
-    let tokens = tokens.expect("whitespace-only must lex successfully");
+    let tokens = lex_expr(text)?;
     assert_eq!(
         tokens.len(),
         1,
         "whitespace-only must produce exactly one End token"
     );
+    Ok(())
 }
 
 // ── A-4: Harness never panics on arbitrary byte sequences ──

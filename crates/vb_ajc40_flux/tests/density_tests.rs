@@ -207,7 +207,10 @@ fn checked_pair_sum_max_zero() {
 
 #[test]
 fn checked_pair_sum_max_one_overflows() {
-    assert!(u64::MAX.checked_add(1).is_none());
+    assert!(
+        u64::MAX.checked_add(1).is_none(),
+        "u64::MAX + 1 must overflow to None"
+    );
 }
 
 #[test]
@@ -460,10 +463,16 @@ fn refinement_witness_remaining_budget_is_balanced() {
 
     assert_eq!(slug_remaining, 13);
     assert_eq!(query_remaining, 13);
-    assert!(validate_count(slug_count).is_ok());
-    assert!(validate_count(query_count).is_ok());
-    assert!(validate_summary(0, recomputed_total, declared_total, slug_depth, max_budget).is_ok());
-    assert!(validate_summary(0, recomputed_total, declared_total, query_depth, max_budget).is_ok());
+    assert!(matches!(validate_count(slug_count), Ok(3)), "slug_count=3 must be valid");
+    assert!(matches!(validate_count(query_count), Ok(3)), "query_count=3 must be valid");
+    assert!(
+        matches!(validate_summary(0, recomputed_total, declared_total, slug_depth, max_budget), Ok(100)),
+        "summary must succeed with balanced counts"
+    );
+    assert!(
+        matches!(validate_summary(0, recomputed_total, declared_total, query_depth, max_budget), Ok(100)),
+        "summary must succeed with balanced query"
+    );
 }
 
 // ── invalid_state_probes_fail_under_flux integration ──────────────────────
@@ -488,7 +497,10 @@ fn refinement_negative_probes_are_rejected_by_validators() {
         validate_summary(0, 12, 13, 0, 0),
         Err("declared_recomputed_mismatch")
     ));
-    assert!(u64::MAX.checked_add(1).is_none());
+    assert!(
+        u64::MAX.checked_add(1).is_none(),
+        "u64::MAX + 1 must overflow to None"
+    );
     assert!(matches!(
         validate_summary(0, 26, 26, 0, 25),
         Err("recomputed_exceeds_budget")

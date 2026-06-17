@@ -287,7 +287,7 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        assert!(result.is_ok(), "Simple Set workflow must still compile");
+        assert!(matches!(result, Ok(_)), "Simple Set workflow must still compile: {result:?}");
     }
 
     // Test 2: Two Set steps
@@ -310,7 +310,7 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        assert!(result.is_ok(), "Two Set workflow must still compile");
+        assert!(matches!(result, Ok(_)), "Two Set workflow must still compile: {result:?}");
     }
 
     // Test 3: Top-level together (already works, verify non-regression)
@@ -334,10 +334,7 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        assert!(
-            result.is_ok(),
-            "Top-level Together workflow must still compile"
-        );
+        assert!(matches!(result, Ok(_)), "Top-level Together workflow must still compile: {result:?}");
     }
 }
 
@@ -368,7 +365,8 @@ steps:
         // Top-level together with empty branches: may succeed or fail
         // depending on how branches without `steps:` are parsed.
         // Not in scope for body-position lowering (vb-xi2f.22).
-        assert!(result.is_ok() || result.is_err(), "Must not panic");
+        // Result is either Ok or Err (no panic).
+        let _ = result;
     }
 
     // Many branches with many steps
@@ -406,7 +404,8 @@ steps:
         let result = compile_yaml(yaml);
         // Top-level together with many branches: compilation path not
         // in scope for body-position lowering (vb-xi2f.22).
-        assert!(result.is_ok() || result.is_err(), "Must not panic");
+        // Result is either Ok or Err (no panic).
+        let _ = result;
     }
 }
 
@@ -444,7 +443,8 @@ steps:
     let result = compile_yaml(yaml);
     // Together with Do in branches: top-level compilation not in scope
     // for body-position lowering (vb-xi2f.22).
-    assert!(result.is_ok() || result.is_err(), "Must not panic");
+    // Result is either Ok or Err (no panic).
+    let _ = result;
 }
 
 // ---------------------------------------------------------------------------
@@ -491,7 +491,8 @@ steps:
     let result = compile_yaml(yaml);
     // Together with ForEach in branches: YAML format compatibility
     // depends on canonical YAML parsing, not body lowering (vb-xi2f.22).
-    assert!(result.is_ok() || result.is_err(), "Must not panic");
+    // Result is either Ok or Err (no panic).
+    let _ = result;
 }
 
 // ---------------------------------------------------------------------------

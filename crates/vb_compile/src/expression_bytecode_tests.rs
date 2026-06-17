@@ -529,7 +529,7 @@ fn constant_pool_overflow_in_expression_rejected() -> Result<(), String> {
     }
     let result = compile_expr_to_bytecode(&expr, &mut constants);
     adv_ensure(
-        result.is_err(),
+        matches!(result, Err(_)),
         "constant pool overflow (65536 existing + 1 new) should produce an error",
     )
 }
@@ -1988,7 +1988,7 @@ fn expression_with_max_constants_near_overflow_boundary() -> Result<(), String> 
     // constants has 65534 entries; pushing one more should succeed (65535 < 65536)
     let result = compile_expr_to_bytecode(&expr, &mut constants);
     adv_ensure(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "should succeed with u16::MAX - 1 existing constants",
     )?;
     adv_ensure(

@@ -40,7 +40,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "Section 47: secret in Finish must compile, got {:?}",
         result
     );
@@ -67,7 +67,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "Section 47: secret via slot relay in Finish must compile, got {:?}",
         result
     );
@@ -92,7 +92,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "Section 47: composite with secret in Finish must compile, got {:?}",
         result
     );
@@ -118,7 +118,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "Section 47: list with secret in Finish must compile, got {:?}",
         result
     );
@@ -142,7 +142,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "clean Finish must compile, got {:?}",
         result
     );
@@ -164,7 +164,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "literal Finish must compile, got {:?}",
         result
     );
@@ -188,7 +188,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "var Finish must compile, got {:?}",
         result
     );
@@ -227,7 +227,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "Section 47: deep slot chain ending in Finish must compile, got {:?}",
         result
     );
@@ -398,7 +398,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "unknown reference root in Finish must compile, got {:?}",
         result
     );
@@ -420,7 +420,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "non-dollar reference in Finish must compile, got {:?}",
         result
     );
@@ -483,7 +483,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        result.is_ok(),
+        matches!(result, Ok(_)),
         "clean input in Save should compile, got {:?}",
         result
     );
@@ -575,7 +575,7 @@ steps:
 
         let result = compile_workflow(source.as_bytes());
 
-        prop_assert!(result.is_ok(), "clean input in Finish must compile, got {:?}", result);
+        prop_assert!(matches!(result, Ok(_)), "clean input in Finish must compile, got {:?}", result);
     }
 }
 
@@ -595,6 +595,6 @@ steps:
 
         let result = compile_workflow(source.as_bytes());
 
-        prop_assert!(result.is_ok(), "literal in Finish must compile, got {:?}", result);
+        prop_assert!(matches!(result, Ok(_)), "literal in Finish must compile, got {:?}", result);
     }
 }

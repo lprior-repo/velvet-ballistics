@@ -512,7 +512,10 @@ steps:
         panic!("expected error");
     };
     let first = errors.first();
-    assert!(first.is_some());
+    assert!(
+        first.is_some(),
+        "errors.first() must return Some for a non-empty CompileErrors"
+    );
 }
 
 // ── CompileErrors len() and is_empty() ─────────────────────────────────────
@@ -591,7 +594,10 @@ fn yaml_compiler_default_constructs() {
 fn yaml_compiler_rejects_invalid_source() {
     let source = b"not yaml at all";
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(CompileErrors(_))),
+        "non-yaml source must be rejected with CompileErrors"
+    );
 }
 
 // ── YamlCompiler compile returns Err for invalid source ──────────────────────
@@ -600,7 +606,10 @@ fn yaml_compiler_rejects_invalid_source() {
 fn yaml_compiler_rejects_invalid_source_via_compile() {
     let source = b"not yaml at all";
     let result = YamlCompiler::default().compile(source);
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(CompileErrors(_))),
+        "non-yaml source must be rejected with CompileErrors"
+    );
 }
 
 // ── Parse expressions tests ─────────────────────────────────────────────────
@@ -609,31 +618,33 @@ fn yaml_compiler_rejects_invalid_source_via_compile() {
 fn parse_expression_accepts_integer_literals() {
     use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("42");
-    assert!(result.is_ok());
-    if let Ok(ParsedExpression::Literal(ExpressionLiteral::I64(n))) = result {
-        assert_eq!(n, 42);
-    } else {
-        panic!("expected integer literal");
-    }
+    assert!(
+        matches!(result, Ok(ParsedExpression::Literal(ExpressionLiteral::I64(42)))),
+        "parse_expression('42') should return Ok(I64(42)), got {:?}",
+        result
+    );
 }
 
 #[test]
 fn parse_expression_accepts_boolean_literals() {
     use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("true");
-    assert!(result.is_ok());
-    if let Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(b))) = result {
-        assert!(b);
-    } else {
-        panic!("expected boolean literal");
-    }
+    assert!(
+        matches!(result, Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(true)))),
+        "parse_expression('true') should return Ok(Bool(true)), got {:?}",
+        result
+    );
 }
 
 #[test]
 fn parse_expression_rejects_invalid_syntax() {
     use crate::expression::parse_expression;
     let result = parse_expression("= 1 + 2");
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "parse_expression('= 1 + 2') should be Err, got {:?}",
+        result
+    );
 }
 
 // ── Strict YAML profile tests ────────────────────────────────────────────────
@@ -642,21 +653,33 @@ fn parse_expression_rejects_invalid_syntax() {
 fn strict_yaml_rejects_alias() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("&anchor value");
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "strict_yaml must reject YAML aliases, got {:?}",
+        result
+    );
 }
 
 #[test]
 fn strict_yaml_accepts_single_document() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("key: value");
-    assert!(result.is_ok());
+    assert!(
+        matches!(result, Ok(())),
+        "strict_yaml must accept single-document YAML, got {:?}",
+        result
+    );
 }
 
 #[test]
 fn strict_yaml_rejects_multiple_documents() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("key1: value1\n---\nkey2: value2");
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "strict_yaml must reject multiple-document YAML, got {:?}",
+        result
+    );
 }
 
 // ── Expression helper tests ──────────────────────────────────────────────────
@@ -882,7 +905,11 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(result.is_ok(), "workflow with reference should parse");
+    assert!(
+        matches!(result, Ok(_)),
+        "workflow with input reference should parse, got {:?}",
+        result
+    );
 }
 
 // ── Integration: compute_compiled_digest is deterministic ───────────────────

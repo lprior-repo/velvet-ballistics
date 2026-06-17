@@ -1,15 +1,16 @@
 //! Property tests for ValidationError symbolic code uniqueness and coverage.
 //!
 //! Compensates: verified in Kani (PO-003), defense-in-depth runtime check.
-//! Invariant: All 58 ValidationError variants produce unique SymbolicCodes.
+//! Invariant: All 63 ValidationError variants produce unique SymbolicCodes.
 //! Invariant: Every returned SymbolicCode is registered in CODE_REGISTRY.
 //! Invariant: code() and symbolic_code() are consistent.
 
 use std::collections::BTreeSet;
 use vb_core::diagnostic::{CODE_REGISTRY, HasSymbolicCode, SymbolicCode};
+use vb_core::ids::{StepIdx, SymbolId};
 use vb_validate::ValidationError;
 
-/// Enumerate all 58 ValidationError variants.
+/// Enumerate all 63 ValidationError variants.
 fn all_validation_error_variants() -> Vec<ValidationError> {
     vec![
         // Schema: E01xx (11 variants)
@@ -28,7 +29,7 @@ fn all_validation_error_variants() -> Vec<ValidationError> {
         ValidationError::DuplicateId { id: "dup".into() },
         ValidationError::MultipleStepPrimitives,
         ValidationError::MissingStepPrimitive,
-        // Reference: E02xx (4 variants)
+        // Reference: E02xx (9 variants)
         ValidationError::UnknownReference {
             reference: "ref".into(),
         },
@@ -37,6 +38,24 @@ fn all_validation_error_variants() -> Vec<ValidationError> {
         },
         ValidationError::SecretNotDeclared { secret: "s".into() },
         ValidationError::DirectRuntimeReference,
+        ValidationError::ScopeGuardViolation {
+            reference: "$total.x".into(),
+            required_scope: "repeat".into(),
+        },
+        ValidationError::DirectLoopReference {
+            variable: "item".into(),
+        },
+        ValidationError::DirectStepReference {
+            step: "build".into(),
+        },
+        ValidationError::StepSkippedReference {
+            step: StepIdx::new(3),
+            reference: Box::from("bad_ref"),
+        },
+        ValidationError::ResultReferenceMissing {
+            step: StepIdx::new(0),
+            missing_output: SymbolId::new(0),
+        },
         // Control Flow: E03xx (9 variants)
         ValidationError::InvalidThenTarget,
         ValidationError::ControlFlowCycle,
@@ -168,12 +187,12 @@ fn all_validation_error_variants() -> Vec<ValidationError> {
 }
 
 #[test]
-fn validation_error_code_returns_symbolic_for_all_58_variants() {
+fn validation_error_code_returns_symbolic_for_all_63_variants() {
     let variants = all_validation_error_variants();
     assert_eq!(
         variants.len(),
-        58,
-        "must have exactly 58 ValidationError variants"
+        63,
+        "must have exactly 63 ValidationError variants"
     );
 
     for error in &variants {
@@ -189,7 +208,7 @@ fn validation_error_code_returns_symbolic_for_all_58_variants() {
 }
 
 #[test]
-fn validation_error_code_all_58_unique_symbolic_codes() {
+fn validation_error_code_all_63_unique_symbolic_codes() {
     let variants = all_validation_error_variants();
     let mut seen: BTreeSet<&str> = BTreeSet::new();
     for error in &variants {
@@ -204,8 +223,8 @@ fn validation_error_code_all_58_unique_symbolic_codes() {
     }
     assert_eq!(
         seen.len(),
-        58,
-        "all 58 variants must produce unique SymbolicCodes"
+        63,
+        "all 63 variants must produce unique SymbolicCodes"
     );
 }
 

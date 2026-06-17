@@ -84,7 +84,9 @@ fn span_has_nonzero_line_for_content() {
 fn typed_node_scalar_returns_value_via_as_scalar() {
     let yaml = "hello\n";
     let events = collect_ok!(yaml);
-    let scalar_event = events.iter().find(|e| e.as_scalar().is_some());
+    let scalar_event = events
+        .iter()
+        .find(|e| matches!(e, YamlEvent::Scalar { .. }));
     let Some(evt) = scalar_event else {
         fail_assert!("missing scalar event");
         return;
@@ -136,7 +138,9 @@ fn typed_node_is_document_start_for_doc_start_event() {
 fn typed_node_is_document_start_for_non_doc_start() {
     let yaml = "hello\n";
     let events = collect_ok!(yaml);
-    let scalar = events.iter().find(|e| e.as_scalar().is_some());
+    let scalar = events
+        .iter()
+        .find(|e| matches!(e, YamlEvent::Scalar { .. }));
     let Some(evt) = scalar else {
         fail_assert!("missing scalar");
         return;
@@ -160,7 +164,9 @@ fn typed_node_is_alias_returns_true_for_alias() {
 fn typed_node_is_alias_returns_false_for_scalar() {
     let yaml = "a: b\n";
     let events = collect_ok!(yaml);
-    let scalar = events.iter().find(|e| e.as_scalar().is_some());
+    let scalar = events
+        .iter()
+        .find(|e| matches!(e, YamlEvent::Scalar { .. }));
     let Some(evt) = scalar else {
         fail_assert!("missing scalar");
         return;
@@ -185,7 +191,9 @@ fn typed_node_span_returns_correct_line_column() {
 fn typed_node_tag_returns_none_for_untagged() {
     let yaml = "a: b\n";
     let events = collect_ok!(yaml);
-    let scalar = events.iter().find(|e| e.as_scalar().is_some());
+    let scalar = events
+        .iter()
+        .find(|e| matches!(e, YamlEvent::Scalar { .. }));
     let Some(evt) = scalar else {
         fail_assert!("missing scalar");
         return;
@@ -433,7 +441,10 @@ fn adversarial_events_unicode_zero_width_char_accepted_as_events() {
                 }
                 _ => None,
             });
-            assert!(scalar.is_some(), "expected scalar with zero-width joiner");
+            let Some(_zv) = scalar else {
+                fail_assert!("expected scalar with zero-width joiner");
+                return;
+            };
         }
         Err(e) => fail_assert!("expected Ok events, got Err: {e}"),
     }
@@ -451,7 +462,10 @@ fn adversarial_events_rtl_override_in_scalar_parsed() {
                 }
                 _ => None,
             });
-            assert!(scalar.is_some(), "expected scalar with RTL override");
+            let Some(_rv) = scalar else {
+                fail_assert!("expected scalar with RTL override");
+                return;
+            };
         }
         Err(e) => fail_assert!("expected Ok events, got Err: {e}"),
     }
@@ -477,7 +491,11 @@ fn adversarial_events_anchor_produces_nonzero_anchor_id() {
     let yaml = "a: &anc value\n";
     let events = collect_ok!(yaml);
     let anchored = events.iter().find(|e| e.anchor_id() != 0);
-    assert!(anchored.is_some(), "expected anchored event");
+    let Some(evt) = anchored else {
+        fail_assert!("expected anchored event");
+        return;
+    };
+    assert!(evt.anchor_id() > 0);
 }
 
 #[test]
@@ -485,7 +503,11 @@ fn adversarial_events_alias_produces_alias_variant() {
     let yaml = "a: &anc value\nb: *anc\n";
     let events = collect_ok!(yaml);
     let alias = events.iter().find(|e| e.is_alias());
-    assert!(alias.is_some(), "expected Alias event in stream");
+    let Some(evt) = alias else {
+        fail_assert!("expected Alias event in stream");
+        return;
+    };
+    assert!(evt.is_alias());
 }
 
 #[test]

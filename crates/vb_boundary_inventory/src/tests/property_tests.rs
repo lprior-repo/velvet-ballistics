@@ -463,9 +463,11 @@ fn boundary_record_draft_review_status_missing() {
         waiver: FieldState::Missing,
     });
     assert!(
-        record.review_status().is_none(),
+        matches!(record.review_status(), None),
         "Missing review_status must return None"
     );
+    // Mutation gate: if review_status() were to return Some(_) for Missing state,
+    // this test would catch it.
 }
 
 #[test]

@@ -71,14 +71,32 @@ fn validate_bead_id_uppercase_rejected() {
 fn validate_bead_id_with_hyphens() {
     let text = "vb-a1b2c3";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_ok());
+    let Ok(reference) = result else {
+        assert!(false, "vb-a1b2c3 is valid bead ID: {result:?}");
+        return;
+    };
+    match reference {
+        EvidenceReference::ExternalProvenance(val) => {
+            assert_eq!(val, text);
+        }
+        _ => assert!(false, "Expected ExternalProvenance for valid bead ID"),
+    }
 }
 
 #[test]
 fn validate_bead_id_numbers_only() {
     let text = "vb-12345";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_ok());
+    let Ok(reference) = result else {
+        assert!(false, "vb-12345 is valid bead ID: {result:?}");
+        return;
+    };
+    match reference {
+        EvidenceReference::ExternalProvenance(val) => {
+            assert_eq!(val, text);
+        }
+        _ => assert!(false, "Expected ExternalProvenance for valid bead ID"),
+    }
 }
 
 // =============================================================================
@@ -151,7 +169,16 @@ fn validate_path_with_dots_at_start() {
 fn validate_external_multiple_colons() {
     let text = "external:many:colons#sha256=abc123";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_ok());
+    let Ok(reference) = result else {
+        assert!(false, "multiple-colon external is valid: {result:?}");
+        return;
+    };
+    match reference {
+        EvidenceReference::ExternalProvenance(val) => {
+            assert_eq!(val, text);
+        }
+        _ => assert!(false, "Expected ExternalProvenance for external provenance"),
+    }
 }
 
 // =============================================================================
@@ -201,7 +228,17 @@ fn validate_very_long_bead_id() {
     let suffix = "a".repeat(500);
     let text = format!("vb-{}", suffix);
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_ok());
+    let Ok(reference) = result else {
+        assert!(false, "long bead ID must be valid: {result:?}");
+        return;
+    };
+    match reference {
+        EvidenceReference::ExternalProvenance(val) => {
+            assert_eq!(val, text);
+            assert_eq!(val.len(), 503); // "vb-" (3) + 500 chars
+        }
+        _ => assert!(false, "Expected ExternalProvenance"),
+    }
 }
 
 // =============================================================================
@@ -242,14 +279,32 @@ fn validate_bead_id_multiple_hyphens_rejected() {
 fn validate_bead_id_single_letter_suffix() {
     let text = "vb-a";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_ok());
+    let Ok(reference) = result else {
+        assert!(false, "single-letter bead ID suffix must be valid: {result:?}");
+        return;
+    };
+    match reference {
+        EvidenceReference::ExternalProvenance(val) => {
+            assert_eq!(val, text);
+        }
+        _ => assert!(false, "Expected ExternalProvenance"),
+    }
 }
 
 #[test]
 fn validate_bead_id_single_digit_suffix() {
     let text = "vb-7";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert!(result.is_ok());
+    let Ok(reference) = result else {
+        assert!(false, "single-digit bead ID suffix must be valid: {result:?}");
+        return;
+    };
+    match reference {
+        EvidenceReference::ExternalProvenance(val) => {
+            assert_eq!(val, text);
+        }
+        _ => assert!(false, "Expected ExternalProvenance"),
+    }
 }
 
 #[test]

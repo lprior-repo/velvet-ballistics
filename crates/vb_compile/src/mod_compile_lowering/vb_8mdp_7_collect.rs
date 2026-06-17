@@ -265,7 +265,7 @@ fn default_pages_and_items_are_1() {
         },
         &mut builder,
     );
-    assert!(result.is_ok(), "default collect should compile: {result:?}");
+    assert!(matches!(result, Ok(_)), "default collect should compile: {result:?}");
 
     let nodes = &builder.nodes;
     assert_eq!(nodes.len(), 4);
@@ -308,7 +308,7 @@ fn explicit_pages_and_items_are_preserved() {
         },
         &mut builder,
     );
-    assert!(result.is_ok(), "explicit collect should compile: {result:?}");
+    assert!(matches!(result, Ok(_)), "explicit collect should compile: {result:?}");
 
     let nodes = &builder.nodes;
     assert_eq!(nodes.len(), 4);
@@ -352,7 +352,7 @@ fn collect_finish_preserves_next() {
         },
         &mut builder,
     );
-    assert!(result.is_ok(), "collect with next should compile: {result:?}");
+    assert!(matches!(result, Ok(_)), "collect with next should compile: {result:?}");
 
     let nodes = &builder.nodes;
     assert_eq!(nodes.len(), 4);
@@ -396,7 +396,7 @@ fn node_ids_are_consecutive_from_step_idx() {
         },
         &mut builder,
     );
-    assert!(result.is_ok(), "collect compile: {result:?}");
+    assert!(matches!(result, Ok(_)), "collect compile: {result:?}");
 
     let nodes = &builder.nodes;
     assert_eq!(nodes[0].id.get(), 42, "node 0 at start");

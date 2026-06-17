@@ -250,10 +250,12 @@ fn bind_removes_existing_socket_file() {
 
     let result = IpcServer::bind(&path);
 
-    assert!(
-        result.is_ok(),
-        "bind should remove stale socket and succeed"
-    );
+    let Ok(_server) = result else {
+        match &result {
+            Err(e) => panic!("bind should remove stale socket and succeed: {e}"),
+            Ok(_) => panic!("unexpected Ok"),
+        }
+    };
 }
 
 #[test]
@@ -301,10 +303,10 @@ fn poll_once_accepts_client_connection() {
     // Poll to accept the client.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
 
-    assert!(
-        result.is_ok(),
-        "poll_once should succeed after client connects"
-    );
+    let Ok(continuing) = result else {
+        panic!("poll_once should succeed after client connects, got: {result:?}");
+    };
+    assert!(continuing, "server should indicate continuing");
 }
 
 #[test]
@@ -316,10 +318,10 @@ fn poll_once_with_resolver_returns_ok_without_resolver() {
 
     let result = server.poll_once_with_resolver(&mut runtime, Some(Duration::ZERO), None);
 
-    assert!(
-        result.is_ok(),
-        "poll_once_with_resolver with None resolver should succeed"
-    );
+    let Ok(continuing) = result else {
+        panic!("poll_once_with_resolver with None resolver should succeed, got: {result:?}");
+    };
+    assert!(continuing, "poll_once_with_resolver should return continuing=true");
 }
 
 // ── serve_ipc dispatch function tests ───────────────────────────────────────
@@ -439,10 +441,10 @@ fn server_handles_client_disconnect_gracefully() {
 
     // Poll again to detect the disconnect.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(
-        result.is_ok(),
-        "poll after client disconnect should succeed"
-    );
+    let Ok(continuing) = result else {
+        panic!("poll after client disconnect should succeed, got: {result:?}");
+    };
+    assert!(continuing, "poll after disconnect should return continuing=true");
     assert_eq!(
         server.client_count(),
         0,
@@ -610,13 +612,17 @@ fn server_responds_with_error_for_unsupported_version() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(
-        response_header_bytes.is_ok(),
-        "should read error response header"
+    let Ok(response_header) = response_header_bytes else {
+        panic!("should read error response header");
+    };
+    assert_eq!(
+        response_header.len(),
+        IPC_HEADER_LEN,
+        "error response header must be exactly {} bytes",
+        IPC_HEADER_LEN
     );
 
     // Read response payload.
-    let response_header = response_header_bytes.expect("header");
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
@@ -630,11 +636,14 @@ fn server_responds_with_error_for_unsupported_version() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(
-            response_payload.is_ok(),
-            "should read error response payload"
+        let Ok(payload) = response_payload else {
+            panic!("should read error response payload");
+        };
+        assert_eq!(
+            payload.len(),
+            payload_len_usize,
+            "error response payload length must match header"
         );
-        let payload = response_payload.expect("read payload");
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
         match decoded {
             Ok(IpcResponse::FrameError { message }) => {
@@ -805,11 +814,14 @@ fn server_processes_multiple_commands_from_same_client() {
     // Read both response headers.
     for i in 1..=2 {
         let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-        assert!(
-            response_header_bytes.is_ok(),
-            "should read response header {i}"
+        let Ok(response_header) = response_header_bytes else {
+            panic!("should read response header {i}");
+        };
+        assert_eq!(
+            response_header.len(),
+            IPC_HEADER_LEN,
+            "response header {i} must be exactly {IPC_HEADER_LEN} bytes"
         );
-        let response_header = response_header_bytes.expect("header");
         let payload_len = u32::from_le_bytes(
             response_header
                 .get(20..24)
@@ -1233,11 +1245,12 @@ fn bind_succeeds_after_previous_server_dropped() {
     // The socket file may or may not be cleaned up by mio on drop.
     // IpcServer::bind handles a stale file, so re-binding must succeed.
     let result = IpcServer::bind(&path);
-    assert!(
-        result.is_ok(),
-        "re-binding after server drop should succeed, got {:?}",
-        result.err()
-    );
+    let Ok(_server) = result else {
+        match &result {
+            Err(e) => panic!("re-binding after server drop should succeed: {e}"),
+            Ok(_) => panic!("unexpected Ok"),
+        }
+    };
 }
 
 // ── 2. bind: path is a directory, not a file ─────────────────────────────────
@@ -1285,10 +1298,13 @@ fn client_can_reconnect_after_disconnect_on_same_server() {
             .expect("process health");
 
         // Read response header.
-        let response_header = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-        assert!(
-            response_header.is_ok(),
-            "should read response header from first client"
+        let Ok(response_header) = read_exact_timeout(&mut client, IPC_HEADER_LEN) else {
+            panic!("should read response header from first client");
+        };
+        assert_eq!(
+            response_header.len(),
+            IPC_HEADER_LEN,
+            "response header must be {IPC_HEADER_LEN} bytes"
         );
 
         // Client drops here.
@@ -1313,10 +1329,13 @@ fn client_can_reconnect_after_disconnect_on_same_server() {
         .poll_once(&mut runtime, Some(Duration::from_millis(100)))
         .expect("process health 2");
 
-    let response_header = read_exact_timeout(&mut client2, IPC_HEADER_LEN);
-    assert!(
-        response_header.is_ok(),
-        "should read response header from second client"
+    let Ok(response_header) = read_exact_timeout(&mut client2, IPC_HEADER_LEN) else {
+        panic!("should read response header from second client");
+    };
+    assert_eq!(
+        response_header.len(),
+        IPC_HEADER_LEN,
+        "second client header must be {IPC_HEADER_LEN} bytes"
     );
 }
 
@@ -1349,18 +1368,18 @@ fn server_survives_client_drop_mid_frame() {
 
     // Poll to detect the disconnect and verify the server does not panic.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(
-        result.is_ok(),
-        "server should survive mid-frame client drop"
-    );
+    let Ok(continuing) = result else {
+        panic!("server should survive mid-frame client drop, got: {result:?}");
+    };
+    assert!(continuing, "poll after client drop should return continuing=true");
 
     // Server should still accept new clients.
     let _new_client = make_client(&path);
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(
-        result.is_ok(),
-        "server should accept new client after mid-frame drop"
-    );
+    let Ok(_cont) = result else {
+        panic!("server should accept new client after mid-frame drop, got: {result:?}");
+    };
+    assert!(_cont, "poll after accepting new client should return continuing=true");
 }
 
 // ── 5. frame encoding edge case: zero-length correlation round-trips ─────────
@@ -1511,12 +1530,14 @@ fn sequential_clients_each_get_health_response() {
             .expect("process poll should succeed");
 
         // Read response.
-        let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-        assert!(
-            response_header_bytes.is_ok(),
-            "should read response header for client {i}"
+        let Ok(response_header) = read_exact_timeout(&mut client, IPC_HEADER_LEN) else {
+            panic!("should read response header for client {i}");
+        };
+        assert_eq!(
+            response_header.len(),
+            IPC_HEADER_LEN,
+            "response header {i} must be {IPC_HEADER_LEN} bytes"
         );
-        let response_header = response_header_bytes.expect("header");
 
         // Verify magic.
         let magic = u32::from_le_bytes(
@@ -1545,12 +1566,14 @@ fn sequential_clients_each_get_health_response() {
             }
         };
         if payload_len_usize > 0 {
-            let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-            assert!(
-                response_payload.is_ok(),
-                "should read response payload for client {i}"
+            let Ok(payload) = read_exact_timeout(&mut client, payload_len_usize) else {
+                panic!("should read response payload for client {i}");
+            };
+            assert_eq!(
+                payload.len(),
+                payload_len_usize,
+                "payload {i} length must match header"
             );
-            let payload = response_payload.expect("read payload");
             let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
             match decoded {
                 Ok(IpcResponse::Healthy) => {}
@@ -2039,7 +2062,10 @@ fn poll_once_processes_readable_and_writable_for_same_client() {
     client.flush().expect("flush");
 
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll with readable+writable should succeed");
+    let Ok(continuing) = result else {
+        panic!("poll with readable+writable should succeed, got: {result:?}");
+    };
+    assert!(continuing, "poll should return continuing=true");
 }
 
 // ── 12. poll_once with multiple simultaneous events ──────────────────────────
@@ -2137,7 +2163,10 @@ fn poll_once_removes_client_when_writable_returns_true() {
 
     // Poll should process the writable event and remove the client
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll should succeed");
+    let Ok(continuing) = result else {
+        panic!("poll should succeed, got: {result:?}");
+    };
+    assert!(continuing, "poll should return continuing=true");
     assert_eq!(
         server.client_count(),
         0,

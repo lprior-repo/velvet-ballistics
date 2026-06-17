@@ -938,8 +938,8 @@ fn lower_canonical_choose_accepts_two_branches() {
         &mut builder,
     );
     assert!(
-        result.is_ok(),
-        "two-branch choose must compile: {:?}",
+        matches!(result, Ok(_)),
+        "two-branch choose must compile, got {:?}",
         result
     );
 }
@@ -1504,10 +1504,12 @@ fn slot_compiler_records_unique_indices() {
         &mut builder,
     )
     .expect("choose must lower");
-    // Then: the body Set node has an output slot (observable behavior)
+    // Then: the body Set node has an output slot assigned
+    let output_slot = builder.nodes[1].output;
     assert!(
-        builder.nodes[1].output.is_some(),
-        "body Set node must have an output slot assigned"
+        matches!(output_slot, Some(_)),
+        "body Set node must have an output slot assigned, got {:?}",
+        output_slot
     );
     // Verify the ChooseSlot condition is correctly parsed from when="1"
     match &builder.nodes[0].kind {
@@ -1748,11 +1750,10 @@ fn canonical_body_step_width_accepts_for_each() {
         body: vec![choose_body_set_step("s", "1")],
     };
     let result = canonical_body_step_width(&foreach);
-    assert!(result.is_ok(), "ForEach must be accepted in body steps");
-    assert_eq!(
-        result.ok(),
-        Some(3),
-        "ForEach with single Set body has width 3"
+    assert!(
+        matches!(result, Ok(3)),
+        "ForEach with single Set body must have width 3, got {:?}",
+        result
     );
 }
 
@@ -2909,7 +2910,7 @@ fn emit_reduce_body_steps_all_next_links_are_some() {
         Ok(()) => {
             for (i, node) in builder.nodes.iter().enumerate() {
                 assert!(
-                    node.next.is_some(),
+                    matches!(node.next, Some(_)),
                     "node {i} at {:?} must have Some(next), got None",
                     node.id
                 );

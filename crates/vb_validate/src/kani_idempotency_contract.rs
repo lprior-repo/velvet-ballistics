@@ -68,7 +68,7 @@ fn kani_decision_001_all_combinations() {
                 let result1 = static_check(&contract);
                 let result2 = static_check(&contract);
 
-                kani::assert(result1.is_ok(, "assertion failed") == result2.is_ok(),
+                kani::assert(result1.is_ok() == result2.is_ok(),
                     "is_statically_idempotent_contract must be deterministic",
                 );
 

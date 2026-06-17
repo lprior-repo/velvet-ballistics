@@ -508,6 +508,12 @@ mod tests {
             RetrySafety::Unknown,
         );
         let result = is_statically_idempotent_contract(&c);
-        assert!(result.is_err());
+        assert!(
+            matches!(
+                result,
+                Err(IdempotencyContractViolation::SideEffectingRetryUnsafe { .. })
+            ),
+            "side-effecting + Unknown retry must produce SideEffectingRetryUnsafe"
+        );
     }
 }

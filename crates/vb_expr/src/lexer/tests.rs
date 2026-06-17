@@ -246,14 +246,30 @@ fn lex_expr_accepts_max_tokens_plus_end_sentinel() -> crate::ExprResult<()> {
 fn rejects_token_limit() {
     let source = "1 + ".repeat(crate::lexer::MAX_TOKENS);
     let result = lex_expr(&source);
-    assert!(matches!(result, Err(ExprError::ExpressionTooLong { .. })));
+    assert!(
+        matches!(
+            result,
+            Err(ExprError::ExpressionTooLong { len, max })
+                if len == crate::lexer::MAX_TOKENS.saturating_add(1)
+                    && max == crate::lexer::MAX_TOKENS
+        ),
+        "expected ExpressionTooLong with correct bounds"
+    );
 }
 
 #[test]
 fn rejects_source_length_limit() {
     let source = "1".repeat(crate::lexer::MAX_SOURCE_BYTES.saturating_add(1));
     let result = lex_expr(&source);
-    assert!(matches!(result, Err(ExprError::ExpressionTooLong { .. })));
+    assert!(
+        matches!(
+            result,
+            Err(ExprError::ExpressionTooLong { len, max })
+                if len == crate::lexer::MAX_SOURCE_BYTES.saturating_add(1)
+                    && max == crate::lexer::MAX_SOURCE_BYTES
+        ),
+        "expected ExpressionTooLong with correct bounds"
+    );
 }
 
 #[test]

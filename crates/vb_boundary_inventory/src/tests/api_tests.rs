@@ -584,7 +584,12 @@ fn validate_inventory_valid_single_record() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let Ok(validated) = result else {
+        assert!(false, "validate_inventory must succeed for single record: {result:?}");
+        return;
+    };
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.schema_version, 1);
 }
 
 #[test]
@@ -597,7 +602,12 @@ fn validate_inventory_valid_multiple_records() {
     let inventory = BoundaryInventory::new(Some(1), vec![record1, record2], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let Ok(validated) = result else {
+        assert!(false, "validate_inventory must succeed for multiple records: {result:?}");
+        return;
+    };
+    assert_eq!(validated.records.len(), 2);
+    assert_eq!(validated.schema_version, 1);
 }
 
 // Additional tests for better coverage
@@ -699,7 +709,12 @@ fn validate_inventory_empty_records_valid() {
     let inventory = BoundaryInventory::new(Some(1), Vec::new(), None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let Ok(validated) = result else {
+        assert!(false, "validate_inventory must succeed for empty records: {result:?}");
+        return;
+    };
+    assert!(validated.records.is_empty());
+    assert_eq!(validated.schema_version, 1);
 }
 
 #[test]
@@ -806,13 +821,18 @@ fn validate_inventory_waived_with_waiver() {
         "external:vb-abc123#sha256=abc".to_string(),
     ));
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
-    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+  let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let Ok(validated) = result else {
+        assert!(false, "validate_inventory must succeed for waived with waiver: {result:?}");
+        return;
+    };
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.schema_version, 1);
 }
 
 // =============================================================================
-// inventory_completion_status tests
+// inventory_completion_status tests — additional edge cases
 // =============================================================================
 
 #[test]
@@ -1356,7 +1376,12 @@ fn validate_inventory_approved_with_external_evidence_ok() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert!(result.is_ok());
+    let Ok(validated) = result else {
+        assert!(false, "validate_inventory must succeed for external evidence: {result:?}");
+        return;
+    };
+    assert_eq!(validated.records.len(), 1);
+    assert_eq!(validated.schema_version, 1);
 }
 
 #[test]

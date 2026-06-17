@@ -66,26 +66,68 @@ fn build_together_workflow(branch_count: usize) -> vb_yaml::ast::WorkflowSource 
 fn validate_branch_counts_u16_max_minus_one() {
     let source = build_together_workflow(usize::from(u16::MAX) - 1);
     let result = crate::mod_compile_lowering::validate_branch_counts(&source);
-    assert!(result.is_ok(), "validate_branch_counts must accept u16::MAX - 1 branches");
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_branch_counts must accept u16::MAX - 1 branches, got {:?}",
+        result
+    );
 }
 
 #[test]
 fn validate_branch_counts_u16_max() {
     let source = build_together_workflow(usize::from(u16::MAX));
     let result = crate::mod_compile_lowering::validate_branch_counts(&source);
-    assert!(result.is_ok(), "validate_branch_counts must accept u16::MAX branches");
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_branch_counts must accept u16::MAX branches, got {:?}",
+        result
+    );
 }
 
 #[test]
 fn validate_branch_counts_u16_max_plus_one() {
     let source = build_together_workflow(usize::from(u16::MAX).saturating_add(1));
     let result = crate::mod_compile_lowering::validate_branch_counts(&source);
-    assert!(result.is_err(), "validate_branch_counts must reject u16::MAX + 1 branches");
+    assert!(
+        matches!(result, Err(_)),
+        "validate_branch_counts must reject u16::MAX + 1 branches, got {:?}",
+        result
+    );
 }
 
 #[test]
 fn validate_branch_counts_zero_branches() {
     let source = build_together_workflow(0);
     let result = crate::mod_compile_lowering::validate_branch_counts(&source);
-    assert!(result.is_ok(), "validate_branch_counts accepts 0 (overflow check only)");
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_branch_counts accepts 0 (overflow check only), got {:?}",
+        result
+    );
+}
+
+// ── Missing edge case: empty branch steps ──
+
+#[test]
+fn validate_branch_counts_single_branch() {
+    let source = build_together_workflow(1);
+    let result = crate::mod_compile_lowering::validate_branch_counts(&source);
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_branch_counts must accept 1 branch, got {:?}",
+        result
+    );
+}
+
+// ── Missing edge case: branch count at u16::MAX boundary ──
+
+#[test]
+fn validate_branch_counts_u16_max_minus_100() {
+    let source = build_together_workflow(usize::from(u16::MAX) - 100);
+    let result = crate::mod_compile_lowering::validate_branch_counts(&source);
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_branch_counts must accept u16::MAX - 100 branches, got {:?}",
+        result
+    );
 }

@@ -1258,10 +1258,11 @@ fn span_for_node_returns_some_for_valid_index() {
     let yaml = "a: 1\n";
     let map = build_source_map(yaml).expect("source map should build");
     let result = map.span_for_node(0);
-    assert!(
-        result.is_some(),
-        "span_for_node(0) should return Some for valid doc"
-    );
+    let Some(span) = result else {
+        panic!("span_for_node(0) must return Some for valid doc");
+    };
+    assert!(span.start_offset <= span.end_offset, "span must have valid byte range");
+    assert!(span.start_line > 0, "span must have a valid line number");
 }
 
 // ---------------------------------------------------------------------------

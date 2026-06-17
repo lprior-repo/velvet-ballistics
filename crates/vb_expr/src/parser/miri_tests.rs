@@ -126,17 +126,20 @@ mod tests {
             result.is_ok(),
             "parse_expr with empty tokens must not panic"
         );
-        let ast = result.unwrap();
-        assert!(
-            ast.is_err(),
-            "parse_expr with empty tokens must return Err (UnexpectedToken)"
-        );
+        if let Ok(ast) = result {
+            assert!(
+                ast.is_err(),
+                "parse_expr with empty tokens must return Err (UnexpectedToken)"
+            );
+        }
     }
 
     #[test]
     fn parse_deeply_nested_parens_no_stack_overflow() {
         let input = "(".repeat(100) + "1" + &")".repeat(100);
-        let tokens = lex_expr(&input).expect("lexing must succeed");
+        let Ok(tokens) = lex_expr(&input) else {
+            panic!("lexing 100 nested parens must succeed");
+        };
         let result = std::panic::catch_unwind(|| parse_expr(&tokens));
         assert!(
             result.is_ok(),
@@ -147,17 +150,20 @@ mod tests {
     #[test]
     fn parse_exceeds_max_depth_no_ub() {
         let input = "(".repeat(65) + "1" + &")".repeat(65);
-        let tokens = lex_expr(&input).expect("lexing must succeed");
+        let Ok(tokens) = lex_expr(&input) else {
+            panic!("lexing 65 nested parens must succeed");
+        };
         let result = std::panic::catch_unwind(|| parse_expr(&tokens));
         assert!(
             result.is_ok(),
             "parse_expr exceeding MAX_DEPTH must not panic"
         );
-        let ast = result.unwrap();
-        assert!(
-            ast.is_err(),
-            "parse_expr exceeding MAX_DEPTH must return Err (ParseDepthExceeded)"
-        );
+        if let Ok(ast) = result {
+            assert!(
+                ast.is_err(),
+                "parse_expr exceeding MAX_DEPTH must return Err (ParseDepthExceeded)"
+            );
+        }
     }
 
     #[test]
@@ -170,11 +176,12 @@ mod tests {
             result.is_ok(),
             "parse_expr with 300 literal tokens must not panic"
         );
-        let ast = result.unwrap();
-        assert!(
-            ast.is_err(),
-            "parse_expr with too many tokens must return Err"
-        );
+        if let Ok(ast) = result {
+            assert!(
+                ast.is_err(),
+                "parse_expr with too many tokens must return Err"
+            );
+        }
     }
 
     #[test]
@@ -194,11 +201,12 @@ mod tests {
             result.is_ok(),
             "parse_expr with unexpected token must not panic"
         );
-        let ast = result.unwrap();
-        assert!(
-            ast.is_err(),
-            "parse_expr with unexpected token must return Err"
-        );
+        if let Ok(ast) = result {
+            assert!(
+                ast.is_err(),
+                "parse_expr with unexpected token must return Err"
+            );
+        }
     }
 
     #[test]
@@ -210,22 +218,26 @@ mod tests {
         ];
         let result = std::panic::catch_unwind(|| parse_expr(&tokens));
         assert!(result.is_ok(), "parse_expr with missing ) must not panic");
-        let ast = result.unwrap();
-        assert!(ast.is_err(), "parse_expr with missing ) must return Err");
+        if let Ok(ast) = result {
+            assert!(ast.is_err(), "parse_expr with missing ) must return Err");
+        }
     }
 
     #[test]
     fn parse_valid_expression_no_ub() {
-        let tokens = lex_expr("1 + 2 * 3").expect("lexing must succeed");
+        let Ok(tokens) = lex_expr("1 + 2 * 3") else {
+            panic!("lexing valid expression must succeed");
+        };
         let result = std::panic::catch_unwind(|| parse_expr(&tokens));
         assert!(
             result.is_ok(),
             "parse_expr with valid expression must not panic"
         );
-        let ast = result.unwrap();
-        assert!(
-            ast.is_ok(),
-            "parse_expr with valid expression must return Ok"
-        );
+        if let Ok(ast) = result {
+            assert!(
+                ast.is_ok(),
+                "parse_expr with valid expression must return Ok"
+            );
+        }
     }
 }

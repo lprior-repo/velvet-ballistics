@@ -170,13 +170,19 @@ mod blackhat_tests {
             max_stack: 1,
         };
         let r = crate::eval::eval_expr_program(&program, &[], &[]);
-        assert!(r.is_err(), "BH-BE-011a: OOB slot should error");
+        assert!(
+            matches!(r, Err(ExprError::StackUnderflow)),
+            "BH-BE-011a: OOB slot should error StackUnderflow"
+        );
         let program = ExprProgram {
             ops: vec![ExprOp::LoadConst(ConstIdx::new(255))].into_boxed_slice(),
             max_stack: 1,
         };
         let r = crate::eval::eval_expr_program(&program, &[], &[]);
-        assert!(r.is_err(), "BH-BE-011b: OOB const should error");
+        assert!(
+            matches!(r, Err(ExprError::UnexpectedEof)),
+            "BH-BE-011b: OOB const should error UnexpectedEof"
+        );
         Ok(())
     }
 

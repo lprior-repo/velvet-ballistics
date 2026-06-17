@@ -249,7 +249,7 @@ fn retry_safety_idempotent_allows_retry_without_key() {
     };
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.expect("test frame");
 
     // Idempotent should pass even with empty key slots
@@ -280,16 +280,16 @@ fn retry_safety_not_retry_safe_rejects_retry() {
     };
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.expect("test frame");
 
     // NotRetrySafe should be rejected even with a key provided
     let key_slots = [SlotIdx::new(0)];
     let result = verify_idempotency(&contract, &key_slots, &frame);
-    assert_eq!(
-        result.is_err(),
-        true,
-        "NotRetrySafe should reject even with key"
+    assert!(
+        matches!(result, Err(_)),
+        "NotRetrySafe should reject even with key, got {:?}",
+        result
     );
 }
 
@@ -318,13 +318,13 @@ fn retry_safety_requires_idempotency_key_passes_with_key() {
     };
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let mut frame = frame.expect("test frame");
 
     // Write a clean value to slot 0 for use as idempotency key
     let write_result =
         frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Clean);
-    assert!(write_result.is_ok());
+    assert!(matches!(write_result, Ok(_)));
 
     // RequiresIdempotencyKey should pass with a clean (non-secret) key
     let key_slots = [SlotIdx::new(0)];
@@ -359,14 +359,15 @@ fn retry_safety_requires_idempotency_key_fails_without_key() {
     };
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.expect("test frame");
 
     // RequiresIdempotencyKey should fail with empty key slots
     let result = verify_idempotency(&contract, &[], &frame);
     assert!(
-        result.is_err(),
-        "RequiresIdempotencyKey should fail without key"
+        matches!(result, Err(_)),
+        "RequiresIdempotencyKey should fail without key, got {:?}",
+        result
     );
 }
 
@@ -393,12 +394,16 @@ fn retry_safety_unknown_rejects_retry() {
     };
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(frame, Ok(_)));
     let frame = frame.expect("test frame");
 
     // Unknown should always be rejected
     let result = verify_idempotency(&contract, &[], &frame);
-    assert!(result.is_err(), "Unknown should always be rejected");
+    assert!(
+        matches!(result, Err(_)),
+        "Unknown should always be rejected, got {:?}",
+        result
+    );
 }
 
 /// Test that verify_idempotency function in vb_core's action.rs
@@ -429,14 +434,19 @@ fn verify_idempotency_match_is_exhaustive_for_all_master_plan_variants() {
         };
 
         let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-        assert!(frame.is_ok());
+        assert!(matches!(frame, Ok(_)));
         let frame = frame.expect("test frame");
 
         let result = verify_idempotency(&contract, &[], &frame);
         if should_pass {
             assert_eq!(result, Ok(()), "should pass for {:?}", safety);
         } else {
-            assert!(result.is_err(), "should fail for {:?}", safety);
+            assert!(
+                matches!(result, Err(_)),
+                "should fail for {:?}, got {:?}",
+                safety,
+                result
+            );
         }
     }
 

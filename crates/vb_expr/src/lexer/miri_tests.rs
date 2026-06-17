@@ -120,8 +120,9 @@ mod tests {
     fn lex_empty_string_no_ub() {
         let result = std::panic::catch_unwind(|| lex_expr(""));
         assert!(result.is_ok(), "lex_expr(\"\") must not panic");
-        let tokens = result.unwrap();
-        assert!(tokens.is_ok(), "lex_expr(\"\") must return Ok");
+        if let Ok(tokens) = result {
+            assert!(tokens.is_ok(), "lex_expr(\"\") must return Ok");
+        }
     }
 
     #[test]
@@ -129,11 +130,12 @@ mod tests {
         let large_input = "x".repeat(4097);
         let result = std::panic::catch_unwind(|| lex_expr(&large_input));
         assert!(result.is_ok(), "lex_expr with 4097 bytes must not panic");
-        let tokens = result.unwrap();
-        assert!(
-            tokens.is_err(),
-            "lex_expr with 4097 bytes must return Err (ExpressionTooLong)"
-        );
+        if let Ok(tokens) = result {
+            assert!(
+                tokens.is_err(),
+                "lex_expr with 4097 bytes must return Err (ExpressionTooLong)"
+            );
+        }
     }
 
     #[test]
@@ -143,22 +145,24 @@ mod tests {
             result.is_ok(),
             "lex_expr with unterminated string must not panic"
         );
-        let tokens = result.unwrap();
-        assert!(
-            tokens.is_err(),
-            "lex_expr with unterminated string must return Err (UnterminatedString)"
-        );
+        if let Ok(tokens) = result {
+            assert!(
+                tokens.is_err(),
+                "lex_expr with unterminated string must return Err (UnterminatedString)"
+            );
+        }
     }
 
     #[test]
     fn lex_lone_dollar_is_valid_token() {
         let result = std::panic::catch_unwind(|| lex_expr("$"));
         assert!(result.is_ok(), "lex_expr with lone $ must not panic");
-        let tokens = result.unwrap();
-        assert!(
-            tokens.is_ok(),
-            "lex_expr with lone $ is a valid Dollar token"
-        );
+        if let Ok(tokens) = result {
+            assert!(
+                tokens.is_ok(),
+                "lex_expr with lone $ is a valid Dollar token"
+            );
+        }
     }
 
     #[test]
@@ -174,8 +178,9 @@ mod tests {
     fn lex_invalid_char_no_ub() {
         let result = std::panic::catch_unwind(|| lex_expr("@"));
         assert!(result.is_ok(), "lex_expr with @ must not panic");
-        let tokens = result.unwrap();
-        assert!(tokens.is_err(), "lex_expr with @ must return Err");
+        if let Ok(tokens) = result {
+            assert!(tokens.is_err(), "lex_expr with @ must return Err");
+        }
     }
 
     #[test]
@@ -185,10 +190,11 @@ mod tests {
             result.is_ok(),
             "lex_expr with valid expression must not panic"
         );
-        let tokens = result.unwrap();
-        assert!(
-            tokens.is_ok(),
-            "lex_expr with valid expression must return Ok"
-        );
+        if let Ok(tokens) = result {
+            assert!(
+                tokens.is_ok(),
+                "lex_expr with valid expression must return Ok"
+            );
+        }
     }
 }

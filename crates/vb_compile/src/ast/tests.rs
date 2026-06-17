@@ -359,15 +359,16 @@ steps:
 "#,
     );
     assert!(
-        result.is_err(),
+        matches!(result, Err(_)),
         "parallel must be rejected, not accepted as alias"
     );
-    let err = result.unwrap_err();
-    let err_str = format!("{err:?}");
-    assert!(
-        err_str.contains("parallel") || err_str.contains("unknown"),
-        "error must mention parallel: {err_str}"
-    );
+    if let Err(ref err) = result {
+        let err_str = format!("{err:?}");
+        assert!(
+            err_str.contains("parallel") || err_str.contains("unknown"),
+            "error must mention parallel: {err_str}"
+        );
+    }
 }
 
 #[test]

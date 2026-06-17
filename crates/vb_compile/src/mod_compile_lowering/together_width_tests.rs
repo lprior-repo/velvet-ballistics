@@ -358,13 +358,10 @@ fn canonical_body_step_width_returns_overflow_error_when_branch_bodies_exceed_us
 
     // When / Then: the function returns Ok(width) — 100×100 steps fit in usize
     let result = compute_width(&primitive);
-    assert!(
-        result.is_ok(),
-        "Large together width computation must succeed: {:?}",
-        result
-    );
-    // 2 + 100*(1 + 100) = 2 + 10100 = 10102
-    assert_eq!(result.unwrap(), 10_102);
+    match result {
+        Ok(width) => assert_eq!(width, 10_102, "expected 100×100 + overhead to be 10102"),
+        Err(e) => panic!("expected Ok(10102), got Err: {e:?}"),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -404,18 +401,18 @@ fn canonical_body_step_width_still_handles_existing_primitives() {
         event: Some("ev".into()),
         timeout: None,
     });
-    assert!(wait_result.is_err());
     assert!(
-        matches!(&wait_result, Err(crate::CompileError::UnsupportedStepPrimitive { primitive, .. }) if *primitive == "wait")
+        matches!(&wait_result, Err(crate::CompileError::UnsupportedStepPrimitive { primitive, .. }) if *primitive == "wait"),
+        "wait should return Err(UnsupportedStepPrimitive)"
     );
 
     // Finish returns Err(UnsupportedStepPrimitive) — unchanged behavior
     let finish_result = compute_width(&StepPrimitive::Finish {
         result: vb_yaml::ast::ScalarValue::Integer(0),
     });
-    assert!(finish_result.is_err());
     assert!(
-        matches!(&finish_result, Err(crate::CompileError::UnsupportedStepPrimitive { primitive, .. }) if *primitive == "finish")
+        matches!(&finish_result, Err(crate::CompileError::UnsupportedStepPrimitive { primitive, .. }) if *primitive == "finish"),
+        "finish should return Err(UnsupportedStepPrimitive)"
     );
 }
 

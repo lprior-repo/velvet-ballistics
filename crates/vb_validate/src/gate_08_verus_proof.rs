@@ -177,7 +177,10 @@ mod verus_unit_tests {
             ]),
         );
         let result = validate_gate_08_accessor_path_segments(&parts);
-        assert!(result.is_ok(), "valid inputs should pass");
+        assert!(
+            matches!(result, Ok(())),
+            "valid inputs should produce Ok(())"
+        );
     }
 
     /// PO-08-002 unit test: symbol OOB never silenced

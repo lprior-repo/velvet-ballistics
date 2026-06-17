@@ -396,17 +396,20 @@ fn parse_expr_one_past_max_depth_fails() {
 #[test]
 fn parse_expr_eight_args_on_two_arity_helper_is_arity_mismatch() -> crate::ExprResult<()> {
     let result = parse("contains(1, 2, 3, 4, 5, 6, 7, 8)");
-    let Err(ExprError::HelperArityMismatch {
+    if let Err(ExprError::HelperArityMismatch {
         helper,
         expected,
         actual,
     }) = result
-    else {
-        panic!("expected HelperArityMismatch");
-    };
-    assert_eq!(helper, "contains");
-    assert_eq!(expected, 2);
-    assert_eq!(actual, 8);
+    {
+        assert_eq!(helper, "contains");
+        assert_eq!(expected, 2);
+        assert_eq!(actual, 8);
+    } else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected HelperArityMismatch".into(),
+        });
+    }
     Ok(())
 }
 
@@ -414,17 +417,20 @@ fn parse_expr_eight_args_on_two_arity_helper_is_arity_mismatch() -> crate::ExprR
 #[test]
 fn parse_expr_eight_args_on_unary_helper_is_arity_mismatch() -> crate::ExprResult<()> {
     let result = parse("exists(1, 2, 3, 4, 5, 6, 7, 8)");
-    let Err(ExprError::HelperArityMismatch {
+    if let Err(ExprError::HelperArityMismatch {
         helper,
         expected,
         actual,
     }) = result
-    else {
-        panic!("expected HelperArityMismatch");
-    };
-    assert_eq!(helper, "exists");
-    assert_eq!(expected, 1);
-    assert_eq!(actual, 8);
+    {
+        assert_eq!(helper, "exists");
+        assert_eq!(expected, 1);
+        assert_eq!(actual, 8);
+    } else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected HelperArityMismatch".into(),
+        });
+    }
     Ok(())
 }
 

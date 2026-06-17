@@ -268,11 +268,11 @@ fn vb_yd5x_valid_workflow_passes_both_paths() {
     let compile_result = YamlCompiler::default().compile(source);
     let validate_result = vb_yd5x_validate_via_compile(source);
     assert!(
-        compile_result.is_ok(),
+        matches!(compile_result, Ok(_)),
         "valid workflow must compile: {compile_result:?}"
     );
     assert!(
-        validate_result.is_ok(),
+        matches!(validate_result, Ok(_)),
         "valid workflow must pass shared validation: {validate_result:?}"
     );
 }

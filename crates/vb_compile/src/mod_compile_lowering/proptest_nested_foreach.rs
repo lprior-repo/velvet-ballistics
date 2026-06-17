@@ -225,12 +225,12 @@ proptest! {
         let result1 = compile_source(&source);
         let result2 = compile_source(&source);
 
-        prop_assert_eq!(
-            result1.is_ok(), result2.is_ok(),
-            "PO-013: deterministic same-outcome"
-        );
+prop_assert_eq!(
+             matches!(result1, Ok(_)), matches!(result2, Ok(_)),
+             "PO-013: deterministic same-outcome"
+         );
 
-        if result1.is_ok() {
+        if matches!(result1, Ok(_)) {
             let workflow = result1.unwrap();
             let node_count = workflow.to_parts().nodes.len();
 
@@ -301,7 +301,7 @@ fn foreach_body_emit_single_set() {
     }];
     let mut builder = SlotCompiler::new();
     let result = lower_canonical_for_each(0, StepIdx::new(10), "0", None, &body, &mut builder);
-    assert!(result.is_ok(), "simple for_each must compile: {result:?}");
+    assert!(matches!(result, Ok(_)), "simple for_each must compile: {result:?}");
     assert_eq!(builder.nodes.len(), 3, "must emit exactly 3 nodes");
 }
 
@@ -323,11 +323,11 @@ fn foreach_deterministic_output() {
     let mut b1 = SlotCompiler::new();
     let mut b2 = SlotCompiler::new();
     assert!(
-        lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1).is_ok(),
+        matches!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1), Ok(_)),
         "first compile must succeed"
     );
     assert!(
-        lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2).is_ok(),
+        matches!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2), Ok(_)),
         "second compile must succeed"
     );
     assert_eq!(

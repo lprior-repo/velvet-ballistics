@@ -958,7 +958,10 @@ fn get_mapping_returns_some_for_existing_mapping() {
     // When get_mapping is called
     let result = doc.get_mapping("when");
     // Then it returns Some with the mapping entries
-    assert!(result.is_some());
+    assert!(
+        matches!(result, Some(ref m) if m.len() == 1),
+        "get_mapping(\"when\") should return Some with 1 entry"
+    );
     let Some(mapping) = result else {
         return;
     };
@@ -976,7 +979,7 @@ fn get_mapping_returns_none_for_missing_field() {
     // When get_mapping is called for "when"
     let result = doc.get_mapping("when");
     // Then it returns None
-    assert!(result.is_none());
+    assert!(result.is_none(), "get_mapping(\"when\") for missing field must return None");
 }
 
 #[test]
@@ -992,7 +995,10 @@ fn get_sequence_returns_some_for_existing_sequence() {
     // When get_sequence is called
     let result = doc.get_sequence("steps");
     // Then it returns Some with the steps
-    assert!(result.is_some());
+    assert!(
+        matches!(result, Some(ref s) if s.len() == 1),
+        "get_sequence(\"steps\") should return Some with 1 entry"
+    );
     let Some(seq) = result else {
         return;
     };
@@ -1060,7 +1066,10 @@ fn get_mapping_with_nested_data_returns_correct_mapping() {
     // When get_mapping is called
     let result = doc.get_mapping("when");
     // Then it returns the mapping with the nested value
-    assert!(result.is_some());
+    assert!(
+        matches!(result, Some(ref m) if m.len() == 1),
+        "get_mapping(\"when\") with nested data should return Some with 1 entry"
+    );
     let Some(mapping) = result else {
         return;
     };
@@ -1088,7 +1097,10 @@ fn get_sequence_with_multiple_entries_returns_correct_one() {
     // When get_sequence is called
     let result = doc.get_sequence("steps");
     // Then it returns both steps in order
-    assert!(result.is_some());
+    assert!(
+        matches!(result, Some(ref s) if s.len() == 2),
+        "get_sequence(\"steps\") with 2 entries should return Some with 2"
+    );
     let Some(seq) = result else {
         return;
     };
@@ -1743,5 +1755,124 @@ fn adversarial_step_without_id_field_is_rejected() {
         Err(ValidationError::MissingRequiredField {
             field: "step id".to_owned(),
         })
+    );
+}
+
+// ── Missing control-flow variant tests (po-003 / black-hat) ──────────────
+// These variants were produced by schema.rs but had zero dedicated tests.
+// Body validation runs via validate_step_fields (which calls validate_step_body).
+// Note: InvalidRetry and InvalidOnError are dead-code (unreachable) because
+// "retry"/"try_again"/"on_error" are in ALLOWED_STEP_FIELDS but NOT in
+// STEP_PRIMITIVES, so they never reach validate_step_body as a primitive.
+
+#[test]
+fn invalid_collect_requires_of_and_reduce() {
+    // collect without "of:" → InvalidCollect
+    let doc = make_workflow(vec![
+        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        ("name", FieldValue::String("test".to_owned())),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("c".to_owned())),
+                (
+                    "collect",
+                    FieldValue::Mapping(vec![(
+                        "reduce".to_string(),
+                        FieldValue::String("sum".to_owned()),
+                    )]),
+                ),
+            ])]),
+        ),
+    ]);
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::InvalidCollect)
+    );
+}
+
+#[test]
+fn invalid_collect_requires_of_field() {
+    // collect without "reduce:" → InvalidCollect
+    let doc = make_workflow(vec![
+        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        ("name", FieldValue::String("test".to_owned())),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("c".to_owned())),
+                (
+                    "collect",
+                    FieldValue::Mapping(vec![(
+                        "of".to_string(),
+                        FieldValue::String("items".to_owned()),
+                    )]),
+                ),
+            ])]),
+        ),
+    ]);
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::InvalidCollect)
+    );
+}
+
+#[test]
+fn invalid_wait_rejects_empty_body() {
+    // wait with empty mapping → InvalidWait
+    let doc = make_workflow(vec![
+        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        ("name", FieldValue::String("test".to_owned())),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("w".to_owned())),
+                ("wait", FieldValue::Mapping(vec![])),
+            ])]),
+        ),
+    ]);
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::InvalidWait)
+    );
+}
+
+#[test]
+fn invalid_ask_rejects_empty_body() {
+    // ask with empty mapping → InvalidAsk
+    let doc = make_workflow(vec![
+        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        ("name", FieldValue::String("test".to_owned())),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("a".to_owned())),
+                ("ask", FieldValue::Mapping(vec![])),
+            ])]),
+        ),
+    ]);
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::InvalidAsk)
+    );
+}
+
+#[test]
+fn invalid_finish_rejects_missing_result() {
+    // finish without "result:" → InvalidFinish
+    let doc = make_workflow(vec![
+        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        ("name", FieldValue::String("test".to_owned())),
+        (
+            "steps",
+            FieldValue::Sequence(vec![make_step(vec![
+                ("id", FieldValue::String("f".to_owned())),
+                ("finish", FieldValue::Mapping(vec![])),
+            ])]),
+        ),
+    ]);
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::InvalidFinish)
     );
 }

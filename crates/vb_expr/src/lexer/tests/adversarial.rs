@@ -305,11 +305,8 @@ fn blackhat_lx_004_source_length_boundary_accepted() -> crate::ExprResult<()> {
     // both the source byte limit and the token limit.
     // 256 tokens * 2 bytes ("1 ") = 512 bytes, well under 4096.
     let source = "1 ".repeat(255); // 255 tokens of "1" + final End
-    let r = lex_expr(&source.trim_end());
-    assert!(
-        r.is_ok(),
-        "BH-LX-004: source within limits should be accepted"
-    );
+    let tokens = lex_expr(&source.trim_end()).map_err(|_| ExprError::UnexpectedEof)?;
+    assert_eq!(tokens.len(), 256, "BH-LX-004: 255 tokens + 1 End");
     Ok(())
 }
 
@@ -318,10 +315,12 @@ fn blackhat_lx_004_source_length_boundary_accepted() -> crate::ExprResult<()> {
 fn blackhat_lx_005_source_length_one_over_rejected() -> crate::ExprResult<()> {
     let source = "1".repeat(crate::lexer::MAX_SOURCE_BYTES.saturating_add(1));
     let r = lex_expr(&source);
-    assert!(
-        matches!(r, Err(ExprError::ExpressionTooLong { .. })),
-        "BH-LX-005: source one byte over limit should be rejected"
-    );
+    if let Err(ExprError::ExpressionTooLong { len, max }) = r {
+        assert_eq!(len, crate::lexer::MAX_SOURCE_BYTES.saturating_add(1));
+        assert_eq!(max, crate::lexer::MAX_SOURCE_BYTES);
+    } else {
+        return Err(ExprError::UnexpectedEof);
+    }
     Ok(())
 }
 

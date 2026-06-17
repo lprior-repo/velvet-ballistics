@@ -423,7 +423,7 @@ fn emit_single_body_set_still_handles_existing_primitives() {
             &mut builder,
             false,
         );
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)), "Set primitive should return Ok");
     }
 
     // Do primitive
@@ -442,7 +442,7 @@ fn emit_single_body_set_still_handles_existing_primitives() {
             &mut builder,
             false,
         );
-        assert!(result.is_ok());
+        assert!(matches!(result, Ok(_)), "Do primitive should return Ok");
     }
 }
 
@@ -464,7 +464,7 @@ fn emit_single_body_set_still_rejects_invalid_body_shapes() {
             &mut builder,
             false,
         );
-        assert!(result.is_err());
+        assert!(matches!(result, Err(_)), "Invalid body shape should return Err");
         let err = result.unwrap_err();
         let first = err.iter().next().unwrap();
         assert!(matches!(first, crate::CompileError::StepFieldShape { .. }));
@@ -483,13 +483,15 @@ fn emit_single_body_set_still_rejects_invalid_body_shapes() {
             &mut builder,
             false,
         );
-        assert!(result.is_err());
+assert!(matches!(result, Err(_)), "Multi-step body should return Err");
         let err = result.unwrap_err();
         let first = err.iter().next().unwrap();
         assert!(matches!(first, crate::CompileError::StepFieldShape { .. }));
     }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2: emit_single_body_together helper tests (B-22 through B-31)
 // ---------------------------------------------------------------------------
 // Phase 2: emit_single_body_together helper tests (B-22 through B-31)
 // These tests exercise behaviors through emit_single_body_set dispatch.
@@ -666,7 +668,10 @@ fn emit_single_body_together_rejects_zero_branches() {
     );
 
     // Post-implementation: together with zero branches returns StepFieldShape
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "together with zero branches should return Err"
+    );
     let errs = result.unwrap_err();
     let first = errs.iter().next().unwrap();
     assert!(
@@ -707,7 +712,11 @@ fn emit_single_body_together_rejects_branch_count_overflow() {
     );
 
     // Post-implementation: 1-branch together lowers successfully
-    assert!(result.is_ok(), "Expected Ok(()), got {:?}", result);
+    assert!(
+        matches!(result, Ok(_)),
+        "1-branch together should lower successfully: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -735,7 +744,10 @@ fn emit_single_body_together_rejects_step_index_overflow() {
     );
 
     // Post-implementation: checked_step_offset overflows, returns PrimitiveLoweringLimitExceeded
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "StepIdx overflow should return Err"
+    );
     let errs = result.unwrap_err();
     let first = errs.iter().next().unwrap();
     assert!(
@@ -776,7 +788,10 @@ fn emit_single_body_together_propagates_unsupported_nested_primitive_error() {
     // Post-implementation: Together is supported; the nested Wait inside a branch
     // body is caught by the recursive emit_single_body_set call and returns
     // UnsupportedStepPrimitive("wait").
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "Nested Wait should return UnsupportedStepPrimitive"
+    );
     let errs = result.unwrap_err();
     let first = errs.iter().next().unwrap();
     assert!(
@@ -816,7 +831,10 @@ fn emit_single_body_together_propagates_invalid_constant_error() {
 
     // Post-implementation: Together is supported; the invalid constant is caught
     // by body_constant_index → parse_i64_field → StepFieldShape.
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(_)),
+        "Invalid constant should return Err"
+    );
     let errs = result.unwrap_err();
     let first = errs.iter().next().unwrap();
     assert!(
@@ -853,7 +871,11 @@ fn all_together_error_paths_return_structured_errors() {
             false,
         );
         // Post-implementation: zero-branch together returns StepFieldShape
-        assert!(result.is_err(), "case '{}' must return Err", desc);
+        assert!(
+            matches!(result, Err(_)),
+            "case '{}' must return Err",
+            desc
+        );
         let errs = result.unwrap_err();
         let first = errs.iter().next().unwrap();
         assert!(
@@ -957,7 +979,7 @@ fn together_checked_arithmetic_returns_err_not_panic() {
 
     // Post-implementation: StepIdx overflow at u16::MAX returns StepIndexOutOfRange
     assert!(
-        result.is_err(),
+        matches!(result, Err(_)),
         "StepIdx::MAX together must return error: {:?}",
         result
     );
@@ -1004,7 +1026,7 @@ fn together_errors_carry_correct_diagnostic_step() {
     // branch body, which rejects Wait with step:0 (hardcoded in part_01.rs:149-150).
     // The body-level diagnostic_step does not propagate through the width computation.
     assert!(
-        result.is_err(),
+        matches!(result, Err(_)),
         "Together with Wait in branch body must fail: {:?}",
         result
     );

@@ -550,7 +550,13 @@ mod tests {
             ExprOp::Add,
         ])?;
         let result = eval_with_const(&program, vec![ConstValue::Bool(true), ConstValue::I64(1)]);
-        assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for Bool + I64".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "boolean");
         Ok(())
     }
 
@@ -562,9 +568,17 @@ mod tests {
     }
 
     #[test]
-    fn public_unary_eval_rejects_wrong_type() {
+    fn public_unary_eval_rejects_wrong_type() -> crate::ExprResult<()> {
         let result = eval_unary_op(UnaryOp::Not, SlotValue::I64(1));
-        assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+        if let Err(ExprError::TypeMismatch { expected, found }) = result {
+            assert_eq!(expected, "boolean");
+            assert_eq!(found, "number");
+        } else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for not(1)".into(),
+            });
+        }
+        Ok(())
     }
 
     #[test]
@@ -3012,16 +3026,25 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(false);
         // Test with valid bool right - should return false
-        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true))
-            .expect("And with bools must succeed");
+        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true)).unwrap_or_else(
+            |e| panic!("And with bools must succeed, got error: {e:?}"),
+        );
         assert_eq!(result, SlotValue::Bool(false));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
         let result2 = eval_binary_op(BinaryOp::And, left, SlotValue::I64(0));
-        assert!(matches!(result2, Err(ExprError::TypeMismatch { .. })));
+        let Err(ExprError::TypeMismatch { expected, found }) = result2 else {
+            panic!("expected TypeMismatch for bool and i64");
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
 
         let result3 = eval_binary_op(BinaryOp::And, left, SlotValue::Null);
-        assert!(matches!(result3, Err(ExprError::TypeMismatch { .. })));
+        let Err(ExprError::TypeMismatch { expected, found }) = result3 else {
+            panic!("expected TypeMismatch for bool and null");
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
     }
 
     #[test]
@@ -3030,44 +3053,55 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(true);
         // Test with valid bool right - should return true
-        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false))
-            .expect("Or with bools must succeed");
+        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false)).unwrap_or_else(
+            |e| panic!("Or with bools must succeed, got error: {e:?}"),
+        );
         assert_eq!(result, SlotValue::Bool(true));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
         let result2 = eval_binary_op(BinaryOp::Or, left, SlotValue::I64(0));
-        assert!(matches!(result2, Err(ExprError::TypeMismatch { .. })));
+        let Err(ExprError::TypeMismatch { expected, found }) = result2 else {
+            panic!("expected TypeMismatch for bool or i64");
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
 
         let result3 = eval_binary_op(BinaryOp::Or, left, SlotValue::Null);
-        assert!(matches!(result3, Err(ExprError::TypeMismatch { .. })));
+        let Err(ExprError::TypeMismatch { expected, found }) = result3 else {
+            panic!("expected TypeMismatch for bool or null");
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
     }
 
     #[test]
     fn proptest_and_requires_both_bools() {
         // Any non-bool left OR right produces TypeMismatch
         let non_bools = [
-            SlotValue::I64(1),
-            SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
-            SlotValue::Null,
-            SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+            (SlotValue::I64(1), "number"),
+            (SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")), "number"),
+            (SlotValue::Null, "null"),
+            (SlotValue::Symbol(vb_core::ids::SymbolId::new(1)), "symbol"),
         ];
 
         // left is non-bool, right is bool -> TypeMismatch
-        for left in &non_bools {
+        for (left, expected_found) in &non_bools {
             let result = eval_binary_op(BinaryOp::And, *left, SlotValue::Bool(true));
-            assert!(
-                matches!(result, Err(ExprError::TypeMismatch { .. })),
-                "AND with non-bool left should be TypeMismatch"
-            );
+            let Err(ExprError::TypeMismatch { expected, found }) = result else {
+                panic!("AND with non-bool left should be TypeMismatch");
+            };
+            assert_eq!(expected, "boolean", "AND non-bool left type mismatch");
+            assert_eq!(found, *expected_found, "AND non-bool left found type");
         }
 
         // left is bool, right is non-bool -> TypeMismatch
-        for right in &non_bools {
+        for (right, expected_found) in &non_bools {
             let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), *right);
-            assert!(
-                matches!(result, Err(ExprError::TypeMismatch { .. })),
-                "AND with non-bool right should be TypeMismatch"
-            );
+            let Err(ExprError::TypeMismatch { expected, found }) = result else {
+                panic!("AND with non-bool right should be TypeMismatch");
+            };
+            assert_eq!(expected, "boolean", "AND non-bool right type mismatch");
+            assert_eq!(found, *expected_found, "AND non-bool right found type");
         }
     }
 
@@ -3075,28 +3109,30 @@ mod tests {
     fn proptest_or_requires_both_bools() {
         // Any non-bool left OR right produces TypeMismatch
         let non_bools = [
-            SlotValue::I64(1),
-            SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
-            SlotValue::Null,
-            SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+            (SlotValue::I64(1), "number"),
+            (SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")), "number"),
+            (SlotValue::Null, "null"),
+            (SlotValue::Symbol(vb_core::ids::SymbolId::new(1)), "symbol"),
         ];
 
         // left is non-bool, right is bool -> TypeMismatch
-        for left in &non_bools {
+        for (left, expected_found) in &non_bools {
             let result = eval_binary_op(BinaryOp::Or, *left, SlotValue::Bool(true));
-            assert!(
-                matches!(result, Err(ExprError::TypeMismatch { .. })),
-                "OR with non-bool left should be TypeMismatch"
-            );
+            let Err(ExprError::TypeMismatch { expected, found }) = result else {
+                panic!("OR with non-bool left should be TypeMismatch");
+            };
+            assert_eq!(expected, "boolean", "OR non-bool left type mismatch");
+            assert_eq!(found, *expected_found, "OR non-bool left found type");
         }
 
         // left is bool, right is non-bool -> TypeMismatch
-        for right in &non_bools {
+        for (right, expected_found) in &non_bools {
             let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), *right);
-            assert!(
-                matches!(result, Err(ExprError::TypeMismatch { .. })),
-                "OR with non-bool right should be TypeMismatch"
-            );
+            let Err(ExprError::TypeMismatch { expected, found }) = result else {
+                panic!("OR with non-bool right should be TypeMismatch");
+            };
+            assert_eq!(expected, "boolean", "OR non-bool right type mismatch");
+            assert_eq!(found, *expected_found, "OR non-bool right found type");
         }
     }
 }

@@ -8,8 +8,8 @@
 
 use proptest::prelude::*;
 use vb_proof_kernels::profile_contract::{
-    ContractGap, MASTER_PROFILE_CONTRACT, ProfileKey, ProfileName, SettingValue, StrVal,
-    binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
+    ContractGap, MASTER_PROFILE_CONTRACT, ProfileKey, ProfileName, ProfileNameError, SettingValue,
+    StrVal, binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task},
     validate_against_governance, validate_against_master,
 };
 
@@ -33,7 +33,11 @@ proptest! {
         ws in arb_workspace_profile_set(),
     ) {
         // 1. maxperf is always rejected at construction
-        assert!(ProfileName::new("maxperf").is_err());
+        let maxperf_result = ProfileName::new("maxperf");
+        assert!(matches!(
+            maxperf_result,
+            Err(ProfileNameError::Forbidden)
+        ), "maxperf must be forbidden");
 
         // 2. Any workspace with missing required profiles should report it
         let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);

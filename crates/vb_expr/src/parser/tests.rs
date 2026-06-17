@@ -675,34 +675,40 @@ fn parse_expr_helper_ends_with_arity_2() -> crate::ExprResult<()> {
 #[test]
 fn parse_expr_helper_with_zero_args_is_rejected() -> crate::ExprResult<()> {
     let result = parse("exists()");
-    let Err(ExprError::HelperArityMismatch {
+    if let Err(ExprError::HelperArityMismatch {
         helper,
         expected,
         actual,
     }) = result
-    else {
-        panic!("expected HelperArityMismatch");
-    };
-    assert_eq!(helper, "exists");
-    assert_eq!(expected, 1);
-    assert_eq!(actual, 0);
+    {
+        assert_eq!(helper, "exists");
+        assert_eq!(expected, 1);
+        assert_eq!(actual, 0);
+    } else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected HelperArityMismatch".into(),
+        });
+    }
     Ok(())
 }
 
 #[test]
 fn parse_expr_helper_with_extra_args_is_rejected() -> crate::ExprResult<()> {
     let result = parse("exists(1, 2)");
-    let Err(ExprError::HelperArityMismatch {
+    if let Err(ExprError::HelperArityMismatch {
         helper,
         expected,
         actual,
     }) = result
-    else {
-        panic!("expected HelperArityMismatch");
-    };
-    assert_eq!(helper, "exists");
-    assert_eq!(expected, 1);
-    assert_eq!(actual, 2);
+    {
+        assert_eq!(helper, "exists");
+        assert_eq!(expected, 1);
+        assert_eq!(actual, 2);
+    } else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected HelperArityMismatch".into(),
+        });
+    }
     Ok(())
 }
 

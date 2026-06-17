@@ -2,8 +2,8 @@
 
 use proptest::prelude::*;
 use vb_proof_kernels::profile_contract::{
-    ContractGap, MASTER_PROFILE_CONTRACT, ProfileKey, ProfileName, SettingValue, StrVal,
-    validate_against_governance, validate_against_master,
+    ContractGap, MASTER_PROFILE_CONTRACT, ProfileKey, ProfileName, ProfileNameError, SettingValue,
+    StrVal, validate_against_governance, validate_against_master,
 };
 
 use super::strategies::{arb_correct_workspace, arb_workspace_profile_set};
@@ -11,7 +11,15 @@ use super::strategies::{arb_correct_workspace, arb_workspace_profile_set};
 proptest! {
     #[test]
     fn prop_forbidden_states_rejected_with_correct_errors(ws in arb_workspace_profile_set()) {
-        assert!(ProfileName::new("maxperf").is_err());
+        let maxperf_result = ProfileName::new("maxperf");
+        assert!(matches!(
+            maxperf_result,
+            Err(ProfileNameError::Forbidden)
+        ), "maxperf must be rejected as forbidden");
+        match maxperf_result {
+            Err(ProfileNameError::Forbidden) => {} // expected
+            _ => unreachable!("maxperf error must be Forbidden"),
+        }
         let gaps = validate_against_master(&ws, &MASTER_PROFILE_CONTRACT);
         let has_release = ws.has(ProfileName::Release);
         let has_bench = ws.has(ProfileName::Bench);

@@ -276,8 +276,7 @@ fn side_effect_verify_idempotency_handles_pure_correctly() {
     };
 
     let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
-    assert!(frame.is_ok());
-    let frame = frame.expect("test frame");
+    let frame = frame.unwrap_or_else(|e| panic!("test frame construction failed: {e:?}"));
 
     // Pure actions should always pass idempotency verification
     let result = verify_idempotency(&contract, &[], &frame);

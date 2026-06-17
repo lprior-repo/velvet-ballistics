@@ -536,9 +536,9 @@ fn check_expr_stack_bound_deep_loads_within_limit() {
     // This will fail because validate_expr_final_depth checks stack is empty.
     // Use ops that leave stack balanced instead.
     let result = check_expr_stack_bound(&ops);
-    // Stack is non-empty at end → ExpressionStackUnderflow
+    // Stack is non-empty at end → InvalidCompiledWorkflow → UnexpectedEof
     assert!(
-        result.is_err(),
+        matches!(result, Err(ExprError::UnexpectedEof)),
         "50 loads with no consumers should fail (stack not empty)"
     );
 }
@@ -553,10 +553,6 @@ fn check_expr_stack_bound_exceeds_max_expression_stack() {
         .collect();
     let result = check_expr_stack_bound(&ops);
     // 65 > 64 (MAX_EXPRESSION_STACK) → StackOverflow
-    assert!(
-        result.is_err(),
-        "65 loads should exceed MAX_EXPRESSION_STACK(64)"
-    );
     match result {
         Err(ExprError::StackOverflow { max }) => {
             assert_eq!(max, 64, "overflow should report max=64");
@@ -575,10 +571,6 @@ fn check_expr_stack_bound_64_loads_at_limit() {
         .collect();
     let result = check_expr_stack_bound(&ops);
     // 64 loads → depth 64 → passes capacity (64 <= 64) but fails final depth (64 > 1)
-    assert!(
-        result.is_err(),
-        "64 loads should fail final depth validation"
-    );
     match result {
         Err(ExprError::UnexpectedEof) => {
             // InvalidCompiledWorkflow maps to UnexpectedEof via core_to_expr
@@ -616,9 +608,9 @@ fn check_expr_stack_bound_256_loads_exceeds_u8_depth() {
         .map(|i| ExprOp::LoadConst(ConstIdx::new(i as u16)))
         .collect();
     let result = check_expr_stack_bound(&ops);
-    // Depth would overflow u8 → should fail
+    // Depth would overflow u8 → StackOverflow
     assert!(
-        result.is_err(),
+        matches!(result, Err(ExprError::StackOverflow { .. })),
         "256 loads should overflow u8 depth tracking"
     );
 }
