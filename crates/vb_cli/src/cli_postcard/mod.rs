@@ -18,32 +18,34 @@
 
 mod classify;
 mod codec;
+mod constants;
+mod deserial;
 mod error;
+mod serial;
 mod types;
 mod types_more;
 mod validation;
 
 pub(crate) use classify::{ClassifyError, classify_envelope};
 pub(crate) use codec::{decode_cli_payload, decode_postcard_payload, encode_postcard};
+pub(crate) use constants::{
+    CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE, HEADER_SIZE_U32,
+    MAX_PAYLOAD, MAX_PAYLOAD_U32,
+};
+pub(crate) use deserial::{CliPostcardKind, UnknownCliPostcardKind};
 pub(crate) use error::PostcardError;
+pub(crate) use serial::PostcardHeader;
 pub(crate) use types::{
-    CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, CliPostcardKind, CliPostcardPayload,
-    DiagnosticReport, DiffEntry, DiffReport, EnvelopeSchemaVersion, EventEntry, EventsReport,
-    ExplainErrorEntry, ExplainReport, GenericPayload, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD,
-    MAX_PAYLOAD_U32, PostcardHeader, ReplayReport, TraceEntry, TraceReport, ValidateReport,
-    VerifyArtifactSection, VerifyDurabilitySection, VerifyReplaySection, VerifyReport,
+    CliPostcardPayload, DiagnosticReport, DiffEntry, DiffReport, EnvelopeSchemaVersion,
+    EventEntry, EventsReport, ExplainErrorEntry, ExplainReport, GenericPayload,
+    ReplayReport, TraceEntry, TraceReport, ValidateReport, VerifyArtifactSection,
+    VerifyDurabilitySection, VerifyReplaySection, VerifyReport,
 };
 pub(crate) use types_more::{AiContextPacketReport, SystemStatusReport, WorkflowDiffReport};
 pub(crate) use validation::{decode_postcard, payload_digest};
 
 #[cfg(test)]
 pub(crate) use classify::GenericEnvelopeRepr;
-
-fn read_array<const N: usize>(data: &[u8], start: usize) -> Result<[u8; N], PostcardError> {
-    let end = start.checked_add(N).ok_or(PostcardError::DecodeFailed)?;
-    let bytes = data.get(start..end).ok_or(PostcardError::DecodeFailed)?;
-    <[u8; N]>::try_from(bytes).map_err(|_| PostcardError::DecodeFailed)
-}
 
 #[cfg(test)]
 #[path = "tests/mod.rs"]

@@ -146,7 +146,7 @@
 
 use super::super::*;
 use crate::cli_envelope::Kind as EnvelopeKind;
-use crate::cli_postcard::types::UnknownCliPostcardKind;
+use crate::cli_postcard::UnknownCliPostcardKind;
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 use std::str::FromStr;

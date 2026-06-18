@@ -1,229 +1,25 @@
-//! CLI Postcard Types — typed per-command domain envelopes.
+//! CLI Postcard Type Definitions
 //!
-//! vb-k8ut.5: every `--emit postcard` payload deserializes into a per-command
-//! typed Rust variant of `CliPostcardPayload`. There is no JSON-in-postcard
-//! bridge: typed structs are postcard-native serde-encoded and decoders
+//! vb-k8ut.5: typed per-command domain envelopes. Every `--emit postcard`
+//! payload deserializes into a per-command typed Rust variant of
+//! `CliPostcardPayload`. There is no JSON-in-postcard bridge: typed
+//! structs are postcard-native serde-encoded and decoders
 //! pattern-match on the variant tag. The serde_json::Value type does not
 //! appear in any typed payload field.
-
-use std::str::FromStr;
+//!
+//! This module holds the envelope type structs, schema version newtype,
+//! and the top-level `CliPostcardPayload` discriminated union.
 
 use serde::{Deserialize, Serialize};
 
-use crate::cli_envelope::{Kind as EnvelopeKind, SCHEMA_VERSION};
+use super::constants::*;
+use super::deserial::CliPostcardKind;
+use crate::cli_envelope::SCHEMA_VERSION;
 use crate::exit_code::CliExitCode;
 
-/// Magic bytes for CLI Postcard format: "VCLA" (Velvet CLI Application)
-pub(crate) const CLI_MAGIC: [u8; 4] = [0x56, 0x43, 0x4C, 0x41];
-
-/// Maximum encoded payload size in bytes (64KB).
-pub(crate) const MAX_PAYLOAD: usize = 64 * 1024;
-
-pub(crate) const HEADER_SIZE: usize = 52;
-pub(crate) const HEADER_SIZE_U32: u32 = 52;
-pub(crate) const MAX_PAYLOAD_U32: u32 = 64 * 1024;
-pub(crate) const CLI_SCHEMA_VERSION: u16 = 1;
-pub(crate) const CLI_POSTCARD_KIND: u16 = 2;
-
-/// Typed discriminant for the CLI postcard payload kind.
-///
-/// vb-k8ut.5: single source of truth for the postcard discriminant catalog.
-/// The full 28-variant taxonomy is the closed enum. Every `cli_envelope::Kind`
-/// variant maps to a `CliPostcardKind` variant via `From<EnvelopeKind>`;
-/// JSON `kind` strings resolve via `FromStr` which is total over the
-/// taxonomy — unknown strings return a typed parse error and are NOT
-/// silently coerced.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub(crate) enum CliPostcardKind {
-    VerificationReport,
-    DiagnosticReport,
-    WorkflowExplanation,
-    WorkflowGraph,
-    SimulationReport,
-    SubmitRunResult,
-    RunInspection,
-    RunEvents,
-    ReplayReport,
-    IncidentReport,
-    ActionList,
-    ActionDescription,
-    DoctorReport,
-    AiContextPacket,
-    CliStatus,
-    SystemStatus,
-    AgentContext,
-    ValidateReport,
-    VerifyReport,
-    ExplainReport,
-    DiffReport,
-    EventsReport,
-    TraceReport,
-    RunReport,
-    InspectReport,
-    Simulate,
-    WorkflowDiffReport,
-}
-
-impl CliPostcardKind {
-    /// All variants in the taxonomy, in declaration order.
-    ///
-    /// vb-k8ut.5: closed-enum property — the discriminant set is finite and
-    /// exactly equal to this slice. Used by property tests to assert
-    /// round-trip coverage of the full taxonomy.
-    pub(crate) const ALL: &'static [Self] = &[
-        Self::VerificationReport,
-        Self::DiagnosticReport,
-        Self::WorkflowExplanation,
-        Self::WorkflowGraph,
-        Self::SimulationReport,
-        Self::SubmitRunResult,
-        Self::RunInspection,
-        Self::RunEvents,
-        Self::ReplayReport,
-        Self::IncidentReport,
-        Self::ActionList,
-        Self::ActionDescription,
-        Self::DoctorReport,
-        Self::AiContextPacket,
-        Self::CliStatus,
-        Self::SystemStatus,
-        Self::AgentContext,
-        Self::ValidateReport,
-        Self::VerifyReport,
-        Self::ExplainReport,
-        Self::DiffReport,
-        Self::EventsReport,
-        Self::TraceReport,
-        Self::RunReport,
-        Self::InspectReport,
-        Self::Simulate,
-        Self::WorkflowDiffReport,
-    ];
-
-    /// Stable lowercase string discriminant for this kind.
-    ///
-    /// vb-k8ut.5: the wire form. Round-trips through `FromStr` for every
-    /// variant in the taxonomy. PascalCase variants use their `EnvelopeKind`
-    /// `as_str` form; snake_case variants use the per-command JSON
-    /// envelope shape.
-    pub(crate) fn as_str(&self) -> &'static str {
-        match self {
-            Self::VerificationReport => "VerificationReport",
-            Self::DiagnosticReport => "DiagnosticReport",
-            Self::WorkflowExplanation => "WorkflowExplanation",
-            Self::WorkflowGraph => "WorkflowGraph",
-            Self::SimulationReport => "SimulationReport",
-            Self::SubmitRunResult => "SubmitRunResult",
-            Self::RunInspection => "RunInspection",
-            Self::RunEvents => "RunEvents",
-            Self::ReplayReport => "ReplayReport",
-            Self::IncidentReport => "IncidentReport",
-            Self::ActionList => "ActionList",
-            Self::ActionDescription => "ActionDescription",
-            Self::DoctorReport => "DoctorReport",
-            Self::AiContextPacket => "AiContextPacket",
-            Self::CliStatus => "CliStatus",
-            Self::SystemStatus => "SystemStatus",
-            Self::AgentContext => "AgentContext",
-            Self::ValidateReport => "validate_report",
-            Self::VerifyReport => "verify_report",
-            Self::ExplainReport => "explain_report",
-            Self::DiffReport => "diff_report",
-            Self::EventsReport => "events_report",
-            Self::TraceReport => "trace_report",
-            Self::RunReport => "run_report",
-            Self::InspectReport => "inspect_report",
-            Self::Simulate => "simulate",
-            Self::WorkflowDiffReport => "workflow_diff_report",
-        }
-    }
-}
-
-/// Closed-enum `FromStr` over the full `CliPostcardKind` taxonomy.
-///
-/// vb-k8ut.5: the taxonomy is the single source of truth for parsing
-/// the JSON `kind` field. `Kind::from_str` is consulted upstream only
-/// when an `EnvelopeKind` value is in hand, in which case
-/// `From<EnvelopeKind>` is the typed conversion path. Unknown strings
-/// return a typed `Err` — there is no silent default.
-impl FromStr for CliPostcardKind {
-    type Err = UnknownCliPostcardKind;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "VerificationReport" => Ok(Self::VerificationReport),
-            "DiagnosticReport" => Ok(Self::DiagnosticReport),
-            "WorkflowExplanation" => Ok(Self::WorkflowExplanation),
-            "WorkflowGraph" => Ok(Self::WorkflowGraph),
-            "SimulationReport" => Ok(Self::SimulationReport),
-            "SubmitRunResult" => Ok(Self::SubmitRunResult),
-            "RunInspection" => Ok(Self::RunInspection),
-            "RunEvents" => Ok(Self::RunEvents),
-            "ReplayReport" => Ok(Self::ReplayReport),
-            "IncidentReport" => Ok(Self::IncidentReport),
-            "ActionList" => Ok(Self::ActionList),
-            "ActionDescription" => Ok(Self::ActionDescription),
-            "DoctorReport" => Ok(Self::DoctorReport),
-            "AiContextPacket" => Ok(Self::AiContextPacket),
-            "CliStatus" => Ok(Self::CliStatus),
-            "SystemStatus" => Ok(Self::SystemStatus),
-            "AgentContext" => Ok(Self::AgentContext),
-            "validate_report" => Ok(Self::ValidateReport),
-            "verify_report" => Ok(Self::VerifyReport),
-            "explain_report" => Ok(Self::ExplainReport),
-            "diff_report" => Ok(Self::DiffReport),
-            "events_report" => Ok(Self::EventsReport),
-            "trace_report" => Ok(Self::TraceReport),
-            "replay_report" => Ok(Self::ReplayReport),
-            "run_report" => Ok(Self::RunReport),
-            "inspect_report" => Ok(Self::InspectReport),
-            "simulate" => Ok(Self::Simulate),
-            "workflow_diff_report" => Ok(Self::WorkflowDiffReport),
-            other => Err(UnknownCliPostcardKind(other.to_string())),
-        }
-    }
-}
-
-/// Typed parse error for `CliPostcardKind::from_str`.
-///
-/// vb-k8ut.5: replaces the prior `Option<CliPostcardKind>` return shape
-/// with a typed error carrying the offending string. Callers decide how
-/// to handle unknown kinds.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct UnknownCliPostcardKind(pub(crate) String);
-
-impl std::fmt::Display for UnknownCliPostcardKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "unknown CLI postcard kind: {}", self.0)
-    }
-}
-
-impl std::error::Error for UnknownCliPostcardKind {}
-
-impl From<EnvelopeKind> for CliPostcardKind {
-    fn from(kind: EnvelopeKind) -> Self {
-        match kind {
-            EnvelopeKind::VerificationReport => Self::VerificationReport,
-            EnvelopeKind::DiagnosticReport => Self::DiagnosticReport,
-            EnvelopeKind::WorkflowExplanation => Self::WorkflowExplanation,
-            EnvelopeKind::WorkflowGraph => Self::WorkflowGraph,
-            EnvelopeKind::SimulationReport => Self::SimulationReport,
-            EnvelopeKind::SubmitRunResult => Self::SubmitRunResult,
-            EnvelopeKind::RunInspection => Self::RunInspection,
-            EnvelopeKind::RunEvents => Self::RunEvents,
-            EnvelopeKind::ReplayReport => Self::ReplayReport,
-            EnvelopeKind::IncidentReport => Self::IncidentReport,
-            EnvelopeKind::ActionList => Self::ActionList,
-            EnvelopeKind::ActionDescription => Self::ActionDescription,
-            EnvelopeKind::DoctorReport => Self::DoctorReport,
-            EnvelopeKind::AiContextPacket => Self::AiContextPacket,
-            EnvelopeKind::CliStatus => Self::CliStatus,
-            EnvelopeKind::SystemStatus => Self::SystemStatus,
-            EnvelopeKind::AgentContext => Self::AgentContext,
-        }
-    }
-}
+// ---------------------------------------------------------------------------
+// Schema version newtype
+// ---------------------------------------------------------------------------
 
 /// Typed envelope schema version newtype.
 ///
@@ -254,6 +50,10 @@ impl From<&str> for EnvelopeSchemaVersion {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Diagnostic report
+// ---------------------------------------------------------------------------
+
 /// Typed diagnostic envelope.
 ///
 /// vb-k8ut.5: replaces the prior pattern of serializing a `json!({...})` blob.
@@ -278,6 +78,10 @@ impl DiagnosticReport {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Validation report
+// ---------------------------------------------------------------------------
+
 /// Typed validation report (`kind = "validate_report"`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct ValidateReport {
@@ -294,6 +98,10 @@ pub(crate) struct ValidateReport {
 fn validate_kind() -> String {
     "validate_report".to_string()
 }
+
+// ---------------------------------------------------------------------------
+// Verification report
+// ---------------------------------------------------------------------------
 
 /// Typed verify-replay subsection of [`VerifyReport`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -342,6 +150,10 @@ pub(crate) struct VerifyReport {
 fn verify_kind() -> String {
     "verify_report".to_string()
 }
+
+// ---------------------------------------------------------------------------
+// Explain report
+// ---------------------------------------------------------------------------
 
 /// Typed explain-error subsection of [`ExplainReport`].
 ///
@@ -392,6 +204,10 @@ pub(crate) struct ExplainArtifactSection {
     pub(crate) ir_digest_hex: String,
     pub(crate) node_count: u32,
 }
+
+// ---------------------------------------------------------------------------
+// Events / Trace / Replay
+// ---------------------------------------------------------------------------
 
 /// Typed events report (`kind = "events_report"`).
 ///
@@ -472,6 +288,10 @@ fn replay_kind() -> String {
     "replay_report".to_string()
 }
 
+// ---------------------------------------------------------------------------
+// Diff report
+// ---------------------------------------------------------------------------
+
 /// Typed diff entry carried by [`DiffReport`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DiffEntry {
@@ -504,6 +324,10 @@ pub(crate) struct DiffReport {
 fn diff_kind() -> String {
     "diff_report".to_string()
 }
+
+// ---------------------------------------------------------------------------
+// Top-level payload enum
+// ---------------------------------------------------------------------------
 
 /// Typed CLI postcard payload.
 ///
@@ -572,57 +396,5 @@ impl CliPostcardPayload {
             Self::Diff(_) => CliPostcardKind::DiffReport,
             Self::Generic(payload) => payload.kind,
         }
-    }
-}
-
-/// Postcard header structure for CLI output.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PostcardHeader {
-    pub(crate) magic: [u8; 4],
-    pub(crate) schema_version: u16,
-    pub(crate) kind: u16,
-    pub(crate) header_len: u32,
-    pub(crate) payload_len: u32,
-    pub(crate) payload_digest: [u8; 32],
-    pub(crate) header_crc: u32,
-}
-
-impl PostcardHeader {
-    /// INV-005: Bounded allocation gate.
-    pub(crate) fn validate(&self) -> Result<(), super::PostcardError> {
-        if self.magic != CLI_MAGIC {
-            return Err(super::PostcardError::InvalidMagic);
-        }
-        if self.header_len != HEADER_SIZE_U32 {
-            return Err(super::PostcardError::InvalidHeaderLength);
-        }
-        if self.payload_len > MAX_PAYLOAD_U32 {
-            return Err(super::PostcardError::PayloadTooLarge);
-        }
-        Ok(())
-    }
-
-    pub(crate) fn from_bytes(data: &[u8]) -> Result<Self, super::PostcardError> {
-        if data.len() < HEADER_SIZE {
-            return Err(super::PostcardError::DecodeFailed);
-        }
-
-        let magic = super::read_array::<4>(data, 0)?;
-        let schema_version = u16::from_le_bytes(super::read_array::<2>(data, 4)?);
-        let kind = u16::from_le_bytes(super::read_array::<2>(data, 6)?);
-        let header_len = u32::from_le_bytes(super::read_array::<4>(data, 8)?);
-        let payload_len = u32::from_le_bytes(super::read_array::<4>(data, 12)?);
-        let payload_digest = super::read_array::<32>(data, 16)?;
-        let header_crc = u32::from_le_bytes(super::read_array::<4>(data, 48)?);
-
-        Ok(PostcardHeader {
-            magic,
-            schema_version,
-            kind,
-            header_len,
-            payload_len,
-            payload_digest,
-            header_crc,
-        })
     }
 }
