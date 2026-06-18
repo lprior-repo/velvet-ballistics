@@ -1,9 +1,9 @@
-#![forbid(unsafe_code)]
-//! Schema validation for workflow documents.
+//! Schema validation functions.
 //!
 //! Validates required/unknown fields, version strings, trigger declarations,
 //! ID grammar rules, step field shapes, and single-primitive constraints.
 
+use super::types::{FieldValue, StepDoc, WorkflowDoc, STEP_PRIMITIVES};
 use crate::{ValidationError, ValidationResult};
 
 const CANONICAL_VERSION: &str = "velvet-ballistics/v1";
@@ -33,11 +33,6 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
     "do",
     "on_error",
     "try_again",
-];
-
-const STEP_PRIMITIVES: &[&str] = &[
-    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
-    "finish",
 ];
 
 const RESERVED_IDS: &[&str] = &[
@@ -73,10 +68,7 @@ const RESERVED_IDS: &[&str] = &[
 ];
 
 /// Validates a workflow document against the v1 schema.
-///
-/// Checks required fields, unknown fields, version, trigger, IDs,
-/// step fields, and single-primitive rules.
-pub fn validate_workflow_schema(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub(crate) fn validate_workflow_schema(doc: &WorkflowDoc) -> ValidationResult<()> {
     validate_duplicate_fields(doc)?;
     validate_required_fields(doc)?;
     validate_unknown_fields(doc)?;
@@ -110,7 +102,7 @@ fn validate_no_duplicate_names(fields: &[(String, FieldValue)]) -> ValidationRes
 }
 
 /// Checks that the version field matches the canonical version string.
-pub fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub(crate) fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
     match doc.get_string("version") {
         Some(version) if version == CANONICAL_VERSION => Ok(()),
         Some(version) => Err(ValidationError::InvalidVersion {
@@ -123,7 +115,7 @@ pub fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
 }
 
 /// Validates the trigger (when) block accepts canonical v1 triggers and rejects HTTP.
-pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub(crate) fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     let trigger = doc
         .get_mapping("when")
         .ok_or_else(|| ValidationError::MissingRequiredField {
@@ -189,7 +181,7 @@ fn validate_named_string_trigger(
 }
 
 /// Validates all step and top-level IDs against grammar, reserved words, and duplicates.
-pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub(crate) fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
     let name = doc
         .get_string("name")
         .ok_or_else(|| ValidationError::MissingRequiredField {
@@ -220,7 +212,7 @@ pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
 }
 
 /// Validates step field shapes and the single-primitive constraint.
-pub fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub(crate) fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
     let steps = doc
         .get_sequence("steps")
         .ok_or_else(|| ValidationError::MissingRequiredField {
@@ -235,15 +227,6 @@ pub fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
 }
 
 /// Validates that a step's primitive body is structurally sound.
-///
-/// Each primitive field should have a non-empty body that matches the
-/// expected structure. This emits type-specific [`ValidationError`]
-/// variants (e.g., `InvalidChoose`, `InvalidForEach`) rather than
-/// generic schema errors, enabling precise diagnostics.
-///
-/// An `Empty` body is accepted as a valid marker (the YAML parser may
-/// produce `Empty` for null/unspecified primitives); structural checks
-/// only apply to non-empty bodies.
 fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
     let Some((primitive, value)) = step.primitive_value() else {
         return Ok(());
@@ -253,7 +236,6 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
     }
     match primitive {
         "choose" => {
-            // choose body must be a Mapping with `branches:` or `default:`
             if let FieldValue::Mapping(entries) = value {
                 let has_branches = entries.iter().any(|(k, _)| k == "branches");
                 let has_default = entries.iter().any(|(k, _)| k == "default");
@@ -263,7 +245,6 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "for_each" => {
-            // for_each body must be a Mapping with `for_each:` and body steps
             if let FieldValue::Mapping(entries) = value {
                 let has_body = entries
                     .iter()
@@ -274,7 +255,6 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "together" => {
-            // together body must be a Sequence of steps
             if let FieldValue::Mapping(entries) = value {
                 let has_body = entries
                     .iter()
@@ -285,7 +265,6 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "collect" => {
-            // collect body must have `of:` and `reduce:`
             if let FieldValue::Mapping(entries) = value {
                 let has_of = entries.iter().any(|(k, _)| k == "of");
                 let has_reduce = entries.iter().any(|(k, _)| k == "reduce");
@@ -295,7 +274,6 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "reduce" => {
-            // reduce body must have `reduce:` and body steps
             if let FieldValue::Mapping(entries) = value {
                 let has_body = entries
                     .iter()
@@ -306,7 +284,6 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "repeat" => {
-            // repeat body must be a Mapping with `repeat:` and body steps
             if let FieldValue::Mapping(entries) = value {
                 let has_body = entries
                     .iter()
@@ -317,23 +294,16 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "wait" => {
-            // wait body must be a Mapping with timeout or event
-            if let FieldValue::Mapping(entries) = value
-                && entries.is_empty()
-            {
+            if let FieldValue::Mapping(entries) = value && entries.is_empty() {
                 return Err(ValidationError::InvalidWait);
             }
         }
         "ask" => {
-            // ask body must be a Mapping with prompt fields
-            if let FieldValue::Mapping(entries) = value
-                && entries.is_empty()
-            {
+            if let FieldValue::Mapping(entries) = value && entries.is_empty() {
                 return Err(ValidationError::InvalidAsk);
             }
         }
         "finish" => {
-            // finish body must be a Mapping with `result:`
             if let FieldValue::Mapping(entries) = value {
                 let has_result = entries.iter().any(|(k, _)| k == "result");
                 if !has_result {
@@ -342,15 +312,11 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "retry" | "try_again" => {
-            // retry body must be non-empty Mapping
-            if let FieldValue::Mapping(entries) = value
-                && entries.is_empty()
-            {
+            if let FieldValue::Mapping(entries) = value && entries.is_empty() {
                 return Err(ValidationError::InvalidRetry);
             }
         }
         "on_error" => {
-            // on_error body must have body steps
             if let FieldValue::Mapping(entries) = value {
                 let has_body = entries
                     .iter()
@@ -411,7 +377,7 @@ pub fn validate_single_primitive(step: &StepDoc) -> ValidationResult<()> {
     Ok(())
 }
 
-fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
+pub(crate) fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
     if !is_valid_id(id) {
         return Err(ValidationError::InvalidId {
             id: format!("{field}: {id}"),
@@ -425,7 +391,7 @@ fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
     Ok(())
 }
 
-fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
+pub(crate) fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     if !is_valid_id(id) {
         return Err(ValidationError::InvalidId { id: id.to_owned() });
     }
@@ -438,7 +404,7 @@ fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     Ok(())
 }
 
-fn is_valid_id(id: &str) -> bool {
+pub(crate) fn is_valid_id(id: &str) -> bool {
     if id.is_empty() || id.len() > 64 {
         return false;
     }
@@ -457,146 +423,6 @@ fn is_valid_id(id: &str) -> bool {
     true
 }
 
-fn is_reserved_id(id: &str) -> bool {
+pub(crate) fn is_reserved_id(id: &str) -> bool {
     RESERVED_IDS.contains(&id)
 }
-
-// ---------------------------------------------------------------------------
-// Lightweight document model for schema validation
-// ---------------------------------------------------------------------------
-
-/// Read-only view of a workflow document's top-level fields.
-#[derive(Clone, PartialEq, Debug)]
-pub struct WorkflowDoc {
-    fields: Vec<(String, FieldValue)>,
-}
-
-/// Value associated with a workflow field.
-#[derive(Clone, PartialEq, Debug)]
-#[non_exhaustive]
-pub enum FieldValue {
-    /// String scalar value.
-    String(String),
-    /// Ordered sequence of step documents.
-    Sequence(Vec<StepDoc>),
-    /// Key-value mapping (for triggers, etc).
-    Mapping(Vec<(String, FieldValue)>),
-    /// Field present but empty/null.
-    Empty,
-}
-
-/// Read-only view of a single step's fields.
-#[derive(Clone, PartialEq, Debug)]
-pub struct StepDoc {
-    fields: Vec<(String, FieldValue)>,
-}
-
-impl WorkflowDoc {
-    /// Creates a workflow document from key-value pairs.
-    #[must_use]
-    pub fn from_pairs(fields: Vec<(String, FieldValue)>) -> Self {
-        Self { fields }
-    }
-
-    /// Returns the string value of a field, if present and string-typed.
-    pub fn get_string(&self, field: &str) -> Option<&str> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::String(s) => Some(s.as_str()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns the sequence value of a field, if present.
-    pub fn get_sequence(&self, field: &str) -> Option<&[StepDoc]> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::Sequence(steps) => Some(steps.as_slice()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns the mapping value of a field, if present.
-    pub fn get_mapping(&self, field: &str) -> Option<&[(String, FieldValue)]> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::Mapping(entries) => Some(entries.as_slice()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns whether a field is present.
-    pub fn has_field(&self, field: &str) -> bool {
-        self.fields.iter().any(|(name, _)| name == field)
-    }
-
-    /// Returns all field names.
-    pub fn field_names(&self) -> Vec<&str> {
-        self.fields.iter().map(|(name, _)| name.as_str()).collect()
-    }
-}
-
-impl StepDoc {
-    /// Creates a step document from key-value pairs.
-    #[must_use]
-    pub fn from_pairs(fields: Vec<(String, FieldValue)>) -> Self {
-        Self { fields }
-    }
-
-    /// Returns the string value of a field, if present and string-typed.
-    pub fn get_string(&self, field: &str) -> Option<&str> {
-        self.fields.iter().find_map(|(name, value)| {
-            if name == field {
-                match value {
-                    FieldValue::String(s) => Some(s.as_str()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Returns all field names.
-    pub fn field_names(&self) -> Vec<&str> {
-        self.fields.iter().map(|(name, _)| name.as_str()).collect()
-    }
-
-    /// Returns the primitive field name and its value, if one is declared.
-    ///
-    /// A step primitive is one of the `STEP_PRIMITIVES` list (set, do, choose,
-    /// for_each, together, collect, reduce, repeat, wait, ask, finish).
-    /// Returns `None` if no primitive is present (handled by
-    /// `validate_single_primitive` separately).
-    fn primitive_value(&self) -> Option<(&str, &FieldValue)> {
-        for (field, value) in &self.fields {
-            if STEP_PRIMITIVES.contains(&field.as_str()) {
-                return Some((field, value));
-            }
-        }
-        None
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-#[path = "schema/tests.rs"]
-mod tests;
