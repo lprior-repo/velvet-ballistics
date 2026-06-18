@@ -1,172 +1,42 @@
 #![forbid(unsafe_code)]
-//! Reference validation for workflow documents.
+//! Core reference-validation logic.
 //!
-//! Builds reference tables from declared inputs, vars, secrets, and step IDs,
-//! then validates that all `$input.*`, `$vars.*`, `$secrets.*`, `$steps.*`,
-//! direct `$step_id.*`, and loop-variable references resolve to declared names.
-//! Rejects `$runtime.*`, `$now`, and `$random`.
+//! This module owns every `validate_*` public function and the private
+//! routing helpers (`validate_bare_reference`, `validate_rooted_reference`,
+//! `validate_step_reference`, `validate_known_step_reference`,
+//! `validate_declared`) that dispatch against `$`-prefixed reference shapes.
 //!
-//! The [`RefTables`] type and [`validate_single_reference`] function are public
-//! so that `vb_compile` can build tables from its AST and share the core
-//! reference validation logic without duplication (DRIFT-5).
+//! The entry points are:
+//!
+//! - [`validate_single_reference`] — single reference, no scope context
+//! - [`validate_single_reference_with_context`] — single reference with
+//!   step-index and scope flags
+//! - [`validate_single_reference_in_on_error`] — reference inside
+//!   an `on_error` handler body
+//! - [`validate_single_reference_in_repeat`] — reference inside a
+//!   `repeat` body
+//! - [`validate_step_references`] — batch validation for a step, emitting
+//!   [`crate::ValidationError::StepSkippedReference`] on first failure
 
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashSet;
-use vb_core::ids::StepIdx;
 
-/// Builds reference tables and validates all references in a workflow.
-pub fn validate_references(workflow: &WorkflowRefs) -> ValidationResult<()> {
+use super::parse::{
+    step_field_is_output, step_index_to_step_idx, OUTPUT_FIELD_SYMBOL,
+};
+use super::tables::RefTables;
+use super::StepIdx;
+
+/// Validates all references in a workflow document.
+///
+/// Builds reference tables from the workflow and validates every
+/// `$`-prefixed reference in [`super::WorkflowRefs::references`].
+pub fn validate_references(workflow: &super::WorkflowRefs) -> ValidationResult<()> {
     let tables = RefTables::build(workflow);
     for reference in &workflow.references {
         validate_single_reference(reference, &tables)?;
     }
     Ok(())
-}
-
-/// Reference tables built from declared workflow names.
-///
-/// Public so that downstream crates (e.g. `vb_compile`) can build tables from
-/// their own AST types and call [`validate_single_reference`] directly,
-/// avoiding duplicate reference validation logic.
-pub struct RefTables {
-    inputs: HashSet<String>,
-    vars: HashSet<String>,
-    secrets: HashSet<String>,
-    step_ids: Vec<String>,
-    step_ids_set: HashSet<String>,
-    loop_variable_names: HashSet<String>,
-    /// Set of step IDs that produce outputs. Used to validate that
-    /// `$steps.<step_id>.output` references point to steps that actually
-    /// produce an output. A step that does not produce an output is
-    /// referenced at the user's peril: validation emits
-    /// [`ValidationError::ResultReferenceMissing`].
-    step_outputs: HashSet<String>,
-    step_outputs_known: bool,
-}
-
-impl RefTables {
-    /// Builds reference tables from a [`WorkflowRefs`] document.
-    pub fn build(workflow: &WorkflowRefs) -> Self {
-        let step_ids = workflow.step_ids.clone();
-        let step_ids_set = string_set(&workflow.step_ids);
-        Self {
-            inputs: string_set(&workflow.inputs),
-            vars: string_set(&workflow.vars),
-            secrets: string_set(&workflow.secrets),
-            step_ids,
-            step_ids_set,
-            loop_variable_names: string_set(&workflow.loop_variable_names),
-            step_outputs: string_set(&workflow.step_outputs),
-            step_outputs_known: !workflow.step_outputs.is_empty(),
-        }
-    }
-
-    /// Builds reference tables from individual name slices.
-    ///
-    /// This is the shared entry point used by `vb_compile` to avoid
-    /// duplicating reference validation logic.
-    pub fn from_slices(
-        inputs: &[String],
-        vars: &[String],
-        secrets: &[String],
-        step_ids: &[String],
-    ) -> Self {
-        Self::from_slices_with_loop_vars(inputs, vars, secrets, step_ids, &[])
-    }
-
-    /// Builds reference tables from individual name slices, including
-    /// loop variable names that are in scope (for_each, together, collect).
-    pub fn from_slices_with_loop_vars(
-        inputs: &[String],
-        vars: &[String],
-        secrets: &[String],
-        step_ids: &[String],
-        loop_variable_names: &[String],
-    ) -> Self {
-        let step_ids_vec = step_ids.to_vec();
-        let step_ids_set = string_set(step_ids);
-        Self {
-            inputs: string_set(inputs),
-            vars: string_set(vars),
-            secrets: string_set(secrets),
-            step_ids: step_ids_vec,
-            step_ids_set,
-            loop_variable_names: string_set(loop_variable_names),
-            step_outputs: HashSet::new(),
-            step_outputs_known: false,
-        }
-    }
-
-    /// Builds reference tables from individual name slices, loop variables,
-    /// and the set of steps that can produce an `output` binding.
-    pub fn from_slices_with_outputs(
-        inputs: &[String],
-        vars: &[String],
-        secrets: &[String],
-        step_ids: &[String],
-        loop_variable_names: &[String],
-        step_outputs: &[String],
-    ) -> Self {
-        let mut tables =
-            Self::from_slices_with_loop_vars(inputs, vars, secrets, step_ids, loop_variable_names);
-        tables.step_outputs = string_set(step_outputs);
-        tables.step_outputs_known = true;
-        tables
-    }
-
-    /// Returns whether the given name is a declared input.
-    pub fn contains_input(&self, name: &str) -> bool {
-        self.inputs.contains(name)
-    }
-
-    /// Returns whether the given name is a declared variable.
-    pub fn contains_var(&self, name: &str) -> bool {
-        self.vars.contains(name)
-    }
-
-    /// Returns whether the given name is a declared secret.
-    pub fn contains_secret(&self, name: &str) -> bool {
-        self.secrets.contains(name)
-    }
-
-    /// Returns whether the given name is a declared step ID.
-    pub fn contains_step_id(&self, name: &str) -> bool {
-        self.step_ids_set.contains(name)
-    }
-
-    /// Returns whether the given name is a loop variable in scope.
-    pub fn contains_loop_variable(&self, name: &str) -> bool {
-        self.loop_variable_names.contains(name)
-    }
-
-    /// Returns the index of the given step ID, or `None` if not found.
-    pub fn step_index(&self, step_id: &str) -> Option<usize> {
-        self.step_ids.iter().position(|id| id == step_id)
-    }
-
-    /// Returns whether the given step ID is declared to produce an output.
-    ///
-    /// When step-output tracking is supplied (via
-    /// [`RefTables::from_slices_with_outputs`] or non-empty
-    /// [`WorkflowRefs::step_outputs`]), this returns `true` only for steps
-    /// that bind a result. A supplied-but-empty output set means no steps
-    /// produce output. When tracking is not supplied, every step is treated as
-    /// output-producing so callers that have not wired output tracking do not
-    /// regress.
-    pub fn step_has_output(&self, step_id: &str) -> bool {
-        if !self.step_outputs_known {
-            return true;
-        }
-        self.step_outputs.contains(step_id)
-    }
-}
-
-fn string_set(names: &[String]) -> HashSet<String> {
-    let mut set = HashSet::with_capacity(names.len());
-    for name in names {
-        set.insert(name.clone());
-    }
-    set
 }
 
 /// Validates a single `$`-prefixed reference against the declared name tables.
@@ -304,6 +174,10 @@ pub fn validate_step_references(
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// Private routing helpers
+// ---------------------------------------------------------------------------
+
 fn validate_bare_reference(
     reference: &str,
     body: &str,
@@ -327,7 +201,7 @@ fn validate_bare_reference(
     })
 }
 
-fn validate_rooted_reference(
+pub(crate) fn validate_rooted_reference(
     reference: &str,
     root: &str,
     tail: &str,
@@ -374,21 +248,6 @@ fn validate_rooted_reference(
     }
 }
 
-/// Parses a namespace-prefixed step reference of the form
-/// `$step.<step_id>.<field>` or `$steps.<step_id>.<field>`.
-///
-/// Returns `Some((step_id, field))` if the reference is a valid step reference,
-/// or `None` if the reference is not a step reference.
-pub fn parse_step_reference(reference: &str) -> Option<(&str, &str)> {
-    let body = reference.strip_prefix('$')?;
-    let (root, tail) = body.split_once('.')?;
-    if !matches!(root, "step" | "steps") {
-        return None;
-    }
-    let (step_id, field) = tail.split_once('.')?;
-    Some((step_id, field))
-}
-
 fn validate_step_reference(
     reference: &str,
     tail: &str,
@@ -398,6 +257,13 @@ fn validate_step_reference(
     let name = reference_name(tail);
     let field_tail = tail.split_once('.').map(|(_, field)| field);
     validate_known_step_reference(reference, name, field_tail, tables, current_step_index)
+}
+
+fn reference_name(tail: &str) -> &str {
+    match tail.split_once('.') {
+        Some((name, _)) => name,
+        None => tail,
+    }
 }
 
 fn validate_known_step_reference(
@@ -446,48 +312,6 @@ fn validate_known_step_reference(
     }
 }
 
-/// Returns `true` when the requested step field is the canonical
-/// "output" slot.
-///
-/// The input `field_tail` is either the text after a direct step root
-/// (e.g. `Some("output.value")` for `$build.output.value`) or after the
-/// step id in a `$steps` reference (e.g. `Some("output")` for
-/// `$steps.build.output`). `None` means the reference named a step without
-/// a field.
-fn step_field_is_output(field_tail: Option<&str>) -> bool {
-    match field_tail {
-        Some(tail) => reference_name(tail) == "output",
-        None => false,
-    }
-}
-
-/// Sentinel [`SymbolId`] for the canonical
-/// "output" field of a step result.
-///
-/// The validator does not have access to the workflow's symbol table,
-/// so we record the missing field as a fixed symbol id. Downstream
-/// consumers that know the workflow's symbol table can re-resolve
-/// the symbol id back to the field name "output" via the registry.
-const OUTPUT_FIELD_SYMBOL: vb_core::ids::SymbolId = vb_core::ids::SymbolId::new(0);
-
-/// Converts a [`usize`] workflow step index into the bounded
-/// [`StepIdx`] newtype used by [`ValidationError`] variants.
-///
-/// [`StepIdx`] is a `u16` newtype. Workflows that exceed `u16::MAX`
-/// steps cannot be represented; in that case we saturate to
-/// `StepIdx::MAX` so the validator can still emit a typed diagnostic
-/// instead of panicking on the conversion. The error variant the
-/// caller is constructing is `ResultReferenceMissing`, so the saturating
-/// behavior keeps the validation pipeline total and avoids surfacing
-/// a misleading `UnknownReference` when the real failure is the
-/// missing output slot.
-fn step_index_to_step_idx(step_idx: usize) -> StepIdx {
-    match u16::try_from(step_idx) {
-        Ok(value) => StepIdx::new(value),
-        Err(_) => StepIdx::new(u16::MAX),
-    }
-}
-
 fn validate_declared(
     reference: &str,
     tail: &str,
@@ -507,51 +331,3 @@ fn validate_declared(
         })
     }
 }
-
-fn reference_name(tail: &str) -> &str {
-    match tail.split_once('.') {
-        Some((name, _)) => name,
-        None => tail,
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Workflow reference model
-// ---------------------------------------------------------------------------
-
-/// Workflow reference data used for reference validation.
-#[derive(Debug, Clone, Default)]
-pub struct WorkflowRefs {
-    /// Declared input names.
-    pub inputs: Vec<String>,
-    /// Declared variable names.
-    pub vars: Vec<String>,
-    /// Declared secret names.
-    pub secrets: Vec<String>,
-    /// Declared step IDs (in order).
-    pub step_ids: Vec<String>,
-    /// All `$`-prefixed references found in the workflow.
-    pub references: Vec<String>,
-    /// Loop variable names in scope (from for_each, together, collect bodies).
-    pub loop_variable_names: Vec<String>,
-    /// Step IDs that produce a result output.
-    ///
-    /// When non-empty, [`RefTables::step_has_output`] uses this set to
-    /// determine whether a `$steps.<step_id>.output` or `$step_id.output`
-    /// reference is valid; references to steps not in this set produce
-    /// [`ValidationError::ResultReferenceMissing`]. When empty through this
-    /// struct (the default), every step is treated as output-producing so the
-    /// validator remains permissive for callers that have not yet wired output
-    /// tracking. Call [`RefTables::from_slices_with_outputs`] to supply known
-    /// output tracking where an empty slice means no steps produce output.
-    pub step_outputs: Vec<String>,
-}
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-#[cfg(test)]
-#[cfg(test)]
-#[path = "references/tests.rs"]
-mod tests;

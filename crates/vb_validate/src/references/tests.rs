@@ -11,13 +11,16 @@
 #[cfg(test)]
 use crate::ValidationError;
 #[cfg(test)]
-use crate::references::{
-    RefTables, WorkflowRefs, parse_step_reference, validate_references, validate_single_reference,
+use super::tables::WorkflowRefs;
+#[cfg(test)]
+use super::{
+    parse_step_reference, validate_references, validate_single_reference,
     validate_single_reference_in_on_error, validate_single_reference_in_repeat,
-    validate_single_reference_with_context, validate_step_references,
+    validate_single_reference_with_context, validate_step_references, OUTPUT_FIELD_SYMBOL,
+    RefTables, StepIdx,
 };
 #[cfg(test)]
-use vb_core::ids::StepIdx;
+use super::validate::validate_rooted_reference;
 
 fn make_tables(inputs: &[&str], vars: &[&str], secrets: &[&str], step_ids: &[&str]) -> RefTables {
     make_tables_with_loop_vars(inputs, vars, secrets, step_ids, &[])

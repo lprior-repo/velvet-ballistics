@@ -7,16 +7,13 @@
 //! This harness verifies CRC validation in record header decoding.
 
 use crate::codec::header::header_crc32c;
-#[cfg(not(kani))]
-use crate::codec::header::decode_record_header;
 use crate::codec::validation::{
     RecordKindFamilyDecision, classify_kind_family, is_known_record_kind,
 };
 use crate::constants::{
-    CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
+    CRC_OFFSET, CURRENT_SCHEMA_VERSION, MAGIC_WORKFLOW_SOURCE, RECORD_HEADER_BYTES,
+    RECORD_HEADER_LEN,
 };
-#[cfg(not(kani))]
-use crate::error::JournalError;
 use crate::records::RecordKind;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -26,19 +23,6 @@ enum CrcDecodeClass {
     OtherError,
 }
 
-#[cfg(not(kani))]
-fn decode_crc_class(header: &[u8], expected_magic: u32) -> CrcDecodeClass {
-    match decode_record_header(header, expected_magic, u32::MAX) {
-        Ok(_) => CrcDecodeClass::Accepted,
-        Err(JournalError::HeaderChecksumMismatch) => CrcDecodeClass::HeaderChecksumMismatch,
-        Err(error) => {
-            core::mem::forget(error);
-            CrcDecodeClass::OtherError
-        }
-    }
-}
-
-#[cfg(kani)]
 fn decode_crc_class(header: &[u8], expected_magic: u32) -> CrcDecodeClass {
     let Some(decoded) = compact_decode_header(header) else {
         return CrcDecodeClass::OtherError;
@@ -65,7 +49,6 @@ fn decode_crc_class(header: &[u8], expected_magic: u32) -> CrcDecodeClass {
     CrcDecodeClass::Accepted
 }
 
-#[cfg(kani)]
 #[derive(Clone, Copy)]
 struct CompactHeader {
     magic: u32,
@@ -75,7 +58,6 @@ struct CompactHeader {
     header_checksum: u32,
 }
 
-#[cfg(kani)]
 fn compact_decode_header(header: &[u8]) -> Option<CompactHeader> {
     Some(CompactHeader {
         magic: read_u32_le(header, 0)?,
@@ -86,7 +68,6 @@ fn compact_decode_header(header: &[u8]) -> Option<CompactHeader> {
     })
 }
 
-#[cfg(kani)]
 fn compact_header_prefix(header: &[u8]) -> &[u8] {
     match header.get(..CRC_OFFSET) {
         Some(prefix) => prefix,
@@ -94,14 +75,12 @@ fn compact_header_prefix(header: &[u8]) -> &[u8] {
     }
 }
 
-#[cfg(kani)]
 fn read_u16_le(bytes: &[u8], offset: usize) -> Option<u16> {
     let b0 = bytes.get(offset).copied()?;
     let b1 = bytes.get(offset.checked_add(1)?).copied()?;
     Some(u16::from_le_bytes([b0, b1]))
 }
 
-#[cfg(kani)]
 fn read_u32_le(bytes: &[u8], offset: usize) -> Option<u32> {
     let b0 = bytes.get(offset).copied()?;
     let b1 = bytes.get(offset.checked_add(1)?).copied()?;
@@ -113,7 +92,7 @@ fn read_u32_le(bytes: &[u8], offset: usize) -> Option<u32> {
 /// VB-STORAGE-DECODE-005 H1: decode accepts matching CRC
 #[kani::proof]
 fn kani_record_crc_accepts_matching() {
-    let expected_magic: u32 = 0x5650424Cu32;
+    let expected_magic: u32 = MAGIC_WORKFLOW_SOURCE;
 
     let mut header_bytes = [0u8; RECORD_HEADER_BYTES];
     header_bytes[0..4].copy_from_slice(&expected_magic.to_le_bytes());
@@ -136,7 +115,7 @@ fn kani_record_crc_accepts_matching() {
 /// VB-STORAGE-DECODE-005 H2: decode rejects mismatched CRC
 #[kani::proof]
 fn kani_record_crc_rejects_mismatch() {
-    let expected_magic: u32 = 0x5650424Cu32;
+    let expected_magic: u32 = MAGIC_WORKFLOW_SOURCE;
 
     let mut header_bytes = [0u8; RECORD_HEADER_BYTES];
     header_bytes[0..4].copy_from_slice(&expected_magic.to_le_bytes());
@@ -158,7 +137,7 @@ fn kani_record_crc_rejects_mismatch() {
 /// VB-STORAGE-DECODE-005 H3: decode rejects zero CRC when correct is non-zero
 #[kani::proof]
 fn kani_record_crc_rejects_zero() {
-    let expected_magic: u32 = 0x5650424Cu32;
+    let expected_magic: u32 = MAGIC_WORKFLOW_SOURCE;
 
     let mut header_bytes = [0u8; RECORD_HEADER_BYTES];
     header_bytes[0..4].copy_from_slice(&expected_magic.to_le_bytes());
@@ -199,7 +178,7 @@ fn kani_record_crc_all_ones_header() {
 /// VB-STORAGE-DECODE-005 H5: CRC of single-bit-flipped header doesn't match
 #[kani::proof]
 fn kani_record_crc_detects_single_bit_flip() {
-    let expected_magic: u32 = 0x5650424Cu32;
+    let expected_magic: u32 = MAGIC_WORKFLOW_SOURCE;
 
     let mut header_bytes = [0u8; RECORD_HEADER_BYTES];
     header_bytes[0..4].copy_from_slice(&expected_magic.to_le_bytes());
@@ -213,8 +192,10 @@ fn kani_record_crc_detects_single_bit_flip() {
     let correct_crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&correct_crc.to_le_bytes());
 
-    // Now flip one bit in the header (at offset 10)
-    header_bytes[10] ^= 0x01;
+    // Now flip one bit in the sequence field. This preserves all semantic
+    // validations that run before the checksum comparison, so the harness
+    // specifically proves CRC detection instead of earlier header_len rejection.
+    header_bytes[16] ^= 0x01;
 
     kani::assert(
         decode_crc_class(&header_bytes, expected_magic) == CrcDecodeClass::HeaderChecksumMismatch,
