@@ -20,7 +20,7 @@ pub mod commands_incident;
 pub mod commands_journal;
 pub mod commands_status;
 pub mod commands_system_status;
-pub mod commands_verify;
+pub(crate) mod commands_verify;
 pub mod commands_workflow;
 pub mod compile;
 pub mod constants;
