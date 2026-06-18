@@ -1274,6 +1274,108 @@ obligations:
       exec bindings + theorem_dispatch_guard_composition.
       All proofs use compute; no quantifier triggers needed.
 
+  # ============================================================
+  # BOUNDARY INVENTORY VALIDATION (Section TBD)
+  # ============================================================
+  - id: OBL-BI-001
+    section: [boundary_inventory]
+    statement: |
+      valid_bead_id — bead ID format invariant: IDs have exactly two
+      dash-separated parts; first is "vb"; second is non-empty and
+      consists only of ASCII lowercase letters and digits.
+    proof_level: L4
+    crate: vb_boundary_inventory
+    files:
+      - crates/vb_boundary_inventory/src/boundary_inventory/validation.rs
+    required:
+      verus: contracts/verus/vb_boundary_inventory_validation_spec.rs
+    commands:
+      - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
+    verified:
+      vb_boundary_inventory_validation: deductively_verified
+
+  - id: OBL-BI-002
+    section: [boundary_inventory]
+    statement: |
+      validate_freshness — freshness validation: known markers are valid;
+      unknown markers require review_status Other with non-empty text and
+      waiver; Unknown freshness with waiver is valid.
+    proof_level: L4
+    crate: vb_boundary_inventory
+    files:
+      - crates/vb_boundary_inventory/src/boundary_inventory/validation.rs
+    required:
+      verus: contracts/verus/vb_boundary_inventory_validation_spec.rs
+    commands:
+      - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
+    verified:
+      vb_boundary_inventory_validation: deductively_verified
+
+  - id: OBL-BI-003
+    section: [boundary_inventory]
+    statement: |
+      class_from_marker — marker to class mapping: Unknown marker maps
+      to Unknown class; other known markers map to their correct class.
+    proof_level: L4
+    crate: vb_boundary_inventory
+    files:
+      - crates/vb_boundary_inventory/src/boundary_inventory/api.rs
+    required:
+      verus: contracts/verus/vb_boundary_inventory_validation_spec.rs
+    commands:
+      - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
+    verified:
+      vb_boundary_inventory_validation: deductively_verified
+
+  - id: OBL-BI-004
+    section: [boundary_inventory]
+    statement: |
+      ReviewStatus invariant: All fields (Known, Other, Unknown) are
+      well-formed. Known/Unknown always valid; Other valid iff non-empty
+      text (no waiver required for Other).
+    proof_level: L4
+    crate: vb_boundary_inventory
+    files:
+      - crates/vb_boundary_inventory/src/boundary_inventory/validation.rs
+    required:
+      verus: contracts/verus/vb_boundary_inventory_validation_spec.rs
+    commands:
+      - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
+    verified:
+      vb_boundary_inventory_validation: deductively_verified
+
+  - id: OBL-BI-005
+    section: [boundary_inventory]
+    statement: |
+      unique_ids_invariant — no duplicate IDs in record sequence.
+      Every pair of distinct indices has different values.
+    proof_level: L4
+    crate: vb_boundary_inventory
+    files:
+      - crates/vb_boundary_inventory/src/boundary_inventory/api.rs
+    required:
+      verus: contracts/verus/vb_boundary_inventory_validation_spec.rs
+    commands:
+      - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
+    verified:
+      vb_boundary_inventory_validation: deductively_verified
+
+  - id: OBL-BI-006
+    section: [boundary_inventory]
+    statement: |
+      stable_id — deterministic identifier generation: result starts
+      with "vb-y1zq-" prefix; same inputs always produce same output.
+    proof_level: L4
+    crate: vb_boundary_inventory
+    files:
+      - crates/vb_boundary_inventory/src/boundary_inventory/api.rs
+    required:
+      verus: contracts/verus/vb_boundary_inventory_validation_spec.rs
+    commands:
+      - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
+    verified:
+      vb_boundary_inventory_validation: deductively_verified
+
 # ============================================================
 # EVIDENCE FORMAT
 # ============================================================
@@ -1360,4 +1462,6 @@ proof_matrix:
     primary_level: L0
     secondary_level: L6
 
+
 verus: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+verus: crates/vb_storage/src/verification/verus/classification_specs.rs
