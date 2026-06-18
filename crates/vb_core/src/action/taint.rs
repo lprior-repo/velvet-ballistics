@@ -1,7 +1,7 @@
 //! Taint propagation for actions based on idempotency classification.
 
-use crate::value::Taint;
 use crate::action::classification::Idempotency;
+use crate::value::Taint;
 
 /// Computes the output taint for an action given its idempotency and input taint.
 ///

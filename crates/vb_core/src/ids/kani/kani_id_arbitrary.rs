@@ -4,10 +4,10 @@
 
 #![forbid(unsafe_code)]
 
+use crate::WorkflowDigest;
 use crate::ids::{
     AccessorIdx, ActionId, ConstIdx, EventSeq, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx,
 };
-use crate::WorkflowDigest;
 
 impl kani::Arbitrary for RunId {
     fn any() -> Self {

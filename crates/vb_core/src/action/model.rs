@@ -1,10 +1,10 @@
 //! Core domain model: contracts, tickets, outputs, outcomes.
 
+use crate::action::classification::{ActionName, Idempotency, MockMarker, RetrySafety, SideEffect};
+use crate::action::failure::ActionFailure;
 use crate::capability::Capability;
 use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
-use crate::action::classification::{ActionName, Idempotency, RetrySafety, SideEffect, MockMarker};
-use crate::action::failure::ActionFailure;
 use serde::{Deserialize, Serialize};
 
 /// Static contract describing an action's resource and correctness bounds.

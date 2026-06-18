@@ -1,7 +1,7 @@
 //! Idempotency key computation and validation.
 
-use crate::ids::{ActionId, RunId, SeqNo};
 use crate::action::model::ActionTicket;
+use crate::ids::{ActionId, RunId, SeqNo};
 
 /// Computes the canonical deterministic idempotency key for an action ticket.
 #[must_use]

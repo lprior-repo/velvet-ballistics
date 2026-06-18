@@ -8,15 +8,15 @@
 use proptest::prelude::*;
 
 use crate::workflow::admission_kernel::{
-    accumulate_yield_cost, validate_admission_summary, AdmissionKernelError,
+    AdmissionKernelError, accumulate_yield_cost, validate_admission_summary,
 };
 use crate::workflow::compiled_query::{
-    validate_compiled_query_count, validate_compiled_query_summary, QueryParseError,
-    MAX_QUERIES_PER_WORKFLOW, MAX_QUERY_PATH_SEGMENTS,
+    MAX_QUERIES_PER_WORKFLOW, MAX_QUERY_PATH_SEGMENTS, QueryParseError,
+    validate_compiled_query_count, validate_compiled_query_summary,
 };
 use crate::workflow::compiled_slug::{
-    validate_compiled_slug_count, validate_compiled_slug_summary, SlugParseError,
-    MAX_SLUGS_PER_WORKFLOW, MAX_SLUG_PATH_SEGMENTS,
+    MAX_SLUG_PATH_SEGMENTS, MAX_SLUGS_PER_WORKFLOW, SlugParseError, validate_compiled_slug_count,
+    validate_compiled_slug_summary,
 };
 
 const COUNT_OVER_LIMIT: usize = 65_536;

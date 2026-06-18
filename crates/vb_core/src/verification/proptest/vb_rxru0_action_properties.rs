@@ -116,7 +116,7 @@
     let_underscore_drop,
     unused,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 use proptest::prelude::*;

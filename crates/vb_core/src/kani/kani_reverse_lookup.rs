@@ -31,7 +31,10 @@ mod harnesses {
                 "Registered numeric code must resolve via symbolic_code()",
             );
             if let Some(sym) = result {
-                kani::assert(sym.as_str() == entry.symbolic, "symbolic_code() must return the matching SymbolicCode");
+                kani::assert(
+                    sym.as_str() == entry.symbolic,
+                    "symbolic_code() must return the matching SymbolicCode",
+                );
             }
         }
     }

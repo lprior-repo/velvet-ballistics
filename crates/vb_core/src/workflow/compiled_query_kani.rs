@@ -5,12 +5,12 @@
 //! Obligation IDs: PO-007, PO-016, PO-028, PO-036.
 
 use crate::ids::SymbolId;
-use crate::workflow::compiled_query::{
-    from_bytes_compiled_queries, validate_compiled_queries, validate_compiled_query_count,
-    validate_compiled_query_summary, CompiledQueries, QueryOutputType, QueryParseError,
-    YbBoundedQuery, MAX_QUERIES_PER_WORKFLOW, MAX_QUERY_PATH_SEGMENTS,
-};
 use crate::workflow::PathSegment;
+use crate::workflow::compiled_query::{
+    CompiledQueries, MAX_QUERIES_PER_WORKFLOW, MAX_QUERY_PATH_SEGMENTS, QueryOutputType,
+    QueryParseError, YbBoundedQuery, from_bytes_compiled_queries, validate_compiled_queries,
+    validate_compiled_query_count, validate_compiled_query_summary,
+};
 
 const SYMBOL_ZERO: SymbolId = SymbolId::new(0);
 const SEMANTIC_ITEM_BOUND: usize = 64;

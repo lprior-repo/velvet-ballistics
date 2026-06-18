@@ -5,9 +5,9 @@
 //! Obligation ID: PO-040.
 
 use crate::workflow::compiled_query::{
-    validate_compiled_queries, CompiledQueries, QueryOutputType, YbBoundedQuery,
+    CompiledQueries, QueryOutputType, YbBoundedQuery, validate_compiled_queries,
 };
-use crate::workflow::compiled_slug::{validate_compiled_slugs, CompiledSlugs, YbBoundedSlug};
+use crate::workflow::compiled_slug::{CompiledSlugs, YbBoundedSlug, validate_compiled_slugs};
 
 fn empty_path_slug() -> YbBoundedSlug {
     YbBoundedSlug {

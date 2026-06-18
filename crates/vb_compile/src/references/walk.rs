@@ -4,11 +4,11 @@
 //! `in_repeat_body = false`) and the repeat-body walk (no step context,
 //! `in_repeat_body = true` which lifts the `$attempt.*` scope guard).
 
+use super::tables::build_ref_tables;
+use super::validate::validate_compile_reference;
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
-use super::tables::build_ref_tables;
-use super::validate::validate_compile_reference;
 use vb_validate::references::RefTables;
 
 /// Entry point: validates all references in a workflow AST.

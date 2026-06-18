@@ -29,9 +29,9 @@ mod kani_vb_dzibx_ajc40_admission; // RPO-AJC40-004 verifier-only harness module
 pub use crate::workflow::accessor::{AccessorProgram, PathSegment};
 pub use crate::workflow::branch::{ExprBranch, SlotBranch};
 pub use crate::workflow::error::WorkflowError;
-pub use crate::workflow::expr::{check_expr_stack_bound, ExprOp, ExprProgram};
+pub use crate::workflow::expr::{ExprOp, ExprProgram, check_expr_stack_bound};
 pub use crate::workflow::lifecycle::{
-    check_lifecycle_transition, LifecycleCommand, LifecycleState, RunState,
+    LifecycleCommand, LifecycleState, RunState, check_lifecycle_transition,
 };
 pub use crate::workflow::node::{CompiledNode, CompiledNodeKind};
 pub use crate::workflow::resource_contract::ResourceContract;

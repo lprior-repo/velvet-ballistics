@@ -4,9 +4,9 @@
 //! Each step writes a `ValueFact` into its slot (when applicable) and emits
 //! compile errors for type/taint violations.
 
-use crate::ast::{AstExpression, AstMapEntry, AstValue, StepKindAst, WorkflowAst};
 use crate::CompileError;
 use crate::CompileErrors;
+use crate::ast::{AstExpression, AstMapEntry, AstValue, StepKindAst, WorkflowAst};
 
 use super::engine::Facts;
 use super::eval::expression_fact;
@@ -31,9 +31,7 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
                 }
                 facts.write_slot(index, ValueFact::clean(ValueType::Any));
             }
-            StepKindAst::Save { fields } => {
-                facts.write_slot(index, save_fact(fields, facts))
-            }
+            StepKindAst::Save { fields } => facts.write_slot(index, save_fact(fields, facts)),
             StepKindAst::Choose { condition, .. } => {
                 if let Err(e) = validate_condition(condition, facts) {
                     errors.push(e);
@@ -73,9 +71,7 @@ fn validate_steps(ast: &WorkflowAst, facts: &mut Facts<'_>) -> Result<(), Compil
                 facts.write_slot(index, ValueFact::clean(ValueType::Any));
                 taint_repeat_body(body, facts, &mut errors);
             }
-            StepKindAst::Wait { .. } => {
-                facts.write_slot(index, ValueFact::clean(ValueType::Any))
-            }
+            StepKindAst::Wait { .. } => facts.write_slot(index, ValueFact::clean(ValueType::Any)),
             StepKindAst::Ask { answer, .. } => {
                 facts.write_slot(answer.as_usize(), ValueFact::clean(ValueType::Any));
                 facts.write_slot(index, ValueFact::clean(ValueType::Any));

@@ -112,7 +112,7 @@ mod tests {
         clippy::needless_pass_by_value,
         unused_imports,
         dead_code,
-        unused_variables,
+        unused_variables
     )]
 
     use super::RuntimePolicy;

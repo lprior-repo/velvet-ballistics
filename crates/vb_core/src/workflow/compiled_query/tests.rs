@@ -114,8 +114,8 @@ use crate::ids::SymbolId;
 use crate::workflow::PathSegment;
 
 use super::domain::{
-    CompiledQueries, QueryOutputType, YbBoundedQuery, MAX_QUERIES_PER_WORKFLOW,
-    MAX_QUERY_PATH_SEGMENTS,
+    CompiledQueries, MAX_QUERIES_PER_WORKFLOW, MAX_QUERY_PATH_SEGMENTS, QueryOutputType,
+    YbBoundedQuery,
 };
 use super::errors::QueryParseError;
 use super::{

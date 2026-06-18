@@ -103,7 +103,9 @@ pub(crate) fn is_supported_code(code: u16) -> bool {
 }
 
 /// Parses a single hexadecimal character into a `u16` digit.
-pub(super) fn parse_hex_digit(value: Option<char>) -> Result<u16, super::types::DiagnosticCodeParseError> {
+pub(super) fn parse_hex_digit(
+    value: Option<char>,
+) -> Result<u16, super::types::DiagnosticCodeParseError> {
     let Some(character) = value else {
         return Err(super::types::DiagnosticCodeParseError::InvalidFormat);
     };

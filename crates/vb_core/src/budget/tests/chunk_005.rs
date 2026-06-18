@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 //! Test chunk 005 of 29 from the original
 //! `tests.rs` (budget unit tests).

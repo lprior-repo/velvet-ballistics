@@ -9,9 +9,9 @@
 //! `collect_references_from_repeat_body` and is `false` for top-level
 //! references (where `$attempt.*` is rejected with `InvalidVariableScope`).
 
+use super::errors::map_validation_error;
 use crate::{CompileError, SourceMark};
 use vb_validate::references::{RefTables, validate_single_reference_with_context};
-use super::errors::map_validation_error;
 
 pub(super) fn validate_compile_reference(
     reference: &str,

@@ -18,7 +18,10 @@ fn proof_check_evidence_has_baseline() {
     // has_baseline should return whether baseline_us is Some
     let has_baseline = evidence.has_baseline();
     let has_some = evidence.baseline_us.is_some();
-    kani::assert(has_baseline == has_some, "has_baseline must match baseline_us.is_some()");
+    kani::assert(
+        has_baseline == has_some,
+        "has_baseline must match baseline_us.is_some()",
+    );
 }
 
 /// Kani harness for CheckEvidence::threshold_delta.
@@ -30,7 +33,10 @@ fn proof_check_evidence_threshold_delta() {
     match evidence.baseline_us {
         Some(baseline) => {
             let expected = baseline * evidence.threshold_pct / 100;
-            kani::assert(delta == expected, "threshold_delta must equal baseline * threshold_pct / 100");
+            kani::assert(
+                delta == expected,
+                "threshold_delta must equal baseline * threshold_pct / 100",
+            );
         }
         None => {
             kani::assert(delta == 0, "threshold_delta must be 0 when no baseline");

@@ -79,7 +79,13 @@ pub fn replay_step(
     store: &mut ValueStore,
     plan: &CompiledWorkflow,
 ) -> Result<ReplayAction, super::ReplayError> {
-    replay_step_with_collect(node, run, store, plan, &mut collect::ReplayCollectStates::new())
+    replay_step_with_collect(
+        node,
+        run,
+        store,
+        plan,
+        &mut collect::ReplayCollectStates::new(),
+    )
 }
 
 /// Replays a single deterministic step with caller-owned collect pagination state.

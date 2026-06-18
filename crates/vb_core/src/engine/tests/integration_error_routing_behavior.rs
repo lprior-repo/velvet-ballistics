@@ -107,9 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Integration behavior tests for error routing.
 //!
@@ -964,25 +963,25 @@ fn engine_error_implements_std_error() {
 }
 
 #[test]
-    fn engine_error_source_returns_none() {
-        let error = EngineError::DivisionByZero;
-        assert!(
-            std::error::Error::source(&error).is_none(),
-            "DivisionByZero should have no source"
-        );
-    }
+fn engine_error_source_returns_none() {
+    let error = EngineError::DivisionByZero;
+    assert!(
+        std::error::Error::source(&error).is_none(),
+        "DivisionByZero should have no source"
+    );
+}
 
-    #[test]
-    fn engine_error_source_returns_none_for_compound_variant() {
-        let error = EngineError::TypeMismatch {
-            expected: "bool",
-            found: "i64",
-        };
-        assert!(
-            std::error::Error::source(&error).is_none(),
-            "TypeMismatch should have no source"
-        );
-    }
+#[test]
+fn engine_error_source_returns_none_for_compound_variant() {
+    let error = EngineError::TypeMismatch {
+        expected: "bool",
+        found: "i64",
+    };
+    assert!(
+        std::error::Error::source(&error).is_none(),
+        "TypeMismatch should have no source"
+    );
+}
 
 // =========================================================================
 // 9. Layer conversion: EngineError alias

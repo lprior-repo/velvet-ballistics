@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Bounded compiled slug types for yield-budget-constrained workflow execution.
 
-use crate::workflow::admission_kernel::accumulate_yield_cost;
 use crate::workflow::PathSegment;
+use crate::workflow::admission_kernel::accumulate_yield_cost;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

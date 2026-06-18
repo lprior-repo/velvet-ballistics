@@ -13,8 +13,8 @@ use crate::value_store::ValueStore;
 use crate::workflow::CompiledWorkflow;
 
 pub(crate) mod basic;
-pub(crate) mod collect;
 pub mod choose;
+pub(crate) mod collect;
 pub mod ops;
 pub mod step;
 

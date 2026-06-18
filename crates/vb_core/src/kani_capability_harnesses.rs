@@ -86,7 +86,8 @@ mod kani_capability_harnesses {
         let required = Capability::new(child_name.into(), action_id);
 
         // Parent grant must NOT satisfy child requirement
-        kani::assert(!set.grants(&required),
+        kani::assert(
+            !set.grants(&required),
             "parent prefix does not grant child capability",
         );
     }
@@ -108,7 +109,8 @@ mod kani_capability_harnesses {
         let required = Capability::new(required_name.into(), action_id);
 
         // Partial prefix must NOT grant
-        kani::assert(!set.grants(&required),
+        kani::assert(
+            !set.grants(&required),
             "partial lexical prefix does not grant",
         );
     }
@@ -126,7 +128,8 @@ mod kani_capability_harnesses {
         let set = CapabilitySet::from_grants(Box::new([storage_cap]));
 
         // Sibling names must NOT grant each other
-        kani::assert(!set.grants(&network_required),
+        kani::assert(
+            !set.grants(&network_required),
             "sibling name does not grant",
         );
     }
@@ -146,7 +149,8 @@ mod kani_capability_harnesses {
         let set = CapabilitySet::from_grants(Box::new([cap]));
 
         // Empty grant should not match non-empty required
-        kani::assert(!set.grants(&required),
+        kani::assert(
+            !set.grants(&required),
             "empty grant does not match non-empty required",
         );
     }
@@ -168,7 +172,8 @@ mod kani_capability_harnesses {
         let set = CapabilitySet::from_grants(Box::new([grant]));
 
         // Wrong action must deny
-        kani::assert(!set.grants(&required),
+        kani::assert(
+            !set.grants(&required),
             "matching name with wrong action does not grant",
         );
     }

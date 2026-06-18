@@ -44,7 +44,6 @@ fn join_taint_ge_second_arg() {
     kani::assert(taint_lte(b, result), "join_taint(a, b) >= b");
 }
 
-
 #[kani::proof]
 fn join_taint_idempotent() {
     let a_raw = kani::any::<u8>();

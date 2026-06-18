@@ -106,9 +106,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Runtime admission policy controlling verification strictness and durability.
 

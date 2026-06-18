@@ -5,7 +5,7 @@
 //! actual counts stay within those declared bounds.
 
 use crate::limits::{
-    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSIONS, MAX_EXPRESSION_STACK, MAX_SLOTS_PER_WORKFLOW,
+    MAX_ACCESSORS, MAX_CONSTANTS, MAX_EXPRESSION_STACK, MAX_EXPRESSIONS, MAX_SLOTS_PER_WORKFLOW,
     MAX_STEPS_PER_WORKFLOW,
 };
 use crate::workflow::{ExprProgram, ResourceContract, WorkflowError, WorkflowParts};

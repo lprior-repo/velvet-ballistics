@@ -23,7 +23,10 @@ fn key_range_contains_correct() {
     let result = range.contains(key);
     let expected = range.start() <= key && key <= range.end();
 
-    kani::assert(result == expected, "contains must equal (start <= key && key <= end)");
+    kani::assert(
+        result == expected,
+        "contains must equal (start <= key && key <= end)",
+    );
 
     kani::cover!(key == range.start(), "key at range start");
     kani::cover!(key == range.end(), "key at range end");
@@ -118,8 +121,8 @@ fn key_range_adjacent_correctness() {
 
     let result = a.is_adjacent_to(b);
 
-    let expected = a.end().checked_add(1) == Some(b.start())
-        || b.end().checked_add(1) == Some(a.start());
+    let expected =
+        a.end().checked_add(1) == Some(b.start()) || b.end().checked_add(1) == Some(a.start());
 
     kani::assert(
         result == expected,

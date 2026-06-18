@@ -24,12 +24,12 @@ use vb_core::{
 use super::super::part_01::{body_width, canonical_body_step_width};
 use super::super::part_02::lower_canonical_for_each;
 use super::super::part_05::{
-    parse_i64_field, slot_from_text, optional_slot_from_text, canonical_primitive_name, lower_set,
+    canonical_primitive_name, lower_set, optional_slot_from_text, parse_i64_field, slot_from_text,
 };
-use super::super::part_07::{SlotCompiler, lower_wait, lower_ask, WaitKind};
+use super::super::part_07::{SlotCompiler, WaitKind, lower_ask, lower_wait};
 use super::super::part_12::{checked_step_offset, integer_error_value};
-use super::compound::lower_canonical_aggregate;
 use super::body_dispatch::body_constant_index;
+use super::compound::lower_canonical_aggregate;
 
 /// Emits a chain of body steps for a Reduce primitive.
 ///

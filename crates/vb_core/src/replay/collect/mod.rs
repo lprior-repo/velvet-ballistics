@@ -301,4 +301,3 @@ fn replay_jump(run: &mut RunFrame, target: StepIdx) -> Result<ReplayAction, Repl
     increment_replay_executed(run)?;
     Ok(ReplayAction::Continue(target))
 }
-

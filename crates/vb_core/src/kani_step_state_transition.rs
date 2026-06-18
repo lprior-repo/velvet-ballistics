@@ -39,7 +39,8 @@ fn kani_step_state_transition_matches_contract() {
         "suspended resume transition covered",
     );
 
-    kani::assert(is_valid_step_state_transition(current, next) == transition_contract(current, next),
+    kani::assert(
+        is_valid_step_state_transition(current, next) == transition_contract(current, next),
         "runtime StepState transition predicate matches formal contract",
     );
 }

@@ -3,11 +3,11 @@
 //! These events are recorded for crash recovery. The journal records the
 //! suspension (ticket issuance) and the terminal outcome (success or failure).
 
+use crate::action::classification::RetryPolicy;
+use crate::action::failure::ActionFailureCode;
+use crate::action::model::ActionTicket;
 use crate::ids::{ActionId, SlotIdx, StepIdx};
 use crate::value::Taint;
-use crate::action::classification::RetryPolicy;
-use crate::action::model::ActionTicket;
-use crate::action::failure::ActionFailureCode;
 use serde::{Deserialize, Serialize};
 
 /// Journal events for Do-node action lifecycle.

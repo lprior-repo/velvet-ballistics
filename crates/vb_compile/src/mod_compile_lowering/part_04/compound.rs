@@ -28,10 +28,10 @@ use vb_core::{
 /// and cannot be re-exported through the module tree.
 use super::super::part_01::body_width;
 use super::super::part_02::lower_canonical_for_each;
+use super::super::part_05::optional_slot_from_text;
 use super::super::part_05::parse_i64_field;
 use super::super::part_05::slot_from_text;
-use super::super::part_05::optional_slot_from_text;
-use super::super::part_07::{lower_wait, lower_ask, WaitKind, SlotCompiler};
+use super::super::part_07::{SlotCompiler, WaitKind, lower_ask, lower_wait};
 use super::super::part_12::checked_step_offset;
 use super::reduce_chain::emit_reduce_body_steps;
 

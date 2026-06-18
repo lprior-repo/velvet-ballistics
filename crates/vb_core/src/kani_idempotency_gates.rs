@@ -231,7 +231,8 @@ fn verify_idempotency_missing_key_symbolic_contract_no_frame_write() {
         matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "symbolic missing key covered"
     );
-    kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+    kani::assert(
+        matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "symbolic KeyRequired side-effecting contract with empty key returns MissingKey",
     );
 }
@@ -248,7 +249,8 @@ fn verify_idempotency_symbolic_key_taints_are_classified() {
         0 => {
             let result = verify_idempotency(&contract, &[], &frame);
             kani::cover!(result.is_err(), "missing key failure covered");
-            kani::assert(matches!(result, Err(IdempotencyViolation::MissingKey(_))),
+            kani::assert(
+                matches!(result, Err(IdempotencyViolation::MissingKey(_))),
                 "empty KeyRequired key set returns MissingKey",
             );
         }
@@ -285,7 +287,8 @@ fn check_symbolic_key_array<const N: usize>(
         matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
         "secret key failure covered"
     );
-    kani::assert(result.is_ok() || matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
+    kani::assert(
+        result.is_ok() || matches!(result, Err(IdempotencyViolation::SecretInKey(_))),
         "non-empty bounded key only succeeds or reports the first tainted key ingredient",
     );
 }
@@ -362,7 +365,8 @@ fn verify_idempotency_duplicate_invocation_is_stable() {
         first.is_err() && second.is_err(),
         "duplicate failure covered"
     );
-    kani::assert(first.is_ok() == second.is_ok(),
+    kani::assert(
+        first.is_ok() == second.is_ok(),
         "same contract/key/frame verification is idempotent",
     );
 }
@@ -376,7 +380,8 @@ fn verify_idempotency_duplicate_success_clean_key() {
     let first = verify_idempotency(&contract, &key_slots, &frame);
     let second = verify_idempotency(&contract, &key_slots, &frame);
     kani::cover!(first.is_ok() && second.is_ok(), "duplicate success covered");
-    kani::assert(first.is_ok() && second.is_ok(),
+    kani::assert(
+        first.is_ok() && second.is_ok(),
         "clean key duplicate succeeds twice",
     );
 }
@@ -399,7 +404,8 @@ fn verify_idempotency_duplicate_failure_tainted_key() {
         first.is_err() && second.is_err(),
         "duplicate failure covered"
     );
-    kani::assert(first.is_err() && second.is_err(),
+    kani::assert(
+        first.is_err() && second.is_err(),
         "tainted key duplicate fails twice",
     );
 }
@@ -518,7 +524,8 @@ fn validate_action_outcome_certificate_conflict_oob() {
         ),
         "conflict certificate covered"
     );
-    kani::assert(result.is_err(),
+    kani::assert(
+        result.is_err(),
         "out-of-bounds completion certificate is rejected",
     );
 }
@@ -606,7 +613,8 @@ fn validate_action_outcome_symbolic_completion_matrix() {
         ),
         "payload too large error covered"
     );
-    kani::assert(result.is_ok()
+    kani::assert(
+        result.is_ok()
             || matches!(
                 result,
                 Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
@@ -735,9 +743,11 @@ fn kani_verify_idempotency_missing_key() {
         matches!(result_empty, Err(IdempotencyViolation::MissingKey(_))),
         "KeyRequired + empty keys covered"
     );
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
             result_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+        ),
         "KeyRequired empty returns MissingKey(Writes)",
     );
 
@@ -751,9 +761,11 @@ fn kani_verify_idempotency_missing_key() {
         ),
         "Unsafe + empty covered"
     );
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
             result_unsafe_empty,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+        ),
         "Unsafe returns MissingKey even with empty key_slots",
     );
 
@@ -765,9 +777,11 @@ fn kani_verify_idempotency_missing_key() {
         ),
         "Unsafe + non-empty key_slots still MissingKey covered"
     );
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
             result_unsafe_with_key,
-            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))),
+            Err(IdempotencyViolation::MissingKey(SideEffect::LocalWrite))
+        ),
         "Unsafe with keys still returns MissingKey",
     );
 

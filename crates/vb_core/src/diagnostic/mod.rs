@@ -12,7 +12,7 @@ mod helpers;
 mod types;
 
 // Re-export registry types.
-pub use codes::{CodeCategory, CodeEntry, CODE_REGISTRY};
+pub use codes::{CODE_REGISTRY, CodeCategory, CodeEntry};
 
 // Re-export domain types.
 pub use types::{
@@ -22,6 +22,6 @@ pub use types::{
 
 // Re-export lookup helpers for external consumers that need them.
 pub use helpers::{
-    category_from_numeric, is_registered_numeric, is_registered_symbolic,
-    numeric_to_symbolic, numeric_to_symbolic_str, symbolic_to_numeric,
+    category_from_numeric, is_registered_numeric, is_registered_symbolic, numeric_to_symbolic,
+    numeric_to_symbolic_str, symbolic_to_numeric,
 };

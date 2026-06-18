@@ -2,7 +2,6 @@
 //!
 //! Converts domain-level binary operators and helper calls into their
 /// corresponding `ExprOp` bytecode variants.
-
 use crate::CompileError;
 use crate::expression::{BinaryOp, ExpressionHelper};
 use vb_core::ExprOp;

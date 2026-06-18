@@ -2,7 +2,6 @@
 //!
 //! Handles `$slot.N`, `$slots.N`, `$step.N`, and `$steps.N` reference syntax,
 /// parsing them into `LoadSlot` or `LoadAccessor` bytecode operations.
-
 use crate::CompileError;
 use vb_core::{AccessorIdx, AccessorProgram, ExprOp, PathSegment, SlotIdx};
 

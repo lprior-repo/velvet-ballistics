@@ -1456,8 +1456,7 @@ mod tests {
     fn value_store_default_equals_new() {
         let default: ValueStore = Default::default();
         let constructed = ValueStore::new();
-         == 100);
-        Ok(())
+        assert_eq!(default, constructed);
     }
 
     #[test]

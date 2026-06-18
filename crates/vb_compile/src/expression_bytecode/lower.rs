@@ -2,9 +2,7 @@
 
 use crate::CompileError;
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
-use crate::expression_bytecode::{
-    binary_op, helper_op, validate_helper_arity,
-};
+use crate::expression_bytecode::{binary_op, helper_op, validate_helper_arity};
 use vb_core::{ConstValue, ExprOp, FiniteF64};
 
 use super::resolver::ExpressionReferenceResolver;
@@ -20,18 +18,14 @@ pub(crate) fn lower_expr(
 ) -> Result<(), CompileError> {
     match expression {
         ParsedExpression::Literal(literal) => lower_literal(literal, constants, ops),
-        ParsedExpression::Unary { op, expr } => {
-            lower_unary(*op, expr, constants, ops, resolver)
-        }
+        ParsedExpression::Unary { op, expr } => lower_unary(*op, expr, constants, ops, resolver),
         ParsedExpression::Binary { op, left, right } => {
             lower_binary(*op, left, right, constants, ops, resolver)
         }
         ParsedExpression::HelperCall { name, args } => {
             lower_helper(*name, args, constants, ops, resolver)
         }
-        ParsedExpression::Reference(reference) => {
-            lower_reference(reference, ops, resolver)
-        }
+        ParsedExpression::Reference(reference) => lower_reference(reference, ops, resolver),
     }
 }
 

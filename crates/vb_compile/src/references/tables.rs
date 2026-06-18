@@ -3,8 +3,8 @@
 //! Extracts declared names from inputs, vars, secrets, steps, and output-producing
 //! steps into the shared `RefTables` used by the validator.
 
-use crate::ast::{AstMapEntry, StepAst, WorkflowAst};
 use crate::ast::StepKindAst;
+use crate::ast::{AstMapEntry, StepAst, WorkflowAst};
 use vb_validate::references::RefTables;
 
 /// Builds reference lookup tables from a workflow AST.

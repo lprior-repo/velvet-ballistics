@@ -5,9 +5,9 @@
 
 #![forbid(unsafe_code)]
 
+use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
-use core::fmt;
 use serde::{Deserialize, Serialize};
 
 // ── Macro definitions ──────────────────────────────────────────────────

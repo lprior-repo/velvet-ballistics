@@ -19,7 +19,8 @@ mod harnesses {
     fn kani_is_supported_code_all_constants() {
         for i in 0..CODE_REGISTRY.len() {
             let code = CODE_REGISTRY[i].numeric;
-            kani::assert(is_supported_code(code),
+            kani::assert(
+                is_supported_code(code),
                 "Every registry entry's numeric code must be accepted by is_supported_code",
             );
         }
@@ -32,33 +33,41 @@ mod harnesses {
         // Edge values just outside supported ranges
         kani::assert(!is_supported_code(0x0000), "Zero should be unsupported");
         kani::assert(!is_supported_code(0x0100), "E0100 should be unsupported");
-        kani::assert(!is_supported_code(0x010C),
+        kani::assert(
+            !is_supported_code(0x010C),
             "E010C should be unsupported (gap)",
         );
         kani::assert(!is_supported_code(0x0200), "E0200 should be unsupported");
-        kani::assert(!is_supported_code(0x0205),
+        kani::assert(
+            !is_supported_code(0x0205),
             "E0205 should be unsupported (gap)",
         );
         kani::assert(!is_supported_code(0x0300), "E0300 should be unsupported");
-        kani::assert(!is_supported_code(0x030A),
+        kani::assert(
+            !is_supported_code(0x030A),
             "E030A should be unsupported (gap)",
         );
         kani::assert(!is_supported_code(0x0400), "E0400 should be unsupported");
-        kani::assert(!is_supported_code(0x040D),
+        kani::assert(
+            !is_supported_code(0x040D),
             "E040D should be unsupported (gap)",
         );
         kani::assert(!is_supported_code(0x0500), "E0500 should be unsupported");
         kani::assert(!is_supported_code(0x0600), "E0600 should be unsupported");
-        kani::assert(!is_supported_code(0x0604),
+        kani::assert(
+            !is_supported_code(0x0604),
             "E0604 should be unsupported (gap)",
         );
-        kani::assert(!is_supported_code(0x09FF),
+        kani::assert(
+            !is_supported_code(0x09FF),
             "E09FF should be unsupported (gap)",
         );
-        kani::assert(!is_supported_code(0x0FFF),
+        kani::assert(
+            !is_supported_code(0x0FFF),
             "E0FFF should be unsupported (gap)",
         );
-        kani::assert(!is_supported_code(0x401D),
+        kani::assert(
+            !is_supported_code(0x401D),
             "E401D should be unsupported (gap above 0x401C)",
         );
         kani::assert(!is_supported_code(0xFFFF), "EFFFF should be unsupported");

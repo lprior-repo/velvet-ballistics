@@ -18,11 +18,11 @@
 pub mod step_state;
 
 // RunFrame submodules
-pub mod run_frame;
-pub mod lifecycle;
 pub mod accessors;
+pub mod lifecycle;
 pub mod parallel;
 pub mod pc;
+pub mod run_frame;
 pub mod slots;
 pub mod transitions;
 

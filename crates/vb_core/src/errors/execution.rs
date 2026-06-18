@@ -53,9 +53,7 @@ pub(super) const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0
 
 /// Returns the diagnostic code for execution variants.
 #[must_use]
-pub(super) const fn diagnostic_code(
-    error: &crate::errors::CoreError,
-) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<DiagnosticCode> {
     match error {
         crate::errors::CoreError::StepBudgetExhausted => Some(STEP_BUDGET_EXHAUSTED_CODE),
         crate::errors::CoreError::StepCounterOverflow => Some(STEP_COUNTER_OVERFLOW_CODE),
@@ -74,9 +72,7 @@ pub(super) const fn diagnostic_code(
         crate::errors::CoreError::InvalidCompiledWorkflow { .. } => {
             Some(INVALID_COMPILED_WORKFLOW_CODE)
         }
-        crate::errors::CoreError::UnsupportedPrimitive { .. } => {
-            Some(UNSUPPORTED_PRIMITIVE_CODE)
-        }
+        crate::errors::CoreError::UnsupportedPrimitive { .. } => Some(UNSUPPORTED_PRIMITIVE_CODE),
         crate::errors::CoreError::InternalInvariantViolation { .. } => {
             Some(INTERNAL_INVARIANT_CODE)
         }
@@ -87,9 +83,7 @@ pub(super) const fn diagnostic_code(
         crate::errors::CoreError::ListIndexOutOfBounds { .. } => {
             Some(LIST_INDEX_OUT_OF_BOUNDS_CODE)
         }
-        crate::errors::CoreError::ExpressionStackUnderflow => {
-            Some(EXPRESSION_STACK_UNDERFLOW_CODE)
-        }
+        crate::errors::CoreError::ExpressionStackUnderflow => Some(EXPRESSION_STACK_UNDERFLOW_CODE),
         crate::errors::CoreError::SymbolOutOfBounds { .. } => Some(SYMBOL_OUT_OF_BOUNDS_CODE),
         crate::errors::CoreError::ListOutOfBounds { .. } => Some(LIST_OUT_OF_BOUNDS_CODE),
         crate::errors::CoreError::ObjectOutOfBounds { .. } => Some(OBJECT_OUT_OF_BOUNDS_CODE),
@@ -102,9 +96,7 @@ pub(super) const fn diagnostic_code(
 
 /// Returns the section-17 runtime code for execution variants, if any.
 #[must_use]
-pub(super) const fn runtime_code(
-    error: &crate::errors::CoreError,
-) -> Option<&'static str> {
+pub(super) const fn runtime_code(error: &crate::errors::CoreError) -> Option<&'static str> {
     match error {
         crate::errors::CoreError::MissingOutputSlot { .. } => {
             Some(MISSING_OUTPUT_SLOT_RUNTIME_CODE)

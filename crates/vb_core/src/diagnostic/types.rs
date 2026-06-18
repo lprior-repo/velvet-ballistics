@@ -10,10 +10,10 @@ use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use super::codes::{CodeCategory, CODE_REGISTRY};
+use super::codes::{CODE_REGISTRY, CodeCategory};
 use super::helpers::{
-    category_from_numeric, is_registered_symbolic,
-    is_supported_code, numeric_to_symbolic, symbolic_to_numeric,
+    category_from_numeric, is_registered_symbolic, is_supported_code, numeric_to_symbolic,
+    symbolic_to_numeric,
 };
 
 // ---------------------------------------------------------------------------

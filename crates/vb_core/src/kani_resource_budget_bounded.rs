@@ -120,7 +120,8 @@ fn kani_resource_sub_underflow() {
     };
 
     let result = usage.try_subtract_budget(&budget);
-    kani::assert(result.is_err(),
+    kani::assert(
+        result.is_err(),
         "subtracting more than available returns error",
     );
 }
@@ -159,7 +160,8 @@ fn kani_resource_add_max_values() {
     };
 
     let result = usage.try_add_budget(&budget);
-    kani::assert(result.is_ok(),
+    kani::assert(
+        result.is_ok(),
         "MAX/2 + MAX/2 succeeds and stays within bounds",
     );
 }

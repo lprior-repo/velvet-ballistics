@@ -107,9 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Choice-related replay step handlers.
 
@@ -311,7 +310,7 @@ mod tests {
         clippy::needless_pass_by_value,
         unused_imports,
         dead_code,
-        unused_variables,
+        unused_variables
     )]
 
     use super::*;

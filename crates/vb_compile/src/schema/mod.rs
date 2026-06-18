@@ -15,9 +15,8 @@ pub(crate) mod scope;
 mod fields;
 
 use fields::{
-    reject_unknown_schema_fields, reject_schema_pattern, validate_schema_from,
-    schema_kind, validate_schema_children, validate_schema_flags,
-    validate_schema_default, validate_schema_bounds,
+    reject_schema_pattern, reject_unknown_schema_fields, schema_kind, validate_schema_bounds,
+    validate_schema_children, validate_schema_default, validate_schema_flags, validate_schema_from,
 };
 
 use crate::{CompileError, CompileErrors};
@@ -53,8 +52,15 @@ pub(crate) fn validate_input_schemas(doc: &Yaml<'_>) -> Result<(), CompileErrors
 
 /// Shorthand token allow-list (used by both parsing and tests).
 const ALLOWED_SHORTHANDS: &[&str] = &[
-    "text", "number", "boolean", "object", "any",
-    "list<any>", "list<text>", "list<number>", "list<boolean>",
+    "text",
+    "number",
+    "boolean",
+    "object",
+    "any",
+    "list<any>",
+    "list<text>",
+    "list<number>",
+    "list<boolean>",
 ];
 
 pub(crate) fn validate_input_schema(schema: &Yaml<'_>, scope: SchemaScope) -> Vec<CompileError> {

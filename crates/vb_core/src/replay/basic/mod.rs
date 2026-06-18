@@ -10,7 +10,7 @@
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
 use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
-use crate::value::{join_taint, SlotValue, Taint};
+use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
@@ -23,7 +23,10 @@ use super::{ReplayAction, ReplayError, eval_expr_for_replay, slot_to_replay_err}
 /// Advances the PC and increments the executed counter.
 ///
 /// Extracted from `replay_nop` and `advance_to_next` to avoid duplication.
-pub(super) fn advance_to_next(run: &mut RunFrame, node: &CompiledNode) -> Result<StepIdx, ReplayError> {
+pub(super) fn advance_to_next(
+    run: &mut RunFrame,
+    node: &CompiledNode,
+) -> Result<StepIdx, ReplayError> {
     let next = node.next.ok_or(ReplayError::Internal {
         reason: "node missing next step",
     })?;
@@ -294,10 +297,20 @@ pub(crate) fn replay_step_kind(
         CompiledNodeKind::BuildList { items } => replay_build_list(run, store, node, items),
         CompiledNodeKind::Finish { result } => replay_finish(run, *result),
         CompiledNodeKind::Jump { target } => replay_jump(run, *target),
-        CompiledNodeKind::Do { .. } => Ok(replay_suspend(node, super::step::SuspensionKind::ActionPending)),
-        CompiledNodeKind::Ask { .. } => Ok(replay_suspend(node, super::step::SuspensionKind::AskPending)),
-        CompiledNodeKind::WaitUntil { .. } => Ok(replay_suspend(node, super::step::SuspensionKind::WaitUntil)),
-        CompiledNodeKind::WaitEvent { .. } => Ok(replay_suspend(node, super::step::SuspensionKind::WaitEvent)),
+        CompiledNodeKind::Do { .. } => Ok(replay_suspend(
+            node,
+            super::step::SuspensionKind::ActionPending,
+        )),
+        CompiledNodeKind::Ask { .. } => Ok(replay_suspend(
+            node,
+            super::step::SuspensionKind::AskPending,
+        )),
+        CompiledNodeKind::WaitUntil { .. } => {
+            Ok(replay_suspend(node, super::step::SuspensionKind::WaitUntil))
+        }
+        CompiledNodeKind::WaitEvent { .. } => {
+            Ok(replay_suspend(node, super::step::SuspensionKind::WaitEvent))
+        }
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -334,7 +347,14 @@ pub(crate) fn replay_step_kind(
             collector_slot,
             body,
             done,
-        } => super::collect::replay_collect_next(run, store, collect_states, *collector_slot, *body, *done),
+        } => super::collect::replay_collect_next(
+            run,
+            store,
+            collect_states,
+            *collector_slot,
+            *body,
+            *done,
+        ),
         CompiledNodeKind::CollectFinish { collector_slot } => {
             super::collect::replay_collect_finish(run, collect_states, node, *collector_slot)
         }
@@ -455,7 +475,7 @@ mod tests {
         dead_code,
         let_underscore_drop,
         unused_imports,
-        unused_variables,
+        unused_variables
     )]
 
     use crate::errors::CoreError;
@@ -505,7 +525,9 @@ mod tests {
             ReplayError::StepNotFound { step } => CoreError::InvalidProgramCounter { step },
             ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
             ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
-            ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
+            ReplayError::NonDeterministicStep { step, .. } => {
+                CoreError::InvalidProgramCounter { step }
+            }
             ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
         }
     }

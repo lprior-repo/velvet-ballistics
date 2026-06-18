@@ -6,12 +6,12 @@
 //! `admission_kernel` for scalar checks and expose typed errors.
 
 use super::domain::{
-    CompiledQueries, YbBoundedQueries, YbBoundedQuery, MAX_QUERIES_PER_WORKFLOW,
-    MAX_QUERY_PATH_SEGMENTS,
+    CompiledQueries, MAX_QUERIES_PER_WORKFLOW, MAX_QUERY_PATH_SEGMENTS, YbBoundedQueries,
+    YbBoundedQuery,
 };
 use super::errors::QueryParseError;
 use crate::workflow::admission_kernel::{
-    accumulate_yield_cost, validate_admission_summary, AdmissionKernelError,
+    AdmissionKernelError, accumulate_yield_cost, validate_admission_summary,
 };
 
 fn checked_total_yield_cost(queries: &[YbBoundedQuery]) -> Result<u64, QueryParseError> {

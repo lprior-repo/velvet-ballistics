@@ -4,9 +4,9 @@
 //! Walks `AstExpression` / `ParsedExpression` trees, resolving references into
 //! the fact engine and propagating `ValueType` + `Taint` through operators.
 
+use crate::CompileError;
 use crate::ast::{AstExpression, AstMapEntry, AstValue};
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
-use crate::CompileError;
 
 use super::engine::Facts;
 use super::types::{ValueFact, ValueType};
@@ -35,9 +35,7 @@ fn parsed_expression_fact(
         ParsedExpression::Literal(value) => Ok(expression_literal_fact(value)),
         ParsedExpression::Reference(reference) => Ok(reference_fact(reference, Some(facts))),
         ParsedExpression::Unary { op, expr } => unary_fact(*op, expr, facts, field),
-        ParsedExpression::Binary { op, left, right } => {
-            binary_fact(*op, left, right, facts, field)
-        }
+        ParsedExpression::Binary { op, left, right } => binary_fact(*op, left, right, facts, field),
         ParsedExpression::HelperCall { name, args } => helper_fact(*name, args, facts, field),
     }
 }
@@ -74,7 +72,10 @@ fn sequence_fact(values: &[AstValue], facts: Option<&Facts<'_>>) -> ValueFact {
     fact
 }
 
-pub(crate) fn optional_object_fact(entries: &[AstMapEntry<AstValue>], facts: Option<&Facts<'_>>) -> ValueFact {
+pub(crate) fn optional_object_fact(
+    entries: &[AstMapEntry<AstValue>],
+    facts: Option<&Facts<'_>>,
+) -> ValueFact {
     let mut fact = ValueFact::clean(ValueType::Object);
     for entry in entries {
         fact = fact.merge(value_fact(&entry.value, facts));
@@ -150,9 +151,7 @@ fn binary_fact(
     let left = parsed_expression_fact(left, facts, field)?;
     let right = parsed_expression_fact(right, facts, field)?;
     match op {
-        BinaryOp::Or | BinaryOp::And => {
-            typed_binary_fact(left, right, ValueType::Boolean, field)
-        }
+        BinaryOp::Or | BinaryOp::And => typed_binary_fact(left, right, ValueType::Boolean, field),
         BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
             typed_binary_fact(left, right, ValueType::Number, field)
         }

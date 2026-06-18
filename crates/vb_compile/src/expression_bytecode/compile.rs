@@ -5,7 +5,10 @@ use crate::expression::ParsedExpression;
 use vb_core::{AccessorProgram, ExprProgram, WorkflowError};
 
 use super::lower::lower_expr;
-use super::resolver::{ExpressionReferenceResolver, RejectingReferenceResolver, StepSlotReferenceResolver, SlotAccessorReferenceResolver};
+use super::resolver::{
+    ExpressionReferenceResolver, RejectingReferenceResolver, SlotAccessorReferenceResolver,
+    StepSlotReferenceResolver,
+};
 
 /// Lowers a parsed expression tree into bounded postfix expression bytecode.
 ///

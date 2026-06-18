@@ -36,8 +36,7 @@ mod harnesses {
         );
 
         if let Some(sym) = result1 {
-            let found_in_registry =
-                CODE_REGISTRY.iter().any(|e| e.symbolic == sym.as_str());
+            let found_in_registry = CODE_REGISTRY.iter().any(|e| e.symbolic == sym.as_str());
             kani::assert(
                 found_in_registry,
                 "Returned SymbolicCode must be in the registry",

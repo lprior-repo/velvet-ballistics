@@ -5,7 +5,7 @@
 //! no stubs or contracts are used.
 
 use crate::workflow::admission_kernel::{
-    accumulate_yield_cost, validate_admission_summary, AdmissionKernelError,
+    AdmissionKernelError, accumulate_yield_cost, validate_admission_summary,
 };
 
 #[kani::proof]

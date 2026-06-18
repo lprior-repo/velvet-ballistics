@@ -8,9 +8,7 @@
 mod tests {
     use crate::errors::{CoreError, CoreResult};
     use crate::errors::{CoreError, CoreResult};
-    use crate::frame::{
-        RunFrame, StepState, is_valid_step_state_transition,
-    };
+    use crate::frame::{RunFrame, StepState, is_valid_step_state_transition};
     use crate::ids::{RunId, SlotIdx, StepIdx};
     use crate::value::{SlotValue, Taint};
 

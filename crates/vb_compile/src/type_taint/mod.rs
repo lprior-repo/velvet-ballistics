@@ -13,9 +13,9 @@
 //! - `step` — Step-level validation: forward data-flow over the step sequence.
 
 mod engine;
+mod eval;
 mod step;
 mod types;
-mod eval;
 
 #[cfg(test)]
 #[path = "tests.rs"]

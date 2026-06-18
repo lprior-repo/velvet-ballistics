@@ -12,10 +12,8 @@ mod opcode;
 mod reference;
 mod resolver;
 
-pub use compile::{
-    compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors,
-};
 pub(crate) use compile::compile_expr_to_bytecode_with_step_slots;
+pub use compile::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 pub(crate) use opcode::{binary_op, helper_op, validate_helper_arity};
 
 #[cfg(test)]

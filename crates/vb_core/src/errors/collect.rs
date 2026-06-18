@@ -35,15 +35,14 @@ pub(super) const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode = DiagnosticC
 /// Collect extra hydration failed diagnostic code.
 pub(super) const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x140C);
 /// Collect evidence capacity exceeded diagnostic code.
-pub(super) const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x140D);
+pub(super) const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode =
+    DiagnosticCode::new(0x140D);
 
 // ── diagnostic_code match arm ──────────────────────────────────────────
 
 /// Returns the diagnostic code for collect/budget/capability variants.
 #[must_use]
-pub(super) const fn diagnostic_code(
-    error: &crate::errors::CoreError,
-) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<DiagnosticCode> {
     match error {
         crate::errors::CoreError::IterationLimitExceeded { .. } => {
             Some(ITERATION_LIMIT_EXCEEDED_CODE)
@@ -78,13 +77,9 @@ pub(super) const fn diagnostic_code(
 
 /// Returns the section-17 runtime code for collect/budget/capability variants, if any.
 #[must_use]
-pub(super) const fn runtime_code(
-    error: &crate::errors::CoreError,
-) -> Option<&'static str> {
+pub(super) const fn runtime_code(error: &crate::errors::CoreError) -> Option<&'static str> {
     match error {
-        crate::errors::CoreError::RepeatExhausted { .. } => {
-            Some(REPEAT_LIMIT_REACHED_RUNTIME_CODE)
-        }
+        crate::errors::CoreError::RepeatExhausted { .. } => Some(REPEAT_LIMIT_REACHED_RUNTIME_CODE),
         crate::errors::CoreError::CollectPageLimitExceeded
         | crate::errors::CoreError::CollectItemLimitExceeded
         | crate::errors::CoreError::CollectTimeLimitExceeded => {

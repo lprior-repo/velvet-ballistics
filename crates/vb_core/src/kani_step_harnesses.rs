@@ -102,7 +102,8 @@ fn step_once_bounds_harness() {
     // INV-004: PC is in bounds after step_once
     let pc = run.pc();
     let pc_usize = pc.as_usize();
-    kani::assert(pc_usize < usize::from(step_count),
+    kani::assert(
+        pc_usize < usize::from(step_count),
         "PC in bounds after step_once",
     );
 
@@ -207,7 +208,8 @@ fn step_once_state_mapping_harness() {
         };
 
         // INV-002: states[step] must reflect correct StepState
-        kani::assert(state == Ok(expected_state),
+        kani::assert(
+            state == Ok(expected_state),
             "states[step] matches signal mapping",
         );
     }
@@ -269,7 +271,8 @@ fn step_once_slot_init_harness() {
     let slot_idx = SlotIdx::new(kani::any::<u16>() % slot_count.max(1));
     let read_result = run.read_slot(slot_idx);
     // read_slot returns Err(SlotUninitialized) for uninitialized slots — not panic
-    kani::assert(read_result.is_err() || read_result.is_ok(),
+    kani::assert(
+        read_result.is_err() || read_result.is_ok(),
         "read_slot returns Result (not panic)",
     );
 }
@@ -326,7 +329,8 @@ fn step_once_pc_bounds_harness() {
     // INV-004: PC ∈ [0, step_count) after step_once
     let pc = run.pc();
     let pc_usize = pc.as_usize();
-    kani::assert(pc_usize < usize::from(step_count),
+    kani::assert(
+        pc_usize < usize::from(step_count),
         "PC < step_count after step_once",
     );
 }
@@ -403,11 +407,13 @@ fn taint_validity_harness() {
             | SlotValue::Symbol(_)
     ));
     let write_slot_result = run.write_slot(slot_idx2, value2);
-    kani::assert(write_slot_result.is_ok(),
+    kani::assert(
+        write_slot_result.is_ok(),
         "write_slot within effective slot count succeeds",
     );
     let taint_after_write_slot = run.read_taint(slot_idx2);
-    kani::assert(taint_after_write_slot.is_ok(),
+    kani::assert(
+        taint_after_write_slot.is_ok(),
         "read_taint after write_slot does not panic",
     );
 }

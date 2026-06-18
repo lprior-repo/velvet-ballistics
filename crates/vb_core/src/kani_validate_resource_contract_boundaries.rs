@@ -117,7 +117,10 @@ fn kani_validate_resource_contract_rejects_zero_max_steps() {
     // 0 is not > 1_000 (master §13 line 479), so the function returns Ok.
     // Asserting the function's actual contract here is mandatory under
     // GOD RULE 4 (no cheating the math).
-    kani::assert(result == Ok(()), "max_steps=0 must be accepted (uses strict >)");
+    kani::assert(
+        result == Ok(()),
+        "max_steps=0 must be accepted (uses strict >)",
+    );
 }
 
 // ============================================================================
@@ -157,10 +160,10 @@ fn kani_validate_resource_contract_rejects_oversized_max_constants() {
     // unwind bound). The discriminant check is sufficient: we only
     // care that ResourceContractTooLarge fires, not the specific
     // resource name in this harness.
-    kani::assert(matches!(
-        result,
-        Err(WorkflowError::ResourceContractTooLarge { .. })),
-        "max_constants > MAX_CONSTANTS must be rejected as ResourceContractTooLarge");
+    kani::assert(
+        matches!(result, Err(WorkflowError::ResourceContractTooLarge { .. })),
+        "max_constants > MAX_CONSTANTS must be rejected as ResourceContractTooLarge",
+    );
 }
 
 // ============================================================================
@@ -183,12 +186,15 @@ fn kani_validate_resource_contract_rejects_zero_max_transitions_per_tick() {
     let parts = parts_with_contract(contract);
     let result = validate_resource_contract(&parts);
     // validate_transitions_per_tick rejects 0 with ResourceContractExceeded.
-    kani::assert(matches!(
-        result,
-        Err(WorkflowError::ResourceContractExceeded {
-            resource: "max_transitions_per_tick"
-        })),
-        "max_transitions_per_tick=0 must be rejected as ResourceContractExceeded");
+    kani::assert(
+        matches!(
+            result,
+            Err(WorkflowError::ResourceContractExceeded {
+                resource: "max_transitions_per_tick"
+            })
+        ),
+        "max_transitions_per_tick=0 must be rejected as ResourceContractExceeded",
+    );
 }
 
 // ============================================================================
@@ -211,10 +217,13 @@ fn kani_validate_resource_contract_rejects_oversized_max_transitions_per_tick() 
     let result = validate_resource_contract(&parts);
     // validate_transitions_per_tick rejects > MAX_STEP_BUDGET with
     // ResourceContractTooLarge.
-    kani::assert(matches!(
-        result,
-        Err(WorkflowError::ResourceContractTooLarge {
-            resource: "max_transitions_per_tick"
-        })),
-        "max_transitions_per_tick=u64::MAX must be rejected as ResourceContractTooLarge");
+    kani::assert(
+        matches!(
+            result,
+            Err(WorkflowError::ResourceContractTooLarge {
+                resource: "max_transitions_per_tick"
+            })
+        ),
+        "max_transitions_per_tick=u64::MAX must be rejected as ResourceContractTooLarge",
+    );
 }

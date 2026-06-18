@@ -100,8 +100,7 @@ fn set_const_invalid_const_index_returns_const_out_of_bounds() -> Result<(), Str
 /// never been written to, it returns `EngineError::SlotUninitialized`.
 #[test]
 fn copy_slot_uninitialized_source_returns_slot_uninitialized() -> Result<(), String> {
-    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 3)
-        .map_err(|e| e.to_string())?;
+    let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 3).map_err(|e| e.to_string())?;
     let node = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(1)),

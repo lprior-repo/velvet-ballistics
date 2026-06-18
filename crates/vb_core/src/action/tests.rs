@@ -107,9 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 
 use super::*;
 use crate::value::Taint;
@@ -890,10 +889,16 @@ fn action_contract_serializes_with_new_fields() {
         required_capabilities: Box::new([]),
     };
     let bytes = postcard::to_allocvec(&contract);
-    assert!(matches!(bytes, Ok(_)), "postcard serialization should succeed");
+    assert!(
+        matches!(bytes, Ok(_)),
+        "postcard serialization should succeed"
+    );
     let bytes = bytes.ok().expect("test setup");
     let recovered: Result<ActionContract, _> = postcard::from_bytes(&bytes);
-    assert!(matches!(recovered, Ok(_)), "postcard deserialization should succeed");
+    assert!(
+        matches!(recovered, Ok(_)),
+        "postcard deserialization should succeed"
+    );
     let recovered = recovered.ok().expect("test setup");
     assert_eq!(recovered.id, contract.id);
     assert_eq!(recovered.side_effect, contract.side_effect);
@@ -2347,7 +2352,10 @@ fn retry_safety_round_trip_json() {
         RetrySafety::Unknown,
     ] {
         let json = serde_json::to_string(&variant);
-        assert!(matches!(json, Ok(_)), "json serialize must succeed for {variant:?}");
+        assert!(
+            matches!(json, Ok(_)),
+            "json serialize must succeed for {variant:?}"
+        );
         let json = json.ok().expect("test setup");
         let recovered: Result<RetrySafety, _> = serde_json::from_str(&json);
         assert!(
@@ -2683,7 +2691,7 @@ mod proptests_4variant {
         clippy::needless_pass_by_value,
         unused_imports,
         dead_code,
-        unused_variables,
+        unused_variables
     )]
 
     use super::*;

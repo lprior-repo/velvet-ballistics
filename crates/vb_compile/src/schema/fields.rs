@@ -4,9 +4,9 @@
 //! Each function accepts a `&saphyr::Mapping` and returns a `Vec<CompileError>`.
 //! The caller orchestrates the full validation pipeline.
 
-use crate::{CompileError, validate_public_name};
 use crate::schema::kind::SchemaKind;
 use crate::schema::scope::SchemaScope;
+use crate::{CompileError, validate_public_name};
 use saphyr::Yaml;
 
 // ── Unknown field rejection ──────────────────────────────────────────────
@@ -38,9 +38,19 @@ fn reject_unknown_schema_field(field: &str, scope: SchemaScope) -> Vec<CompileEr
 
 pub(crate) fn is_allowed_schema_field(field: &str, scope: SchemaScope) -> bool {
     const FIELDS: &[&str] = &[
-        "is", "of", "fields", "extra", "optional", "nullable",
-        "default", "min", "max", "min_length", "max_length",
-        "pattern", "secret",
+        "is",
+        "of",
+        "fields",
+        "extra",
+        "optional",
+        "nullable",
+        "default",
+        "min",
+        "max",
+        "min_length",
+        "max_length",
+        "pattern",
+        "secret",
     ];
     FIELDS.contains(&field) || (field == "from" && scope.allows_from())
 }
@@ -60,7 +70,10 @@ pub(crate) fn reject_schema_pattern(mapping: &saphyr::Mapping<'_>) -> Vec<Compil
 
 // ── `from` field validation ──────────────────────────────────────────────
 
-pub(crate) fn validate_schema_from(mapping: &saphyr::Mapping<'_>, scope: SchemaScope) -> Vec<CompileError> {
+pub(crate) fn validate_schema_from(
+    mapping: &saphyr::Mapping<'_>,
+    scope: SchemaScope,
+) -> Vec<CompileError> {
     let Some(value) = mapping_get(mapping, "from") else {
         return Vec::new();
     };
@@ -96,7 +109,10 @@ pub(crate) fn schema_kind(mapping: &saphyr::Mapping<'_>) -> Result<SchemaKind, C
 
 // ── Children validation: `of`, `fields`, `extra` ────────────────────────
 
-pub(crate) fn validate_schema_children(mapping: &saphyr::Mapping<'_>, kind: SchemaKind) -> Vec<CompileError> {
+pub(crate) fn validate_schema_children(
+    mapping: &saphyr::Mapping<'_>,
+    kind: SchemaKind,
+) -> Vec<CompileError> {
     let mut errors = Vec::new();
     errors.append(&mut validate_schema_of(mapping, kind));
     errors.append(&mut validate_schema_fields(mapping, kind));
@@ -205,7 +221,10 @@ fn validate_schema_bool_field(
 
 // ── Default value validation ─────────────────────────────────────────────
 
-pub(crate) fn validate_schema_default(mapping: &saphyr::Mapping<'_>, kind: SchemaKind) -> Vec<CompileError> {
+pub(crate) fn validate_schema_default(
+    mapping: &saphyr::Mapping<'_>,
+    kind: SchemaKind,
+) -> Vec<CompileError> {
     let Some(value) = mapping_get(mapping, "default") else {
         return Vec::new();
     };
@@ -250,7 +269,10 @@ fn default_matches_kind(value: &Yaml<'_>, kind: SchemaKind) -> bool {
 
 // ── Bounds: `min`/`max` (numeric & list) and `min_length`/`max_length` (text) ──
 
-pub(crate) fn validate_schema_bounds(mapping: &saphyr::Mapping<'_>, kind: SchemaKind) -> Vec<CompileError> {
+pub(crate) fn validate_schema_bounds(
+    mapping: &saphyr::Mapping<'_>,
+    kind: SchemaKind,
+) -> Vec<CompileError> {
     let mut errors = Vec::new();
     errors.append(&mut validate_min_max_bounds(mapping, kind));
     errors.append(&mut validate_text_length_bounds(mapping, kind));
@@ -374,7 +396,10 @@ pub(crate) fn optional_integer_schema_field(
     }
 }
 
-pub(crate) fn schema_bool(mapping: &saphyr::Mapping<'_>, field: &str) -> Result<bool, CompileError> {
+pub(crate) fn schema_bool(
+    mapping: &saphyr::Mapping<'_>,
+    field: &str,
+) -> Result<bool, CompileError> {
     match mapping_get(mapping, field) {
         Some(value) => yaml_bool(value).ok_or(CompileError::InvalidInputSchema {
             field: "inputs boolean flag",
@@ -391,7 +416,10 @@ pub(crate) fn yaml_bool(node: &Yaml<'_>) -> Option<bool> {
     }
 }
 
-pub(crate) fn mapping_get<'a>(mapping: &'a saphyr::Mapping<'a>, field: &str) -> Option<&'a Yaml<'a>> {
+pub(crate) fn mapping_get<'a>(
+    mapping: &'a saphyr::Mapping<'a>,
+    field: &str,
+) -> Option<&'a Yaml<'a>> {
     mapping.iter().find_map(|(key, value)| match key.as_str() {
         Some(name) if name == field => Some(value),
         _ => None,

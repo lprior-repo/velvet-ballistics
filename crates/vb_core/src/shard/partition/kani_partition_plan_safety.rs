@@ -147,10 +147,7 @@ fn partition_plan_post_conditions() {
             // Invariant 5: No overlap
             for i in 0..len {
                 for j in (i + 1)..len {
-                    kani::assert(
-                        ranges[i].is_disjoint(ranges[j]),
-                        "ranges must be disjoint",
-                    );
+                    kani::assert(ranges[i].is_disjoint(ranges[j]), "ranges must be disjoint");
                 }
             }
         }
@@ -177,10 +174,7 @@ fn partition_plan_covers_keyspace() {
             for i in 0..len.saturating_sub(1) {
                 match plan.ranges[i].end().checked_add(1) {
                     Some(expected) => {
-                        kani::assert(
-                            expected == plan.ranges[i + 1].start(),
-                            "no gaps",
-                        );
+                        kani::assert(expected == plan.ranges[i + 1].start(), "no gaps");
                     }
                     None => {}
                 }

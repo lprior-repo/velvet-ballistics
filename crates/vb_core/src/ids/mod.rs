@@ -13,12 +13,12 @@
 
 // ── Domain modules ─────────────────────────────────────────────────────
 
-pub mod workflow_ids;
-pub mod index_ids;
-pub mod symbol_ids;
-pub mod storage_ids;
-pub mod domain_values;
 pub mod digest;
+pub mod domain_values;
+pub mod index_ids;
+pub mod storage_ids;
+pub mod symbol_ids;
+pub mod workflow_ids;
 
 #[cfg(kani)]
 pub mod kani;
@@ -155,7 +155,7 @@ mod tests {
         clippy::needless_pass_by_value,
         unused_imports,
         dead_code,
-        unused_variables,
+        unused_variables
     )]
 
     use super::{RunId, SeqNo, SlotIdx, StepIdx, WorkflowId};
@@ -397,7 +397,10 @@ mod tests {
     fn ids_from_str_invalid() {
         use super::SymbolId;
         let result: Result<SymbolId, _> = "not_a_number".parse();
-        assert!(matches!(result, Err(_)), "non-numeric string must fail to parse");
+        assert!(
+            matches!(result, Err(_)),
+            "non-numeric string must fail to parse"
+        );
     }
 
     #[test]
@@ -544,7 +547,10 @@ mod tests {
     #[test]
     fn from_str_rejects_negative() {
         let result: Result<StepIdx, _> = "-1".parse();
-        assert!(matches!(result, Err(_)), "negative string must fail to parse");
+        assert!(
+            matches!(result, Err(_)),
+            "negative string must fail to parse"
+        );
     }
 
     #[test]
@@ -619,7 +625,13 @@ mod tests {
     fn max_attempts_zero_is_rejected() {
         use super::MaxAttempts;
         let result = MaxAttempts::try_new(0);
-        assert!(matches!(result, Err(crate::EngineError::InternalInvariantViolation { .. })), "max_attempts=0 must be rejected");
+        assert!(
+            matches!(
+                result,
+                Err(crate::EngineError::InternalInvariantViolation { .. })
+            ),
+            "max_attempts=0 must be rejected"
+        );
     }
 
     // --- RetryCount edge cases ---

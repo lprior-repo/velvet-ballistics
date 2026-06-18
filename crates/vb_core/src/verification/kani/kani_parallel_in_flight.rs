@@ -27,7 +27,10 @@ fn kani_pif_initial_state() {
 
     let frame = make_test_frame(max_pif, max_pif).unwrap_or_else(|_| kani::any());
     kani::assert(frame.parallel_in_flight() == 0, "PIF must start at 0");
-    kani::assert(frame.max_parallel_in_flight() == max_pif, "max_PIF must match configured limit");
+    kani::assert(
+        frame.max_parallel_in_flight() == max_pif,
+        "max_PIF must match configured limit",
+    );
 }
 
 /// PO-KANI-007 H2: add_parallel_in_flight increments PIF correctly.
@@ -42,9 +45,17 @@ fn kani_pif_add_increments() {
     let add_amount: u16 = kani::any();
     kani::assume(add_amount <= max_pif);
 
-    frame.add_parallel_in_flight(add_amount).unwrap_or_else(|_| kani::assume(false));
-    kani::assert(frame.parallel_in_flight() == add_amount, "PIF must equal add_amount");
-    kani::assert(frame.parallel_in_flight() <= max_pif, "PIF must not exceed max_PIF");
+    frame
+        .add_parallel_in_flight(add_amount)
+        .unwrap_or_else(|_| kani::assume(false));
+    kani::assert(
+        frame.parallel_in_flight() == add_amount,
+        "PIF must equal add_amount",
+    );
+    kani::assert(
+        frame.parallel_in_flight() <= max_pif,
+        "PIF must not exceed max_PIF",
+    );
 }
 
 /// PO-KANI-007 H3: sub_parallel_in_flight decrements PIF correctly.
@@ -55,11 +66,21 @@ fn kani_pif_sub_decrements() {
     kani::assume(max_pif >= 10);
 
     let mut frame = make_test_frame(max_pif, max_pif).unwrap_or_else(|_| kani::any());
-    frame.add_parallel_in_flight(5).unwrap_or_else(|_| kani::assume(false));
-    kani::assert(frame.parallel_in_flight() == 5, "PIF must be 5 after add(5)");
+    frame
+        .add_parallel_in_flight(5)
+        .unwrap_or_else(|_| kani::assume(false));
+    kani::assert(
+        frame.parallel_in_flight() == 5,
+        "PIF must be 5 after add(5)",
+    );
 
-    frame.sub_parallel_in_flight(3).unwrap_or_else(|_| kani::assume(false));
-    kani::assert(frame.parallel_in_flight() == 2, "PIF must be 2 after sub(3)");
+    frame
+        .sub_parallel_in_flight(3)
+        .unwrap_or_else(|_| kani::assume(false));
+    kani::assert(
+        frame.parallel_in_flight() == 2,
+        "PIF must be 2 after sub(3)",
+    );
 }
 
 /// PO-KANI-007 H4: PIF invariant holds after add/sub sequence.
@@ -74,11 +95,18 @@ fn kani_pif_invariant_holds() {
 
     let add_amount: u16 = kani::any();
     kani::assume(add_amount <= max_pif);
-    frame.add_parallel_in_flight(add_amount).unwrap_or_else(|_| kani::assume(false));
+    frame
+        .add_parallel_in_flight(add_amount)
+        .unwrap_or_else(|_| kani::assume(false));
 
-    kani::assert(frame.parallel_in_flight() <= max_pif, "PIF invariant: must be <= max_PIF");
-    kani::assert(frame.max_parallel_in_flight() >= frame.parallel_in_flight(),
-        "max_PIF must track peak PIF");
+    kani::assert(
+        frame.parallel_in_flight() <= max_pif,
+        "PIF invariant: must be <= max_PIF",
+    );
+    kani::assert(
+        frame.max_parallel_in_flight() >= frame.parallel_in_flight(),
+        "max_PIF must track peak PIF",
+    );
 
     kani::cover!(frame.parallel_in_flight() > 0);
     kani::cover!(frame.max_parallel_in_flight() > 0);
@@ -93,7 +121,9 @@ fn kani_pif_add_overflow_error() {
 
     let mut frame = make_test_frame(max_pif, max_pif).unwrap_or_else(|_| kani::any());
 
-    frame.add_parallel_in_flight(max_pif).unwrap_or_else(|_| kani::assume(false));
+    frame
+        .add_parallel_in_flight(max_pif)
+        .unwrap_or_else(|_| kani::assume(false));
     let result = frame.add_parallel_in_flight(1);
 
     if result.is_err() {
@@ -111,10 +141,14 @@ fn kani_pif_sub_underflow_error() {
     let mut frame = make_test_frame(max_pif, max_pif).unwrap_or_else(|_| kani::any());
 
     let result = frame.sub_parallel_in_flight(1);
-    kani::assert(result.is_err(),
+    kani::assert(
+        result.is_err(),
         "sub_parallel_in_flight(1) from PIF=0 must return error",
     );
-    kani::assert(frame.parallel_in_flight() == 0, "PIF must remain 0 after underflow rejection");
+    kani::assert(
+        frame.parallel_in_flight() == 0,
+        "PIF must remain 0 after underflow rejection",
+    );
 
     kani::cover!(result.is_err());
 }

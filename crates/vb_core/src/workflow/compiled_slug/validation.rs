@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 //! Bounded compiled slug validation for yield-budget-constrained workflow execution.
 
-use crate::workflow::admission_kernel::{validate_admission_summary, AdmissionKernelError};
+use crate::workflow::admission_kernel::{AdmissionKernelError, validate_admission_summary};
 
 use super::types::{
-    checked_total_yield_cost, CompiledSlugs, SlugParseError, YbBoundedSlug, YbBoundedSlugs,
-    MAX_SLUGS_PER_WORKFLOW, MAX_SLUG_PATH_SEGMENTS,
+    CompiledSlugs, MAX_SLUG_PATH_SEGMENTS, MAX_SLUGS_PER_WORKFLOW, SlugParseError, YbBoundedSlug,
+    YbBoundedSlugs, checked_total_yield_cost,
 };
 
 /// Validates a decoded slug count against the workflow admission limit.

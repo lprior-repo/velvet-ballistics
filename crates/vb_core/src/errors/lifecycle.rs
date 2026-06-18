@@ -27,9 +27,7 @@ pub(super) const REPLAY_CORRUPTION_CODE: DiagnosticCode = DiagnosticCode::new(0x
 
 /// Returns the diagnostic code for lifecycle variants.
 #[must_use]
-pub(super) const fn diagnostic_code(
-    error: &crate::errors::CoreError,
-) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<DiagnosticCode> {
     match error {
         crate::errors::CoreError::LifecycleStorageUnavailable { .. } => {
             Some(LIFECYCLE_STORAGE_UNAVAILABLE_CODE)
@@ -43,9 +41,7 @@ pub(super) const fn diagnostic_code(
         crate::errors::CoreError::LifecycleInvalidTransition { .. } => {
             Some(LIFECYCLE_INVALID_TRANSITION_CODE)
         }
-        crate::errors::CoreError::JournalWriteFailure { .. } => {
-            Some(JOURNAL_WRITE_FAILURE_CODE)
-        }
+        crate::errors::CoreError::JournalWriteFailure { .. } => Some(JOURNAL_WRITE_FAILURE_CODE),
         crate::errors::CoreError::ReplayCorruption { .. } => Some(REPLAY_CORRUPTION_CODE),
         _ => None,
     }

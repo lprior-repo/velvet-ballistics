@@ -1,13 +1,13 @@
 #![forbid(unsafe_code)]
 //! Fact-engine: the analysis state machine and schema-to-facts builders.
 
-use crate::ast::{AstMapEntry, AstValue, WorkflowAst};
 use crate::CompileError;
+use crate::ast::{AstMapEntry, AstValue, WorkflowAst};
 use std::collections::HashMap;
 use vb_validate::type_taint::Taint;
 
-use super::types::{ValueFact, ValueType};
 use super::eval::value_fact;
+use super::types::{ValueFact, ValueType};
 
 /// The mutable analysis state for a single workflow.
 ///
@@ -36,7 +36,11 @@ impl<'a> Facts<'a> {
         }
     }
 
-    pub(crate) fn read_slot(&self, index: usize, field: &'static str) -> Result<ValueFact, CompileError> {
+    pub(crate) fn read_slot(
+        &self,
+        index: usize,
+        field: &'static str,
+    ) -> Result<ValueFact, CompileError> {
         match self.slots.get(index).and_then(|slot| *slot) {
             Some(fact) => Ok(fact),
             None => Err(CompileError::UnknownSlotType { field, slot: index }),

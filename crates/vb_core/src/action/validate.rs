@@ -1,12 +1,12 @@
 //! Validation functions for action dispatch, idempotency, and outcomes.
 
-use crate::ids::{SlotIdx, RunId, StepIdx, SeqNo, ActionId};
-use crate::value::Taint;
-use crate::action::classification::{Idempotency, RetrySafety, IdempotencyViolation};
-use crate::action::model::{ActionContract, ActionOutcome, ActionOutputReady, ActionTicket};
+use crate::action::classification::{Idempotency, IdempotencyViolation, RetrySafety};
 use crate::action::error::ActionError;
+use crate::action::model::{ActionContract, ActionOutcome, ActionOutputReady, ActionTicket};
 use crate::action::taint::propagate_action_taint;
 use crate::frame::RunFrame;
+use crate::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
+use crate::value::Taint;
 
 /// Validates that idempotency key ingredients do not contain prohibited values.
 ///
