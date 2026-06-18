@@ -1,71 +1,41 @@
 EXIT_CODE: 1
 STATE: FAILED
-RUN_DATE: 2026-06-18T03:03:35Z
-COMMIT: 4c9049c82
-TASKS_COMPLETED: 27
-TASKS_CACHED: 7
-TASKS_FAILED: 9
-TASKS_SKIPPED: 5
-WALL_CLOCK: 11m 21s
+RUN_DATE: 2026-06-18T04:04:52Z
+COMMIT: 9669f3581
+OUTPUT: .beads/moon-ci-output-20260617-230049.txt
+ACTION_COUNT: 48
+REQUESTED_TARGETS: 98
+RESOLVED_TARGETS: 38
+TASKS_COMPLETED: 30 observed unique completion markers; Moon emitted no final Tasks summary because the run ended with process::failed.
+TASKS_CACHED: 9 observed unique cached markers.
+TASKS_FAILED: 4 observed failed task lanes before final process::failed.
+TASKS_SKIPPED: not emitted by Moon in this run.
+FIRST_FAILURE: velvet-ballistics:verify-kani-vb-runtime — generator crate contains global ASM unsupported by Kani; rerun hint is `-Z unstable-options --ignore-global-asm`.
+FINAL_FAILURE: process::failed — git exit code 128 opening missing `crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs`.
 NOTES: |
-  Previous run (commit f17699599): 30 completed, 15 failed, 2 skipped.
-  This run (commit 4c9049c82): 27 completed, 9 failed, 5 skipped.
-  Delta: -6 failures.
-  Fixed this turn:
-    - vb_core/src/replay/kani_harnesses_plan.rs:7 — removed unused
-      imports CompiledNodeKind, SlotBranch
-    - vb_core/src/verification/kani/kani_parallel_in_flight.rs:28 — removed
-      redundant `mut` on frame binding (reads-only)
-    - vb_core/src/verification/kani/kani_parallel_in_flight.rs:63,80 — removed
-      useless `u16 >= 0` comparisons
-    - vb_core/src/kani/kani_determinism.rs — rewrote (was severely
-      duplicated/corrupt from earlier failed assert! → kani::assert migration)
-    - vb_core/src/kani/kani_diagnostic_constructor.rs — removed botched
-      partial-string fragment
-    - vb_core/src/kani/kani_from_str_compat.rs — rewrote (triplicated
-      harnesses, mismatched braces)
-    - vb_core/src/kani/kani_registry_bijection.rs — rewrote (duplicated module
-      header inside proof body)
-    - vb_core/src/kani/kani_registry_category.rs — rewrote (duplicated content
-      + inverted == → != assertion)
-  Remaining failures (NOT fixed this turn — same root cause pattern,
-  separate scope):
-    - verify-kani: 12 errors — kani::assert(cond, "msg {}", arg) format-string
-      calls in vb_core kani_reverse_lookup.rs, kani_serde_roundtrip.rs,
-      vb_5iebh_check_scope.rs, kani_validate_resource_contract_boundaries.rs
-    - verify-kani-vb-compile: 12 errors — same pattern in vb_yaml kani
-      files (kani_all_variants_registered.rs, kani_checked_add.rs,
-      kani_panic_freedom.rs, kani_yaml_error_code.rs) + remaining
-      kani::assert_ne! macro references
-    - kani-model-smoke-shard-command-queue-standin: 1 error in
-      vb_storage/src/kani_vbjpq733_proofs.rs:102
-    - verify-kani-vb-{cli,ipc,runtime,storage}: skipped or also affected by
-      same propagation
-    - verify-verus: separate verification failure (carried over)
-    - sanitizer-address-check: latency budget passed this run (was previous
-      blocker)
-    - test: 3 deliver_sink_integration tests fail because they require
-      `instrumented-cli` cargo feature not enabled in CI test pass
-    - check-test-density: vb_proof_kernels 4.24x (below 5.0x target)
-ROOT_CAUSE: |
-  Earlier commit d20af85f6 / 0d5f5aa50 / 7b8365940 attempted to migrate
-  `assert_eq!`/`assert_ne!`/`assert!` macros to `kani::assert()` function
-  calls, but corrupted multiple files with duplicated module headers and
-  preserved format-string args that don't work with the 2-arg kani::assert
-  function. The corruption was invisible to `cargo check` because the files
-  are gated behind `#[cfg(kani)]`. Only `cargo kani` actually exercises
-  this code, which is what moon ci verify-kani tasks do.
+  Targeted repair scope files were already syntactically clean when inspected:
+    - crates/vb_core/src/kani/kani_reverse_lookup.rs
+    - crates/vb_core/src/kani/kani_serde_roundtrip.rs
+    - crates/vb_core/src/kani/vb_5iebh_check_scope.rs
+    - crates/vb_core/src/kani_validate_resource_contract_boundaries.rs
+    - crates/vb_yaml/src/kani/kani_all_variants_registered.rs
+    - crates/vb_yaml/src/kani/kani_checked_add.rs
+    - crates/vb_yaml/src/kani/kani_panic_freedom.rs
+    - crates/vb_yaml/src/kani/kani_yaml_error_code.rs
+    - crates/vb_storage/src/kani_vbjpq733_proofs.rs
+  Targeted cargo checks passed:
+    - cargo check -p vb_core --all-targets
+    - cargo check -p vb_yaml --all-targets
+    - cargo check -p vb_storage --all-targets
+    - cargo check --workspace --all-targets --all-features
+  Focused Kani/Moon gate passed:
+    - moon run :verify-kani (Tasks: 1 completed)
+  Moon CI remaining failures are outside the requested nine-file cleanup scope:
+    - verify-kani-vb-runtime: Kani rejects global ASM in transitive generator crate.
+    - verify-kani-vb-compile: crates/vb_compile/src/kani_lower_control.rs has four mismatched closing-delimiter errors from prior botched assert migration.
+    - verify-kani-vb-storage: same generator global ASM blocker.
+    - verify-kani-vb-ipc: `crates/vb_runtime/src/shard/impl_parts/journal_helpers.rs` unused import and `SnapshotWriteOutcome` dead-code errors under `-D warnings`.
+    - final git process failure: missing `crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs`.
 NEXT_TURN_PLAN: |
-  Continue mechanical migration cleanup in these files:
-    vb_core/src/kani/kani_reverse_lookup.rs
-    vb_core/src/kani/kani_serde_roundtrip.rs
-    vb_core/src/kani/vb_5iebh_check_scope.rs
-    vb_core/src/kani_validate_resource_contract_boundaries.rs
-    vb_yaml/src/kani/kani_all_variants_registered.rs
-    vb_yaml/src/kani/kani_checked_add.rs
-    vb_yaml/src/kani/kani_panic_freedom.rs
-    vb_yaml/src/kani/kani_yaml_error_code.rs
-    vb_storage/src/kani_vbjpq733_proofs.rs
-  Pattern: replace `kani::assert(cond, "msg {:?}", arg)` with
-  `kani::assert(cond, "static msg")`, and replace `kani::assert_ne!(...)`
-  with `kani::assert(a != b, "msg")`.
+  Create/claim a follow-up bead for the remaining non-local moon-ci blockers.
+  Recommended first action: repair `crates/vb_compile/src/kani_lower_control.rs` structural corruption in an isolated commit, then address Kani global ASM policy/tool flags and vb_runtime warning escalations separately.
