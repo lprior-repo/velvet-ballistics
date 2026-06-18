@@ -1,1 +1,17 @@
-EXIT_CODE: 
+EXIT_CODE: 124
+RUN_DATE: 2026-06-18T02:08:39Z
+COMMIT: 7e4d06b34f85f7b95b900518ce83b3d7902cb208
+STATE: TIMED_OUT
+TASKS_COMPLETED: 26
+TASKS_CACHED: 6
+TASKS_FAILED: 13
+TASKS_SKIPPED: 2
+FAILED_TASKS:
+  - check-ai-pr-contract
+  - check-test-density (vb_proof_kernels 4.24x < 5.0x required)
+  - fmt
+  - miri (client::tests::recv_response_header_fails_with_frame_error_on_bad_magic FAILED)
+  - sanitizer-address-check (interrupted at 9m 1s, did not complete)
+  - verify-kani (error[E0765] unterminated double quote string in crates/vb_core/src/kani/kani_determinism.rs:111:64)
+LOG: .beads/moon-ci-output-20260617-210818.txt
+NOTE: Run interrupted by 600s timeout. Per agent rules, no fixes attempted.
