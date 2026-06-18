@@ -127,7 +127,7 @@ done < <(
   rg --files -0 \
     -g '*.sh' -g '*.bash' -g '*.zsh' \
     -g '*.yml' -g '*.yaml' -g '*.toml' \
-    -g '*.rs' -g '*.py' \
+    -g '*.rs' -g '*.py' -g '*.md' \
     -g '!target/**' -g '!.git/**' -g '!.beads/**' \
     -g '!vb-*/**' -g '!arch-drift-*/**' \
     -g '!**/target/**' \

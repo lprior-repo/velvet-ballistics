@@ -1,0 +1,6 @@
+# The nightly-feature-gate behavior runner stages these adversarial
+# fixtures into target/nightly-feature-gate-tests before invoking the
+# production gate. Keep the committed fixture catalog invisible to
+# ripgrep-based production scans so `scripts/check-nightly-features.sh`
+# and `moon run :nightly-feature-gate` evaluate only repository source.
+*

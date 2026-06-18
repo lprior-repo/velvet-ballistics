@@ -1,0 +1,2 @@
+steps:
+  - run: export RUSTC_BOOTSTRAP=1

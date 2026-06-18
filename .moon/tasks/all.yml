@@ -130,6 +130,8 @@ tasks:
       runInCI: true
 
   nightly-feature-gate:
+    deps:
+      - 'nightly-feature-gate-test'
     command: 'bash scripts/check-nightly-features.sh'
     toolchains:
       - rust
@@ -137,6 +139,18 @@ tasks:
       - '@globs(sources)'
       - '@globs(tests)'
       - '@globs(configs)'
+    options:
+      runInCI: true
+
+  nightly-feature-gate-test:
+    command: 'bash scripts/test-check-nightly-features.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/check-nightly-features.sh'
+      - 'scripts/test-check-nightly-features.sh'
+      - 'fixtures/nightly-feature-gate/**/*'
+      - '.moon/tasks/all.yml'
     options:
       runInCI: true
 
