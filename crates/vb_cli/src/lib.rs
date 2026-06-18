@@ -31,8 +31,6 @@ pub mod doctor_helpers;
 pub mod events;
 pub mod exit_code;
 pub mod explain;
-pub mod explain_compile;
-pub mod explain_errors;
 pub mod explain_plan;
 pub mod explain_repair;
 pub mod explain_reports;
