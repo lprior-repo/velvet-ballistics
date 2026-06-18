@@ -1,0 +1,110 @@
+State 4 (proof-planner) transcript for bead tier-a-0-002
+========================================================
+
+Planner invocation: tier-a-0-002-s4-proof-planner-PROOF01
+Host session id: 0a9430e620d03c99f228f649cdabdac9
+Skill: proof-planner
+State: 4
+Workdir: /home/lewis/src/femdation-tier-a-0-002
+Source checkout: /home/lewis/src/velvet-ballistics (read-only)
+Started: 2026-06-17T23:00:00.000000+00:00
+Completed: 2026-06-17T23:50:00.000000+00:00
+
+Inputs read (State 3 + supporting):
+- .beads/tier-a-0-002/STATE.md
+- .beads/tier-a-0-002/runtime-skill-provenance.json
+- .beads/tier-a-0-002/agent-invocation-ledger.jsonl (3 prior rows)
+- .beads/tier-a-0-002/baseline-report.md
+- .beads/tier-a-0-002/global-readiness-report.md
+- .beads/tier-a-0-002/codebase-map.md (State 2)
+- .beads/tier-a-0-002/delivery-scope.jsonl (State 2)
+- .beads/tier-a-0-002/domain-model.md (State 3)
+- .beads/tier-a-0-002/type-contracts.md (State 3)
+- .beads/tier-a-0-002/workflow-model.md (State 3)
+- .beads/tier-a-0-002/error-taxonomy.md (State 3)
+- .beads/tier-a-0-002/boundary-map.md (State 3)
+- .beads/tier-a-0-002/hazard-analysis.md (State 3)
+- .beads/tier-a-0-002/contract.md (State 3)
+- .beads/tier-a-0-002/proof-seeds.jsonl (State 3) -- 5 seeds, all behavior_affecting=false
+- .beads/tier-a-0-002/traceability-matrix.jsonl (State 3) -- 20 rows
+
+Risk classification (per proof-planner skill):
+- All five proof seeds have behavior_affecting=false
+- Risk-tag scan for default verifier triggers:
+  RQ-001: no concurrency/unsafe/fuzz matches
+  RQ-002: FUZZ match (parser, IPC) -- but validator would still default to DEFAULT_RUST_VERIFIERS for behavior_affecting=false seeds
+  RQ-003: no matches
+  RQ-004: no matches
+  RQ-005: CONCURRENCY (task) + FUZZ (parse) matches -- same as above
+
+Strategy decision: execution-bound, not model-bound.
+- RQ-001 -> proptest / executable-test (test_quarantine_gate_blocks_json_import)
+- RQ-002 -> verus / manual (master §43 trigger table review; verifier name 'verus' is the closest valid enum match for formal static verification; evidence form is static-review disposition by State 13)
+- RQ-003 -> proptest / executable-test (test_quarantine_gate_blocks_unbounded_channel)
+- RQ-004 -> proptest / executable-test (test_moon_ci_quarantine_dependency_correctly_ordered + allowlist review)
+- RQ-005 -> verus / manual (deterministic grep monotonicity review; verifier name 'verus' is the closest valid enum match for formal static verification; evidence form is static-review disposition by State 13)
+
+Default Rust verifier set (Verus, Kani, Flux-rs, proptest) is NOT required:
+- Gate is not first-party Rust runtime; it is a build-time CI scanner
+- Bash wrapper is imperative shell; not a Rust verification target
+- Moon task graph is YAML; not a Rust verification target
+- Closed-set invariants are already expressed at the type level by the seven-variant ForbiddenImportName enum and four-variant HotCrateName enum
+- Bash tests exercise the live scanner binary against real on-disk files, which is a stronger evidence form than a Rust property test on a model
+- See proof-strategy.md §5 and verifier-lane-matrix.md §2 for full justification per verifier
+
+Conditional profile lanes also NOT required:
+- Loom: scanner is single-threaded synchronous code
+- miri: scanner is safe Rust only (no unsafe, ffi, raw pointers)
+- cargo-fuzz: input surface is the closed source tree; no hostile-input boundary
+
+Outputs written (8 files):
+1. proof-strategy.md (268 lines)
+2. verifier-lane-matrix.md (166 lines)
+3. verifier-lane-decisions.jsonl (5 rows, schema verifier-lane-decision/v1)
+4. verifier-lane-review.jsonl (empty; State 4 reviewer populates next)
+5. proof-coverage-matrix.md (96 lines)
+6. proof-obligations.planned.jsonl (5 rows, schema proof-obligation/v1)
+7. trusted-base-plan.md (251 lines)
+8. waiver-candidates.jsonl (empty; no behavior-affecting waivers)
+
+Total planned obligations: 5
+Total lane decisions: 5
+
+Trusted base components identified:
+- TB-MASTER-§43 (velvet-ballistics-MASTER.md §43 lines 2038-2041)
+- TB-HOT-CRATES (four hot crate roots)
+- TB-ALLOWLIST-FORMAT (type-contracts.md §9.1)
+- TB-SCAN-SCRIPT (scripts/forbid-runtime-fmt.sh, to be authored by State 11)
+- TB-MOON-TASK-GRAPH (.moon/tasks/all.yml, to be authored by State 11)
+
+No external C/C++/WASM trusted components.
+
+Lane decisions intentionally limited to 5 (one per proof seed).
+The dispatcher's instructions specify "one row per seed" and explicitly
+exclude the default Rust verifier set; this is recorded as a justified
+non-applicability in proof-strategy.md §5 and verifier-lane-matrix.md §2.
+The validator's E_LANE_DECISION_MISSING finding for default verifiers
+is expected per the dispatcher's instructions and is not a planning defect.
+
+The State 4 proof-plan-reviewer is the next agent. It populates
+verifier-lane-review.jsonl with reviewer_disposition: accepted or
+rejected for each lane decision, and writes proof-plan-review.md.
+The State 4 review is a separate agent invoked next; this dispatch
+does NOT write proof-plan-review.md per the dispatcher's instructions.
+
+Validator invoked:
+/home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate \
+  --workspace /home/lewis/src/femdation-tier-a-0-002 \
+  --bead tier-a-0-002 --state 4 \
+  --source-checkout /home/lewis/src/velvet-ballistics \
+  --skill-root /home/lewis/.agents/skills/go-skill \
+  --mirror-root /home/lewis/.opencode/skill/go-skill \
+  --format text
+
+Expected validator findings (per dispatcher intent):
+- E_MISSING_ARTIFACT proof-plan-review.md (next agent writes it)
+- E_LANE_REVIEW_MISSING (one per lane decision; empty verifier-lane-review.jsonl)
+- E_LANE_DECISION_MISSING (one per default Rust verifier per seed; user explicitly excluded)
+- (verifier-lane-review.jsonl and waiver-candidates.jsonl are written as single-newline placeholder files; the validator's require_file check requires non-empty bytes)
+
+STATUS: PASS (planner-side; reviewer disposition is pending)

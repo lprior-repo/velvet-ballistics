@@ -1,0 +1,15 @@
+formal-verifier transcript for tier-a-0-002 state 12
+
+Commands captured under .beads/tier-a-0-002/evidence/:
+- bash scripts/test-forbid-runtime-fmt.sh
+- bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+- exact and derived PO-RQ-002 static master checks
+- bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel
+- bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered
+- PO-RQ-005 static wrapper check
+- bash scripts/forbid-runtime-fmt.sh
+- moon run :forbid-runtime-fmt
+- rustfmt/rustc scanner checks
+- moon run :check
+
+Completed: 2026-06-18T06:43:50Z

@@ -1,0 +1,14 @@
+tasks:
+  forbid-runtime-fmt:
+    command: 'bash scripts/forbid-runtime-fmt.sh'
+    options:
+      runInCI: true
+
+  check:
+    script: |
+      cargo check --workspace
+    deps:
+      - 'nightly-feature-gate'
+      - 'check-removed-feature-residue'
+    options:
+      runInCI: true

@@ -1,0 +1,7 @@
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh test_static_evidence_binds_real_formatter_symbols
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:13Z
+[5/5] test_static_evidence_binds_real_formatter_symbols
+  ok: RQ-005 maps stderr format to existing source symbols
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:13Z

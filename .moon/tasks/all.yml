@@ -102,6 +102,23 @@ tasks:
     options:
       runInCI: true
 
+  forbid-runtime-fmt:
+    command: 'bash scripts/forbid-runtime-fmt.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'scripts/forbid-runtime-fmt.sh'
+      - 'scripts/forbid-runtime-fmt.rs'
+      - 'scripts/forbid-runtime-fmt.allow'
+      - 'fixtures/forbid-runtime-fmt/**/*'
+      - 'crates/vb_core/src/**/*'
+      - 'crates/vb_runtime/src/**/*'
+      - 'crates/vb_storage/src/**/*'
+      - 'crates/vb_ipc/src/**/*'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   check:
     script: |
       set -euo pipefail
@@ -110,6 +127,7 @@ tasks:
       bash scripts/anti-verification-laundering.sh
       flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo check --quiet --workspace --all-targets --all-features
     deps:
+      - 'forbid-runtime-fmt'
       - 'nightly-feature-gate'
       - 'agent-cli-contract'
       - 'beads-server-mode'

@@ -1,0 +1,7 @@
+State 14 evidence-packaging lane for bead tier-a-0-002.
+
+Inputs reviewed: delivery-scope.jsonl, contract.md, traceability-matrix.jsonl, proof-review.md, test-plan-review.md, test-suite-review.md, formal-verification-report.md, verification-ledger.jsonl, machine-gate-report.md, regression-diff.md, black-hat-review.md, truth-serum-report.md, proof-test-source-alignment.md, proof-to-rust-map.md, rust-refinement-obligations.jsonl, raw evidence logs under .beads/tier-a-0-002/evidence/.
+
+Outputs written: assurance-bundle.md and final-evidence-decision.md.
+
+Decision: APPROVED for local residue-quarantine gate scope. Residual global blocker remains the unrelated check-removed-crate-residue vb_codegen hit in bounded moon check evidence.

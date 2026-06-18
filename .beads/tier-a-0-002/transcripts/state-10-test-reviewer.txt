@@ -1,0 +1,62 @@
+State 10 test-reviewer transcript for bead tier-a-0-002.
+
+Host session id: 0a9430e620d03c99f228f649cdabdac9
+Reviewer invocation id: tier-a-0-002-s10-test-reviewer-712bac05
+Parent invocation id: tier-a-0-002-s9-test-writer-dfcb6cd3
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Source checkout (read-only): /home/lewis/src/velvet-ballistics
+Artifact root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+
+Startup:
+- Loaded mandatory test-reviewer skill.
+- Did not spawn sub-agents, invoke go-skill, invoke a master skill, or start another orchestrator.
+- Reviewed tests and test plans only; no production or test files were modified.
+
+Inputs read:
+- .beads/tier-a-0-002/contract.md
+- .beads/tier-a-0-002/type-contracts.md
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/proof-to-rust-map.md
+- .beads/tier-a-0-002/proof-to-rust-review.md
+- .beads/tier-a-0-002/rust-refinement-obligations.jsonl
+- .beads/tier-a-0-002/proof-obligations.planned.jsonl
+- scripts/test-forbid-runtime-fmt.sh
+- fixtures/forbid-runtime-fmt/negative_serde_json.rs
+- fixtures/forbid-runtime-fmt/negative_unbounded_channel.rs
+- fixtures/forbid-runtime-fmt/empty.allow
+- fixtures/forbid-runtime-fmt/moon-task-graph-without-deps.yml
+- .moon/tasks/all.yml
+
+Commands run:
+1. bash -n scripts/test-forbid-runtime-fmt.sh
+   outcome: PASS, exit_status=0.
+2. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+   outcome: FAILING-FIRST, exit_status=1:
+   [1/3] test_quarantine_gate_blocks_json_import
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+3. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel
+   outcome: FAILING-FIRST, exit_status=1:
+   [2/3] test_quarantine_gate_blocks_unbounded_channel
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+4. bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered
+   outcome: FAILING-FIRST, exit_status=1:
+   [3/3] test_moon_ci_quarantine_dependency_correctly_ordered
+   AssertionFailed: real moon task graph expected exit 0, got 1
+   Output:
+   MISSING-TASK: forbid-runtime-fmt not declared
+5. Python artifact mode/existence report:
+   scripts/test-forbid-runtime-fmt.sh exists mode=0755
+   fixtures/forbid-runtime-fmt/*.rs and *.allow/*.yml fixtures exist
+   .moon/tasks/all.yml exists
+   scripts/forbid-runtime-fmt.sh is missing before State 11
+
+Review outcome:
+- Wrote .beads/tier-a-0-002/test-plan-review.md with STATUS: REJECTED.
+- Wrote .beads/tier-a-0-002/test-suite-review.md with STATUS: REJECTED.
+- Findings cover contract parity, exact assertion strength, determinism/resource bounds, failing-first evidence for missing scripts/forbid-runtime-fmt.sh, and failing-first evidence for missing moon dependency.
+
+Ledger note:
+- Row 12 must chain from row 11 entry_hash dfaaa59e83a247d21f13b92e87caa68b379aa63294c174153c130893afee2da3.
+- Row 12 output_artifacts must list only the two review files and must exclude the ledger itself.
+- The final go-skill-v9-validate state 10 command is run after row 12 is appended; its raw status is returned to the femdation controller in the final response.

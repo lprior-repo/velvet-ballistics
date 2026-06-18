@@ -1,0 +1,87 @@
+STATE 8 TEST-PLANNER TRANSCRIPT — tier-a-0-002
+
+bead_id: tier-a-0-002
+bead_title: cli: install residue quarantine CI gate via moon ci
+phase: 1
+attempt: 1-of-7
+state: 8 (test-planner)
+skill: test-planner
+writer_invocation_id: tier-a-0-002-s8-test-planner-1f8a4b04
+parent_invocation_id: tier-a-0-002-s7-bridge-reviewer-d25942d8
+host_session_id: 0a9430e620d03c99f228f649cdabdac9
+workdir: /home/lewis/src/femdation-tier-a-0-002
+source_checkout: /home/lewis/src/velvet-ballistics
+artifact_root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+schema_version: test-plan-transcript/v1
+
+STARTED_AT: 2026-06-18T04:00:00.000000+00:00
+COMPLETED_AT: 2026-06-18T04:05:00.000000+00:00
+
+## §1. Inputs read
+
+- .beads/tier-a-0-002/proof-to-rust-map.md
+  (sha256:e81b78889cc8ffcf557accb17320f3bc01161c5a544b6a644b4e75b32ec5b993)
+- .beads/tier-a-0-002/rust-refinement-obligations.jsonl
+  (sha256:e9c9734d2e2ec876c8d66b693d84855fdd9873b72a568ef21c1be450d06ca68c)
+- .beads/tier-a-0-002/proof-to-rust-review.md
+  (sha256:7174a8d82c1fab4ae44d4ad80663a3fdc2675567fa21706d45ff5337d006a8aa)
+
+Cross-references read:
+- .beads/tier-a-0-002/contract.md (§1-§13, focus §3, §4, §8)
+- .beads/tier-a-0-002/proof-seeds.jsonl (5 seeds RQ-001..RQ-005)
+- .beads/tier-a-0-002/proof-obligations.planned.jsonl (5 obligations PO-RQ-001..PO-RQ-005)
+- /home/lewis/src/velvet-ballistics/velvet-ballistics-MASTER.md (§12 lines 405-439 forbidden APIs;
+  §43 lines 2027-2048 trigger table items 7-10)
+- /home/lewis/src/velvet-ballistics/scripts/check-hot-cold-forbidden-apis.rs
+  (sibling scanner for style reference; forbidden token list at lines 7-23)
+
+## §2. Decisions
+
+- Test file path: scripts/test-forbid-runtime-fmt.sh (per State 7 bridge evidence commands)
+- Fixture path: fixtures/forbid-runtime-fmt/ (per State 7 bridge; sibling of fixtures/removed-feature-residue/)
+- Style: mirror scripts/test-check-removed-feature-residue.sh (assertion helpers, mktemp -d staging)
+- 3 named tests are dispatched as bash subcommands: bash scripts/test-forbid-runtime-fmt.sh <name>
+- 4 fixtures materialized (3 negative + 1 empty allowlist; moon-task-graph-without-deps.yml is the RQ-004 negative case)
+- Mutation strategy covers 6 classes: M-1 missing pattern, M-2 false-positive on allowlist, M-3 master drift (state-13),
+  M-4 hash mismatch (validator), M-5 sort -u drop (state-13), M-6 moon wiring regression
+- 5 obligations routed: PO-RQ-001/003/004 executable tests; PO-RQ-002/005 state-13 static review
+- No verifier harness rows added (all 5 RRO rows have refinement_harness_refs=[] per State 7 bridge; correct for
+  a build-time scanner that has no per-step invariant structure beyond the bash wrapper's exit code)
+
+## §3. Outputs
+
+- .beads/tier-a-0-002/test-plan.md (this plan; 9 sections + Proof/Refinement Coverage Matrix)
+- This transcript file (.beads/tier-a-0-002/transcripts/state-8-test-planner.txt)
+
+## §4. Validation against go-skill-v9-validate
+
+Required artifacts for state 8 (per STATE_ARTIFACTS dict line 44 of go-skill-v9-validate):
+  ["test-plan.md"]
+
+Provided: test-plan.md (PRESENT, non-empty, first non-blank line "STATUS: TEST_PLAN_APPROVED")
+
+check_matrices requires the needle "Proof/Refinement Coverage Matrix" in test-plan.md (line 738):
+  PRESENT in §9 section header.
+
+check_status requires STATUS:APPROVED for approval files; test-plan.md is not in APPROVAL_FILES
+  (line 55-66) but starts with STATUS:TEST_PLAN_APPROVED which matches the pattern.
+
+Ledger integrity:
+  Row 10 chains to row 9's entry_hash 841f8e03feb6c6a040e01d806a6b2e95ad752d8cf4b3ba5691fc03c8ffe658b2.
+  Row 10's parent_invocation_id is tier-a-0-002-s7-bridge-reviewer-d25942d8 (row 9's invocation_id).
+  ledger_sequence=10 matches the row index (contiguous from row 9).
+  entry_hash is computed via canonical_row_hash(row minus entry_hash).
+
+## §5. Acceptance
+
+STATUS: TEST_PLAN_APPROVED (matches the test-planner skill's approval token).
+
+The test plan covers all 5 proof seeds, all 5 obligations, all 5 RRO rows, and all 3 named tests.
+The mutation strategy addresses the 4 required mutation classes (M-1, M-2, M-3, M-4) plus 2
+additional mutation classes (M-5, M-6) for the stderr-format and moon-wiring invariants.
+
+The 2 obligations without executable tests (RQ-002, RQ-005) are routed to State 13 black-hat
+reviewer as static-review evidence forms, consistent with the State 4 plan-reviewer's
+lane decisions.
+
+END OF TRANSCRIPT

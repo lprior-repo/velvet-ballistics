@@ -1,0 +1,2 @@
+# Format: <file_path>|<line_no>|<forbidden_name>|<owner>|<reviewed_by>|<test>|<reason>
+# Empty by default: runtime/core residue must be removed or explicitly justified.

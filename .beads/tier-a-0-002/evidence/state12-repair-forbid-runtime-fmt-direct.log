@@ -1,0 +1,6 @@
+COMMAND: bash scripts/forbid-runtime-fmt.sh
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:14Z
+summary: active=0 allowlisted=0 files_scanned=828 hot_paths=291 cold_paths=537
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:14Z

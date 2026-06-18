@@ -1,0 +1,14 @@
+State 13 black-hat re-review after State 11/12 residue quarantine repairs.
+
+Commands executed from /home/lewis/src/femdation-tier-a-0-002:
+
+- bash scripts/test-forbid-runtime-fmt.sh => PASS
+- bash scripts/forbid-runtime-fmt.sh => PASS, summary active=0 allowlisted=0 files_scanned=828 hot_paths=291 cold_paths=537
+- moon run :forbid-runtime-fmt => PASS
+- rustup run nightly-2026-04-28 rustfmt --edition 2024 --check scripts/forbid-runtime-fmt.rs => PASS
+- rustup run nightly-2026-04-28 rustc --edition=2024 -D warnings scripts/forbid-runtime-fmt.rs -o target/gate-tools/forbid-runtime-fmt-rereview => PASS
+- timeout 120s moon run :check => FAIL_GLOBAL, check-removed-crate-residue active vb_codegen residue outside bead scope
+- separate stdout/stderr deterministic replay probes => PASS for pass, active grouped import, allowlisted pass, and missing-master error
+- go-skill-v9-validate state 13 before ledger reseal => expected ledger/hash failure after artifact overwrite
+
+Disposition: APPROVED locally; broader moon check remains externally blocked by pre-existing global residue.

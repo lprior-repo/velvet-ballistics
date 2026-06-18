@@ -1,0 +1,5 @@
+COMMAND: rustup run nightly-2026-04-28 rustc --edition=2024 -D warnings scripts/forbid-runtime-fmt.rs -o target/gate-tools/forbid-runtime-fmt-rustc-check
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:15Z
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:15Z

@@ -1,0 +1,17 @@
+[1/3] test_quarantine_gate_blocks_json_import
+  ok: exit 1 with serde_json RUNTIME-FMT line
+  ok: summary reports active=1 allowlisted=0
+  ok: exact GateError checks cover PatternFileMissing and AllowlistParseFailure
+[2/3] test_quarantine_gate_blocks_unbounded_channel
+  ok: exit 1 with unbounded-channel RUNTIME-FMT line
+  ok: summary reports active=1 allowlisted=0
+  ok: exact GateError check covers GlobUnreadable
+  ok: no cross-pattern false positives
+[3/3] test_moon_ci_quarantine_dependency_correctly_ordered
+  ok: forbid-runtime-fmt in :check.deps
+  ok: ordering preserved (gate runs before cargo)
+  ok: allowlist precedence fixture reports allowlisted=1 and no active line
+  ok: ScriptInvocationFailure maps to exit 2
+  ok: real repository scan completed under 30s (246377159ns)
+  ok: negative fixture detects missing-deps
+self-test PASSED

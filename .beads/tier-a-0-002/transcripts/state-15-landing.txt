@@ -1,0 +1,34 @@
+State 15 landing transcript summary for tier-a-0-002
+Generated: 2026-06-18T09:07:51Z
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Source checkout: /home/lewis/src/velvet-ballistics
+
+Commands:
+- jj diff --git --color=never -- <residue paths> | git -C /home/lewis/src/velvet-ballistics apply --3way
+  status: PASS
+  outcome: residue quarantine patch applied to source checkout; .moon/tasks/all.yml applied cleanly
+- cp -rf /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002 /home/lewis/src/velvet-ballistics/.beads/
+  status: PASS
+  outcome: state 1-14 evidence copied into source checkout artifact root
+- bash scripts/test-forbid-runtime-fmt.sh
+  status: PASS
+  outcome: five self-tests passed; self-test PASSED
+- bash scripts/forbid-runtime-fmt.sh
+  status: PASS
+  outcome: summary: active=0 allowlisted=0 files_scanned=882 hot_paths=340 cold_paths=542
+- moon run :forbid-runtime-fmt
+  status: PASS
+  outcome: Moon task completed; summary active=0 allowlisted=0 files_scanned=882 hot_paths=340 cold_paths=542
+- rustup run nightly-2026-04-28 rustfmt --edition 2024 --check scripts/forbid-runtime-fmt.rs
+  status: PASS
+  outcome: no output
+- rustup run nightly-2026-04-28 rustc --edition=2024 -D warnings scripts/forbid-runtime-fmt.rs -o target/gate-tools/forbid-runtime-fmt-rustc-check
+  status: PASS
+  outcome: no output
+
+Notes:
+- Source checkout contained pre-existing unrelated unstaged modifications; only residue quarantine paths are staged for landing.
+- Full project moon check remains blocked by unrelated vb_codegen removed-crate residue per State 14 evidence.
+
+Validator repair note:
+- Initial state15 validator exposed row1 absolute source hash drift for .moon/tasks/all.yml and scripts/check-source-length.sh. Row1 absolute source hashes and the previous_entry_hash chain were resealed before final validation.

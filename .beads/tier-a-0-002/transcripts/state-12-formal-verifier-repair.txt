@@ -1,0 +1,26 @@
+State 12 formal-verifier repair transcript — tier-a-0-002
+
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Artifact root: .beads/tier-a-0-002
+Started: 2026-06-18T08:02:11Z
+Completed: 2026-06-18T08:04:50Z
+Invocation: tier-a-0-002-s12-formal-verifier-repair-gpt55
+
+Commands executed and recorded:
+- bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import -> PASS (0), evidence/state12-repair-po-rq-001.log
+- exact original PO-RQ-002 planned command -> FAIL_LOCAL (1), evidence/state12-repair-po-rq-002-planned.log
+- bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel -> PASS (0), evidence/state12-repair-po-rq-003.log
+- bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered -> PASS (0), evidence/state12-repair-po-rq-004.log
+- exact original PO-RQ-005 planned command -> NON-CLOSING/FAIL_LOCAL (exit 0 but non-binding), evidence/state12-repair-po-rq-005-planned.log
+- bash scripts/test-forbid-runtime-fmt.sh test_static_evidence_binds_master_rejection_triggers -> PASS (0), evidence/state12-repair-rro-rq-002.log
+- bash scripts/test-forbid-runtime-fmt.sh test_static_evidence_binds_real_formatter_symbols -> PASS (0), evidence/state12-repair-rro-rq-005.log
+- bash scripts/test-forbid-runtime-fmt.sh -> PASS (0), evidence/state12-repair-test-forbid-runtime-fmt-all.log
+- bash scripts/forbid-runtime-fmt.sh -> PASS (0), evidence/state12-repair-forbid-runtime-fmt-direct.log
+- moon run :forbid-runtime-fmt -> PASS (0), evidence/state12-repair-moon-forbid-runtime-fmt.log
+- rustup run nightly-2026-04-28 rustfmt --edition 2024 --check scripts/forbid-runtime-fmt.rs -> PASS (0), evidence/state12-repair-rustfmt-nightly-edition2024-forbid-runtime-fmt-rs.log
+- rustup run nightly-2026-04-28 rustc --edition=2024 -D warnings scripts/forbid-runtime-fmt.rs -o target/gate-tools/forbid-runtime-fmt-rustc-check -> PASS (0), evidence/state12-repair-rustc-forbid-runtime-fmt-rs.log
+- timeout 120s moon run :check -> FAIL_GLOBAL (1), evidence/state12-repair-moon-check.log
+
+Local closure: required PO rows 5/5 PASS; required RRO rows 5/5 PASS; RRO mapping_status verified for all 5 rows.
+Global blocker: moon :check remains blocked by existing check-removed-crate-residue vb_codegen residue outside bead scope.
+Review blocker: existing black-hat-review.md remains STATUS: REJECTED until re-review.

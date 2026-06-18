@@ -1,0 +1,7 @@
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh test_static_evidence_binds_master_rejection_triggers
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:12Z
+[4/5] test_static_evidence_binds_master_rejection_triggers
+  ok: RQ-002 source refs bind actual master §43 automatic rejection lines
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:13Z

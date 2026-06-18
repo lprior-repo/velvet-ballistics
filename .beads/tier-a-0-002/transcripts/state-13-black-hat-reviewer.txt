@@ -1,0 +1,40 @@
+state: 13 black-hat-reviewer
+bead_id: tier-a-0-002
+workspace: /home/lewis/src/femdation-tier-a-0-002
+reviewer_invocation_id: tier-a-0-002-s13-black-hat-reviewer-gpt55
+started_at: 2026-06-18T06:45:00Z
+completed_at: 2026-06-18T06:56:30Z
+
+Commands/evidence reviewed:
+
+1. Loaded black-hat-reviewer skill and response template.
+2. `jj status && jj diff --stat`
+   - working copy includes `.moon/tasks/all.yml`, `scripts/forbid-runtime-fmt.rs`, `scripts/forbid-runtime-fmt.sh`, `scripts/test-forbid-runtime-fmt.sh`, allowlist and fixtures.
+3. `python3 /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/src/femdation-tier-a-0-002 --bead tier-a-0-002 --state 13 --source-checkout /home/lewis/src/velvet-ballistics --format json`
+   - pre-artifact status FAIL, missing `black-hat-review.md`.
+4. `bash scripts/test-forbid-runtime-fmt.sh`
+   - self-test PASSED.
+5. `bash scripts/forbid-runtime-fmt.sh`
+   - `summary: active=0 allowlisted=0 files_scanned=828 hot_paths=291 cold_paths=537`.
+6. `moon run :forbid-runtime-fmt`
+   - task completed; active=0.
+7. `moon run :check`
+   - FAIL_GLOBAL in `check-removed-crate-residue` on pre-existing `vb_codegen` residue after local gate passed.
+8. RQ-002 exact planned command
+   - `FAIL: triggers missing`; `RQ002_PLANNED_EXIT=1`.
+9. RQ-002 derived command
+   - `PASS: 4 trigger items cited`; `RQ002_DERIVED_EXIT=0`; rejected as non-binding because it checks master handoff-report fields, not forbidden import closed set.
+10. RQ-005 exact static command
+    - `PASS: stderr format bound by contract.md §3.3`; `RQ005_STATIC_EXIT=0`; rejected as non-binding because mapped `ResidueMatch::fmt` source symbol does not exist.
+11. Grouped import adversarial fixture
+    - valid Rust syntax confirmed: `RUSTC_GROUPED_IMPORT_VALID_EXIT=0`.
+    - gate result: `GROUPED_IMPORT_STATUS=0`, `summary: active=0 allowlisted=0 files_scanned=1 hot_paths=1 cold_paths=0`.
+12. Spaced path adversarial fixture
+    - valid Rust syntax confirmed: `RUSTC_SPACED_PATH_VALID_EXIT=0`.
+    - gate result: `SPACED_PATH_STATUS=0`, `summary: active=0 allowlisted=0 files_scanned=1 hot_paths=1 cold_paths=0`.
+13. Serde identifier false-positive probe
+    - `SERDE_JSON_IDENTIFIER_STATUS=1`, two `RUNTIME-FMT: serde_json` lines for `serde_jsonic_counter`.
+14. Real `ScriptInvocationFailure` path
+    - `TWO_ARG_SCRIPT_INVOCATION_STATUS=2`, `GateError:ScriptInvocationFailure: expected at most one source-root argument`.
+
+Disposition: STATUS REJECTED. See `.beads/tier-a-0-002/black-hat-review.md`.

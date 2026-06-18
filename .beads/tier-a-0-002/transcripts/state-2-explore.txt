@@ -1,0 +1,76 @@
+State 2 (explore) transcript for tier-a-0-002
+=============================================
+
+agent: explore (opencode subagent)
+host_session_id: 0a9430e620d03c99f228f649cdabdac9
+invocation_id: tier-a-0-002-s2-explore-1f8a4b02
+workdir: /home/lewis/src/femdation-tier-a-0-002
+source_checkout: /home/lewis/src/velvet-ballistics
+started_at: 2026-06-17T21:00:00.000000+00:00
+completed_at: 2026-06-17T21:30:00.000000+00:00
+status: PASS
+
+Phase: 1, attempt: 1-of-7
+
+Inputs read:
+  - .beads/tier-a-0-002/STATE.md
+  - .beads/tier-a-0-002/runtime-skill-provenance.json (go-skill v10.1.0)
+  - .beads/tier-a-0-002/baseline-report.md
+  - .beads/tier-a-0-002/global-readiness-report.md
+  - .beads/tier-a-0-002/agent-invocation-ledger.jsonl (entry 1, hash 2315be88...)
+  - .beads/tier-a-0-002/delivery-scope.jsonl (was: { })
+
+Source checkout read-only discovery:
+  - crates/vb_core/{Cargo.toml,src/}
+  - crates/vb_runtime/{Cargo.toml,src/}
+  - crates/vb_storage/{Cargo.toml,src/}
+  - crates/vb_ipc/{Cargo.toml,src/}
+  - scripts/check-removed-crate-residue.{sh,rs}
+  - scripts/check-removed-feature-residue.{sh,rs}
+  - scripts/check-hot-cold-forbidden-apis.{sh,rs}
+  - scripts/hot-cold-forbidden-apis.allow
+  - scripts/forbidden-scan.sh
+  - scripts/hotpath-scan.sh + scripts/hotpath-scan.allow
+  - scripts/test-check-removed-crate-residue.sh (165 lines)
+  - scripts/test-check-removed-feature-residue.sh
+  - .moon/tasks/all.yml (1234 lines, 27 moon tasks)
+  - .moon.yml (includes: all.yml, flux.yml, kani.yml, loom.yml, verus.yml, tlc.yml)
+  - fixtures/removed-crate-residue/{positive.md, negative.md, negative_makepad.rs, negative_boundary.md, negative_allowlisted.md}
+  - fixtures/removed-feature-residue/{positive.toml, negative.toml, negative_cli_features.txt, negative_profile.txt, negative_profile_pgo.txt}
+  - velvet-ballistics-MASTER.md §2 (lines 82-104), §12 (lines 405-439), §43 (lines 2027-2065), §78 Tier A (lines 6086-6149)
+  - Cargo.toml + Cargo.lock (transitive serde_json, serde_yaml check)
+  - crates/workspace_tests/Cargo.toml (serde_json + serde_yaml as workspace_tests deps; cold, not in scope)
+
+Outputs written:
+  - .beads/tier-a-0-002/codebase-map.md (433 lines)
+  - .beads/tier-a-0-002/delivery-scope.jsonl (13 JSONL rows, valid)
+
+Outputs not written (out of scope for State 2):
+  - scripts/forbid-runtime-fmt.{sh,rs} (owned by State 11 holzman-rust)
+  - scripts/test-forbid-runtime-fmt.sh (owned by State 9 test-writer)
+  - .moon/tasks/forbid-runtime-fmt.yml (owned by State 11 holzman-rust)
+  - .moon.yml include update (owned by State 11 holzman-rust; OQ-001)
+  - fixtures/forbid-runtime-fmt/{positive.rs,negative.rs,negative_unbounded_channel.rs} (owned by State 9 test-writer)
+
+Key findings:
+  - The four hot crates are the canonical scope; all four `Cargo.toml` files declare
+    no forbidden runtime deps (serde_json is dev-dep only in vb_core, with
+    `# allow-cold-adapter` marker).
+  - The master document at line 6147 lists `scripts/forbid-runtime-fmt.sh` as a
+    Tier A acceptance-criteria gate — the bead fills a pre-existing spec gap.
+  - Master §2 lines 99-102 + §12 lines 405-439 + §43 lines 2027-2065 are the
+    upstream contract; the gate is the mechanical enforcement layer for §44.6.
+  - The sibling residue-gate pattern is well-established: bash + rustc (or
+    clippy-driver) + self-test + positive/negative fixtures + moon task entry +
+    deps: hookup onto the :check task. Six open questions recorded for the
+    implementation agent (OQ-001 through OQ-006) — none block State 2 exit.
+
+Risk tags carried forward:
+  - residue-quarantine
+  - hot-crate-gate
+  - ci-gate-installation
+  - master-§2-§12-§43-linkage
+  - sibling-pattern-conformance
+
+Required verifier lanes: [] (no Verus/Kani/Flux/Loom/Miri/proptest/fuzz/cargo-mutants
+required; the gate is a string-match scanner and is not itself a verifier artifact).

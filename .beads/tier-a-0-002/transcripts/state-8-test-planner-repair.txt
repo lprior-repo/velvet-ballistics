@@ -1,0 +1,56 @@
+State 8 test-planner repair transcript for bead tier-a-0-002.
+
+Host session id: 0a9430e620d03c99f228f649cdabdac9
+Repair invocation id: tier-a-0-002-s8-test-planner-repair-a3f91c7e
+Parent invocation id: tier-a-0-002-s10-test-reviewer-rereview-5d6f7a91
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Artifact root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+
+Startup:
+- Loaded mandatory test-planner skill.
+- Did not spawn sub-agents, invoke go-skill, invoke a master agent/skill,
+  run nested opencode/Task delegation, or start another orchestrator.
+- Worked only in the isolated workspace.
+
+Inputs read:
+- /home/lewis/.agents/skills/test-planner/references/testing-philosophy.md
+- .beads/tier-a-0-002/test-plan-review.md
+- .beads/tier-a-0-002/test-suite-review.md
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/contract.md
+- .beads/tier-a-0-002/error-taxonomy.md
+- .beads/tier-a-0-002/type-contracts.md
+- .beads/tier-a-0-002/rust-refinement-obligations.jsonl
+- scripts/test-forbid-runtime-fmt.sh
+- fixtures/forbid-runtime-fmt/negative_serde_json.rs
+- fixtures/forbid-runtime-fmt/negative_unbounded_channel.rs
+- fixtures/forbid-runtime-fmt/positive_allowlisted.rs
+- fixtures/forbid-runtime-fmt/positive_allowlisted.allow
+- fixtures/forbid-runtime-fmt/malformed_unknown_forbidden.allow
+- fixtures/forbid-runtime-fmt/empty.allow
+
+Files written or updated:
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/transcripts/state-8-test-planner-repair.txt
+- .beads/tier-a-0-002/agent-invocation-ledger.jsonl (resealed rows 10-14 and appended row 15 after artifact hash computation)
+
+Plan repair details:
+1. Replaced stale generic fixture staging with contracted hot-crate paths:
+   crates/vb_core/src/lib.rs, crates/vb_runtime/src/channel.rs, and
+   crates/vb_core/src/allowlisted.rs.
+2. Replaced stale diagnostics with exact file/line stderr assertions for
+   active and allowlisted residue and explicitly rejected old "exact substring"
+   wording.
+3. Made RRO-RQ-004 allowlist precedence an executable behavior sub-scenario
+   using positive_allowlisted.rs plus positive_allowlisted.allow, separate from
+   moon task graph structural wiring.
+4. Added exhaustive GateError planning language for PatternFileMissing,
+   GlobUnreadable, AllowlistParseFailure, and ScriptInvocationFailure.
+5. Added hard fail-closed resource-bound language requiring timeout 30s around
+   every gate invocation and a nanosecond bound for the real-repository scan.
+
+Ledger note:
+- First affected mutable row is ledger sequence 10 (original State 8 test-planner output hash for test-plan.md).
+- Rows 10-14 were resealed to current artifact hashes before appending row 15.
+- Row 15 parent_invocation_id is tier-a-0-002-s10-test-reviewer-rereview-5d6f7a91.

@@ -1,0 +1,13 @@
+{
+  "bead": "tier-a-0-002",
+  "findings": [
+    {
+      "code": "E_STATUS_NOT_APPROVED",
+      "message": "status tokens=['REJECTED', 'REJECTED', 'REJECTED']",
+      "path": "black-hat-review.md",
+      "severity": "BLOCK"
+    }
+  ],
+  "state": 12,
+  "status": "FAIL"
+}

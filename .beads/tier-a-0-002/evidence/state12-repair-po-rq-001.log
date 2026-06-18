@@ -1,0 +1,9 @@
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:11Z
+[1/5] test_quarantine_gate_blocks_json_import
+  ok: exit 1 with serde_json RUNTIME-FMT line
+  ok: summary reports active=1 allowlisted=0
+  ok: exact GateError checks cover PatternFileMissing and AllowlistParseFailure
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:11Z

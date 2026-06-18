@@ -1,0 +1,56 @@
+State 10 test-reviewer re-review transcript for bead tier-a-0-002.
+
+Reviewer invocation id: tier-a-0-002-s10-test-reviewer-rereview-5d6f7a91
+Latest writer invocation id: tier-a-0-002-s9-test-writer-repair-0a9430e6
+Parent reviewer invocation id: tier-a-0-002-s10-test-reviewer-712bac05
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Artifact root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+
+Startup:
+- Loaded mandatory test-reviewer skill.
+- Did not spawn sub-agents, invoke go-skill, invoke a master agent/skill, run nested opencode/Task delegation, or start another orchestrator.
+- Reviewed repaired tests/report and prior rejection only.
+
+Inputs read:
+- .beads/tier-a-0-002/test-plan-review.md
+- .beads/tier-a-0-002/test-suite-review.md
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/contract.md
+- .beads/tier-a-0-002/error-taxonomy.md
+- .beads/tier-a-0-002/transcripts/state-9-test-writer-repair.txt
+- .beads/tier-a-0-002/transcripts/state-10-test-reviewer.txt
+- scripts/test-forbid-runtime-fmt.sh
+- fixtures/forbid-runtime-fmt/negative_serde_json.rs
+- fixtures/forbid-runtime-fmt/negative_unbounded_channel.rs
+- fixtures/forbid-runtime-fmt/positive_allowlisted.rs
+- fixtures/forbid-runtime-fmt/positive_allowlisted.allow
+- fixtures/forbid-runtime-fmt/malformed_unknown_forbidden.allow
+
+Commands run before review artifact write:
+1. bash -n scripts/test-forbid-runtime-fmt.sh
+   outcome: PASS, exit_status=0.
+2. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+   outcome: FAILING-FIRST, exit_status=1:
+   [1/3] test_quarantine_gate_blocks_json_import
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+3. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel
+   outcome: FAILING-FIRST, exit_status=1:
+   [2/3] test_quarantine_gate_blocks_unbounded_channel
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+4. bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered
+   outcome: FAILING-FIRST, exit_status=1:
+   [3/3] test_moon_ci_quarantine_dependency_correctly_ordered
+   AssertionFailed: real moon task graph expected exit 0, got 1
+   Output:
+   MISSING-TASK: forbid-runtime-fmt not declared
+
+Review outcome:
+- Wrote .beads/tier-a-0-002/test-plan-review.md with STATUS: REJECTED.
+- Wrote .beads/tier-a-0-002/test-suite-review.md with STATUS: REJECTED.
+- Closure matrix: hot-crate paths fixed in suite but stale in plan; GateError partial because ScriptInvocationFailure is untested; allowlist precedence fixed in suite but stale in plan; exact diagnostics fixed in suite but stale in plan; 30s bound fixed in suite but stale in plan.
+
+Ledger note:
+- Overwriting review artifacts made previous mutable ledger hashes stale.
+- Rows 12 and 13 must be resealed to current artifact hashes before appending row 14.
+- Row 14 must chain from resealed row 13 and reference this transcript.

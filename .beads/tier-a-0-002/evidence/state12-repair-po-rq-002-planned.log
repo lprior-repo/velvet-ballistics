@@ -1,0 +1,6 @@
+COMMAND: bash -c set\ -euo\ pipefail\;\ md=\$\{1\}\;\ test\ -f\ \"\$\{md\}\"\ \|\|\ \{\ echo\ \"master\ missing\"\ \>\&2\;\ exit\ 2\;\ \}\;\ awk\ \"/§43\ AI\ Agent\ Acceptance\ Contract/,/§44\ Backend\ DoD/\"\ \"\$\{md\}\"\ \|\ grep\ -E\ \"\^-\ trigger\ \(7\|8\|9\|10\):\"\ \|\ wc\ -l\ \|\ grep\ -qE\ \"\^\[\ \]\*4\$\"\ \&\&\ echo\ \"PASS:\ 4\ triggers\ cited\"\ \|\|\ \{\ echo\ \"FAIL:\ triggers\ missing\"\ \>\&2\;\ exit\ 1\;\ \} _ /home/lewis/src/velvet-ballistics/velvet-ballistics-MASTER.md
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:11Z
+FAIL: triggers missing
+EXIT_STATUS: 1
+COMPLETED_AT: 2026-06-18T08:02:11Z

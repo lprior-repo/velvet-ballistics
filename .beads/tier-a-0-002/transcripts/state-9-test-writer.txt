@@ -1,0 +1,55 @@
+State 9 test-writer transcript for bead tier-a-0-002.
+
+Host session id: 0a9430e620d03c99f228f649cdabdac9
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Source checkout (read-only): /home/lewis/src/velvet-ballistics
+Artifact root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+
+Startup:
+- Loaded mandatory test-writer skill.
+- Read test-writer Rust test ecosystem reference.
+- Created this transcript before writing State 9 test artifacts.
+
+Inputs read:
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/proof-to-rust-map.md
+- .beads/tier-a-0-002/rust-refinement-obligations.jsonl
+- .beads/tier-a-0-002/contract.md
+- scripts/test-check-removed-feature-residue.sh (style reference)
+- .moon/tasks/all.yml (current moon task graph)
+
+Files written:
+- scripts/test-forbid-runtime-fmt.sh
+- fixtures/forbid-runtime-fmt/negative_serde_json.rs
+- fixtures/forbid-runtime-fmt/negative_unbounded_channel.rs
+- fixtures/forbid-runtime-fmt/empty.allow
+- fixtures/forbid-runtime-fmt/moon-task-graph-without-deps.yml
+- .beads/tier-a-0-002/test-writer-report.md
+
+Commands run:
+1. sha256sum .beads/tier-a-0-002/transcripts/state-9-test-writer.txt
+   outcome: PASS; initial transcript hash 41da2e332da0d9b4cc896450d23cc4515abdac10b6a6414cbb1aaca563f51a85.
+2. mkdir -p fixtures/forbid-runtime-fmt
+   outcome: PASS.
+3. chmod 0755 scripts/test-forbid-runtime-fmt.sh
+   outcome: PASS.
+4. bash -n scripts/test-forbid-runtime-fmt.sh
+   outcome: PASS.
+5. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+   outcome: FAILING-FIRST, captured_exit=1:
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+6. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel
+   outcome: FAILING-FIRST, captured_exit=1:
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+7. bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered
+   outcome: FAILING-FIRST, captured_exit=1:
+   MISSING-TASK: forbid-runtime-fmt not declared
+8. bash scripts/test-forbid-runtime-fmt.sh
+   outcome: FAILING-FIRST, captured_exit=1 at test_quarantine_gate_blocks_json_import because scripts/forbid-runtime-fmt.sh is not present before State 11.
+9. /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/src/femdation-tier-a-0-002 --bead tier-a-0-002 --state 9 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill --format text
+   outcome: STATUS: PASS before final ledger-row append.
+
+Ledger note:
+- On-disk .beads/tier-a-0-002/agent-invocation-ledger.jsonl initially contained rows 1-9.
+- The prior State 8 transcript states row 10 should chain from row 9 and names invocation tier-a-0-002-s8-test-planner-1f8a4b04.
+- To satisfy the controller request for State 9 ledger row 11 with previous_entry_hash from row 10, row 10 is reconstructed from State 8 artifacts before appending State 9 row 11.

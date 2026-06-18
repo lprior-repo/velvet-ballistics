@@ -1,0 +1,120 @@
+state-3-rust-contract transcript
+bead_id: tier-a-0-002
+host_session_id: 0a9430e620d03c99f228f649cdabdac9
+invocation_id: tier-a-0-002-s3-rust-contract-1f8a4b02
+parent_invocation_id: tier-a-0-002-s2-explore-1f8a4b02
+workdir: /home/lewis/src/femdation-tier-a-0-002
+source_checkout: /home/lewis/src/velvet-ballistics
+skill: rust-contract
+state: 3
+started_at: 2026-06-17T22:00:00.000000+00:00
+completed_at: 2026-06-17T22:45:00.000000+00:00
+status: PASS
+
+Phase: 1, attempt: 1-of-7
+
+Inputs read:
+  - .beads/tier-a-0-002/STATE.md (phase 1, status STATE_1_PROVENANCE_CAPTURED)
+  - .beads/tier-a-0-002/runtime-skill-provenance.json (go-skill v10.1.0)
+  - .beads/tier-a-0-002/baseline-report.md
+  - .beads/tier-a-0-002/global-readiness-report.md (required_proof_lanes: [])
+  - .beads/tier-a-0-002/agent-invocation-ledger.jsonl (row 1 hash 88e5062b...; row 2 hash 94825975...)
+  - .beads/tier-a-0-002/delivery-scope.jsonl (13 rows)
+  - .beads/tier-a-0-002/codebase-map.md (433 lines)
+  - .beads/tier-a-0-002/transcripts/state-1-claim.txt
+  - .beads/tier-a-0-002/transcripts/state-2-explore.txt
+  - Source checkout (read-only):
+    - velvet-ballistics-MASTER.md §2 (lines 82-104), §12 (lines 405-439),
+      §43 AI Agent Acceptance Contract (lines 2027-2065), §44 Backend DoD
+      (lines 2069-2093), §78 Tier A acceptance gates (line 6147).
+    - scripts/check-removed-feature-residue.{sh,rs} (sibling precedent)
+    - scripts/check-hot-cold-forbidden-apis.{sh,rs} (sibling precedent)
+    - scripts/check-removed-crate-residue.{sh,rs} (sibling precedent)
+    - scripts/hot-cold-forbidden-apis.allow (sibling allowlist format)
+    - .moon/tasks/all.yml (1234 lines, check task at line 105 with deps:)
+
+Modeled the gate as a small DDD system with a single Aggregate (ResidueQuarantine)
+and value objects (ForbiddenImport, QuarantinedCrate, ChannelKind, ScanReport,
+AllowlistRef). The forbidden patterns are policy entities drawn from master §2 and
+§12; the gate's correctness is rooted in the §43 trigger table 7-10 chain
+(allocation/hot-path/Fjall/IPC behavior all collapse to the same §2/§12 axioms).
+
+Decision summary:
+  - Aggregate = ResidueQuarantine (one per gate run).
+  - Value objects: ForbiddenImport { name, kind }, QuarantinedCrate { path_glob },
+    ChannelKind (Bounded | Unbounded), ScanReport { matches, files_scanned,
+    active_count }, AllowlistRef { entries }.
+  - Workflow: init -> resolve quarantined crates -> walk .rs files -> match
+    forbidden patterns -> diff against allowlist -> format evidence -> exit
+    code (0/1/2). Outlined as a typed state machine in workflow-model.md.
+  - Error taxonomy: GateError { PatternFileMissing, GlobUnreadable,
+    AllowlistParseFailure, ScriptInvocationFailure, NewResidueDetected }
+    mapped to exit codes 0/1/2 with explicit stderr templates.
+  - Boundary map: input is the four crates/{vb_core,vb_runtime,vb_storage,
+    vb_ipc}/**/*.rs paths; output is exit code + stderr. External dependencies:
+    ripgrep (optional fast path), rustc (mandatory build of the scanner),
+    bash, moon run :forbid-runtime-fmt.
+  - Hazard analysis identifies six hazard classes (false positive, false
+    negative, perf on huge trees, regex DoS, allowlist bloat, drift between
+    master §43 and the gate's pattern list). Each has a mitigation owned
+    by either the State 3 contract, the State 11 implementation, or the
+    State 14 evidence packaging owner.
+  - Contract binds preconditions, postconditions, invariants, error contract,
+    and a 30-second perf budget.
+  - 5 proof seeds emitted (RQ-001..RQ-005). All marked not behavior-affecting
+    (gate is a CI string-match scanner, not first-party Rust behavior; it
+    protects the verification surface but is not itself a verifier artifact).
+  - 14 traceability rows: 1 per master section x 1 per forbidden pattern x
+    1 per hot crate + test names + sibling gates + 3 moon dependency rows.
+
+Outputs written:
+  - .beads/tier-a-0-002/domain-model.md
+  - .beads/tier-a-0-002/type-contracts.md
+  - .beads/tier-a-0-002/workflow-model.md
+  - .beads/tier-a-0-002/error-taxonomy.md
+  - .beads/tier-a-0-002/boundary-map.md
+  - .beads/tier-a-0-002/hazard-analysis.md
+  - .beads/tier-a-0-002/contract.md
+  - .beads/tier-a-0-002/proof-seeds.jsonl (5 seeds)
+  - .beads/tier-a-0-002/traceability-matrix.jsonl (14 rows)
+
+Outputs not written (out of scope for State 3):
+  - scripts/forbid-runtime-fmt.{sh,rs} (owned by State 11 holzman-rust)
+  - scripts/test-forbid-runtime-fmt.sh (owned by State 9 test-writer)
+  - fixtures/forbid-runtime-fmt/{positive.rs, negative.rs,
+    negative_unbounded_channel.rs} (owned by State 9 test-writer)
+  - .moon/tasks/forbid-runtime-fmt.yml (or .moon/tasks/all.yml entry)
+    (owned by State 11 holzman-rust; OQ-001)
+  - .moon.yml include update if separate forbid-runtime-fmt.yml is created
+    (owned by State 11 holzman-rust; OQ-001)
+
+Open domain questions deferred to State 11 / State 9:
+  - OQ-001: separate .moon/tasks/forbid-runtime-fmt.yml vs new entry in
+    .moon/tasks/all.yml. Both are accepted by the contract; the test
+    test_moon_ci_quarantine_dependency_correctly_ordered is gated against
+    either layout.
+  - OQ-002: scanner built with rustc (light precedent) vs clippy-driver
+    (heavy precedent). The contract mandates Holzmann compliance; the
+    choice of compiler does not change the contract.
+  - OQ-003: scope is the four hot crates only. Other crates that use
+    serde_json (vb_cli, vb_benchmark, vb_boundary_inventory,
+    workspace_tests) are out of scope and must NOT be flagged.
+  - OQ-004: source-only (.rs files) is in scope. Cargo.toml dep table
+    is explicitly out of scope per the bead description's `/*.rs` suffix.
+
+Validator command run after write:
+  python3 /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate \
+    --workspace /home/lewis/src/femdation-tier-a-0-002 \
+    --bead tier-a-0-002 --state 3 \
+    --source-checkout /home/lewis/src/velvet-ballistics \
+    --skill-root /home/lewis/.agents/skills/go-skill \
+    --mirror-root /home/lewis/.opencode/skill/go-skill \
+    --format text
+
+STATUS: STATE_3_CONTRACT_CAPTURED
+next_state: 4 (proof-planner) -- not required for this bead; State 4 may
+be skipped because global-readiness-report.md marks required_proof_lanes
+as []. State 11 (holzman-rust) is the natural next owner.
+
+Result: ready for State 4 (proof-planner) or direct State 11 (holzman-rust)
+handoff pending femdation controller decision.

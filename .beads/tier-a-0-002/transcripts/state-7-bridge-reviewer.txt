@@ -1,0 +1,148 @@
+State 7 bridge reviewer transcript for tier-a-0-002
+bead_id: tier-a-0-002
+bead_title: cli: install residue quarantine CI gate via moon ci
+invocation_id: tier-a-0-002-s7-bridge-reviewer-d25942d8
+parent_invocation_id: tier-a-0-002-s7-proof-to-implementation-PTIBRIDG
+host_session_id: 0a9430e620d03c99f228f649cdabdac9
+state: 7
+skill: proof-reviewer
+workdir: /home/lewis/src/femdation-tier-a-0-002
+source_checkout: /home/lewis/src/velvet-ballistics
+schema_version: agent-invocation/v1
+started_at: 2026-06-18T03:35:00.000000+00:00
+completed_at: 2026-06-18T03:50:00.000000+00:00
+status: completed
+
+# Workflow
+
+1. Loaded proof-reviewer skill (`~/.opencode/skill/proof-reviewer/SKILL.md`).
+2. Read 2 input artifacts (State 7 writer outputs):
+   - `.beads/tier-a-0-002/proof-to-rust-map.md` (327 lines, STATUS: BRIDGE_MAPPED)
+   - `.beads/tier-a-0-002/rust-refinement-obligations.jsonl` (5 rows)
+3. Verified the 2 input artifacts existed before this review start
+   (`reviewed_artifacts_existed_before_start=true`); row 8 in
+   `agent-invocation-ledger.jsonl` records `completed_at: 2026-06-18T03:30:00.000000+00:00`
+   for `tier-a-0-002-s7-proof-to-implementation-PTIBRIDG`.
+4. Verified reviewer provenance:
+   - this reviewer_invocation_id = `tier-a-0-002-s7-bridge-reviewer-d25942d8` (hex suffix)
+   - writer_invocation_id (State 7) = `tier-a-0-002-s7-proof-to-implementation-PTIBRIDG`
+   - the two are distinct; no E_REVIEW_SELF_APPROVAL risk.
+5. Verified bridge writer invocation_id `tier-a-0-002-s7-proof-to-implementation-PTIBRIDG`
+   matches the invocation_id in row 8 of `agent-invocation-ledger.jsonl`.
+6. Read the State 6 review (`proof-review.md`, STATUS: APPROVED,
+   reviewer_invocation_id `tier-a-0-002-s6-proof-reviewer-c21da687`)
+   and the State 5 outputs (`proof-writer-report.md`, `proof-evidence.md`,
+   `trusted-base-ledger.jsonl`) to confirm continuity.
+7. Read `proof-seeds.jsonl` (5 rows, all behavior_affecting=false),
+   `proof-obligations.planned.jsonl` (5 rows, all required=true), and
+   the State 4 plan to confirm 1:1 RRO binding.
+8. Read the contract (`contract.md` §1-§13) and the
+   `velvet-ballistics-MASTER.md` §43 trigger table 7-10 (lines 2038-2041,
+   sha256:277c171c83e87892ec2244595a8f2a26f2a9d7c197b264161627257936526a6c).
+9. Validated 5 validations on the bridge writer's outputs:
+   - V1: 5 seeds (RQ-001..RQ-005) mapped to source refs.
+   - V2: 5 obligations (RRO-RQ-001..RRO-RQ-005) with matching
+     verifier/behavior_affecting/source_refs/test_refs.
+   - V3: 3 named test cases mapped to test file paths.
+   - V4: No Holzman-rust scope (gate is shell).
+   - V5: refinement_harness_refs consistent with verifier=proptest and
+     behavior_affecting=false.
+10. Ran `go-skill-v9-validate` once before writing `proof-to-rust-review.md`:
+    STATUS: FAIL with one expected E_MISSING_ARTIFACT finding for
+    `proof-to-rust-review.md`. All other checks pass (proof-to-rust-map.md
+    present, rust-refinement-obligations.jsonl present, all 22 RRO_FIELDS
+    present on all 5 rows, all source_refs match SOURCE_REF regex, all
+    behavior_test_refs are valid, refinement_harness_refs=[] for all 5
+    rows, no review self-approval, no conflict markers, no blocked
+    tooling, no pending formal execution, no trust marker gaps, the
+    proof-to-rust-map.md contains the required matrix header
+    `| Proof ID | Claim | Behavior Affecting | Rust Source Refs |
+    Behavior Test Refs | Refinement Harness Refs | Verifier | Evidence
+    Command | Rerun From |`).
+11. Wrote `proof-to-rust-review.md` with STATUS: APPROVED, headers
+    `reviewer_skill: proof-reviewer` and
+    `reviewer_invocation_id: tier-a-0-002-s7-bridge-reviewer-d25942d8`,
+    plus 8 sections (5 validations, recommendations, disposition,
+    approval).
+12. Computed canonical_row_hash for ledger row 9 (sha256 of canonical
+    JSON of row minus entry_hash).
+13. Appended ledger row 9 to `agent-invocation-ledger.jsonl` with
+    full INVOCATION_FIELDS schema (entry_hash, previous_entry_hash=4d45d988...).
+14. Ran `go-skill-v9-validate` after writing: STATUS: PASS (no findings).
+
+# Key design decisions
+
+- The 5 RRO rows preserve identity with the 5 proof obligations
+  (PO-RQ-001..PO-RQ-005): proof_id, requirement_id, contract_clause,
+  and verifier all match exactly. This is required by the validator's
+  `check_proof_to_rust_completeness` for behavior_affecting=true rows;
+  for behavior_affecting=false rows (this case), the check is skipped
+  per the State 4 plan, but the identity preservation is still the
+  correct disposition.
+- All 5 RRO rows have verifier=proptest, behavior_affecting=false,
+  refinement_harness_refs=[]. This is consistent with the State 4
+  plan's classification of the default Rust verifier set as
+  not_applicable for a build-time scanner; the behavior test (the
+  bash test runner) IS the executable verification surface, not a
+  refinement harness.
+- mapping_status=mapped (not "verified") is the correct State 7
+  output. Closure to "verified" is the State 12 formal-verifier
+  responsibility, contingent on the State 11 holzman-rust agent
+  materializing the forward-pointing source_refs.
+- The 5 source_refs lists are co-disjoint in §1.3, with the
+  intentional exception of two shared refs (the bash wrapper's main
+  and the decide() method) that are documented as intentional
+  cross-obligation bindings of the same source artifact. This is
+  consistent with the State 4 plan's decision to treat the
+  pass-iff-no-residue invariant (RQ-001) and the exit-code-correctness
+  invariant (RQ-003) as the two halves of the same decide() flow.
+- 3 named test cases (json_import, unbounded_channel,
+  moon_ci_quarantine_dependency) are mapped to test file paths
+  `scripts/test-forbid-runtime-fmt.sh::<test_name>`. The test file
+  itself is forward-pointing (to be authored by State 8/9/10
+  test-writer per contract.md §8). All 3 test refs avoid
+  `BEHAVIOR_TEST_FORBIDDEN_RE` matches (no `verification/`, no
+  `kani/verus/flux/loom/miri` keywords).
+- No Holzman-rust-specific obligations are introduced beyond what
+  is already bound by `contract.md` (State 3) and
+  `type-contracts.md` (State 3). The bridge does not extend the
+  Holzman-rust scope. This is consistent with the State 4 plan.
+
+# Validator evidence
+
+Pre-write (before proof-to-rust-review.md exists):
+  Command:
+    /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate \
+      --workspace /home/lewis/src/femdation-tier-a-0-002 \
+      --bead tier-a-0-002 --state 7 \
+      --source-checkout /home/lewis/src/velvet-ballistics \
+      --skill-root /home/lewis/.agents/skills/go-skill \
+      --mirror-root /home/lewis/.opencode/skill/go-skill \
+      --format text
+  Result: STATUS: FAIL with one E_MISSING_ARTIFACT finding for
+  proof-to-rust-review.md (expected; this review writes it). All
+  other checks pass.
+
+Post-write (after proof-to-rust-review.md exists and row 9 appended):
+  Result: STATUS: PASS (no findings).
+
+# Handoff to State 8 (test-writer)
+
+The State 8/9/10 test-writer chain inherits the 3 named test cases
+bound to the 3 RRO rows in `proof-to-rust-map.md` §3 and in
+`rust-refinement-obligations.jsonl` RRO-RQ-001/003/004. The test
+file `scripts/test-forbid-runtime-fmt.sh` is forward-pointing and
+must be authored by State 8/9/10 per `contract.md` §8. The test
+fixture and stderr pattern are documented in
+`rust-refinement-obligations.jsonl::expected_evidence` for each of
+the 3 rows.
+
+The State 11 holzman-rust agent inherits the forward-pointing
+source_refs in `proof-to-rust-map.md` §1.2 (scripts/forbid-runtime-fmt.sh,
+scripts/forbid-runtime-fmt.rs, scripts/forbid-runtime-fmt.allow, and
+.moon/tasks/all.yml::forbid-runtime-fmt) and must materialize them
+per `contract.md` §1 and `type-contracts.md` §2-12.
+
+The State 12 formal-verifier agent inherits the bridge and is
+responsible for binding `mapping_status` from `mapped` to `verified`
+once the forward-pointing source_refs are materialized.

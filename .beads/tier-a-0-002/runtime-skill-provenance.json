@@ -1,0 +1,19 @@
+{
+  "agent": {
+    "controller_role": "femdation-controller",
+    "id": "holzman-rust",
+    "model": "minimax-coding-plan/MiniMax-M3"
+  },
+  "bead_id": "tier-a-0-002",
+  "captured_at": "2026-06-17T20:00:00.000000+00:00",
+  "isolated_workspace": "/home/lewis/src/femdation-tier-a-0-002",
+  "loaded_skill_name": "go-skill",
+  "loaded_skill_version": "10.1.0",
+  "observed_state_range": "1..16",
+  "skill_roots": {
+    "femdation_skill_root": "/home/lewis/.opencode/skill/femdation",
+    "go_skill_mirror_root": "/home/lewis/.opencode/skill/go-skill",
+    "go_skill_skill_root": "/home/lewis/.agents/skills/go-skill"
+  },
+  "source_checkout": "/home/lewis/src/velvet-ballistics"
+}

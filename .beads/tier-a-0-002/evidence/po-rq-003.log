@@ -1,0 +1,5 @@
+[2/3] test_quarantine_gate_blocks_unbounded_channel
+  ok: exit 1 with unbounded-channel RUNTIME-FMT line
+  ok: summary reports active=1 allowlisted=0
+  ok: exact GateError check covers GlobUnreadable
+  ok: no cross-pattern false positives

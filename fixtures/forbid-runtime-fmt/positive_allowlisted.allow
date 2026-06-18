@@ -1,0 +1,2 @@
+# Format: <file_path>|<line_no>|<forbidden_name>|<owner>|<reviewed_by>|<test>|<reason>
+crates/vb_core/src/allowlisted.rs|3|serde_json|state9-test-writer|state10-test-reviewer|test_moon_ci_quarantine_dependency_correctly_ordered|temporary test allowlist precedence

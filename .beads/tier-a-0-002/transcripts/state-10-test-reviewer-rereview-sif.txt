@@ -1,0 +1,48 @@
+State 10 test-reviewer re-review transcript summary
+
+bead_id: tier-a-0-002
+reviewer_invocation_id: tier-a-0-002-s10-test-reviewer-rereview-sif-7bb1d2c4
+workspace: /home/lewis/src/femdation-tier-a-0-002
+artifact_root: .beads/tier-a-0-002
+reviewed_at: 2026-06-18T08:15:00.000000+00:00
+
+Scope:
+- Reviewed the repaired State 8 `test-plan.md`.
+- Reviewed the repaired State 9 `scripts/test-forbid-runtime-fmt.sh` and `test-writer-report.md`.
+- Did not spawn subagents, invoke go-skill, or invoke a nested orchestrator.
+
+Raw evidence:
+
+COMMAND: /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/src/femdation-tier-a-0-002 --bead tier-a-0-002 --state 10 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill --format text
+STATUS: FAIL
+E_STATUS_NOT_APPROVED test-plan-review.md - status tokens=['REJECTED']
+E_STATUS_NOT_APPROVED test-suite-review.md - status tokens=['REJECTED']
+
+COMMAND: bash -n scripts/test-forbid-runtime-fmt.sh
+exit_status=0
+
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+[1/3] test_quarantine_gate_blocks_json_import
+AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+exit_status=1
+
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel
+[2/3] test_quarantine_gate_blocks_unbounded_channel
+AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+exit_status=1
+
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered
+[3/3] test_moon_ci_quarantine_dependency_correctly_ordered
+AssertionFailed: real moon task graph expected exit 0, got 1
+Output:
+MISSING-TASK: forbid-runtime-fmt not declared
+exit_status=1
+
+Review decision:
+- Plan review approved: stale canonical plan blocker closed.
+- Suite review approved: `ScriptInvocationFailure` blocker closed.
+
+Final validator evidence after review artifacts and ledger reseal:
+
+COMMAND: /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/src/femdation-tier-a-0-002 --bead tier-a-0-002 --state 10 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill --format text
+STATUS: PASS

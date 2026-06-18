@@ -1,0 +1,89 @@
+State 9 black-hat repair transcript for bead tier-a-0-002.
+
+Host session id: openai-gpt-5.5-opencode-state9-blackhat-repair
+Repair invocation id: tier-a-0-002-s9-blackhat-repair-gpt55
+Parent invocation id: tier-a-0-002-s13-black-hat-reviewer-gpt55
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Artifact root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+
+Startup:
+- Loaded mandatory test-writer skill.
+- Did not spawn sub-agents, invoke go-skill, invoke a master agent/skill,
+  run nested opencode/Task delegation, or start another orchestrator.
+- Worked only in the isolated workspace.
+
+Inputs read:
+- .beads/tier-a-0-002/black-hat-review.md
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/STATE.md
+- .beads/tier-a-0-002/agent-invocation-ledger.jsonl
+- scripts/test-forbid-runtime-fmt.sh
+- scripts/forbid-runtime-fmt.rs
+- scripts/forbid-runtime-fmt.sh
+- .moon/tasks/all.yml
+- velvet-ballistics-MASTER.md
+- .beads/tier-a-0-002/rust-refinement-obligations.jsonl
+- .beads/tier-a-0-002/proof-to-rust-map.md
+- .beads/tier-a-0-002/proof-test-source-alignment.md
+
+Files written or updated:
+- scripts/test-forbid-runtime-fmt.sh
+- fixtures/forbid-runtime-fmt/negative_unbounded_grouped_import.rs
+- fixtures/forbid-runtime-fmt/negative_unbounded_spaced_path.rs
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/transcripts/state-9-blackhat-repair.txt
+- .beads/tier-a-0-002/agent-invocation-ledger.jsonl
+
+Repair details:
+1. Added grouped-import and spaced-path unbounded-channel fixtures and exact
+   assertions in the unbounded-channel behavior test.
+2. Added RQ-002 static test that derives actual master §43 automatic rejection
+   trigger line numbers and compares them to source `ForbiddenImport::from_name`
+   master references, while rejecting report-field trigger-count evidence.
+3. Added RQ-005 static test that rejects nonexistent `ResidueMatch::fmt` and
+   requires real source formatter symbols.
+4. Added production compile-bound check for Moon/wrapper timeout coverage around
+   the `rustc` compile step.
+5. Preserved classification of `moon run :check` residue as BLOCK_GLOBAL.
+
+Commands run:
+1. `bash -n scripts/test-forbid-runtime-fmt.sh`
+   outcome: PASS, exit_status=0.
+2. `bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import`
+   outcome: PASS, exit_status=0.
+3. `bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel`
+   outcome: RED_EXPECTED, exit_status=1:
+   grouped-import unbounded-channel fixture expected exit 1, got 0; summary
+   active=0 allowlisted=0 files_scanned=1 hot_paths=1 cold_paths=0.
+4. `bash scripts/test-forbid-runtime-fmt.sh test_static_evidence_binds_master_rejection_triggers`
+   outcome: RED_EXPECTED, exit_status=1:
+   source master refs bind `(12,427)`, `(12,421)`, `(2,99)`, `(12,423)`,
+   `(12,411)` instead of master §43 trigger lines 2056..2060; RQ-002 evidence
+   still counts report-field triggers 7..10.
+5. `bash scripts/test-forbid-runtime-fmt.sh test_static_evidence_binds_real_formatter_symbols`
+   outcome: RED_EXPECTED, exit_status=1:
+   RQ-005 still cites nonexistent `ResidueMatch::fmt` and misses
+   `active_line`, `allowlisted_line`, `summary_line`, `emit_pass`, `emit_fail`.
+6. `bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered`
+   outcome: RED_EXPECTED, exit_status=1:
+   production gate has no timeout around the `rustc` compile step.
+7. `bash scripts/test-forbid-runtime-fmt.sh`
+   outcome: RED_EXPECTED, exit_status=1 after JSON test passes and grouped
+   unbounded-channel fixture is missed.
+8. `bash scripts/forbid-runtime-fmt.sh`
+   outcome: PASS, summary active=0 allowlisted=0 files_scanned=828 hot_paths=291 cold_paths=537.
+9. `moon run :forbid-runtime-fmt`
+   outcome: PASS.
+10. `timeout 120s moon run :check`
+   outcome: BLOCK_GLOBAL, failure remains `check-removed-crate-residue` active
+   `vb_codegen` residue outside this bead.
+11. `python3 /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/src/femdation-tier-a-0-002 --bead tier-a-0-002 --state 9 --source-checkout /home/lewis/src/velvet-ballistics --format text`
+   outcome: EXPECTED_FAIL after ledger reseal:
+   STATUS: FAIL
+   E_STATUS_NOT_APPROVED black-hat-review.md - status tokens=['REJECTED', 'REJECTED', 'REJECTED']
+
+Ledger note:
+- A new State 9 repair row is appended after the State 13 black-hat rejection row.
+- Existing ledger rows that reference mutated test/report/fixture artifacts are resealed
+  against the current on-disk content and hash chain before final validation.

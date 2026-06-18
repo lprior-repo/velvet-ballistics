@@ -1,0 +1,27 @@
+COMMAND: bash scripts/test-forbid-runtime-fmt.sh
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:13Z
+[1/5] test_quarantine_gate_blocks_json_import
+  ok: exit 1 with serde_json RUNTIME-FMT line
+  ok: summary reports active=1 allowlisted=0
+  ok: exact GateError checks cover PatternFileMissing and AllowlistParseFailure
+[2/5] test_quarantine_gate_blocks_unbounded_channel
+  ok: exit 1 with unbounded-channel RUNTIME-FMT line
+  ok: grouped-import and spaced-path unbounded forms are blocked
+  ok: summary reports active=1 allowlisted=0
+  ok: exact GateError check covers GlobUnreadable
+  ok: no cross-pattern false positives
+[3/5] test_moon_ci_quarantine_dependency_correctly_ordered
+  ok: forbid-runtime-fmt in :check.deps
+  ok: ordering preserved (gate runs before cargo)
+  ok: allowlist precedence fixture reports allowlisted=1 and no active line
+  ok: ScriptInvocationFailure maps to exit 2
+  ok: real repository scan completed under 30s (241101756ns)
+  ok: negative fixture detects missing-deps
+[4/5] test_static_evidence_binds_master_rejection_triggers
+  ok: RQ-002 source refs bind actual master §43 automatic rejection lines
+[5/5] test_static_evidence_binds_real_formatter_symbols
+  ok: RQ-005 maps stderr format to existing source symbols
+self-test PASSED
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:14Z

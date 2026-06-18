@@ -1,0 +1,84 @@
+State 9 test-writer repair transcript for bead tier-a-0-002.
+
+Repair invocation id: tier-a-0-002-s9-test-writer-repair-sif-18b0f4c2
+Parent invocation id: tier-a-0-002-s8-test-planner-repair-a3f91c7e
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Artifact root: /home/lewis/src/femdation-tier-a-0-002/.beads/tier-a-0-002
+Repair target: State 9 test-writer after State 8 plan repair
+
+Startup:
+- Loaded mandatory test-writer skill.
+- Did not spawn sub-agents, invoke go-skill, invoke a master agent/skill,
+  run nested opencode/Task delegation, or start another orchestrator.
+- Worked only in the isolated workspace.
+
+Inputs read:
+- .beads/tier-a-0-002/test-plan.md
+- .beads/tier-a-0-002/test-suite-review.md
+- .beads/tier-a-0-002/test-plan-review.md
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/agent-invocation-ledger.jsonl
+- scripts/test-forbid-runtime-fmt.sh
+- fixtures/forbid-runtime-fmt/*
+
+Files written or updated:
+- scripts/test-forbid-runtime-fmt.sh
+- .beads/tier-a-0-002/test-writer-report.md
+- .beads/tier-a-0-002/transcripts/state-9-test-writer-repair-sif.txt
+- .beads/tier-a-0-002/agent-invocation-ledger.jsonl
+
+Repair details:
+1. Added SCRIPT_INVOCATION_FAILURE_REASON with the exact planned reason
+   `forced script invocation failure`.
+2. Refactored gate invocation capture through run_gate_capture_command so
+   normal and environment-injected gate executions both use hard
+   `timeout 30s` wrapping.
+3. Added run_gate_capture_forced_script_invocation_failure, which invokes
+   the gate through `env FORBID_RUNTIME_FMT_FORCE_SCRIPT_INVOCATION_FAILURE=<reason>`.
+4. Added assert_script_invocation_failure_for_empty_hot_repo, which stages
+   a valid empty repo with the four hot roots, copies empty.allow, asserts
+   exit 2, asserts exact output
+   `GateError:ScriptInvocationFailure: forced script invocation failure`,
+   and asserts no active `RUNTIME-FMT:` line.
+5. Wired the new assertion into
+   test_moon_ci_quarantine_dependency_correctly_ordered after the
+   allowlist-precedence fixture and before the real repository scan.
+
+Commands run:
+1. bash -n scripts/test-forbid-runtime-fmt.sh
+   outcome: PASS, exit_status=0.
+
+2. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_json_import
+   outcome: FAILING-FIRST, exit_status=1:
+   [1/3] test_quarantine_gate_blocks_json_import
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+
+3. bash scripts/test-forbid-runtime-fmt.sh test_quarantine_gate_blocks_unbounded_channel
+   outcome: FAILING-FIRST, exit_status=1:
+   [2/3] test_quarantine_gate_blocks_unbounded_channel
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+
+4. bash scripts/test-forbid-runtime-fmt.sh test_moon_ci_quarantine_dependency_correctly_ordered
+   outcome: FAILING-FIRST, exit_status=1:
+   [3/3] test_moon_ci_quarantine_dependency_correctly_ordered
+   AssertionFailed: real moon task graph expected exit 0, got 1
+   Output:
+   MISSING-TASK: forbid-runtime-fmt not declared
+
+5. bash scripts/test-forbid-runtime-fmt.sh
+   outcome: FAILING-FIRST, exit_status=1:
+   [1/3] test_quarantine_gate_blocks_json_import
+   AssertionFailed: gate script is missing or not executable: /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+
+6. /home/lewis/.agents/skills/go-skill/tools/go-skill-v9-validate --workspace /home/lewis/src/femdation-tier-a-0-002 --bead tier-a-0-002 --state 9 --source-checkout /home/lewis/src/velvet-ballistics --skill-root /home/lewis/.agents/skills/go-skill --mirror-root /home/lewis/.opencode/skill/go-skill --format text
+   expected final outcome after mutable ledger reseal:
+   STATUS: FAIL
+   E_STATUS_NOT_APPROVED test-plan-review.md - status tokens=['REJECTED']
+   E_STATUS_NOT_APPROVED test-suite-review.md - status tokens=['REJECTED']
+
+Ledger note:
+- Mutable rows from the first State 9 writer through the State 8 plan
+  repair are resealed because they reference `scripts/test-forbid-runtime-fmt.sh`
+  and/or `.beads/tier-a-0-002/test-writer-report.md`.
+- A new State 9 repair row is appended with parent_invocation_id
+  tier-a-0-002-s8-test-planner-repair-a3f91c7e.

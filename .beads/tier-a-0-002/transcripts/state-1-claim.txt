@@ -1,0 +1,11 @@
+state-1-claim transcript
+bead_id: tier-a-0-002
+host_session_id: 0a9430e620d03c99f228f649cdabdac9
+started_at: 2026-06-17T20:00:00.000000+00:00
+controller: femdation-controller (holzman-rust agent)
+actions:
+  1. bd update tier-a-0-002 --claim (in source checkout)
+  2. jj workspace add /home/lewis/src/femdation-tier-a-0-002 --name femdation-tier-a-0-002
+  3. wrote STATE.md, runtime-skill-provenance.json, agent-invocation-ledger.jsonl, baseline-report.md, global-readiness-report.md, delivery-scope.jsonl
+  4. validator will be run by orchestrator after ledger entry_hash is computed
+result: ready for State 2 (explore)

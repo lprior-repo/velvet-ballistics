@@ -1,0 +1,43 @@
+State14 truth-serum transcript summary for tier-a-0-002.
+
+Workspace: /home/lewis/src/femdation-tier-a-0-002
+Artifact root: .beads/tier-a-0-002
+Invocation: tier-a-0-002-s14-truth-serum-gpt55
+
+Commands executed directly in this lane:
+
+1. python3 artifact/ledger/hash audit one-liner
+   Result: PASS. Required artifacts missing: []. Agent ledger rows before State14: 25. Last pre-State14 entry hash: 47cd014451f548f5d64483528295cbd6c921a3a1d53fd51396f97b734b1c8326. Verification ledger rows: 18. Missing ledger evidence: [].
+
+2. bash -n scripts/forbid-runtime-fmt.sh && bash -n scripts/test-forbid-runtime-fmt.sh plus static panic-surface scan
+   Result: PASS. syntax_exit=0, static_scan_exit=0. No unsafe/unwrap/expect/panic/todo/unimplemented/dbg/unreachable/assert macros found in scripts/forbid-runtime-fmt.rs.
+
+3. bash scripts/test-forbid-runtime-fmt.sh
+   Result: PASS, EXIT=0. All five self-tests passed, including grouped/spaced unbounded-channel syntax, Moon dependency ordering, master trigger binding, and formatter symbol binding.
+
+4. bash scripts/forbid-runtime-fmt.sh
+   Result: PASS, EXIT=0. summary: active=0 allowlisted=0 files_scanned=828 hot_paths=291 cold_paths=537
+
+5. moon run :forbid-runtime-fmt
+   Result: PASS, EXIT=0. Moon task completed with active=0.
+
+6. rustup run nightly-2026-04-28 rustfmt --edition 2024 --check scripts/forbid-runtime-fmt.rs
+   Result: PASS, EXIT=0.
+
+7. rustup run nightly-2026-04-28 rustc --edition=2024 -D warnings scripts/forbid-runtime-fmt.rs -o target/gate-tools/forbid-runtime-fmt-truth-serum
+   Result: PASS, EXIT=0.
+
+8. Deterministic stdout/stderr replay for pass, active_grouped, allowlisted, missing_master
+   Result: PASS, EXIT=0. Each case produced identical stdout and stderr across two runs with expected exits 0, 1, 0, and 2 respectively.
+
+9. timeout 120s moon run :check
+   Result: FAIL_GLOBAL, EXIT=1. Failure remained check-removed-crate-residue on active vb_codegen residue outside bead scope.
+
+10. rtk git status --short
+    Result: UNAVAILABLE, EXIT=128. Isolated workspace is a JJ workspace, not a Git repository.
+
+11. jj status
+    Result: PASS, EXIT=0. Working copy changes are the bead's Moon task, fixtures, scanner, wrapper, self-test, plus State14 artifacts.
+
+12. python3 go-skill-v9-validate --state 14
+    First result: FAIL. Extra fixable findings were missing transcript_artifact/transcript_hash, ledger self-hash mismatch from including agent-invocation-ledger as input, and missing reviewer provenance headers; these were repaired in State14 artifacts. Remaining expected findings should be missing assurance-bundle.md and final-evidence-decision.md only.

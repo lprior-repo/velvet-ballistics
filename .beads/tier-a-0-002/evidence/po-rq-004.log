@@ -1,0 +1,7 @@
+[3/3] test_moon_ci_quarantine_dependency_correctly_ordered
+  ok: forbid-runtime-fmt in :check.deps
+  ok: ordering preserved (gate runs before cargo)
+  ok: allowlist precedence fixture reports allowlisted=1 and no active line
+  ok: ScriptInvocationFailure maps to exit 2
+  ok: real repository scan completed under 30s (249004206ns)
+  ok: negative fixture detects missing-deps

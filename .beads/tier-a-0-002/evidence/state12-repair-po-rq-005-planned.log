@@ -1,0 +1,6 @@
+COMMAND: bash -c set\ -euo\ pipefail\;\ sh=\$\{1\}\;\ test\ -f\ \"\$\{sh\}\"\ \|\|\ \{\ echo\ \"script\ missing\"\ \>\&2\;\ exit\ 2\;\ \}\;\ grep\ -qE\ \"sort\[\[:space:\]\]+-u\"\ \"\$\{sh\}\"\ \|\|\ \{\ echo\ \"FAIL:\ no\ sort\ -u\ in\ bash\ wrapper\"\ \>\&2\;\ exit\ 1\;\ \}\;\ grep\ -qE\ \"\^\[\[:space:\]\]\*summary:\"\ \"\$\{sh\}\"\ \&\&\ echo\ \"PASS:\ stderr\ format\ bound\ by\ contract.md\ §3.3\"\ \|\|\ \{\ echo\ \"FAIL:\ summary\ line\ format\ not\ bound\"\ \>\&2\;\ exit\ 1\;\ \} _ /home/lewis/src/femdation-tier-a-0-002/scripts/forbid-runtime-fmt.sh
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:12Z
+PASS: stderr format bound by contract.md §3.3
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:12Z

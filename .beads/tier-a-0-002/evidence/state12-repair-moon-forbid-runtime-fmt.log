@@ -1,0 +1,12 @@
+COMMAND: moon run :forbid-runtime-fmt
+WORKDIR: /home/lewis/src/femdation-tier-a-0-002
+STARTED_AT: 2026-06-18T08:02:14Z
+▮▮▮▮ velvet-ballistics:forbid-runtime-fmt (1d24041f)
+summary: active=0 allowlisted=0 files_scanned=828 hot_paths=291 cold_paths=537
+▮▮▮▮ velvet-ballistics:forbid-runtime-fmt (244ms, 1d24041f)
+
+Tasks: 1 completed
+ Time: 264ms
+
+EXIT_STATUS: 0
+COMPLETED_AT: 2026-06-18T08:02:15Z

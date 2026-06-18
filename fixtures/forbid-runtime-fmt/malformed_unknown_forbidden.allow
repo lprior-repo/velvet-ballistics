@@ -1,0 +1,2 @@
+# Format: <file_path>|<line_no>|<forbidden_name>|<owner>|<reviewed_by>|<test>|<reason>
+crates/vb_core/src/lib.rs|3|serde_jsonx|state9-test-writer|state10-test-reviewer|test_quarantine_gate_blocks_json_import|unknown forbidden fixture
