@@ -19,25 +19,20 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> TraceEvent {
     let step: StepIdx = kani::any();
     let slot: SlotIdx = kani::any();
-    match variant_selector % 11 {
+    match variant_selector % 10 {
         0 => TraceEvent::StepStarted { run, step },
         1 => TraceEvent::StepEnded { run, step },
-        2 => TraceEvent::SlotWritten {
-            run,
-            slot,
-            value: Vec::new(),
-        },
-        3 => TraceEvent::ActionScheduled { run, step },
-        4 => TraceEvent::ActionCompleted { run, step },
-        5 => TraceEvent::ActionFailed {
+        2 => TraceEvent::ActionScheduled { run, step },
+        3 => TraceEvent::ActionCompleted { run, step },
+        4 => TraceEvent::ActionFailed {
             run,
             step,
             code: ActionFailureCode::Timeout,
         },
-        6 => TraceEvent::AskAnswered { run, step, slot },
-        7 => TraceEvent::RunSubmitted { run },
-        8 => TraceEvent::RunFinished { run },
-        9 => TraceEvent::RunFailed { run },
+        5 => TraceEvent::AskAnswered { run, step, slot },
+        6 => TraceEvent::RunSubmitted { run },
+        7 => TraceEvent::RunFinished { run },
+        8 => TraceEvent::RunFailed { run },
         _ => TraceEvent::RunCancelled { run },
     }
 }

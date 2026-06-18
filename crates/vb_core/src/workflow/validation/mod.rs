@@ -14,9 +14,9 @@
 //! - **[`forward_edges`]** — Forward-edge ordering + loop nesting.
 
 pub(crate) mod budget;
-pub(crate) mod nodes;
 pub(crate) mod expressions;
 pub(crate) mod forward_edges;
+pub(crate) mod nodes;
 pub(crate) mod reachability;
 pub(crate) mod resource_contract;
 pub(crate) mod symbols;
@@ -52,11 +52,15 @@ pub fn validate_parts(parts: &crate::workflow::WorkflowParts) -> Result<(), Work
 
 /// Validates that the entry step is within the declared node count.
 fn validate_entry(entry: StepIdx, node_count: usize) -> Result<(), WorkflowError> {
-    nodes::bounds::validate_step(entry, node_count).map_err(|_| WorkflowError::EntryOutOfBounds { entry })
+    nodes::bounds::validate_step(entry, node_count)
+        .map_err(|_| WorkflowError::EntryOutOfBounds { entry })
 }
 
 /// Validates that a node's declared index matches its position in the list.
-fn validate_node_id(node: &crate::workflow::CompiledNode, index: usize) -> Result<(), WorkflowError> {
+fn validate_node_id(
+    node: &crate::workflow::CompiledNode,
+    index: usize,
+) -> Result<(), WorkflowError> {
     if node.id.as_usize() == index {
         Ok(())
     } else {

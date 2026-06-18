@@ -6,10 +6,10 @@
 //! PO-039..PO-043.
 
 use crate::workflow::compiled_query::{
-    CompiledQueries, QueryOutputType, QueryParseError, YbBoundedQuery, validate_compiled_queries,
+    validate_compiled_queries, CompiledQueries, QueryOutputType, QueryParseError, YbBoundedQuery,
 };
 use crate::workflow::compiled_slug::{
-    CompiledSlugs, SlugParseError, YbBoundedSlug, validate_compiled_slugs,
+    validate_compiled_slugs, CompiledSlugs, SlugParseError, YbBoundedSlug,
 };
 
 fn empty_path_slug(yield_cost: u64) -> YbBoundedSlug {

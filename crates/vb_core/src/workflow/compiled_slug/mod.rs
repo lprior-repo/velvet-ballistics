@@ -6,8 +6,8 @@ pub mod types;
 pub mod validation;
 
 pub use types::{
-    CompiledSlugs, MAX_SLUG_PATH_SEGMENTS, MAX_SLUGS_PER_WORKFLOW, SlugParseError, YbBoundedSlug,
-    YbBoundedSlugs,
+    CompiledSlugs, SlugParseError, YbBoundedSlug, YbBoundedSlugs, MAX_SLUGS_PER_WORKFLOW,
+    MAX_SLUG_PATH_SEGMENTS,
 };
 
 pub use validation::{

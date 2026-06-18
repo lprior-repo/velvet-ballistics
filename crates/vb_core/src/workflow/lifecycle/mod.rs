@@ -22,9 +22,9 @@ mod tests;
 // Re-exports for ergonomic public API
 // ───────────────────────────────────────────────────────────────────────────
 
+pub use run_state::RunState;
 pub use state::{LifecycleCommand, LifecycleState};
 pub use transition::check_lifecycle_transition;
-pub use run_state::RunState;
 
 // ───────────────────────────────────────────────────────────────────────────
 // Verus annotations for lifecycle state machine (compiled under verus toolchain only)

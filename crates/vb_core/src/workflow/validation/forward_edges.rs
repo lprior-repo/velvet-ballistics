@@ -159,11 +159,7 @@ fn validate_together_branch_edges(
 }
 
 /// Validates a target step is strictly forward from the current node.
-fn validate_forward_target(
-    target: StepIdx,
-    ci: usize,
-    cid: StepIdx,
-) -> Result<(), WorkflowError> {
+fn validate_forward_target(target: StepIdx, ci: usize, cid: StepIdx) -> Result<(), WorkflowError> {
     if target.as_usize() > ci {
         Ok(())
     } else {

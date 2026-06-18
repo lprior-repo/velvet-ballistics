@@ -54,19 +54,35 @@ pub const fn validate_admission_summary(
     if count > max_count {{
         return Err(AdmissionKernelError::TooManyItems);
     }}
+    validate_admission_depth_total_budget(
+        max_path_depth,
+        max_path_segments,
+        recomputed_total,
+        declared_total_yield_cost,
+        max_yield_budget,
+    )
+}}
 
+const fn validate_admission_depth_total_budget(
+    max_path_depth: usize,
+    max_path_segments: usize,
+    recomputed_total: u64,
+    declared_total_yield_cost: u64,
+    max_yield_budget: u64,
+) -> Result<u64, AdmissionKernelError> {{
     if max_path_depth > max_path_segments {{
         return Err(AdmissionKernelError::PathTooDeep);
     }}
-
     if declared_total_yield_cost != recomputed_total {{
         return Err(AdmissionKernelError::TotalYieldCostMismatch);
     }}
+    remaining_yield_budget(recomputed_total, max_yield_budget)
+}}
 
-    if recomputed_total > max_yield_budget {{
-        return Err(AdmissionKernelError::YieldBudgetExceeded);
-    }}
-
+const fn remaining_yield_budget(
+    recomputed_total: u64,
+    max_yield_budget: u64,
+) -> Result<u64, AdmissionKernelError> {{
     match max_yield_budget.checked_sub(recomputed_total) {{
         Some(remaining) => Ok(remaining),
         None => Err(AdmissionKernelError::YieldBudgetExceeded),
@@ -181,9 +197,13 @@ pub fn accumulate_yield_cost(total: u64, item_cost: u64) -> (result: Result<u64,
     }}
 }}
 
+/// Every usize value is non-negative. This property is needed for the
+/// empty-path admission case where path depth is 0, which is always <=
+/// any valid max_path_segments (a usize >= 0).
 pub proof fn proof_empty_root_path_not_too_deep(max_path_segments: usize)
     ensures 0usize <= max_path_segments,
 {{
+    assert(0usize <= max_path_segments);
 }}
 
 }} // verus!

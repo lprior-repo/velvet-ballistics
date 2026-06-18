@@ -5,7 +5,7 @@
 //! boundedness policy.
 
 use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
-use crate::workflow::{WorkflowParts, WorkflowError};
+use crate::workflow::{WorkflowError, WorkflowParts};
 
 /// Validates the workflow budget against the default boundedness policy.
 pub fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
@@ -15,9 +15,7 @@ pub fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 }
 
 /// Maps a budget-check result into a [`WorkflowError`].
-pub fn validate_budget_result(
-    result: Result<(), BudgetError>,
-) -> Result<(), WorkflowError> {
+pub fn validate_budget_result(result: Result<(), BudgetError>) -> Result<(), WorkflowError> {
     match result {
         Ok(()) => Ok(()),
         Err(error) => Err(WorkflowError::BudgetPolicyExceeded {

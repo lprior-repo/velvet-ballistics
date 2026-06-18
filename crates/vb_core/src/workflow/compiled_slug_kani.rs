@@ -5,12 +5,12 @@
 //! Obligation IDs: PO-002, PO-012, PO-024, PO-032.
 
 use crate::ids::SymbolId;
-use crate::workflow::PathSegment;
 use crate::workflow::compiled_slug::{
-    CompiledSlugs, MAX_SLUG_PATH_SEGMENTS, MAX_SLUGS_PER_WORKFLOW, SlugParseError, YbBoundedSlug,
     from_bytes_compiled_slugs, validate_compiled_slug_count, validate_compiled_slug_summary,
-    validate_compiled_slugs,
+    validate_compiled_slugs, CompiledSlugs, SlugParseError, YbBoundedSlug, MAX_SLUGS_PER_WORKFLOW,
+    MAX_SLUG_PATH_SEGMENTS,
 };
+use crate::workflow::PathSegment;
 
 const SYMBOL_ZERO: SymbolId = SymbolId::new(0);
 const SEMANTIC_ITEM_BOUND: usize = 64;

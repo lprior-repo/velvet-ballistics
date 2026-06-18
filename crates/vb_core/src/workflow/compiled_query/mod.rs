@@ -19,8 +19,8 @@ mod tests;
 
 // Re-export domain types at module level for backward-compatible paths.
 pub use domain::{
-    CompiledQueries, MAX_QUERY_PATH_SEGMENTS, MAX_QUERIES_PER_WORKFLOW, QueryOutputType,
-    YbBoundedQuery, YbBoundedQueries,
+    CompiledQueries, QueryOutputType, YbBoundedQueries, YbBoundedQuery, MAX_QUERIES_PER_WORKFLOW,
+    MAX_QUERY_PATH_SEGMENTS,
 };
 
 // Re-export error taxonomy.

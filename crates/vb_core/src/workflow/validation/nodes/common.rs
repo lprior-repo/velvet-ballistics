@@ -2,14 +2,15 @@
 //! Shared node field validators — optional slot/step validation and
 //! node-kind–specific field checks (build-list, build-object, loops, etc.).
 
-use crate::ids::{SlotIdx, StepIdx, SymbolId};
-use crate::limits::{
-    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
+use super::bounds::{
+    validate_const, validate_expr, validate_optional_slot, validate_optional_step, validate_slot,
+    validate_step,
 };
-use super::bounds::{validate_const, validate_expr, validate_optional_slot, validate_optional_step, validate_slot, validate_step};
 use super::branch_tables::validate_branch_route;
-use crate::workflow::{ExprBranch, SlotBranch, WorkflowError, CompiledNode, WorkflowParts};
 use crate::ids::ConstIdx;
+use crate::ids::{SlotIdx, StepIdx, SymbolId};
+use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
+use crate::workflow::{CompiledNode, ExprBranch, SlotBranch, WorkflowError, WorkflowParts};
 
 /// Validates the four common fields shared by every node kind.
 ///
@@ -29,10 +30,7 @@ pub(crate) fn validate_node_common(
 
 /// Validates that slot references in a BuildList node are within bounds and the
 /// item count does not exceed the hard limit.
-pub(crate) fn validate_build_list(
-    items: &[SlotIdx],
-    slot_count: u16,
-) -> Result<(), WorkflowError> {
+pub(crate) fn validate_build_list(items: &[SlotIdx], slot_count: u16) -> Result<(), WorkflowError> {
     if items.len() > MAX_LIST_ITEMS_PER_VALUE {
         return Err(WorkflowError::ResourceContractExceeded {
             resource: "list_items",

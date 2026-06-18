@@ -3,7 +3,6 @@
 //!
 //! Ensures every node is reachable from the entry step via a forward walk
 /// following `next` edges and kind-specific targets.
-
 use crate::ids::StepIdx;
 use crate::workflow::{WorkflowError, WorkflowParts};
 
@@ -81,10 +80,7 @@ pub(crate) fn validate_reachability(parts: &WorkflowParts) -> Result<(), Workflo
 
 /// Collects all [`StepIdx`] targets referenced by a node kind (branch targets,
 /// loop body/done, jump target, etc.) but NOT the `next` field.
-fn collect_node_targets(
-    kind: &crate::workflow::CompiledNodeKind,
-    targets: &mut Vec<StepIdx>,
-) {
+fn collect_node_targets(kind: &crate::workflow::CompiledNodeKind, targets: &mut Vec<StepIdx>) {
     match kind {
         crate::workflow::CompiledNodeKind::Nop
         | crate::workflow::CompiledNodeKind::SetConst { .. }
@@ -178,11 +174,7 @@ fn collect_choose_expr_targets(
     }
 }
 
-fn collect_together_start_targets(
-    branches: &[StepIdx],
-    join: StepIdx,
-    targets: &mut Vec<StepIdx>,
-) {
+fn collect_together_start_targets(branches: &[StepIdx], join: StepIdx, targets: &mut Vec<StepIdx>) {
     for branch in branches {
         targets.push(*branch);
     }

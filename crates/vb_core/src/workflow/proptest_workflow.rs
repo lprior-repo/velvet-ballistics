@@ -5,7 +5,7 @@ use super::super::{
     WorkflowParts,
 };
 use super::tests::resource_contract;
-use crate::frame::{StepState, is_valid_step_state_transition};
+use crate::frame::{is_valid_step_state_transition, StepState};
 use crate::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use proptest::prelude::*;
 

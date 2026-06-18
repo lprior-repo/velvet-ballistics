@@ -5,9 +5,9 @@
 //! Obligation ID: PO-040.
 
 use crate::workflow::compiled_query::{
-    CompiledQueries, QueryOutputType, YbBoundedQuery, validate_compiled_queries,
+    validate_compiled_queries, CompiledQueries, QueryOutputType, YbBoundedQuery,
 };
-use crate::workflow::compiled_slug::{CompiledSlugs, YbBoundedSlug, validate_compiled_slugs};
+use crate::workflow::compiled_slug::{validate_compiled_slugs, CompiledSlugs, YbBoundedSlug};
 
 fn empty_path_slug() -> YbBoundedSlug {
     YbBoundedSlug {
@@ -38,7 +38,10 @@ fn vb_ajc40_empty_path_root_accessor() {
     ) {
         Ok(admitted) => {
             kani::assert(admitted.len() == 1, "kani harness assertion");
-            kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0), "kani harness assertion");
+            kani::assert(
+                matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0),
+                "kani harness assertion",
+            );
         }
         Err(_) => kani::assert(false, "kani harness assertion"),
     }
@@ -52,7 +55,10 @@ fn vb_ajc40_empty_path_root_accessor() {
     ) {
         Ok(admitted) => {
             assert_eq!(admitted.len(), 1);
-            kani::assert(matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0), "kani harness assertion")
+            kani::assert(
+                matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0),
+                "kani harness assertion",
+            )
         }
         Err(_) => assert!(false),
     }

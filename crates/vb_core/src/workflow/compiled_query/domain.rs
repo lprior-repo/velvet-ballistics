@@ -82,10 +82,7 @@ pub struct YbBoundedQueries {
 
 impl YbBoundedQueries {
     /// Constructs an admitted query set (internal to vb_core).
-    pub(crate) fn new(
-        queries: Box<[YbBoundedQuery]>,
-        remaining_budget: u64,
-    ) -> Self {
+    pub(crate) fn new(queries: Box<[YbBoundedQuery]>, remaining_budget: u64) -> Self {
         Self {
             queries,
             remaining_budget,

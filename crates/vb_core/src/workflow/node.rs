@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! One compiled state-machine node and its hot-path variants.
 
+use super::branch::{ExprBranch, SlotBranch};
 use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use serde::{Deserialize, Serialize};
-use super::branch::{ExprBranch, SlotBranch};
 
 /// One compiled state-machine node.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,9 +45,7 @@ pub enum CompiledNodeKind {
     /// Evaluate expression bytecode into `output`.
     EvalExpr { expr: ExprIdx },
     /// Build an object handle from numeric field and slot references.
-    BuildObject {
-        fields: Box<[(SymbolId, SlotIdx)]>,
-    },
+    BuildObject { fields: Box<[(SymbolId, SlotIdx)]> },
     /// Build a list handle from numeric slot references.
     BuildList { items: Box<[SlotIdx]> },
     /// Schedule an external action and suspend.

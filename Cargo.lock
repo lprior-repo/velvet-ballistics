@@ -2159,6 +2159,7 @@ name = "vb_queue_semantics"
 version = "0.1.0"
 dependencies = [
  "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux.git)",
+ "proptest",
 ]
 
 [[package]]

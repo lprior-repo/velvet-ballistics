@@ -10,7 +10,7 @@
 
 #![forbid(unsafe_code)]
 
-use super::RunId;
+use crate::ids::RunId;
 
 // ============================================================================
 // PO-004: Shard index bounds for all u64 inputs

@@ -5,9 +5,9 @@
 //!
 //! These harnesses call production APIs directly:
 //! - `crate::reject_yaml_1_1_ambiguous_scalars`
-//! Duplicate-key production behavior is covered by the companion proptest file
-//! because symbolic `String` comparison in `Vec::contains` exceeds the local
-//! Kani budget for this bead.
+//! `RPO-YAML-004` duplicate-key production behavior is covered by
+//! `kani_vb_dzibx_dupkeys.rs` using a finite static key alphabet after the
+//! prior arbitrary symbolic `String` attempt exceeded the local Kani budget.
 //!
 //! Bounds and assumptions are recorded in
 //! `.beads/vb-dzibx/proof-evidence.md`.

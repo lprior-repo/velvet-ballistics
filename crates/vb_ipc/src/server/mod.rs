@@ -4,6 +4,7 @@
 //! Submodules:
 //! - impl_: IpcServer implementation
 //! - helpers: buffer and frame helpers
+//! - trace: trace event mapping, response shapes, and drain handler
 
 #![allow(unused_imports)]
 

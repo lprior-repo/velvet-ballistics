@@ -7,6 +7,6 @@
 //! - **[`branch_tables`]** — Branch-table "must have at least one target" invariant.
 
 pub(crate) mod bounds;
+pub(crate) mod branch_tables;
 pub(crate) mod common;
 pub(crate) mod kinds;
-pub(crate) mod branch_tables;

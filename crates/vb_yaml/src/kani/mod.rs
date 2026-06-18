@@ -5,6 +5,7 @@
 //! - PO-KANI-001: kani_checked_add
 //! - PO-KANI-004: kani_panic_freedom
 //! - P-EMPTY-BODY: kani_profile_replacement
+//! - RPO-YAML-004: kani_vb_dzibx_dupkeys
 
 #![forbid(unsafe_code)]
 
@@ -26,3 +27,7 @@ pub mod kani_panic_freedom;
 // vb_yaml Verus mirror specs. These call profile validation and duplicate-key
 // production APIs directly.
 pub mod kani_profile_replacement;
+
+// RPO-YAML-004: finite-symbol duplicate-key proof over the production
+// reject_duplicate_keys implementation.
+pub mod kani_vb_dzibx_dupkeys;

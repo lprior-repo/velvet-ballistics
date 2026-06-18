@@ -4,10 +4,12 @@
 //! Each arm calls the appropriate shared validator from `common` and
 //! `branch_tables` modules.
 
-use super::bounds::{validate_const, validate_expr, validate_optional_slot, validate_slot, validate_step};
+use super::bounds::{
+    validate_const, validate_expr, validate_optional_slot, validate_slot, validate_step,
+};
 use super::common::{
     validate_build_list, validate_build_object, validate_expr_choose, validate_for_each_start,
-    validate_nonzero_u16, validate_node_common, validate_reduce_next, validate_reduce_start,
+    validate_node_common, validate_nonzero_u16, validate_reduce_next, validate_reduce_start,
     validate_repeat_start, validate_slot_and_steps, validate_slot_choose, validate_together,
     validate_two_steps,
 };
@@ -35,12 +37,14 @@ pub(crate) fn validate_node_kind(
         CompiledNodeKind::BuildObject { fields } => validate_build_object(fields, parts),
         CompiledNodeKind::BuildList { items } => validate_build_list(items, parts.slot_count),
         CompiledNodeKind::Do { action: _, input } => validate_slot(*input, parts.slot_count),
-        CompiledNodeKind::ChooseSlot { branches, otherwise } => {
-            validate_slot_choose(branches, *otherwise, parts)
-        }
-        CompiledNodeKind::Choose { branches, otherwise } => {
-            validate_expr_choose(branches, *otherwise, parts)
-        }
+        CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => validate_slot_choose(branches, *otherwise, parts),
+        CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => validate_expr_choose(branches, *otherwise, parts),
         CompiledNodeKind::ForEachStart {
             input,
             item_slot,
@@ -154,4 +158,3 @@ pub(crate) fn validate_node_kind(
         CompiledNodeKind::Finish { result } => validate_slot(*result, parts.slot_count),
     }
 }
-

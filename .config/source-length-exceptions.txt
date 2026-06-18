@@ -546,7 +546,6 @@ crates/vb_core/src/budget/traversal_fanout.rs|lewis|tier-a-0-001|split-after-cur
 crates/vb_core/src/engine/step.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 302 lines; split before retiring row.
 crates/vb_core/src/engine/step/error_paths.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 663 lines; split before retiring row.
 crates/vb_core/src/policy/mod.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 874 lines; split before retiring row.
-crates/vb_core/src/policy/runtime_limits_profile.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 999 lines; split before retiring row.
 crates/vb_core/src/replay/choose/mod.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 449 lines; split before retiring row.
 crates/vb_core/src/replay/kani_choose_slot.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 388 lines; split before retiring row.
 crates/vb_core/src/span.rs|lewis|tier-a-0-001|split-after-current-batch-landing|tier-a-0-001 source-length gate activation found 333 lines; split before retiring row.

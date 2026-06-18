@@ -7,7 +7,7 @@
 
 #![forbid(unsafe_code)]
 
-use super::*;
+use crate::ids::{AccessorIdx, BranchIdx, ConstIdx, ExprIdx, FanoutLimit, SlotIdx, StepIdx};
 
 #[kani::proof]
 fn step_idx_as_usize_never_panics() {

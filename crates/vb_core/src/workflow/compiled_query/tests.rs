@@ -107,15 +107,15 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 use crate::ids::SymbolId;
 use crate::workflow::PathSegment;
 
 use super::domain::{
-    CompiledQueries, QueryOutputType, YbBoundedQuery, MAX_QUERY_PATH_SEGMENTS,
-    MAX_QUERIES_PER_WORKFLOW,
+    CompiledQueries, QueryOutputType, YbBoundedQuery, MAX_QUERIES_PER_WORKFLOW,
+    MAX_QUERY_PATH_SEGMENTS,
 };
 use super::errors::QueryParseError;
 use super::{
