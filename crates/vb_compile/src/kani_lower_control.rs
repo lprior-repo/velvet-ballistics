@@ -3,6 +3,7 @@
 //! Bead: vb-onsk/vb-awhr; scope: current public `vb_compile` APIs.
 
 use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
+use crate::mod_compile_lowering::validate_choose_fanout;
 use vb_core::workflow::SlotBranch;
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
@@ -52,13 +53,6 @@ fn symbolic_timeout() -> Option<SlotIdx> {
         Some(symbolic_slot())
     } else {
         None
-    }
-}
-
-fn symbolic_branch() -> SlotBranch {
-    SlotBranch {
-        condition: symbolic_slot(),
-        target: symbolic_step(),
     }
 }
 
@@ -290,19 +284,8 @@ fn lower_ask_rejects_max_id_without_overflow() {
 #[kani::unwind(128)]
 fn lower_choose_fanout_bound() {
     let test_rejection: bool = kani::any();
-    let branches: Vec<SlotBranch> = if test_rejection {
-        (0..65).map(|_| symbolic_branch()).collect()
-    } else {
-        (0..64).map(|_| symbolic_branch()).collect()
-    };
-
-    let mut builder = SlotCompiler::new();
-    let result = lower_choose(
-        StepIdx::new(0),
-        branches,
-        Some(StepIdx::new(1)),
-        &mut builder,
-    );
+    let branch_count = if test_rejection { 65 } else { 64 };
+    let result = validate_choose_fanout(branch_count);
 
     if test_rejection {
         match result {
@@ -325,16 +308,19 @@ fn lower_choose_fanout_bound() {
             }
         }
     } else {
-        kani::assert(result.is_ok(), "≤64 branches must be accepted");
+        kani::assert(result.is_ok(), "64 branches must pass fanout check");
     }
-    std::mem::forget(builder);
 }
 
 /// PO-001 H2: Public lower_choose API enforces the fanout limit.
 #[kani::proof]
 #[kani::unwind(128)]
 fn lower_choose_live_api_has_fanout_check() {
-    let branches: Vec<SlotBranch> = (0..65).map(|_| symbolic_branch()).collect();
+    let branch = SlotBranch {
+        condition: SlotIdx::new(0),
+        target: StepIdx::new(1),
+    };
+    let branches: Vec<SlotBranch> = vec![branch; 65];
     let mut builder = SlotCompiler::new();
     let result = lower_choose(
         StepIdx::new(0),

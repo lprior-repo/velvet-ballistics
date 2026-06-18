@@ -3,15 +3,21 @@
 
 use std::collections::VecDeque;
 
+#[cfg(not(kani))]
 use rtrb::RingBuffer;
 use vb_core::action::ActionFailureCode;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::limits::MAX_TRACE_RING_CAPACITY;
 
 /// Bounded trace event ring for one shard.
 #[derive(Debug)]
 pub struct TraceRing {
+    #[cfg(not(kani))]
     producer: rtrb::Producer<TraceEvent>,
+    #[cfg(not(kani))]
     consumer: rtrb::Consumer<TraceEvent>,
+    #[cfg(kani)]
+    pending: VecDeque<TraceEvent>,
     capacity: usize,
     dropped: u64,
     history: VecDeque<TraceEvent>,
@@ -22,16 +28,22 @@ impl TraceRing {
     ///
     /// # Invariants
     ///
-    /// `capacity` must be ≥ 1. A value of 0 is normalized to 1.
+    /// `capacity` is normalized into `1..=MAX_TRACE_RING_CAPACITY`.
     #[must_use]
     pub fn new(capacity: usize) -> Self {
-        let (producer, consumer) = RingBuffer::new(capacity.max(1));
+        let bounded_capacity = capacity.clamp(1, MAX_TRACE_RING_CAPACITY);
+        #[cfg(not(kani))]
+        let (producer, consumer) = RingBuffer::new(bounded_capacity);
         Self {
+            #[cfg(not(kani))]
             producer,
+            #[cfg(not(kani))]
             consumer,
-            capacity,
+            #[cfg(kani)]
+            pending: VecDeque::with_capacity(bounded_capacity),
+            capacity: bounded_capacity,
             dropped: 0,
-            history: VecDeque::with_capacity(capacity),
+            history: VecDeque::with_capacity(bounded_capacity),
         }
     }
 
@@ -57,7 +69,7 @@ impl TraceRing {
     /// is not used here; the caller may choose to count the drop).
     pub fn push(&mut self, event: TraceEvent) -> bool {
         let remembered = event.clone();
-        if let Ok(()) = self.producer.push(event) {
+        if self.push_pending(event) {
             self.remember(remembered);
             true
         } else {
@@ -75,42 +87,33 @@ impl TraceRing {
 
     /// Drains at most `limit` events into `events`.
     pub fn drain_into(&mut self, limit: usize, events: &mut Vec<TraceEvent>) {
-        let mut drained = 0usize;
-        while drained < limit {
-            let Ok(event) = self.consumer.pop() else {
+        let bounded_limit = self.bounded_limit(limit);
+        for _ in 0..bounded_limit {
+            let Some(event) = self.pop_pending() else {
                 return;
             };
             events.push(event);
-            drained = match drained.checked_add(1) {
-                Some(next) => next,
-                None => return,
-            };
         }
     }
 
     /// Drains at most `limit` events for one run into a vector.
     pub fn drain_for_run(&mut self, target: RunId, limit: usize) -> Vec<TraceEvent> {
-        let bounded_limit = limit.min(self.capacity);
+        let bounded_limit = self.bounded_limit(limit);
         let mut events = Vec::with_capacity(bounded_limit);
-        let mut inspected = 0usize;
-        while inspected < bounded_limit {
-            let Ok(event) = self.consumer.pop() else {
+        for _ in 0..bounded_limit {
+            let Some(event) = self.pop_pending() else {
                 return events;
             };
             if event.run_id() == target {
                 events.push(event);
             }
-            inspected = match inspected.checked_add(1) {
-                Some(next) => next,
-                None => return events,
-            };
         }
         events
     }
 
     /// Returns at most `limit` remembered trace events for one run without draining the ring.
     pub fn snapshot_for_run(&self, target: RunId, limit: usize) -> Vec<TraceEvent> {
-        let bounded_limit = limit.min(self.capacity);
+        let bounded_limit = self.bounded_limit(limit);
         let mut events = Vec::with_capacity(bounded_limit);
         let mut inspected = 0usize;
         for event in &self.history {
@@ -148,12 +151,43 @@ impl TraceRing {
     }
 
     fn remember(&mut self, event: TraceEvent) {
-        while self.history.len() >= self.capacity {
+        if self.history.len() >= self.capacity {
             if self.history.pop_front().is_none() {
                 return;
             }
         }
         self.history.push_back(event);
+    }
+
+    fn bounded_limit(&self, limit: usize) -> usize {
+        if limit <= self.capacity {
+            return limit;
+        }
+        self.capacity
+    }
+
+    #[cfg(not(kani))]
+    fn push_pending(&mut self, event: TraceEvent) -> bool {
+        self.producer.push(event).is_ok()
+    }
+
+    #[cfg(kani)]
+    fn push_pending(&mut self, event: TraceEvent) -> bool {
+        if self.pending.len() >= self.capacity {
+            return false;
+        }
+        self.pending.push_back(event);
+        true
+    }
+
+    #[cfg(not(kani))]
+    fn pop_pending(&mut self) -> Option<TraceEvent> {
+        self.consumer.pop().ok()
+    }
+
+    #[cfg(kani)]
+    fn pop_pending(&mut self) -> Option<TraceEvent> {
+        self.pending.pop_front()
     }
 
     /// Returns the number of dropped events due to ring overflow.

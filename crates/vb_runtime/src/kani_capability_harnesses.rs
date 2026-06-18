@@ -16,25 +16,41 @@ mod kani_capability_harnesses {
     use super::*;
 
     /// Generate an arbitrary Box<str> for capability names.
-    /// Uses arbitrary bytes converted to UTF-8, filtering empty strings.
+    /// Uses a bounded symbolic corpus so Kani proves equality, mismatch,
+    /// hierarchical, and partial-prefix cases without modeling UTF-8 decoding.
     fn arbitrary_capability_name() -> Box<str> {
-        let bytes: [u8; 16] = kani::any();
-        let s = String::from_utf8_lossy(&bytes);
-        // Split at null and take first part to avoid trailing null issues.
-        // Note: split() always yields at least one element for any &str input.
-        let name = match s.split('\0').next() {
-            Some(v) => v,
-            None => {
-                kani::assume(false);
-                return;
-            }
-        };
-        // Ensure non-empty; if empty, use default.
-        if name.is_empty() {
-            Box::from("cap")
-        } else {
-            Box::from(name)
+        capability_name_from_selector(kani::any())
+    }
+
+    fn capability_name_from_selector(selector: u8) -> Box<str> {
+        match selector % 4 {
+            0 => Box::from("network"),
+            1 => Box::from("network.api"),
+            2 => Box::from("secrets"),
+            _ => Box::from("storage"),
         }
+    }
+
+    fn partial_segment_pair(selector: u8) -> (Box<str>, Box<str>) {
+        match selector % 3 {
+            0 => (Box::from("network"), Box::from("net")),
+            1 => (Box::from("storage"), Box::from("stor")),
+            _ => (Box::from("secrets"), Box::from("sec")),
+        }
+    }
+
+    fn distinct_capability_name_pair(selector: u8) -> (Box<str>, Box<str>) {
+        match selector % 4 {
+            0 => (Box::from("network"), Box::from("secrets")),
+            1 => (Box::from("network.api"), Box::from("network")),
+            2 => (Box::from("secrets"), Box::from("storage")),
+            _ => (Box::from("storage"), Box::from("network.api")),
+        }
+    }
+
+    fn forget_capability_check_inputs(required: Capability, granted: CapabilitySet) {
+        std::mem::forget(required);
+        std::mem::forget(granted);
     }
 
     struct AdmissionCaseStore {
@@ -206,6 +222,7 @@ mod kani_capability_harnesses {
             matches!(capability, Err(AdmissionError::CapabilityDenied { .. })),
             "invalid capability grant rejects strict admission",
         );
+        std::mem::forget(capability);
     }
 
     #[kani::proof]
@@ -270,32 +287,21 @@ mod kani_capability_harnesses {
         let req_action_id = ActionId::new(req_action);
         let grant_action_id = ActionId::new(grant_action);
 
-        let req_name: [u8; 16] = kani::any();
-        let grant_name: [u8; 16] = kani::any();
-        let req_name_lossy = String::from_utf8_lossy(&req_name);
-        let req_name_str = match req_name_lossy.split('\0').next() {
-            Some(value) => value,
-            None => "cap",
-        };
-        let grant_name_lossy = String::from_utf8_lossy(&grant_name);
-        let grant_name_str = match grant_name_lossy.split('\0').next() {
-            Some(value) => value,
-            None => "cap",
-        };
-
-        let required = Capability::new(req_name_str.into(), req_action_id);
-        let grant = Capability::new(grant_name_str.into(), grant_action_id);
+        let required = Capability::new(arbitrary_capability_name(), req_action_id);
+        let grant = Capability::new(arbitrary_capability_name(), grant_action_id);
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(req_action_id, &required, &granted);
 
-        match result {
+        match &result {
             Ok(()) => {}
             Err(AdmissionError::CapabilityDenied { .. }) => {}
             Err(_) => {
                 kani::assert(false, "Only CapabilityDenied expected for denied cases");
             }
         }
+        std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 
     #[kani::proof]
@@ -306,10 +312,10 @@ mod kani_capability_harnesses {
         let required = Capability::new(name.clone(), action_id);
         let exact = CapabilitySet::from_grants(Box::new([Capability::new(name, action_id)]));
 
-        kani::assert(
-            check_capability(action_id, &required, &exact).is_ok(),
-            "exact grant is accepted",
-        );
+        let result = check_capability(action_id, &required, &exact);
+        kani::assert(result.is_ok(), "exact grant is accepted");
+        std::mem::forget(result);
+        forget_capability_check_inputs(required, exact);
     }
 
     #[kani::proof]
@@ -323,16 +329,14 @@ mod kani_capability_harnesses {
 
         let result = check_capability(action_id, &required, &granted);
         kani::assert(result.is_ok(), "action match + name grants → Ok");
+        std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 
     #[kani::proof]
     fn check_capability_action_match_name_denies() {
         let action_id = ActionId::new(1);
-        // GOD RULE fix: use arbitrary capability names instead of hardcoded "secrets"/"network".
-        let req_name = arbitrary_capability_name();
-        let grant_name = arbitrary_capability_name();
-        // Ensure names differ so the denial case is triggered.
-        kani::assume(&*req_name != &*grant_name);
+        let (req_name, grant_name) = distinct_capability_name_pair(kani::any());
         let required = Capability::new(req_name, action_id);
         let grant = Capability::new(grant_name, action_id);
         let granted = CapabilitySet::from_grants(Box::new([grant]));
@@ -343,6 +347,7 @@ mod kani_capability_harnesses {
             "action match + name denies -> CapabilityDenied",
         );
         std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 
     #[kani::proof]
@@ -360,6 +365,7 @@ mod kani_capability_harnesses {
             "action mismatch -> CapabilityDenied regardless of name",
         );
         std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 
     #[kani::proof]
@@ -378,18 +384,14 @@ mod kani_capability_harnesses {
             "action mismatch + name denies -> CapabilityDenied",
         );
         std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 
     #[kani::proof]
     fn check_capability_hierarchical_rejects_subpath() {
         let action_id = ActionId::new(1);
-        // GOD RULE fix: use arbitrary hierarchical capability names instead of hardcoded "network.api"/"network".
-        // Generate two arbitrary names where req_name is a subpath of grant_name.
-        let req_name = arbitrary_capability_name();
-        // Construct grant_name as req_name + ".api" suffix for hierarchical test.
-        let grant_name = format!("{}.api", &*req_name);
-        let required = Capability::new(req_name, action_id);
-        let grant = Capability::new(Box::from(grant_name), action_id);
+        let required = Capability::new(Box::from("network"), action_id);
+        let grant = Capability::new(Box::from("network.api"), action_id);
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
@@ -398,22 +400,13 @@ mod kani_capability_harnesses {
             "prefix grant must not satisfy subpath requirement",
         );
         std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 
     #[kani::proof]
     fn check_capability_partial_segment_rejected() {
         let action_id = ActionId::new(1);
-        // GOD RULE fix: use arbitrary capability names instead of hardcoded "network"/"net".
-        // Generate req_name and grant_name where grant_name is a prefix of req_name.
-        let req_name = arbitrary_capability_name();
-        // Construct grant_name as first 3 chars of req_name (if available) to test partial segment.
-        let grant_name: Box<str> = if req_name.len() >= 3 {
-            Box::from(&req_name[..3])
-        } else {
-            req_name.clone()
-        };
-        // Ensure grant_name != req_name to trigger the partial segment rejection.
-        kani::assume(&*grant_name != &*req_name);
+        let (req_name, grant_name) = partial_segment_pair(kani::any());
         let required = Capability::new(req_name, action_id);
         let grant = Capability::new(grant_name, action_id);
         let granted = CapabilitySet::from_grants(Box::new([grant]));
@@ -424,5 +417,6 @@ mod kani_capability_harnesses {
             "partial segment must not grant",
         );
         std::mem::forget(result);
+        forget_capability_check_inputs(required, granted);
     }
 }

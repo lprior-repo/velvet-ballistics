@@ -23,15 +23,7 @@ pub fn lower_choose(
     otherwise: Option<StepIdx>,
     builder: &mut SlotCompiler,
 ) -> Result<CompiledNode, CompileError> {
-    // Fanout limit: choose cannot have more than 64 branches
-    if branches.len() > 64 {
-        return Err(CompileError::PrimitiveLoweringLimitExceeded {
-            primitive: "choose",
-            field: "branches",
-            value: branches.len(),
-            limit: 64,
-        });
-    }
+    validate_choose_fanout(branches.len())?;
     for branch in &branches {
         builder.record_slot(branch.condition);
     }
@@ -48,6 +40,19 @@ pub fn lower_choose(
             otherwise,
         },
     })
+}
+
+pub(crate) fn validate_choose_fanout(branch_count: usize) -> Result<(), CompileError> {
+    if branch_count > 64 {
+        Err(CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "choose",
+            field: "branches",
+            value: branch_count,
+            limit: 64,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 /// Lowers a `for_each` primitive into `ForEachStart`, body, and `ForEachJoin` nodes.

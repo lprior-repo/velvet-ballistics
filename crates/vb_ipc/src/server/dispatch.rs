@@ -61,16 +61,29 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::CompleteAction => handle_complete_action(payload, runtime),
         IpcCommand::FailAction => handle_fail_action(payload, runtime),
         IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
-        IpcCommand::UnknownCommand(_) => match unknown_command_response(header.command) {
-            Some(response) => response,
+        IpcCommand::UnknownCommand(_) => match unknown_command_static_response(header.command) {
+            Some(response) => response.into_ipc_response(),
             None => IpcResponse::BadRequest,
         },
     }
 }
 
-pub(crate) fn unknown_command_response(command: IpcCommand) -> Option<IpcResponse> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum StaticIpcResponse {
+    BadRequest,
+}
+
+impl StaticIpcResponse {
+    fn into_ipc_response(self) -> IpcResponse {
+        match self {
+            Self::BadRequest => IpcResponse::BadRequest,
+        }
+    }
+}
+
+pub(crate) fn unknown_command_static_response(command: IpcCommand) -> Option<StaticIpcResponse> {
     match command {
-        IpcCommand::UnknownCommand(_) => Some(IpcResponse::BadRequest),
+        IpcCommand::UnknownCommand(_) => Some(StaticIpcResponse::BadRequest),
         _ => None,
     }
 }

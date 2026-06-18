@@ -6,8 +6,7 @@
 //!              all routing correctly without panicking.
 
 use crate::IpcCommand;
-use crate::server::IpcResponse;
-use crate::server::dispatch::unknown_command_response;
+use crate::server::dispatch::{StaticIpcResponse, unknown_command_static_response};
 
 fn semantic_dispatch_route_is_covered(command: IpcCommand) -> bool {
     match command {
@@ -63,11 +62,11 @@ fn kani_unknown_command_returns_bad_request() {
         "value must decode to UnknownCommand",
     );
 
-    let response = unknown_command_response(command);
+    let response = unknown_command_static_response(command);
 
     // Invariant: UnknownCommand MUST return BadRequest.
     kani::assert(
-        response == Some(IpcResponse::BadRequest),
+        response == Some(StaticIpcResponse::BadRequest),
         "UnknownCommand must dispatch to BadRequest",
     );
 }
@@ -102,7 +101,7 @@ fn kani_dispatch_arm_count() {
         "semantic command must have a dispatch route",
     );
     kani::assert(
-        unknown_command_response(command).is_none(),
+        unknown_command_static_response(command).is_none(),
         "semantic command must not use UnknownCommand route",
     );
 
@@ -116,7 +115,7 @@ fn kani_dispatch_arm_count() {
         "UnknownCommand must be excluded from semantic dispatch routes",
     );
     kani::assert(
-        unknown_command_response(unknown) == Some(IpcResponse::BadRequest),
+        unknown_command_static_response(unknown) == Some(StaticIpcResponse::BadRequest),
         "UnknownCommand route must produce BadRequest",
     );
 

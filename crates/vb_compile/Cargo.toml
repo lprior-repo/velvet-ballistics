@@ -21,6 +21,8 @@ vb_yaml = { path = "../vb_yaml", features = ["test-util"] }
 [features]
 default = []
 test-util = []
+kani-compile-tier-a = []
+kani-compile-legacy = []
 kani-nested-foreach = []
 
 [lints]

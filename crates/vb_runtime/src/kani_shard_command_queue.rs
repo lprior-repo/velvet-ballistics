@@ -12,10 +12,7 @@
 
 use std::cell::Cell;
 
-use crate::{
-    RuntimeError,
-    shard::types::{MAX_COMMAND_QUEUE_CAPACITY, is_valid_command_queue_capacity},
-};
+use crate::shard::types::{MAX_COMMAND_QUEUE_CAPACITY, is_valid_command_queue_capacity};
 
 const KANI_MODEL_SLOT_COUNT: usize = 3;
 
@@ -23,6 +20,12 @@ const KANI_MODEL_SLOT_COUNT: usize = 3;
 enum KaniShardCommandToken {
     Inspect { run: u64, correlation: u64 },
     Shutdown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum KaniShardCommandQueueError {
+    QueueFull,
+    CommandQueueCapacityExceeded { capacity: usize, max: usize },
 }
 
 struct KaniShardCommandQueueModel {
@@ -33,9 +36,9 @@ struct KaniShardCommandQueueModel {
 }
 
 impl KaniShardCommandQueueModel {
-    fn new(capacity: usize) -> Result<Self, RuntimeError> {
+    fn new(capacity: usize) -> Result<Self, KaniShardCommandQueueError> {
         if !is_valid_command_queue_capacity(capacity) {
-            return Err(RuntimeError::CommandQueueCapacityExceeded {
+            return Err(KaniShardCommandQueueError::CommandQueueCapacityExceeded {
                 capacity,
                 max: MAX_COMMAND_QUEUE_CAPACITY,
             });
@@ -49,25 +52,28 @@ impl KaniShardCommandQueueModel {
         })
     }
 
-    fn enqueue_token(&self, token: KaniShardCommandToken) -> Result<(), RuntimeError> {
+    fn enqueue_token(
+        &self,
+        token: KaniShardCommandToken,
+    ) -> Result<(), KaniShardCommandQueueError> {
         let len = self.len.get();
         if len >= self.capacity {
-            return Err(RuntimeError::QueueFull);
+            return Err(KaniShardCommandQueueError::QueueFull);
         }
 
         let Some(slot_index) = self.slot_index_for_offset(len) else {
-            return Err(RuntimeError::QueueFull);
+            return Err(KaniShardCommandQueueError::QueueFull);
         };
         let Some(next_len) = len.checked_add(1) else {
-            return Err(RuntimeError::QueueFull);
+            return Err(KaniShardCommandQueueError::QueueFull);
         };
 
         let mut slots = self.slots.get();
         let Some(slot) = slots.get_mut(slot_index) else {
-            return Err(RuntimeError::QueueFull);
+            return Err(KaniShardCommandQueueError::QueueFull);
         };
         if slot.is_some() {
-            return Err(RuntimeError::QueueFull);
+            return Err(KaniShardCommandQueueError::QueueFull);
         }
 
         *slot = Some(token);
@@ -193,7 +199,7 @@ fn kani_shard_command_queue_bounded_invariant() {
 
     if capacity == 0 || capacity > MAX_COMMAND_QUEUE_CAPACITY {
         match KaniShardCommandQueueModel::new(capacity) {
-            Err(RuntimeError::CommandQueueCapacityExceeded {
+            Err(KaniShardCommandQueueError::CommandQueueCapacityExceeded {
                 capacity: rejected_capacity,
                 max,
             }) => {
@@ -202,8 +208,7 @@ fn kani_shard_command_queue_bounded_invariant() {
                     "out-of-domain capacity must be rejected with the bounded error",
                 );
             }
-            Err(error) => {
-                std::mem::forget(error);
+            Err(_) => {
                 kani::assert(false, "out-of-domain capacity returned the wrong error");
             }
             Ok(queue) => {
@@ -229,8 +234,7 @@ fn kani_shard_command_queue_bounded_invariant() {
             );
             std::mem::forget(queue);
         }
-        Err(error) => {
-            std::mem::forget(error);
+        Err(_) => {
             kani::assert(false, "valid capacity must construct a queue");
         }
     }
@@ -249,8 +253,7 @@ fn kani_shard_command_queue_push() {
             let first_result = queue.enqueue_token(arbitrary_queue_token());
             match first_result {
                 Ok(()) => {}
-                Err(error) => {
-                    std::mem::forget(error);
+                Err(_) => {
                     kani::assert(false, "first enqueue must succeed");
                 }
             }
@@ -267,8 +270,7 @@ fn kani_shard_command_queue_push() {
                 );
                 match queue.enqueue_token(arbitrary_queue_token()) {
                     Ok(()) => {}
-                    Err(error) => {
-                        std::mem::forget(error);
+                    Err(_) => {
                         kani::assert(false, "second enqueue must fill the queue");
                     }
                 }
@@ -282,9 +284,8 @@ fn kani_shard_command_queue_push() {
             );
 
             match queue.enqueue_token(arbitrary_queue_token()) {
-                Err(RuntimeError::QueueFull) => {}
-                Err(error) => {
-                    std::mem::forget(error);
+                Err(KaniShardCommandQueueError::QueueFull) => {}
+                Err(_) => {
                     kani::assert(false, "enqueue beyond capacity returned wrong error");
                 }
                 Ok(()) => kani::assert(false, "enqueue beyond capacity must return QueueFull"),
@@ -300,8 +301,7 @@ fn kani_shard_command_queue_push() {
             kani::assert(queue.is_full(), "overflow enqueue leaves queue full");
             std::mem::forget(queue);
         }
-        Err(error) => {
-            std::mem::forget(error);
+        Err(_) => {
             kani::assert(false, "bounded valid capacity must construct a queue");
         }
     }
@@ -323,8 +323,7 @@ fn kani_shard_command_queue_drain() {
             let first_enqueue = queue.enqueue_token(first);
             match first_enqueue {
                 Ok(()) => {}
-                Err(error) => {
-                    std::mem::forget(error);
+                Err(_) => {
                     kani::assert(false, "first enqueue must succeed");
                 }
             }
@@ -333,8 +332,7 @@ fn kani_shard_command_queue_drain() {
                 let second_enqueue = queue.enqueue_token(second);
                 match second_enqueue {
                     Ok(()) => {}
-                    Err(error) => {
-                        std::mem::forget(error);
+                    Err(_) => {
                         kani::assert(false, "second enqueue must succeed");
                     }
                 }
@@ -375,8 +373,7 @@ fn kani_shard_command_queue_drain() {
             );
             std::mem::forget(queue);
         }
-        Err(error) => {
-            std::mem::forget(error);
+        Err(_) => {
             kani::assert(false, "bounded valid capacity must construct a queue");
         }
     }

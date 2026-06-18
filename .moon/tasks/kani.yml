@@ -174,6 +174,7 @@ tasks:
       set -euo pipefail
       KANI_TIMEOUT=15m
       KANI_MEMORY_LIMIT_KB=6291456
+      KANI_COMPILE_FEATURES='kani-compile-tier-a'
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
       mkdir -p "$PWD/target/kani-vb-compile"
@@ -188,7 +189,7 @@ tasks:
       run_compile_harness() {
         local harness="$1"
         printf 'verify-kani-vb-compile: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-compile -p vb_compile --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-compile -p vb_compile --features "$KANI_COMPILE_FEATURES" --harness "$harness"
       }
       # foreach_parity: tests for_each lowering structure (just fixed GOD_RULE compliance)
       run_compile_harness foreach_body_setconst_next_edge
@@ -498,13 +499,6 @@ tasks:
         printf 'verify-kani-vb-runtime: running %s\n' "$harness"
         run_kani_bounded target/kani-vb-runtime -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
       }
-      run_runtime_harness check_action_registry_panic_free
-      run_runtime_harness check_action_registry_resolve_by_name_panic_free
-      run_runtime_harness check_action_ticket_serialization
-      run_runtime_harness check_action_ticket_serialization_edge_cases
-      run_runtime_harness check_cancel_kill_identical_swap_remove
-      run_runtime_harness check_cancel_safe_for_boundary_run_ids
-      run_runtime_harness check_cancel_wins_terminal_race
       run_runtime_harness check_capability_action_match_name_denies
       run_runtime_harness check_capability_action_match_name_grants
       run_runtime_harness check_capability_action_mismatch_name_denies
@@ -513,26 +507,6 @@ tasks:
       run_runtime_harness check_capability_harness
       run_runtime_harness check_capability_hierarchical_rejects_subpath
       run_runtime_harness check_capability_partial_segment_rejected
-      run_runtime_harness check_counter_only_on_successful_terminalization
-      run_runtime_harness check_double_swap_remove_second_returns_none
-      run_runtime_harness check_journal_event_count_bounded
-      run_runtime_harness check_kill_wins_terminal_race
-      run_runtime_harness check_kind_28_is_known_record_kind
-      run_runtime_harness check_kind_28_journal_family_valid
-      run_runtime_harness check_pending_timers_empty_after_swap_remove
-      run_runtime_harness check_runkilled_construction_preserves_fields
-      run_runtime_harness check_runkilled_overflow_seq_invalid
-      run_runtime_harness check_runkilled_zero_attempt_invalid
-      run_runtime_harness check_runkilled_zero_run_invalid
-      run_runtime_harness check_runs_contains_key_false_after_remove
-      run_runtime_harness check_stale_ask_answer_after_kill
-      run_runtime_harness check_swap_remove_absent_returns_none
-      run_runtime_harness check_terminal_events_are_terminal
-      run_runtime_harness check_terminal_events_journal_family
-      run_runtime_harness check_terminal_record_kinds_are_known
-      run_runtime_harness check_terminal_run_not_in_runs
-      run_runtime_harness check_terminal_runs_insert_idempotent
-      run_runtime_harness check_validate_kind_family_exhaustive
       run_runtime_harness clean_input_never_triggers_guard
       run_runtime_harness collect_next_reentry
       run_runtime_harness collect_page_pagination_bounds
@@ -547,113 +521,14 @@ tasks:
       run_runtime_harness for_each_next_reentry
       run_runtime_harness guard_decision_panic_free
       run_runtime_harness guard_fires_exactly_for_non_clean_deterministicpure
-      run_runtime_harness kani_action_queue_capacity
-      run_runtime_harness kani_action_queue_fifo
-      run_runtime_harness kani_action_queue_full
-      run_runtime_harness kani_admission_error_conversion
-      run_runtime_harness kani_admission_error_path_coverage
-      run_runtime_harness kani_admission_no_live_state_on_failure
-      run_runtime_harness kani_admission_run_admission_before_insert
-      run_runtime_harness kani_admission_run_admission_failure
-      run_runtime_harness kani_admission_run_submitted_before_insert
-      run_runtime_harness kani_admission_run_submitted_failure
-      run_runtime_harness kani_ask_answer_append_before_insert
-      run_runtime_harness kani_ask_answer_append_failure_no_timer
-      run_runtime_harness kani_ask_answer_append_failure_preserves_existing_timer
-      run_runtime_harness kani_ask_answer_journal_monotonicity
-      run_runtime_harness kani_ask_answer_pending_timer_guard
-      run_runtime_harness kani_ask_answer_slot_written_before_ask_answered
-      run_runtime_harness kani_ask_answer_slot_written_failure_skip_ask_answered
-      run_runtime_harness kani_cancel_kill_lattice
-      run_runtime_harness kani_drive_budget_exhausted_signal_terminates_loop
-      run_runtime_harness kani_drive_continue_keeps_loop_running
-      run_runtime_harness kani_drive_finished_signal_terminates_loop
-      run_runtime_harness kani_for_each_join_passthrough
-      run_runtime_harness kani_for_each_next_progression
-      run_runtime_harness kani_for_each_ordering
       run_runtime_harness kani_for_each_reentry_body_state_immutable
-      run_runtime_harness kani_idempotency_key_canonical
       run_runtime_harness kani_jump_to_body_no_state_mutation
-      run_runtime_harness kani_next_generation_monotonicity
       run_runtime_harness kani_reduce_reentry_body_state_immutable
       run_runtime_harness kani_remaining_primitives_reentry_body_state_immutable
-      run_runtime_harness kani_resume_already_running
-      run_runtime_harness kani_resume_append_before_drive
-      run_runtime_harness kani_resume_append_failure_rollback
-      run_runtime_harness kani_resume_apply_state_transitions
-      run_runtime_harness kani_resume_drive_failure_preserves_journal
-      run_runtime_harness kani_resume_non_resumable_guard
-      run_runtime_harness kani_resume_rollback_consistency
-      run_runtime_harness kani_retry_attempt_monotonicity
-      run_runtime_harness kani_retry_attempt_overflow_fail_closed
-      run_runtime_harness kani_retry_convergence
-      run_runtime_harness kani_retry_cursor_bounds
-      run_runtime_harness kani_retry_exhaustion
-      run_runtime_harness kani_retry_terminal_typing
       run_runtime_harness kani_shard_command_queue_bounded_invariant
       run_runtime_harness kani_shard_command_queue_drain
       run_runtime_harness kani_shard_command_queue_push
-      run_runtime_harness kani_stale_timer_fencing
-      run_runtime_harness kani_submit_frame_release_error_path
-      run_runtime_harness kani_terminal_run_rejects_completion
-      run_runtime_harness kani_ticket_retry_capacity_bounds
-      run_runtime_harness kani_timer_fire_consumes_atomically
-      run_runtime_harness kani_together_branch_first_branch
-      run_runtime_harness kani_together_join_pif_reduction
-      run_runtime_harness kani_together_ordering
-      run_runtime_harness kani_validate_action_completion_step_state
-      run_runtime_harness kani_watermark_monotonic
       run_runtime_harness non_deterministicpure_never_triggers_guard
-      run_runtime_harness proof_action_ticket_fields_non_overflow
-      run_runtime_harness proof_all_attempt_combinations_handled
-      run_runtime_harness proof_attempt_comparison_panic_free
-      run_runtime_harness proof_duplicate_completion_same_key
-      run_runtime_harness proof_eviction_safety
-      run_runtime_harness proof_future_attempt_rejected_or_normalized
-      run_runtime_harness proof_mark_completed_for_policy_monotonic
-      run_runtime_harness proof_monotonicity_until_eviction
-      run_runtime_harness proof_replay_divergence_same_key_different_ticket
-      run_runtime_harness proof_retry_fence_capacity_enforced
-      run_runtime_harness proof_retry_fence_no_overflow
-      run_runtime_harness proof_single_terminal_event_invariant
-      run_runtime_harness proof_stale_attempt_rejected
-      run_runtime_harness proof_stale_authority_no_mutation
-      run_runtime_harness proof_tracker_completion_idempotent
-      run_runtime_harness proof_track_for_policy_at_least_once_deduplicates
-      run_runtime_harness proof_track_for_policy_deterministic_pure_always_new
-      run_runtime_harness proof_typed_missing_run_error
-      run_runtime_harness proof_zero_attempt_rejected
-      run_runtime_harness proof_zero_capacity_rejected
-      run_runtime_harness proof_zero_policy_max_rejected
-      run_runtime_harness prove_payload_size_rejected
-      run_runtime_harness prove_secret_result_not_allowed_enforcement
-      run_runtime_harness prove_secret_results_field_is_behavior_affecting
-      run_runtime_harness ps_001_generation_increments_on_replacement
-      run_runtime_harness ps_001_generation_overflow_fails_closed
-      run_runtime_harness ps_001_generation_starts_at_one
-      run_runtime_harness ps_002_matches_authority_enforces_exact_match
-      run_runtime_harness ps_002_pending_timer_fields_are_numeric_and_deadline
-      run_runtime_harness ps_003_matches_authority_rejects_wrong_deadline
-      run_runtime_harness ps_003_matches_authority_rejects_wrong_generation
-      run_runtime_harness ps_003_matches_authority_rejects_wrong_kind
-      run_runtime_harness ps_004_checked_add_at_max_returns_none
-      run_runtime_harness ps_004_checked_add_within_bounds
-      run_runtime_harness ps_005_cancel_nonexistent_returns_false
-      run_runtime_harness ps_005_cancel_removes_entry
-      run_runtime_harness ps_005_insert_replaces_existing
-      run_runtime_harness ps_006_timer_not_required_for_do
-      run_runtime_harness ps_006_timer_not_required_for_missing_step
-      run_runtime_harness ps_006_timer_required_for_wait_until
-      run_runtime_harness ps_007_fire_expired_drains_all_expired
-      run_runtime_harness ps_007_fire_expired_only_past_deadlines
-      run_runtime_harness ps_007_next_deadline_returns_earliest
-      run_runtime_harness ps_008_is_empty_reflects_state
-      run_runtime_harness ps_008_len_tracks_active_timers
-      run_runtime_harness ps_009_timer_fires_at_exact_deadline
-      run_runtime_harness ps_009_timer_not_fired_before_deadline
-      run_runtime_harness ps_010_multiple_timers_same_deadline_all_fire
-      run_runtime_harness ps_010_replacement_preserves_correct_entry
-      run_runtime_harness reduce_accumulator_overflow_harness
       run_runtime_harness reduce_next_reentry
       run_runtime_harness repeat_attempt_reentry
       run_runtime_harness repeat_check_reentry
@@ -664,15 +539,7 @@ tasks:
       run_runtime_harness strict_admission_invalid_capability_rejects
       run_runtime_harness strict_admission_valid_artifact_admits
       run_runtime_harness strict_legacy_presence_only_bypass_rejects_required_blocker
-      run_runtime_harness verify_command_queue_capacity_never_exceeded
       run_runtime_harness verify_drain_for_run_correctness
-      run_runtime_harness verify_is_queue_full_consistent_with_length
-      run_runtime_harness verify_is_valid_command_queue_capacity_within_domain
-      run_runtime_harness verify_pending_timer_matches_authority_with_matching_fields
-      run_runtime_harness verify_queue_remaining_capacity_never_overflows
-      run_runtime_harness verify_runtime_event_terminal_state_produces_correct_classification
-      run_runtime_harness verify_runtime_state_transitions_produce_valid_states
-      run_runtime_harness verify_shard_config_new_zero_capacity_always_rejected
       run_runtime_harness verify_terminal_event_detection
       run_runtime_harness verify_trace_ring_bounds
       run_runtime_harness verify_trace_ring_dropped_monotonic

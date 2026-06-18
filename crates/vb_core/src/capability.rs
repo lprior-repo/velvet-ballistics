@@ -77,8 +77,48 @@ impl CapabilitySet {
     }
 }
 
+#[cfg(not(kani))]
 fn capability_name_exact(grant_name: &str, required_name: &str) -> bool {
     !grant_name.is_empty() && grant_name == required_name
+}
+
+#[cfg(kani)]
+fn capability_name_exact(grant_name: &str, required_name: &str) -> bool {
+    const MAX_KANI_CAPABILITY_NAME_BYTES: usize = 32;
+
+    let grant = grant_name.as_bytes();
+    let required = required_name.as_bytes();
+    let len = grant.len();
+    if len == 0 || len != required.len() {
+        return false;
+    }
+    if len > MAX_KANI_CAPABILITY_NAME_BYTES {
+        kani::assume(false);
+        return false;
+    }
+
+    let mut i = 0usize;
+    while i < MAX_KANI_CAPABILITY_NAME_BYTES {
+        if i >= len {
+            return true;
+        }
+        let grant_byte = match grant.get(i) {
+            Some(value) => value,
+            None => return false,
+        };
+        let required_byte = match required.get(i) {
+            Some(value) => value,
+            None => return false,
+        };
+        if grant_byte != required_byte {
+            return false;
+        }
+        i = match i.checked_add(1) {
+            Some(next) => next,
+            None => return false,
+        };
+    }
+    true
 }
 
 #[cfg(test)]

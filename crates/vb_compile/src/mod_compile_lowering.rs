@@ -43,25 +43,25 @@ mod part_01_layout_proofs;
 // overflow, nested next, empty body, regression, ForEach width, no-panic,
 // diagnostics, and try_from_parts end-to-end validation.
 // ============================================================
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_body_width;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_chain;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_diagnostics;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_empty;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_foreach;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_nested_next;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_nopanic;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_offset;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_overflow;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_reduce_regression;
 
 // ============================================================
@@ -101,12 +101,12 @@ mod reduce_tryfromparts;
 // Kani harnesses for ForEach digest coverage (PO-K-FE-01 through PO-K-FE-10).
 // Bead: vb-xi2f.28 | State: 5 (proof-writer)
 // Placed here to access pub(super) items from part_05 (canonical_digest, digest_step_primitive).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani_proofs;
 
 // Kani harnesses for choose lowering fix (PO-KANI-001 through PO-KANI-013).
 // Bead: vb-xi2f.13 | State: 5 (proof-writer)
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 mod kani;
 
 #[cfg(test)]

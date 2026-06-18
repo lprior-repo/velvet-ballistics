@@ -173,7 +173,7 @@ fn vt2f_shard_lower_semantics() {
     kani::assert(matches!(
         absent_lower.action_failed_lower(run),
         Err(KernelRuntimeError::RunNotFound)
-    ));
+    ), "absent lower action failure must return RunNotFound");
 
     let active_lower = ShardKernelState::with_active_run(RuntimePolicy::Relaxed, run);
     let ticket_run = if selector & 1 == 0 { run } else { other };
@@ -181,7 +181,7 @@ fn vt2f_shard_lower_semantics() {
     kani::assert(matches!(
         facade_result,
         Err(KernelRuntimeError::InvalidActionCompletion)
-    ));
+    ), "facade action failure must reject invalid completion");
 
     let explicit = ShardKernelState::explicit(selected_policy, selected_store);
     kani::assert(explicit.runtime_policy == selected_policy, "assertion failed");

@@ -129,14 +129,41 @@ impl AcceptedArtifactStore for MissingAcceptedArtifactStore {
 
 /// Artifact store backed by FjallJournal.
 pub struct StorageArtifactStore {
+    #[cfg(not(kani))]
     journal: Arc<vb_storage::FjallJournal>,
+    #[cfg(kani)]
+    compiled_ir_exists_value: bool,
 }
 
 impl StorageArtifactStore {
     /// Creates a new storage-backed artifact store.
     #[must_use]
+    #[cfg(not(kani))]
     pub fn new(journal: Arc<vb_storage::FjallJournal>) -> Self {
         Self { journal }
+    }
+
+    /// Creates a Kani model of the storage-backed artifact store.
+    ///
+    /// Kani cannot tractably model Fjall's filesystem-backed internals in the
+    /// runtime proof lane. The model preserves the wrapper contract exercised by
+    /// `compiled_ir_exists`: a storage query is reduced to a bounded boolean
+    /// result while production builds continue to use the real journal field.
+    #[must_use]
+    #[cfg(kani)]
+    pub fn new(_journal: Arc<vb_storage::FjallJournal>) -> Self {
+        Self {
+            compiled_ir_exists_value: false,
+        }
+    }
+
+    /// Creates a Kani-only artifact-existence model without constructing Fjall.
+    #[must_use]
+    #[cfg(kani)]
+    pub fn kani_model(compiled_ir_exists_value: bool) -> Self {
+        Self {
+            compiled_ir_exists_value,
+        }
     }
 
     /// Creates a new shared storage-backed artifact store (legacy artifact-only view).
@@ -153,12 +180,19 @@ impl StorageArtifactStore {
 }
 
 impl ArtifactStore for StorageArtifactStore {
+    #[cfg(not(kani))]
     fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
         matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
+    }
+
+    #[cfg(kani)]
+    fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+        self.compiled_ir_exists_value
     }
 }
 
 impl AcceptedArtifactStore for StorageArtifactStore {
+    #[cfg(not(kani))]
     fn load_accepted_artifact(
         &self,
         artifact_digest: WorkflowDigest,
@@ -187,5 +221,15 @@ impl AcceptedArtifactStore for StorageArtifactStore {
         super::validation::validate_accepted_artifact_envelope(&artifact)?;
 
         Ok(artifact)
+    }
+
+    #[cfg(kani)]
+    fn load_accepted_artifact(
+        &self,
+        artifact_digest: WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+        Err(ArtifactEnvelopeError::ArtifactNotFound {
+            digest: artifact_digest,
+        })
     }
 }

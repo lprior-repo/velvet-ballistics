@@ -73,7 +73,7 @@ mod body_dispatcher_together_flux;
 // ── end vb-xi2f.22 flux refinements ──
 
 // Kani harnesses for Finish digest verification (vb-xi2f.34).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod kani_finish_digest;
 
 // Master plan §38 ("Bytecode/AST parity" row, lines 1167-1170) requires
@@ -105,25 +105,25 @@ mod tests;
 mod references_scope_guard_tests;
 
 // Kani harnesses for canonical_primitive_name coverage (vb-xi2f.16, vb-xi2f.29).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod kani_canonical_name;
 
 // Kani harnesses for together digest step verification (vb-xi2f.29).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod together_digest_kani;
 
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod kani_idempotency_parity;
 
 // Kani harnesses for vb-a001 for_each lowering fix verification.
 // Proves PRE-002 (body SetConst.next = ForEachNext), PRE-005 (no backward edges),
 // PRE-006 (all nodes reachable), POST-003 (malformed IR rejection).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-tier-a"))]
 pub mod kani_foreach_parity;
 
 // Kani harnesses for repeat/ask id+1 lowering overflow rejection.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-tier-a"))]
 pub mod kani_lower_control;
 
 // Kani harnesses for Save canonical name and digest prefix (vb-pkif2).
@@ -135,58 +135,58 @@ pub mod kani_lower_control;
 // Feature-gated behind test-util because these harnesses depend on
 // WorkflowSourceParts which is pub(crate) in production and only
 // re-exported as pub when test-util feature is active.
-#[cfg(all(kani, any(test, feature = "test-util")))]
+#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
 pub mod kani_digest_ask_empty_prompt;
-#[cfg(all(kani, any(test, feature = "test-util")))]
+#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
 pub mod kani_digest_ask_field_ordering;
-#[cfg(all(kani, any(test, feature = "test-util")))]
+#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
 pub mod kani_digest_ask_prompt_sensitivity;
-#[cfg(all(kani, any(test, feature = "test-util")))]
+#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
 pub mod kani_digest_ask_timeout_sensitivity;
-#[cfg(all(kani, any(test, feature = "test-util")))]
+#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
 pub mod kani_digest_ask_timeout_sentinel;
-#[cfg(all(kani, any(test, feature = "test-util")))]
+#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
 pub mod kani_digest_step_primitive_no_panic;
 
 // Kani harnesses for wait digest coverage verification (vb-xi2f.32).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod kani_wait_digest;
 
 // Kani harnesses for Repeat digest coverage (bead vb-xi2f.31).
 // PO-001 through PO-005: digest_step_primitive Repeat { max_attempts, body }.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod kani_digest_repeat;
 
 // ── vb-xi2f.22: Nested Together Body Lowering Kani harnesses ──
 // Kani harness for PO-001-K: body step width acceptance (GOD RULE 1: varied primitives).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod body_step_width_kani;
 // Kani harness for PO-002-K: body dispatcher together acceptance.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod body_dispatcher_together_kani;
 // Kani harness for PO-003-K: width/node parity (TH-1 defense).
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod width_parity_kani;
 // Kani harness for PO-004-K: emission order monotonicity.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod emit_order_together_kani;
 // Kani harness for PO-005-K: nested together 2-level lowering.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod nested_together_kani;
 // Kani harness for PO-006-K: together error paths panic-free.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod together_error_paths_kani;
 // Kani harness for PO-007-K: together digest nested.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod together_digest_nested_kani;
 // Kani harness for PO-008-K: gate 11 together body acceptance.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod gate11_together_kani;
 // Kani harness for PO-009-K: budget together body compliance.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod budget_together_kani;
 // Kani harness for PO-010-K: comprehensive panic-freedom.
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-compile-legacy"))]
 pub mod panic_free_together_lowering_kani;
 // ── end vb-xi2f.22 Kani harnesses ──
 

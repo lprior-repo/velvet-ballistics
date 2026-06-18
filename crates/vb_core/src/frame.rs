@@ -432,6 +432,24 @@ impl RunFrame {
         Ok(())
     }
 
+    /// Kani-only harness setup: writes a slot without constructing `CoreError`.
+    ///
+    /// This bypasses production validation only to build already-valid symbolic
+    /// pre-states without making CBMC model unrelated `CoreError` variants.
+    #[cfg(kani)]
+    pub fn kani_harness_write_slot_clean(&mut self, slot: SlotIdx, value: SlotValue) -> bool {
+        let index = slot.as_usize();
+        let Some(slot_cell) = self.slots.get_mut(index) else {
+            return false;
+        };
+        *slot_cell = Some(value);
+        let Some(taint_cell) = self.taint.get_mut(index) else {
+            return false;
+        };
+        *taint_cell = Taint::Clean;
+        true
+    }
+
     /// Returns a compact copy of initialized slot values and taint markers.
     pub fn initialized_slots(&self) -> CoreResult<Vec<(SlotIdx, SlotValue, Taint)>> {
         self.slots
@@ -582,6 +600,25 @@ impl RunFrame {
     /// Marks a step cancelled.
     pub fn mark_cancelled(&mut self, step: StepIdx) -> CoreResult<()> {
         self.write_step_state(step, StepState::Cancelled)
+    }
+
+    /// Kani-only harness setup: writes a step state without constructing `CoreError`.
+    ///
+    /// This is for pre-state construction in harnesses whose transition legality
+    /// is proven separately by `is_valid_step_state_transition` harnesses.
+    #[cfg(kani)]
+    pub fn kani_harness_set_step_state(&mut self, step: StepIdx, state: StepState) -> bool {
+        let Some(state_cell) = self.states.get_mut(step.as_usize()) else {
+            return false;
+        };
+        *state_cell = state;
+        true
+    }
+
+    /// Kani-only harness observation: reads a step state without constructing `CoreError`.
+    #[cfg(kani)]
+    pub fn kani_harness_step_state(&self, step: StepIdx) -> Option<StepState> {
+        self.states.get(step.as_usize()).copied()
     }
 
     /// Reads a step state.

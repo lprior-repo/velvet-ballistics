@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum AdmissionError {
     AcceptedArtifactMissing,
     AcceptedArtifactInvalid,
@@ -48,6 +48,19 @@ fn strict_predicate(model: AcceptedArtifactModel) -> bool {
         && model.capability_grant_ok
 }
 
+fn expected_rejection(model: AcceptedArtifactModel) -> AdmissionError {
+    if !model.envelope_present {
+        return AdmissionError::AcceptedArtifactMissing;
+    }
+    if model.gate_count != REQUIRED_GATE_COUNT || !model.proof_flags_ok {
+        return AdmissionError::AcceptedArtifactInvalid;
+    }
+    if !model.artifact_digest_ok {
+        return AdmissionError::CompiledIrDigestMismatch;
+    }
+    AdmissionError::CapabilityMismatch
+}
+
 fn bounded_gate_count(selector: u8) -> u8 {
     match selector % 5 {
         0 => 0,
@@ -70,8 +83,20 @@ fn yaml_e2e_admission_matrix() {
 
     let outcome = strict_admission(model);
     if strict_predicate(model) {
-        kani::assert(matches!(outcome, AdmissionOutcome::Admitted));
+        kani::assert(
+            matches!(outcome, AdmissionOutcome::Admitted),
+            "strict predicate true must admit artifact",
+        );
     } else {
-        kani::assert(matches!(outcome, AdmissionOutcome::Rejected(_)));
+        match outcome {
+            AdmissionOutcome::Rejected(error) => kani::assert(
+                error == expected_rejection(model),
+                "strict predicate false must reject with exact taxonomy",
+            ),
+            AdmissionOutcome::Admitted => kani::assert(
+                false,
+                "strict predicate false must reject artifact",
+            ),
+        }
     }
 }

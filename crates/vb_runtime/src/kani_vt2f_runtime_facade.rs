@@ -219,7 +219,7 @@ fn vt2f_runtime_facade_semantics() {
     kani::assert(matches!(
         strict_result,
         Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-    ));
+    ), "strict missing artifact must reject");
     kani::assert(before == strict_state.queue_depth, "assertion failed");
 
     let mut admitted_state = FacadeKernelState::seeded(selector);
@@ -232,7 +232,7 @@ fn vt2f_runtime_facade_semantics() {
         kani::assert(matches!(
             admitted_result,
             Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-        ));
+        ), "strict missing artifact path must preserve queue depth");
         kani::assert(admitted_state.queue_depth == admitted_before, "assertion failed");
     }
 
@@ -246,7 +246,7 @@ fn vt2f_runtime_facade_semantics() {
     kani::assert(matches!(
         fail_state.tick_after_facade_fail_action(ticket_run),
         Err(KernelRuntimeError::InvalidActionCompletion)
-    ));
+    ), "facade fail action must reject invalid completion");
     kani::assert(unrelated_before == fail_state.snapshot_other(100), "assertion failed");
 
     let mut ask_state = FacadeKernelState::seeded(selector);
@@ -266,8 +266,11 @@ fn vt2f_runtime_facade_semantics() {
         kani::assert(matches!(
             answer_result,
             Err(KernelRuntimeError::RunNotFound)
-        ));
-        kani::assert(matches!(tick_result, Err(KernelRuntimeError::RunNotFound)));
+        ), "non-matching ask answer must return RunNotFound");
+        kani::assert(
+            matches!(tick_result, Err(KernelRuntimeError::RunNotFound)),
+            "non-matching ask tick must return RunNotFound",
+        );
         kani::assert(ask_state.answer_value == None, "assertion failed");
         kani::assert(ask_state.target_active, "kani harness assertion");
     }
