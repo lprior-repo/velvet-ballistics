@@ -4,7 +4,7 @@
 use crate::args::{
     ActionRegistryMode, Command, DurabilityMode, OutputFormat, ParseError, StepTarget,
 };
-use crate::commands_journal;
+use crate::commands_journal::{analyze_resume, analyze_retry};
 use crate::exit_code::CliExitCode;
 use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
@@ -50,7 +50,7 @@ pub(crate) fn cmd_retry(
         }
         return CliExitCode::ValidationFailed.into();
     }
-    let analysis = crate::commands_journal::analyze_retry(&events);
+    let analysis = analyze_retry(&events);
     if !analysis.can_retry {
         if output != OutputFormat::Text {
             json_error(
@@ -182,7 +182,7 @@ pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputForma
         }
         return CliExitCode::ValidationFailed.into();
     }
-    let analysis = crate::commands_journal::analyze_resume(&events);
+    let analysis = analyze_resume(&events);
     if !analysis.can_resume {
         if output != OutputFormat::Text {
             json_error(

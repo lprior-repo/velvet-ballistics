@@ -14,7 +14,7 @@ use crate::commands_verify::advisory::{
     check_action_contracts, check_capability_requirements, check_idempotency,
     check_replay_determinism, check_slot_bounds, check_taint_propagation, run_advisory_gate,
 };
-use crate::commands_verify::types::{VerifyError, VerifyOk, VerificationGateOutcomes};
+use crate::commands_verify::types::{VerificationGateOutcomes, VerifyError, VerifyOk};
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 /// Run the full verification pipeline on a workflow source text.

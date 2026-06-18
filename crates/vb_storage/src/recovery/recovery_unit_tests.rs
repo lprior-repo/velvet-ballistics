@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 #![cfg(test)]
 
@@ -486,7 +485,7 @@ mod tests {
                 reason: None,
             },
         ];
-       let result = summarize_recovery_events(&events);
+        let result = summarize_recovery_events(&events);
         assert!(
             matches!(result, Ok(_)),
             "summarize_recovery_events with RunAccepted+RunCancelled must succeed, got {:?}",

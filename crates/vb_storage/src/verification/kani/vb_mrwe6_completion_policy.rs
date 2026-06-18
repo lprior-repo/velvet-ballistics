@@ -62,15 +62,19 @@ fn vb_mrwe6_completion_policy_all_cases() {
     let event = resolution(kind, run, seq, step, resolved_action);
     let intent = verification_action_index_intent(&event);
 
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
         intent, VerificationActionIndexIntent::Delete {
             action: a,
             run: r,
             step: s,
-        } if a == resolved_action && r == run && s == step));
-    kani::assert(matches!(
-        verification_event_and_index_keys_exist(&event),
-        Ok(true)));
+        } if a == resolved_action && r == run && s == step),
+        "resolution event stages matching delete intent",
+    );
+    kani::assert(
+        matches!(verification_event_and_index_keys_exist(&event), Ok(true)),
+        "resolution event and index keys exist",
+    );
 
     let commit_success = kani::any::<bool>();
     let same_key = !mismatched_key;
@@ -83,25 +87,32 @@ fn vb_mrwe6_completion_policy_all_cases() {
             Err(_) => true,
         };
     if commit_success && same_key {
-        kani::assert(matches!(
-            decision,
-            Ok(VerificationResolutionCommitDecision::CommittedAndMarkerRemoved)));
+        kani::assert(
+            matches!(
+                decision,
+                Ok(VerificationResolutionCommitDecision::CommittedAndMarkerRemoved)
+            ),
+            "successful matching resolution removes marker",
         );
         kani::assert(!marker_present_after_commit, "kani harness assertion");
     }
     if !commit_success && same_key {
-        kani::assert(matches!(
-            decision,
-            Ok(VerificationResolutionCommitDecision::CommitFailedMarkerRetained)
-        ));
+        kani::assert(
+            matches!(
+                decision,
+                Ok(VerificationResolutionCommitDecision::CommitFailedMarkerRetained)
+            ),
+            "failed matching resolution retains marker",
         );
         kani::assert(marker_present_after_commit, "kani harness assertion");
     }
     if mismatched_key {
-        kani::assert(matches!(
-            decision,
-            Ok(VerificationResolutionCommitDecision::MismatchedResolutionRejected)
-        ));
+        kani::assert(
+            matches!(
+                decision,
+                Ok(VerificationResolutionCommitDecision::MismatchedResolutionRejected)
+            ),
+            "mismatched resolution is rejected",
         );
         kani::assert(marker_present_after_commit, "kani harness assertion");
     }

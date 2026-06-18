@@ -13,8 +13,8 @@
 //! This harness verifies panic-free header decoding for valid inputs.
 
 use crate::{
-    decode_frame_header, encode_frame, validate_frame_magic, IpcCommand, IpcError, IpcFrameHeader,
-    MaxPayloadBytes, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION,
+    IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes,
+    decode_frame_header, encode_frame, validate_frame_magic,
 };
 
 fn any_production_command() -> IpcCommand {
@@ -187,8 +187,32 @@ fn vb_dzibx_ipc_header_codec_roundtrip() {
         Err(_) => return,
     };
 
-    let [magic_0, magic_1, magic_2, magic_3, version_0, version_1, command_0, command_1, flags_0, flags_1, reserved_0, reserved_1, correlation_0, correlation_1, correlation_2, correlation_3, correlation_4, correlation_5, correlation_6, correlation_7, payload_0, payload_1, payload_2, payload_3] =
-        encoded;
+    let [
+        magic_0,
+        magic_1,
+        magic_2,
+        magic_3,
+        version_0,
+        version_1,
+        command_0,
+        command_1,
+        flags_0,
+        flags_1,
+        reserved_0,
+        reserved_1,
+        correlation_0,
+        correlation_1,
+        correlation_2,
+        correlation_3,
+        correlation_4,
+        correlation_5,
+        correlation_6,
+        correlation_7,
+        payload_0,
+        payload_1,
+        payload_2,
+        payload_3,
+    ] = encoded;
 
     kani::assert(
         u32::from_le_bytes([magic_0, magic_1, magic_2, magic_3]) == IPC_MAGIC,
@@ -288,8 +312,32 @@ fn vb_dzibx_header_constants_and_encode_shape_are_production_bound() {
         Err(_) => return,
     };
 
-    let [magic_0, magic_1, magic_2, magic_3, version_0, version_1, command_0, command_1, flags_0, flags_1, reserved_0, reserved_1, correlation_0, correlation_1, correlation_2, correlation_3, correlation_4, correlation_5, correlation_6, correlation_7, payload_0, payload_1, payload_2, payload_3] =
-        encoded;
+    let [
+        magic_0,
+        magic_1,
+        magic_2,
+        magic_3,
+        version_0,
+        version_1,
+        command_0,
+        command_1,
+        flags_0,
+        flags_1,
+        reserved_0,
+        reserved_1,
+        correlation_0,
+        correlation_1,
+        correlation_2,
+        correlation_3,
+        correlation_4,
+        correlation_5,
+        correlation_6,
+        correlation_7,
+        payload_0,
+        payload_1,
+        payload_2,
+        payload_3,
+    ] = encoded;
 
     kani::assert(
         u32::from_le_bytes([magic_0, magic_1, magic_2, magic_3]) == IPC_MAGIC,

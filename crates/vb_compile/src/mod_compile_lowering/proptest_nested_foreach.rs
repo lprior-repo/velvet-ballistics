@@ -121,7 +121,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 use proptest::prelude::*;
@@ -301,7 +301,10 @@ fn foreach_body_emit_single_set() {
     }];
     let mut builder = SlotCompiler::new();
     let result = lower_canonical_for_each(0, StepIdx::new(10), "0", None, &body, &mut builder);
-    assert!(matches!(result, Ok(_)), "simple for_each must compile: {result:?}");
+    assert!(
+        matches!(result, Ok(_)),
+        "simple for_each must compile: {result:?}"
+    );
     assert_eq!(builder.nodes.len(), 3, "must emit exactly 3 nodes");
 }
 
@@ -323,11 +326,17 @@ fn foreach_deterministic_output() {
     let mut b1 = SlotCompiler::new();
     let mut b2 = SlotCompiler::new();
     assert!(
-        matches!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1), Ok(_)),
+        matches!(
+            lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b1),
+            Ok(_)
+        ),
         "first compile must succeed"
     );
     assert!(
-        matches!(lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2), Ok(_)),
+        matches!(
+            lower_canonical_for_each(0, StepIdx::new(0), "0", None, &body, &mut b2),
+            Ok(_)
+        ),
         "second compile must succeed"
     );
     assert_eq!(

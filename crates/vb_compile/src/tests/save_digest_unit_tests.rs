@@ -107,7 +107,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Unit tests for `digest_step_primitive` Save arm.

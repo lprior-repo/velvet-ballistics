@@ -121,7 +121,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Error variant completeness tests for vb_compile.
@@ -619,7 +619,10 @@ fn parse_expression_accepts_integer_literals() {
     use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("42");
     assert!(
-        matches!(result, Ok(ParsedExpression::Literal(ExpressionLiteral::I64(42)))),
+        matches!(
+            result,
+            Ok(ParsedExpression::Literal(ExpressionLiteral::I64(42)))
+        ),
         "parse_expression('42') should return Ok(I64(42)), got {:?}",
         result
     );
@@ -630,7 +633,10 @@ fn parse_expression_accepts_boolean_literals() {
     use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("true");
     assert!(
-        matches!(result, Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(true)))),
+        matches!(
+            result,
+            Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(true)))
+        ),
         "parse_expression('true') should return Ok(Bool(true)), got {:?}",
         result
     );

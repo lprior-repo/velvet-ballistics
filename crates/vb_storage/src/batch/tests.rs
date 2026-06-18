@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    BlobRecord, EventSeq, IndexStatusState, JournalEvent,
-    constants::DIGEST_BYTES, recovery::RunSnapshot,
+    BlobRecord, EventSeq, IndexStatusState, JournalEvent, constants::DIGEST_BYTES,
+    recovery::RunSnapshot,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -549,8 +549,7 @@ fn batch_index_operations_increment_len_without_payloads() {
 fn batch_put_compiled_ir_commits_and_is_readable() {
     // I3: compiled_ir readable after batch commit
     let (_temp, journal) = temp_journal();
-    let record =
-        crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
+    let record = crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
     let digest = record.digest;
 
     let mut batch = JournalWriteBatch::new(&journal);

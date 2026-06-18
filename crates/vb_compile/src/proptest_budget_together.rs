@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: proptest_budget_together.rs
 // Obligation: PO-009-P
 // Requirement: C-9 (Budget compliance after nested together lowering)
@@ -121,7 +120,6 @@
 //
 // GOD RULE 1: Uses proptest strategies for random together bodies of varying sizes.
 // GOD RULE 2: Binds to actual emit_single_body_set and budget validation.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

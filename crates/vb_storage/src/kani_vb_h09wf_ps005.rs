@@ -22,7 +22,10 @@ fn ps_005_trailing_bytes() {
                 declared_end: reported_declared,
                 actual_len: reported_actual,
             }) => {
-                kani::assert(reported_declared == declared_end, "declared_end is preserved");
+                kani::assert(
+                    reported_declared == declared_end,
+                    "declared_end is preserved",
+                );
                 kani::assert(reported_actual == actual_len, "actual_len is preserved");
             }
             Ok(()) => kani::assert(false, "trailing bytes must be rejected"),

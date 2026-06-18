@@ -8,7 +8,7 @@
 //! - Kind 28 (RunKilled) is known to is_known_record_kind
 //! - Kind 28 (RunKilled) passes validate_kind_family for MAGIC_JOURNAL_EVENT
 //! - Kind 28 is rejected for non-journal magic values
-//! - Unknown kinds are properly rejected
+//! - Unknown kinds outside the admitted journal range are properly rejected
 //! - Replay sequence contiguity is enforced
 //!
 //! Production bindings:
@@ -85,23 +85,24 @@ fn check_kind_28_blob_family_rejected() {
     );
 }
 
-/// PO-KANI-004-H6: Unknown kind 29 must be rejected (boundary check).
+/// PO-KANI-004-H6: Unknown kind 31 must be rejected (boundary check).
 #[kani::proof]
 fn check_unknown_kind_rejected() {
-    let kind: u16 = 29;
+    let kind: u16 = 31;
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
     kani::assert(
         result.is_err(),
-        "unknown kind 29 must be rejected by validate_kind_family",
+        "unknown kind 31 must be rejected by validate_kind_family",
     );
 }
 
-/// PO-KANI-004-H7: All existing known kinds (1,2,3,10-27,30,40,50) remain known.
+/// PO-KANI-004-H7: All existing known kinds remain known.
 #[kani::proof]
 fn check_all_existing_kinds_known() {
-    let known_kinds: [u16; 24] = [
-        1, 2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 40, 50,
+    let known_kinds: [u16; 27] = [
+        1, 2, 3, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 40, 50,
     ];
     for kind in known_kinds {
         let result = crate::codec::validation::is_known_record_kind(kind);
@@ -110,7 +111,7 @@ fn check_all_existing_kinds_known() {
 }
 
 /// PO-KANI-004-H8: Exhaustive: for any arbitrary u16 kind value,
-/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds 10..=28.
+/// validate_kind_family with MAGIC_JOURNAL_EVENT returns Err except for kinds 10..=29.
 #[kani::proof]
 #[kani::unwind(8)]
 fn check_journal_family_exhaustive() {
@@ -118,8 +119,8 @@ fn check_journal_family_exhaustive() {
     let magic: u32 = crate::MAGIC_JOURNAL_EVENT;
     let result = crate::codec::validation::validate_kind_family(magic, kind);
 
-    // Expected valid range: 10..=28
-    let is_valid_journal_kind = (10u16..=28u16).contains(&kind);
+    // Expected valid range: 10..=29
+    let is_valid_journal_kind = (10u16..=29u16).contains(&kind);
 
     match result {
         Ok(()) => {

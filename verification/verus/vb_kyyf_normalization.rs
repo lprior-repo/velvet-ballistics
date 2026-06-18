@@ -22,7 +22,7 @@ use vstd::prelude::*;
 
 verus! {
 
-#[path = "../../crates/vb_proof_kernels/src/vb_kyyf_normalization.rs"]
+#[path = "../../crates/vb_proof_kernels/src/vb_kyyf_normalization/mod.rs"]
 mod production_probe;
 
 pub fn checked_prod_digest_all_match(status: production_probe::DigestStatus) -> (all_match: bool)

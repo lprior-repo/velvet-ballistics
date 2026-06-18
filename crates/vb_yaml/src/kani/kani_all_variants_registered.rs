@@ -187,8 +187,5 @@ fn verify_all_variants_registered() {
     );
 
     // The code name must be non-empty.
-    kani::assert(
-        !code.as_str().is_empty(),
-        "symbolic_code must not be empty",
-    );
+    kani::assert(!code.as_str().is_empty(), "symbolic_code must not be empty");
 }

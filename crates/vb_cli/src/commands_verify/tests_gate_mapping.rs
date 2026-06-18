@@ -137,9 +137,9 @@
 )]
 
 use crate::args::{DurabilityMode, VerifyProfile};
-use crate::exit_code::CliExitCode;
-use crate::commands_verify::types::{VerifyError, VerifyOk};
 use crate::commands_verify::exit_code_for_error;
+use crate::commands_verify::types::{VerifyError, VerifyOk};
+use crate::exit_code::CliExitCode;
 
 const FULL_PROFILE_EXPECTED_CHECKS: [&str; 15] = [
     "profile",

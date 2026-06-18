@@ -110,7 +110,10 @@ fn verify_emit_order(
                 kani::assert(false, "nodes_after must not precede nodes_before");
                 return;
             };
-            kani::cover!(emitted >= 2, "PO-004-K: emission order success path reachable");
+            kani::cover!(
+                emitted >= 2,
+                "PO-004-K: emission order success path reachable"
+            );
             kani::assert(emitted >= 2, "must emit start and join nodes");
             verify_monotonic(builder, nodes_before, nodes_after);
             if let Some(first) = builder.nodes.get(nodes_before) {

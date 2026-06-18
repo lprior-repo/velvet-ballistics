@@ -77,33 +77,33 @@ fn status_index_multiple_runs_same_state() {
     let key_1 = index_status_key(state, 100, run_1).expect("key 1 must succeed");
     let key_2 = index_status_key(state, 200, run_2).expect("key 2 must succeed");
     let key_3 = index_status_key(state, 300, run_3).expect("key 3 must succeed");
-        assert!(
-            journal
-                .index_status
-                .get(key_1.as_slice())
-                .expect("get 1")
-                .is_some(),
-            "status index entry 1 must exist at key {:?}",
-            key_1
-        );
-        assert!(
-            journal
-                .index_status
-                .get(key_2.as_slice())
-                .expect("get 2")
-                .is_some(),
-            "status index entry 2 must exist at key {:?}",
-            key_2
-        );
-        assert!(
-            journal
-                .index_status
-                .get(key_3.as_slice())
-                .expect("get 3")
-                .is_some(),
-            "status index entry 3 must exist at key {:?}",
-            key_3
-        );
+    assert!(
+        journal
+            .index_status
+            .get(key_1.as_slice())
+            .expect("get 1")
+            .is_some(),
+        "status index entry 1 must exist at key {:?}",
+        key_1
+    );
+    assert!(
+        journal
+            .index_status
+            .get(key_2.as_slice())
+            .expect("get 2")
+            .is_some(),
+        "status index entry 2 must exist at key {:?}",
+        key_2
+    );
+    assert!(
+        journal
+            .index_status
+            .get(key_3.as_slice())
+            .expect("get 3")
+            .is_some(),
+        "status index entry 3 must exist at key {:?}",
+        key_3
+    );
 }
 
 #[test]
@@ -126,33 +126,33 @@ fn workflow_index_multiple_runs_same_workflow() {
     let key_1 = index_workflow_key(workflow, run_1).expect("key 1 must succeed");
     let key_2 = index_workflow_key(workflow, run_2).expect("key 2 must succeed");
     let key_3 = index_workflow_key(workflow, run_3).expect("key 3 must succeed");
-        assert!(
-            journal
-                .index_workflow
-                .get(key_1.as_slice())
-                .expect("get 1")
-                .is_some(),
-            "workflow index entry 1 must exist at key {:?}",
-            key_1
-        );
-        assert!(
-            journal
-                .index_workflow
-                .get(key_2.as_slice())
-                .expect("get 2")
-                .is_some(),
-            "workflow index entry 2 must exist at key {:?}",
-            key_2
-        );
-        assert!(
-            journal
-                .index_workflow
-                .get(key_3.as_slice())
-                .expect("get 3")
-                .is_some(),
-            "workflow index entry 3 must exist at key {:?}",
-            key_3
-        );
+    assert!(
+        journal
+            .index_workflow
+            .get(key_1.as_slice())
+            .expect("get 1")
+            .is_some(),
+        "workflow index entry 1 must exist at key {:?}",
+        key_1
+    );
+    assert!(
+        journal
+            .index_workflow
+            .get(key_2.as_slice())
+            .expect("get 2")
+            .is_some(),
+        "workflow index entry 2 must exist at key {:?}",
+        key_2
+    );
+    assert!(
+        journal
+            .index_workflow
+            .get(key_3.as_slice())
+            .expect("get 3")
+            .is_some(),
+        "workflow index entry 3 must exist at key {:?}",
+        key_3
+    );
 }
 
 // --- Record builder (tests 36-40) ---

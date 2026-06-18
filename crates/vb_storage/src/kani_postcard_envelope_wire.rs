@@ -44,7 +44,11 @@ fn arbitrary_digest_bytes() -> [u8; DIGEST_BYTES] {
     kani::any()
 }
 
-fn header_with_fields(magic: u32, payload_len: u32, digest: [u8; DIGEST_BYTES]) -> [u8; RECORD_HEADER_BYTES] {
+fn header_with_fields(
+    magic: u32,
+    payload_len: u32,
+    digest: [u8; DIGEST_BYTES],
+) -> [u8; RECORD_HEADER_BYTES] {
     let mut header = [0_u8; RECORD_HEADER_BYTES];
     require_write(write_u32(&mut header, 0, magic));
     require_write(write_u16(&mut header, 4, CURRENT_SCHEMA_VERSION));

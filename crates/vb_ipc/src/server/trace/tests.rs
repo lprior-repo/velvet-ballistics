@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use crate::server::IpcResponse;
     use crate::IpcPayload;
     use crate::IpcTraceEventKind;
+    use crate::server::IpcResponse;
     // Items declared pub(crate) in the trace module submodules
     use crate::server::trace::event::trace_event_kind;
     use crate::server::trace::handler::handle_drain_trace;
     use crate::server::trace::response::{count_response_trace, typed_events_response};
-    use vb_runtime::trace::TraceEvent;
-    use vb_runtime::runtime::Runtime;
     use std::num::NonZeroUsize;
     use vb_core::RunId;
     use vb_core::ids::{SlotIdx, StepIdx};
+    use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
+    use vb_runtime::trace::TraceEvent;
 
     fn run_id(val: u64) -> RunId {
         RunId::new(val)

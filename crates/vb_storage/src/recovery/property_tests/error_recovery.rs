@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! vb-40cfh — recovery_replay proptest for `vb_storage::recovery::replay_events`.
 //!

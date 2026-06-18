@@ -244,8 +244,8 @@ fn test_source_length_ledger_valid_exception_suppresses_over_limit_file() -> sup
 }
 
 #[test]
-fn test_source_length_ledger_rejects_stale_duplicate_malformed_and_invalid_path_rows(
-) -> support::TestResult<()> {
+fn test_source_length_ledger_rejects_stale_duplicate_malformed_and_invalid_path_rows()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_long_file_tree(fixture.path())?;
     let ledger = support::source_ledger_text(&[
@@ -308,8 +308,8 @@ fn test_source_length_ledger_rejects_stale_duplicate_malformed_and_invalid_path_
 }
 
 #[test]
-fn test_quarterly_self_test_appends_current_quarter_when_count_does_not_increase(
-) -> support::TestResult<()> {
+fn test_quarterly_self_test_appends_current_quarter_when_count_does_not_increase()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_dedup_source_exception_fixture(
         fixture.path(),
@@ -343,8 +343,8 @@ fn test_quarterly_self_test_appends_current_quarter_when_count_does_not_increase
 }
 
 #[test]
-fn test_quarterly_self_test_is_idempotent_when_current_quarter_already_recorded(
-) -> support::TestResult<()> {
+fn test_quarterly_self_test_is_idempotent_when_current_quarter_already_recorded()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_dedup_source_exception_fixture(
         fixture.path(),
@@ -377,8 +377,8 @@ fn test_quarterly_self_test_is_idempotent_when_current_quarter_already_recorded(
 }
 
 #[test]
-fn test_quarterly_self_test_fails_before_append_when_current_count_exceeds_prior(
-) -> support::TestResult<()> {
+fn test_quarterly_self_test_fails_before_append_when_current_count_exceeds_prior()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_dedup_source_exception_fixture(
         fixture.path(),
@@ -476,8 +476,8 @@ fn test_quarterly_self_test_fails_when_non_marker_exception_rows_grow() -> suppo
 }
 
 #[test]
-fn test_quarterly_self_test_fails_when_current_quarter_count_grows_after_recording(
-) -> support::TestResult<()> {
+fn test_quarterly_self_test_fails_when_current_quarter_count_grows_after_recording()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_dedup_source_exception_fixture(
         fixture.path(),
@@ -524,8 +524,8 @@ fn test_quarterly_self_test_fails_when_current_quarter_count_grows_after_recordi
 }
 
 #[test]
-fn test_quarterly_self_test_does_not_count_comment_markers_as_exception_rows(
-) -> support::TestResult<()> {
+fn test_quarterly_self_test_does_not_count_comment_markers_as_exception_rows()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_clean_tree(fixture.path())?;
     support::write_split_or_retire_marker_ledgers(fixture.path(), 1, 0)?;
@@ -558,8 +558,8 @@ fn test_quarterly_self_test_does_not_count_comment_markers_as_exception_rows(
 }
 
 #[test]
-fn test_source_length_gate_terminates_on_hostile_braces_and_unmatched_quotes(
-) -> support::TestResult<()> {
+fn test_source_length_gate_terminates_on_hostile_braces_and_unmatched_quotes()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_adversarial_hot_tree(fixture.path())?;
     support::finish_git_fixture(fixture.path())?;
@@ -584,8 +584,8 @@ fn test_source_length_gate_terminates_on_hostile_braces_and_unmatched_quotes(
 }
 
 #[test]
-fn test_source_length_gate_terminates_with_exact_error_on_non_utf8_source(
-) -> support::TestResult<()> {
+fn test_source_length_gate_terminates_with_exact_error_on_non_utf8_source()
+-> support::TestResult<()> {
     let fixture = support::fixture_repo()?;
     support::write_non_utf8_tree(fixture.path())?;
     support::finish_git_fixture(fixture.path())?;
@@ -616,8 +616,8 @@ fn test_source_length_gate_terminates_with_exact_error_on_non_utf8_source(
 }
 
 #[test]
-fn test_moon_ci_wiring_runs_source_length_self_test_before_source_length_before_test(
-) -> support::TestResult<()> {
+fn test_moon_ci_wiring_runs_source_length_self_test_before_source_length_before_test()
+-> support::TestResult<()> {
     let moon = include_str!("../../../.moon.yml");
     let tasks = include_str!("../../../.moon/tasks/all.yml");
 
@@ -634,8 +634,8 @@ fn test_moon_ci_wiring_runs_source_length_self_test_before_source_length_before_
 }
 
 #[test]
-fn test_moon_ci_block_global_evidence_is_exact_when_canonical_ci_is_not_green(
-) -> support::TestResult<()> {
+fn test_moon_ci_block_global_evidence_is_exact_when_canonical_ci_is_not_green()
+-> support::TestResult<()> {
     let implementation = include_str!("../../../.beads/tier-a-0-001/implementation.md");
     let command_results =
         include_str!("../../../.beads/tier-a-0-001/state-12-command-results.jsonl");
@@ -662,8 +662,8 @@ fn test_moon_ci_block_global_evidence_is_exact_when_canonical_ci_is_not_green(
 }
 
 #[test]
-fn test_out_of_scope_vb_cli_xtask_changes_are_routed_with_touched_package_evidence(
-) -> support::TestResult<()> {
+fn test_out_of_scope_vb_cli_xtask_changes_are_routed_with_touched_package_evidence()
+-> support::TestResult<()> {
     let implementation = include_str!("../../../.beads/tier-a-0-001/implementation.md");
 
     for path in [
@@ -692,8 +692,8 @@ fn test_out_of_scope_vb_cli_xtask_changes_are_routed_with_touched_package_eviden
 }
 
 #[test]
-fn test_shellcheck_evidence_covers_all_touched_shell_artifacts_with_pinned_image(
-) -> support::TestResult<()> {
+fn test_shellcheck_evidence_covers_all_touched_shell_artifacts_with_pinned_image()
+-> support::TestResult<()> {
     let command_results =
         include_str!("../../../.beads/tier-a-0-001/state-12-command-results.jsonl");
 
@@ -735,7 +735,10 @@ fn test_xtask_source_length_gate_resolves_to_check_source_length_script() -> sup
         1,
         "xtask source-length name arm changed"
     );
-    assert!(gates
-        .contains("pub fn run_source_length_gate(bead_id: Option<&str>) -> Result<GateEvidence>"));
+    assert!(
+        gates.contains(
+            "pub fn run_source_length_gate(bead_id: Option<&str>) -> Result<GateEvidence>"
+        )
+    );
     Ok(())
 }

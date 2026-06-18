@@ -4,9 +4,9 @@
 //! Handles document-level field extraction (version, name, inputs, vars,
 //! secrets, result, examples) and orchestrates the full workflow parse.
 
+use crate::CompileError;
 use crate::ast::marks::AstMarks;
 use crate::ast::types::{AstExpression, AstMapEntry, AstValue, WorkflowAst};
-use crate::CompileError;
 use saphyr::Yaml;
 
 use super::expr::parse_expression;
@@ -15,10 +15,7 @@ use super::step::parse_steps;
 use super::trigger::parse_trigger;
 
 /// Parses a semantically validated YAML tree into the cold typed AST.
-pub(crate) fn parse_workflow_ast(
-    text: &str,
-    doc: &Yaml<'_>,
-) -> Result<WorkflowAst, CompileError> {
+pub(crate) fn parse_workflow_ast(text: &str, doc: &Yaml<'_>) -> Result<WorkflowAst, CompileError> {
     let marks = AstMarks::new(text)?;
     Ok(WorkflowAst {
         version: required_str(doc, "version")?.into(),

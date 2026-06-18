@@ -121,9 +121,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
 use crate::recovery::types::DigestCheckConfig;
@@ -1499,7 +1498,12 @@ fn extract_terminal_finds_last_terminal() {
     ];
 
     let terminal = extract_terminal(&events);
-    let Some(JournalEvent::RunFinished { run: term_run, result: term_result, .. }) = terminal else {
+    let Some(JournalEvent::RunFinished {
+        run: term_run,
+        result: term_result,
+        ..
+    }) = terminal
+    else {
         panic!("extract_terminal must return RunFinished for terminal events");
     };
     assert_eq!(term_run, &RunId::new(1), "terminal run must match");
@@ -2945,7 +2949,10 @@ fn extract_terminal_returns_some_for_finished_event() {
     let Some(terminal_ev) = result else {
         panic!("extract_terminal must return Some for events ending in RunFinished");
     };
-    assert_eq!(terminal_ev, &finished, "terminal event must be the RunFinished event");
+    assert_eq!(
+        terminal_ev, &finished,
+        "terminal event must be the RunFinished event"
+    );
 }
 
 #[test]
@@ -3362,11 +3369,15 @@ mod hydrate_run_frame_tests {
         assert_eq!(frame.step_count(), 1);
         assert_eq!(frame.slot_count(), 1);
         assert_eq!(
-            frame.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
             StepState::Succeeded
         );
         assert_eq!(
-            frame.read_slot(SlotIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(42)
         );
     }
@@ -3407,7 +3418,9 @@ mod hydrate_run_frame_tests {
         assert_eq!(frame.step_count(), 1);
         assert_eq!(frame.slot_count(), 1);
         assert_eq!(
-            frame.read_slot(SlotIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(7)
         );
     }
@@ -3471,7 +3484,10 @@ mod hydrate_run_frame_tests {
 
         let result = hydrate_run_frame_from_events(&events, run);
         let Ok(_frame) = result else {
-            panic!("legacy frame extra must not be corrupt taint, got: {:?}", result);
+            panic!(
+                "legacy frame extra must not be corrupt taint, got: {:?}",
+                result
+            );
         };
     }
 
@@ -3662,11 +3678,15 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
             StepState::Succeeded
         );
         assert_eq!(
-            frame.step_state(StepIdx::new(1)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(1))
+                .expect("must succeed for valid frame"),
             StepState::Running
         );
     }
@@ -3703,7 +3723,9 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.read_slot(SlotIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(2)
         );
     }
@@ -3739,13 +3761,19 @@ mod hydrate_run_frame_tests {
         let Ok(frame) = result else {
             panic!("expected Ok, got {:?}", result);
         };
-        assert_eq!(frame.read_taint(SlotIdx::new(0)).expect("must succeed for valid frame"), Taint::Secret);
+        assert_eq!(
+            frame
+                .read_taint(SlotIdx::new(0))
+                .expect("must succeed for valid frame"),
+            Taint::Secret
+        );
     }
 
     #[test]
     fn apply_tail_events_fails_closed_when_taint_read_fails() {
         let run = RunId::new(1);
-        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 0).expect("RunFrame::new must succeed for valid parameters");
+        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 0)
+            .expect("RunFrame::new must succeed for valid parameters");
         let tail = vec![JournalEvent::SlotWrittenEvent {
             run,
             seq: EventSeq::new(1),
@@ -3967,12 +3995,21 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.read_slot(SlotIdx::new(1)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(1))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(42)
         );
-        assert_eq!(frame.read_taint(SlotIdx::new(1)).expect("must succeed for valid frame"), Taint::Clean);
         assert_eq!(
-            frame.step_state(StepIdx::ZERO).expect("must succeed for valid frame"),
+            frame
+                .read_taint(SlotIdx::new(1))
+                .expect("must succeed for valid frame"),
+            Taint::Clean
+        );
+        assert_eq!(
+            frame
+                .step_state(StepIdx::ZERO)
+                .expect("must succeed for valid frame"),
             StepState::Succeeded
         );
         assert_eq!(frame.parallel_in_flight(), 0);
@@ -4160,11 +4197,15 @@ mod hydrate_run_frame_tests {
         assert_eq!(frame.parallel_in_flight(), 1);
         assert_eq!(frame.max_parallel_in_flight(), 2);
         assert_eq!(
-            frame.step_state(StepIdx::ZERO).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::ZERO)
+                .expect("must succeed for valid frame"),
             StepState::Succeeded
         );
         assert_eq!(
-            frame.read_slot(SlotIdx::new(2)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(2))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(77)
         );
     }
@@ -4190,11 +4231,15 @@ mod hydrate_run_frame_tests {
         };
         assert_eq!(frame.parallel_in_flight(), 0);
         assert_eq!(
-            frame.step_state(StepIdx::ZERO).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::ZERO)
+                .expect("must succeed for valid frame"),
             StepState::Succeeded
         );
         assert_eq!(
-            frame.read_slot(SlotIdx::new(1)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(1))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(88)
         );
     }
@@ -4290,7 +4335,9 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
             StepState::Waiting
         );
     }
@@ -4320,7 +4367,9 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
             StepState::Asking
         );
     }
@@ -4389,7 +4438,9 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
             StepState::Succeeded
         );
     }
@@ -4418,7 +4469,9 @@ mod hydrate_run_frame_tests {
             panic!("expected Ok, got {:?}", result);
         };
         assert_eq!(
-            frame.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
             StepState::Running
         );
     }
@@ -4506,11 +4559,15 @@ mod hydrate_run_frame_tests {
         };
         assert_eq!(frame.slot_count(), 2);
         assert_eq!(
-            frame.read_slot(SlotIdx::new(0)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(0))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(1)
         );
         assert_eq!(
-            frame.read_slot(SlotIdx::new(1)).expect("must succeed for valid frame"),
+            frame
+                .read_slot(SlotIdx::new(1))
+                .expect("must succeed for valid frame"),
             &SlotValue::I64(2)
         );
     }
@@ -4590,8 +4647,12 @@ mod hydrate_run_frame_tests {
             frame_from_journal.executed()
         );
         assert_eq!(
-            frame_from_snapshot.step_state(StepIdx::new(0)).expect("must succeed for valid frame"),
-            frame_from_journal.step_state(StepIdx::new(0)).expect("step_state must succeed for valid frame")
+            frame_from_snapshot
+                .step_state(StepIdx::new(0))
+                .expect("must succeed for valid frame"),
+            frame_from_journal
+                .step_state(StepIdx::new(0))
+                .expect("step_state must succeed for valid frame")
         );
 
         // NOTE: Full frame equality (==) would fail because:

@@ -33,7 +33,7 @@ fn write_batch_snapshot_round_trips() {
         .expect("batch.put_snapshot must succeed");
     batch.commit().expect("batch.commit must succeed");
 
-  let loaded = journal.snapshot(run, seq).expect("snapshot roundtrip");
+    let loaded = journal.snapshot(run, seq).expect("snapshot roundtrip");
     assert!(
         loaded.is_some(),
         "snapshot must be present after batch roundtrip"

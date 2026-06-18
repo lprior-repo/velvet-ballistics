@@ -27,7 +27,8 @@ fn kani_slot_from_text_closed() {
 
     match slot_from_text(text, 0, "test.field") {
         Ok(slot) => {
-            kani::assert(slot.as_usize() <= usize::from(u16::MAX),
+            kani::assert(
+                slot.as_usize() <= usize::from(u16::MAX),
                 "valid slot_from_text must produce in-range SlotIdx",
             );
         }
@@ -100,7 +101,8 @@ fn kani_choose_slot_unique() {
 
     if result.is_ok() {
         if let Ok(count) = builder.slot_count() {
-            kani::assert(count >= u16::from(branch_count),
+            kani::assert(
+                count >= u16::from(branch_count),
                 "slot_count must cover condition slots",
             );
         }

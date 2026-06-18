@@ -444,7 +444,11 @@ impl<'j> JournalWriteBatch<'j> {
     /// assuming the staged count is still valid.
     #[must_use]
     pub fn len(&self) -> usize {
-        if self.state.is_aborted() { 0 } else { self.inner.len() }
+        if self.state.is_aborted() {
+            0
+        } else {
+            self.inner.len()
+        }
     }
 
     /// Returns true if the batch contains no operations.

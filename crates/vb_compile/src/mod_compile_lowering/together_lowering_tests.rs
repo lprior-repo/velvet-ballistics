@@ -107,7 +107,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Unit tests for `emit_single_body_set` with `Together` primitives
@@ -464,7 +464,10 @@ fn emit_single_body_set_still_rejects_invalid_body_shapes() {
             &mut builder,
             false,
         );
-        assert!(matches!(result, Err(_)), "Invalid body shape should return Err");
+        assert!(
+            matches!(result, Err(_)),
+            "Invalid body shape should return Err"
+        );
         let err = result.unwrap_err();
         let first = err.iter().next().unwrap();
         assert!(matches!(first, crate::CompileError::StepFieldShape { .. }));
@@ -483,7 +486,10 @@ fn emit_single_body_set_still_rejects_invalid_body_shapes() {
             &mut builder,
             false,
         );
-assert!(matches!(result, Err(_)), "Multi-step body should return Err");
+        assert!(
+            matches!(result, Err(_)),
+            "Multi-step body should return Err"
+        );
         let err = result.unwrap_err();
         let first = err.iter().next().unwrap();
         assert!(matches!(first, crate::CompileError::StepFieldShape { .. }));
@@ -871,11 +877,7 @@ fn all_together_error_paths_return_structured_errors() {
             false,
         );
         // Post-implementation: zero-branch together returns StepFieldShape
-        assert!(
-            matches!(result, Err(_)),
-            "case '{}' must return Err",
-            desc
-        );
+        assert!(matches!(result, Err(_)), "case '{}' must return Err", desc);
         let errs = result.unwrap_err();
         let first = errs.iter().next().unwrap();
         assert!(

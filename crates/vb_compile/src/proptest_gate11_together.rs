@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: proptest_gate11_together.rs
 // Obligation: PO-008-P
 // Requirement: C-8 (Gate 11 validation compatibility)
@@ -121,7 +120,6 @@
 //
 // GOD RULE 1: Uses proptest strategies for random together bodies.
 // GOD RULE 2: Binds to actual emit_single_body_set and gate 11 validation.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

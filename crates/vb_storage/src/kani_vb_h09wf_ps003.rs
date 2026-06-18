@@ -44,7 +44,10 @@ fn ps_003_size_bound() {
                     Err(_) => u32::MAX,
                 };
                 kani::assert(reported == converted, "PayloadTooLarge.len matches input");
-                kani::assert(max == MAX_COMPILED_IR_BYTES, "PayloadTooLarge.max matches cap");
+                kani::assert(
+                    max == MAX_COMPILED_IR_BYTES,
+                    "PayloadTooLarge.max matches cap",
+                );
             }
             Ok(()) => kani::assert(false, "oversized payload must be rejected"),
             Err(_) => kani::assert(false, "size gate must use PayloadTooLarge"),

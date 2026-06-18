@@ -70,12 +70,14 @@ fn check_nested_next_correctness() {
 
             if is_last {
                 // Last position: next MUST be next_step (the aggregate terminal next)
-                kani::assert(ns_id.get() > body_id.get(),
+                kani::assert(
+                    ns_id.get() > body_id.get(),
                     "for last position: next_step must be after body step",
                 );
             } else {
                 // Intermediate: next MUST be next_body_step (the next sibling)
-                kani::assert(next_body_id.get() > body_id.get(),
+                kani::assert(
+                    next_body_id.get() > body_id.get(),
                     "for intermediate position: next_body_step must be after body step",
                 );
                 // next_body_step should be before next_step

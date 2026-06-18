@@ -92,36 +92,50 @@ fn vb_mrwe6_atomic_index_all_cases() {
     };
 
     let intent = verification_action_index_intent(&event);
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
         intent, VerificationActionIndexIntent::Put {
             action: classified_action,
             run: classified_run,
             step: classified_step,
-        } if classified_action == action && classified_run == run && classified_step == step));
-    kani::assert(matches!(
-        verification_event_and_index_keys_exist(&event),
-        Ok(true)));
+        } if classified_action == action && classified_run == run && classified_step == step),
+        "scheduled event stages matching put intent",
+    );
+    kani::assert(
+        matches!(verification_event_and_index_keys_exist(&event), Ok(true)),
+        "scheduled event and index keys exist",
+    );
 
     let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
     let index_staged = matches!(verification_event_and_index_keys_exist(&event), Ok(true));
-    kani::assert(event_staged == index_staged);
+    kani::assert(
+        event_staged == index_staged,
+        "event and index staging are atomic",
+    );
 
     let event_committed = matches!(commit, CommitResult::Success) && event_staged;
     let index_committed = matches!(commit, CommitResult::Success) && index_staged;
-    kani::assert(event_committed == index_committed);
+    kani::assert(
+        event_committed == index_committed,
+        "event and index commit status stay equal",
+    );
 
     match variant {
-        ScheduleVariant::Legacy => {
-            kani::assert(matches!(event, JournalEvent::ActionScheduled { .. }))
-        }
+        ScheduleVariant::Legacy => kani::assert(
+            matches!(event, JournalEvent::ActionScheduled { .. }),
+            "legacy variant produces ActionScheduled",
+        ),
         ScheduleVariant::Ticketed => {
-            kani::assert(matches!(event, JournalEvent::ActionScheduledTicket { .. }));
+            kani::assert(
+                matches!(event, JournalEvent::ActionScheduledTicket { .. }),
+                "ticketed variant produces ActionScheduledTicket",
+            );
         }
     }
 
     if matches!(commit, CommitResult::Failure) {
-        kani::assert(!event_committed);
-        kani::assert(!index_committed);
+        kani::assert(!event_committed, "failed commit does not commit event");
+        kani::assert(!index_committed, "failed commit does not commit index");
     }
 
     core::mem::forget(event);

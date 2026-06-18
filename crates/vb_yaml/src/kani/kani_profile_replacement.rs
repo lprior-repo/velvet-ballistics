@@ -12,7 +12,7 @@
 //! Bounds and assumptions are recorded in
 //! `.beads/vb-dzibx/proof-evidence.md`.
 
-use crate::{reject_yaml_1_1_ambiguous_scalars, YamlError};
+use crate::{YamlError, reject_yaml_1_1_ambiguous_scalars};
 
 const MAX_ASCII_SCALAR_BYTES: usize = 3;
 const MAX_ASCII_BYTE: u8 = 0x7f;

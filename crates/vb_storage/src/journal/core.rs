@@ -208,7 +208,7 @@ impl FjallJournal {
         self.persist_strict()
     }
 
-   /// Flushes all memtables to SST files synchronously and then syncs the WAL.
+    /// Flushes all memtables to SST files synchronously and then syncs the WAL.
     ///
     /// This method is critical for cross-process durability: when the `run` command
     /// exits, memtable data would normally be lost. By rotating and waiting for each

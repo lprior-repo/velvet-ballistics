@@ -445,10 +445,11 @@ fn lower_numeric_negation(
                 let raw = -f.get();
                 // For -0.0, abs(-0.0) == 0.0, so we store the positive form.
                 let abs_raw = raw.abs();
-                let abs_f = FiniteF64::new(abs_raw)
-                    .map_err(|_| CompileError::ExpressionLoweringUnsupported {
+                let abs_f = FiniteF64::new(abs_raw).map_err(|_| {
+                    CompileError::ExpressionLoweringUnsupported {
                         feature: "non-finite absolute value constant".into(),
-                    })?;
+                    }
+                })?;
                 let idx = push_expression_constant(ConstValue::F64(abs_f), constants)?;
                 ops.push(ExprOp::LoadConst(idx));
                 ops.push(ExprOp::Neg);

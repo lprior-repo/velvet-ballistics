@@ -3,10 +3,10 @@
 //! Functions for appending read bytes, reading frame headers,
 //! computing total frame length, and extracting payloads.
 
+use super::super::error::IpcServerError as ServerError;
 use crate::IpcError;
 use crate::IpcFrameHeader;
 use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
-use super::super::error::IpcServerError as ServerError;
 
 /// Appends read bytes into the read buffer with bounds checking.
 pub(crate) fn append_read_bytes(
@@ -37,9 +37,7 @@ pub(crate) fn append_read_bytes(
 }
 
 /// Reads the frame header from the read buffer.
-pub(crate) fn read_buffer_header(
-    read_buffer: &[u8],
-) -> Result<[u8; IPC_HEADER_LEN], ServerError> {
+pub(crate) fn read_buffer_header(read_buffer: &[u8]) -> Result<[u8; IPC_HEADER_LEN], ServerError> {
     let header_slice = read_buffer
         .get(..IPC_HEADER_LEN)
         .ok_or(ServerError::IncompleteFrame)?;
@@ -79,10 +77,7 @@ pub(crate) use super::super::error::IpcServerError;
 
 /// Test-only helper: checked_add shim for `append_read_bytes` overflow tests.
 #[cfg(test)]
-pub(crate) fn append_read_bytes_checked_add(
-    a: usize,
-    b: usize,
-) -> Result<usize, ServerError> {
+pub(crate) fn append_read_bytes_checked_add(a: usize, b: usize) -> Result<usize, ServerError> {
     a.checked_add(b).ok_or(ServerError::ReadBufferTooLarge)
 }
 

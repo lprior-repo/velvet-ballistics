@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 //! Recursive-descent parser for the cold expression grammar.
 
-use crate::expression::domain::{BinaryOp, ExpressionLiteral, ParsedExpression, UnaryOp};
-use crate::expression::lexer::{self, Token, TokenKind};
-use crate::expression::helpers::parse_helper;
 use crate::CompileError;
+use crate::expression::domain::{BinaryOp, ExpressionLiteral, ParsedExpression, UnaryOp};
+use crate::expression::helpers::parse_helper;
+use crate::expression::lexer::{self, Token, TokenKind};
 
 // ── Public entry point ───────────────────────────────────────────────────────
 
@@ -67,11 +67,12 @@ impl<'a> Parser<'a> {
         match self.current_kind() {
             TokenKind::Integer(value) => self.literal(ExpressionLiteral::I64(value)),
             TokenKind::Float(value) => {
-                let finite =
-                    vb_core::FiniteF64::new(value).map_err(|_| CompileError::ExpressionFloatOutOfRange {
+                let finite = vb_core::FiniteF64::new(value).map_err(|_| {
+                    CompileError::ExpressionFloatOutOfRange {
                         expression: Box::<str>::from(self.source),
                         index: self.current_index(),
-                    })?;
+                    }
+                })?;
                 self.literal(ExpressionLiteral::F64(finite))
             }
             TokenKind::String(value) => self.literal(ExpressionLiteral::Text(value)),

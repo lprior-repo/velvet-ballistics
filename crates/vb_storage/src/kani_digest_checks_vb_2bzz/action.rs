@@ -74,7 +74,10 @@ fn kani_check_action_abi_single_entry_mismatch() {
     match first_action_abi_mismatch(&entries) {
         Some((found_action, found_expected, found_digest)) => {
             kani::assert(found_action == action, "single mismatch action is returned");
-            kani::assert(found_expected == expected, "single mismatch expected digest");
+            kani::assert(
+                found_expected == expected,
+                "single mismatch expected digest",
+            );
             kani::assert(found_digest == found, "single mismatch found digest");
         }
         None => kani::assert(false, "single action ABI mismatch should be returned"),
@@ -91,7 +94,10 @@ fn kani_check_action_abi_all_match() {
     let digest = arbitrary_digest();
     let entries = [(action, digest, digest)];
     let result = first_action_abi_mismatch(&entries);
-    kani::assert(result.is_none(), "all-matching ABI list should have no mismatch");
+    kani::assert(
+        result.is_none(),
+        "all-matching ABI list should have no mismatch",
+    );
 }
 
 /// PPI-011: mismatch is in the last entry.

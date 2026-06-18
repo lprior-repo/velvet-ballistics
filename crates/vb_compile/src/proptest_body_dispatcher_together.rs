@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: proptest_body_dispatcher_together.rs
 // Obligation: PO-002-P, PO-003-P, PO-004-P, PO-005-P
 // Requirements: C-2 (dispatch), C-3 (width parity), C-4 (order), C-5 (nesting)
@@ -124,7 +123,6 @@
 //
 // GOD RULE 1: Uses proptest strategies for random together configurations.
 // GOD RULE 2: Binds to actual emit_single_body_set in part_04.rs.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

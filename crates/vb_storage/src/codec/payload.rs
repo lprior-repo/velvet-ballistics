@@ -6,6 +6,11 @@ use crate::{
     types::{RecordEnvelope, RecordHeader},
 };
 
+pub(crate) enum PayloadLenDecision {
+    Accepted(u32),
+    TooLarge { len: u32, max: u32 },
+}
+
 pub fn verify_digest_match(
     payload: &[u8],
     expected_digest: [u8; DIGEST_BYTES],
@@ -18,17 +23,23 @@ pub fn verify_digest_match(
 }
 
 pub(crate) fn payload_len_u32(len: usize, max: u32) -> Result<u32, JournalError> {
-    let payload_len = u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
-        len: 4_294_967_295,
-        max,
-    })?;
-    if payload_len > max {
-        return Err(JournalError::PayloadTooLarge {
+    match classify_payload_len(len, max) {
+        PayloadLenDecision::Accepted(payload_len) => Ok(payload_len),
+        PayloadLenDecision::TooLarge { len, max } => {
+            Err(JournalError::PayloadTooLarge { len, max })
+        }
+    }
+}
+
+pub(crate) fn classify_payload_len(len: usize, max: u32) -> PayloadLenDecision {
+    match u32::try_from(len) {
+        Ok(payload_len) if payload_len > max => PayloadLenDecision::TooLarge {
             len: payload_len,
             max,
-        });
+        },
+        Ok(payload_len) => PayloadLenDecision::Accepted(payload_len),
+        Err(_) => PayloadLenDecision::TooLarge { len: u32::MAX, max },
     }
-    Ok(payload_len)
 }
 
 pub(crate) fn encode_record_payload(

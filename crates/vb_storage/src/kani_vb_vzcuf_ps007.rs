@@ -19,6 +19,7 @@
 #[cfg(kani)]
 mod kani_bridge_ps007 {
     use crate::constants::{MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
+    use vb_core::limits::MAX_JOURNAL_BATCH_BYTES;
 
     /// C8: Storage limits are well-defined and non-zero.
     #[kani::proof]
@@ -36,35 +37,41 @@ mod kani_bridge_ps007 {
         kani::assert(RECORD_HEADER_LEN == 60, "RECORD_HEADER_LEN must be 60");
     }
 
-    /// C8: The storage default batch byte limit is 1_048_576.
-    /// Production binding: matches vb_core max_journal_batch_bytes.
+    /// C8: The core hard journal byte limit is positive and u32-bounded.
+    /// Production binding: storage does not enforce this byte budget directly;
+    /// runtime/core budget checks own byte-limit enforcement.
     #[kani::proof]
     fn check_default_batch_byte_limit() {
-        let default_limit: u64 = 1_048_576;
-        // Core policy value (must match vb_core)
-        let core_policy: u64 = 1_048_576;
+        let core_hard_limit = u64::from(MAX_JOURNAL_BATCH_BYTES);
 
+        kani::assert(core_hard_limit > 0, "core hard journal byte limit > 0");
         kani::assert(
-            default_limit == core_policy,
-            "storage default must match core policy",
+            core_hard_limit <= u64::from(u32::MAX),
+            "core hard journal byte limit fits u32",
         );
-        kani::assert(default_limit > 0, "default_limit > 0");
-        kani::assert(default_limit <= u64::MAX, "default_limit fits u64");
     }
 
     /// C8: Bridge arithmetic: limit must accommodate at least one
     /// max-size encoded event.
     #[kani::proof]
     fn check_bridge_accommodates_single_event() {
-        let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        let limit: u64 = 1_048_576;
+        let max_encoded = match u64::from(RECORD_HEADER_LEN)
+            .checked_add(u64::from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES))
+        {
+            Some(value) => value,
+            None => {
+                kani::assume(false);
+                return;
+            }
+        };
+        let limit = u64::from(MAX_JOURNAL_BATCH_BYTES);
         kani::assert(
             max_encoded <= limit,
-            "max encoded ({max_encoded}) must fit in default limit ({limit})",
+            "max encoded journal event must fit in core hard byte limit",
         );
 
         // Verify with checked_add
-        let result = 0u64.checked_add(max_encoded);
+        let result = 0_u64.checked_add(max_encoded);
         match result {
             Some(v) => kani::assert(v <= limit, "result exceeds limit"),
             None => {
@@ -98,27 +105,47 @@ mod kani_bridge_ps007 {
     /// C8: The bridge value must be cast-safe to u32.
     #[kani::proof]
     fn check_bridge_value_u32_safe() {
-        let limit: u64 = 1_048_576;
+        let limit = u64::from(MAX_JOURNAL_BATCH_BYTES);
         // The limit fits in u32 (for payload_len comparison)
         kani::assert(
-            limit <= u32::MAX as u64,
+            limit <= u64::from(u32::MAX),
             "default limit must fit in u32 for payload comparisons",
         );
         // Round-trip
-        let as_u32: u32 = limit as u32;
-        kani::assert(as_u32 as u64 == limit, "limit round-trips through u32");
+        let as_u32 = match u32::try_from(limit) {
+            Ok(value) => value,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        };
+        kani::assert(u64::from(as_u32) == limit, "limit round-trips through u32");
     }
 
-    /// C8: MAX_BATCH_COUNT * typical_event_size must not overflow u64.
+    /// C8: MAX_BATCH_COUNT * typical_event_size must not overflow u64 and
+    /// remains within the core hard byte budget for the documented typical case.
     #[kani::proof]
     fn check_batch_total_byte_limit() {
         let typical_event_bytes: u64 = 200; // ~60 header + ~140 payload
-        let max_batch_bytes_if_all_max = MAX_BATCH_COUNT as u64 * typical_event_bytes;
-        // 10_000 * 200 = 2_000_000, which is > default limit
-        // This means the byte budget will naturally gate before count.
+        let max_batch_count = match u64::try_from(MAX_BATCH_COUNT) {
+            Ok(value) => value,
+            Err(_) => {
+                kani::assume(false);
+                return;
+            }
+        };
+        let max_batch_bytes_if_all_max = match max_batch_count.checked_mul(typical_event_bytes) {
+            Some(value) => value,
+            None => {
+                kani::assume(false);
+                return;
+            }
+        };
+        // 10_000 * 200 = 2_000_000, below the 16 MiB core hard byte limit.
+        // Storage separately enforces count; runtime/core owns byte budgeting.
         kani::assert(
-            max_batch_bytes_if_all_max > 1_048_576,
-            "batch count limit should not be the primary gate",
+            max_batch_bytes_if_all_max <= u64::from(MAX_JOURNAL_BATCH_BYTES),
+            "typical full batch remains within core hard byte limit",
         );
     }
 }

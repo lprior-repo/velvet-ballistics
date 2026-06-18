@@ -7,12 +7,12 @@ use std::path::{Path, PathBuf};
 use rustix::fs::{AtFlags, CWD, Mode, OFlags, fstat, fsync, linkat, openat, statat, unlinkat};
 use serde_json::Value;
 
-use super::deliver_error::{
-    DeliverSinkError, MODE, MAX_PATH_BYTES, MAX_TEMP_STAGE_ATTEMPTS,
-    MINIMUM_STAGE_BASE_NAME, PublishedPathIdentity, to_io_error, to_rustix_io_error,
-};
-use super::deliver_target::{DeliverTarget, DeliverFileTarget};
 use super::deliver_error::TempStageCreation;
+use super::deliver_error::{
+    DeliverSinkError, MAX_PATH_BYTES, MAX_TEMP_STAGE_ATTEMPTS, MINIMUM_STAGE_BASE_NAME, MODE,
+    PublishedPathIdentity, to_io_error, to_rustix_io_error,
+};
+use super::deliver_target::{DeliverFileTarget, DeliverTarget};
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -247,8 +247,10 @@ fn cleanup_link_path(parent_dir: &OwnedFd, path: &OsStr) -> bool {
 
     match unlinkat(parent_dir, path, AtFlags::empty()) {
         Ok(()) => true,
-        Err(error) => error == rustix::io::Errno::NOENT
-            || super::deliver_error::path_is_absent(parent_dir, path),
+        Err(error) => {
+            error == rustix::io::Errno::NOENT
+                || super::deliver_error::path_is_absent(parent_dir, path)
+        }
     }
 }
 
@@ -258,12 +260,16 @@ fn ensure_target_parent_current(target: &DeliverFileTarget) -> Result<(), Delive
 
 fn sync_parent_directory(parent_dir: &OwnedFd) -> Result<(), DeliverSinkError> {
     #[cfg(test)]
-    if let Some(result) = crate::deliver_sink::deliver_test_support::test_support::next_sync_result() {
+    if let Some(result) =
+        crate::deliver_sink::deliver_test_support::test_support::next_sync_result()
+    {
         return result;
     }
 
     #[cfg(all(not(test), feature = "instrumented-cli"))]
-    if let Some(result) = crate::deliver_sink::deliver_test_support::debug_test_support::next_sync_result() {
+    if let Some(result) =
+        crate::deliver_sink::deliver_test_support::debug_test_support::next_sync_result()
+    {
         return result;
     }
 
@@ -418,8 +424,10 @@ fn maybe_change_parent_path_before_link(
     target: &DeliverFileTarget,
 ) -> Result<(), DeliverSinkError> {
     let parent = target.delivery_parent()?;
-    crate::deliver_sink::deliver_test_support::test_support::maybe_change_parent_path_before_link(parent)
-        .map_err(|error| DeliverSinkError::Io(error.kind()))?;
+    crate::deliver_sink::deliver_test_support::test_support::maybe_change_parent_path_before_link(
+        parent,
+    )
+    .map_err(|error| DeliverSinkError::Io(error.kind()))?;
     Ok(())
 }
 
@@ -464,5 +472,3 @@ pub(super) fn write_json_line_to_writer<W: Write>(
     writer.write_all(b"\n").map_err(to_io_error)?;
     writer.flush().map_err(to_io_error)
 }
-
-

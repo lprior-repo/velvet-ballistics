@@ -24,13 +24,15 @@ mod tests;
 
 // Core types used by the gate APIs.
 pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-pub use vb_core::workflow::{CompiledNode, 
-    AccessorProgram, CompiledNodeKind, ExprOp, ExprProgram, PathSegment, WorkflowParts,
+pub use vb_core::workflow::{
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
+    WorkflowParts,
 };
 
 // Gate 7: Expression stack depth bounded.
 pub use gate_07::{
-    compute_stack_depth, stack_effect, validate_gate_07_expression_stack_depth, MAX_CAPABILITY_NAME_BYTES,
+    MAX_CAPABILITY_NAME_BYTES, compute_stack_depth, stack_effect,
+    validate_gate_07_expression_stack_depth,
 };
 
 // Gate 8: Accessor path segments are valid symbols.

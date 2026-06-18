@@ -20,7 +20,8 @@ fn vbjpq733_unsupported_union_all_combos() {
         action_payloads: kani::any(),
     };
     let u = a.union(b);
-    kani::assert(a.union_matches_flags(b, u),
+    kani::assert(
+        a.union_matches_flags(b, u),
         "production union_matches_flags holds",
     );
 }
@@ -60,10 +61,12 @@ fn vbjpq733_unsupported_union_supported_identity() {
         slot_taint: kani::any(),
         action_payloads: kani::any(),
     };
-    kani::assert(a.union(UnsupportedRecoveryState::SUPPORTED) == a,
+    kani::assert(
+        a.union(UnsupportedRecoveryState::SUPPORTED) == a,
         "SUPPORTED right identity",
     );
-    kani::assert(UnsupportedRecoveryState::SUPPORTED.union(a) == a,
+    kani::assert(
+        UnsupportedRecoveryState::SUPPORTED.union(a) == a,
         "SUPPORTED left identity",
     );
 }
@@ -73,7 +76,8 @@ fn vbjpq733_unsupported_union_supported_identity() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn vbjpq733_is_fully_supported_supported_constant() {
-    kani::assert(UnsupportedRecoveryState::SUPPORTED.is_fully_supported(),
+    kani::assert(
+        UnsupportedRecoveryState::SUPPORTED.is_fully_supported(),
         "production SUPPORTED.is_fully_supported() == true",
     );
 }
@@ -87,8 +91,7 @@ fn vbjpq733_is_fully_supported_all_states() {
         action_payloads: kani::any(),
     };
     let result = state.is_fully_supported();
-    let expected =
-        !state.slot_values && !state.slot_taint && !state.action_payloads;
+    let expected = !state.slot_values && !state.slot_taint && !state.action_payloads;
     kani::assert(
         result == expected,
         "production is_fully_supported matches all-false check",

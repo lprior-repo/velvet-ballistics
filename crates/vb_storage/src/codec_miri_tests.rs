@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Miri-testable harnesses proving decode functions handle truncated/malformed data safely.

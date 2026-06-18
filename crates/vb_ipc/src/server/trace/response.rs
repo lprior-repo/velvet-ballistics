@@ -5,8 +5,8 @@
 
 use vb_runtime::trace::TraceEvent;
 
-use super::event::trace_event_kind;
 use super::super::IpcResponse;
+use super::event::trace_event_kind;
 use crate::IpcTraceEvent;
 
 /// Internal discriminator for response-kind dispatch.

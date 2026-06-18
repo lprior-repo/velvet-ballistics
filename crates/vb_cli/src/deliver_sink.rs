@@ -14,19 +14,19 @@
 //! └── deliver_test.rs     — unit tests
 //! ```
 
-pub use deliver_error::PUBLISH_STATE_UNKNOWN_MESSAGE;
-pub(crate) use deliver_error::DeliverSinkError;
-pub(crate) use deliver_target::{DeliverFileTarget, DeliverTarget, parse_deliver_target};
 pub(crate) use atomic_publish::write_json_line;
+pub(crate) use deliver_error::DeliverSinkError;
+pub use deliver_error::PUBLISH_STATE_UNKNOWN_MESSAGE;
+pub(crate) use deliver_target::{DeliverFileTarget, DeliverTarget, parse_deliver_target};
 
 // Internal sub-modules (not re-exported publicly)
-mod deliver_error;
-mod deliver_target;
 mod atomic_publish;
-#[cfg(test)]
-mod deliver_test_support;
 #[cfg(all(not(test), feature = "instrumented-cli"))]
 mod deliver_debug_test_support;
+mod deliver_error;
+mod deliver_target;
+#[cfg(test)]
+mod deliver_test_support;
 
 #[cfg(test)]
 mod deliver_test;

@@ -90,39 +90,62 @@ fn vb_mrwe6_queue_intent_preservation() {
 
     let keys_exist = verification_event_and_index_keys_exist(&event);
 
-    kani::assert(matches!(
-        (class, intent),
-        (EventClass::Scheduled, SideIndexIntent::PutPending)
-            | (EventClass::Resolution, SideIndexIntent::RemovePending)
-            | (EventClass::Unrelated, SideIndexIntent::None)));
+    kani::assert(
+        matches!(
+            (class, intent),
+            (EventClass::Scheduled, SideIndexIntent::PutPending)
+                | (EventClass::Resolution, SideIndexIntent::RemovePending)
+                | (EventClass::Unrelated, SideIndexIntent::None)
+        ),
+        "class maps to required side-index intent",
+    );
 
     match class {
         EventClass::Scheduled => {
-            kani::assert(matches!(intent, SideIndexIntent::PutPending));
-            kani::assert(matches!(
+            kani::assert(
+                matches!(intent, SideIndexIntent::PutPending),
+                "scheduled class requires put intent",
+            );
+            kani::assert(
+                matches!(
                 production_intent, VerificationActionIndexIntent::Put {
                     action: classified_action,
                     run: classified_run,
                     step: classified_step,
-                } if classified_action == action && classified_run == run && classified_step == step));
-            kani::assert(matches!(keys_exist, Ok(true)));
+                } if classified_action == action && classified_run == run && classified_step == step),
+                "scheduled production intent preserves key fields",
+            );
+            kani::assert(matches!(keys_exist, Ok(true)), "scheduled keys exist");
         }
         EventClass::Resolution => {
-            kani::assert(matches!(intent, SideIndexIntent::RemovePending));
-            kani::assert(matches!(
+            kani::assert(
+                matches!(intent, SideIndexIntent::RemovePending),
+                "resolution class requires remove intent",
+            );
+            kani::assert(
+                matches!(
                 production_intent, VerificationActionIndexIntent::Delete {
                     action: classified_action,
                     run: classified_run,
                     step: classified_step,
-                } if classified_action == action && classified_run == run && classified_step == step));
-            kani::assert(matches!(keys_exist, Ok(true)));
+                } if classified_action == action && classified_run == run && classified_step == step),
+                "resolution production intent preserves key fields",
+            );
+            kani::assert(matches!(keys_exist, Ok(true)), "resolution keys exist");
         }
         EventClass::Unrelated => {
-            kani::assert(matches!(intent, SideIndexIntent::None));
-            kani::assert(matches!(
-                production_intent,
-                VerificationActionIndexIntent::None));
-            kani::assert(matches!(keys_exist, Ok(false)));
+            kani::assert(
+                matches!(intent, SideIndexIntent::None),
+                "unrelated class requires no intent",
+            );
+            kani::assert(
+                matches!(production_intent, VerificationActionIndexIntent::None),
+                "unrelated production intent is none",
+            );
+            kani::assert(
+                matches!(keys_exist, Ok(false)),
+                "unrelated event has no index key",
+            );
         }
     }
 

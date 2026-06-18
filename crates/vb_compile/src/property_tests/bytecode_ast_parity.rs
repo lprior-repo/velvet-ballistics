@@ -121,9 +121,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: bytecode_ast_parity.rs
 // Bead: vb-cs3802 — P0: bytecode/AST parity property test
 // Master plan: §38 Property Tests, "Bytecode/AST parity" row.
@@ -152,7 +151,6 @@
 //             evaluator diverges from the recursive AST evaluator on any
 //             input the lowering accepts.
 // GOD RULE 4: bounded recursion depth, no loop, exhaustive property.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

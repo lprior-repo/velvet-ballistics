@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Unit tests for canonical_digest and digest_step_primitive
 // Bead: vb-xi2f.34 — Finish Digest Semantics
 //
@@ -120,7 +119,6 @@
 //
 // Test plan: UT-1 through UT-8 (Section 9.1)
 // Contract clauses: C1–C10
-
 #![forbid(unsafe_code)]
 
 use super::*;

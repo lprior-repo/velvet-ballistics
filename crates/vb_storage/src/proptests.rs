@@ -126,9 +126,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
@@ -1127,7 +1126,10 @@ fn remove_artifact_not_found_returns_error() {
     let missing = vb_core::WorkflowDigest::from_bytes([0xFF; 32]);
     let result = journal.remove_artifact(missing);
     let Err(JournalError::ArtifactNotFound { digest }) = result else {
-        panic!("removing non-existent artifact must return Err(ArtifactNotFound), got {:?}", result);
+        panic!(
+            "removing non-existent artifact must return Err(ArtifactNotFound), got {:?}",
+            result
+        );
     };
     assert_eq!(digest, missing, "error should contain the requested digest");
 }

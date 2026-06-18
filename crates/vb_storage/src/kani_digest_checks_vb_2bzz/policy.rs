@@ -77,7 +77,10 @@ fn kani_check_policy_single_entry_mismatch() {
     match first_policy_mismatch(&entries) {
         Some((found_step, found_expected, found_digest)) => {
             kani::assert(found_step == step, "single mismatch step is returned");
-            kani::assert(found_expected == expected, "single mismatch expected digest");
+            kani::assert(
+                found_expected == expected,
+                "single mismatch expected digest",
+            );
             kani::assert(found_digest == found, "single mismatch found digest");
         }
         None => kani::assert(false, "single policy mismatch should be returned"),

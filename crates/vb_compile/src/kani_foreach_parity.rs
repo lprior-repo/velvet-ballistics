@@ -182,49 +182,57 @@ fn foreach_body_setconst_next_edge() {
     let parts = build_foreach_parts();
 
     // Node 0 = ForEachStart
-    kani::assert(matches!(parts.nodes[0].kind, CompiledNodeKind::ForEachStart { .. }),
+    kani::assert(
+        matches!(parts.nodes[0].kind, CompiledNodeKind::ForEachStart { .. }),
         "node 0 must be ForEachStart",
     );
 
     // Node 1 = SetConst — the fix target
-    kani::assert(matches!(parts.nodes[1].kind, CompiledNodeKind::SetConst { .. }),
+    kani::assert(
+        matches!(parts.nodes[1].kind, CompiledNodeKind::SetConst { .. }),
         "node 1 must be SetConst (body step)",
     );
 
     // THE FIX ASSERTION: node 1's next edge must be Some(StepIdx(2))
     let node_1_next = parts.nodes[1].next;
-    kani::assert(node_1_next == Some(StepIdx::new(2)),
+    kani::assert(
+        node_1_next == Some(StepIdx::new(2)),
         "PRE-002: body SetConst.next must be Some(ForEachNext_step) = StepIdx(2). \
          This is the vb-a001 fix: lower_canonical_for_each passes Some(next_step) \
          to emit_single_body_set.",
     );
 
     // Node 2 = ForEachNext
-    kani::assert(matches!(parts.nodes[2].kind, CompiledNodeKind::ForEachNext { .. }),
+    kani::assert(
+        matches!(parts.nodes[2].kind, CompiledNodeKind::ForEachNext { .. }),
         "node 2 must be ForEachNext",
     );
 
     // ForEachNext.body must point back to node 1 (body step)
     if let CompiledNodeKind::ForEachNext { body, .. } = &parts.nodes[2].kind {
-        kani::assert(*body == StepIdx::new(1),
+        kani::assert(
+            *body == StepIdx::new(1),
             "ForEachNext.body must point to body SetConst (StepIdx(1))",
         );
     }
 
     // ForEachStart.done and ForEachNext.done must point to node 3 (Finish)
     if let CompiledNodeKind::ForEachStart { done, .. } = &parts.nodes[0].kind {
-        kani::assert(*done == StepIdx::new(3),
+        kani::assert(
+            *done == StepIdx::new(3),
             "ForEachStart.done must point to Finish (StepIdx(3))",
         );
     }
     if let CompiledNodeKind::ForEachNext { done, .. } = &parts.nodes[2].kind {
-        kani::assert(*done == StepIdx::new(3),
+        kani::assert(
+            *done == StepIdx::new(3),
             "ForEachNext.done must point to Finish (StepIdx(3))",
         );
     }
 
     // Node 3 = Finish
-    kani::assert(matches!(parts.nodes[3].kind, CompiledNodeKind::Finish { .. }),
+    kani::assert(
+        matches!(parts.nodes[3].kind, CompiledNodeKind::Finish { .. }),
         "node 3 must be Finish",
     );
 }

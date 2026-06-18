@@ -252,21 +252,24 @@ use std::collections::VecDeque;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use super::atomic_publish::{
+    hashed_temp_name, preferred_temp_name, temp_stage_name, write_json_line,
+};
 use super::deliver_error::{DeliverSinkError, MAX_TEMP_STAGE_ATTEMPTS};
 use super::deliver_target::{DeliverTarget, parse_deliver_target};
-use super::atomic_publish::{write_json_line, preferred_temp_name, hashed_temp_name, temp_stage_name};
-use super::deliver_test_support::test_support::{self, FinalPathChange, HookConfig, ParentChange, PostCommitParentChange};
+use super::deliver_test_support::test_support::{
+    self, FinalPathChange, HookConfig, ParentChange, PostCommitParentChange,
+};
 
 #[cfg(unix)]
 #[test]
-fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path()
--> Result<(), String> {
+fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path() -> Result<(), String>
+{
     let temp_dir = repo_tempdir("vb-deliver-parse-symlink-")?;
     let real_parent = temp_dir.path().join("real-parent");
     std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;
     let alias_parent = temp_dir.path().join("alias-parent");
-    std::os::unix::fs::symlink(&real_parent, &alias_parent)
-        .map_err(|error| error.to_string())?;
+    std::os::unix::fs::symlink(&real_parent, &alias_parent).map_err(|error| error.to_string())?;
 
     let requested_path = alias_parent.join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&requested_path)?);
@@ -292,14 +295,13 @@ fn parse_deliver_target_resolves_parent_symlink_before_storing_new_file_path()
 
 #[cfg(unix)]
 #[test]
-fn write_json_line_reports_parent_changed_when_parent_path_swaps_before_write()
--> Result<(), String> {
+fn write_json_line_reports_parent_changed_when_parent_path_swaps_before_write() -> Result<(), String>
+{
     let temp_dir = repo_tempdir("vb-deliver-parent-swap-")?;
     let real_parent = temp_dir.path().join("real-parent");
     std::fs::create_dir(&real_parent).map_err(|error| error.to_string())?;
     let alias_parent = temp_dir.path().join("alias-parent");
-    std::os::unix::fs::symlink(&real_parent, &alias_parent)
-        .map_err(|error| error.to_string())?;
+    std::os::unix::fs::symlink(&real_parent, &alias_parent).map_err(|error| error.to_string())?;
 
     let requested_path = alias_parent.join("agent-context.jsonl");
     let target = parse_deliver_target(&format!("file:{}", path_text(&requested_path)?))
@@ -394,8 +396,8 @@ fn write_json_line_surfaces_existing_file_after_linkat_exist_when_temp_unlink_al
 }
 
 #[test]
-fn write_json_line_reports_staging_unavailable_when_all_stage_names_are_taken()
--> Result<(), String> {
+fn write_json_line_reports_staging_unavailable_when_all_stage_names_are_taken() -> Result<(), String>
+{
     let temp_dir = repo_tempdir("vb-deliver-stage-exhaust-")?;
     let deliver_path = temp_dir.path().join("agent-context.jsonl");
     occupy_all_stage_names(&deliver_path)?;
@@ -500,12 +502,10 @@ fn write_json_line_reports_parent_changed_when_parent_path_swaps_after_staging_b
     let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
         .map_err(|error| error.to_string())?;
     let _hooks = test_support::install(HookConfig {
-        before_link_parent_change: Some(
-            PostCommitParentChange::ReplaceResolvedPathWithSymlink {
-                moved_to: moved_parent.clone(),
-                replacement: replacement_parent.clone(),
-            },
-        ),
+        before_link_parent_change: Some(PostCommitParentChange::ReplaceResolvedPathWithSymlink {
+            moved_to: moved_parent.clone(),
+            replacement: replacement_parent.clone(),
+        }),
         ..Default::default()
     });
 
@@ -815,12 +815,10 @@ fn write_json_line_preserves_published_file_when_parent_path_swaps_after_final_s
     let target = parse_deliver_target(&format!("file:{}", path_text(&deliver_path)?))
         .map_err(|error| error.to_string())?;
     let _hooks = test_support::install(HookConfig {
-        post_commit_parent_change: Some(
-            PostCommitParentChange::ReplaceResolvedPathWithSymlink {
-                moved_to: moved_parent.clone(),
-                replacement: replacement_parent.clone(),
-            },
-        ),
+        post_commit_parent_change: Some(PostCommitParentChange::ReplaceResolvedPathWithSymlink {
+            moved_to: moved_parent.clone(),
+            replacement: replacement_parent.clone(),
+        }),
         sync_results: VecDeque::from([Ok(()), Ok(())]),
         ..Default::default()
     });
@@ -1024,8 +1022,7 @@ fn occupy_all_stage_names(path: &Path) -> Result<(), String> {
     for base_name in base_names {
         for attempt in 0..MAX_TEMP_STAGE_ATTEMPTS {
             let candidate = resolved_parent.join(temp_stage_name(&base_name, attempt));
-            std::fs::write(&candidate, b"occupied stage\n")
-                .map_err(|error| error.to_string())?;
+            std::fs::write(&candidate, b"occupied stage\n").map_err(|error| error.to_string())?;
         }
     }
 

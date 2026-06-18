@@ -103,11 +103,7 @@ fn adversarial_batch_commit_then_reopen_preserves_all_keys() {
     );
     assert_eq!(header.unwrap().run, run);
     let blob = journal2.blob(blob_digest).expect("get blob");
-    assert!(
-        blob.is_some(),
-        "blob must survive reopen, got {:?}",
-        blob
-    );
+    assert!(blob.is_some(), "blob must survive reopen, got {:?}", blob);
     assert_eq!(blob.unwrap().bytes, b"blob".to_vec());
 }
 

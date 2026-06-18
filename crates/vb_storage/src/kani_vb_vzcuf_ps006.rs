@@ -66,24 +66,36 @@ mod kani_byte_limit_ps006 {
             None => {
                 // Overflow: typed rejection (no panic)
                 // Verify that overflow detection works correctly
-                kani::assert(
-                    staged as u128 + candidate as u128 > u64::MAX as u128,
-                    "overflow must occur when sum exceeds u64::MAX",
-                );
+                match u128::from(staged).checked_add(u128::from(candidate)) {
+                    Some(sum) => kani::assert(
+                        sum > u128::from(u64::MAX),
+                        "overflow must occur when sum exceeds u64::MAX",
+                    ),
+                    None => kani::assert(false, "u64 widened addition fits in u128"),
+                }
             }
         }
     }
 
-    /// C1: The maximum single-event encoded size fits in the default limit.
+    /// C1: The default payload limit is payload-only; encoded byte admission
+    /// must account for the fixed record header separately.
     #[kani::proof]
     fn check_single_event_fits_default_limit() {
-        let default_limit: u64 = 1_048_576;
-        let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        // 60 + 1_048_576 = 1_048_636
-        kani::assert(
-            max_encoded <= default_limit,
-            "max single-event encoded must fit in default limit",
-        );
+        let default_payload_limit = u64::from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let max_encoded = u64::from(RECORD_HEADER_LEN).checked_add(default_payload_limit);
+        match max_encoded {
+            Some(value) => {
+                kani::assert(
+                    value > default_payload_limit,
+                    "encoded max includes header above payload-only limit",
+                );
+                kani::assert(
+                    value.checked_sub(default_payload_limit) == Some(u64::from(RECORD_HEADER_LEN)),
+                    "encoded overhead equals record header length",
+                );
+            }
+            None => kani::assert(false, "header plus max payload must not overflow"),
+        }
     }
 
     /// C1: Multiple events within limit.

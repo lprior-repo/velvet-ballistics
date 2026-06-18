@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: proptest_finish_digest.rs
 // Bead: vb-xi2f.34 — P1: digest covers finish semantics
 // Proof obligations:
@@ -127,7 +126,6 @@
 // internally calls canonical_digest() and stores the result in
 // CompiledWorkflow.digest(). All property tests verify digest properties
 // through the compilation pipeline.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

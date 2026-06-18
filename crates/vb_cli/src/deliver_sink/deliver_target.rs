@@ -1,11 +1,11 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-use rustix::fs::{AtFlags, FileType, Mode, OFlags, openat, statat, CWD};
+use rustix::fs::{AtFlags, CWD, FileType, Mode, OFlags, openat, statat};
 use std::os::fd::OwnedFd;
 
-use super::deliver_error::{DeliverSinkError, MAX_PATH_BYTES};
 use super::deliver_error::to_rustix_io_error;
+use super::deliver_error::{DeliverSinkError, MAX_PATH_BYTES};
 
 const STDOUT_TARGET: &str = "stdout";
 const FILE_SCHEME: &str = "file";
@@ -105,7 +105,8 @@ fn open_and_resolve_parent(parent: &Path) -> Result<(OwnedFd, PathBuf), DeliverS
     let parent_dir = open_parent_directory(parent)?;
     #[cfg(test)]
     #[allow(clippy::let_underscore_must_use)]
-    let _ = crate::deliver_sink::deliver_test_support::test_support::maybe_change_parent_path(parent);
+    let _ =
+        crate::deliver_sink::deliver_test_support::test_support::maybe_change_parent_path(parent);
     let resolved_parent = canonicalize_parent_path(parent)?;
     if is_blocked_root(&resolved_parent) {
         return Err(DeliverSinkError::BlockedPath);
@@ -124,7 +125,11 @@ fn validate_resolved_target(
         return Err(DeliverSinkError::OverlongPath);
     }
 
-    if path_with_name_len(resolved_parent, OsStr::new(super::deliver_error::MINIMUM_STAGE_BASE_NAME))? > MAX_PATH_BYTES {
+    if path_with_name_len(
+        resolved_parent,
+        OsStr::new(super::deliver_error::MINIMUM_STAGE_BASE_NAME),
+    )? > MAX_PATH_BYTES
+    {
         return Err(DeliverSinkError::OverlongPath);
     }
 
@@ -200,7 +205,10 @@ fn unlink_at(parent_dir: &OwnedFd, path: &OsStr) -> Result<(), DeliverSinkError>
     rustix::fs::unlinkat(parent_dir, path, AtFlags::empty()).map_err(to_rustix_io_error)
 }
 
-pub(super) fn path_with_name_len(parent: &Path, file_name: &OsStr) -> Result<usize, DeliverSinkError> {
+pub(super) fn path_with_name_len(
+    parent: &Path,
+    file_name: &OsStr,
+) -> Result<usize, DeliverSinkError> {
     let separator = if parent == Path::new("/") { 0 } else { 1 };
     parent
         .as_os_str()

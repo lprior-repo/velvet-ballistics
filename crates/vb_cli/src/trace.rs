@@ -3,7 +3,7 @@
 
 use crate::args::{ActionRegistryMode, Command, OutputFormat, ParseError, StepTarget};
 use crate::cli_envelope;
-use crate::commands_journal;
+use crate::commands_journal::{TraceEntry, TraceFilters, build_trace, filter_trace};
 use crate::exit_code::CliExitCode;
 use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
@@ -19,7 +19,7 @@ pub(crate) fn cmd_trace(
     run_id: &str,
     db: &std::path::Path,
     output: OutputFormat,
-    filters: crate::commands_journal::TraceFilters,
+    filters: TraceFilters,
 ) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
@@ -44,10 +44,7 @@ pub(crate) fn cmd_trace(
         }
         return CliExitCode::ValidationFailed.into();
     }
-    let trace = crate::commands_journal::filter_trace(
-        crate::commands_journal::build_trace(&events),
-        filters,
-    );
+    let trace = filter_trace(build_trace(&events), filters);
     if trace.is_empty() {
         if output != OutputFormat::Text {
             crate::emit_json_or_return!(
@@ -100,9 +97,7 @@ pub(crate) fn cmd_trace(
 }
 
 /// Convert a structured trace entry to its JSON representation.
-pub(crate) fn trace_entry_to_json(
-    entry: &crate::commands_journal::TraceEntry,
-) -> serde_json::Value {
+pub(crate) fn trace_entry_to_json(entry: &TraceEntry) -> serde_json::Value {
     let mut map = serde_json::Map::new();
     map.insert("seq".into(), serde_json::Value::from(entry.seq));
     map.insert("type".into(), serde_json::Value::from(entry.event_type));

@@ -4,12 +4,17 @@
 //! Detects the single primitive key in a step mapping and dispatches
 //! to the appropriate step-kind parser.
 
-use crate::ast::types::{AstExpression, AstValue, StepAst, StepKindAst, StepPrimitiveAst};
 use crate::CompileError;
+use crate::ast::types::{AstExpression, AstValue, StepAst, StepKindAst, StepPrimitiveAst};
 use saphyr::Yaml;
 
-use super::expr::{parse_action_idx, parse_expression, parse_slot_expr, parse_slot_idx, parse_step_idx, parse_u16_field, parse_u32_field};
-use super::field::{optional_slot, optional_str, parse_value, parse_value_fields, step_field, step_str};
+use super::expr::{
+    parse_action_idx, parse_expression, parse_slot_expr, parse_slot_idx, parse_step_idx,
+    parse_u16_field, parse_u32_field,
+};
+use super::field::{
+    optional_slot, optional_str, parse_value, parse_value_fields, step_field, step_str,
+};
 
 /// Parse a sequence of step nodes.
 pub(crate) fn parse_steps(
@@ -148,11 +153,7 @@ fn parse_for_each(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileE
 fn parse_together(body: &Yaml<'_>, index: usize) -> Result<StepKindAst, CompileError> {
     use super::expr::parse_step_idx_sequence;
     Ok(StepKindAst::Together {
-        branches: parse_step_idx_sequence(
-            step_field(body, index, "branches")?,
-            index,
-            "branches",
-        )?,
+        branches: parse_step_idx_sequence(step_field(body, index, "branches")?, index, "branches")?,
     })
 }
 

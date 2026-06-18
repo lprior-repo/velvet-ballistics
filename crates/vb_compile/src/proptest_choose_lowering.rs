@@ -8,8 +8,8 @@
 
 #![cfg(test)]
 
-use crate::mod_compile_lowering::{SlotCompiler, lower_canonical_choose};
 use crate::CompileError;
+use crate::mod_compile_lowering::{SlotCompiler, lower_canonical_choose};
 use proptest::prelude::*;
 use vb_core::StepIdx;
 use vb_yaml::ast::ChooseBranch;

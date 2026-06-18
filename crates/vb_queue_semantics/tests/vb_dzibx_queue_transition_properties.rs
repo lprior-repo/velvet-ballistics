@@ -4,10 +4,10 @@ use std::{collections::VecDeque, fmt::Debug};
 
 use proptest::prelude::*;
 use vb_queue_semantics::{
-    action_dequeue_transition, action_enqueue_transition, action_warning_transition,
-    command_enqueue_transition, command_pop_transition, shard_tick_transition, CapacityRejection,
-    EnqueueDecision, PopTransition, QueueState, QueueStateRejection, ShardTickTransition,
-    WarningPayload, WarningSendOutcome,
+    CapacityRejection, EnqueueDecision, PopTransition, QueueState, QueueStateRejection,
+    ShardTickTransition, WarningPayload, WarningSendOutcome, action_dequeue_transition,
+    action_enqueue_transition, action_warning_transition, command_enqueue_transition,
+    command_pop_transition, shard_tick_transition,
 };
 
 const RPO_QUEUE_003_MAX_CAPACITY: usize = 16;
@@ -47,11 +47,7 @@ fn expected_warning_threshold(capacity: usize) -> usize {
     match capacity.checked_mul(8) {
         Some(scaled) => {
             let threshold = scaled / 10;
-            if threshold == 0 {
-                1
-            } else {
-                threshold
-            }
+            if threshold == 0 { 1 } else { threshold }
         }
         None => capacity,
     }

@@ -138,7 +138,8 @@ fn kani_repeat_max_attempts_consumed() {
     let digest2 = hasher2.finalize();
 
     // Non-vacuous: different max_attempts MUST produce different digest bytes
-    kani::assert(digest1.as_bytes() != digest2.as_bytes(),
+    kani::assert(
+        digest1.as_bytes() != digest2.as_bytes(),
         "different max_attempts must produce different hasher states",
     );
 }
@@ -188,7 +189,8 @@ fn kani_repeat_body_consumed() {
     let digest_b = hasher_b.finalize();
 
     // Non-vacuous: different body steps MUST produce different digests
-    kani::assert(digest_a.as_bytes() != digest_b.as_bytes(),
+    kani::assert(
+        digest_a.as_bytes() != digest_b.as_bytes(),
         "different repeat body must produce different hasher states",
     );
 }
@@ -236,7 +238,8 @@ fn kani_repeat_different_params_different_digest() {
     let digest2 = hasher2.finalize();
 
     // Non-vacuous: explicit inequality assertion
-    kani::assert(digest1.as_bytes() != digest2.as_bytes(),
+    kani::assert(
+        digest1.as_bytes() != digest2.as_bytes(),
         "different repeat max_attempts must produce different workflow digests",
     );
 }
@@ -286,7 +289,8 @@ fn kani_repeat_both_impls_equivalent() {
     let digest2 = hasher2.finalize();
 
     // The single accessible implementation is at least idempotent
-    kani::assert(digest1.as_bytes() == digest2.as_bytes(),
+    kani::assert(
+        digest1.as_bytes() == digest2.as_bytes(),
         "same input must produce same digest (single-implementation idempotency)",
     );
 }
@@ -326,7 +330,8 @@ fn kani_finish_set_digest_unchanged() {
     let digest_b = hasher_b.finalize();
 
     // Same Set input → same digest (idempotent)
-    kani::assert(digest_a.as_bytes() == digest_b.as_bytes(),
+    kani::assert(
+        digest_a.as_bytes() == digest_b.as_bytes(),
         "identical Set primitive must produce identical hasher state",
     );
 
@@ -346,7 +351,8 @@ fn kani_finish_set_digest_unchanged() {
     let digest_d = hasher_d.finalize();
 
     // Same Finish input → same digest (idempotent)
-    kani::assert(digest_c.as_bytes() == digest_d.as_bytes(),
+    kani::assert(
+        digest_c.as_bytes() == digest_d.as_bytes(),
         "identical Finish primitive must produce identical hasher state",
     );
 
@@ -364,7 +370,8 @@ fn kani_finish_set_digest_unchanged() {
     // The two finish digests may or may not differ (depending on symbolic
     // values being identical). We only check that the set vs. finish are
     // clearly distinct primitive types.
-    kani::assert(digest_a.as_bytes() != digest_c.as_bytes(),
+    kani::assert(
+        digest_a.as_bytes() != digest_c.as_bytes(),
         "Set and Finish primitives must produce different hasher states",
     );
 }

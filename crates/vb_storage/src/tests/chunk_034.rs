@@ -170,7 +170,10 @@ fn batch_commit_after_multiple_puts_persists_all() {
     );
     assert_eq!(ir.unwrap(), compiled);
     let rh = journal.run_header(run).expect("rh");
-    assert!(rh.is_some(), "run header must be present after multi-put batch commit");
+    assert!(
+        rh.is_some(),
+        "run header must be present after multi-put batch commit"
+    );
     assert_eq!(rh.unwrap().run, run);
     let bl = journal.blob(blob_digest).expect("bl");
     assert!(
@@ -178,9 +181,7 @@ fn batch_commit_after_multiple_puts_persists_all() {
         "blob must be present after multi-put batch commit"
     );
     assert_eq!(bl.unwrap().bytes, b"blob".to_vec());
-    let sn = journal
-        .snapshot(run, EventSeq::new(0))
-        .expect("sn");
+    let sn = journal.snapshot(run, EventSeq::new(0)).expect("sn");
     assert!(
         sn.is_some(),
         "snapshot must be present after multi-put batch commit"

@@ -5,8 +5,8 @@
 //! and converting them into AST value types.
 
 use super::expr::parse_slot_idx;
-use crate::ast::types::{AstMapEntry, AstValue};
 use crate::CompileError;
+use crate::ast::types::{AstMapEntry, AstValue};
 use saphyr::Yaml;
 use vb_core::SlotIdx;
 

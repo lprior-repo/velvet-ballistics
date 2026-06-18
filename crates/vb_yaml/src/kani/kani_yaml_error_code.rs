@@ -223,8 +223,5 @@ fn kani_yaml_error_code_registered() {
     );
 
     // The code name must be non-empty.
-    kani::assert(
-        !code.as_str().is_empty(),
-        "symbolic_code must not be empty",
-    );
+    kani::assert(!code.as_str().is_empty(), "symbolic_code must not be empty");
 }

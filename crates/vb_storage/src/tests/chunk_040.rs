@@ -91,10 +91,16 @@ fn adversarial_batch_commit_persists_all_keys_or_none() {
     );
     assert_eq!(ws.unwrap().source, b"src".to_vec());
     let ir = journal.compiled_ir(compiled.digest).expect("g2");
-    assert!(ir.is_some(), "compiled IR must be present after atomic batch commit");
+    assert!(
+        ir.is_some(),
+        "compiled IR must be present after atomic batch commit"
+    );
     assert_eq!(ir.unwrap(), compiled);
     let rh = journal.run_header(run).expect("g3");
-    assert!(rh.is_some(), "run header must be present after atomic batch commit");
+    assert!(
+        rh.is_some(),
+        "run header must be present after atomic batch commit"
+    );
     assert_eq!(rh.unwrap().run, run);
 }
 

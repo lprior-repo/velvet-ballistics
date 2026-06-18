@@ -1,4 +1,4 @@
-use super::expr::{parse_u16_field, integer_error_value};
+use super::expr::{integer_error_value, parse_u16_field};
 use crate::CompileError;
 use saphyr::{LoadableYamlNode, Yaml};
 

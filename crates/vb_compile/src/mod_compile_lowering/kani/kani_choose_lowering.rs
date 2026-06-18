@@ -810,15 +810,18 @@ fn kani_choose_lowering_output_shape() {
                 } => {
                     // Every branch condition is a valid slot (SlotIdx ≤ u16::MAX)
                     for branch in slot_branches.iter() {
-                        kani::assert(branch.condition.get() <= u16::MAX,
+                        kani::assert(
+                            branch.condition.get() <= u16::MAX,
                             "condition slot within u16 range",
                         );
-                        kani::assert(branch.target.get() <= u16::MAX,
+                        kani::assert(
+                            branch.target.get() <= u16::MAX,
                             "target step within u16 range",
                         );
                     }
                     // Number of output branches matches input
-                    kani::assert(slot_branches.len() == branches.len(),
+                    kani::assert(
+                        slot_branches.len() == branches.len(),
                         "output branch count equals input branch count",
                     );
                 }

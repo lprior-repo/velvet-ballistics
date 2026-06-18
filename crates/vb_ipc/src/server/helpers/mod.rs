@@ -137,9 +137,9 @@
 //! - `frame_read`: Read buffer management
 //! - `frame_send`: Response assembly & transport
 
-pub(crate) mod magic;
 pub(crate) mod frame_read;
 pub(crate) mod frame_send;
+pub(crate) mod magic;
 
 #[cfg(test)]
 pub(crate) mod test_hooks {
@@ -152,11 +152,11 @@ pub(crate) mod test_hooks {
 }
 
 // Re-export for backward-compat consumers and the re-export block in server/mod.rs.
-pub(crate) use magic::{AWAITING_MAGIC_MAX_BYTES, MagicValidationState, validate_magic_early};
 pub(crate) use frame_read::{
     append_read_bytes, extract_payload, frame_total_len, read_buffer_header,
 };
 pub(crate) use frame_send::{borrow_workflow_resolver, frame_error_response, send_response};
+pub(crate) use magic::{AWAITING_MAGIC_MAX_BYTES, MagicValidationState, validate_magic_early};
 
 #[cfg(test)]
 mod tests {
@@ -165,14 +165,14 @@ mod tests {
         frame_total_len_checked_add,
     };
     use super::frame_send::frame_error_response;
-    use super::magic::{validate_magic_early, MagicValidationState};
+    use super::magic::{MagicValidationState, validate_magic_early};
     use super::test_hooks;
     use super::{borrow_workflow_resolver, frame_total_len, read_buffer_header, send_response};
     use crate::IpcCommand;
     use crate::IpcError;
     use crate::IpcFrameHeader;
-    use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
     use crate::server::IpcResponse;
+    use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
 
     // ── append_read_bytes tests ──
 
@@ -463,7 +463,10 @@ mod tests {
         let temp_buf = [1u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 10);
         assert!(
-            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
+            matches!(
+                result,
+                Err(super::frame_read::IpcServerError::ReadBufferTooLarge)
+            ),
             "expected ReadBufferTooLarge when max exceeded"
         );
     }
@@ -475,7 +478,10 @@ mod tests {
         let temp_buf = [1u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 1);
         assert!(
-            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
+            matches!(
+                result,
+                Err(super::frame_read::IpcServerError::ReadBufferTooLarge)
+            ),
             "expected ReadBufferTooLarge when exactly one over max"
         );
     }
@@ -484,7 +490,10 @@ mod tests {
     fn append_read_bytes_checked_add_overflow_returns_too_large() {
         let result = append_read_bytes_checked_add(usize::MAX, 1);
         assert!(
-            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
+            matches!(
+                result,
+                Err(super::frame_read::IpcServerError::ReadBufferTooLarge)
+            ),
             "expected ReadBufferTooLarge on usize overflow"
         );
     }
@@ -495,7 +504,10 @@ mod tests {
     fn frame_total_len_checked_add_overflow_returns_too_large() {
         let result = frame_total_len_checked_add(usize::MAX, 1);
         assert!(
-            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
+            matches!(
+                result,
+                Err(super::frame_read::IpcServerError::ReadBufferTooLarge)
+            ),
             "expected ReadBufferTooLarge on usize overflow"
         );
     }
@@ -679,7 +691,10 @@ mod tests {
             panic!("expected ResponseWriteFailed");
         };
         assert!(
-            matches!(e, super::frame_send::IpcServerError::ResponseWriteFailed { .. }),
+            matches!(
+                e,
+                super::frame_send::IpcServerError::ResponseWriteFailed { .. }
+            ),
             "expected ResponseWriteFailed, got {e:?}"
         );
     }
@@ -707,7 +722,10 @@ mod tests {
             panic!("expected ResponseWriteFailed after dropping peer");
         };
         assert!(
-            matches!(e, super::frame_send::IpcServerError::ResponseWriteFailed { .. }),
+            matches!(
+                e,
+                super::frame_send::IpcServerError::ResponseWriteFailed { .. }
+            ),
             "expected ResponseWriteFailed, got {e:?}"
         );
     }

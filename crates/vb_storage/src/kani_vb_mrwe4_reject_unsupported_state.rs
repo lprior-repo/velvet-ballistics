@@ -29,14 +29,8 @@ mod kani_vb_mrwe4_reject_unsupported_state {
         }
 
         // No-op probe: state without any flag set must NOT be rejected.
-        if !unsupported.slot_values
-            && !unsupported.slot_taint
-            && !unsupported.action_payloads
-        {
-            kani::assert(
-                !should_reject,
-                "all-false state must NOT trigger rejection",
-            );
+        if !unsupported.slot_values && !unsupported.slot_taint && !unsupported.action_payloads {
+            kani::assert(!should_reject, "all-false state must NOT trigger rejection");
         }
     }
 }

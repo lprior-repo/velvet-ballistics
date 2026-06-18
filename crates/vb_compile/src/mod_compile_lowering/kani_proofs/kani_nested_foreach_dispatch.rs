@@ -125,7 +125,8 @@ fn check_emit_body_set_for_each_dispatch() {
             kani::assert(!nodes.is_empty(), "ForEach dispatch must emit nodes");
             // First emitted node should be ForEachStart with the correct ID
             if let Some(first) = nodes.first() {
-                kani::assert(first.id.get() == id.get(),
+                kani::assert(
+                    first.id.get() == id.get(),
                     "ForEachStart must be at the given step index",
                 );
             }

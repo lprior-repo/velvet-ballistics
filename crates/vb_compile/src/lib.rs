@@ -135,17 +135,41 @@ pub mod kani_lower_control;
 // Feature-gated behind test-util because these harnesses depend on
 // WorkflowSourceParts which is pub(crate) in production and only
 // re-exported as pub when test-util feature is active.
-#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
+#[cfg(all(
+    kani,
+    feature = "kani-compile-legacy",
+    any(test, feature = "test-util")
+))]
 pub mod kani_digest_ask_empty_prompt;
-#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
+#[cfg(all(
+    kani,
+    feature = "kani-compile-legacy",
+    any(test, feature = "test-util")
+))]
 pub mod kani_digest_ask_field_ordering;
-#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
+#[cfg(all(
+    kani,
+    feature = "kani-compile-legacy",
+    any(test, feature = "test-util")
+))]
 pub mod kani_digest_ask_prompt_sensitivity;
-#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
+#[cfg(all(
+    kani,
+    feature = "kani-compile-legacy",
+    any(test, feature = "test-util")
+))]
 pub mod kani_digest_ask_timeout_sensitivity;
-#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
+#[cfg(all(
+    kani,
+    feature = "kani-compile-legacy",
+    any(test, feature = "test-util")
+))]
 pub mod kani_digest_ask_timeout_sentinel;
-#[cfg(all(kani, feature = "kani-compile-legacy", any(test, feature = "test-util")))]
+#[cfg(all(
+    kani,
+    feature = "kani-compile-legacy",
+    any(test, feature = "test-util")
+))]
 pub mod kani_digest_step_primitive_no_panic;
 
 // Kani harnesses for wait digest coverage verification (vb-xi2f.32).

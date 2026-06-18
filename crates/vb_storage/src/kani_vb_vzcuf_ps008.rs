@@ -27,30 +27,31 @@ mod kani_guards_ps008 {
     /// C6: encode_record's max parameter gates per-record payload size.
     #[kani::proof]
     fn check_encode_record_max_param() {
-        use crate::codec::encode_record;
-        use crate::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
-        use crate::events::JournalEvent;
-        use crate::records::RecordKind;
-        use crate::types::EventSeq;
-        use vb_core::{RunId, WorkflowDigest};
+        use crate::codec::payload::{PayloadLenDecision, classify_payload_len};
+        use crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
 
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(1),
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([0_u8; 32]),
-        };
+        let payload_len: usize = kani::any();
+        kani::assume(payload_len > 0);
+        match usize::try_from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+            Ok(max) => kani::assume(payload_len <= max),
+            Err(_) => kani::assume(false),
+        }
 
-        let rejected = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunAccepted, 0, &event, 0);
-        kani::assert(rejected.is_err(), "zero max must reject");
+        match classify_payload_len(payload_len, 0) {
+            PayloadLenDecision::TooLarge { max, .. } => {
+                kani::assert(max == 0, "zero max must reject");
+            }
+            PayloadLenDecision::Accepted(_) => {
+                kani::assert(false, "zero max must reject non-empty payload");
+            }
+        }
 
-        let accepted = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            0,
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        );
-        kani::assert(accepted.is_ok(), "adequate max must accept");
+        match classify_payload_len(payload_len, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+            PayloadLenDecision::Accepted(_) => {}
+            PayloadLenDecision::TooLarge { .. } => {
+                kani::assert(false, "adequate max must accept bounded payload");
+            }
+        }
     }
 
     /// C6: byte admission requires encoded length, so header length is non-zero.

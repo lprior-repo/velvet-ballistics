@@ -5,7 +5,8 @@ fn vb_mrwe_7_durability_classification() {
     let has_strict: bool = kani::any();
     let strict_persist_ok: bool = kani::any();
     let can_report_success = !has_strict || strict_persist_ok;
-    kani::assert(!(has_strict && !strict_persist_ok && can_report_success),
+    kani::assert(
+        !(has_strict && !strict_persist_ok && can_report_success),
         "durability classification invariant",
     );
 }

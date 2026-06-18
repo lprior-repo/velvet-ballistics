@@ -103,7 +103,7 @@ fn write_batch_commits_cross_keyspace_atomically() {
         .expect("put_run_header must succeed");
     batch.commit().expect("batch.commit must succeed");
 
-let source = journal
+    let source = journal
         .workflow_source(digest)
         .expect("workflow source roundtrip");
     assert!(

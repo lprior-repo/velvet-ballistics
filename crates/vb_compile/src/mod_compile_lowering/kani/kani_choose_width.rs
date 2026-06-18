@@ -118,7 +118,8 @@ fn kani_choose_otherwise_span() {
     }
 
     if let Ok(width) = choose_width(&branches) {
-        kani::assert(width == 1usize.wrapping_add(total_body_steps),
+        kani::assert(
+            width == 1usize.wrapping_add(total_body_steps),
             "choose_width must match 1 + sum of body step counts",
         );
     }

@@ -2,8 +2,8 @@
 //! Kani harnesses for `lower_repeat`, `lower_ask`, and `lower_choose` control lowering.
 //! Bead: vb-onsk/vb-awhr; scope: current public `vb_compile` APIs.
 
-use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
 use crate::mod_compile_lowering::validate_choose_fanout;
+use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
 use vb_core::workflow::SlotBranch;
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 

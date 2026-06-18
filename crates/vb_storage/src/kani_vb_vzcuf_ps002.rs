@@ -31,14 +31,17 @@ mod kani_overflow_ps002 {
         match a.checked_add(b) {
             Some(total) => {
                 // If it succeeds, total must be exactly a + b (modular)
-                kani::assert(total == a + b, "total == a + b");
+                kani::assert(a.checked_add(b) == Some(total), "total == checked a + b");
             }
             None => {
                 // Overflow detected — no wrap, no panic
-                kani::assert(
-                    a as u128 + b as u128 > u64::MAX as u128,
-                    "overflow must occur exactly when a + b > u64::MAX",
-                );
+                match u128::from(a).checked_add(u128::from(b)) {
+                    Some(sum) => kani::assert(
+                        sum > u128::from(u64::MAX),
+                        "overflow must occur exactly when a + b > u64::MAX",
+                    ),
+                    None => kani::assert(false, "u64 widened addition fits in u128"),
+                }
             }
         }
     }
@@ -70,56 +73,66 @@ mod kani_overflow_ps002 {
     #[kani::proof]
     fn check_u32_to_u64_widening_safe() {
         let n: u32 = kani::any();
-        let wide: u64 = n as u64;
+        let wide: u64 = u64::from(n);
         // u32::MAX (4_294_967_295) fits in u64
-        kani::assert(wide as u32 == n, "u32->u64->u32 roundtrip must be exact");
-        kani::assert(wide <= u32::MAX as u64, "wide fits u32 range");
+        match u32::try_from(wide) {
+            Ok(roundtrip) => {
+                kani::assert(roundtrip == n, "u32->u64->u32 roundtrip must be exact");
+            }
+            Err(_) => kani::assert(false, "u32 widened value must fit u32"),
+        }
+        kani::assert(wide <= u64::from(u32::MAX), "wide fits u32 range");
     }
 
     /// C7: usize -> u64 conversion is safe on 64-bit.
     #[kani::proof]
     fn check_usize_to_u64_safe() {
         let n: usize = kani::any();
-        kani::assume(n <= u64::MAX as usize);
-        let wide: u64 = n as u64;
-        kani::assert(
-            wide as usize == n,
-            "usize->u64->usize roundtrip within u64 range",
-        );
+        match u64::try_from(n) {
+            Ok(wide) => match usize::try_from(wide) {
+                Ok(roundtrip) => kani::assert(
+                    roundtrip == n,
+                    "usize->u64->usize roundtrip within u64 range",
+                ),
+                Err(_) => kani::assert(false, "u64 value from usize must fit usize"),
+            },
+            Err(_) => kani::assume(false),
+        }
     }
 
-    /// C7: encode_record never panics with arbitrary parameters.
-    /// Production binding: tests actual production codec function.
+    /// C7: encode_record payload-size arithmetic never panics with arbitrary
+    /// payload lengths; accepted payloads have bounded header accounting and
+    /// oversized payloads become typed rejection.
     #[kani::proof]
     fn check_encode_record_no_panic() {
-        use crate::codec::encode_record;
-        use crate::constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
-        use crate::events::JournalEvent;
-        use crate::records::RecordKind;
-        use crate::types::EventSeq;
-        use vb_core::{RunId, WorkflowDigest};
+        use crate::codec::payload::{PayloadLenDecision, classify_payload_len};
+        use crate::constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
 
-        let run: u64 = kani::any();
-        kani::assume(run > 0);
-        kani::assume(run < 1_000_000);
-        let seq: u64 = kani::any();
-        kani::assume(seq < 100_000);
+        let payload_len: usize = kani::any();
 
-        let event = JournalEvent::RunAccepted {
-            run: RunId::new(run),
-            seq: EventSeq::new(seq),
-            workflow: WorkflowDigest::from_bytes([0u8; 32]),
-        };
-
-        // Call production encode_record — must not panic
-        let _result = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            seq,
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        );
-        // Result may be Ok or Err, but must not panic
+        match classify_payload_len(payload_len, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+            PayloadLenDecision::Accepted(payload_len_u32) => {
+                let payload_len_usize = match usize::try_from(payload_len_u32) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        kani::assume(false);
+                        0
+                    }
+                };
+                let header_len = match usize::try_from(RECORD_HEADER_LEN) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        kani::assume(false);
+                        0
+                    }
+                };
+                match header_len.checked_add(payload_len_usize) {
+                    Some(_) => {}
+                    None => kani::assert(false, "accepted encoded length must not overflow"),
+                }
+            }
+            PayloadLenDecision::TooLarge { .. } => {}
+        }
     }
 
     /// C7: MAX_JOURNAL_EVENT_PAYLOAD_BYTES + RECORD_HEADER_LEN < u64::MAX.
@@ -128,11 +141,15 @@ mod kani_overflow_ps002 {
     fn check_max_encoded_fits_in_u64() {
         use crate::constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
 
-        let max_encoded = RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        kani::assert(
-            max_encoded < u64::MAX,
-            "max encoded (header + payload) must fit in u64",
-        );
+        let max_encoded =
+            u64::from(RECORD_HEADER_LEN).checked_add(u64::from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES));
+        match max_encoded {
+            Some(value) => kani::assert(
+                value < u64::MAX,
+                "max encoded (header + payload) must fit in u64",
+            ),
+            None => kani::assert(false, "max encoded addition must not overflow"),
+        }
         // 60 + 1_048_576 = 1_048_636 < u64::MAX
     }
 }

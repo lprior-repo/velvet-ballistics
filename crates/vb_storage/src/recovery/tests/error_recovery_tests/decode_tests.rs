@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 use super::{encoded_record, flip_byte, scribble_u32};
 use crate::JournalError;

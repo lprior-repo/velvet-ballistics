@@ -444,11 +444,11 @@ fn unknown_record_kind_value_known_returns_none_for_kind_1() {
 #[test]
 fn validate_known_kind_accepts_kind_29() {
     let result = validate_known_kind(29);
-        assert!(
-            matches!(result, Ok(_)),
-            "validate_known_kind must accept StepSucceeded kind 29, got {:?}",
-            result
-        );
+    assert!(
+        matches!(result, Ok(_)),
+        "validate_known_kind must accept StepSucceeded kind 29, got {:?}",
+        result
+    );
 }
 
 #[test]

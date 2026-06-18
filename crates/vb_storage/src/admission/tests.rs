@@ -126,7 +126,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 use crate::admission::*;
 use crate::error::JournalError;

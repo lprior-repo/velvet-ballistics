@@ -21,15 +21,15 @@ use std::num::NonZeroUsize;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::CompiledNodeKind;
+use vb_runtime::Runtime;
 use vb_runtime::shard::{
     AskAnswer, AskTicket, PendingTimer, PendingTimerKind, RuntimeEvent, RuntimeState, Shard,
     ShardConfig,
 };
-use vb_runtime::Runtime;
 
-use vb_ipc::server::handlers::handle_answer_ask;
 use vb_ipc::IpcPayload;
 use vb_ipc::IpcResponse;
+use vb_ipc::server::handlers::handle_answer_ask;
 
 // =========================================================================
 // Bounded generators
@@ -76,14 +76,19 @@ fn setup_pending_ask_shard(
         .shards_mut()
         .first_mut()
         .expect("Runtime has 1 shard");
-    shard.set_pending_timer(run, PendingTimer {
-        step: ask_step,
-        kind: PendingTimerKind::Ask,
-    });
+    shard.set_pending_timer(
+        run,
+        PendingTimer {
+            step: ask_step,
+            kind: PendingTimerKind::Ask,
+        },
+    );
 
     // Set the workflow with Ask node at ask_step and AskResume at resume_step
     let workflow = vb_core::workflow::CompiledWorkflow::from_parts(
-        "bridge-test".try_into().unwrap_or_else(|_| "bridge-test".try_into().unwrap()),
+        "bridge-test"
+            .try_into()
+            .unwrap_or_else(|_| "bridge-test".try_into().unwrap()),
         vec![
             vb_core::workflow::CompiledNode {
                 id: ask_step,
@@ -175,8 +180,8 @@ fn kani_handler_bridge_valid_payload_accepted() {
 
     // Create a valid SlotValue payload
     let slot_value = SlotValue::I64(kani::any());
-    let answer_bytes = encode_slot_value(&slot_value)
-        .expect("SlotValue serialization should succeed");
+    let answer_bytes =
+        encode_slot_value(&slot_value).expect("SlotValue serialization should succeed");
 
     // Encode the AnswerAsk payload
     let payload_bytes = encode_answer_ask_payload(run, answer_slot, &answer_bytes, None)
@@ -288,8 +293,8 @@ fn kani_missing_taint_defaults_to_clean() {
 
     // Create a valid SlotValue
     let slot_value = SlotValue::I64(kani::any());
-    let answer_bytes = encode_slot_value(&slot_value)
-        .expect("SlotValue serialization should succeed");
+    let answer_bytes =
+        encode_slot_value(&slot_value).expect("SlotValue serialization should succeed");
 
     // Encode with taint: None
     let payload_bytes = encode_answer_ask_payload(run, answer_slot, &answer_bytes, None)
@@ -322,17 +327,11 @@ fn kani_mismatched_answer_slot_rejected() {
     let resume_answer_slot = SlotIdx::new(5);
     let requested_answer_slot = SlotIdx::new(42); // mismatched
 
-    setup_pending_ask_shard(
-        &mut runtime,
-        run,
-        ask_step,
-        resume_step,
-        resume_answer_slot,
-    );
+    setup_pending_ask_shard(&mut runtime, run, ask_step, resume_step, resume_answer_slot);
 
     let slot_value = SlotValue::I64(kani::any());
-    let answer_bytes = encode_slot_value(&slot_value)
-        .expect("SlotValue serialization should succeed");
+    let answer_bytes =
+        encode_slot_value(&slot_value).expect("SlotValue serialization should succeed");
 
     let payload_bytes = encode_answer_ask_payload(
         run,
@@ -366,8 +365,8 @@ fn kani_no_pending_ask_rejected() {
     // Do NOT set up a pending ask — shard is empty
 
     let slot_value = SlotValue::I64(kani::any());
-    let answer_bytes = encode_slot_value(&slot_value)
-        .expect("SlotValue serialization should succeed");
+    let answer_bytes =
+        encode_slot_value(&slot_value).expect("SlotValue serialization should succeed");
 
     let payload_bytes = encode_answer_ask_payload(run, arbitrary_slot(), &answer_bytes, None)
         .expect("AnswerAsk serialization should succeed");

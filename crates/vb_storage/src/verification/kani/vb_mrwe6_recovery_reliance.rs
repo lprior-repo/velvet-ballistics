@@ -74,16 +74,23 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
         }
     };
 
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
         verification_action_index_intent(&scheduled), VerificationActionIndexIntent::Put {
             action: classified_action,
             run: classified_run,
             step: classified_step,
-        } if classified_action == action && classified_run == run && classified_step == step));
+        } if classified_action == action && classified_run == run && classified_step == step),
+        "scheduled event stages matching put intent",
+    );
     if let Some(resolution) = &resolution_event {
-        kani::assert(matches!(
-            verification_action_index_intent(resolution),
-            VerificationActionIndexIntent::Delete { .. }));
+        kani::assert(
+            matches!(
+                verification_action_index_intent(resolution),
+                VerificationActionIndexIntent::Delete { .. }
+            ),
+            "resolution event stages delete intent",
+        );
     }
 
     let outcome = verification_recovery_outcome(
@@ -95,44 +102,52 @@ fn vb_mrwe6_recovery_inventory_all_cases() {
 
     match resolution_shape {
         ResolutionShape::None if marker_present => {
-            kani::assert(matches!(
-                outcome,
-                Ok(VerificationRecoveryOutcome::PendingInventory)));
+            kani::assert(
+                matches!(outcome, Ok(VerificationRecoveryOutcome::PendingInventory)),
+                "missing resolution with marker is pending inventory",
+            );
         }
         ResolutionShape::None if legacy_profile => {
-            kani::assert(matches!(
-                outcome,
-                Ok(VerificationRecoveryOutcome::LegacyFallback)));
+            kani::assert(
+                matches!(outcome, Ok(VerificationRecoveryOutcome::LegacyFallback)),
+                "missing resolution without marker uses legacy fallback",
+            );
         }
         ResolutionShape::None => {
-            kani::assert(matches!(
-                outcome,
-                Ok(VerificationRecoveryOutcome::ParityDefect)));
+            kani::assert(
+                matches!(outcome, Ok(VerificationRecoveryOutcome::ParityDefect)),
+                "missing resolution without marker is parity defect",
+            );
         }
         ResolutionShape::SameKey => {
-            kani::assert(matches!(
-                outcome,
-                Ok(VerificationRecoveryOutcome::ResolvedNoPending)));
+            kani::assert(
+                matches!(outcome, Ok(VerificationRecoveryOutcome::ResolvedNoPending)),
+                "same-key resolution clears pending inventory",
+            );
         }
         ResolutionShape::MismatchedKey => {
-            kani::assert(matches!(
-                outcome,
-                Ok(VerificationRecoveryOutcome::ParityDefect)));
+            kani::assert(
+                matches!(outcome, Ok(VerificationRecoveryOutcome::ParityDefect)),
+                "mismatched resolution is parity defect",
+            );
         }
     }
 
     if !legacy_profile && !marker_present && matches!(resolution_shape, ResolutionShape::None) {
-        kani::assert(!matches!(
-            outcome,
-            Ok(VerificationRecoveryOutcome::PendingInventory)));
+        kani::assert(
+            !matches!(outcome, Ok(VerificationRecoveryOutcome::PendingInventory)),
+            "non-legacy markerless missing resolution is not pending inventory",
+        );
     }
     if matches!(resolution_shape, ResolutionShape::MismatchedKey) {
-        kani::assert(!matches!(
-            outcome,
-            Ok(VerificationRecoveryOutcome::PendingInventory)));
-        kani::assert(!matches!(
-            outcome,
-            Ok(VerificationRecoveryOutcome::LegacyFallback)));
+        kani::assert(
+            !matches!(outcome, Ok(VerificationRecoveryOutcome::PendingInventory)),
+            "mismatched resolution is not pending inventory",
+        );
+        kani::assert(
+            !matches!(outcome, Ok(VerificationRecoveryOutcome::LegacyFallback)),
+            "mismatched resolution is not legacy fallback",
+        );
     }
 
     core::mem::forget(scheduled);

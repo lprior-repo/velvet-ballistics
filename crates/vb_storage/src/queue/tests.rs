@@ -89,7 +89,10 @@ mod internal_tests {
         for i in 0..3u64 {
             let result = queue.enqueue_journaled(make_event(run, i));
             let Ok(()) = result else {
-                panic!("enqueue {} must succeed within capacity, got {:?}", i, result);
+                panic!(
+                    "enqueue {} must succeed within capacity, got {:?}",
+                    i, result
+                );
             };
         }
         let counts = queue
@@ -1057,7 +1060,10 @@ mod internal_tests {
         for i in 0..3u64 {
             let result = queue.enqueue_journaled(make_event(run, i));
             let Ok(()) = result else {
-                panic!("enqueue {} must succeed within capacity, got {:?}", i, result);
+                panic!(
+                    "enqueue {} must succeed within capacity, got {:?}",
+                    i, result
+                );
             };
         }
 

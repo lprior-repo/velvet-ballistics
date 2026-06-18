@@ -107,7 +107,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! End-to-end tests for together body lowering through the full pipeline.
@@ -287,7 +287,10 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        assert!(matches!(result, Ok(_)), "Simple Set workflow must still compile: {result:?}");
+        assert!(
+            matches!(result, Ok(_)),
+            "Simple Set workflow must still compile: {result:?}"
+        );
     }
 
     // Test 2: Two Set steps
@@ -310,7 +313,10 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        assert!(matches!(result, Ok(_)), "Two Set workflow must still compile: {result:?}");
+        assert!(
+            matches!(result, Ok(_)),
+            "Two Set workflow must still compile: {result:?}"
+        );
     }
 
     // Test 3: Top-level together (already works, verify non-regression)
@@ -334,7 +340,10 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        assert!(matches!(result, Ok(_)), "Top-level Together workflow must still compile: {result:?}");
+        assert!(
+            matches!(result, Ok(_)),
+            "Top-level Together workflow must still compile: {result:?}"
+        );
     }
 }
 

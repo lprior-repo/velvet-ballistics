@@ -7,7 +7,7 @@
 //! production `reject_duplicate_keys` implementation directly and varies both
 //! sequence length and key choices symbolically.
 
-use crate::{profile::reject_duplicate_keys, YamlError, YamlResult};
+use crate::{YamlError, YamlResult, profile::reject_duplicate_keys};
 
 fn symbolic_len_up_to_six() -> u8 {
     let raw: u8 = kani::any();

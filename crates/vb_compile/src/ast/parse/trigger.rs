@@ -4,9 +4,9 @@
 //! Validates that exactly one trigger kind is present and dispatches
 //! to the appropriate trigger-specific parser.
 
-use crate::ast::types::TriggerAst;
 use crate::CompileError;
 use crate::SourceMark;
+use crate::ast::types::TriggerAst;
 use saphyr::Yaml;
 
 use super::field::optional_str;

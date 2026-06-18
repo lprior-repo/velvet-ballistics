@@ -83,7 +83,8 @@ fn idempotency_gate_parity() {
                 let compile_ok = is_compile_idempotency_gate_accepted(&contract);
 
                 // Parity: both must agree on Ok/Err
-                kani::assert(static_result.is_ok() == compile_ok,
+                kani::assert(
+                    static_result.is_ok() == compile_ok,
                     "check_idempotency_gates and is_statically_idempotent_contract \
                      must agree on Ok/Err for all 45 combinations",
                 );
@@ -101,7 +102,8 @@ fn idempotency_gate_parity() {
                     || expected_at_least_once
                     || expected_deterministic_pure);
 
-                kani::assert(static_result.is_ok() == expected_accept,
+                kani::assert(
+                    static_result.is_ok() == expected_accept,
                     "validate reason class must match the canonical decision table",
                 );
                 kani::assert(

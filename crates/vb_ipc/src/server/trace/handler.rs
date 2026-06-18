@@ -6,8 +6,8 @@
 use vb_runtime::runtime::Runtime;
 use vb_runtime::trace::TraceEvent;
 
-use super::super::handlers::{decode_payload, sanitize_runtime_error};
 use super::super::IpcResponse;
+use super::super::handlers::{decode_payload, sanitize_runtime_error};
 use super::response::count_response_trace;
 use crate::IpcPayload;
 

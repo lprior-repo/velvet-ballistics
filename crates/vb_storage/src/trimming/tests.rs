@@ -252,7 +252,10 @@ fn trim_preserves_run_header_and_snapshot() {
     let Some(header_rec) = header else {
         panic!("trim must preserve run header");
     };
-    assert_eq!(header_rec.run, run, "preserved header must match trimmed run");
+    assert_eq!(
+        header_rec.run, run,
+        "preserved header must match trimmed run"
+    );
 
     let snap = journal
         .snapshot(run, EventSeq::new(2))
@@ -260,7 +263,11 @@ fn trim_preserves_run_header_and_snapshot() {
     let Some(snapshot) = snap else {
         panic!("trim must preserve snapshot for trimmed run");
     };
-    assert_eq!(snapshot.seq.get(), 2, "preserved snapshot must have expected seq");
+    assert_eq!(
+        snapshot.seq.get(),
+        2,
+        "preserved snapshot must have expected seq"
+    );
 }
 
 #[test]
@@ -757,8 +764,14 @@ fn diagnostic_returns_eligible_and_blocked_runs() {
         .runs
         .iter()
         .find(|r| matches!(r, TrimEligibility::Eligible { run, .. } if run == &run_a));
-    let Some(&TrimEligibility::Eligible { run: eligible_run, .. }) = eligible else {
-        panic!("run A should be Eligible in diagnostic, got: {:?}", diag.runs);
+    let Some(&TrimEligibility::Eligible {
+        run: eligible_run, ..
+    }) = eligible
+    else {
+        panic!(
+            "run A should be Eligible in diagnostic, got: {:?}",
+            diag.runs
+        );
     };
     assert_eq!(eligible_run, run_a, "eligible run must match run A");
 
@@ -766,8 +779,14 @@ fn diagnostic_returns_eligible_and_blocked_runs() {
         .runs
         .iter()
         .find(|r| matches!(r, TrimEligibility::Blocked { run, .. } if run == &run_b));
-    let Some(&TrimEligibility::Blocked { run: blocked_run, .. }) = blocked else {
-        panic!("run B should be Blocked in diagnostic, got: {:?}", diag.runs);
+    let Some(&TrimEligibility::Blocked {
+        run: blocked_run, ..
+    }) = blocked
+    else {
+        panic!(
+            "run B should be Blocked in diagnostic, got: {:?}",
+            diag.runs
+        );
     };
     assert_eq!(blocked_run, run_b, "blocked run must match run B");
 }

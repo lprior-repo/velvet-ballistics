@@ -6,5 +6,8 @@ fn vb_mrwe_7_drain_all_bound_and_retention() {
     let first_error: bool = kani::any();
     kani::assume(pending <= 16);
     let remaining = if first_error { pending } else { 0 };
-    kani::assert(!first_error || remaining == pending, "drain_all retention invariant");
+    kani::assert(
+        !first_error || remaining == pending,
+        "drain_all retention invariant",
+    );
 }

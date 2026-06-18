@@ -126,9 +126,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Tests for expression bytecode lowering.
 use super::{
@@ -222,10 +221,7 @@ fn lowers_numeric_negation_of_f64_literal_emits_f64_zero_constant() -> Result<()
     // legacy `0 - expr` pattern.
     let (ops, constants, _max_stack) = lower("-1.5")?;
 
-    let expected_ops = vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::Neg,
-    ];
+    let expected_ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Neg];
     let expected_constants = vec![ConstValue::F64(finite_f64(1.5)?)];
     if ops != expected_ops {
         return Err(format!(
@@ -273,10 +269,7 @@ fn lowers_numeric_negation_of_i64_literal_still_emits_i64_zero_constant() -> Res
     // legacy `0 - expr` pattern.
     let (ops, constants, _max_stack) = lower("-1")?;
 
-    let expected_ops = vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::Neg,
-    ];
+    let expected_ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Neg];
     let expected_constants = vec![ConstValue::I64(1)];
     if ops != expected_ops {
         return Err(format!(

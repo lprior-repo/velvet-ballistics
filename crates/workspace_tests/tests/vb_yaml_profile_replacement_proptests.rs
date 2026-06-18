@@ -19,7 +19,7 @@ use std::collections::BTreeSet;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 use vb_yaml::events::{self, EventSpan, ScalarStyle, YamlEvent};
-use vb_yaml::{profile, YamlError};
+use vb_yaml::{YamlError, profile};
 
 fn yaml_plain_key_strategy() -> impl Strategy<Value = String> {
     "[A-Za-z_][A-Za-z0-9_]{0,8}"

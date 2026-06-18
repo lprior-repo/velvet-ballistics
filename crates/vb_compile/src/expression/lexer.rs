@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! Token kinds and lexer for the cold expression grammar.
 
+use crate::CompileError;
 use crate::expression::domain::{BinaryOp, UnaryOp};
 use crate::expression::helpers::{is_ident_continue, is_ident_start, is_reference_continue};
-use crate::CompileError;
 
 // ── Capacity limits ──────────────────────────────────────────────────────────
 
@@ -167,10 +167,7 @@ impl<'a> Lexer<'a> {
             return Err(self.unexpected_char('$'));
         }
         let reference = self.slice(start, self.index)?;
-        self.push(
-            TokenKind::Reference(Box::<str>::from(reference)),
-            start,
-        )
+        self.push(TokenKind::Reference(Box::<str>::from(reference)), start)
     }
 
     fn lex_string(&mut self) -> Result<(), CompileError> {

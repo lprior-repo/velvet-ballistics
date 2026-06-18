@@ -9,9 +9,9 @@ use proptest::prelude::*;
 use std::io::Cursor;
 use std::num::NonZeroUsize;
 use vb_ipc::{
-    decode_frame, decode_frame_payload, encode_frame, encode_payload, read_frame_header_bounded,
-    read_frame_payload_bounded, validate_frame_bounds, IpcCommand, IpcError, IpcFrame,
-    IpcFrameHeader, IpcPayload, MaxPayloadBytes, IPC_HEADER_LEN, IPC_MAGIC,
+    IPC_HEADER_LEN, IPC_MAGIC, IpcCommand, IpcError, IpcFrame, IpcFrameHeader, IpcPayload,
+    MaxPayloadBytes, decode_frame, decode_frame_payload, encode_frame, encode_payload,
+    read_frame_header_bounded, read_frame_payload_bounded, validate_frame_bounds,
 };
 
 const RPO_IPC_003: &str = "RPO-IPC-003";

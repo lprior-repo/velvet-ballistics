@@ -214,10 +214,16 @@ fn adversarial_batch_commit_with_5_puts_persists_all() {
     );
     assert_eq!(ws.unwrap().source, b"s".to_vec());
     let ir = journal.compiled_ir(compiled.digest).expect("g2");
-    assert!(ir.is_some(), "compiled IR must persist after 5-put batch commit");
+    assert!(
+        ir.is_some(),
+        "compiled IR must persist after 5-put batch commit"
+    );
     assert_eq!(ir.unwrap(), compiled);
     let rh = journal.run_header(run).expect("g3");
-    assert!(rh.is_some(), "run header must persist after 5-put batch commit");
+    assert!(
+        rh.is_some(),
+        "run header must persist after 5-put batch commit"
+    );
     assert_eq!(rh.unwrap().run, run);
     let bl = journal.blob(blob_digest).expect("g4");
     assert!(bl.is_some(), "blob must persist after 5-put batch commit");

@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: proptest_body_step_width.rs
 // Obligation: PO-001-P
 // Requirement: C-1 (canonical_body_step_width acceptance for Together)
@@ -121,7 +120,6 @@
 //
 // GOD RULE 1: Uses proptest strategy to generate random together configurations.
 // GOD RULE 2: Binds to actual canonical_body_step_width in part_01.rs.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

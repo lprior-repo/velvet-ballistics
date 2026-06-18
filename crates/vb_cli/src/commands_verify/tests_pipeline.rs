@@ -137,9 +137,9 @@
 )]
 
 use crate::args::{DurabilityMode, VerifyProfile};
-use crate::commands_verify::types::{VerifyError, VerifyOk};
-use crate::commands_verify::run_verification;
 use crate::commands_verify::exit_code_for_error;
+use crate::commands_verify::run_verification;
+use crate::commands_verify::types::{VerifyError, VerifyOk};
 
 const MINIMAL_WORKFLOW_YAML: &str =
     include_str!("../../../workspace_tests/tests/fixtures/valid/minimal.yaml");
@@ -157,17 +157,39 @@ steps:
 "#;
 
 const QUICK_PROFILE_EXPECTED_CHECKS: [&str; 15] = [
-    "profile", "shape", "names", "references", "expressions", "CFG",
-    "bounded:deferred", "budgets:deferred", "contracts:deferred",
-    "taint:deferred", "idempotency:deferred", "durability:deferred",
-    "capabilities:deferred", "results", "evidence:deferred",
+    "profile",
+    "shape",
+    "names",
+    "references",
+    "expressions",
+    "CFG",
+    "bounded:deferred",
+    "budgets:deferred",
+    "contracts:deferred",
+    "taint:deferred",
+    "idempotency:deferred",
+    "durability:deferred",
+    "capabilities:deferred",
+    "results",
+    "evidence:deferred",
 ];
 
 const FULL_PROFILE_EXPECTED_CHECKS: [&str; 15] = [
-    "profile", "shape", "names", "references", "expressions", "CFG",
-    "bounded", "budgets", "contracts:deferred", "taint:deferred",
-    "idempotency:deferred", "durability:deferred", "capabilities:deferred",
-    "results", "evidence:deferred",
+    "profile",
+    "shape",
+    "names",
+    "references",
+    "expressions",
+    "CFG",
+    "bounded",
+    "budgets",
+    "contracts:deferred",
+    "taint:deferred",
+    "idempotency:deferred",
+    "durability:deferred",
+    "capabilities:deferred",
+    "results",
+    "evidence:deferred",
 ];
 
 fn expect_success(result: Result<VerifyOk, VerifyError>) -> VerifyOk {
@@ -187,7 +209,12 @@ fn expect_deferred_failure(result: Result<VerifyOk, VerifyError>) -> VerifyOk {
 
 #[test]
 fn malformed_yaml_returns_yaml_parse_error() {
-    let result = run_verification("version: [", b"version: [", VerifyProfile::Quick, DurabilityMode::None);
+    let result = run_verification(
+        "version: [",
+        b"version: [",
+        VerifyProfile::Quick,
+        DurabilityMode::None,
+    );
     match result {
         Err(VerifyError::YamlParse(message)) => assert!(message.contains("YAML parse error")),
         Err(err) => panic!("expected YAML parse error, got {err:?}"),
@@ -236,11 +263,20 @@ fn standard_profile_succeeds_with_deferred_gates_and_warnings() {
     assert!(!ok.all_gates_closed());
     assert_eq!(
         ok.deferred_gates(),
-        vec!["contracts", "taint", "idempotency", "durability", "capabilities", "evidence"]
+        vec![
+            "contracts",
+            "taint",
+            "idempotency",
+            "durability",
+            "capabilities",
+            "evidence"
+        ]
     );
-    assert!(ok.warnings.iter().any(|w| w.contains(
-        "compiled-form WorkflowParts taint validation is not implemented"
-    )));
+    assert!(
+        ok.warnings
+            .iter()
+            .any(|w| w.contains("compiled-form WorkflowParts taint validation is not implemented"))
+    );
 }
 
 #[test]
@@ -261,7 +297,10 @@ fn full_profile_fails_closed_when_deferred_gates_remain() {
 fn success_path_records_digest_node_count_and_durability() {
     let compiled = vb_compile::compile_workflow(MINIMAL_WORKFLOW_YAML.as_bytes())
         .expect("fixture must compile");
-    let expected_digest: String = compiled.digest().as_bytes().iter()
+    let expected_digest: String = compiled
+        .digest()
+        .as_bytes()
+        .iter()
         .map(|b| format!("{b:02x}"))
         .collect();
     let ok = expect_success(run_verification(
@@ -278,9 +317,14 @@ fn success_path_records_digest_node_count_and_durability() {
 #[test]
 fn deferred_profile_omits_fabricated_gate_names() {
     let forbidden = [
-        "digest_stability", "resource_contract_validation",
-        "error_handler_completeness", "taint_boundary", "input_purity",
-        "expression_complexity", "cycle_detection", "determinism_seed",
+        "digest_stability",
+        "resource_contract_validation",
+        "error_handler_completeness",
+        "taint_boundary",
+        "input_purity",
+        "expression_complexity",
+        "cycle_detection",
+        "determinism_seed",
         "replay_round_trip",
     ];
     let ok = expect_deferred_failure(run_verification(

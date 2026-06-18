@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 // Verification artifact: proptest_together_errors.rs
 // Obligation: PO-006-P
 // Requirement: C-6 (Together lowering error propagation)
@@ -121,7 +120,6 @@
 //
 // GOD RULE 1: Uses proptest strategies for random invalid together configurations.
 // GOD RULE 2: Binds to actual emit_single_body_set in part_04.rs.
-
 #![cfg(test)]
 #![forbid(unsafe_code)]
 

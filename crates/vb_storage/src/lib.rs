@@ -111,7 +111,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::doc_markdown)]

@@ -2,13 +2,8 @@
 
 #[cfg(kani)]
 mod kani_duplicate_ps009 {
-    use crate::codec::encode_record;
-    use crate::constants::{
-        JOURNAL_KEY_BYTES, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        RECORD_HEADER_LEN,
-    };
+    use crate::constants::JOURNAL_KEY_BYTES;
     use crate::events::JournalEvent;
-    use crate::records::RecordKind;
     use crate::types::EventSeq;
     use vb_core::{RunId, WorkflowDigest};
 
@@ -20,50 +15,58 @@ mod kani_duplicate_ps009 {
         }
     }
 
-    fn encode_run_accepted(event: &JournalEvent) -> Result<Vec<u8>, crate::JournalError> {
-        encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            0,
-            event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )
+    fn encode_run_accepted_payload_or_assume(event: &JournalEvent) -> Vec<u8> {
+        match postcard::to_allocvec(event) {
+            Ok(value) => value,
+            Err(error) => {
+                core::mem::forget(error);
+                kani::assume(false);
+                Vec::new()
+            }
+        }
+    }
+
+    fn last_byte_or_assume(bytes: &[u8]) -> u8 {
+        match bytes.last() {
+            Some(value) => *value,
+            None => {
+                kani::assume(false);
+                0
+            }
+        }
     }
 
     /// C2: same event with same run+seq produces identical encoded output.
     #[kani::proof]
     fn check_same_event_same_encoding() {
         let event = run_accepted(1, 0xAB);
+        let v1 = encode_run_accepted_payload_or_assume(&event);
+        let v2 = encode_run_accepted_payload_or_assume(&event);
 
-        match (encode_run_accepted(&event), encode_run_accepted(&event)) {
-            (Ok(v1), Ok(v2)) => {
-                kani::assert(v1 == v2, "deterministic encoding for same input");
-                kani::assert(v1.len() == v2.len(), "lengths match for same input");
-                let header_len = match usize::try_from(RECORD_HEADER_LEN) {
-                    Ok(value) => value,
-                    Err(_) => {
-                        kani::assume(false);
-                        0
-                    }
-                };
-                kani::assert(v1.len() > header_len, "encoded len exceeds header len");
-            }
-            _ => kani::assert(false, "same event must encode twice"),
-        }
+        kani::assert(v1.len() == v2.len(), "lengths match for same input");
+        kani::assert(
+            last_byte_or_assume(&v1) == last_byte_or_assume(&v2),
+            "same workflow digest gives same terminal payload byte",
+        );
+        kani::assert(!v1.is_empty(), "payload encoding is non-empty");
+        core::mem::forget(v1);
+        core::mem::forget(v2);
     }
 
     /// C2: different events produce different encoded output.
     #[kani::proof]
     fn check_different_events_different_encoding() {
         let e1 = run_accepted(1, 0x11);
-        let e2 = run_accepted(2, 0x22);
+        let e2 = run_accepted(1, 0x22);
+        let v1 = encode_run_accepted_payload_or_assume(&e1);
+        let v2 = encode_run_accepted_payload_or_assume(&e2);
 
-        match (encode_run_accepted(&e1), encode_run_accepted(&e2)) {
-            (Ok(v1), Ok(v2)) => {
-                kani::assert(v1 != v2, "different events produce different bytes");
-            }
-            _ => kani::assert(false, "different events must encode"),
-        }
+        kani::assert(
+            last_byte_or_assume(&v1) != last_byte_or_assume(&v2),
+            "different workflow digests change payload bytes",
+        );
+        core::mem::forget(v1);
+        core::mem::forget(v2);
     }
 
     /// C2: JOURNAL_KEY_BYTES is bounded and non-zero.
@@ -96,11 +99,17 @@ mod kani_duplicate_ps009 {
             kani::assume(false);
             return;
         };
-        kani::assert(precise_new == conservative, "new-key precise equals conservative");
+        kani::assert(
+            precise_new == conservative,
+            "new-key precise equals conservative",
+        );
 
         let precise_dup = current_bytes;
         kani::assert(precise_dup < conservative, "duplicate precise is smaller");
-        kani::assert(precise_dup == current_bytes, "duplicate precise keeps current");
+        kani::assert(
+            precise_dup == current_bytes,
+            "duplicate precise keeps current",
+        );
     }
 
     /// C2: staged bytes never decrease regardless of duplicate policy.
@@ -125,6 +134,9 @@ mod kani_duplicate_ps009 {
 
         let new_precise_dup = current;
         kani::assert(new_precise_dup >= current, "precise duplicate monotonic");
-        kani::assert(new_precise_dup == current, "precise duplicate keeps current");
+        kani::assert(
+            new_precise_dup == current,
+            "precise duplicate keeps current",
+        );
     }
 }

@@ -126,7 +126,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 use super::*;
 use crate::{
@@ -977,7 +977,10 @@ fn append_queued_unpersisted_allows_idempotent_duplicate() {
         .expect("first append should succeed");
     let result = journal.append_queued_unpersisted(&event);
     let Ok(()) = result else {
-        panic!("idempotent duplicate of same event should succeed, got {:?}", result);
+        panic!(
+            "idempotent duplicate of same event should succeed, got {:?}",
+            result
+        );
     };
 }
 
