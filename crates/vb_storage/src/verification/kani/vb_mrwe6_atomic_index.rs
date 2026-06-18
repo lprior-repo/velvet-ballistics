@@ -104,10 +104,6 @@ fn vb_mrwe6_atomic_index_all_cases() {
 
     let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
     let index_staged = matches!(verification_event_and_index_keys_exist(&event), Ok(true));
-    );
-
-    let event_staged = matches!(intent, VerificationActionIndexIntent::Put { .. });
-    let index_staged = matches!(verification_event_and_index_keys_exist(&event), Ok(true));
     kani::assert(event_staged == index_staged);
 
     let event_committed = matches!(commit, CommitResult::Success) && event_staged;
@@ -124,14 +120,8 @@ fn vb_mrwe6_atomic_index_all_cases() {
     }
 
     if matches!(commit, CommitResult::Failure) {
-        );
-        }
-    }
-
-    if matches!(commit, CommitResult::Failure) {
-        kani::assert(!event_committed, "kani harness assertion");
-        !event_committed, "kani harness assertion");
-        kani::assert(!index_committed, "kani harness assertion");
+        kani::assert(!event_committed);
+        kani::assert(!index_committed);
     }
 
     core::mem::forget(event);
