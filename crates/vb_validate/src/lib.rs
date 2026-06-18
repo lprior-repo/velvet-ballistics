@@ -56,7 +56,7 @@ mod gate_13_cycles;
 mod diag_codes;
 #[cfg(test)]
 mod diag_convert;
-mod diag_render;
+pub mod diag_render;
 #[cfg(test)]
 mod diag_tests;
 
