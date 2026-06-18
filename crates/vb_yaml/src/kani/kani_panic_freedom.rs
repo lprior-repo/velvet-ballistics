@@ -58,8 +58,7 @@ fn check_parse_yaml_events_panic_free() {
                 // Event count must be bounded (≤ max_nodes from YamlLimits).
                 kani::assert(
                     events.len() <= 100_000,
-                    "event count {} exceeds max_nodes bound",
-                    events.len(),
+                    "event count exceeds max_nodes bound",
                 );
             }
             Err(error) => {

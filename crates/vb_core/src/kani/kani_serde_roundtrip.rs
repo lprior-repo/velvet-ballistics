@@ -81,7 +81,7 @@ mod harnesses {
         ];
         for s in unknown.iter() {
             let result = deserialize_symbolic_code(s);
-            kani::assert(result.is_err(), "Unknown code '{}' must be rejected", s);
+            kani::assert(result.is_err(), "Unknown code must be rejected");
         }
     }
 }

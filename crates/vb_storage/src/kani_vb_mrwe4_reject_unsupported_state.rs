@@ -10,16 +10,14 @@ mod kani_vb_mrwe4_reject_unsupported_state {
         let slot_values: bool = kani::any();
         let slot_taint: bool = kani::any();
         let action_payloads: bool = kani::any();
-        let pending_actions: bool = kani::any();
 
         let unsupported = UnsupportedRecoveryState {
             slot_values,
             slot_taint,
             action_payloads,
-            pending_actions,
         };
 
-        // After fix: pending_actions is NOT in the condition
+        // After fix: only the three remaining flags drive rejection.
         let should_reject =
             unsupported.slot_values || unsupported.slot_taint || unsupported.action_payloads;
 
@@ -30,15 +28,14 @@ mod kani_vb_mrwe4_reject_unsupported_state {
             );
         }
 
-        // If ONLY pending_actions is true, must NOT reject
-        if unsupported.pending_actions
-            && !unsupported.slot_values
+        // No-op probe: state without any flag set must NOT be rejected.
+        if !unsupported.slot_values
             && !unsupported.slot_taint
             && !unsupported.action_payloads
         {
             kani::assert(
                 !should_reject,
-                "pending_actions alone must NOT trigger rejection after fix",
+                "all-false state must NOT trigger rejection",
             );
         }
     }

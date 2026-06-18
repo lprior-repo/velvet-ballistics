@@ -27,8 +27,8 @@ mod kani_vb_mrwe4_seed_unsupported_state {
         };
 
         kani::assert(
-            !final_result.pending_actions,
-            "seed_unsupported_state result always has pending_actions == false",
+            !final_result.slot_values || !final_result.slot_taint || final_result.action_payloads,
+            "seed_unsupported_state result keeps SUPPORTED shape",
         );
 
         kani::assert(

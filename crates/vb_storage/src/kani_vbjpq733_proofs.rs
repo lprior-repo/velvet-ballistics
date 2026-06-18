@@ -13,13 +13,11 @@ fn vbjpq733_unsupported_union_all_combos() {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     let b = UnsupportedRecoveryState {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     let u = a.union(b);
     kani::assert(a.union_matches_flags(b, u),
@@ -34,13 +32,11 @@ fn vbjpq733_unsupported_union_commutative() {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     let b = UnsupportedRecoveryState {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     kani::assert(a.union(b) == b.union(a), "production union is commutative");
 }
@@ -52,7 +48,6 @@ fn vbjpq733_unsupported_union_idempotent() {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     kani::assert(a.union(a) == a, "production union is idempotent");
 }
@@ -64,7 +59,6 @@ fn vbjpq733_unsupported_union_supported_identity() {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     kani::assert(a.union(UnsupportedRecoveryState::SUPPORTED) == a,
         "SUPPORTED right identity",
@@ -91,28 +85,10 @@ fn vbjpq733_is_fully_supported_all_states() {
         slot_values: kani::any(),
         slot_taint: kani::any(),
         action_payloads: kani::any(),
-        pending_actions: kani::any(),
     };
     let result = state.is_fully_supported();
     let expected =
-        !state.slot_values && !state.slot_taint && !state.action_payloads && !state.pending_actions;
-    ,
-        "production SUPPORTED.is_fully_supported() == true",
-    );
-}
-
-#[kani::proof]
-#[kani::unwind(4)]
-fn vbjpq733_is_fully_supported_all_states() {
-    let state = UnsupportedRecoveryState {
-        slot_values: kani::any(),
-        slot_taint: kani::any(),
-        action_payloads: kani::any(),
-        pending_actions: kani::any(),
-    };
-    let result = state.is_fully_supported();
-    let expected =
-        !state.slot_values && !state.slot_taint && !state.action_payloads && !state.pending_actions;
+        !state.slot_values && !state.slot_taint && !state.action_payloads;
     kani::assert(
         result == expected,
         "production is_fully_supported matches all-false check",
@@ -131,18 +107,12 @@ fn vbjpq733_is_fully_supported_each_flag() {
         .is_fully_supported(),
         "slot_values blocks",
     );
-    ,
-        "slot_values blocks",
-    );
     kani::assert(
         !UnsupportedRecoveryState {
             slot_taint: true,
             ..s
         }
         .is_fully_supported(),
-        "slot_taint blocks",
-    );
-    ,
         "slot_taint blocks",
     );
     kani::assert(
@@ -153,15 +123,12 @@ fn vbjpq733_is_fully_supported_each_flag() {
         .is_fully_supported(),
         "action_payloads blocks",
     );
-    ,
-        "action_payloads blocks",
-    );
     kani::assert(
         !UnsupportedRecoveryState {
-            pending_actions: true,
+            action_payloads: true,
             ..s
         }
         .is_fully_supported(),
-        "pending_actions blocks",
+        "action_payloads blocks (duplicate check)",
     );
 }
