@@ -35,43 +35,6 @@ mod kani_verification {
         let val: u64 = kani::any();
         let some: FieldState<u64> = FieldState::from(Some(val));
         match some {
-            FieldState::Present(v) => #[cfg(kani)]
-mod kani_verification {
-    use std::path::PathBuf;
-
-    use crate::boundary_inventory::{
-        BoundaryCandidate, BoundaryExposure, BoundaryRecordDraft, BoundaryRecordParts,
-        ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState,
-        FreshnessMarker, Owner, ReviewStatus, ThreatStatement, ValidatedBoundaryInventory,
-        WorkspaceRoot, classify_boundary,
-    };
-
-    #[kani::proof]
-    fn field_state_present_map_never_panics() {
-        let val: u64 = kani::any();
-        let present: FieldState<u64> = FieldState::Present(val);
-        let mapped = present.map(|v| v.wrapping_add(1));
-        match mapped {
-            FieldState::Present(v) => assert!(v == val.wrapping_add(1)),
-            FieldState::Missing => {}
-        }
-    }
-
-    #[kani::proof]
-    fn field_state_missing_map_never_panics() {
-        let missing: FieldState<u64> = FieldState::Missing;
-        let mapped = missing.map(|v: u64| v.wrapping_add(1));
-        match mapped {
-            FieldState::Missing => {}
-            FieldState::Present(_) => {}
-        }
-    }
-
-    #[kani::proof]
-    fn field_state_from_option_never_panics() {
-        let val: u64 = kani::any();
-        let some: FieldState<u64> = FieldState::from(Some(val));
-        match some {
             FieldState::Present(v) => kani::assert(v == val),
             FieldState::Missing => {}
         }
@@ -169,16 +132,8 @@ mod kani_verification {
     #[kani::proof]
     fn review_status_other_preserves_value() {
         let status = ReviewStatus::Other(String::from("custom-status"));
-        kani::assert(status.serialized() == "custom-status",
-            "kani harness assertion",
-        );
-    }
-
-    #[kani::proof]
-    fn validated_inventory_with_schema_version_preserves_value() {
-        let schema: u32 = kani::any();
-        let v = ValidatedBoundaryInventory::with_schema_version(schema);
-         == "custom-status",
+        kani::assert(
+            status.serialized() == "custom-status",
             "kani harness assertion",
         );
     }
@@ -246,26 +201,6 @@ mod kani_verification {
                 }
                 Err(_) => {}
             }
-        }
-    }
-
-    #[kani::proof]
-    fn classify_boundary_unknown_marker_handled() {
-        let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "nonexistent-marker-xyz");
-        let result = classify_boundary(candidate);
-        match result {
-            Ok(_) => {}
-            Err(_) => {}
-        }
-    }
-
-    #[kani::proof]
-    fn field_state_missing_as_ref_never_panics() {
-        let missing: FieldState<u64> = FieldState::Missing;
-        let ref_state = missing.as_ref();
-        match ref_state {
-            FieldState::Missing => {}
-            FieldState::Present(_) => {}
         }
     }
 

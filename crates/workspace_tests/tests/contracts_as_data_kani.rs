@@ -133,7 +133,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Kani harness for schema_version field validation (OBL-001).
@@ -761,7 +761,10 @@ fn kani_gate_evidence_parity() {
             matches!(evidence.status, GateStatus::Pass),
             "Status should be Pass when invalid == 0",
         );
-        kani::assert(evidence.exit_code == 0, "Exit code should be 0 when invalid == 0");
+        kani::assert(
+            evidence.exit_code == 0,
+            "Exit code should be 0 when invalid == 0",
+        );
         kani::assert(
             evidence.why_failed.is_none(),
             "why_failed should be None when invalid == 0",
@@ -771,7 +774,10 @@ fn kani_gate_evidence_parity() {
             matches!(evidence.status, GateStatus::Fail),
             "Status should be Fail when invalid > 0",
         );
-        kani::assert(evidence.exit_code == 1, "Exit code should be 1 when invalid > 0");
+        kani::assert(
+            evidence.exit_code == 1,
+            "Exit code should be 1 when invalid > 0",
+        );
         kani::assert(
             evidence.why_failed.is_some(),
             "why_failed should be Some when invalid > 0",

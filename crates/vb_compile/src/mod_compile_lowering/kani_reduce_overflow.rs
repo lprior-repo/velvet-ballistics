@@ -60,10 +60,8 @@ fn check_reduce_body_width_overflow() {
     let result = body_width(&body, 3);
     match result {
         Ok(w) => {
-            kani::assert(w <= usize::from(u16::MAX),
-                "body_width Ok implies width <= u16::MAX",
-            );
-            ,
+            kani::assert(
+                w <= usize::from(u16::MAX),
                 "body_width Ok implies width <= u16::MAX",
             );
             kani::assert(w >= 3, "width must be >= overhead");

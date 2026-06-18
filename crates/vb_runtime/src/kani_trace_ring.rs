@@ -68,34 +68,8 @@ fn verify_trace_ring_bounds() {
         let _drained = ring.drain();
 
         // Invariant: len never exceeds capacity.
-        kani::assert(ring.len() <= ring.capacity(),
-            "TraceRing len never exceeds capacity",
-        );
-    }
-}
-
-/// OBL-TRC-002: TraceRing dropped counter is monotonic.
-///
-/// The dropped counter only increases and never decreases,
-/// and never wraps (u64 saturated arithmetic).
-#[kani::proof]
-fn verify_trace_ring_dropped_monotonic() {
-    let capacity: usize = kani::any_where(|c| *c >= 1 && *c <= 64);
-    let mut ring = TraceRing::new(capacity);
-
-    let initial_dropped = ring.dropped();
-
-    // Fill ring past capacity to trigger drops.
-    for i in 0..16 {
-        let run = RunId::new(i as u64);
-        let event = arbitrary_trace_event(run, i as u8);
-        let _ = ring.push(event);
-    }
-
-    let after_dropped = ring.dropped();
-
-    // Monotonicity: dropped only increases.
-     <= ring.capacity(),
+        kani::assert(
+            ring.len() <= ring.capacity(),
             "TraceRing len never exceeds capacity",
         );
     }
@@ -168,7 +142,7 @@ fn verify_drain_for_run_correctness() {
 
     // All drained events must belong to target run.
     for event in &drained {
-        kani::assert(event.run_id() == target_run);
+        kani::assert(event.run_id() == target_run, "assertion failed");
     }
 
     // Order preservation: target events appear in FIFO order.
@@ -181,7 +155,7 @@ fn verify_drain_for_run_correctness() {
         }
     }
     // We pushed 2 events for target_run.
-    kani::assert(drained.len() == seen_target_count);
+    kani::assert(drained.len() == seen_target_count, "assertion failed");
 }
 
 /// OBL-TRC-004: Terminal event (RunFinished/RunFailed/RunCancelled) detection.
@@ -208,32 +182,37 @@ fn verify_terminal_event_detection() {
     let _ = ring.push(TraceEvent::RunSubmitted { run: other_run });
 
     // Detection must return true for target_run (has terminal).
-    kani::assert(ring.has_terminal_event_for_run(target_run),
+    kani::assert(
+        ring.has_terminal_event_for_run(target_run),
         "target_run has terminal event",
     );
 
     // Detection must return false for other_run (no terminal).
-    kani::assert(!ring.has_terminal_event_for_run(other_run),
+    kani::assert(
+        !ring.has_terminal_event_for_run(other_run),
         "other_run has no terminal event",
     );
 
     // Empty ring has no terminal events.
     let empty_ring = TraceRing::new(8);
-    kani::assert(!empty_ring.has_terminal_event_for_run(target_run),
+    kani::assert(
+        !empty_ring.has_terminal_event_for_run(target_run),
         "empty ring has no terminal event",
     );
 
     // RunFailed terminal event.
     let mut ring2 = TraceRing::new(8);
     let _ = ring2.push(TraceEvent::RunFailed { run: target_run });
-    kani::assert(ring2.has_terminal_event_for_run(target_run),
+    kani::assert(
+        ring2.has_terminal_event_for_run(target_run),
         "RunFailed is terminal",
     );
 
     // RunCancelled terminal event.
     let mut ring3 = TraceRing::new(8);
     let _ = ring3.push(TraceEvent::RunCancelled { run: target_run });
-    kani::assert(ring3.has_terminal_event_for_run(target_run),
+    kani::assert(
+        ring3.has_terminal_event_for_run(target_run),
         "RunCancelled is terminal",
     );
 }

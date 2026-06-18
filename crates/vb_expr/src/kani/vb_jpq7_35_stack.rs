@@ -56,7 +56,8 @@ fn check_push_on_full_stack_returns_overflow() {
         let _ = stack_push(&mut stack, SlotValue::Bool(true));
     }
 
-    kani::assert(stack.len() == MAX_EXPRESSION_STACK_USIZE,
+    kani::assert(
+        stack.len() == MAX_EXPRESSION_STACK_USIZE,
         "stack must be full",
     );
 
@@ -64,10 +65,6 @@ fn check_push_on_full_stack_returns_overflow() {
     let result = stack_push(&mut stack, SlotValue::Bool(false));
 
     kani::assert(result.is_err(), "push on full stack must return error");
-
-    match result {
-        Err(ExprError::StackOverflow { max }) => {
-            , "push on full stack must return error");
 
     match result {
         Err(ExprError::StackOverflow { max }) => {
@@ -105,16 +102,6 @@ fn check_pop_on_empty_stack_returns_underflow() {
             // Any typed error
         }
         Ok(_) => {
-            , "pop on empty stack must return error");
-
-    match result {
-        Err(ExprError::StackUnderflow) => {
-            // Correct
-        }
-        Err(_) => {
-            // Any typed error
-        }
-        Ok(_) => {
             kani::assert(false, "pop on empty stack must fail");
         }
     }
@@ -131,10 +118,6 @@ fn check_push_pop_roundtrip() {
     let result = stack_pop(&mut stack);
 
     kani::assert(result.is_ok(), "pop after push must succeed");
-
-    match result {
-        Ok(SlotValue::I64(v)) => {
-            , "pop after push must succeed");
 
     match result {
         Ok(SlotValue::I64(v)) => {
@@ -165,7 +148,8 @@ fn check_push_many_pop_all() {
         kani::assert(result.is_ok(), "push within capacity must succeed");
     }
 
-    kani::assert(stack.len() == n,
+    kani::assert(
+        stack.len() == n,
         "stack must have n elements after n pushes",
     );
 
@@ -176,7 +160,8 @@ fn check_push_many_pop_all() {
     }
 
     // Stack must be empty
-    kani::assert(stack.is_empty(),
+    kani::assert(
+        stack.is_empty(),
         "stack must be empty after n pushes + n pops",
     );
 }
@@ -194,10 +179,6 @@ fn check_expr_stack_bound_oversized() {
     let result = crate::bytecode::check_expr_stack_bound(&ops);
 
     kani::assert(result.is_err(), "65 LoadConst ops must be rejected");
-
-    match result {
-        Err(ExprError::StackOverflow { max }) => {
-            , "65 LoadConst ops must be rejected");
 
     match result {
         Err(ExprError::StackOverflow { max }) => {
@@ -225,18 +206,15 @@ fn check_pop_pair_underflow() {
     kani::assert(right.is_ok(), "first pop should succeed");
 
     let left = stack_pop(&mut stack);
-    kani::assert(left.is_err(),
+    kani::assert(
+        left.is_err(),
         "second pop on single-element stack must fail",
     );
     match left {
         Err(ExprError::StackUnderflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::StackUnderflow),
-                "second pop on single-element stack must return StackUnderflow",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::StackUnderflow),
                 "second pop on single-element stack must return StackUnderflow",
             );
         }

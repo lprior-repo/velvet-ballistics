@@ -66,7 +66,8 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(result.is_ok(),
+    kani::assert(
+        result.is_ok(),
         "index-only accessor does not require symbols",
     );
     std::mem::forget(parts);
@@ -112,9 +113,11 @@ fn kani_gate_08_field_symbol_oob_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
             result,
-            Err(ValidationError::AccessorSymbolOutOfBounds { .. })),
+            Err(ValidationError::AccessorSymbolOutOfBounds { .. })
+        ),
         "field symbol >= symbols_count is rejected",
     );
     std::mem::forget(parts);
@@ -132,7 +135,8 @@ fn kani_gate_08_index_u32_max_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
+    kani::assert(
+        matches!(result, Err(ValidationError::AccessorPathInvalid { .. })),
         "u32::MAX index sentinel is rejected",
     );
     std::mem::forget(parts);
@@ -161,7 +165,8 @@ fn kani_gate_08_path_too_deep_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(matches!(result, Err(ValidationError::AccessorPathTooDeep { .. })),
+    kani::assert(
+        matches!(result, Err(ValidationError::AccessorPathTooDeep { .. })),
         "accessor path depth exceeding 16 is rejected",
     );
     std::mem::forget(parts);
@@ -185,7 +190,8 @@ fn kani_gate_08_root_oob_rejected() {
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
+    kani::assert(
+        matches!(result, Err(ValidationError::AccessorSlotOutOfRange { .. })),
         "root >= slot_count is rejected",
     );
     std::mem::forget(parts);

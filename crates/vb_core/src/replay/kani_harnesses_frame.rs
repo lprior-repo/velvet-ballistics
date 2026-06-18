@@ -105,114 +105,7 @@ fn verify_replay_deterministic_for_same_input() {
 
     match (result_a, result_b) {
         (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-            #![forbid(unsafe_code)]
-//! Kani frame/state harnesses for the replay module.
-
-use crate::frame::RunFrame;
-use crate::ids::{RunId, SlotIdx, StepIdx};
-use crate::value::SlotValue;
-use crate::value_store::ValueStore;
-use crate::workflow::{CompiledNode, CompiledNodeKind, SlotBranch};
-
-use super::kani_harnesses_plan::make_minimal_plan;
-use super::{ReplayAction, step::replay_step};
-
-/// Proves that replay is deterministic: two identical frames
-/// with the same slot values produce identical results.
-#[kani::proof]
-fn verify_replay_deterministic_for_same_input() {
-    let slot_val: bool = kani::any();
-
-    let plan = match make_minimal_plan(
-        vec![
-            CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ChooseSlot {
-                    branches: vec![SlotBranch {
-                        condition: SlotIdx::new(0),
-                        target: StepIdx::new(1),
-                    }]
-                    .into_boxed_slice(),
-                    otherwise: Some(StepIdx::new(2)),
-                },
-                output: None,
-                next: None,
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-                output: None,
-                next: None,
-            },
-            CompiledNode {
-                id: StepIdx::new(2),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-                output: None,
-                next: None,
-            },
-        ],
-        vec![],
-    ) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false);
-            return;
-        }
-    };
-
-    let step_count = plan.node_count();
-    let slot_count = plan.slot_count();
-    let node = match plan.node(StepIdx::new(0)) {
-        Some(v) => v,
-        None => {
-            kani::assume(false);
-            return;
-        }
-    };
-
-    let mut run_a = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false);
-            return;
-        }
-    };
-    match run_a.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val)) {
-        Ok(_) => {}
-        Err(_) => {
-            kani::assume(false);
-            return;
-        }
-    }
-    let mut store_a = ValueStore::new();
-    let result_a = replay_step(node, &mut run_a, &mut store_a, &plan);
-
-    let mut run_b = match RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count) {
-        Ok(v) => v,
-        Err(_) => {
-            kani::assume(false);
-            return;
-        }
-    };
-    match run_b.write_slot(SlotIdx::new(0), SlotValue::Bool(slot_val)) {
-        Ok(_) => {}
-        Err(_) => {
-            kani::assume(false);
-            return;
-        }
-    }
-    let mut store_b = ValueStore::new();
-    let result_b = replay_step(node, &mut run_b, &mut store_b, &plan);
-
-    match (result_a, result_b) {
-        (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-            kani::assert(a == b);
+            kani::assert_eq!(a, b);
         }
         (Err(_), Err(_)) => {}
         _ => {
@@ -329,11 +222,13 @@ fn kani_replay_skips_terminal_states() {
             return;
         }
     };
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
             state,
             crate::frame::StepState::Failed
                 | crate::frame::StepState::Cancelled
-                | crate::frame::StepState::Skipped),
+                | crate::frame::StepState::Skipped
+        ),
         "step 1 is in an absorbing terminal state",
     );
 
@@ -365,15 +260,13 @@ fn kani_replay_skips_terminal_states() {
             return;
         }
     };
-    kani::assert(matches!(
+    kani::assert(
+        matches!(
             state_after,
             crate::frame::StepState::Failed
                 | crate::frame::StepState::Cancelled
-                | crate::frame::StepState::Skipped),
-        "absorbing terminal state must remain terminal after replay (PO-KANI-012)",
-    );
-
-    ,
+                | crate::frame::StepState::Skipped
+        ),
         "absorbing terminal state must remain terminal after replay (PO-KANI-012)",
     );
 

@@ -95,10 +95,8 @@ fn kani_emit_single_body_set_all() {
         let result = emit_single_body_set(&body, id, 0, slot, None, &mut builder, false);
         kani::assert(result.is_ok(), "H1: Set body must compile successfully");
         if let Some(node) = builder.nodes.first() {
-            kani::assert(matches!(node.kind, CompiledNodeKind::SetConst { .. }),
-                "H1: Set body must emit SetConst node",
-            );
-            ,
+            kani::assert(
+                matches!(node.kind, CompiledNodeKind::SetConst { .. }),
                 "H1: Set body must emit SetConst node",
             );
             kani::assert(node.id == id, "H1: emitted node must have correct id");
@@ -117,7 +115,8 @@ fn kani_emit_single_body_set_all() {
         let result = emit_single_body_set(&body, id, 0, slot, None, &mut builder, false);
         kani::assert(result.is_ok(), "H2: Do body must compile successfully");
         if let Some(node) = builder.nodes.first() {
-            kani::assert(matches!(node.kind, CompiledNodeKind::Do { .. }),
+            kani::assert(
+                matches!(node.kind, CompiledNodeKind::Do { .. }),
                 "H2: Do body must emit Do node",
             );
         }
@@ -182,7 +181,8 @@ fn kani_emit_single_body_set_all() {
         ];
         let mut builder = SlotCompiler::new();
         let result = emit_single_body_set(&multi_body, id, 0, slot, None, &mut builder, false);
-        kani::assert(result.is_err(),
+        kani::assert(
+            result.is_err(),
             "H5: Multi-step body (>1 step) must return error",
         );
     }

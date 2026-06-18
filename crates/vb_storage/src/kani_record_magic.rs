@@ -41,9 +41,6 @@ fn kani_record_magic_rejects_wrong_magic() {
     kani::assert(result.is_err(), "wrong magic should return error");
 
     if let Err(JournalError::BadMagic { found }) = result {
-        , "wrong magic should return error");
-
-    if let Err(JournalError::BadMagic { found }) = result {
         kani::assert(found == wrong_magic, "bad magic error contains found value");
     }
 }
@@ -57,26 +54,6 @@ fn kani_record_magic_accepts_correct_magic() {
 
     // Write correct magic at offset 0
     header_bytes[0..4].copy_from_slice(&expected_magic.to_le_bytes());
-    // Write valid schema version at offset 4
-    header_bytes[4..6].copy_from_slice(&1u16.to_le_bytes());
-    // Write valid kind at offset 6 (WorkflowSource = 1)
-    header_bytes[6..8].copy_from_slice(&1u16.to_le_bytes());
-    // Write header_len at offset 8
-    header_bytes[8..12].copy_from_slice(&RECORD_HEADER_LEN.to_le_bytes());
-    // Write payload_len at offset 12
-    header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
-    // Write sequence at offset 16
-    header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
-
-    // Write a valid CRC placeholder at offset 28 (CRC_OFFSET)
-    let crc = crc32c::crc32c(&header_bytes[0..28]);
-    header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
-
-    let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    // May fail on other validations but magic check passes
-    // We mainly verify it doesn't return BadMagic
-    match result {
-        Ok(_) => );
     // Write valid schema version at offset 4
     header_bytes[4..6].copy_from_slice(&1u16.to_le_bytes());
     // Write valid kind at offset 6 (WorkflowSource = 1)

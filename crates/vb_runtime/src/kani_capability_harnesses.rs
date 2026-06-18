@@ -161,26 +161,32 @@ mod kani_capability_harnesses {
     #[kani::proof]
     fn strict_admission_invalid_artifact_cases_reject() {
         let missing = strict_admission_with_store(&MissingArtifactStore);
-        kani::assert(matches!(missing, Err(AdmissionError::ArtifactNotFound { .. })),
+        kani::assert(
+            matches!(missing, Err(AdmissionError::ArtifactNotFound { .. })),
             "missing artifact rejects strict admission",
         );
 
         let malformed = strict_admission_with_store(&MalformedArtifactStore);
-        kani::assert(matches!(malformed, Err(AdmissionError::ArtifactEnvelopeDecodeFailed)),
+        kani::assert(
+            matches!(malformed, Err(AdmissionError::ArtifactEnvelopeDecodeFailed)),
             "malformed artifact decode rejects strict admission",
         );
 
         let gate_count = strict_admission_with_store(&InvalidGateCountStore);
-        kani::assert(matches!(
+        kani::assert(
+            matches!(
                 gate_count,
-                Err(AdmissionError::ArtifactInvalidGateCount { .. })),
+                Err(AdmissionError::ArtifactInvalidGateCount { .. })
+            ),
             "invalid gate count rejects strict admission",
         );
 
         let proof_flag = strict_admission_with_store(&InvalidProofFlagStore);
-        kani::assert(matches!(
+        kani::assert(
+            matches!(
                 proof_flag,
-                Err(AdmissionError::ArtifactInvalidProofFlag { .. })),
+                Err(AdmissionError::ArtifactInvalidProofFlag { .. })
+            ),
             "invalid proof flag rejects strict admission",
         );
     }
@@ -196,7 +202,8 @@ mod kani_capability_harnesses {
             digest,
             CapabilitySet::empty(),
         );
-        kani::assert(matches!(capability, Err(AdmissionError::CapabilityDenied { .. })),
+        kani::assert(
+            matches!(capability, Err(AdmissionError::CapabilityDenied { .. })),
             "invalid capability grant rejects strict admission",
         );
     }
@@ -217,7 +224,8 @@ mod kani_capability_harnesses {
             CapabilitySet::empty(),
         );
 
-        kani::assert(result.is_err(),
+        kani::assert(
+            result.is_err(),
             "digest mismatch must reject before admission",
         );
     }
@@ -234,7 +242,8 @@ mod kani_capability_harnesses {
             CapabilitySet::empty(),
         );
 
-        kani::assert(result.is_err(),
+        kani::assert(
+            result.is_err(),
             "strict presence-only bypass must reject before admission",
         );
     }
@@ -284,39 +293,6 @@ mod kani_capability_harnesses {
             Ok(()) => {}
             Err(AdmissionError::CapabilityDenied { .. }) => {}
             Err(_) => {
-                , "valid strict accepted artifact admits");
-    }
-
-    #[kani::proof]
-    fn check_capability_harness() {
-        let req_action: u16 = kani::any();
-        let grant_action: u16 = kani::any();
-        let req_action_id = ActionId::new(req_action);
-        let grant_action_id = ActionId::new(grant_action);
-
-        let req_name: [u8; 16] = kani::any();
-        let grant_name: [u8; 16] = kani::any();
-        let req_name_lossy = String::from_utf8_lossy(&req_name);
-        let req_name_str = match req_name_lossy.split('\0').next() {
-            Some(value) => value,
-            None => "cap",
-        };
-        let grant_name_lossy = String::from_utf8_lossy(&grant_name);
-        let grant_name_str = match grant_name_lossy.split('\0').next() {
-            Some(value) => value,
-            None => "cap",
-        };
-
-        let required = Capability::new(req_name_str.into(), req_action_id);
-        let grant = Capability::new(grant_name_str.into(), grant_action_id);
-        let granted = CapabilitySet::from_grants(Box::new([grant]));
-
-        let result = check_capability(req_action_id, &required, &granted);
-
-        match result {
-            Ok(()) => {}
-            Err(AdmissionError::CapabilityDenied { .. }) => {}
-            Err(_) => {
                 kani::assert(false, "Only CapabilityDenied expected for denied cases");
             }
         }
@@ -330,7 +306,8 @@ mod kani_capability_harnesses {
         let required = Capability::new(name.clone(), action_id);
         let exact = CapabilitySet::from_grants(Box::new([Capability::new(name, action_id)]));
 
-        kani::assert(check_capability(action_id, &required, &exact).is_ok(),
+        kani::assert(
+            check_capability(action_id, &required, &exact).is_ok(),
             "exact grant is accepted",
         );
     }
@@ -361,7 +338,8 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
             "action match + name denies -> CapabilityDenied",
         );
         std::mem::forget(result);
@@ -377,7 +355,8 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
             "action mismatch -> CapabilityDenied regardless of name",
         );
         std::mem::forget(result);
@@ -394,7 +373,8 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
             "action mismatch + name denies -> CapabilityDenied",
         );
         std::mem::forget(result);
@@ -413,7 +393,8 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
             "prefix grant must not satisfy subpath requirement",
         );
         std::mem::forget(result);
@@ -438,7 +419,8 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
             "partial segment must not grant",
         );
         std::mem::forget(result);

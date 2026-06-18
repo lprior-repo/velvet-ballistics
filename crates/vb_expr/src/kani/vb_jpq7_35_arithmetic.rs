@@ -17,15 +17,9 @@ use vb_core::SlotValue;
 use vb_core::value::FiniteF64;
 
 /// PO-KANI-005 H1: i64::MAX + 1 returns IntegerOverflow.
-///
-/// Symbolic witness: `operand_b` is restricted to 1 so the
-/// harness exercises the precise i64::MAX + 1 overflow boundary
-/// for the production `eval_binary_op(Add)` impl.
 #[kani::proof]
 fn check_i64_add_overflow() {
-    let operand_b: i64 = kani::any();
-    kani::assume(operand_b == 1);
-    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(operand_b));
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
 
     kani::assert(result.is_err(), "i64::MAX + 1 must overflow");
 
@@ -34,12 +28,8 @@ fn check_i64_add_overflow() {
             // Correct behavior
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow),
-                "i64 overflow must return IntegerOverflow",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
                 "i64 overflow must return IntegerOverflow",
             );
         }
@@ -50,27 +40,17 @@ fn check_i64_add_overflow() {
 }
 
 /// PO-KANI-005 H2: i64::MIN - 1 returns IntegerOverflow.
-///
-/// Symbolic witness: `operand_b` is restricted to 1 so the
-/// harness exercises the precise i64::MIN - 1 underflow boundary
-/// for the production `eval_binary_op(Sub)` impl.
 #[kani::proof]
 fn check_i64_sub_overflow() {
-    let operand_b: i64 = kani::any();
-    kani::assume(operand_b == 1);
-    let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(operand_b));
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
 
     kani::assert(result.is_err(), "i64::MIN - 1 must overflow");
 
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow),
-                "i64 underflow must return IntegerOverflow",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
                 "i64 underflow must return IntegerOverflow",
             );
         }
@@ -81,27 +61,17 @@ fn check_i64_sub_overflow() {
 }
 
 /// PO-KANI-005 H3: i64::MAX * 2 returns IntegerOverflow.
-///
-/// Symbolic witness: `operand_b` is restricted to 2 so the
-/// harness exercises the precise i64::MAX * 2 overflow boundary
-/// for the production `eval_binary_op(Mul)` impl.
 #[kani::proof]
 fn check_i64_mul_overflow() {
-    let operand_b: i64 = kani::any();
-    kani::assume(operand_b == 2);
-    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(operand_b));
+    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(2));
 
     kani::assert(result.is_err(), "i64::MAX * 2 must overflow");
 
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow),
-                "i64::MAX * 2 must return IntegerOverflow",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
                 "i64::MAX * 2 must return IntegerOverflow",
             );
         }
@@ -112,27 +82,17 @@ fn check_i64_mul_overflow() {
 }
 
 /// PO-KANI-005 H4: i64::MIN * -1 returns IntegerOverflow.
-///
-/// Symbolic witness: `operand_b` is restricted to -1 so the
-/// harness exercises the precise i64::MIN * -1 overflow boundary
-/// for the production `eval_binary_op(Mul)` impl.
 #[kani::proof]
 fn check_i64_mul_overflow_min_neg_one() {
-    let operand_b: i64 = kani::any();
-    kani::assume(operand_b == -1);
-    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MIN), SlotValue::I64(operand_b));
+    let result = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
 
     kani::assert(result.is_err(), "i64::MIN * -1 must overflow");
 
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow),
-                "i64::MIN * -1 must return IntegerOverflow",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
                 "i64::MIN * -1 must return IntegerOverflow",
             );
         }
@@ -143,15 +103,9 @@ fn check_i64_mul_overflow_min_neg_one() {
 }
 
 /// PO-KANI-005 H5: i64::MIN / -1 returns IntegerOverflow (only i64 div overflow case).
-///
-/// Symbolic witness: `operand_b` is restricted to -1 so the
-/// harness exercises the precise i64::MIN / -1 overflow boundary
-/// for the production `eval_binary_op(Div)` impl.
 #[kani::proof]
 fn check_i64_div_overflow_min_div_neg_one() {
-    let operand_b: i64 = kani::any();
-    kani::assume(operand_b == -1);
-    let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(operand_b));
+    let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
 
     kani::assert(result.is_err(), "i64::MIN / -1 must overflow");
 
@@ -160,12 +114,8 @@ fn check_i64_div_overflow_min_div_neg_one() {
             // Correct: checked_div returns None for MIN/-1
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow),
-                "i64::MIN / -1 must return IntegerOverflow",
-            );
-        }
-        Ok(_v) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
                 "i64::MIN / -1 must return IntegerOverflow",
             );
         }
@@ -176,14 +126,8 @@ fn check_i64_div_overflow_min_div_neg_one() {
 }
 
 /// PO-KANI-005 H6: i64::MIN negation returns IntegerOverflow.
-///
-/// Symbolic witness: a marker byte (kani::any) is declared so the
-/// harness has symbolic input. The harness exercises the precise
-/// i64::MIN negation overflow boundary for the production
-/// `eval_unary_op(Neg)` impl.
 #[kani::proof]
 fn check_i64_neg_overflow() {
-    let _marker: u8 = kani::any();
     let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
 
     kani::assert(result.is_err(), "-(i64::MIN) must overflow");
@@ -191,12 +135,8 @@ fn check_i64_neg_overflow() {
     match result {
         Err(ExprError::IntegerOverflow) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::IntegerOverflow),
-                "-(i64::MIN) must return IntegerOverflow",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::IntegerOverflow),
                 "-(i64::MIN) must return IntegerOverflow",
             );
         }
@@ -259,12 +199,8 @@ fn check_i64_div_zero_returns_division_by_zero() {
             // Correct behavior
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::DivisionByZero),
-                "i64/0 must return DivisionByZero",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::DivisionByZero),
                 "i64/0 must return DivisionByZero",
             );
         }
@@ -310,12 +246,8 @@ fn check_f64_div_zero_returns_non_finite_float() {
             // Correct: Inf rejected by FiniteF64::new
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::NonFiniteFloat),
-                "F64/0 must return NonFiniteFloat",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::NonFiniteFloat),
                 "F64/0 must return NonFiniteFloat",
             );
         }
@@ -356,12 +288,8 @@ fn check_f64_zero_div_zero_returns_non_finite_float() {
     match result {
         Err(ExprError::NonFiniteFloat) => {}
         Err(e) => {
-            kani::assert(matches!(e, ExprError::NonFiniteFloat),
-                "0.0/0.0 must return NonFiniteFloat",
-            );
-        }
-        Ok(_) => {
-            ,
+            kani::assert(
+                matches!(e, ExprError::NonFiniteFloat),
                 "0.0/0.0 must return NonFiniteFloat",
             );
         }

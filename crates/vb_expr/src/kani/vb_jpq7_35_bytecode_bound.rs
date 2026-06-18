@@ -53,13 +53,15 @@ fn check_compile_small_ast_succeeds() {
     match result {
         Ok(program) => {
             // Program ops must be bounded
-            kani::assert(program.ops.len() <= MAX_OPS,
+            kani::assert(
+                program.ops.len() <= MAX_OPS,
                 "small AST: ops must not exceed MAX_OPS",
             );
         }
         Err(e) => {
             // Any error is safe
-            kani::assert(!matches!(e, ExprError::BytecodeTooLong { .. }),
+            kani::assert(
+                !matches!(e, ExprError::BytecodeTooLong { .. }),
                 "small AST must not trigger BytecodeTooLong",
             );
         }
@@ -83,13 +85,15 @@ fn check_push_constant_within_bound() {
 
     match result {
         Ok(idx) => {
-            kani::assert(usize::from(idx.as_usize()) == n,
+            kani::assert(
+                usize::from(idx.as_usize()) == n,
                 "constant index must match position",
             );
             kani::assert(constants.len() == n + 1, "constant was pushed");
         }
         Err(e) => {
-            kani::assert(matches!(e, ExprError::ConstantPoolOverflow),
+            kani::assert(
+                matches!(e, ExprError::ConstantPoolOverflow),
                 "only possible error for n < MAX_CONSTANTS is ConstantPoolOverflow \
                  (possible if n == MAX_CONSTANTS due to off-by-one or u16 overflow)",
             );
@@ -98,10 +102,6 @@ fn check_push_constant_within_bound() {
 }
 
 /// PO-KANI-003 H3: push_constant rejects at MAX_CONSTANTS limit.
-///
-/// Symbolic witness: the pushed I64 is restricted to 42 so the
-/// harness exercises the precise MAX_CONSTANTS-reject boundary
-/// for the production `push_constant` impl.
 #[kani::proof]
 fn check_push_constant_at_limit() {
     // Build a pool at exactly MAX_CONSTANTS entries
@@ -110,26 +110,12 @@ fn check_push_constant_at_limit() {
         constants.push(ConstValue::Bool(true));
     }
 
-    let pushed: i64 = kani::any();
-    kani::assume(pushed == 42);
-    let value = ConstValue::I64(pushed);
+    let value = ConstValue::I64(42);
     let result = push_constant(value, &mut constants);
 
     // At MAX_CONSTANTS, push must fail
-    kani::assert(result.is_err(),
-        "push_constant at MAX_CONSTANTS limit must return error",
-    );
-
-    match result {
-        Err(ExprError::ConstantPoolOverflow) => {
-            // Correct behavior
-        }
-        Err(other) => {
-            // Any typed error is acceptable (but we expect ConstantPoolOverflow)
-            let _ = other;
-        }
-        Ok(_) => {
-            ,
+    kani::assert(
+        result.is_err(),
         "push_constant at MAX_CONSTANTS limit must return error",
     );
 
@@ -178,10 +164,6 @@ fn check_compile_rejects_too_many_ops() {
 
     match result {
         Err(ExprError::BytecodeTooLong { len, max }) => {
-            , "130-add chain (259 ops) must be rejected");
-
-    match result {
-        Err(ExprError::BytecodeTooLong { len, max }) => {
             kani::assert(len > MAX_OPS, "reported len must exceed MAX_OPS");
             kani::assert(max == MAX_OPS, "max must be 256");
         }
@@ -216,19 +198,8 @@ fn check_push_constant_u16_overflow() {
     let result = push_constant(value, &mut constants);
 
     // At len = u16::MAX + 1 = 65536, u16::try_from fails -> ConstantPoolOverflow
-    kani::assert(result.is_err(),
-        "push_constant at u16::MAX+1 must return error",
-    );
-
-    match result {
-        Err(ExprError::ConstantPoolOverflow) => {
-            // Correct — u16::try_from catches the overflow
-        }
-        Err(_) => {
-            // Any typed error is safe
-        }
-        Ok(_) => {
-            ,
+    kani::assert(
+        result.is_err(),
         "push_constant at u16::MAX+1 must return error",
     );
 
