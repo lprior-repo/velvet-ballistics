@@ -30,6 +30,21 @@ fileGroups:
     - 'proofs/**/*'
     - 'VERIFYING_RUST_WITH_LEAN_AND_GATES.md'
     - 'moon-rust-verification.yml'
+  spellingGateUniverse:
+    - '*.rs'
+    - '**/*.rs'
+    - '*.toml'
+    - '**/*.toml'
+    - '*.yaml'
+    - '**/*.yaml'
+    - '*.yml'
+    - '**/*.yml'
+    - '*.md'
+    - '**/*.md'
+    - '*.sh'
+    - '**/*.sh'
+    - '*.py'
+    - '**/*.py'
 
 tasks:
   fmt:
@@ -469,15 +484,12 @@ tasks:
       runInCI: false
 
   check-spelling-gate:
-    # Mechanical gate: rejects "velvet-ballistics" (wrong) in
-    # production code/docs; canonical spelling is
-    # "velvet-ballistics" (correct).
+    # Mechanical gate: rejects active "velvet-ballistics" occurrences in
+    # scanner-universe source/docs unless an exact allowlist span applies.
     command: 'bash scripts/check-spelling-gate.sh'
     inputs:
       - 'scripts/check-spelling-gate.sh'
-      - '@globs(sources)'
-      - '@globs(tests)'
-      - '@globs(docs)'
+      - '@globs(spellingGateUniverse)'
       - '.moon/tasks/all.yml'
     options:
       runInCI: true

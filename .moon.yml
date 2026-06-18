@@ -21,6 +21,7 @@ pipeline:
   - 'loom-run'
   - 'nightly-feature-gate'
   - 'source-length'
+  - 'check-spelling-gate'
   - 'check-no-dead-ir-duplicates'
   - 'check-test-density'
   - 'check-bench-registration'

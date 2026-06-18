@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # check-spelling-gate.sh
-# Mechanical gate: rejects new velvet-ballistics (wrong) spelling in active code/docs.
-# Canonical spelling is velvet-ballistics (correct).
+# Mechanical gate: rejects new velvet-ballistics (forbidden) spelling in active code/docs.
+# HZ-DRIFT-001: product/package prose still conflicts on hyphenated spelling;
+# active code identifiers should use velvet_ballistics unless an allowlist applies.
 #
 # Allowlisted path patterns (skip these entirely):
 #   - .beads/            — Bead artifacts and CI output (not source)
 #   - .jj/               — JJ internal working-copy state
+#   - .evidence/         — Repository-root raw evidence artifacts only
+#   - evidence/          — Repository-root benchmark/release evidence only
 #   - target/            — Build artifact directories
 #   - tests/             — Test clippy is not strict
 #   - benches/           — Bench clippy is not strict
@@ -25,115 +28,187 @@
 set -euo pipefail
 
 ROOT="$(pwd -P)"
+FORBIDDEN_TOKEN="velvet-ballistics"
+CANONICAL_REPLACEMENT="velvet_ballistics"
 
-echo "=== Spelling Gate: velvet-ballistics vs velvet-ballistics ===" >&2
+if [[ -n "${MOON_TASK_ID:-}" ]] && command -v grep >/dev/null 2>&1; then
+    SEARCH_TOOL=(grep)
+elif command -v rtk >/dev/null 2>&1; then
+    SEARCH_TOOL=(rtk grep)
+elif [[ -n "${HOME:-}" && -x "${HOME}/.local/share/mise/shims/rtk" ]]; then
+    SEARCH_TOOL=("${HOME}/.local/share/mise/shims/rtk" grep)
+elif [[ -n "${HOME:-}" && -x "${HOME}/.cargo/bin/rtk" ]]; then
+    SEARCH_TOOL=("${HOME}/.cargo/bin/rtk" grep)
+elif command -v grep >/dev/null 2>&1; then
+    SEARCH_TOOL=(grep)
+else
+    echo "FATAL: no spelling search backend available (rtk or grep required)" >&2
+    exit 2
+fi
+
+run_search() {
+    "${SEARCH_TOOL[@]}" "$@"
+}
+
+run_search_to_file() {
+    local output_file="$1"
+    shift
+
+    if run_search "$@" >"$output_file"; then
+        return 0
+    fi
+
+    local status=$?
+    if [[ "$status" -eq 1 ]]; then
+        return 1
+    fi
+
+    return 2
+}
+
+scrub_allowed_occurrences() {
+    local scrubbed="$1"
+    local span
+    local forbidden_tag_span="FORBIDDEN_FEATURE_NAMES blocks ${FORBIDDEN_TOKEN}"
+    local rule_span="\`${FORBIDDEN_TOKEN}\` is invalid"
+
+    scrubbed="${scrubbed//${FORBIDDEN_TOKEN}-MASTER.md/}"
+    scrubbed="${scrubbed//${forbidden_tag_span}/}"
+    scrubbed="${scrubbed//${rule_span}/}"
+    scrubbed="${scrubbed//${FORBIDDEN_TOKEN}\/v2/}"
+
+    while [[ "$scrubbed" =~ /home/[^[:space:]]*/${FORBIDDEN_TOKEN}/ ]]; do
+        span="${BASH_REMATCH[0]}"
+        scrubbed="${scrubbed/"$span"/}"
+    done
+
+    while [[ "$scrubbed" =~ https?://[^[:space:]]*dolthub[.]com/[^[:space:]]*${FORBIDDEN_TOKEN}[^[:space:]]* ]]; do
+        span="${BASH_REMATCH[0]}"
+        scrubbed="${scrubbed/"$span"/}"
+    done
+
+    printf '%s' "$scrubbed"
+}
+
+line_has_unexcused_token() {
+    local linecontent="$1"
+    local scrubbed
+    scrubbed="$(scrub_allowed_occurrences "$linecontent")"
+    [[ "$scrubbed" == *"$FORBIDDEN_TOKEN"* ]]
+}
+
+echo "=== Spelling Gate: $FORBIDDEN_TOKEN vs $CANONICAL_REPLACEMENT ===" >&2
 
 count=0
 
-# Collect all files containing the wrong spelling (recursive, with includes)
-# GNU grep-compatible: --include works with -r
-mapfile -t files < <(
-    rtk grep -rl --include='*.rs' \
-                 --include='*.toml' \
-                 --include='*.yaml' \
-                 --include='*.yml' \
-                 --include='*.md' \
-                 --include='*.sh' \
-                 --include='*.py' \
-                 'velvet-ballistics' "$ROOT" 2>/dev/null || true
-)
+# Collect all files containing the forbidden spelling (recursive, with includes).
+# GNU grep-compatible: --include works with -r. Search errors fail closed.
+files=()
+file_list_tmp="$(mktemp)"
+if run_search_to_file "$file_list_tmp" \
+    -rl --include='*.rs' \
+        --include='*.toml' \
+        --include='*.yaml' \
+        --include='*.yml' \
+        --include='*.md' \
+        --include='*.sh' \
+        --include='*.py' \
+        "$FORBIDDEN_TOKEN" "$ROOT"; then
+    mapfile -t files < "$file_list_tmp"
+elif [[ "$?" -eq 1 ]]; then
+    files=()
+else
+    rm -f "$file_list_tmp"
+    echo "FATAL: spelling recursive search failed" >&2
+    exit 2
+fi
+rm -f "$file_list_tmp"
 
 for file in "${files[@]}"; do
-    # Path-based exclusions — skip these entirely
+    rel_file="$file"
     case "$file" in
-        *'/.beads/'*) continue ;;
-        *'/.jj/'*) continue ;;
-        *'/.evidence/'*) continue ;;
-        *'/evidence/'*) continue ;;
-        *'/target/'*) continue ;;
-        *'/target_nosccache/'*) continue ;;
-        *'/target_debug_clean/'*) continue ;;
-        *'/target_clean/'*) continue ;;
-        */tests/*) continue ;;
-        */benches/*) continue ;;
-        */velvet-ballistics-MASTER.md) continue ;;
-        */check-spelling-gate.sh) continue ;;
-        *'/BIG-ASS-TESTING-TO-FIX.md') continue ;;
-        *'final-'*) continue ;;
-        *'proof-repair-'*) continue ;;
-        *'black-hat-review-'*) continue ;;
-        # naming_scan defines LEGACY_* constants with wrong spelling as VALUES (intentional detection data)
-        */naming_scan/*) continue ;;
-        # Test files in src/ (*_tests.rs) — test clippy is not strict
-        *'_tests.rs') continue ;;
-        # JJ workspaces — isolated workspaces with their own state
-        *'/vb-'*) continue ;;
-        *'/femdation-vb-'*) continue ;;
-        *'/go-skill-'*) continue ;;
-        *'/holzman-workspace-'*) continue ;;
-        *'/pick5-'*) continue ;;
+        "$ROOT"/*) rel_file="${file#"$ROOT"/}" ;;
     esac
 
-    # For each remaining file, get matching lines
+    # Path-based exclusions — skip only repository-root artifact trees or
+    # non-production test/bench/source-policy fixtures. Do not match arbitrary
+    # parent workspace names or nested docs/src directories.
+    case "$rel_file" in
+        .beads/*) continue ;;
+        .jj/*) continue ;;
+        .evidence/*) continue ;;
+        evidence/*) continue ;;
+        target/*) continue ;;
+        target_nosccache/*) continue ;;
+        target_debug_clean/*) continue ;;
+        target_clean/*) continue ;;
+        tests/*|*/tests/*) continue ;;
+        benches/*|*/benches/*) continue ;;
+        velvet-ballistics-MASTER.md) continue ;;
+        scripts/check-spelling-gate.sh) continue ;;
+        BIG-ASS-TESTING-TO-FIX.md) continue ;;
+        # naming_scan defines LEGACY_* constants with wrong spelling as VALUES (intentional detection data)
+        naming_scan/*|*/naming_scan/*) continue ;;
+        # Test files in src/ (*_tests.rs) — test clippy is not strict
+        *'_tests.rs') continue ;;
+    esac
+
+    # For each remaining file, get matching lines. Search errors fail closed.
     # GNU grep format: linenum:content
+    line_list_tmp="$(mktemp)"
+    if run_search_to_file "$line_list_tmp" \
+        -n --include='*.rs' \
+           --include='*.toml' \
+           --include='*.yaml' \
+           --include='*.yml' \
+           --include='*.md' \
+           --include='*.sh' \
+           --include='*.py' \
+           "$FORBIDDEN_TOKEN" "$file"; then
+        true
+    elif [[ "$?" -eq 1 ]]; then
+        rm -f "$line_list_tmp"
+        continue
+    else
+        rm -f "$line_list_tmp"
+        echo "FATAL: spelling per-file search failed: $file" >&2
+        exit 2
+    fi
+
     while IFS= read -r line; do
         linenum="${line%%:*}"
         linecontent="${line#*:}"
 
-        # Allowlist content patterns:
-        # 1. Reference to the master file itself
-        if [[ "$linecontent" == *'velvet-ballistics-MASTER.md'* ]]; then
-            continue
-        fi
-        # 2. Source checkout path (external migration artifact)
-        if [[ "$linecontent" == *'/home/'*'/velvet-ballistics/'* ]]; then
-            continue
-        fi
-        # 3. FORBIDDEN_FEATURE_NAMES in check scripts
-        if [[ "$linecontent" == *'FORBIDDEN_FEATURE_NAMES'* ]]; then
-            continue
-        fi
-        # 4. Rule text that states "velvet-ballistics is invalid" (AGENTS.md rule statement)
-        if [[ "$linecontent" == *'velvet-ballistics` is invalid'* ]]; then
-            continue
-        fi
-        # 5. Dolt remote URL (external system, can't be changed)
-        if [[ "$linecontent" == *'dolthub.com/'*'velvet-ballistics'* ]]; then
-            continue
-        fi
-        # 6. Test data in schema.rs/schema_tests.rs: wrong spelling as version string in test assertions
-        if [[ "$linecontent" == *'velvet-ballistics/v2'* ]]; then
+        # Occurrence-scoped allowlist patterns. Only the matching span is
+        # excused; an extra forbidden token on the same line remains active.
+        if ! line_has_unexcused_token "$linecontent"; then
             continue
         fi
 
-        echo "VIOLATION: $file:$linenum: wrong spelling 'velvet-ballistics' (use 'velvet-ballistics')" >&2
+        echo "VIOLATION: $file:$linenum: wrong spelling '$FORBIDDEN_TOKEN' (use '$CANONICAL_REPLACEMENT')" >&2
         count=$((count + 1))
-    done < <(rtk grep -n --include='*.rs' \
-                       --include='*.toml' \
-                       --include='*.yaml' \
-                       --include='*.yml' \
-                       --include='*.md' \
-                       --include='*.sh' \
-                       --include='*.py' \
-                       'velvet-ballistics' "$file" 2>/dev/null || true)
+    done < "$line_list_tmp"
+    rm -f "$line_list_tmp"
 done
 
 echo "=== Spelling Gate complete: $count violations ===" >&2
 
 if [[ $count -gt 0 ]]; then
     echo "" >&2
-    echo "Hint: The canonical spelling is 'velvet-ballistics'." >&2
+    echo "Hint: Replace active code identifiers with '$CANONICAL_REPLACEMENT' or document an exact allowlisted artifact." >&2
+    echo "HZ-DRIFT-001: product/package prose still needs a canonical naming repair before claiming global closure." >&2
     echo "Allowlisted path patterns (excluded entirely):" >&2
     echo "  - .beads/ (bead artifacts and CI output)" >&2
     echo "  - .jj/ (JJ internal state)" >&2
+    echo "  - .evidence/ and evidence/ at workspace root only (evidence artifacts)" >&2
     echo "  - target/ (build artifacts)" >&2
     echo "  - tests/ and benches/ (test/bench clippy is not strict)" >&2
-    echo "  - velvet-ballistics-MASTER.md (master contract file)" >&2
+    echo "  - $FORBIDDEN_TOKEN-MASTER.md (master contract file)" >&2
     echo "Allowlisted content patterns:" >&2
-    echo "  - velvet-ballistics-MASTER.md (reference to master file)" >&2
-    echo "  - /home/.*/velvet-ballistics/ (source checkout path, migration artifact)" >&2
-    echo "  - FORBIDDEN_FEATURE_NAMES (spelling used as forbid-tag)" >&2
-    echo "  - 'velvet-ballistics' is invalid (rule statement)" >&2
+    echo "  - $FORBIDDEN_TOKEN-MASTER.md (reference to master file)" >&2
+    echo "  - /home/.*/$FORBIDDEN_TOKEN/ (source checkout path, migration artifact)" >&2
+    echo "  - FORBIDDEN_FEATURE_NAMES blocks $FORBIDDEN_TOKEN (spelling used as forbid-tag)" >&2
+    echo "  - '$FORBIDDEN_TOKEN' is invalid (rule statement)" >&2
     exit 1
 fi
 
