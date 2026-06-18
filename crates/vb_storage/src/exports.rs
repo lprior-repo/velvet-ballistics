@@ -3,14 +3,14 @@
 //! Consumers of `vb_storage` import from this module (re-exported at the crate root).
 
 // Core types
-pub use crate::constants::*;
 pub use crate::error::{JournalError, KeyDecodeError};
+pub use crate::constants::*;
+pub use crate::recovery::{ActionReplayTracker, RunSnapshot};
 pub use crate::events::{DurableActionOutcome, JournalEvent};
 pub use crate::records::{
     BlobRecord, CompiledIrRecord, RecordKind, RecoveryStampRecord, RunHeaderRecord,
     WorkflowSourceRecord,
 };
-pub use crate::recovery::{ActionReplayTracker, RunSnapshot};
 pub use crate::slot_extra::{
     DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
