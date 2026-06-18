@@ -2,4 +2,4 @@
 
 The line below intentionally lacks the backtick required by content pattern 4.
 
-velvet-ballistics is invalid
+Velvet Ballastics is invalid

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # check-spelling-gate.sh
-# Mechanical gate: rejects new velvet-ballistics (forbidden) spelling in active code/docs.
-# HZ-DRIFT-001: product/package prose still conflicts on hyphenated spelling;
-# active code identifiers should use velvet_ballistics unless an allowlist applies.
+# Mechanical gate: rejects legacy title-case product spelling in active code/docs.
+# The canonical product/binary/package/bead-rig spelling is velvet-ballistics;
+# Rust crate/module and bead database identifiers remain velvet_ballistics.
 #
 # Allowlisted path patterns (skip these entirely):
 #   - .beads/            — Bead artifacts and CI output (not source)
@@ -10,6 +10,10 @@
 #   - .evidence/         — Repository-root raw evidence artifacts only
 #   - evidence/          — Repository-root benchmark/release evidence only
 #   - target/            — Build artifact directories
+#   - fixtures/          — Repository-root negative/positive gate fixtures
+#   - .forge/            — Historical architecture-forge migration artifacts
+#   - .bead-progress/    — Historical bead progress evidence
+#   - ws-batch-*/        — Historical batch workspace snapshots
 #   - tests/             — Test clippy is not strict
 #   - benches/           — Bench clippy is not strict
 #   - velvet-ballistics-MASTER.md — The master contract file itself
@@ -17,9 +21,9 @@
 #
 # Allowlisted content patterns (in OTHER files):
 #   - velvet-ballistics-MASTER.md     — reference to the master contract file
-#   - /home/.*/velvet-ballistics/   — source checkout path (external migration artifact)
-#   - FORBIDDEN_FEATURE_NAMES        — the check script uses wrong spelling as a forbid-tag
-#   - '"velvet-ballistics" is invalid' — rule statement in AGENTS.md
+#   - /home/.*/velvet-ballistics/     — source checkout path (external migration artifact)
+#   - Legacy-name documentation that quotes the legacy title-case spelling
+#   - ADR review regexes that search for legacy spellings
 #
 # Usage: bash scripts/check-spelling-gate.sh
 # Exit 0: gate passes (no violations)
@@ -28,8 +32,8 @@
 set -euo pipefail
 
 ROOT="$(pwd -P)"
-FORBIDDEN_TOKEN="velvet-ballistics"
-CANONICAL_REPLACEMENT="velvet_ballistics"
+FORBIDDEN_TOKEN="Velvet Ballastics"
+CANONICAL_REPLACEMENT="velvet-ballistics"
 
 if [[ -n "${MOON_TASK_ID:-}" ]] && command -v grep >/dev/null 2>&1; then
     SEARCH_TOOL=(grep)
@@ -69,13 +73,18 @@ run_search_to_file() {
 scrub_allowed_occurrences() {
     local scrubbed="$1"
     local span
-    local forbidden_tag_span="FORBIDDEN_FEATURE_NAMES blocks ${FORBIDDEN_TOKEN}"
-    local rule_span="\`${FORBIDDEN_TOKEN}\` is invalid"
+    local legacy_backtick_span="\`${FORBIDDEN_TOKEN}\`"
 
     scrubbed="${scrubbed//${FORBIDDEN_TOKEN}-MASTER.md/}"
-    scrubbed="${scrubbed//${forbidden_tag_span}/}"
-    scrubbed="${scrubbed//${rule_span}/}"
     scrubbed="${scrubbed//${FORBIDDEN_TOKEN}\/v2/}"
+
+    if [[ "$scrubbed" == *"Legacy names such as ${legacy_backtick_span}"* ]]; then
+        scrubbed="${scrubbed//${legacy_backtick_span}/}"
+    fi
+
+    if [[ "$scrubbed" == *'rg -n "'* && "$scrubbed" == *"${FORBIDDEN_TOKEN}|"* ]]; then
+        scrubbed="${scrubbed//${FORBIDDEN_TOKEN}|/}"
+    fi
 
     while [[ "$scrubbed" =~ /home/[^[:space:]]*/${FORBIDDEN_TOKEN}/ ]]; do
         span="${BASH_REMATCH[0]}"
@@ -138,6 +147,10 @@ for file in "${files[@]}"; do
         .jj/*) continue ;;
         .evidence/*) continue ;;
         evidence/*) continue ;;
+        .forge/*) continue ;;
+        .bead-progress/*) continue ;;
+        ws-batch-*/*) continue ;;
+        fixtures/*) continue ;;
         target/*) continue ;;
         target_nosccache/*) continue ;;
         target_debug_clean/*) continue ;;
@@ -151,6 +164,7 @@ for file in "${files[@]}"; do
         naming_scan/*|*/naming_scan/*) continue ;;
         # Test files in src/ (*_tests.rs) — test clippy is not strict
         *'_tests.rs') continue ;;
+        */tests.rs) continue ;;
     esac
 
     # For each remaining file, get matching lines. Search errors fail closed.
@@ -195,20 +209,22 @@ echo "=== Spelling Gate complete: $count violations ===" >&2
 
 if [[ $count -gt 0 ]]; then
     echo "" >&2
-    echo "Hint: Replace active code identifiers with '$CANONICAL_REPLACEMENT' or document an exact allowlisted artifact." >&2
-    echo "HZ-DRIFT-001: product/package prose still needs a canonical naming repair before claiming global closure." >&2
+    echo "Hint: Replace legacy product spelling with '$CANONICAL_REPLACEMENT' or document an exact allowlisted migration artifact." >&2
+    echo "HZ-DRIFT-001: legacy title-case product spelling remains blocked in active files." >&2
     echo "Allowlisted path patterns (excluded entirely):" >&2
     echo "  - .beads/ (bead artifacts and CI output)" >&2
     echo "  - .jj/ (JJ internal state)" >&2
     echo "  - .evidence/ and evidence/ at workspace root only (evidence artifacts)" >&2
+    echo "  - .forge/, .bead-progress/, and ws-batch-*/ (historical migration artifacts)" >&2
+    echo "  - fixtures/ (gate fixtures)" >&2
     echo "  - target/ (build artifacts)" >&2
     echo "  - tests/ and benches/ (test/bench clippy is not strict)" >&2
-    echo "  - $FORBIDDEN_TOKEN-MASTER.md (master contract file)" >&2
+    echo "  - velvet-ballistics-MASTER.md (master contract file)" >&2
     echo "Allowlisted content patterns:" >&2
-    echo "  - $FORBIDDEN_TOKEN-MASTER.md (reference to master file)" >&2
-    echo "  - /home/.*/$FORBIDDEN_TOKEN/ (source checkout path, migration artifact)" >&2
-    echo "  - FORBIDDEN_FEATURE_NAMES blocks $FORBIDDEN_TOKEN (spelling used as forbid-tag)" >&2
-    echo "  - '$FORBIDDEN_TOKEN' is invalid (rule statement)" >&2
+    echo "  - velvet-ballistics-MASTER.md (reference to master file)" >&2
+    echo "  - /home/.*/velvet-ballistics/ (source checkout path, migration artifact)" >&2
+    echo "  - Legacy names such as '$FORBIDDEN_TOKEN' (legacy-name documentation)" >&2
+    echo "  - ADR review regexes that search for '$FORBIDDEN_TOKEN'" >&2
     exit 1
 fi
 

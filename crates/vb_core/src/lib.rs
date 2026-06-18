@@ -5,7 +5,7 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::doc_markdown)]
 
-//! Hot in-memory execution core for Velvet Ballastics.
+//! Hot in-memory execution core for velvet-ballistics.
 //!
 //! This crate owns the compiled workflow IR, numeric identifiers, runtime slot
 //! model, and synchronous state-machine loop. It intentionally has no async,

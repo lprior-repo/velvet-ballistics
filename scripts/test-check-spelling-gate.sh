@@ -15,10 +15,10 @@ FIXTURES_DIR="$ROOT/fixtures/check-spelling-gate"
 MOON_ROOT="$ROOT/.moon.yml"
 MOON_TASKS="$ROOT/.moon/tasks/all.yml"
 
-TOKEN_HEAD="velvet"
-TOKEN_TAIL="ballistics"
-BAD_TOKEN="${TOKEN_HEAD}-${TOKEN_TAIL}"
-CANONICAL_TOKEN="velvet_ballistics"
+TOKEN_HEAD="Velvet"
+TOKEN_TAIL="Ballastics"
+BAD_TOKEN="${TOKEN_HEAD} ${TOKEN_TAIL}"
+CANONICAL_TOKEN="velvet-ballistics"
 
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/spellgate-tests.XXXXXX")"
 MOON_PROBE_PATH="$ROOT/docs/__spellgate_moon_probe.md"
@@ -126,20 +126,22 @@ expected_violation_line() {
 
 expected_failure_hint_block() {
   printf '\n'
-  printf "Hint: Replace active code identifiers with '%s' or document an exact allowlisted artifact.\n" "$CANONICAL_TOKEN"
-  printf 'HZ-DRIFT-001: product/package prose still needs a canonical naming repair before claiming global closure.\n'
+  printf "Hint: Replace legacy product spelling with '%s' or document an exact allowlisted migration artifact.\n" "$CANONICAL_TOKEN"
+  printf 'HZ-DRIFT-001: legacy title-case product spelling remains blocked in active files.\n'
   printf 'Allowlisted path patterns (excluded entirely):\n'
   printf '  - .beads/ (bead artifacts and CI output)\n'
   printf '  - .jj/ (JJ internal state)\n'
   printf '  - .evidence/ and evidence/ at workspace root only (evidence artifacts)\n'
+  printf '  - .forge/, .bead-progress/, and ws-batch-*/ (historical migration artifacts)\n'
+  printf '  - fixtures/ (gate fixtures)\n'
   printf '  - target/ (build artifacts)\n'
   printf '  - tests/ and benches/ (test/bench clippy is not strict)\n'
-  printf '  - %s-MASTER.md (master contract file)\n' "$BAD_TOKEN"
+  printf '  - velvet-ballistics-MASTER.md (master contract file)\n'
   printf 'Allowlisted content patterns:\n'
-  printf '  - %s-MASTER.md (reference to master file)\n' "$BAD_TOKEN"
-  printf '  - /home/.*/%s/ (source checkout path, migration artifact)\n' "$BAD_TOKEN"
-  printf '  - FORBIDDEN_FEATURE_NAMES blocks %s (spelling used as forbid-tag)\n' "$BAD_TOKEN"
-  printf "  - '%s' is invalid (rule statement)" "$BAD_TOKEN"
+  printf '  - velvet-ballistics-MASTER.md (reference to master file)\n'
+  printf '  - /home/.*/velvet-ballistics/ (source checkout path, migration artifact)\n'
+  printf '  - Legacy names such as '\''%s'\'' (legacy-name documentation)\n' "$BAD_TOKEN"
+  printf '  - ADR review regexes that search for '\''%s'\''' "$BAD_TOKEN"
 }
 
 assert_stderr_banner_exact() {
@@ -268,16 +270,21 @@ assert_path_exclusion_globs_are_total() {
     "$scratch/.jj/probe.md"
     "$scratch/.evidence/probe.md"
     "$scratch/evidence/probe.md"
+    "$scratch/.forge/probe.md"
+    "$scratch/.bead-progress/probe.md"
+    "$scratch/ws-batch-10/probe.md"
+    "$scratch/fixtures/probe.md"
     "$scratch/target/probe.md"
     "$scratch/target_nosccache/probe.md"
     "$scratch/target_debug_clean/probe.md"
     "$scratch/target_clean/probe.md"
     "$scratch/tests/probe.md"
     "$scratch/benches/probe.md"
-    "$scratch/${BAD_TOKEN}-MASTER.md"
+    "$scratch/velvet-ballistics-MASTER.md"
     "$scratch/BIG-ASS-TESTING-TO-FIX.md"
     "$scratch/src/naming_scan/probe.rs"
     "$scratch/src/name_tests.rs"
+    "$scratch/src/module/tests.rs"
   )
 
   local -a active_docs_src_paths=(
@@ -509,7 +516,7 @@ assert_moon_run_propagates_gate_exit_for_active_probe() {
   fi
 
   assert_contains "moon run task target" \
-    "${BAD_TOKEN}:check-spelling-gate" \
+    "${CANONICAL_TOKEN}:check-spelling-gate" \
     "$MOON_STDOUT"
   assert_contains "moon run banner" "$(expected_banner)" "$MOON_STDERR"
   assert_contains "moon run active probe exact violation" \
@@ -549,7 +556,7 @@ assert_moon_ci_orders_spelling_gate() {
   fi
 }
 
-test_spelling_gate_rejects_velvet_ballistics() {
+test_spelling_gate_rejects_legacy_title_case_product() {
   assert_common_prerequisites
 
   local scratch
@@ -648,7 +655,7 @@ test_moon_ci_spelling_dependency_correctly_ordered() {
 }
 
 declare -a default_test_names=(
-  "test_spelling_gate_rejects_velvet_ballistics"
+  "test_spelling_gate_rejects_legacy_title_case_product"
   "test_spelling_gate_passes_on_allowlisted"
   "test_moon_ci_spelling_dependency_correctly_ordered"
 )

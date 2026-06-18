@@ -2,10 +2,8 @@
 
 //! CodeCategory, CodeEntry, and CODE_REGISTRY.
 //!
-//! Lookup functions have been moved to `helpers.rs` to avoid circular
-//! module dependencies (types.rs needs lookup, codes.rs needs SymbolicCode).
-
-use super::types::SymbolicCode;
+//! This module is the leaf of the diagnostic module graph — it has no
+//! dependencies on types.rs or helpers.rs.
 
 // ---------------------------------------------------------------------------
 // CodeCategory — high-level code grouping

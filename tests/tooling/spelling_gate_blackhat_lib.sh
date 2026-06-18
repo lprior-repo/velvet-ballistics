@@ -5,9 +5,9 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
 GATE_SOURCE="$ROOT/scripts/check-spelling-gate.sh"
 MOON_TASKS="$ROOT/.moon/tasks/all.yml"
-TOKEN_HEAD="velvet"
-TOKEN_TAIL="ballistics"
-BAD_TOKEN="${TOKEN_HEAD}-${TOKEN_TAIL}"
+TOKEN_HEAD="Velvet"
+TOKEN_TAIL="Ballastics"
+BAD_TOKEN="${TOKEN_HEAD} ${TOKEN_TAIL}"
 
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/spellgate-blackhat.XXXXXX")"
 cleanup_spellgate_blackhat() { rm -rf "$TMP_ROOT"; }

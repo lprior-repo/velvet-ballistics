@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
-//! Runtime limits profile matrix — per-profile resource limits.
+//! Domain contract for runtime admission policy and limits profiles.
 //!
-//! Three canonical profiles (Strict, Journaled, Relaxed) each return
-//! profile-specific boundedness policies, resource contracts, and shard
-//! configurations. All values are non-zero, finite, and bounded by the
-//! hard limits in `crate::limits`.
+//! - [`RuntimeLimitsProfile`] — per-profile resource limits (Strict /
+//!   Journaled / Relaxed).
+//! - [`RuntimeLimitsConfig`] — raw configuration for smart construction.
+//!
+//! All profile values are non-zero, finite, and bounded by the hard limits
+//! in `crate::limits`.
 
 use std::num::{NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 

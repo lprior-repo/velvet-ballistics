@@ -1,4 +1,4 @@
-//! Velvet Ballastics CLI application implementation.
+//! velvet-ballistics CLI application implementation.
 //!
 //! Holzman Rust: thin imperative shell over functional core.
 //! This module declares the extraction modules and re-exports public items.

@@ -12,7 +12,7 @@ Generated 2026-05-24. This summarizes the subsystem sweep used to create the `vb
 
 ## Master Filter
 
-Only invariants compatible with the Master contract survived. The following ideas are rejected for Velvet Ballastics v1: distributed rule updates, HLC clocks, HTTP/gRPC runtime coupling, runtime JSON/YAML interpretation, implicit migrations, unbounded queues, hot string maps, task-per-step async orchestration, and implementation-body copying.
+Only invariants compatible with the Master contract survived. The following ideas are rejected for velvet-ballistics v1: distributed rule updates, HLC clocks, HTTP/gRPC runtime coupling, runtime JSON/YAML interpretation, implicit migrations, unbounded queues, hot string maps, task-per-step async orchestration, and implementation-body copying.
 
 ## Planner Output
 

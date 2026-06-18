@@ -6,7 +6,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::needless_pass_by_value)]
-//! Bounded memory ingress and binary IPC for Velvet Ballastics.
+//! Bounded memory ingress and binary IPC for velvet-ballistics.
 //!
 //! This crate deliberately exposes memory/IPC-shaped primitives only. HTTP is
 //! not part of the hot control plane.

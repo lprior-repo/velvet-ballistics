@@ -220,7 +220,7 @@ fn complete_workspace_candidates() -> Vec<(String, String)> {
             "foreign-function-boundary".to_string(),
         ),
         (
-            "crates/vb_codegen/src/generated/interface.rs".to_string(),
+            "crates/vb_compile/src/generated/interface.rs".to_string(),
             "generated-interface-boundary".to_string(),
         ),
         (

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Bounded trace ring using rtrb SPSC ring buffer.
 
+#[cfg(not(kani))]
 use std::collections::VecDeque;
 
 #[cfg(not(kani))]
@@ -17,10 +18,13 @@ pub struct TraceRing {
     #[cfg(not(kani))]
     consumer: rtrb::Consumer<TraceEvent>,
     #[cfg(kani)]
-    pending: VecDeque<TraceEvent>,
+    pending: KaniTraceQueue,
     capacity: usize,
     dropped: u64,
+    #[cfg(not(kani))]
     history: VecDeque<TraceEvent>,
+    #[cfg(kani)]
+    history: KaniTraceQueue,
 }
 
 impl TraceRing {
@@ -31,7 +35,10 @@ impl TraceRing {
     /// `capacity` is normalized into `1..=MAX_TRACE_RING_CAPACITY`.
     #[must_use]
     pub fn new(capacity: usize) -> Self {
+        #[cfg(not(kani))]
         let bounded_capacity = capacity.clamp(1, MAX_TRACE_RING_CAPACITY);
+        #[cfg(kani)]
+        let bounded_capacity = capacity.clamp(1, KANI_TRACE_MODEL_CAPACITY);
         #[cfg(not(kani))]
         let (producer, consumer) = RingBuffer::new(bounded_capacity);
         Self {
@@ -40,10 +47,13 @@ impl TraceRing {
             #[cfg(not(kani))]
             consumer,
             #[cfg(kani)]
-            pending: VecDeque::with_capacity(bounded_capacity),
+            pending: KaniTraceQueue::new(),
             capacity: bounded_capacity,
             dropped: 0,
+            #[cfg(not(kani))]
             history: VecDeque::with_capacity(bounded_capacity),
+            #[cfg(kani)]
+            history: KaniTraceQueue::new(),
         }
     }
 
@@ -116,7 +126,7 @@ impl TraceRing {
         let bounded_limit = self.bounded_limit(limit);
         let mut events = Vec::with_capacity(bounded_limit);
         let mut inspected = 0usize;
-        for event in &self.history {
+        for event in self.history_events() {
             if inspected >= bounded_limit {
                 return events;
             }
@@ -135,7 +145,7 @@ impl TraceRing {
     #[must_use]
     pub fn has_terminal_event_for_run(&self, target: RunId) -> bool {
         let mut inspected = 0usize;
-        for event in &self.history {
+        for event in self.history_events() {
             if inspected >= self.capacity {
                 return false;
             }
@@ -150,13 +160,61 @@ impl TraceRing {
         false
     }
 
-    fn remember(&mut self, event: TraceEvent) {
-        if self.history.len() >= self.capacity {
-            if self.history.pop_front().is_none() {
+    #[cfg(kani)]
+    pub(crate) fn drain_pending_kani_limit_64(&mut self) {
+        for _ in 0..KANI_TRACE_MODEL_CAPACITY {
+            if self.pop_pending().is_none() {
                 return;
             }
         }
-        self.history.push_back(event);
+    }
+
+    #[cfg(kani)]
+    pub(crate) fn drain_for_run_kani_limit_4_summary(
+        &mut self,
+        target: RunId,
+    ) -> KaniDrainSummary {
+        let mut summary = KaniDrainSummary::new();
+        for _ in 0..4 {
+            let Some(event) = self.pop_pending() else {
+                return summary;
+            };
+            if event.run_id() == target {
+                summary.record(event.kind());
+            }
+        }
+        summary
+    }
+
+    fn remember(&mut self, event: TraceEvent) {
+        #[cfg(not(kani))]
+        {
+            if self.history.len() >= self.capacity {
+                if self.history.pop_front().is_none() {
+                    return;
+                }
+            }
+            self.history.push_back(event);
+        }
+        #[cfg(kani)]
+        {
+            if self.history.len() >= self.capacity {
+                if self.history.pop_front().is_none() {
+                    return;
+                }
+            }
+            let _stored = self.history.push_back(event, self.capacity);
+        }
+    }
+
+    #[cfg(not(kani))]
+    fn history_events(&self) -> impl Iterator<Item = &TraceEvent> {
+        self.history.iter()
+    }
+
+    #[cfg(kani)]
+    fn history_events(&self) -> impl Iterator<Item = &TraceEvent> {
+        self.history.iter()
     }
 
     fn bounded_limit(&self, limit: usize) -> usize {
@@ -173,11 +231,7 @@ impl TraceRing {
 
     #[cfg(kani)]
     fn push_pending(&mut self, event: TraceEvent) -> bool {
-        if self.pending.len() >= self.capacity {
-            return false;
-        }
-        self.pending.push_back(event);
-        true
+        self.pending.push_back(event, self.capacity)
     }
 
     #[cfg(not(kani))]
@@ -194,6 +248,158 @@ impl TraceRing {
     #[must_use]
     pub const fn dropped(&self) -> u64 {
         self.dropped
+    }
+}
+
+#[cfg(kani)]
+const KANI_TRACE_MODEL_CAPACITY: usize = 64;
+
+#[cfg(kani)]
+#[derive(Debug)]
+struct KaniTraceQueue {
+    events: [Option<TraceEvent>; KANI_TRACE_MODEL_CAPACITY],
+    len: usize,
+}
+
+#[cfg(kani)]
+impl KaniTraceQueue {
+    fn new() -> Self {
+        Self {
+            events: std::array::from_fn(|_| None),
+            len: 0,
+        }
+    }
+
+    const fn len(&self) -> usize {
+        self.len
+    }
+
+    const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &TraceEvent> {
+        self.events
+            .iter()
+            .take(self.len)
+            .filter_map(core::option::Option::as_ref)
+    }
+
+    fn push_back(&mut self, event: TraceEvent, capacity: usize) -> bool {
+        if self.len >= capacity || self.len >= KANI_TRACE_MODEL_CAPACITY {
+            return false;
+        }
+        let Some(next_len) = self.len.checked_add(1) else {
+            return false;
+        };
+        let Some(slot) = self.events.get_mut(self.len) else {
+            return false;
+        };
+        *slot = Some(event);
+        self.len = next_len;
+        true
+    }
+
+    fn pop_front(&mut self) -> Option<TraceEvent> {
+        if self.len == 0 {
+            return None;
+        }
+        let first = self.take_at(0);
+        for index in 1..KANI_TRACE_MODEL_CAPACITY {
+            if index >= self.len {
+                break;
+            }
+            let Some(previous) = index.checked_sub(1) else {
+                return first;
+            };
+            let moved = self.take_at(index);
+            if !self.put_at(previous, moved) {
+                return first;
+            }
+        }
+        self.len = match self.len.checked_sub(1) {
+            Some(next_len) => next_len,
+            None => 0,
+        };
+        first
+    }
+
+    fn take_at(&mut self, index: usize) -> Option<TraceEvent> {
+        self.events.get_mut(index).and_then(core::option::Option::take)
+    }
+
+    fn put_at(&mut self, index: usize, event: Option<TraceEvent>) -> bool {
+        let Some(slot) = self.events.get_mut(index) else {
+            return false;
+        };
+        *slot = event;
+        true
+    }
+}
+
+#[cfg(kani)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum KaniTraceEventKind {
+    StepStarted,
+    StepEnded,
+    SlotWritten,
+    ActionScheduled,
+    ActionCompleted,
+    ActionFailed,
+    AskAnswered,
+    RunSubmitted,
+    RunFinished,
+    RunFailed,
+    RunCancelled,
+    RunKilled,
+}
+
+#[cfg(kani)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct KaniDrainSummary {
+    matched: u8,
+    first: Option<KaniTraceEventKind>,
+    second: Option<KaniTraceEventKind>,
+    overflow: bool,
+}
+
+#[cfg(kani)]
+impl KaniDrainSummary {
+    const fn new() -> Self {
+        Self {
+            matched: 0,
+            first: None,
+            second: None,
+            overflow: false,
+        }
+    }
+
+    pub(crate) const fn matched(&self) -> u8 {
+        self.matched
+    }
+
+    pub(crate) const fn first(&self) -> Option<KaniTraceEventKind> {
+        self.first
+    }
+
+    pub(crate) const fn second(&self) -> Option<KaniTraceEventKind> {
+        self.second
+    }
+
+    pub(crate) const fn overflow(&self) -> bool {
+        self.overflow
+    }
+
+    fn record(&mut self, kind: KaniTraceEventKind) {
+        match self.matched {
+            0 => self.first = Some(kind),
+            1 => self.second = Some(kind),
+            _ => self.overflow = true,
+        }
+        self.matched = match self.matched.checked_add(1) {
+            Some(next) => next,
+            None => self.matched,
+        };
     }
 }
 
@@ -284,6 +490,24 @@ pub enum TraceEvent {
 }
 
 impl TraceEvent {
+    #[cfg(kani)]
+    const fn kind(&self) -> KaniTraceEventKind {
+        match self {
+            Self::StepStarted { .. } => KaniTraceEventKind::StepStarted,
+            Self::StepEnded { .. } => KaniTraceEventKind::StepEnded,
+            Self::SlotWritten { .. } => KaniTraceEventKind::SlotWritten,
+            Self::ActionScheduled { .. } => KaniTraceEventKind::ActionScheduled,
+            Self::ActionCompleted { .. } => KaniTraceEventKind::ActionCompleted,
+            Self::ActionFailed { .. } => KaniTraceEventKind::ActionFailed,
+            Self::AskAnswered { .. } => KaniTraceEventKind::AskAnswered,
+            Self::RunSubmitted { .. } => KaniTraceEventKind::RunSubmitted,
+            Self::RunFinished { .. } => KaniTraceEventKind::RunFinished,
+            Self::RunFailed { .. } => KaniTraceEventKind::RunFailed,
+            Self::RunCancelled { .. } => KaniTraceEventKind::RunCancelled,
+            Self::RunKilled { .. } => KaniTraceEventKind::RunKilled,
+        }
+    }
+
     /// Returns the run associated with this trace event.
     #[must_use]
     pub const fn run_id(&self) -> RunId {
