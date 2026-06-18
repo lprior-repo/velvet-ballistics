@@ -276,7 +276,10 @@ fn parse_inventory_whitespace_id() {
     }"#;
     let result = parse_inventory(json.as_bytes());
     let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed for whitespace ID: {result:?}");
+        assert!(
+            false,
+            "parse_inventory must succeed for whitespace ID: {result:?}"
+        );
         return;
     };
     assert_eq!(inventory.records.len(), 1);
@@ -293,7 +296,10 @@ fn parse_inventory_utf8_id() {
     }"#;
     let result = parse_inventory(json.as_bytes());
     let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed for UTF-8 ID: {result:?}");
+        assert!(
+            false,
+            "parse_inventory must succeed for UTF-8 ID: {result:?}"
+        );
         return;
     };
     assert_eq!(inventory.records.len(), 1);
@@ -532,7 +538,10 @@ fn parse_inventory_source_path_only_whitespace() {
     // Whitespace-only source_path is not empty, so parse should succeed
     // But after PathBuf::from, as_os_str().is_empty() is false for whitespace
     let Ok(inventory) = result else {
-        assert!(false, "parse_inventory must succeed for whitespace-only source_path: {result:?}");
+        assert!(
+            false,
+            "parse_inventory must succeed for whitespace-only source_path: {result:?}"
+        );
         return;
     };
     assert_eq!(inventory.records.len(), 1);

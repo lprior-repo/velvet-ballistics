@@ -34,9 +34,6 @@ fn kani_join_taint_clean_identity() {
 
 /// VB-CORE-TAINT-006-KANI H2: join_taint is commutative.
 #[kani::proof]
-
-/// VB-CORE-TAINT-006-KANI H2: join_taint is commutative.
-#[kani::proof]
 #[kani::unwind(4)]
 fn kani_join_taint_commutative() {
     let a = arbitrary_taint();
@@ -50,8 +47,6 @@ fn kani_join_taint_commutative() {
     );
 }
 
-/// VB-CORE-TAINT-006-KANI H3: join_taint is associative.
-#[kani::proof]
 /// VB-CORE-TAINT-006-KANI H3: join_taint is associative.
 #[kani::proof]
 #[kani::unwind(4)]

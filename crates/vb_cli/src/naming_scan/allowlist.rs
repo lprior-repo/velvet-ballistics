@@ -1,4 +1,9 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::panic
+)]
 use super::types::*;
 
 pub(crate) fn exact_exception(text: &str, config: &ScanConfig) -> Option<LegacyException> {

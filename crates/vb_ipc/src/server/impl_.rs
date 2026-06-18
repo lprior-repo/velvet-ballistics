@@ -126,7 +126,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 #![forbid(unsafe_code)]
 //! IpcServer implementation.
@@ -286,9 +286,9 @@ impl IpcServer {
                 .register(&mut client.stream, token, Interest::READABLE)
                 .map_err(|source| IpcServerError::PollFailed { source })?;
 
-             if let Some(c) = self.clients.get_mut(index) {
-              *c = Some(client);
-          }
+            if let Some(c) = self.clients.get_mut(index) {
+                *c = Some(client);
+            }
         } else {
             // Drop connection to enforce concurrent client limit.
             drop(stream);

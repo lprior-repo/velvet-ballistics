@@ -44,10 +44,10 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
             declared,
             recomputed,
         }) => {
-            kani::assert(declared == 0);
-            kani::assert(recomputed == 1);
+            kani::assert(declared == 0, "kani harness assertion");
+            kani::assert(recomputed == 1, "kani harness assertion");
         }
-        _ => kani::assert(false),
+        _ => kani::assert(false, "kani harness assertion"),
     }
 
     match validate_compiled_queries(
@@ -61,7 +61,7 @@ fn vb_ajc40_total_cost_mismatch_rejected() {
             declared,
             recomputed,
         }) => {
-            kani::assert(declared == 0);
+            kani::assert(declared == 0, "kani harness assertion");
             assert_eq!(recomputed, 1);
         }
         _ => assert!(false),

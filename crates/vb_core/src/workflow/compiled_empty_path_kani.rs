@@ -37,10 +37,10 @@ fn vb_ajc40_empty_path_root_accessor() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len() == 1);
-            kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0));
+            kani::assert(admitted.len() == 1, "kani harness assertion");
+            kani::assert(matches!(admitted.slugs().first(), Some(item) if item.path_depth() == 0), "kani harness assertion");
         }
-        Err(_) => kani::assert(false),
+        Err(_) => kani::assert(false, "kani harness assertion"),
     }
 
     match validate_compiled_queries(
@@ -52,8 +52,7 @@ fn vb_ajc40_empty_path_root_accessor() {
     ) {
         Ok(admitted) => {
             assert_eq!(admitted.len(), 1);
-            kani::assert(matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0),
-            );
+            kani::assert(matches!(admitted.queries().first(), Some(item) if item.path_depth() == 0), "kani harness assertion")
         }
         Err(_) => assert!(false),
     }

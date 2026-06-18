@@ -106,8 +106,6 @@ mod harnesses {
             let result = dc.symbolic_code();
             kani::assert(result.is_some(), "Registered code must resolve");
             let result2 = dc.symbolic_code();
-            , "Registered code must resolve");
-            let result2 = dc.symbolic_code();
             kani::assert(result == result2, "Must be consistent");
         }
     }

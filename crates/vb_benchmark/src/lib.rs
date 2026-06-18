@@ -608,14 +608,8 @@ mod density_tests {
             delta: 42,
         };
         let s = format!("{}", e);
-        assert!(
-            s.contains("bench"),
-            "display must include benchmark name"
-        );
-        assert!(
-            s.contains("delta=42"),
-            "display must include delta value"
-        );
+        assert!(s.contains("bench"), "display must include benchmark name");
+        assert!(s.contains("delta=42"), "display must include delta value");
     }
 
     #[test]

@@ -548,9 +548,6 @@ fn named_flag_switch_at_end_returns_none() {
 
 #[test]
 fn named_flag_first_occurrence_wins() {
-    let result = named_flag(
-        &args(&["--emit", "yaml", "--emit", "postcard"]),
-        "--emit",
-    );
+    let result = named_flag(&args(&["--emit", "yaml", "--emit", "postcard"]), "--emit");
     assert_eq!(result, Some("yaml".to_string()));
 }

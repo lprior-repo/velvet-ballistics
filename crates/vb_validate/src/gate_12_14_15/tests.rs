@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Tests for Gates 12, 14, 15.

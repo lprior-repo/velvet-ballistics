@@ -130,9 +130,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Tests for `IpcServer` implementation (`impl_.rs`).
 //!
@@ -321,7 +320,10 @@ fn poll_once_with_resolver_returns_ok_without_resolver() {
     let Ok(continuing) = result else {
         panic!("poll_once_with_resolver with None resolver should succeed, got: {result:?}");
     };
-    assert!(continuing, "poll_once_with_resolver should return continuing=true");
+    assert!(
+        continuing,
+        "poll_once_with_resolver should return continuing=true"
+    );
 }
 
 // ── serve_ipc dispatch function tests ───────────────────────────────────────
@@ -444,7 +446,10 @@ fn server_handles_client_disconnect_gracefully() {
     let Ok(continuing) = result else {
         panic!("poll after client disconnect should succeed, got: {result:?}");
     };
-    assert!(continuing, "poll after disconnect should return continuing=true");
+    assert!(
+        continuing,
+        "poll after disconnect should return continuing=true"
+    );
     assert_eq!(
         server.client_count(),
         0,
@@ -1371,7 +1376,10 @@ fn server_survives_client_drop_mid_frame() {
     let Ok(continuing) = result else {
         panic!("server should survive mid-frame client drop, got: {result:?}");
     };
-    assert!(continuing, "poll after client drop should return continuing=true");
+    assert!(
+        continuing,
+        "poll after client drop should return continuing=true"
+    );
 
     // Server should still accept new clients.
     let _new_client = make_client(&path);
@@ -1379,7 +1387,10 @@ fn server_survives_client_drop_mid_frame() {
     let Ok(_cont) = result else {
         panic!("server should accept new client after mid-frame drop, got: {result:?}");
     };
-    assert!(_cont, "poll after accepting new client should return continuing=true");
+    assert!(
+        _cont,
+        "poll after accepting new client should return continuing=true"
+    );
 }
 
 // ── 5. frame encoding edge case: zero-length correlation round-trips ─────────

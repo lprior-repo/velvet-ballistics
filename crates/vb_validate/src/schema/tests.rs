@@ -979,7 +979,10 @@ fn get_mapping_returns_none_for_missing_field() {
     // When get_mapping is called for "when"
     let result = doc.get_mapping("when");
     // Then it returns None
-    assert!(result.is_none(), "get_mapping(\"when\") for missing field must return None");
+    assert!(
+        result.is_none(),
+        "get_mapping(\"when\") for missing field must return None"
+    );
 }
 
 #[test]
@@ -1769,7 +1772,10 @@ fn adversarial_step_without_id_field_is_rejected() {
 fn invalid_collect_requires_of_and_reduce() {
     // collect without "of:" → InvalidCollect
     let doc = make_workflow(vec![
-        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        (
+            "version",
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
+        ),
         ("name", FieldValue::String("test".to_owned())),
         (
             "steps",
@@ -1795,7 +1801,10 @@ fn invalid_collect_requires_of_and_reduce() {
 fn invalid_collect_requires_of_field() {
     // collect without "reduce:" → InvalidCollect
     let doc = make_workflow(vec![
-        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        (
+            "version",
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
+        ),
         ("name", FieldValue::String("test".to_owned())),
         (
             "steps",
@@ -1821,7 +1830,10 @@ fn invalid_collect_requires_of_field() {
 fn invalid_wait_rejects_empty_body() {
     // wait with empty mapping → InvalidWait
     let doc = make_workflow(vec![
-        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        (
+            "version",
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
+        ),
         ("name", FieldValue::String("test".to_owned())),
         (
             "steps",
@@ -1841,7 +1853,10 @@ fn invalid_wait_rejects_empty_body() {
 fn invalid_ask_rejects_empty_body() {
     // ask with empty mapping → InvalidAsk
     let doc = make_workflow(vec![
-        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        (
+            "version",
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
+        ),
         ("name", FieldValue::String("test".to_owned())),
         (
             "steps",
@@ -1851,17 +1866,17 @@ fn invalid_ask_rejects_empty_body() {
             ])]),
         ),
     ]);
-    assert_eq!(
-        validate_step_fields(&doc),
-        Err(ValidationError::InvalidAsk)
-    );
+    assert_eq!(validate_step_fields(&doc), Err(ValidationError::InvalidAsk));
 }
 
 #[test]
 fn invalid_finish_rejects_missing_result() {
     // finish without "result:" → InvalidFinish
     let doc = make_workflow(vec![
-        ("version", FieldValue::String("velvet-ballistics/v1".to_owned())),
+        (
+            "version",
+            FieldValue::String("velvet-ballistics/v1".to_owned()),
+        ),
         ("name", FieldValue::String("test".to_owned())),
         (
             "steps",

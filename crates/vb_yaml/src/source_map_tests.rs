@@ -223,7 +223,7 @@ fn adversarial_source_map_multi_line_scalar_tracks_spans() {
     match result {
         Ok(map) => {
             assert!(!map.is_empty(), "expected non-empty source map");
-          let first = map.span_for_node(0);
+            let first = map.span_for_node(0);
             let Some(span) = first else {
                 assert!(false, "expected span for node 0, got None");
                 return;
@@ -411,10 +411,16 @@ fn semantic_source_map_non_trigger_not_flagged_as_trigger() {
     let map = build_semantic_source_map(yaml).unwrap_or_default();
     // $.next_key is not a trigger container path
     let Some(span) = map.span_for_path("$.next_key") else {
-        assert!(false, "non-trigger $.next_key should still be tracked in source map");
+        assert!(
+            false,
+            "non-trigger $.next_key should still be tracked in source map"
+        );
         return;
     };
-    assert!(span.end_offset >= span.start_offset, "span must have valid range");
+    assert!(
+        span.end_offset >= span.start_offset,
+        "span must have valid range"
+    );
 }
 
 /// Sequence indices in semantic paths are 0-based and sequential.
@@ -645,7 +651,11 @@ fn semantic_source_map_no_steps() {
         assert!(false, "expected $.name path");
         return;
     };
-    assert_eq!(span_text(yaml, name_span), "test", "name span must contain 'test'");
+    assert_eq!(
+        span_text(yaml, name_span),
+        "test",
+        "name span must contain 'test'"
+    );
 }
 
 /// Source map span end_offset is always >= start_offset.

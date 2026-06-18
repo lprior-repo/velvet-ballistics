@@ -1,7 +1,11 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::as_conversions, clippy::panic)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::as_conversions,
+    clippy::panic
+)]
 // vb_validate Proptest Invariants — RED PHASE
 // Property-based tests for validate_gate_08 and pipeline validate invariants.
-
 #![forbid(unsafe_code)]
 
 use crate::gates::validate_gate_08_accessor_path_segments;

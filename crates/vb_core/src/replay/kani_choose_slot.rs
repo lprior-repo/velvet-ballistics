@@ -280,7 +280,7 @@ fn verify_replay_deterministic_for_same_input() {
 
     match (result_a, result_b) {
         (Ok(ReplayAction::Continue(a)), Ok(ReplayAction::Continue(b))) => {
-            kani::assert(a == b);
+            kani::assert(a == b, "kani harness assertion");
         }
         (Err(_), Err(_)) => {}
         _ => {

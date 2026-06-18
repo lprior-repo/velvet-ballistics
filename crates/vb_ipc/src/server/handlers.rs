@@ -129,7 +129,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 use vb_core::action::{ActionFailure, ActionFailureCode, RetryPolicy};

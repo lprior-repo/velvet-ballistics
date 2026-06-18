@@ -204,20 +204,17 @@ pub(crate) fn run_compiled_workflow(
         }
     }
 
-   // Flush memtables to SST files and sync WAL before returning so that
+    // Flush memtables to SST files and sync WAL before returning so that
     // subsequent `events` / `inspect` commands (which open a fresh
     // database connection in a new process) can read the written
     // events.  Fjall's `persist()` only syncs the WAL; memtables must be
     // explicitly rotated and waited on to be written to disk.
-   let storage_journal = runtime.journal().storage_journal();
+    let storage_journal = runtime.journal().storage_journal();
     if durability != DurabilityMode::None
         && let Some(storage_journal) = storage_journal
         && let Err(e) = storage_journal.flush_memtables()
     {
-        report_runtime_error(
-            format_args!("journal memtable flush error: {e}"),
-            output,
-        );
+        report_runtime_error(format_args!("journal memtable flush error: {e}"), output);
         return CliExitCode::StorageError.into();
     }
 

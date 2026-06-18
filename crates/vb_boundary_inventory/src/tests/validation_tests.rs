@@ -280,7 +280,10 @@ fn validate_bead_id_single_letter_suffix() {
     let text = "vb-a";
     let result = validate_evidence_reference_bytes(text.as_bytes());
     let Ok(reference) = result else {
-        assert!(false, "single-letter bead ID suffix must be valid: {result:?}");
+        assert!(
+            false,
+            "single-letter bead ID suffix must be valid: {result:?}"
+        );
         return;
     };
     match reference {
@@ -296,7 +299,10 @@ fn validate_bead_id_single_digit_suffix() {
     let text = "vb-7";
     let result = validate_evidence_reference_bytes(text.as_bytes());
     let Ok(reference) = result else {
-        assert!(false, "single-digit bead ID suffix must be valid: {result:?}");
+        assert!(
+            false,
+            "single-digit bead ID suffix must be valid: {result:?}"
+        );
         return;
     };
     match reference {

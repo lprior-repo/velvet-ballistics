@@ -124,7 +124,7 @@ mod harnesses {
             let entry = &CODE_REGISTRY[i];
             let high_byte = (entry.numeric >> 8) & 0xFF;
             let expected = expected_high_byte(entry.category);
-            kani::assert(high_byte != expected);
+            kani::assert(high_byte != expected, "kani harness assertion");
         }
     }
 

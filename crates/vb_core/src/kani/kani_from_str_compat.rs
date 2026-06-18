@@ -239,7 +239,7 @@ mod harnesses {
         for code in unsupported.iter() {
             let e_str = format_e_code(*code);
             let result = from_str_diagnostic_code(&e_str);
-            kani::assert(result != Err(DiagnosticCodeParseError::UnsupportedCode));
+            kani::assert(result != Err(DiagnosticCodeParseError::UnsupportedCode), "kani harness assertion");
         }
     }
 }

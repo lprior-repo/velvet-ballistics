@@ -107,7 +107,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 //! Edge-case unit tests for benchmark metadata, budget, and evidence-gate functions.

@@ -45,8 +45,8 @@ fn prove_type_identity_across_paths() {
     // if CompiledWorkflowWorkflowParts.resource_contract uses the old type,
     // this will show as a type mismatch at the struct level.
     let parts_contract: CanonicalResourceContract = contract;
-    kani::assert(parts_contract.max_transitions_per_tick == contract.max_transitions_per_tick);
-    kani::assert(parts_contract.allows_secret_results == contract.allows_secret_results);
+    kani::assert(parts_contract.max_transitions_per_tick == contract.max_transitions_per_tick, "kani harness assertion");
+    kani::assert(parts_contract.allows_secret_results == contract.allows_secret_results, "kani harness assertion");
 
     kani::cover!(canonical_type_id == compiled_wf_type_id);
 }

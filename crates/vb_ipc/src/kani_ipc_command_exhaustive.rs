@@ -125,7 +125,10 @@ fn kani_command_count_and_discriminants() {
     ];
 
     // Verify exactly 11 semantic variants.
-    kani::assert(variants.len() == 11, "Exactly 11 semantic IpcCommand variants must exist");
+    kani::assert(
+        variants.len() == 11,
+        "Exactly 11 semantic IpcCommand variants must exist",
+    );
 
     // Verify discriminant range 1..=11 for each variant.
     for cmd in &variants {
@@ -138,17 +141,50 @@ fn kani_command_count_and_discriminants() {
     }
 
     // Verify each declared discriminant matches as_u16().
-    kani::assert(IpcCommand::SubmitRun.as_u16() == 1, "SubmitRun discriminant must be 1");
-    kani::assert(IpcCommand::SubmitRunInline.as_u16() == 2, "SubmitRunInline discriminant must be 2");
-    kani::assert(IpcCommand::CancelRun.as_u16() == 3, "CancelRun discriminant must be 3");
-    kani::assert(IpcCommand::InspectRun.as_u16() == 4, "InspectRun discriminant must be 4");
-    kani::assert(IpcCommand::ListEvents.as_u16() == 5, "ListEvents discriminant must be 5");
-    kani::assert(IpcCommand::AnswerAsk.as_u16() == 6, "AnswerAsk discriminant must be 6");
-    kani::assert(IpcCommand::CompleteAction.as_u16() == 7, "CompleteAction discriminant must be 7");
-    kani::assert(IpcCommand::FailAction.as_u16() == 8, "FailAction discriminant must be 8");
-    kani::assert(IpcCommand::DrainTrace.as_u16() == 9, "DrainTrace discriminant must be 9");
-    kani::assert(IpcCommand::Health.as_u16() == 10, "Health discriminant must be 10");
-    kani::assert(IpcCommand::Shutdown.as_u16() == 11, "Shutdown discriminant must be 11");
+    kani::assert(
+        IpcCommand::SubmitRun.as_u16() == 1,
+        "SubmitRun discriminant must be 1",
+    );
+    kani::assert(
+        IpcCommand::SubmitRunInline.as_u16() == 2,
+        "SubmitRunInline discriminant must be 2",
+    );
+    kani::assert(
+        IpcCommand::CancelRun.as_u16() == 3,
+        "CancelRun discriminant must be 3",
+    );
+    kani::assert(
+        IpcCommand::InspectRun.as_u16() == 4,
+        "InspectRun discriminant must be 4",
+    );
+    kani::assert(
+        IpcCommand::ListEvents.as_u16() == 5,
+        "ListEvents discriminant must be 5",
+    );
+    kani::assert(
+        IpcCommand::AnswerAsk.as_u16() == 6,
+        "AnswerAsk discriminant must be 6",
+    );
+    kani::assert(
+        IpcCommand::CompleteAction.as_u16() == 7,
+        "CompleteAction discriminant must be 7",
+    );
+    kani::assert(
+        IpcCommand::FailAction.as_u16() == 8,
+        "FailAction discriminant must be 8",
+    );
+    kani::assert(
+        IpcCommand::DrainTrace.as_u16() == 9,
+        "DrainTrace discriminant must be 9",
+    );
+    kani::assert(
+        IpcCommand::Health.as_u16() == 10,
+        "Health discriminant must be 10",
+    );
+    kani::assert(
+        IpcCommand::Shutdown.as_u16() == 11,
+        "Shutdown discriminant must be 11",
+    );
 
     // Verify discriminant uniqueness: collect all values and check no duplicates.
     let ids: [u16; 11] = [

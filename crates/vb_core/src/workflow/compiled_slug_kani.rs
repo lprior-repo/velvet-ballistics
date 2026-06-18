@@ -41,7 +41,7 @@ fn vb_ajc40_slug_decode_smoke_cases() {
     // propagated as Decode and must not construct an admitted value.
     match from_bytes_compiled_slugs(&[0xff], budget) {
         Err(SlugParseError::Decode(_)) => {}
-        _ => kani::assert(false),
+        _ => kani::assert(false, "kani harness assertion"),
     }
 
     // Canonical decoded-public-shape cases are checked through the production
@@ -55,11 +55,11 @@ fn vb_ajc40_slug_decode_smoke_cases() {
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.is_empty());
-            kani::assert(admitted.len() == 0);
-            kani::assert(admitted.remaining_budget() == 0);
+            kani::assert(admitted.is_empty(), "kani harness assertion");
+            kani::assert(admitted.len() == 0, "kani harness assertion");
+            kani::assert(admitted.remaining_budget() == 0, "kani harness assertion");
         }
-        Err(_) => kani::assert(false),
+        Err(_) => kani::assert(false, "kani harness assertion"),
     }
 
     match validate_compiled_slugs(
@@ -70,7 +70,7 @@ fn vb_ajc40_slug_decode_smoke_cases() {
         budget,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len() == 1);
+            kani::assert(admitted.len() == 1, "kani harness assertion");
             assert_eq!(admitted.remaining_budget(), 0);
         }
         Err(_) => {
@@ -141,10 +141,10 @@ fn vb_ajc40_slug_budget_boundaries() {
         0,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len() == 1);
-            kani::assert(admitted.remaining_budget() == 0);
+            kani::assert(admitted.len() == 1, "kani harness assertion");
+            kani::assert(admitted.remaining_budget() == 0, "kani harness assertion");
         }
-        Err(_) => kani::assert(false),
+        Err(_) => kani::assert(false, "kani harness assertion"),
     }
 
     match validate_compiled_slugs(
@@ -155,10 +155,10 @@ fn vb_ajc40_slug_budget_boundaries() {
         1,
     ) {
         Ok(admitted) => {
-            kani::assert(admitted.len() == 1);
+            kani::assert(admitted.len() == 1, "kani harness assertion");
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) => kani::assert(false),
+        Err(_) => kani::assert(false, "kani harness assertion"),
     }
 
     match validate_compiled_slugs(
@@ -187,8 +187,8 @@ fn vb_ajc40_slug_path_depth_16_17() {
         },
         0,
     ) {
-        Ok(admitted) => kani::assert(admitted.len() == 1),
-        Err(_) => kani::assert(false),
+        Ok(admitted) => kani::assert(admitted.len() == 1, "kani harness assertion"),
+        Err(_) => kani::assert(false, "kani harness assertion"),
     }
 
     match validate_compiled_slugs(
@@ -202,7 +202,7 @@ fn vb_ajc40_slug_path_depth_16_17() {
             assert_eq!(depth, MAX_SLUG_PATH_SEGMENTS + 1);
             assert_eq!(max, MAX_SLUG_PATH_SEGMENTS);
         }
-        _ => kani::assert(false),
+        _ => kani::assert(false, "kani harness assertion"),
     }
 }
 

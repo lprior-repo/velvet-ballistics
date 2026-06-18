@@ -338,11 +338,7 @@ mod cargo_kernel {
     }
 
     pub fn join_taint(a: Taint, b: Taint) -> Taint {
-        if a.rank() >= b.rank() {
-            a
-        } else {
-            b
-        }
+        if a.rank() >= b.rank() { a } else { b }
     }
 
     pub fn join_many(taints: &[Taint]) -> Taint {
