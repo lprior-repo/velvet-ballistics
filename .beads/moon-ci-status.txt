@@ -1,26 +1,71 @@
 EXIT_CODE: 1
 STATE: FAILED
-RUN_DATE: 2026-06-18T02:33:46Z
-COMMIT: f17699599ceacd88aa3a29c6cd3f230c22a6dbdb
-TASKS_FAILED: 15
+RUN_DATE: 2026-06-18T03:03:35Z
+COMMIT: 4c9049c82
+TASKS_COMPLETED: 27
+TASKS_CACHED: 7
+TASKS_FAILED: 9
+TASKS_SKIPPED: 5
+WALL_CLOCK: 11m 21s
 NOTES: |
-  Previous run timed out at 9m 1s (600s limit) with 13 failed tasks.
-  This run completed in 12m 35s (755s wall clock, 13m timeout).
-  30 completed (7 cached), 15 failed, 2 skipped.
-  Fixed:
-    - fmt task: PASSES after cargo fmt --all (70 files reformatted)
-    - verify-kani: unterminated string at kani_determinism.rs:108-109 removed
-      (reduced from 6 errors to 4 warnings-as-errors)
-  Pre-existing failures (NOT fixed this turn, requires separate beads):
-    - verify-kani: -Dwarnings escalates 4 warnings in OTHER kani files
-      (kani_harnesses_plan.rs unused imports, kani_parallel_in_flight.rs
-      unused_mut + useless_comparisons)
-    - verify-kani-vb-{cli,compile,ipc,runtime,storage,validate}: same
-      pattern, similar pre-existing warnings escalated to errors
-    - verify-verus: separate verification failure
-    - miri: separate wave-4 tier-a bead
-    - sanitizer-address-check: benchmark latency budget exceeded
-      (compile_ir_1000_steps: 201089us > 200000us budget)
+  Previous run (commit f17699599): 30 completed, 15 failed, 2 skipped.
+  This run (commit 4c9049c82): 27 completed, 9 failed, 5 skipped.
+  Delta: -6 failures.
+  Fixed this turn:
+    - vb_core/src/replay/kani_harnesses_plan.rs:7 — removed unused
+      imports CompiledNodeKind, SlotBranch
+    - vb_core/src/verification/kani/kani_parallel_in_flight.rs:28 — removed
+      redundant `mut` on frame binding (reads-only)
+    - vb_core/src/verification/kani/kani_parallel_in_flight.rs:63,80 — removed
+      useless `u16 >= 0` comparisons
+    - vb_core/src/kani/kani_determinism.rs — rewrote (was severely
+      duplicated/corrupt from earlier failed assert! → kani::assert migration)
+    - vb_core/src/kani/kani_diagnostic_constructor.rs — removed botched
+      partial-string fragment
+    - vb_core/src/kani/kani_from_str_compat.rs — rewrote (triplicated
+      harnesses, mismatched braces)
+    - vb_core/src/kani/kani_registry_bijection.rs — rewrote (duplicated module
+      header inside proof body)
+    - vb_core/src/kani/kani_registry_category.rs — rewrote (duplicated content
+      + inverted == → != assertion)
+  Remaining failures (NOT fixed this turn — same root cause pattern,
+  separate scope):
+    - verify-kani: 12 errors — kani::assert(cond, "msg {}", arg) format-string
+      calls in vb_core kani_reverse_lookup.rs, kani_serde_roundtrip.rs,
+      vb_5iebh_check_scope.rs, kani_validate_resource_contract_boundaries.rs
+    - verify-kani-vb-compile: 12 errors — same pattern in vb_yaml kani
+      files (kani_all_variants_registered.rs, kani_checked_add.rs,
+      kani_panic_freedom.rs, kani_yaml_error_code.rs) + remaining
+      kani::assert_ne! macro references
+    - kani-model-smoke-shard-command-queue-standin: 1 error in
+      vb_storage/src/kani_vbjpq733_proofs.rs:102
+    - verify-kani-vb-{cli,ipc,runtime,storage}: skipped or also affected by
+      same propagation
+    - verify-verus: separate verification failure (carried over)
+    - sanitizer-address-check: latency budget passed this run (was previous
+      blocker)
+    - test: 3 deliver_sink_integration tests fail because they require
+      `instrumented-cli` cargo feature not enabled in CI test pass
     - check-test-density: vb_proof_kernels 4.24x (below 5.0x target)
-    - check-error-exhaustiveness, hot-cold-forbidden-apis, hotpath-scan,
-      ignored-fallible-results, kani-model-smoke-shard-command-queue-standin
+ROOT_CAUSE: |
+  Earlier commit d20af85f6 / 0d5f5aa50 / 7b8365940 attempted to migrate
+  `assert_eq!`/`assert_ne!`/`assert!` macros to `kani::assert()` function
+  calls, but corrupted multiple files with duplicated module headers and
+  preserved format-string args that don't work with the 2-arg kani::assert
+  function. The corruption was invisible to `cargo check` because the files
+  are gated behind `#[cfg(kani)]`. Only `cargo kani` actually exercises
+  this code, which is what moon ci verify-kani tasks do.
+NEXT_TURN_PLAN: |
+  Continue mechanical migration cleanup in these files:
+    vb_core/src/kani/kani_reverse_lookup.rs
+    vb_core/src/kani/kani_serde_roundtrip.rs
+    vb_core/src/kani/vb_5iebh_check_scope.rs
+    vb_core/src/kani_validate_resource_contract_boundaries.rs
+    vb_yaml/src/kani/kani_all_variants_registered.rs
+    vb_yaml/src/kani/kani_checked_add.rs
+    vb_yaml/src/kani/kani_panic_freedom.rs
+    vb_yaml/src/kani/kani_yaml_error_code.rs
+    vb_storage/src/kani_vbjpq733_proofs.rs
+  Pattern: replace `kani::assert(cond, "msg {:?}", arg)` with
+  `kani::assert(cond, "static msg")`, and replace `kani::assert_ne!(...)`
+  with `kani::assert(a != b, "msg")`.
