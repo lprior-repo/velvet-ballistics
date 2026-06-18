@@ -30,6 +30,13 @@ mod verus_reduce_proofs;
 #[cfg(verus)]
 mod proofs;
 
+// Verus production-bound proofs for canonical_layout and canonical_step_names.
+// GOD RULE 2: All spec functions model actual production behavior in part_01.
+// Covers layout cursor monotonicity, strictly-increasing starts, and
+// compound primitive width bounds (ForEach>=2, Repeat>=3, Reduce>=3).
+#[cfg(verus)]
+mod part_01_layout_proofs;
+
 // ============================================================
 // Kani harnesses for nested reduce body lowering (vb-xi2f.24).
 // 11 harnesses covering width parity, offset monotonicity, chain integrity,

@@ -19,23 +19,25 @@
 //   part_12::checked_step_offset(id, offset, p, f) -> Result<StepIdx, CompileError>
 //   part_04::emit_single_body_set(body, id, ds, s, n, b, r) -> Result<(), CompileErrors>
 //   part_04::lower_canonical_aggregate(idx, id, inp, init, body, next, bld) -> Result<(), CompileErrors>
-
 #![allow(unused_imports)]
 
 use vstd::prelude::*;
 
 verus! {
 
-pub open spec fn vb_u16_max() -> u16 { 65535u16 }
-pub open spec fn reduce_oh() -> u16 { 3u16 }
+pub open spec fn vb_u16_max() -> u16 {
+    65535u16
+}
+
+pub open spec fn reduce_oh() -> u16 {
+    3u16
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // 1. Model: canonical_body_step_width (part_01.rs:142-153)
 //    Set/Do => Ok(1), ForEach{body} => Ok(2+body_steps), else Err
 // ═══════════════════════════════════════════════════════════════════
-
-pub open spec fn spec_canonical_step(step_kind: u16, foreach_body_steps: u16) -> Result<u16, ()>
-{
+pub open spec fn spec_canonical_step(step_kind: u16, foreach_body_steps: u16) -> Result<u16, ()> {
     if step_kind == 0u16 || step_kind == 1u16 {
         Ok(1u16)
     } else if step_kind == 2u16 {
@@ -49,9 +51,10 @@ pub open spec fn spec_canonical_step(step_kind: u16, foreach_body_steps: u16) ->
 // 2. Model: body_width (part_01.rs:104-115)
 //    Accumulates overhead + sum(step widths) via checked_add
 // ═══════════════════════════════════════════════════════════════════
-
-pub open spec fn spec_body_width(overhead: u16, step_count: u16, step_width: u16) -> Result<u16, ()>
-{
+pub open spec fn spec_body_width(overhead: u16, step_count: u16, step_width: u16) -> Result<
+    u16,
+    (),
+> {
     if step_width == 0u16 {
         Err(())
     } else if overhead + step_count * step_width > 65535 {
@@ -65,22 +68,26 @@ pub open spec fn spec_body_width(overhead: u16, step_count: u16, step_width: u16
 // 3. Model: checked_step_offset (part_12.rs:199-212)
 //    id.checked_add(offset).ok_or(CompileError::PrimitiveLoweringLimitExceeded{..})
 // ═══════════════════════════════════════════════════════════════════
-
-pub open spec fn spec_checked_offset(id_val: u16, offset: u16) -> Result<u16, ()>
-{
-    if offset == 0u16 { Err(()) }
-    else if id_val + offset > 65535 { Err(()) }
-    else { Ok((id_val + offset) as u16) }
+pub open spec fn spec_checked_offset(id_val: u16, offset: u16) -> Result<u16, ()> {
+    if offset == 0u16 {
+        Err(())
+    } else if id_val + offset > 65535 {
+        Err(())
+    } else {
+        Ok((id_val + offset) as u16)
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // 4. Model: emit_single_body_set (part_04.rs:213-300)
 //    body.len() == 1 => Ok(()), else => Err
 // ═══════════════════════════════════════════════════════════════════
-
-pub open spec fn spec_emit_single_body_set(body_len: u16) -> Result<(), ()>
-{
-    if body_len == 1u16 { Ok(()) } else { Err(()) }
+pub open spec fn spec_emit_single_body_set(body_len: u16) -> Result<(), ()> {
+    if body_len == 1u16 {
+        Ok(())
+    } else {
+        Err(())
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -88,18 +95,19 @@ pub open spec fn spec_emit_single_body_set(body_len: u16) -> Result<(), ()>
 //    Emits ReduceStart + body steps + ReduceNext + ReduceFinish
 //    Requires id + 3 + body_width <= u16::MAX
 // ═══════════════════════════════════════════════════════════════════
-
-pub open spec fn spec_lower_aggregate(id_val: u16, body_width_val: u16) -> Result<(), ()>
-{
-    if body_width_val == 0u16 { Err(()) }
-    else if id_val + 3 + body_width_val > 65535 { Err(()) }
-    else { Ok(()) }
+pub open spec fn spec_lower_aggregate(id_val: u16, body_width_val: u16) -> Result<(), ()> {
+    if body_width_val == 0u16 {
+        Err(())
+    } else if id_val + 3 + body_width_val > 65535 {
+        Err(())
+    } else {
+        Ok(())
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────
 // NON-TRIVIAL LEMMAS (zero empty bodies, zero "ensures true")
 // ─────────────────────────────────────────────────────────────────
-
 /// L1: Empty body returns overhead for reduce (3).
 pub proof fn lemma_empty_body_overhead()
     ensures
@@ -137,7 +145,7 @@ pub proof fn lemma_overhead_safe()
     ensures
         reduce_oh() <= vb_u16_max(),
 {
-    assert(3u16 <= 65535u16) by { }
+    assert(3u16 <= 65535u16) by {}
 }
 
 /// L5: Max safe steps = 65532.
@@ -145,7 +153,7 @@ pub proof fn lemma_max_safe_steps()
     ensures
         (vb_u16_max() - reduce_oh()) == 65532u16,
 {
-    assert(65535u16 - 3u16 == 65532u16) by { }
+    assert(65535u16 - 3u16 == 65532u16) by {}
 }
 
 /// L6: Overflow: 65533 steps overflows.
@@ -228,8 +236,7 @@ pub proof fn lemma_reduce_offsets_ok(id_val: u16)
     requires
         id_val + 3 <= 65535,
     ensures
-        spec_checked_offset(id_val, 1u16).is_ok()
-            && spec_checked_offset(id_val, 2u16).is_ok()
+        spec_checked_offset(id_val, 1u16).is_ok() && spec_checked_offset(id_val, 2u16).is_ok()
             && spec_checked_offset(id_val, 3u16).is_ok(),
 {
 }
@@ -239,13 +246,11 @@ pub proof fn lemma_reduce_ids_ordered(id_val: u16)
     requires
         id_val + 3 <= 65535,
     ensures
-        id_val < id_val + 1u16
-            && id_val + 1u16 < id_val + 2u16
-            && id_val + 2u16 < id_val + 3u16,
+        id_val < id_val + 1u16 && id_val + 1u16 < id_val + 2u16 && id_val + 2u16 < id_val + 3u16,
 {
-    assert(id_val < id_val + 1u16) by { }
-    assert(id_val + 1u16 < id_val + 2u16) by { }
-    assert(id_val + 2u16 < id_val + 3u16) by { }
+    assert(id_val < id_val + 1u16) by {}
+    assert(id_val + 1u16 < id_val + 2u16) by {}
+    assert(id_val + 2u16 < id_val + 3u16) by {}
 }
 
 /// L15: Overflow at boundary: id=MAX, offset=1 => Err.
@@ -318,8 +323,11 @@ pub proof fn lemma_width_monotonic(overhead: u16, n: u16)
         1u16 <= n,
         overhead + n + 1 <= 65535,
     ensures
-        spec_body_width(overhead, n, 1u16).is_ok()
-            && spec_body_width(overhead, (n + 1u16) as u16, 1u16).is_ok(),
+        spec_body_width(overhead, n, 1u16).is_ok() && spec_body_width(
+            overhead,
+            (n + 1u16) as u16,
+            1u16,
+        ).is_ok(),
 {
 }
 
@@ -333,6 +341,7 @@ pub proof fn lemma_boundary_zero_steps()
 {
 }
 
-fn main() {}
+fn main() {
+}
 
 } // verus!
