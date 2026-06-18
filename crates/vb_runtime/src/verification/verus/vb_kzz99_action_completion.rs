@@ -1,11 +1,16 @@
 //! Verus specification and proof for action-completion kernel — vb-kzz99.
 //!
-//! Production bindings:
-//! - `spec_advance_after_action_completion` -> `action.rs:102-116`
-//! - `spec_validate_input_bytes` -> `action.rs:206-217`
+//! Production bindings (all verified against actual functions):
+//! - `spec_validate_input_bytes` → `action.rs:206-217` `validate_input_bytes`
+//!   (abstraction: raw params instead of ActionInput/ActionContract structs)
+//! - `spec_advance_after_action_completion` → `helpers/action.rs:102-116`
+//!   `advance_after_action_completion` (abstraction: bool params instead of &mut RunState)
+//! - `scheduled_attempt_after_spec` → `helpers/action.rs:225-234`
+//!   `scheduled_attempt_after` (identical logic)
 //!
-//! Spec functions model the pure decision kernels. No exec fns
-//! (production code is plain Rust, not Verus-compiled).
+//! No exec fns — production code is plain Rust, not Verus-compiled.
+//! Local error types are abstractions; production conflates them into
+//! RuntimeError::InvalidActionCompletion.
 
 use vstd::prelude::*;
 
@@ -201,7 +206,11 @@ verus! {
     }
 
     // ===========================================================================
-    // Spec: scheduled_attempt_after (pure kernel, reused from vb_y9d3v)
+    // Spec: scheduled_attempt_after — mirrors helpers/action.rs:225-234
+    //
+    // This spec is IDENTICAL to the production function.
+    // Production: `pub(crate) fn scheduled_attempt_after(current: Option<u16>,
+    //   ticket_attempt: u16) -> Option<u16>`
     // ===========================================================================
 
     pub closed spec fn scheduled_attempt_after_spec(

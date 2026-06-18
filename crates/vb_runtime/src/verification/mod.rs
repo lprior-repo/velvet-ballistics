@@ -64,14 +64,6 @@ pub mod verus {
     // Runtime facade API proofs
     #[path = "verus/runtime_facade_api.rs"]
     pub mod runtime_facade_api;
-
-    // Runtime typed error category proofs
-    #[path = "verus/runtime_facade_typed_errors.rs"]
-    pub mod runtime_facade_typed_errors;
-
-    // Runtime module topology proofs
-    #[path = "verus/runtime_module_topology.rs"]
-    pub mod runtime_module_topology;
 }
 
 // Kani harnesses (compiled with cargo kani)

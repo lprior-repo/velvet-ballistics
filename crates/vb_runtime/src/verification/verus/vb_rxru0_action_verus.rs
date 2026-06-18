@@ -203,8 +203,34 @@ verus! {
                     _ => false,
                 },
     {
-        // The spec assigns each field from its declared input source.
-        assert(true) by (compute);
+        // Verify each field preservation clause directly from spec definition.
+        assert((contract_max_input_bytes == 0 && contract_input_slot_count > 0)
+            ==> match spec_dispatch_generic(
+                input_run, input_step, input_seq, input_action, input_attempt,
+                input_idempotency_key, contract_max_input_bytes, contract_input_slot_count,
+                contract_name, input_mock,
+            ) {
+                AbstractOutcome::Failed => true,
+                _ => false,
+            }) by (compute);
+        assert((contract_max_input_bytes > 0 || contract_input_slot_count == 0)
+            ==> match spec_dispatch_generic(
+                input_run, input_step, input_seq, input_action, input_attempt,
+                input_idempotency_key, contract_max_input_bytes, contract_input_slot_count,
+                contract_name, input_mock,
+            ) {
+                AbstractOutcome::Suspended(t) => {
+                    t.run() == input_run
+                    && t.step() == input_step
+                    && t.seq() == input_seq
+                    && t.action() == input_action
+                    && t.attempt() == input_attempt
+                    && t.idempotency_key() == input_idempotency_key
+                    && t.capacity() == 1
+                    && t.mock() == spec_mock_from_contract_name(contract_name)
+                }
+                _ => false,
+            }) by (compute);
     }
 
     // ===========================================================================
@@ -234,7 +260,16 @@ verus! {
                 contract_name, input_mock,
             ),
     {
-        assert(true) by (compute);
+        // Determinism: identical inputs produce identical outputs.
+        assert(spec_dispatch_generic(
+            input_run, input_step, input_seq, input_action, input_attempt,
+            input_idempotency_key, contract_max_input_bytes, contract_input_slot_count,
+            contract_name, input_mock,
+        ) == spec_dispatch_generic(
+            input_run, input_step, input_seq, input_action, input_attempt,
+            input_idempotency_key, contract_max_input_bytes, contract_input_slot_count,
+            contract_name, input_mock,
+        )) by (compute);
     }
 
     // ===========================================================================
@@ -273,7 +308,22 @@ verus! {
                 _ => false,
             },
     {
-        assert(true) by (compute);
+        // Both dispatches with same contract but different input mocks
+        // must produce the same mock value derived from the contract.
+        assert(match spec_dispatch_generic(
+            input_run, input_step, input_seq, input_action, input_attempt,
+            input_idempotency_key, 1, 0, contract_name, input_mock_a,
+        ) {
+            AbstractOutcome::Suspended(t) => t.mock() == spec_mock_from_contract_name(contract_name),
+            _ => false,
+        }) by (compute);
+        assert(match spec_dispatch_generic(
+            input_run, input_step, input_seq, input_action, input_attempt,
+            input_idempotency_key, 1, 0, contract_name, input_mock_b,
+        ) {
+            AbstractOutcome::Suspended(t) => t.mock() == spec_mock_from_contract_name(contract_name),
+            _ => false,
+        }) by (compute);
     }
 
     // ===========================================================================
@@ -294,7 +344,15 @@ verus! {
             && spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).capacity == p_capacity
             && spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).mock == 0,
     {
-        assert(true) by (compute);
+        // Each field in the spec equals its corresponding parameter.
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).run == p_run) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).step == p_step) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).seq == p_seq) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).action == p_action) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).attempt == p_attempt) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).idempotency_key == p_idempotency_key) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).capacity == p_capacity) by (compute);
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity).mock == 0) by (compute);
     }
 
     // ===========================================================================
@@ -309,7 +367,9 @@ verus! {
             spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity)
                 == spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity),
     {
-        assert(true) by (compute);
+        // Determinism: identical inputs to issue_action_ticket produce identical tickets.
+        assert(spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity)
+            == spec_issue_action_ticket(p_run, p_step, p_seq, p_action, p_attempt, p_idempotency_key, p_capacity)) by (compute);
     }
 
     // ===========================================================================
@@ -332,7 +392,22 @@ verus! {
                     _ => 0,
                 } != spec_issue_action_ticket(0, 0, 0, 0, 0, 0, ticket_capacity).capacity())),
     {
-        assert(true) by (compute);
+        // dispatch_generic hardcodes capacity=1, issue_action_ticket uses its parameter.
+        // When ticket_capacity != 1, the two capacities must differ.
+        let dispatched = spec_dispatch_generic(0, 0, 0, 0, 0, 0, 1, 0, "http.get", 0);
+        assert(match dispatched {
+            AbstractOutcome::Suspended(t) => t.capacity() == 1,
+            _ => false,
+        }) by (compute);
+        assert(spec_issue_action_ticket(0, 0, 0, 0, 0, 0, ticket_capacity).capacity() == ticket_capacity) by (compute);
+        match dispatched {
+            AbstractOutcome::Suspended(t) => {
+                assert(ticket_capacity != 1 ==> t.capacity() != spec_issue_action_ticket(0, 0, 0, 0, 0, 0, ticket_capacity).capacity()) by (compute);
+            }
+            _ => {
+                assert(ticket_capacity != 1 ==> 0 != spec_issue_action_ticket(0, 0, 0, 0, 0, 0, ticket_capacity).capacity()) by (compute);
+            }
+        }
     }
 
     // ===========================================================================
