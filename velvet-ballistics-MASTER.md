@@ -5407,9 +5407,9 @@ This turns AI from "creative coder" into "mechanical implementer."
 
 ---
 
-## 78. Makepad UI Implementation Contract
+## UI-Historical-78. Makepad UI Implementation Contract
 
-> **Removed.** Makepad UI implementation is not part of the current core feature set. Remaining details in Sections 78-83 are historical residue only; no current backend bead may be blocked by Makepad, UI model artifacts, screenshot gates, or UI perf gates.
+> **Removed.** Makepad UI implementation is not part of the current core feature set. This historical UI residue is not the active numbered §78 section; the active §78 is `## 78. Tier A — Backend / IR Interpreter Complete v1.0` below. Remaining UI details in this historical block and Sections 79-83 are non-normative only; no current backend bead may be blocked by Makepad, UI model artifacts, screenshot gates, or UI perf gates.
 
 ### Makepad Scope
 
@@ -6105,8 +6105,7 @@ Tier A is structured as 13 sequential-or-parallel waves. Each wave is a batch of
 | 9 | Kani God-Rule (no hardcoded inputs) | 3 + 1 NEW | parallel after 4 |
 | 10 | CLI parity (typed Postcard, action inspect) | 6 | parallel after 1 |
 | 11 | Idempotency hardening | 3 | depends on 2 |
-| 12 | Release artifacts | 5 NEW | LAST |
-| 13 | Final verification + epic closure | 2 | LAST |
+| 12 | Release artifacts + final verification + epic closure | 5 NEW + 2 | LAST |
 
 Total: 21 NEW beads + ~55 existing tracker beads (re-closed with Tier A acceptance criteria) + 1 master amendment. Wall-clock: ~9 weeks parallel (≤ 5 agents/wave per §77.9), ~19 weeks serial.
 
@@ -6126,7 +6125,7 @@ Tier A is "complete" when ALL of the following are true simultaneously:
 
 1. `moon ci` exits 0 on a clean `main` checkout at the v1.0 tag.
 2. `.beads/moon-ci-status.txt` shows `EXIT_CODE: 0`.
-3. Every wave 0-13 bead is closed with `.evidence/<bead-id>.toml`.
+3. Every wave 0-12 bead is closed with `.evidence/<bead-id>.toml`.
 4. `RELEASE_CHECKLIST.md` exists at repo root.
 5. `CHANGELOG.md` has `## [0.1.0]` entry listing closed waves.
 6. `git tag -s v0.1.0 -m 'Tier A complete'` is created and pushed.
@@ -6137,13 +6136,15 @@ Tier A is "complete" when ALL of the following are true simultaneously:
 
 Every Tier A wave must include in its `.evidence/<bead>.toml`:
 
+These gates wire every Tier A wave to the §43 automatic rejection triggers for forbidden constructs, unchecked access or arithmetic, runtime YAML/JSON/HTTP, unbounded resources, missing tests, unsupported speed claims, and non-canonical naming.
+
 - `cargo +nightly fmt --all -- --check` exit 0
 - `cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock` exit 0
 - `cargo +nightly check --workspace --all-targets --all-features` exit 0
 - `cargo +nightly nextest run --workspace --all-features` exit 0
-- `cargo +nightly cargo-geiger --fail-build` exit 0
-- `cargo +nightly cargo-deny check advisories` exit 0
-- `scripts/check-spelling.sh` exit 0
-- `scripts/forbid-runtime-fmt.sh` exit 0
-- `scripts/source-length-gate.py` exit 0
+- `moon run :unsafe-audit` exit 0
+- `moon run :supply-chain` exit 0
+- `bash scripts/check-spelling-gate.sh` exit 0
+- `bash scripts/check-workspace-assertions.sh` exit 0
+- `bash scripts/check-source-length.sh` exit 0
 - `moon run :nightly-feature-gate` exit 0
