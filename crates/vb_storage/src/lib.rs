@@ -370,6 +370,7 @@ pub use journal::incident::{
     IncidentAnalysis, SideEffect, SideEffectCertainty, analyze_incident_events, build_repair_hints,
     derive_lifecycle_state_from_events, lifecycle_state_to_inspect_status,
 };
+pub use journal::incident::{lifecycle, model, repair};
 pub use journal::{EventReplayLimit, FjallJournal, ReadOnlyJournal};
 
 // Batch
