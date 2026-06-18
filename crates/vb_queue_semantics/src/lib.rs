@@ -2324,3 +2324,8 @@ mod tests {
         assert_eq!(warning_threshold(SHARED_QUEUE_CAPACITY_MAX), expected);
     }
 }
+
+// Verus verification modules — proof artifacts only, no production behavioral change.
+// GOD RULE 2: All specs/models bind to production queue semantics in this crate.
+#[cfg(verus)]
+pub mod verification;

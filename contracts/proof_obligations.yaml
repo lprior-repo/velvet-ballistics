@@ -1449,6 +1449,10 @@ proof_matrix:
     proof_strategy: "Verus for buffer extent arithmetic (L4). Kani + fuzz for IPC decode, length checks, and reject-before-allocation."
     primary_level: L3
     secondary_level: L4
+  vb_queue_semantics:
+    proof_strategy: "Verus for queue capacity arithmetic, enqueue/pop decision correctness, warning threshold bounds. All specs bind to production functions via exec fn bridges (L4). Model functions mirror usize production behavior with int-typed spec proofs."
+    primary_level: L2
+    secondary_level: L4
   vb_ui_model:
     proof_strategy: "Schema tests, redaction tests, bounded-list tests."
     primary_level: L1
@@ -1465,3 +1469,5 @@ proof_matrix:
 
 verus: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
 verus: crates/vb_storage/src/verification/verus/classification_specs.rs
+verus: crates/vb_queue_semantics/verification/verus/queue_semantics_exec_bridges.rs
+verus: crates/vb_queue_semantics/verification/verus/queue_semantics_specs.rs
