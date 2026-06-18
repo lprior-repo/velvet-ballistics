@@ -100,11 +100,11 @@ fn kani_ipc_header_accepts_exactly_at_limit() {
     kani::assert(decoded.is_ok(), "payload exactly at limit should succeed");
 }
 
-/// VB-IPC-DECODE-002 H5: decode with zero max_payload rejects any payload
+/// VB-IPC-DECODE-002 H5: decode with minimum max_payload rejects larger payloads.
 #[kani::proof]
 fn kani_ipc_header_rejects_any_payload_when_max_zero() {
     let max_payload = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
-    let payload_len: u32 = 1;
+    let payload_len: u32 = 2;
 
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 0, payload_len);
     let encoded = header.encode();
@@ -114,7 +114,7 @@ fn kani_ipc_header_rejects_any_payload_when_max_zero() {
     let decoded = IpcFrameHeader::decode(&encoded, max_payload);
     kani::assert(
         decoded.is_err(),
-        "any non-zero payload should be rejected when max is 0",
+        "payload above the minimum max bound should be rejected",
     );
 }
 

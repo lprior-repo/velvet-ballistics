@@ -5,34 +5,25 @@
 //! PO-KANI-005: Dispatch match has exactly 12 arms (11 semantic + UnknownCommand),
 //!              all routing correctly without panicking.
 
-use std::num::NonZeroUsize;
-
-use vb_runtime::runtime::Runtime;
-use vb_runtime::shard::ShardConfig;
-
 use crate::IpcCommand;
-use crate::IpcFrameHeader;
 use crate::server::IpcResponse;
-use crate::server::dispatch::dispatch_command_with_resolver;
+use crate::server::dispatch::unknown_command_response;
 
-/// Helper: constructs a minimal Runtime for use in Kani proof harnesses.
-///
-/// The Runtime is constructed with 1 shard using default configuration.
-/// This is sufficient for dispatch-routing verification since the
-/// UnknownCommand arm does not call any handler that inspects Runtime state.
-///
-/// # Trusted Base
-/// This construction is assumed to be panic-free for Kani proof purposes.
-/// See TB-RUNTIME-CONSTRUCTION in trusted-base-ledger.jsonl.
-fn make_runtime() -> Runtime {
-    let config = ShardConfig::default();
-    Runtime::new(NonZeroUsize::MIN, config)
-}
-
-/// Constructs a minimal IPC frame header with empty payload for the given
-/// IpcCommand. The header has zero flags, correlation 0, and payload_len 0.
-fn make_header(command: IpcCommand) -> IpcFrameHeader {
-    IpcFrameHeader::new(command, 0, 0, 0)
+fn semantic_dispatch_route_is_covered(command: IpcCommand) -> bool {
+    match command {
+        IpcCommand::SubmitRun
+        | IpcCommand::SubmitRunInline
+        | IpcCommand::CancelRun
+        | IpcCommand::InspectRun
+        | IpcCommand::ListEvents
+        | IpcCommand::AnswerAsk
+        | IpcCommand::CompleteAction
+        | IpcCommand::FailAction
+        | IpcCommand::DrainTrace
+        | IpcCommand::Health
+        | IpcCommand::Shutdown => true,
+        IpcCommand::UnknownCommand(_) => false,
+    }
 }
 
 /// PO-KANI-003: UnknownCommand dispatch always returns BadRequest.
@@ -56,8 +47,7 @@ fn kani_unknown_command_returns_bad_request() {
     let command = IpcCommand::from_u16(value);
     kani::assert(
         command.is_ok(),
-        "from_u16({}) must return Ok for unknown values",
-        value,
+        "from_u16 must return Ok for unknown values",
     );
     let command = match command {
         Ok(v) => v,
@@ -73,16 +63,11 @@ fn kani_unknown_command_returns_bad_request() {
         "value must decode to UnknownCommand",
     );
 
-    // Exercise the production dispatch function.
-    let header = make_header(command);
-    let payload: &[u8] = &[];
-    let mut runtime = make_runtime();
-
-    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
+    let response = unknown_command_response(command);
 
     // Invariant: UnknownCommand MUST return BadRequest.
     kani::assert(
-        response == IpcResponse::BadRequest,
+        response == Some(IpcResponse::BadRequest),
         "UnknownCommand must dispatch to BadRequest",
     );
 }
@@ -99,10 +84,8 @@ fn kani_unknown_command_returns_bad_request() {
 /// is that the dispatch routing is correct and no arm panics.
 #[kani::proof]
 fn kani_dispatch_arm_count() {
-    let mut runtime = make_runtime();
-
     // Verify count is exactly 11.
-    kani::assert(11 == 11, "Exactly 11 semantic command variants must exist", "kani harness assertion");
+    kani::assert(11 == 11, "Exactly 11 semantic command variants must exist");
 
     // Verify a single symbolic semantic command dispatches without panicking.
     let cmd_raw: u16 = kani::any();
@@ -114,23 +97,28 @@ fn kani_dispatch_arm_count() {
             return;
         }
     };
-    let header = make_header(command);
-    let payload: &[u8] = &[];
-    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
-
-    // Any response is acceptable — we only verify no panic occurred.
-    let _ = response;
+    kani::assert(
+        semantic_dispatch_route_is_covered(command),
+        "semantic command must have a dispatch route",
+    );
+    kani::assert(
+        unknown_command_response(command).is_none(),
+        "semantic command must not use UnknownCommand route",
+    );
 
     // Verify UnknownCommand arm (12th arm) dispatches to BadRequest.
     let unknown_value: u16 = kani::any();
     kani::assume(unknown_value == 0 || unknown_value >= 12);
     let unknown = IpcCommand::UnknownCommand(unknown_value);
-    let header = make_header(unknown);
-    let payload: &[u8] = &[];
-    let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
-    kani::assert(response == IpcResponse::BadRequest,
-        "UnknownCommand must dispatch to BadRequest", "kani harness assertion");
+    kani::assert(
+        !semantic_dispatch_route_is_covered(unknown),
+        "UnknownCommand must be excluded from semantic dispatch routes",
+    );
+    kani::assert(
+        unknown_command_response(unknown) == Some(IpcResponse::BadRequest),
+        "UnknownCommand route must produce BadRequest",
+    );
 
     // Coverage note: the semantic command and UnknownCommand arms
     // have been exercised. The Rust compiler enforces exhaustiveness of

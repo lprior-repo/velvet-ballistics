@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
 //! Runtime facade shard-control helpers.
 
+use vb_core::action::{ActionFailure, ActionOutputReady, ActionTicket};
+use vb_core::ids::RunId;
+
 use crate::runtime::Runtime;
 use crate::shard::{ShardCommand, ShardDirective};
 use crate::{RuntimeError, RuntimeResult};
-use vb_core::ids::RunId;
 
 /// Summary of an active run on a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +22,8 @@ pub struct ActiveRunSummary {
 }
 
 impl Runtime {
+    // ── Process control ────────────────────────────────────────────────
+
     /// Processes one directive on a selected shard.
     pub fn tick_shard(&mut self, shard: u32, directive: ShardDirective) -> RuntimeResult<bool> {
         let source = self.checked_shard_index(shard)?;
@@ -35,6 +39,64 @@ impl Runtime {
             ShardDirective::Migrate { target } => self.migrate_selected_shard(source, target),
             ShardDirective::Shutdown => self.shutdown_selected_shard(source),
         }
+    }
+
+    /// Processes one command on each shard; false means at least one shard is stopped.
+    pub fn tick_all(&mut self) -> RuntimeResult<bool> {
+        let mut alive = true;
+        for shard in &mut self.shards {
+            if !shard.tick()? {
+                alive = false;
+            }
+        }
+        Ok(alive)
+    }
+
+    // ── Run lifecycle commands ─────────────────────────────────────────
+
+    /// Cancels a run.
+    pub fn cancel_run(&self, run: RunId) -> RuntimeResult<()> {
+        self.shard_for(run)?
+            .enqueue(ShardCommand::Cancel { run, reason: None })
+    }
+
+    /// Kills a run.
+    pub fn kill_run(&self, run: RunId) -> RuntimeResult<()> {
+        self.kill_run_with_reason(run, None)
+    }
+
+    /// Kills a run with an optional reason.
+    pub fn kill_run_with_reason(&self, run: RunId, reason: Option<String>) -> RuntimeResult<()> {
+        self.shard_for(run)?
+            .enqueue(ShardCommand::Kill { run, reason })
+    }
+
+    /// Resumes a suspended run.
+    pub fn resume_run(&self, run: RunId) -> RuntimeResult<()> {
+        self.shard_for(run)?.enqueue(ShardCommand::Resume { run })
+    }
+
+    // ── Inspection ─────────────────────────────────────────────────────
+
+    /// Enqueues a run inspection command.
+    pub fn inspect_run(&self, run: RunId, correlation: u64) -> RuntimeResult<()> {
+        self.shard_for(run)?
+            .enqueue(ShardCommand::Inspect { run, correlation })
+    }
+
+    /// Returns a direct non-queued snapshot from the owning shard.
+    pub fn snapshot_run(&self, run: RunId, correlation: u64) -> RuntimeResult<crate::shard::InspectResponse> {
+        Ok(self.shard_for(run)?.snapshot_run(run, correlation))
+    }
+
+    /// Takes a pending inspect response from the owning shard.
+    pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<crate::shard::InspectResponse>> {
+        let index = self.shard_index(run);
+        let shard = self
+            .shards
+            .get_mut(index)
+            .ok_or(RuntimeError::RunNotFound)?;
+        Ok(shard.take_inspect_response())
     }
 
     /// Lists active run summaries across all shards, up to `limit` entries.
@@ -55,6 +117,109 @@ impl Runtime {
         summaries.truncate(max);
         summaries
     }
+
+    // ── Action completion ──────────────────────────────────────────────
+
+    /// Completes an action without a typed output payload.
+    pub fn complete_action(&self, run: RunId, step: vb_core::ids::StepIdx) -> RuntimeResult<()> {
+        self.shard_for(run)?
+            .enqueue(ShardCommand::ActionCompletedLegacy { run, step })
+    }
+
+    /// Completes an action with a typed output payload.
+    pub fn complete_action_with_output(
+        &self,
+        ticket: ActionTicket,
+        output: ActionOutputReady,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(ticket.run)?;
+        // Explicitly cancelled or killed runs must reject completions
+        // at API time. Naturally-completed runs are accepted here so
+        // that IPC re-entry scenarios produce RunNotFound at tick time
+        // instead of InvalidActionCompletion at enqueue time.
+        if shard.terminal_runs_contains(ticket.run) {
+            match shard.terminal_outcome_get(ticket.run) {
+                Some(crate::shard::TerminalOutcome::Cancelled)
+                | Some(crate::shard::TerminalOutcome::Killed) => {
+                    return Err(RuntimeError::InvalidActionCompletion);
+                }
+                _ => {}
+            }
+        }
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
+    }
+
+    /// Fails an action with a typed failure payload.
+    pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
+        let shard = self.shard_for(ticket.run)?;
+        if shard.terminal_runs_contains(ticket.run) {
+            match shard.terminal_outcome_get(ticket.run) {
+                Some(crate::shard::TerminalOutcome::Cancelled)
+                | Some(crate::shard::TerminalOutcome::Killed) => {
+                    return Err(RuntimeError::InvalidActionCompletion);
+                }
+                _ => {}
+            }
+        }
+        shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
+    }
+
+    // ── Ask / timer wiring ─────────────────────────────────────────────
+
+    /// Answers an ask with an explicit payload and resume ticket.
+    pub fn answer_ask(&self, answer: crate::shard::AskAnswer) -> RuntimeResult<()> {
+        let shard = self.shard_for(answer.ticket.run)?;
+        if shard.terminal_runs_contains(answer.ticket.run) {
+            return Err(RuntimeError::RunNotFound);
+        }
+        shard.enqueue(ShardCommand::AskAnswered { answer })
+    }
+
+    /// Advances a run whose registered wait or ask timer fired externally.
+    pub fn timer_fired(&self, run: RunId) -> RuntimeResult<()> {
+        let _ = self.shard_for(run)?;
+        Err(RuntimeError::InvalidTimerFire)
+    }
+
+    /// Captures current timer authority for an externally fired timer.
+    pub fn capture_timer_entry(
+        &self,
+        run: RunId,
+    ) -> RuntimeResult<crate::shard::timer_wheel::TimerEntry> {
+        self.shard_for(run)?
+            .timer_entry(run)
+            .ok_or(RuntimeError::InvalidTimerFire)
+    }
+
+    /// Advances a timer using captured freshness authority.
+    pub fn timer_entry_fired(
+        &self,
+        entry: crate::shard::timer_wheel::TimerEntry,
+    ) -> RuntimeResult<()> {
+        self.shard_for(entry.run)?
+            .enqueue(ShardCommand::TimerFired {
+                run: entry.run,
+                generation: entry.generation,
+                deadline: entry.deadline,
+                kind: entry.kind,
+            })
+    }
+
+    // ── Shutdown ───────────────────────────────────────────────────────
+
+    /// Shuts down all shards gracefully.
+    pub fn shutdown_graceful(&mut self) -> RuntimeResult<()> {
+        for shard in &self.shards {
+            shard.enqueue(ShardCommand::Shutdown)?;
+        }
+        for shard in &mut self.shards {
+            shard.drain_for_shutdown()?;
+        }
+        self.journal.drain_for_shutdown()?;
+        Ok(())
+    }
+
+    // ── Internal helpers ───────────────────────────────────────────────
 
     fn checked_shard_index(&self, shard: u32) -> RuntimeResult<usize> {
         let index = usize::try_from(shard).map_err(|_| RuntimeError::ShardNotFound { shard })?;

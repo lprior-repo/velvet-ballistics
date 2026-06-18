@@ -1,8 +1,12 @@
 #![forbid(unsafe_code)]
-//! Runtime facade metrics collection helpers.
+//! Runtime facade metrics and observability helpers.
 
-use crate::counters::{RuntimeMetricsSnapshot, ShardMetricsSnapshot};
+use vb_core::ids::RunId;
+
+use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
 use crate::shard::Shard;
+use crate::trace::TraceEvent;
+use crate::{Runtime, RuntimeResult};
 
 pub(crate) fn collect_metrics(shards_ref: &[Shard], shard_count: usize) -> RuntimeMetricsSnapshot {
     let mut shards = Vec::with_capacity(shard_count);
@@ -48,6 +52,47 @@ impl RuntimeMetricTotals {
             runs_finished_total: self.runs_finished_total,
             steps_total: self.steps_total,
         }
+    }
+}
+
+impl Runtime {
+    /// Lists trace events for one run without draining.
+    pub fn list_events(&self, run: RunId) -> RuntimeResult<Vec<TraceEvent>> {
+        let shard = self.shard_for(run)?;
+        let limit = shard.trace_ring().capacity();
+        Ok(shard.trace_ring().snapshot_for_run(run, limit))
+    }
+
+    /// Drains all trace events from all shards.
+    pub fn drain_trace(&mut self) -> Vec<TraceEvent> {
+        let mut events = Vec::new();
+        for shard in &mut self.shards {
+            let capacity = shard.trace_ring_mut().capacity();
+            shard.trace_ring_mut().drain_into(capacity, &mut events);
+        }
+        events
+    }
+
+    /// Collects runtime metrics from all shards.
+    pub fn collect_metrics(&self) -> RuntimeMetricsSnapshot {
+        collect_metrics(&self.shards, self.shard_count)
+    }
+
+    pub fn counters_snapshot(&self) -> CounterSnapshot {
+        let mut total = CounterSnapshot {
+            runs_submitted: 0,
+            runs_completed: 0,
+            runs_failed: 0,
+            steps_executed: 0,
+        };
+        for shard in &self.shards {
+            let snap = shard.counters().snapshot();
+            total.runs_submitted = total.runs_submitted.saturating_add(snap.runs_submitted);
+            total.runs_completed = total.runs_completed.saturating_add(snap.runs_completed);
+            total.runs_failed = total.runs_failed.saturating_add(snap.runs_failed);
+            total.steps_executed = total.steps_executed.saturating_add(snap.steps_executed);
+        }
+        total
     }
 }
 

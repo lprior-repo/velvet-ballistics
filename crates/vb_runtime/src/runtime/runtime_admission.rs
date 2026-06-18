@@ -12,6 +12,7 @@ use vb_core::workflow::CompiledWorkflow;
 
 use crate::admission::AdmissionBudgetRequest;
 use crate::shard::Shard;
+use crate::shard::ShardCommand;
 use crate::{Runtime, RuntimeError, RuntimeResult};
 
 impl Runtime {
@@ -110,6 +111,203 @@ impl Runtime {
         )
         .map(|_admission| ())
         .map_err(|error| map_admission_error(error, digest))
+    }
+}
+
+impl Runtime {
+    /// Submits a run using a compiled workflow.
+    ///
+    /// Admission is atomic with the enqueue: the per-shard `admission_lock`
+    /// is held for the duration of the preflight and the enqueue so two
+    /// concurrent submits cannot squeeze in between the budget reservation
+    /// and the queue commit. Fails closed if the workflow's declared or
+    /// computed IR step budget exceeds `vb_core::limits::MAX_STEPS_PER_WORKFLOW`.
+    pub fn submit_direct(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        let _admission_guard = shard.lock_admission()?;
+        Self::preflight_direct_admission(shard, run, &workflow, CapabilitySet::empty())?;
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: CapabilitySet::empty(),
+        })
+    }
+
+    pub fn submit_compiled(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+        self.submit_direct(run, workflow)
+    }
+
+    /// Submits a run with pre-mapped runtime input slots.
+    ///
+    /// Admission is atomic with the enqueue via the per-shard
+    /// `admission_lock`. The preflight now enforces BOTH the artifact gate
+    /// and the per-workflow declared/computed IR step-count policy.
+    pub fn submit_compiled_with_inputs(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: Box<[(vb_core::ids::SlotIdx, vb_core::value::SlotValue)]>,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        let _admission_guard = shard.lock_admission()?;
+        Self::preflight_direct_admission(shard, run, &workflow, CapabilitySet::empty())?;
+        shard.enqueue(ShardCommand::SubmitWithInputs {
+            run,
+            workflow,
+            inputs,
+            caps: CapabilitySet::empty(),
+        })
+    }
+
+    /// Submits a run with inputs, capability grants, and validated action
+    /// contracts.
+    ///
+    /// Admission is atomic with the enqueue via the per-shard
+    /// `admission_lock`. The preflight now enforces BOTH the artifact gate
+    /// and the per-workflow declared/computed IR step-count policy. Fails
+    /// closed on either gate.
+    pub fn submit_direct_with_inputs_grants_and_contracts(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: Box<[(vb_core::ids::SlotIdx, vb_core::value::SlotValue)]>,
+        caps: CapabilitySet,
+        action_contracts: Box<[vb_core::action::ActionContract]>,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        let _admission_guard = shard.lock_admission()?;
+        Self::preflight_direct_admission(shard, run, &workflow, caps.clone())?;
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs,
+            caps,
+            action_contracts,
+        })
+    }
+
+    /// Submits a run whose compiled artifact is already stored in the
+    /// runtime's `FjallJournal`, identified by `artifact_digest`.
+    ///
+    /// This is the master §66 facade wrapper around the storage-level
+    /// `vb_storage::admission::submit_artifact` function. The wrapper is a
+    /// thin facade that does NOT duplicate storage admission logic.
+    ///
+    /// Failure semantics (master §66 line 3421):
+    /// - Rejects with `Err(RuntimeError::AdmissionArtifactNotFound { digest })`
+    ///   when the `artifact_digest` is not present in the `compiled_ir` keyspace.
+    /// - Rejects with `Err(RuntimeError::AdmissionArtifactInvalid { digest })`
+    ///   when the stored envelope is malformed (postcard decode failure,
+    ///   trailing bytes, or workflow parts deserialization failure).
+    /// - Rejects with `Err(RuntimeError::AdmissionArtifactDigestMismatch { .. })`
+    ///   when the envelope's `digest` field does not match `artifact_digest`.
+    /// - Rejects with `Err(RuntimeError::UnsupportedOperation { operation })`
+    ///   when the runtime is not backed by a storage journal
+    ///   (e.g., `NoopRuntimeJournal` or `VolatileRuntimeJournal`).
+    /// - Rejects with `Err(RuntimeError::StorageJournalAppend { source })`
+    ///   when the storage-level admission or journal event append fails.
+    ///
+    /// On success, the wrapper records exactly one `RuntimeJournalEvent::RunSubmitted`
+    /// event (which maps to `JournalEvent::RunAccepted` in storage) and returns
+    /// `Ok(())`. The `input` and `capabilities` parameters are reserved for a
+    /// future integration that threads them into the per-shard run submission
+    /// path; the storage-level admission function does not consume them.
+    #[allow(clippy::too_many_lines)]
+    pub fn submit_artifact(
+        &self,
+        run: RunId,
+        artifact_digest: WorkflowDigest,
+        _input: &[u8],
+        _capabilities: &[vb_core::capability::Capability],
+    ) -> RuntimeResult<()> {
+        // (1) Look up the stored accepted artifact in the runtime's
+        //     FjallJournal. Reject if the digest is missing, the
+        //     envelope is malformed, or the envelope's digest does not
+        //     match the requested digest.
+        let fjall_journal =
+            self.journal
+                .storage_journal()
+                .ok_or(RuntimeError::UnsupportedOperation {
+                    operation: "submit_artifact_without_storage_journal",
+                })?;
+        let record = fjall_journal.compiled_ir(artifact_digest)?.ok_or(
+            RuntimeError::AdmissionArtifactNotFound {
+                digest: artifact_digest,
+            },
+        )?;
+
+        // Decode the AcceptedArtifact envelope from the record's IR bytes.
+        // Reject on malformed envelope or trailing bytes.
+        let (artifact, remaining) =
+            postcard::take_from_bytes::<vb_storage::admission::AcceptedArtifact>(&record.ir)
+                .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
+                    digest: artifact_digest,
+                })?;
+        let envelope_end = record.ir.len().checked_sub(remaining.len()).ok_or(
+            RuntimeError::AdmissionArtifactInvalid {
+                digest: artifact_digest,
+            },
+        )?;
+        if envelope_end != record.ir.len() {
+            return Err(RuntimeError::AdmissionArtifactInvalid {
+                digest: artifact_digest,
+            });
+        }
+
+        // Verify the envelope's digest matches the requested digest.
+        if artifact.digest != artifact_digest {
+            return Err(RuntimeError::AdmissionArtifactDigestMismatch {
+                requested: artifact_digest,
+                found: artifact.digest,
+            });
+        }
+
+        // Decode the WorkflowParts from the artifact's IR bytes and
+        // build a CompiledWorkflow for the storage-level admission call.
+        let (mut parts, parts_remaining) = postcard::take_from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
+            .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
+                digest: artifact_digest,
+            })?;
+        let parts_end = artifact.ir.len().checked_sub(parts_remaining.len()).ok_or(
+            RuntimeError::AdmissionArtifactInvalid {
+                digest: artifact_digest,
+            },
+        )?;
+        if parts_end != artifact.ir.len() {
+            return Err(RuntimeError::AdmissionArtifactInvalid {
+                digest: artifact_digest,
+            });
+        }
+        parts.digest = artifact.digest;
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|_| {
+            RuntimeError::AdmissionArtifactInvalid {
+                digest: artifact_digest,
+            }
+        })?;
+
+        // (2) Call vb_storage::admission::submit_artifact to perform the
+        //     storage-side admission. This validates the workflow, computes
+        //     the checksum, and persists the artifact (idempotent for an
+        //     already-stored artifact with matching metadata hash).
+        vb_storage::admission::submit_artifact(
+            fjall_journal.as_ref(),
+            &workflow,
+            RuntimePolicy::Journaled,
+        )?;
+
+        // (3) Record a RunAccepted journal event before returning Ok(()).
+        //     The seq is a placeholder; a future integration that routes
+        //     this through the shard's per-run sequence tracking will
+        //     replace EventSeq::new(0) with the shard-assigned sequence.
+        self.journal.append_sequenced(
+            crate::journal::RuntimeJournalEvent::RunSubmitted {
+                run,
+                workflow: artifact_digest,
+            },
+            vb_storage::EventSeq::new(0),
+        )?;
+
+        Ok(())
     }
 }
 

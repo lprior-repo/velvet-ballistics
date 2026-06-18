@@ -21,5 +21,10 @@ vb_runtime = { path = "../vb_runtime" }
 proptest = { workspace = true }
 rstest = "0.26.1"
 
+[features]
+default = []
+kani-ipc-tier-a = []
+kani-ipc-handler-runtime-bridge = []
+
 [lints]
 workspace = true

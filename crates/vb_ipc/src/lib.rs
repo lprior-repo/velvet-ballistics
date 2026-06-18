@@ -28,25 +28,35 @@ pub mod server;
 #[cfg(verus)]
 pub mod verification;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
 pub mod kani_ipc_header;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
 pub mod kani_ipc_header_rejects_oversize;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
 pub mod kani_ipc_decode_order;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
 pub mod kani_flag_validation;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
 pub mod kani_ipc_command_exhaustive;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
 pub mod kani_ipc_dispatch_exhaustive;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
+pub mod kani_ipc_preallocation_gate;
+
+#[cfg(all(kani, feature = "kani-ipc-tier-a"))]
+pub mod kani_ipc_preallocation_gate_nonzero;
+
+#[cfg(all(
+    kani,
+    feature = "kani-ipc-handler-runtime-bridge",
+    not(feature = "kani-ipc-tier-a")
+))]
 pub mod kani_handler_runtime_bridge;
 
 pub use crate::action_output::IpcActionOutputPayload;

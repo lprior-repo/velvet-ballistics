@@ -24,9 +24,7 @@ fn kani_from_u16_exhaustive() {
     let result = IpcCommand::from_u16(value);
     kani::assert(
         result.is_ok(),
-        "from_u16({}) must return Ok); got {:?}",
-        value,
-        result,
+        "from_u16 must return Ok for every u16 value",
     );
 
     let command = match result {
@@ -135,8 +133,7 @@ fn kani_command_count_and_discriminants() {
         let id = cmd.as_u16();
         kani::assert(
             id >= 1 && id <= 11,
-            "IpcCommand discriminant {} is outside 1..=11",
-            id,
+            "IpcCommand discriminant is outside 1..=11",
         );
     }
 
@@ -208,11 +205,7 @@ fn kani_command_count_and_discriminants() {
         for j in (i + 1)..ids.len() {
             kani::assert(
                 ids[i] != ids[j],
-                "Duplicate discriminant detected: variant at index {} \
-                 and {} both have discriminant {}",
-                i,
-                j,
-                ids[i],
+                "IpcCommand semantic discriminants must be unique",
             );
         }
     }
@@ -257,8 +250,7 @@ fn kani_roundtrip_identity() {
         for j in (i + 1)..commands.len() {
             kani::assert(
                 commands[i].as_u16() != commands[j].as_u16(),
-                "as_u16() must be injective: two different variants share wire ID {}",
-                commands[i].as_u16(),
+                "as_u16() must be injective across semantic variants",
             );
         }
     }

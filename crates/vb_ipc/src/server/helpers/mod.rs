@@ -131,130 +131,15 @@
 )]
 #![forbid(unsafe_code)]
 //! Buffer and frame helper functions.
+//!
+//! Submodules:
+//! - `magic`: Magic byte validation
+//! - `frame_read`: Read buffer management
+//! - `frame_send`: Response assembly & transport
 
-use super::IpcResponse;
-use super::error::IpcServerError;
-use crate::IpcError;
-use crate::IpcFrameHeader;
-use crate::{IPC_HEADER_LEN, IPC_MAGIC, MaxPayloadBytes};
-use mio::Registry;
-use mio::Token;
-use mio::net::UnixStream;
-use std::io::Write;
-
-/// Maximum bytes to read while still in AwaitingMagic state.
-pub const AWAITING_MAGIC_MAX_BYTES: usize = 4;
-
-/// Magic validation state for IPC frame header parsing.
-///
-/// Tracks whether we have validated the magic bytes at the start of a frame.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MagicValidationState {
-    /// Have not yet validated magic bytes.
-    AwaitingMagic,
-    /// Magic bytes validated successfully.
-    MagicValidated,
-}
-
-/// Validates magic bytes early, before allocating a large read buffer.
-///
-/// Returns `MagicValidated` if the magic matches `IPC_MAGIC`.
-/// Returns `AwaitingMagic` if not enough bytes have been collected.
-/// Returns an `IpcError::InvalidMagic` if the magic bytes are present but do not match.
-pub fn validate_magic_early(bytes: &[u8]) -> Result<MagicValidationState, IpcError> {
-    let Some(prefix) = bytes.get(..AWAITING_MAGIC_MAX_BYTES) else {
-        return Ok(MagicValidationState::AwaitingMagic);
-    };
-    let magic_bytes = <[u8; AWAITING_MAGIC_MAX_BYTES]>::try_from(prefix)
-        .map_err(|_| IpcError::HeaderDecodeFailed)?;
-    let magic = u32::from_le_bytes(magic_bytes);
-    if magic == IPC_MAGIC {
-        Ok(MagicValidationState::MagicValidated)
-    } else {
-        Err(IpcError::InvalidMagic { actual: magic })
-    }
-}
-
-/// Appends read bytes into the read buffer with bounds checking.
-pub fn append_read_bytes(
-    read_buffer: &mut Vec<u8>,
-    temp_buf: &[u8; 4096],
-    bytes_read: usize,
-) -> Result<(), IpcServerError> {
-    let read_slice = temp_buf
-        .get(..bytes_read)
-        .ok_or(IpcServerError::FrameInvalid {
-            source: IpcError::PayloadLengthMismatch {
-                header: 4096,
-                actual: bytes_read,
-            },
-        })?;
-    let next_len = read_buffer
-        .len()
-        .checked_add(read_slice.len())
-        .ok_or(IpcServerError::ReadBufferTooLarge)?;
-    let max_buffer = IPC_HEADER_LEN
-        .checked_add(MaxPayloadBytes::DEFAULT.get())
-        .ok_or(IpcServerError::ReadBufferTooLarge)?;
-    if next_len > max_buffer {
-        return Err(IpcServerError::ReadBufferTooLarge);
-    }
-    read_buffer.extend_from_slice(read_slice);
-    Ok(())
-}
-
-/// Reads the frame header from the read buffer.
-pub fn read_buffer_header(read_buffer: &[u8]) -> Result<[u8; IPC_HEADER_LEN], IpcServerError> {
-    let header_slice = read_buffer
-        .get(..IPC_HEADER_LEN)
-        .ok_or(IpcServerError::IncompleteFrame)?;
-    <[u8; IPC_HEADER_LEN]>::try_from(header_slice).map_err(|_| IpcServerError::IncompleteFrame)
-}
-
-/// Computes total frame length from header.
-pub fn frame_total_len(header: &IpcFrameHeader) -> Result<usize, IpcServerError> {
-    let payload_len =
-        usize::try_from(header.payload_len).map_err(|_| IpcServerError::FrameInvalid {
-            source: IpcError::PayloadLengthOutOfRange {
-                actual: header.payload_len,
-            },
-        })?;
-    let total_len = IPC_HEADER_LEN
-        .checked_add(payload_len)
-        .ok_or(IpcServerError::ReadBufferTooLarge)?;
-    Ok(total_len)
-}
-
-/// Extracts payload bytes from the read buffer.
-pub fn extract_payload(
-    read_buffer: &mut Vec<u8>,
-    total_len: usize,
-) -> Result<Vec<u8>, IpcServerError> {
-    if read_buffer.len() < total_len {
-        return Err(IpcServerError::IncompleteFrame);
-    }
-    // Keep unread bytes in the connection buffer and return only the consumed payload.
-    let remaining = read_buffer.split_off(total_len);
-    let mut frame = std::mem::replace(read_buffer, remaining);
-    Ok(frame.split_off(IPC_HEADER_LEN))
-}
-
-/// Creates a frame error response.
-pub fn frame_error_response(error: IpcError) -> IpcResponse {
-    IpcResponse::FrameError {
-        message: error.to_string(),
-    }
-}
-
-/// Borrows the workflow resolver from an optional mutable reference.
-pub fn borrow_workflow_resolver<'a>(
-    resolver: &'a mut Option<&mut dyn crate::server::WorkflowResolver>,
-) -> Option<&'a mut dyn crate::server::WorkflowResolver> {
-    match resolver {
-        Some(inner) => Some(&mut **inner),
-        None => None,
-    }
-}
+pub(crate) mod magic;
+pub(crate) mod frame_read;
+pub(crate) mod frame_send;
 
 #[cfg(test)]
 pub(crate) mod test_hooks {
@@ -266,113 +151,28 @@ pub(crate) mod test_hooks {
     }
 }
 
-/// Sends a response frame to the client.
-pub fn send_response(
-    stream: &mut UnixStream,
-    write_buffer: &mut Vec<u8>,
-    registry: &Registry,
-    token: Token,
-    request_header: &IpcFrameHeader,
-    response: &IpcResponse,
-) -> Result<(), IpcServerError> {
-    #[cfg(test)]
-    let payload_bytes = if test_hooks::FORCE_POSTCARD_FAIL.get() {
-        Err(postcard::Error::SerializeBufferFull)
-    } else {
-        postcard::to_allocvec(response)
-    }
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    #[cfg(not(test))]
-    let payload_bytes =
-        postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    let payload_len =
-        u32::try_from(payload_bytes.len()).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    let header = IpcFrameHeader::new(
-        request_header.command,
-        0,
-        request_header.correlation,
-        payload_len,
-    );
-
-    #[cfg(test)]
-    let header_bytes = if test_hooks::FORCE_HEADER_ENCODE_FAIL.get() {
-        Err(crate::IpcError::HeaderEncodeFailed)
-    } else {
-        header.encode()
-    }
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    #[cfg(not(test))]
-    let header_bytes = header
-        .encode()
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
-
-    write_buffer.clear();
-    write_buffer.extend_from_slice(&header_bytes);
-    write_buffer.extend_from_slice(&payload_bytes);
-
-    let written = match stream.write(write_buffer) {
-        Ok(count) => count,
-        Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => 0,
-        Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
-    };
-    if written > 0 {
-        write_buffer.drain(..written).for_each(|_| ());
-    }
-    if write_buffer.is_empty() {
-        #[cfg(test)]
-        let flush_result = if test_hooks::FORCE_FLUSH_FAIL.get() {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::BrokenPipe,
-                "flush fail",
-            ))
-        } else {
-            stream.flush()
-        };
-
-        #[cfg(not(test))]
-        let flush_result = stream.flush();
-
-        match flush_result {
-            Ok(()) => {}
-            Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => {}
-            Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
-        }
-    } else {
-        registry
-            .reregister(
-                stream,
-                token,
-                mio::Interest::READABLE | mio::Interest::WRITABLE,
-            )
-            .map_err(|source| IpcServerError::PollFailed { source })?;
-    }
-
-    Ok(())
-}
-
-#[cfg(test)]
-pub(crate) fn append_read_bytes_checked_add(a: usize, b: usize) -> Result<usize, IpcServerError> {
-    a.checked_add(b).ok_or(IpcServerError::ReadBufferTooLarge)
-}
-
-#[cfg(test)]
-pub(crate) fn frame_total_len_checked_add(
-    header_len: usize,
-    payload_len: usize,
-) -> Result<usize, IpcServerError> {
-    header_len
-        .checked_add(payload_len)
-        .ok_or(IpcServerError::ReadBufferTooLarge)
-}
+// Re-export for backward-compat consumers and the re-export block in server/mod.rs.
+pub(crate) use magic::{AWAITING_MAGIC_MAX_BYTES, MagicValidationState, validate_magic_early};
+pub(crate) use frame_read::{
+    append_read_bytes, extract_payload, frame_total_len, read_buffer_header,
+};
+pub(crate) use frame_send::{borrow_workflow_resolver, frame_error_response, send_response};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::frame_read::{
+        append_read_bytes, append_read_bytes_checked_add, extract_payload,
+        frame_total_len_checked_add,
+    };
+    use super::frame_send::frame_error_response;
+    use super::magic::{validate_magic_early, MagicValidationState};
+    use super::test_hooks;
+    use super::{borrow_workflow_resolver, frame_total_len, read_buffer_header, send_response};
     use crate::IpcCommand;
+    use crate::IpcError;
+    use crate::IpcFrameHeader;
+    use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
+    use crate::server::IpcResponse;
 
     // ── append_read_bytes tests ──
 
@@ -419,7 +219,7 @@ mod tests {
             panic!("bytes_read > temp_buf size should fail");
         };
         assert!(
-            matches!(e, IpcServerError::FrameInvalid { .. }),
+            matches!(e, super::frame_read::IpcServerError::FrameInvalid { .. }),
             "expected FrameInvalid, got {e:?}"
         );
     }
@@ -448,7 +248,7 @@ mod tests {
             panic!("expected IncompleteFrame for empty buffer");
         };
         assert!(
-            matches!(e, IpcServerError::IncompleteFrame),
+            matches!(e, super::frame_read::IpcServerError::IncompleteFrame),
             "expected IncompleteFrame, got {e:?}"
         );
     }
@@ -524,7 +324,7 @@ mod tests {
             panic!("expected IncompleteFrame for short buffer");
         };
         assert!(
-            matches!(e, IpcServerError::IncompleteFrame),
+            matches!(e, super::frame_read::IpcServerError::IncompleteFrame),
             "expected IncompleteFrame, got {e:?}"
         );
     }
@@ -663,7 +463,7 @@ mod tests {
         let temp_buf = [1u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 10);
         assert!(
-            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
             "expected ReadBufferTooLarge when max exceeded"
         );
     }
@@ -675,7 +475,7 @@ mod tests {
         let temp_buf = [1u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 1);
         assert!(
-            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
             "expected ReadBufferTooLarge when exactly one over max"
         );
     }
@@ -684,7 +484,7 @@ mod tests {
     fn append_read_bytes_checked_add_overflow_returns_too_large() {
         let result = append_read_bytes_checked_add(usize::MAX, 1);
         assert!(
-            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
             "expected ReadBufferTooLarge on usize overflow"
         );
     }
@@ -695,7 +495,7 @@ mod tests {
     fn frame_total_len_checked_add_overflow_returns_too_large() {
         let result = frame_total_len_checked_add(usize::MAX, 1);
         assert!(
-            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            matches!(result, Err(super::frame_read::IpcServerError::ReadBufferTooLarge)),
             "expected ReadBufferTooLarge on usize overflow"
         );
     }
@@ -724,6 +524,7 @@ mod tests {
     // ── send_response error-path tests ──
 
     use mio::Poll;
+    use std::io::Write;
 
     struct ResetOnDrop;
     impl Drop for ResetOnDrop {
@@ -770,7 +571,7 @@ mod tests {
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
-        let response = crate::server::IpcResponse::Healthy;
+        let response = IpcResponse::Healthy;
 
         let result = send_response(
             &mut stream,
@@ -803,7 +604,7 @@ mod tests {
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
-        let response = crate::server::IpcResponse::Healthy;
+        let response = IpcResponse::Healthy;
 
         let result = send_response(
             &mut stream,
@@ -818,7 +619,7 @@ mod tests {
             panic!("expected ResponseEncodeFailed");
         };
         assert!(
-            matches!(e, IpcServerError::ResponseEncodeFailed),
+            matches!(e, super::frame_send::IpcServerError::ResponseEncodeFailed),
             "expected ResponseEncodeFailed, got {e:?}"
         );
     }
@@ -833,7 +634,7 @@ mod tests {
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
-        let response = crate::server::IpcResponse::Healthy;
+        let response = IpcResponse::Healthy;
 
         let result = send_response(
             &mut stream,
@@ -848,7 +649,7 @@ mod tests {
             panic!("expected ResponseEncodeFailed");
         };
         assert!(
-            matches!(e, IpcServerError::ResponseEncodeFailed),
+            matches!(e, super::frame_send::IpcServerError::ResponseEncodeFailed),
             "expected ResponseEncodeFailed, got {e:?}"
         );
     }
@@ -863,7 +664,7 @@ mod tests {
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
-        let response = crate::server::IpcResponse::Healthy;
+        let response = IpcResponse::Healthy;
 
         let result = send_response(
             &mut stream,
@@ -878,7 +679,7 @@ mod tests {
             panic!("expected ResponseWriteFailed");
         };
         assert!(
-            matches!(e, IpcServerError::ResponseWriteFailed { .. }),
+            matches!(e, super::frame_send::IpcServerError::ResponseWriteFailed { .. }),
             "expected ResponseWriteFailed, got {e:?}"
         );
     }
@@ -891,7 +692,7 @@ mod tests {
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
-        let response = crate::server::IpcResponse::Healthy;
+        let response = IpcResponse::Healthy;
 
         let result = send_response(
             &mut stream,
@@ -906,7 +707,7 @@ mod tests {
             panic!("expected ResponseWriteFailed after dropping peer");
         };
         assert!(
-            matches!(e, IpcServerError::ResponseWriteFailed { .. }),
+            matches!(e, super::frame_send::IpcServerError::ResponseWriteFailed { .. }),
             "expected ResponseWriteFailed, got {e:?}"
         );
     }

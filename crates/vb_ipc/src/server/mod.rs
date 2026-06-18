@@ -18,7 +18,7 @@ use vb_runtime::trace::TraceEvent;
 pub mod dispatch;
 pub mod error;
 pub mod handlers;
-pub mod helpers;
+pub(crate) mod helpers;
 pub mod impl_;
 pub mod ticket;
 pub mod trace;
@@ -118,7 +118,7 @@ pub enum WorkflowResolutionError {
     InvalidArtifact,
 }
 
-pub use helpers::{
+pub(crate) use helpers::{
     append_read_bytes, borrow_workflow_resolver, extract_payload, frame_error_response,
     frame_total_len, read_buffer_header, send_response,
 };

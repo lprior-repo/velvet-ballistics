@@ -1,6 +1,48 @@
 #![forbid(unsafe_code)]
 
 //! Typed core failures with stable diagnostic codes.
+//!
+//! # Module layout
+//!
+//! `CoreError` is a **single unified enum** — the variants are organised
+//! into sub-modules only for *source-location* purposes.  Each submodule
+//! owns its range of variants, diagnostic-code constants, and the
+//! `diagnostic_code()` / `runtime_code()` match arms for those variants.
+//! The top-level `mod.rs` recombines everything.
+//!
+//! ```text
+//! errors/
+//!   mod.rs     — CoreError enum, const tables, impl blocks, re-exports
+//!   types.rs   — Auxiliary structs/enums (Collect*, Lifecycle*, Journal*, Replay*)
+//!   ir.rs      — IR/validation failures (0x1001–0x1104)
+//!   execution.rs — Resource/execution failures (0x12xx, 0x13xx)
+//!   collect.rs — Collect/budget/capability failures (0x14xx)
+//!   lifecycle.rs — Lifecycle/journal/replay failures (0x15xx)
+//!   tests.rs   — Tests (pulled from original errors.rs)
+//! ```
+
+// ── Sub-modules ────────────────────────────────────────────────────────
+
+mod ir;
+mod execution;
+mod collect;
+mod lifecycle;
+mod types;
+
+// ── Public re-exports ─────────────────────────────────────────────────
+
+// Auxiliary types are consumed externally via `crate::errors::`.
+pub use self::types::*;
+
+// ── CoreResult / EngineError aliases ───────────────────────────────────
+
+/// Result alias for core operations.
+pub type CoreResult<T> = Result<T, CoreError>;
+
+/// Backward-compatible engine error name.
+pub type EngineError = CoreError;
+
+// ── CoreError enum ─────────────────────────────────────────────────────
 
 use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
@@ -11,158 +53,12 @@ use crate::ids::{
 use chrono::{DateTime, Utc};
 use thiserror::Error;
 
-/// Result alias for core operations.
-pub type CoreResult<T> = Result<T, CoreError>;
-
-/// Backward-compatible engine error name.
-pub type EngineError = CoreError;
-
-/// Kind of page-order violation during evidence collection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum CollectPageOrderViolationKind {
-    /// A page was collected out of sequential order.
-    OutOfOrder,
-    /// A duplicate page was observed.
-    Duplicate,
-    /// A stale page was observed.
-    Stale,
-}
-
-/// Kind of extra-hydration failure.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum CollectExtraHydrationFailureKind {
-    /// Extra data was empty.
-    EmptyExtra,
-    /// Extra data decoding failed.
-    DecodeFailed,
-    /// Run ID mismatch.
-    RunMismatch {
-        /// Expected run ID.
-        expected: RunId,
-        /// Actual run ID.
-        actual: RunId,
-    },
-    /// Slot mismatch.
-    SlotMismatch {
-        /// Expected slot.
-        expected: SlotIdx,
-        /// Actual slot.
-        actual: SlotIdx,
-    },
-    /// Current page mismatch.
-    CurrentPageMismatch {
-        /// Expected page.
-        expected: ListId,
-        /// Actual page.
-        actual: ListId,
-    },
-}
-
-/// Evidence collection failed because capacity was exceeded.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CollectEvidenceCapacityExceeded {
-    /// Run identifier.
-    pub run_id: crate::ids::RunId,
-    /// Slot that caused the overflow.
-    pub slot: crate::ids::SlotIdx,
-    /// Configured capacity.
-    pub capacity: usize,
-    /// Actual length of data.
-    pub len: usize,
-    /// Required extra slots.
-    pub required: usize,
-}
-
-/// Lifecycle error: storage is unavailable.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LifecycleStorageUnavailable {
-    /// Diagnostic code.
-    pub code: DiagnosticCode,
-    /// Human-readable context.
-    pub context: String,
-    /// Timestamp of the error.
-    pub timestamp: DateTime<Utc>,
-    /// Associated run ID if available.
-    pub bead_id: Option<RunId>,
-}
-
-/// Lifecycle error: duplicate request.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LifecycleDuplicateRequest {
-    /// Diagnostic code.
-    pub code: DiagnosticCode,
-    /// Human-readable context.
-    pub context: String,
-    /// Timestamp of the error.
-    pub timestamp: DateTime<Utc>,
-    /// Associated run ID if available.
-    pub bead_id: Option<RunId>,
-    /// Command that triggered the duplicate request.
-    pub command: Option<&'static str>,
-}
-
-/// Lifecycle error: stale request.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LifecycleStaleRequest {
-    /// Diagnostic code.
-    pub code: DiagnosticCode,
-    /// Human-readable context.
-    pub context: String,
-    /// Timestamp of the error.
-    pub timestamp: DateTime<Utc>,
-    /// Associated run ID if available.
-    pub bead_id: Option<RunId>,
-    /// Command that triggered the stale request.
-    pub command: Option<&'static str>,
-}
-
-/// Lifecycle error: invalid state transition.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LifecycleInvalidTransition {
-    /// Diagnostic code.
-    pub code: DiagnosticCode,
-    /// Human-readable context.
-    pub context: String,
-    /// Timestamp of the error.
-    pub timestamp: DateTime<Utc>,
-    /// Associated run ID if available.
-    pub bead_id: Option<RunId>,
-    /// Command that triggered the invalid transition.
-    pub command: Option<&'static str>,
-}
-
-/// Journal write failure.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JournalWriteFailure {
-    /// Diagnostic code.
-    pub code: DiagnosticCode,
-    /// Human-readable context.
-    pub context: String,
-    /// Timestamp of the error.
-    pub timestamp: DateTime<Utc>,
-    /// Associated run ID if available.
-    pub bead_id: Option<RunId>,
-}
-
-/// Replay detected corruption.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReplayCorruption {
-    /// Diagnostic code.
-    pub code: DiagnosticCode,
-    /// Human-readable context.
-    pub context: String,
-    /// Timestamp of the error.
-    pub timestamp: DateTime<Utc>,
-    /// Associated run ID if available.
-    pub bead_id: Option<RunId>,
-}
-
 /// Failures emitted by core validation and execution code.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CoreError {
+    // ── IR/validation (ir.rs, 0x1001–0x1104) ───────────────────────────
+
     /// Program counter pointed outside the compiled node array.
     #[error("invalid program counter: {step:?}")]
     InvalidProgramCounter {
@@ -231,6 +127,9 @@ pub enum CoreError {
     /// Non-finite numeric values are rejected.
     #[error("non-finite number is not allowed")]
     NonFiniteNumber,
+
+    // ── Execution (execution.rs, 0x12xx, 0x13xx) ───────────────────────
+
     /// Per-call step budget was exhausted before the run blocked or finished.
     #[error("step budget exhausted")]
     StepBudgetExhausted,
@@ -320,6 +219,9 @@ pub enum CoreError {
         /// Invalid blob handle.
         blob: BlobId,
     },
+
+    // ── Collect/budget/capability (collect.rs, 0x14xx) ─────────────────
+
     /// An iteration limit was exceeded.
     #[error("iteration limit exceeded: {resource}")]
     IterationLimitExceeded {
@@ -417,6 +319,9 @@ pub enum CoreError {
         /// Description of what's required.
         required: &'static str,
     },
+
+    // ── Lifecycle/journal/replay (lifecycle.rs, 0x15xx) ────────────────
+
     /// Lifecycle storage unavailable.
     #[error("lifecycle storage unavailable: {context}")]
     LifecycleStorageUnavailable {
@@ -497,224 +402,215 @@ pub enum CoreError {
     },
 }
 
-impl CoreError {
-    /// Historical invalid program-counter code.
-    pub const DIAGNOSTIC_CODE: u16 = 0x1001;
-    /// Invalid program counter diagnostic code.
-    pub const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = DiagnosticCode::new(0x1001);
-    /// Missing next step diagnostic code.
-    pub const MISSING_NEXT_STEP_CODE: DiagnosticCode = DiagnosticCode::new(0x1002);
-    /// Slot out-of-bounds diagnostic code.
-    pub const SLOT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1011);
-    /// Slot uninitialized diagnostic code.
-    pub const SLOT_UNINITIALIZED_CODE: DiagnosticCode = DiagnosticCode::new(0x1012);
-    /// Expression out-of-bounds diagnostic code.
-    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1015);
-    /// Constant out-of-bounds diagnostic code.
-    pub const CONST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1013);
-    /// Type mismatch diagnostic code.
-    pub const TYPE_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x1101);
-    /// Non-boolean condition diagnostic code.
-    pub const NON_BOOL_CONDITION_CODE: DiagnosticCode = DiagnosticCode::new(0x1104);
-    /// Non-finite number diagnostic code.
-    pub const NON_FINITE_NUMBER_CODE: DiagnosticCode = DiagnosticCode::new(0x1102);
-    /// Division by zero diagnostic code.
-    pub const DIVISION_BY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x1103);
-    /// Step budget exhausted diagnostic code.
-    pub const STEP_BUDGET_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1201);
-    /// Step counter overflow diagnostic code.
-    pub const STEP_COUNTER_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x1202);
-    /// Queue full diagnostic code.
-    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x1301);
-    /// Resource limit exceeded diagnostic code.
-    pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1302);
-    /// Allocation failed diagnostic code.
-    pub const ALLOCATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x1303);
-    /// Expression stack overflow diagnostic code.
-    pub const EXPRESSION_STACK_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x1304);
-    /// Missing output slot diagnostic code.
-    pub const MISSING_OUTPUT_SLOT_CODE: DiagnosticCode = DiagnosticCode::new(0x1305);
-    /// Step state out-of-bounds diagnostic code.
-    pub const STEP_STATE_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1306);
-    /// Invalid compiled workflow diagnostic code.
-    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x1307);
-    /// Unsupported primitive diagnostic code.
-    pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode = DiagnosticCode::new(0x1308);
-    /// Internal invariant diagnostic code.
-    pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = DiagnosticCode::new(0x1309);
-    /// Unsupported accessor traversal diagnostic code.
-    pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode = DiagnosticCode::new(0x130A);
-    /// Object accessor field not found diagnostic code.
-    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x130C);
-    /// List accessor index out-of-bounds diagnostic code.
-    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x130D);
-    /// Expression stack underflow diagnostic code.
-    pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x130B);
-    /// Symbol handle out-of-bounds diagnostic code.
-    pub const SYMBOL_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1311);
-    /// List handle out-of-bounds diagnostic code.
-    pub const LIST_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1312);
-    /// Object handle out-of-bounds diagnostic code.
-    pub const OBJECT_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1313);
-    /// Blob handle out-of-bounds diagnostic code.
-    pub const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0x1314);
-    /// Iteration limit exceeded diagnostic code.
-    pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1401);
-    /// Repeat exhausted diagnostic code.
-    pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = DiagnosticCode::new(0x1402);
-    /// Collect page limit exceeded diagnostic code.
-    pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1403);
-    /// Collect item limit exceeded diagnostic code.
-    pub const COLLECT_ITEM_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1404);
-    /// Together branch limit exceeded diagnostic code.
-    pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1405);
-    /// Budget exceeded diagnostic code.
-    pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1406);
-    /// Budget parse diagnostic code.
-    pub const BUDGET_PARSE_CODE: DiagnosticCode = DiagnosticCode::new(0x140A);
-    /// Collect time limit exceeded diagnostic code.
-    pub const COLLECT_TIME_LIMIT_CODE: DiagnosticCode = DiagnosticCode::new(0x1407);
-    /// Parallel limit exceeded diagnostic code.
-    pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1408);
-    /// Capability denied diagnostic code.
-    pub const CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x1409);
-    /// Collect page order violation diagnostic code.
-    pub const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode = DiagnosticCode::new(0x140B);
-    /// Collect extra hydration failed diagnostic code.
-    pub const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x140C);
-    /// Collect evidence capacity exceeded diagnostic code.
-    pub const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x140D);
-    /// Lifecycle storage unavailable diagnostic code.
-    pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x1501);
-    /// Lifecycle duplicate request diagnostic code.
-    pub const LIFECYCLE_DUPLICATE_REQUEST_CODE: DiagnosticCode = DiagnosticCode::new(0x1502);
-    /// Lifecycle stale request diagnostic code.
-    pub const LIFECYCLE_STALE_REQUEST_CODE: DiagnosticCode = DiagnosticCode::new(0x1503);
-    /// Lifecycle invalid transition diagnostic code.
-    pub const LIFECYCLE_INVALID_TRANSITION_CODE: DiagnosticCode = DiagnosticCode::new(0x1504);
-    /// Journal write failure diagnostic code.
-    pub const JOURNAL_WRITE_FAILURE_CODE: DiagnosticCode = DiagnosticCode::new(0x1505);
-    /// Replay corruption diagnostic code.
-    pub const REPLAY_CORRUPTION_CODE: DiagnosticCode = DiagnosticCode::new(0x1506);
+// ── Diagnostic-code const table ────────────────────────────────────────
 
+impl CoreError {
+    // ── IR/validation codes (ir.rs) ─────────────────────────────────────
+    /// Historical invalid program-counter code.
+    pub const DIAGNOSTIC_CODE: u16 = ir::HISTORIC_INVALID_PROGRAM_COUNTER_CODE;
+    /// Invalid program counter diagnostic code.
+    pub const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = ir::INVALID_PROGRAM_COUNTER_CODE;
+    /// Missing next step diagnostic code.
+    pub const MISSING_NEXT_STEP_CODE: DiagnosticCode = ir::MISSING_NEXT_STEP_CODE;
+    /// Slot out-of-bounds diagnostic code.
+    pub const SLOT_OUT_OF_BOUNDS_CODE: DiagnosticCode = ir::SLOT_OUT_OF_BOUNDS_CODE;
+    /// Slot uninitialized diagnostic code.
+    pub const SLOT_UNINITIALIZED_CODE: DiagnosticCode = ir::SLOT_UNINITIALIZED_CODE;
+    /// Expression out-of-bounds diagnostic code.
+    pub const EXPR_OUT_OF_BOUNDS_CODE: DiagnosticCode = ir::EXPR_OUT_OF_BOUNDS_CODE;
+    /// Constant out-of-bounds diagnostic code.
+    pub const CONST_OUT_OF_BOUNDS_CODE: DiagnosticCode = ir::CONST_OUT_OF_BOUNDS_CODE;
+    /// Type mismatch diagnostic code.
+    pub const TYPE_MISMATCH_CODE: DiagnosticCode = ir::TYPE_MISMATCH_CODE;
+    /// Non-boolean condition diagnostic code.
+    pub const NON_BOOL_CONDITION_CODE: DiagnosticCode = ir::NON_BOOL_CONDITION_CODE;
+    /// Non-finite number diagnostic code.
+    pub const NON_FINITE_NUMBER_CODE: DiagnosticCode = ir::NON_FINITE_NUMBER_CODE;
+    /// Division by zero diagnostic code.
+    pub const DIVISION_BY_ZERO_CODE: DiagnosticCode = ir::DIVISION_BY_ZERO_CODE;
+
+    // ── Execution codes (execution.rs) ──────────────────────────────────
+    /// Step budget exhausted diagnostic code.
+    pub const STEP_BUDGET_EXHAUSTED_CODE: DiagnosticCode =
+        execution::STEP_BUDGET_EXHAUSTED_CODE;
+    /// Step counter overflow diagnostic code.
+    pub const STEP_COUNTER_OVERFLOW_CODE: DiagnosticCode =
+        execution::STEP_COUNTER_OVERFLOW_CODE;
+    /// Queue full diagnostic code.
+    pub const QUEUE_FULL_CODE: DiagnosticCode = execution::QUEUE_FULL_CODE;
+    /// Resource limit exceeded diagnostic code.
+    pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode =
+        execution::RESOURCE_LIMIT_EXCEEDED_CODE;
+    /// Allocation failed diagnostic code.
+    pub const ALLOCATION_FAILED_CODE: DiagnosticCode = execution::ALLOCATION_FAILED_CODE;
+    /// Expression stack overflow diagnostic code.
+    pub const EXPRESSION_STACK_OVERFLOW_CODE: DiagnosticCode =
+        execution::EXPRESSION_STACK_OVERFLOW_CODE;
+    /// Missing output slot diagnostic code.
+    pub const MISSING_OUTPUT_SLOT_CODE: DiagnosticCode = execution::MISSING_OUTPUT_SLOT_CODE;
+    /// Step state out-of-bounds diagnostic code.
+    pub const STEP_STATE_OUT_OF_BOUNDS_CODE: DiagnosticCode =
+        execution::STEP_STATE_OUT_OF_BOUNDS_CODE;
+    /// Invalid compiled workflow diagnostic code.
+    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode =
+        execution::INVALID_COMPILED_WORKFLOW_CODE;
+    /// Unsupported primitive diagnostic code.
+    pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode =
+        execution::UNSUPPORTED_PRIMITIVE_CODE;
+    /// Internal invariant diagnostic code.
+    pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = execution::INTERNAL_INVARIANT_CODE;
+    /// Unsupported accessor traversal diagnostic code.
+    pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode =
+        execution::UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE;
+    /// Expression stack underflow diagnostic code.
+    pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode =
+        execution::EXPRESSION_STACK_UNDERFLOW_CODE;
+    /// Object accessor field not found diagnostic code.
+    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode =
+        execution::OBJECT_FIELD_NOT_FOUND_CODE;
+    /// List accessor index out-of-bounds diagnostic code.
+    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode =
+        execution::LIST_INDEX_OUT_OF_BOUNDS_CODE;
+    /// Symbol handle out-of-bounds diagnostic code.
+    pub const SYMBOL_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::SYMBOL_OUT_OF_BOUNDS_CODE;
+    /// List handle out-of-bounds diagnostic code.
+    pub const LIST_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::LIST_OUT_OF_BOUNDS_CODE;
+    /// Object handle out-of-bounds diagnostic code.
+    pub const OBJECT_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::OBJECT_OUT_OF_BOUNDS_CODE;
+    /// Blob handle out-of-bounds diagnostic code.
+    pub const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::BLOB_OUT_OF_BOUNDS_CODE;
+
+    // ── Collect/budget/capability codes (collect.rs) ────────────────────
+    /// Iteration limit exceeded diagnostic code.
+    pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode =
+        collect::ITERATION_LIMIT_EXCEEDED_CODE;
+    /// Repeat exhausted diagnostic code.
+    pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = collect::REPEAT_EXHAUSTED_CODE;
+    /// Collect page limit exceeded diagnostic code.
+    pub const COLLECT_PAGE_LIMIT_CODE: DiagnosticCode = collect::COLLECT_PAGE_LIMIT_CODE;
+    /// Collect item limit exceeded diagnostic code.
+    pub const COLLECT_ITEM_LIMIT_CODE: DiagnosticCode = collect::COLLECT_ITEM_LIMIT_CODE;
+    /// Collect time limit exceeded diagnostic code.
+    pub const COLLECT_TIME_LIMIT_CODE: DiagnosticCode = collect::COLLECT_TIME_LIMIT_CODE;
+    /// Together branch limit exceeded diagnostic code.
+    pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode =
+        collect::TOGETHER_BRANCH_LIMIT_CODE;
+    /// Budget exceeded diagnostic code.
+    pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = collect::BUDGET_EXCEEDED_CODE;
+    /// Budget parse diagnostic code.
+    pub const BUDGET_PARSE_CODE: DiagnosticCode = collect::BUDGET_PARSE_CODE;
+    /// Parallel limit exceeded diagnostic code.
+    pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode =
+        collect::PARALLEL_LIMIT_EXCEEDED_CODE;
+    /// Capability denied diagnostic code.
+    pub const CAPABILITY_DENIED_CODE: DiagnosticCode = collect::CAPABILITY_DENIED_CODE;
+    /// Collect page order violation diagnostic code.
+    pub const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode =
+        collect::COLLECT_PAGE_ORDER_VIOLATION_CODE;
+    /// Collect extra hydration failed diagnostic code.
+    pub const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode =
+        collect::COLLECT_EXTRA_HYDRATION_FAILED_CODE;
+    /// Collect evidence capacity exceeded diagnostic code.
+    pub const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode =
+        collect::COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE;
+
+    // ── Lifecycle/journal/replay codes (lifecycle.rs) ───────────────────
+    /// Lifecycle storage unavailable diagnostic code.
+    pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode =
+        lifecycle::LIFECYCLE_STORAGE_UNAVAILABLE_CODE;
+    /// Lifecycle duplicate request diagnostic code.
+    pub const LIFECYCLE_DUPLICATE_REQUEST_CODE: DiagnosticCode =
+        lifecycle::LIFECYCLE_DUPLICATE_REQUEST_CODE;
+    /// Lifecycle stale request diagnostic code.
+    pub const LIFECYCLE_STALE_REQUEST_CODE: DiagnosticCode =
+        lifecycle::LIFECYCLE_STALE_REQUEST_CODE;
+    /// Lifecycle invalid transition diagnostic code.
+    pub const LIFECYCLE_INVALID_TRANSITION_CODE: DiagnosticCode =
+        lifecycle::LIFECYCLE_INVALID_TRANSITION_CODE;
+    /// Journal write failure diagnostic code.
+    pub const JOURNAL_WRITE_FAILURE_CODE: DiagnosticCode = lifecycle::JOURNAL_WRITE_FAILURE_CODE;
+    /// Replay corruption diagnostic code.
+    pub const REPLAY_CORRUPTION_CODE: DiagnosticCode = lifecycle::REPLAY_CORRUPTION_CODE;
+
+    // ── Runtime-code constants ──────────────────────────────────────────
     /// Runtime code for constant-pool bounds failures.
-    pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
+    pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = ir::CONST_OUT_OF_BOUNDS_RUNTIME_CODE;
     /// Runtime code for runtime input type mismatches.
-    pub const INPUT_TYPE_MISMATCH_RUNTIME_CODE: &str = "INPUT_TYPE_MISMATCH";
+    pub const INPUT_TYPE_MISMATCH_RUNTIME_CODE: &str = ir::INPUT_TYPE_MISMATCH_RUNTIME_CODE;
     /// Runtime code for missing output-slot failures.
-    pub const MISSING_OUTPUT_SLOT_RUNTIME_CODE: &str = "MISSING_OUTPUT_SLOT";
+    pub const MISSING_OUTPUT_SLOT_RUNTIME_CODE: &str =
+        execution::MISSING_OUTPUT_SLOT_RUNTIME_CODE;
     /// Runtime code for step-state bounds failures.
-    pub const STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "STEP_STATE_OUT_OF_BOUNDS";
+    pub const STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE: &str =
+        execution::STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE;
     /// Runtime code for expression stack overflow failures.
-    pub const EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE: &str = "EXPRESSION_STACK_OVERFLOW";
+    pub const EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE: &str =
+        execution::EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE;
     /// Runtime code for expression stack underflow failures.
-    pub const EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE: &str = "EXPRESSION_STACK_UNDERFLOW";
+    pub const EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE: &str =
+        execution::EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE;
     /// Runtime code for invalid compiled workflow failures.
-    pub const INVALID_COMPILED_WORKFLOW_RUNTIME_CODE: &str = "INVALID_COMPILED_WORKFLOW";
+    pub const INVALID_COMPILED_WORKFLOW_RUNTIME_CODE: &str =
+        execution::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE;
     /// Runtime code for internal invariant failures.
-    pub const INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE: &str = "INTERNAL_INVARIANT_VIOLATION";
+    pub const INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE: &str =
+        execution::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE;
     /// Runtime code for unsupported primitive failures.
-    pub const UNSUPPORTED_PRIMITIVE_RUNTIME_CODE: &str = "UNSUPPORTED_PRIMITIVE";
+    pub const UNSUPPORTED_PRIMITIVE_RUNTIME_CODE: &str =
+        execution::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE;
     /// Runtime code for queue capacity failures.
-    pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+    pub const QUEUE_FULL_RUNTIME_CODE: &str = execution::QUEUE_FULL_RUNTIME_CODE;
     /// Runtime code for repeat attempt-limit failures.
-    pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str = "REPEAT_LIMIT_REACHED";
+    pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str =
+        collect::REPEAT_LIMIT_REACHED_RUNTIME_CODE;
     /// Runtime code for collect item/page limit failures.
-    pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = "COLLECT_LIMIT_REACHED";
+    pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str =
+        collect::COLLECT_LIMIT_REACHED_RUNTIME_CODE;
     /// Runtime code for budget exceeded failures.
-    pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = "BUDGET_EXCEEDED";
+    pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = collect::BUDGET_EXCEEDED_RUNTIME_CODE;
     /// Capability denied runtime code.
-    pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = "CAPABILITY_DENIED";
+    pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = collect::CAPABILITY_DENIED_RUNTIME_CODE;
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
-    pub const fn diagnostic_code(&self) -> DiagnosticCode {
-        match self {
-            Self::InvalidProgramCounter { .. } => Self::INVALID_PROGRAM_COUNTER_CODE,
-            Self::MissingNextStep { .. } => Self::MISSING_NEXT_STEP_CODE,
-            Self::SlotOutOfBounds { .. } => Self::SLOT_OUT_OF_BOUNDS_CODE,
-            Self::SlotUninitialized { .. } => Self::SLOT_UNINITIALIZED_CODE,
-            Self::ExprOutOfBounds { .. } => Self::EXPR_OUT_OF_BOUNDS_CODE,
-            Self::ConstOutOfBounds { .. } => Self::CONST_OUT_OF_BOUNDS_CODE,
-            Self::MissingOutputSlot { .. } => Self::MISSING_OUTPUT_SLOT_CODE,
-            Self::StepStateOutOfBounds { .. } => Self::STEP_STATE_OUT_OF_BOUNDS_CODE,
-            Self::TypeMismatch { .. } => Self::TYPE_MISMATCH_CODE,
-            Self::NonBoolCondition { .. } => Self::NON_BOOL_CONDITION_CODE,
-            Self::NonFiniteNumber => Self::NON_FINITE_NUMBER_CODE,
-            Self::DivisionByZero => Self::DIVISION_BY_ZERO_CODE,
-            Self::StepBudgetExhausted => Self::STEP_BUDGET_EXHAUSTED_CODE,
-            Self::StepCounterOverflow => Self::STEP_COUNTER_OVERFLOW_CODE,
-            Self::QueueFull => Self::QUEUE_FULL_CODE,
-            Self::ResourceLimitExceeded { .. } => Self::RESOURCE_LIMIT_EXCEEDED_CODE,
-            Self::AllocationFailed => Self::ALLOCATION_FAILED_CODE,
-            Self::ExpressionStackOverflow { .. } => Self::EXPRESSION_STACK_OVERFLOW_CODE,
-            Self::ExpressionStackUnderflow => Self::EXPRESSION_STACK_UNDERFLOW_CODE,
-            Self::InvalidCompiledWorkflow { .. } => Self::INVALID_COMPILED_WORKFLOW_CODE,
-            Self::UnsupportedPrimitive { .. } => Self::UNSUPPORTED_PRIMITIVE_CODE,
-            Self::UnsupportedAccessorTraversal { .. } => Self::UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE,
-            Self::ObjectFieldNotFound { .. } => Self::OBJECT_FIELD_NOT_FOUND_CODE,
-            Self::ListIndexOutOfBounds { .. } => Self::LIST_INDEX_OUT_OF_BOUNDS_CODE,
-            Self::InternalInvariantViolation { .. } => Self::INTERNAL_INVARIANT_CODE,
-            Self::SymbolOutOfBounds { .. } => Self::SYMBOL_OUT_OF_BOUNDS_CODE,
-            Self::ListOutOfBounds { .. } => Self::LIST_OUT_OF_BOUNDS_CODE,
-            Self::ObjectOutOfBounds { .. } => Self::OBJECT_OUT_OF_BOUNDS_CODE,
-            Self::BlobOutOfBounds { .. } => Self::BLOB_OUT_OF_BOUNDS_CODE,
-            Self::IterationLimitExceeded { .. } => Self::ITERATION_LIMIT_EXCEEDED_CODE,
-            Self::RepeatExhausted { .. } => Self::REPEAT_EXHAUSTED_CODE,
-            Self::CollectPageLimitExceeded => Self::COLLECT_PAGE_LIMIT_CODE,
-            Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
-            Self::CollectTimeLimitExceeded => Self::COLLECT_TIME_LIMIT_CODE,
-            Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
-            Self::ParallelLimitExceeded { .. } => Self::PARALLEL_LIMIT_EXCEEDED_CODE,
-            Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
-            Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
-            Self::BudgetParse { .. } => Self::BUDGET_PARSE_CODE,
-            Self::CollectPageOrderViolation { .. } => Self::COLLECT_PAGE_ORDER_VIOLATION_CODE,
-            Self::CollectExtraHydrationFailed { .. } => Self::COLLECT_EXTRA_HYDRATION_FAILED_CODE,
-            Self::CollectEvidenceCapacityExceeded { .. } => {
-                Self::COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE
-            }
-            Self::LifecycleStorageUnavailable { .. } => Self::LIFECYCLE_STORAGE_UNAVAILABLE_CODE,
-            Self::LifecycleDuplicateRequest { .. } => Self::LIFECYCLE_DUPLICATE_REQUEST_CODE,
-            Self::LifecycleStaleRequest { .. } => Self::LIFECYCLE_STALE_REQUEST_CODE,
-            Self::LifecycleInvalidTransition { .. } => Self::LIFECYCLE_INVALID_TRANSITION_CODE,
-            Self::JournalWriteFailure { .. } => Self::JOURNAL_WRITE_FAILURE_CODE,
-            Self::ReplayCorruption { .. } => Self::REPLAY_CORRUPTION_CODE,
+    pub fn diagnostic_code(&self) -> DiagnosticCode {
+        // Each submodule returns Some for its own variants, None otherwise.
+        // The chain is exhaustive because every CoreError variant is owned
+        // by exactly one submodule.
+        if let Some(code) = ir::diagnostic_code(self) {
+            return code;
         }
+        if let Some(code) = execution::diagnostic_code(self) {
+            return code;
+        }
+        if let Some(code) = collect::diagnostic_code(self) {
+            return code;
+        }
+        if let Some(code) = lifecycle::diagnostic_code(self) {
+            return code;
+        }
+        // SAFETY: All variants are covered above; this arm is unreachable.
+        unreachable!("uncovered CoreError variant")
     }
 
     /// Returns the stable section 17 runtime code when this core error crosses a runtime boundary.
     #[must_use]
     pub const fn runtime_code(&self) -> Option<&'static str> {
-        match self {
-            Self::ConstOutOfBounds { .. } => Some(Self::CONST_OUT_OF_BOUNDS_RUNTIME_CODE),
-            Self::TypeMismatch { .. } | Self::NonBoolCondition { .. } => {
-                Some(Self::INPUT_TYPE_MISMATCH_RUNTIME_CODE)
-            }
-            Self::MissingOutputSlot { .. } => Some(Self::MISSING_OUTPUT_SLOT_RUNTIME_CODE),
-            Self::StepStateOutOfBounds { .. } => Some(Self::STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE),
-            Self::ExpressionStackOverflow { .. } => {
-                Some(Self::EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE)
-            }
-            Self::ExpressionStackUnderflow => Some(Self::EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE),
-            Self::InvalidCompiledWorkflow { .. } => {
-                Some(Self::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE)
-            }
-            Self::InternalInvariantViolation { .. } => {
-                Some(Self::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE)
-            }
-            Self::UnsupportedPrimitive { .. } => Some(Self::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE),
-            Self::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
-            Self::RepeatExhausted { .. } => Some(Self::REPEAT_LIMIT_REACHED_RUNTIME_CODE),
-            Self::CollectPageLimitExceeded
-            | Self::CollectItemLimitExceeded
-            | Self::CollectTimeLimitExceeded => Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE),
-            Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
-            Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
-            _ => None,
+        if let Some(code) = ir::runtime_code(self) {
+            return Some(code);
         }
+        if let Some(code) = execution::runtime_code(self) {
+            return Some(code);
+        }
+        if let Some(code) = collect::runtime_code(self) {
+            return Some(code);
+        }
+        // Lifecycle variants have no runtime-code mapping.
+        None
     }
 }
+
+// ── HasSymbolicCode impl ───────────────────────────────────────────────
 
 impl HasSymbolicCode for CoreError {
     /// Returns the [`SymbolicCode`] for this core error.
@@ -733,6 +629,8 @@ impl HasSymbolicCode for CoreError {
     }
 }
 
+// ── Tests ──────────────────────────────────────────────────────────────
+
 #[cfg(test)]
-#[path = "errors/tests.rs"]
+#[path = "tests.rs"]
 mod tests;

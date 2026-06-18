@@ -19,7 +19,6 @@
 
 use crate::bounded::MaxPayloadBytes;
 use crate::commands::IpcCommand;
-use crate::constants::IPC_HEADER_LEN;
 use crate::frame_types::IpcFrameHeader;
 
 // ============================================================================
@@ -674,8 +673,6 @@ fn reserved_bits_all_commands() {
 /// validation, decode succeeds and preserves all header fields.
 #[kani::proof]
 fn decode_roundtrip_valid_flags() {
-    use crate::constants::{IPC_MAGIC, IPC_VERSION};
-
     // --- Select command symbolically ---
     let cmd_raw: u16 = kani::any();
     kani::assume(cmd_raw >= 1 && cmd_raw <= 11);

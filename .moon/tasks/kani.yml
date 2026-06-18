@@ -409,6 +409,7 @@ tasks:
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
       mkdir -p "$PWD/target/kani-vb-ipc"
+      KANI_IPC_FEATURES='kani-ipc-tier-a'
       run_kani_bounded() {
         local _target_dir_unused="$1"
         shift
@@ -420,7 +421,7 @@ tasks:
       run_ipc_harness() {
         local harness="$1"
         printf 'verify-kani-vb-ipc: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-ipc -p vb_ipc --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-ipc -p vb_ipc --features "$KANI_IPC_FEATURES" --harness "$harness"
       }
       run_ipc_harness decode_rejects_invalid_flags
       run_ipc_harness decode_roundtrip_valid_flags

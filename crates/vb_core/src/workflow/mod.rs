@@ -1,12 +1,18 @@
 #![forbid(unsafe_code)]
 //! Compiled workflow IR.
 
+pub mod accessor;
 pub mod admission_kernel;
+pub mod branch;
 pub mod compiled_query;
 pub mod compiled_slug;
+pub mod error;
+pub mod expr;
 pub mod lifecycle;
-pub mod types;
+pub mod node;
+pub mod resource_contract;
 pub mod validation;
+pub mod workflow;
 
 #[cfg(kani)]
 mod compiled_empty_path_kani;
@@ -21,11 +27,13 @@ mod compiled_total_cost_kani;
 pub use crate::workflow::lifecycle::{
     LifecycleCommand, LifecycleState, RunState, check_lifecycle_transition,
 };
-pub use crate::workflow::types::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
-    ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError, WorkflowParts,
-    check_expr_stack_bound,
-};
+pub use crate::workflow::accessor::{AccessorProgram, PathSegment};
+pub use crate::workflow::branch::{ExprBranch, SlotBranch};
+pub use crate::workflow::error::WorkflowError;
+pub use crate::workflow::expr::{check_expr_stack_bound, ExprOp, ExprProgram};
+pub use crate::workflow::node::{CompiledNode, CompiledNodeKind};
+pub use crate::workflow::resource_contract::ResourceContract;
+pub use crate::workflow::workflow::{CompiledWorkflow, WorkflowParts};
 
 impl CompiledWorkflow {
     /// Creates a compiled workflow after validating all numeric references.

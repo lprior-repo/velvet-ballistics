@@ -993,11 +993,9 @@ mod tests {
 // Uses a minimal inline transition function to avoid CoreResult (CoreError -> Capability drop loop).
 #[cfg(kani)]
 mod frame_kani_harnesses {
-    use crate::frame::{
-        RunFrame, SlotIdx, SlotValue, StepIdx, StepState, is_valid_step_state_transition,
-    };
-    use crate::ids::RunId;
-    use crate::value::Taint;
+    use crate::frame::{RunFrame, StepState, is_valid_step_state_transition};
+    use crate::ids::{RunId, SlotIdx, StepIdx};
+    use crate::value::{SlotValue, Taint};
 
     fn validate_transition_inline(current: StepState, new: StepState) -> bool {
         is_valid_step_state_transition(current, new)

@@ -13,7 +13,7 @@ use crate::limits::*;
 use crate::policy::ContractViolation;
 use crate::policy::profile_name::ProfileName;
 use crate::policy::profile_validation_error::ProfileValidationError;
-use crate::workflow::types::ResourceContract;
+use crate::workflow::resource_contract::ResourceContract;
 
 /// Per-profile resource limits.
 ///

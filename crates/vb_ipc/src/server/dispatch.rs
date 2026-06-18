@@ -61,6 +61,16 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::CompleteAction => handle_complete_action(payload, runtime),
         IpcCommand::FailAction => handle_fail_action(payload, runtime),
         IpcCommand::DrainTrace => handle_drain_trace(payload, runtime),
-        IpcCommand::UnknownCommand(_) => IpcResponse::BadRequest,
+        IpcCommand::UnknownCommand(_) => match unknown_command_response(header.command) {
+            Some(response) => response,
+            None => IpcResponse::BadRequest,
+        },
+    }
+}
+
+pub(crate) fn unknown_command_response(command: IpcCommand) -> Option<IpcResponse> {
+    match command {
+        IpcCommand::UnknownCommand(_) => Some(IpcResponse::BadRequest),
+        _ => None,
     }
 }
