@@ -1,0 +1,195 @@
+#![forbid(unsafe_code)]
+//! Shared node field validators — optional slot/step validation and
+//! node-kind–specific field checks (build-list, build-object, loops, etc.).
+
+use crate::ids::{SlotIdx, StepIdx, SymbolId};
+use crate::limits::{
+    MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
+};
+use super::bounds::{validate_const, validate_expr, validate_optional_slot, validate_optional_step, validate_slot, validate_step};
+use super::branch_tables::validate_branch_route;
+use crate::workflow::{ExprBranch, SlotBranch, WorkflowError, CompiledNode, WorkflowParts};
+use crate::ids::ConstIdx;
+
+/// Validates the four common fields shared by every node kind.
+///
+/// - `output` — optional slot write target
+/// - `next` — optional fallthrough step
+/// - `on_error` — optional error-handler step
+/// - `error_slot` — optional error-information slot
+pub(crate) fn validate_node_common(
+    node: &CompiledNode,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_optional_slot(node.output, parts.slot_count)?;
+    validate_optional_step(node.next, parts.nodes.len())?;
+    validate_optional_step(node.on_error, parts.nodes.len())?;
+    validate_optional_slot(node.error_slot, parts.slot_count)
+}
+
+/// Validates that slot references in a BuildList node are within bounds and the
+/// item count does not exceed the hard limit.
+pub(crate) fn validate_build_list(
+    items: &[SlotIdx],
+    slot_count: u16,
+) -> Result<(), WorkflowError> {
+    if items.len() > MAX_LIST_ITEMS_PER_VALUE {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "list_items",
+        });
+    }
+    for slot in items {
+        validate_slot(*slot, slot_count)?;
+    }
+    Ok(())
+}
+
+/// Validates that slot references in a BuildObject node are within bounds and the
+/// field count does not exceed the hard limit.
+pub(crate) fn validate_build_object(
+    fields: &[(SymbolId, SlotIdx)],
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    if fields.len() > MAX_OBJECT_FIELDS_PER_VALUE {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "object_fields",
+        });
+    }
+    for (_, slot) in fields {
+        validate_slot(*slot, parts.slot_count)?;
+    }
+    Ok(())
+}
+
+/// Validates a ForEachStart node: input + item slots must be valid, and both
+/// body/done targets must be forward steps.
+pub(crate) fn validate_for_each_start(
+    input: SlotIdx,
+    item_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_slot(input, parts.slot_count)?;
+    validate_slot(item_slot, parts.slot_count)?;
+    validate_two_steps(body, done, parts)
+}
+
+/// Validates a slot + two-step target (ForEachNext, CollectStart/Page/Next,
+/// ReduceStart/Next, RepeatAttempt, RetryCheck).
+pub(crate) fn validate_slot_and_steps(
+    slot: SlotIdx,
+    first: StepIdx,
+    second: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_slot(slot, parts.slot_count)?;
+    validate_two_steps(first, second, parts)
+}
+
+/// Validates that two step targets are within the node count.
+pub(crate) fn validate_two_steps(
+    first: StepIdx,
+    second: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_step(first, parts.nodes.len())?;
+    validate_step(second, parts.nodes.len())
+}
+
+/// Validates a TogetherStart node: all branch targets and join must be valid
+/// steps, and the branch table must have at least one entry.
+pub(crate) fn validate_together(
+    branches: &[StepIdx],
+    join: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_branch_route(branches.len(), Some(join))?;
+    for branch in branches {
+        validate_step(*branch, parts.nodes.len())?;
+    }
+    validate_step(join, parts.nodes.len())
+}
+
+/// Validates a non-zero u16 used as a policy count (max_attempts, branch_count).
+pub(crate) fn validate_nonzero_u16(
+    value: u16,
+    resource: &'static str,
+) -> Result<(), WorkflowError> {
+    if value == 0 {
+        Err(WorkflowError::ResourceContractExceeded { resource })
+    } else {
+        Ok(())
+    }
+}
+
+/// Validates a ReduceStart node: input + accumulator slots, initial constant,
+/// and body/done steps.
+pub(crate) fn validate_reduce_start(
+    input: SlotIdx,
+    accumulator: SlotIdx,
+    initial: ConstIdx,
+    body: StepIdx,
+    done: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_slot(input, parts.slot_count)?;
+    validate_slot(accumulator, parts.slot_count)?;
+    validate_const(initial, parts.constants.len())?;
+    validate_two_steps(body, done, parts)
+}
+
+/// Validates a ReduceNext node: iterator + accumulator slots, body/done steps.
+pub(crate) fn validate_reduce_next(
+    iterator_slot: SlotIdx,
+    accumulator: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_slot(iterator_slot, parts.slot_count)?;
+    validate_slot(accumulator, parts.slot_count)?;
+    validate_two_steps(body, done, parts)
+}
+
+/// Validates a RepeatStart node: max_attempts must be non-zero, body/done steps
+/// must be valid.
+pub(crate) fn validate_repeat_start(
+    max_attempts: u16,
+    body: StepIdx,
+    done: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_nonzero_u16(max_attempts, "max_retry_attempts")?;
+    validate_two_steps(body, done, parts)
+}
+
+/// Validates a ChooseSlot node: each branch maps a boolean slot to a step target,
+/// and the table must have at least one entry or an otherwise clause.
+pub(crate) fn validate_slot_choose(
+    branches: &[SlotBranch],
+    otherwise: Option<StepIdx>,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_branch_route(branches.len(), otherwise)?;
+    branches.iter().try_for_each(|branch| {
+        validate_slot(branch.condition, parts.slot_count)?;
+        validate_step(branch.target, parts.nodes.len())
+    })?;
+    validate_optional_step(otherwise, parts.nodes.len())
+}
+
+/// Validates a Choose (ExprBranch) node: each branch maps an expression condition
+/// to a step target, and the table must have at least one entry or an otherwise.
+pub(crate) fn validate_expr_choose(
+    branches: &[ExprBranch],
+    otherwise: Option<StepIdx>,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_branch_route(branches.len(), otherwise)?;
+    branches.iter().try_for_each(|branch| {
+        validate_expr(branch.condition, parts.expressions.len())?;
+        validate_step(branch.target, parts.nodes.len())
+    })?;
+    validate_optional_step(otherwise, parts.nodes.len())
+}
