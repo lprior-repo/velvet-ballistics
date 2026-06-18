@@ -3,9 +3,7 @@
 use crate::errors::CoreError;
 use crate::ids::StepIdx;
 use crate::value::ConstValue;
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, ResourceContract, SlotBranch, WorkflowParts,
-};
+use crate::workflow::{CompiledNode, ResourceContract, WorkflowParts};
 
 pub(crate) fn make_minimal_plan(
     nodes: Vec<CompiledNode>,

@@ -25,7 +25,7 @@ fn kani_pif_initial_state() {
     kani::assume(max_pif >= 1);
     kani::assume(max_pif <= 256);
 
-    let mut frame = make_test_frame(max_pif, max_pif).unwrap_or_else(|_| kani::any());
+    let frame = make_test_frame(max_pif, max_pif).unwrap_or_else(|_| kani::any());
     kani::assert(frame.parallel_in_flight() == 0, "PIF must start at 0");
     kani::assert(frame.max_parallel_in_flight() == max_pif, "max_PIF must match configured limit");
 }
@@ -60,7 +60,6 @@ fn kani_pif_sub_decrements() {
 
     frame.sub_parallel_in_flight(3).unwrap_or_else(|_| kani::assume(false));
     kani::assert(frame.parallel_in_flight() == 2, "PIF must be 2 after sub(3)");
-    kani::assert(frame.parallel_in_flight() >= 0, "PIF must remain >= 0");
 }
 
 /// PO-KANI-007 H4: PIF invariant holds after add/sub sequence.
@@ -77,7 +76,6 @@ fn kani_pif_invariant_holds() {
     kani::assume(add_amount <= max_pif);
     frame.add_parallel_in_flight(add_amount).unwrap_or_else(|_| kani::assume(false));
 
-    kani::assert(frame.parallel_in_flight() >= 0, "PIF invariant: must be >= 0");
     kani::assert(frame.parallel_in_flight() <= max_pif, "PIF invariant: must be <= max_PIF");
     kani::assert(frame.max_parallel_in_flight() >= frame.parallel_in_flight(),
         "max_PIF must track peak PIF");

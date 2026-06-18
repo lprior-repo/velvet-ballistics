@@ -112,8 +112,6 @@ mod harnesses {
             );
             kani::assert(reversed == Some(sym), "Reverse lookup must return the original SymbolicCode");
             // Also verify code matches
-            , "Reverse lookup must return the original SymbolicCode");
-            // Also verify code matches
             kani::assert(diagnostic.code == sym, "Diagnostic.code must match the input SymbolicCode");
         }
     }
