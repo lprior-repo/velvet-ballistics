@@ -8,6 +8,8 @@ use std::process::{Command, ExitCode};
 
 const SOURCE_LEDGER: &str = ".config/source-length-exceptions.txt";
 const HOT_LEDGER: &str = ".config/hot-function-length-exceptions.txt";
+const MUTANTS_RESIDUE_PREFIX: &str = "changed by ";
+const MUTANTS_RESIDUE_TOOL: &str = "cargo-mutants";
 
 pub fn main_exit() -> ExitCode {
     match run() {
@@ -39,7 +41,7 @@ fn run() -> Result<u8, String> {
     let hot = hot_violations(&files, fn_limit)?;
     let hot_exceptions = hot_exceptions(&hot_ledger, &counts, &hot, &mut status)?;
     check_hot_violations(&hot, &hot_exceptions, fn_limit, &mut status);
-    check_mutants_residue(&mut status)?;
+    check_mutants_residue(&files, &mut status)?;
     check_compile_split_sources(&mut status)?;
     Ok(status)
 }
@@ -53,29 +55,53 @@ fn env_value(name: &str, default: &str) -> String {
 
 fn env_limit(name: &str, default: usize) -> Result<usize, String> {
     match env::var(name) {
-        Ok(value) => value
-            .parse::<usize>()
-            .map_err(|_| format!("{name} must be a positive integer")),
+        Ok(value) => match value.parse::<usize>() {
+            Ok(parsed) if parsed > 0 => Ok(parsed),
+            Ok(_) | Err(_) => Err(format!("{name} must be a positive integer")),
+        },
         Err(_) => Ok(default),
     }
 }
 
 fn tracked_rust_files() -> Result<Vec<String>, String> {
-    let output = Command::new("git")
-        .args(["ls-files", "*.rs"])
-        .output()
-        .map_err(|err| format!("failed to list tracked Rust files: {err}"))?;
-    if !output.status.success() {
-        return Err("git ls-files failed; run from a git work tree".to_string());
-    }
-    let stdout =
-        String::from_utf8(output.stdout).map_err(|err| format!("git output is not utf8: {err}"))?;
+    let stdout = tracked_file_stdout()?;
+    let stdout = String::from_utf8(stdout)
+        .map_err(|err| format!("tracked file output is not utf8: {err}"))?;
     Ok(stdout
         .lines()
+        .filter(|file| file.ends_with(".rs"))
         .filter(|file| !is_excluded(file))
         .filter(|file| Path::new(file).exists())
         .map(str::to_string)
         .collect())
+}
+
+fn tracked_file_stdout() -> Result<Vec<u8>, String> {
+    let git = match Command::new("git").args(["ls-files", "*.rs"]).output() {
+        Ok(output) if output.status.success() => return Ok(output.stdout),
+        Ok(output) => command_failure("git ls-files", &output.stderr),
+        Err(err) => format!("git ls-files could not start: {err}"),
+    };
+    match Command::new("jj").args(["file", "list"]).output() {
+        Ok(output) if output.status.success() => Ok(output.stdout),
+        Ok(output) => Err(format!(
+            "failed to list tracked files; git: {git}; jj: {}",
+            command_failure("jj file list", &output.stderr)
+        )),
+        Err(err) => Err(format!(
+            "failed to list tracked files; git: {git}; jj file list could not start: {err}"
+        )),
+    }
+}
+
+fn command_failure(label: &str, stderr: &[u8]) -> String {
+    let detail = String::from_utf8_lossy(stderr);
+    let trimmed = detail.trim();
+    if trimmed.is_empty() {
+        format!("{label} exited non-zero")
+    } else {
+        format!("{label} exited non-zero: {trimmed}")
+    }
 }
 
 fn line_counts(files: &[String]) -> Result<HashMap<String, usize>, String> {
@@ -109,25 +135,25 @@ fn check_hot_violations(
     }
 }
 
-fn check_mutants_residue(status: &mut u8) -> Result<(), String> {
-    let output = Command::new("git")
-        .args([
-            "grep",
-            "-n",
-            "-I",
-            "-E",
-            "changed by cargo[-]mutants",
-            "--",
-            ".",
-            ":!target",
-            ":!.moon/cache",
-            ":!.beads",
-        ])
-        .output()
-        .map_err(|err| format!("cargo-mutants residue check failed: {err}"))?;
-    if output.status.success() && !output.stdout.is_empty() {
-        eprintln!("cargo-mutants residue markers found:");
-        eprint!("{}", String::from_utf8_lossy(&output.stdout));
+fn check_mutants_residue(files: &[String], status: &mut u8) -> Result<(), String> {
+    let mut found = false;
+    for file in files {
+        let text = fs::read_to_string(file)
+            .map_err(|err| format!("failed to read {file} for cargo-mutants residue: {err}"))?;
+        for (index, line) in text.lines().enumerate() {
+            if line.contains(MUTANTS_RESIDUE_PREFIX) && line.contains(MUTANTS_RESIDUE_TOOL) {
+                if !found {
+                    eprintln!("cargo-mutants residue markers found:");
+                }
+                let line_no = index
+                    .checked_add(1)
+                    .ok_or_else(|| format!("line number overflowed while scanning {file}"))?;
+                eprintln!("{file}:{line_no}:{line}");
+                found = true;
+            }
+        }
+    }
+    if found {
         *status = 1;
     }
     Ok(())

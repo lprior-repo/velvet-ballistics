@@ -71,7 +71,7 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
             match cold_adapter_isolation::cmd_cold_adapter_isolation(&targets) {
                 Ok(exit_code) => std::process::exit(exit_code),
                 Err(error) => {
-                    eprintln!("check-cold-adapter-isolation: {error}");
+                    shell::write_stderr(format_args!("check-cold-adapter-isolation: {error}"))?;
                     std::process::exit(2);
                 }
             }

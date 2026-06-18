@@ -353,6 +353,7 @@ run_quarterly_self_test_in_repo() {
     cd "$repo"
     ROOT="$repo"
     SOURCE_LENGTH_QUARTERLY_STATE="$state_file"
+    export ROOT SOURCE_LENGTH_QUARTERLY_STATE
     eval "$self_test_body"
     split_or_retire_quarterly_self_test
   )

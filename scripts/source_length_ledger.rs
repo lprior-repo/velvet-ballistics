@@ -10,6 +10,7 @@ pub fn source_exceptions(
 ) -> Result<HashSet<String>, String> {
     let mut exceptions = HashSet::new();
     for (line_no, line) in ledger_lines(path)?.iter().enumerate() {
+        let row_no = row_number(line_no)?;
         if skip_ledger_line(line) {
             continue;
         }
@@ -17,28 +18,29 @@ pub fn source_exceptions(
         if parts.len() != 5 || parts.iter().any(|part| part.is_empty()) {
             eprintln!(
                 "{}:{} malformed row; expected <file_path>|<owner>|<split_bead>|<removal_plan>|<reason>",
-                path,
-                line_no + 1
+                path, row_no
             );
             *status = 1;
             continue;
         }
-        let file = parts[0];
-        if !valid_source_path(path, line_no + 1, file, counts, status) {
+        let file = match parts.first() {
+            Some(value) => *value,
+            None => continue,
+        };
+        if !valid_source_path(path, row_no, file, counts, status) {
             continue;
         }
-        let lines = count_for(path, line_no + 1, file, counts, status);
+        let lines = count_for(path, row_no, file, counts, status);
         if lines <= limit {
             eprintln!(
                 "{}:{} stale exception for {file} with {lines} physical lines (limit >{limit})",
-                path,
-                line_no + 1
+                path, row_no
             );
             *status = 1;
             continue;
         }
         if !exceptions.insert(file.to_string()) {
-            eprintln!("{}:{} duplicate exception for {file}", path, line_no + 1);
+            eprintln!("{}:{} duplicate exception for {file}", path, row_no);
             *status = 1;
         }
     }
@@ -53,6 +55,7 @@ pub fn hot_exceptions(
 ) -> Result<HashSet<String>, String> {
     let mut exceptions = HashSet::new();
     for (line_no, line) in ledger_lines(path)?.iter().enumerate() {
+        let row_no = row_number(line_no)?;
         if skip_ledger_line(line) {
             continue;
         }
@@ -60,31 +63,34 @@ pub fn hot_exceptions(
         if parts.len() != 6 || parts.iter().any(|part| part.is_empty()) {
             eprintln!(
                 "{}:{} malformed row; expected <file_path>|<start_line>|<owner>|<split_bead>|<removal_plan>|<reason>",
-                path,
-                line_no + 1
+                path, row_no
             );
             *status = 1;
             continue;
         }
-        let start = match parts[1].parse::<usize>() {
+        let start_text = match parts.get(1) {
+            Some(value) => *value,
+            None => continue,
+        };
+        let start = match start_text.parse::<usize>() {
             Ok(value) if value > 0 => value,
             _ => {
                 eprintln!(
                     "{}:{} start line is not a positive integer: {}",
-                    path,
-                    line_no + 1,
-                    parts[1]
+                    path, row_no, start_text
                 );
                 *status = 1;
                 continue;
             }
         };
-        let file = parts[0];
-        if !valid_source_path(path, line_no + 1, file, counts, status) || !is_hot_source(file) {
+        let file = match parts.first() {
+            Some(value) => *value,
+            None => continue,
+        };
+        if !valid_source_path(path, row_no, file, counts, status) || !is_hot_source(file) {
             eprintln!(
                 "{}:{} path is not in the hot-function scan scope: {file}",
-                path,
-                line_no + 1
+                path, row_no
             );
             *status = 1;
             continue;
@@ -93,14 +99,13 @@ pub fn hot_exceptions(
         if !violations.contains_key(&key) {
             eprintln!(
                 "{}:{} stale or non-matching hot-function exception for {key}",
-                path,
-                line_no + 1
+                path, row_no
             );
             *status = 1;
             continue;
         }
         if !exceptions.insert(key.clone()) {
-            eprintln!("{}:{} duplicate exception for {key}", path, line_no + 1);
+            eprintln!("{}:{} duplicate exception for {key}", path, row_no);
             *status = 1;
         }
     }
@@ -136,6 +141,12 @@ fn ledger_lines(path: &str) -> Result<Vec<String>, String> {
         .map_err(|err| {
             format!("{path} missing or unreadable; required for source-length checks: {err}")
         })
+}
+
+fn row_number(index: usize) -> Result<usize, String> {
+    index
+        .checked_add(1)
+        .ok_or_else(|| "ledger line number overflowed".to_string())
 }
 
 fn skip_ledger_line(line: &str) -> bool {

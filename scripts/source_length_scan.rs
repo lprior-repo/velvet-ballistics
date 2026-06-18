@@ -7,7 +7,7 @@ pub fn hot_violations(files: &[String], limit: usize) -> Result<HashMap<String, 
     for file in files.iter().filter(|file| is_hot_source(file)) {
         let text =
             fs::read_to_string(file).map_err(|err| format!("failed to read {file}: {err}"))?;
-        collect_hot_violations(file, &text, limit, &mut violations);
+        collect_hot_violations(file, &text, limit, &mut violations)?;
     }
     Ok(violations)
 }
@@ -17,15 +17,17 @@ fn collect_hot_violations(
     text: &str,
     limit: usize,
     violations: &mut HashMap<String, usize>,
-) {
+) -> Result<(), String> {
     let mut in_fn = false;
     let mut start = 0_usize;
     let mut count = 0_usize;
-    let mut depth = 0_i32;
+    let mut depth = 0_usize;
     let mut seen_body = false;
     let mut block_comment = false;
     for (idx, raw) in text.lines().enumerate() {
-        let line_no = idx + 1;
+        let line_no = idx
+            .checked_add(1)
+            .ok_or_else(|| format!("line number overflowed while scanning {file}"))?;
         if !in_fn && starts_fn(raw.trim_start()) {
             in_fn = true;
             start = line_no;
@@ -37,46 +39,59 @@ fn collect_hot_violations(
             continue;
         }
         if logical_line(raw) {
-            count += 1;
+            count = count
+                .checked_add(1)
+                .ok_or_else(|| format!("logical line count overflowed while scanning {file}"))?;
         }
         let clean = brace_text(raw, &mut block_comment);
-        if clean.contains('{') {
+        let opens = clean.chars().filter(|ch| *ch == '{').count();
+        let closes = clean.chars().filter(|ch| *ch == '}').count();
+        if opens > 0 {
             seen_body = true;
         }
-        depth += clean.chars().filter(|ch| *ch == '{').count() as i32;
-        depth -= clean.chars().filter(|ch| *ch == '}').count() as i32;
-        if seen_body && depth <= 0 {
+        depth = depth
+            .checked_add(opens)
+            .ok_or_else(|| format!("brace depth overflowed while scanning {file}"))?;
+        depth = depth.saturating_sub(closes);
+        if seen_body && depth == 0 {
             if count > limit {
                 violations.insert(format!("{file}:{start}"), count);
             }
             in_fn = false;
         }
     }
+    Ok(())
 }
 
 fn starts_fn(mut text: &str) -> bool {
-    if let Some(rest) = text.strip_prefix("pub ") {
-        text = rest;
-    } else if let Some(rest) = text.strip_prefix("pub(") {
-        let end = match rest.find(')') {
-            Some(value) => value,
-            None => return false,
-        };
-        text = match rest.get(end + 1..) {
-            Some(value) => value.trim_start(),
-            None => return false,
-        };
-    }
+    text = strip_visibility(text);
     loop {
-        if let Some(rest) = text
-            .strip_prefix("const ")
-            .or_else(|| text.strip_prefix("async "))
-        {
-            text = rest;
-        } else {
-            return text.starts_with("fn ");
+        match strip_fn_modifier(text) {
+            Some(rest) => text = rest,
+            None => return text.starts_with("fn "),
         }
     }
+}
+
+fn strip_visibility(text: &str) -> &str {
+    if let Some(rest) = text.strip_prefix("pub ") {
+        return rest;
+    }
+    strip_scoped_visibility(text).unwrap_or(text)
+}
+
+fn strip_scoped_visibility(text: &str) -> Option<&str> {
+    let rest = text.strip_prefix("pub(")?;
+    let end = rest.find(')')?;
+    end.checked_add(1)
+        .and_then(|start| rest.get(start..))
+        .map(str::trim_start)
+}
+
+fn strip_fn_modifier(text: &str) -> Option<&str> {
+    text.strip_prefix("const ")
+        .or_else(|| text.strip_prefix("async "))
+        .or_else(|| text.strip_prefix("unsafe "))
 }
 
 fn logical_line(line: &str) -> bool {
@@ -85,52 +100,52 @@ fn logical_line(line: &str) -> bool {
 }
 
 fn brace_text(line: &str, block_comment: &mut bool) -> String {
-    let chars: Vec<char> = line.chars().collect();
+    let mut chars = line.chars().peekable();
     let mut out = String::new();
-    let mut idx = 0_usize;
     let mut in_string = false;
     let mut in_char = false;
-    while idx < chars.len() {
-        let ch = chars[idx];
-        let next = chars.get(idx + 1).copied();
+    while let Some(ch) = chars.next() {
+        let next = chars.peek().copied();
         if *block_comment {
             if ch == '*' && next == Some('/') {
                 *block_comment = false;
-                idx += 2;
-            } else {
-                idx += 1;
+                discard_next(&mut chars);
             }
         } else if in_string {
             if ch == '\\' {
-                idx += 2;
+                discard_next(&mut chars);
             } else {
                 in_string = ch != '"';
-                idx += 1;
             }
         } else if in_char {
             if ch == '\\' {
-                idx += 2;
+                discard_next(&mut chars);
             } else {
                 in_char = ch != '\'';
-                idx += 1;
             }
         } else if ch == '/' && next == Some('/') {
             break;
         } else if ch == '/' && next == Some('*') {
             *block_comment = true;
-            idx += 2;
+            discard_next(&mut chars);
         } else if ch == '"' {
             in_string = true;
-            idx += 1;
         } else if ch == '\'' {
             in_char = true;
-            idx += 1;
         } else {
             out.push(ch);
-            idx += 1;
         }
     }
     out
+}
+
+fn discard_next<I>(chars: &mut std::iter::Peekable<I>)
+where
+    I: Iterator,
+{
+    match chars.next() {
+        Some(_) | None => {}
+    }
 }
 
 pub fn is_hot_source(file: &str) -> bool {
@@ -204,6 +219,8 @@ fn is_test_like(file: &str) -> bool {
 
 pub fn is_excluded(file: &str) -> bool {
     file.starts_with("target/")
+        || file.starts_with("kani-target/")
+        || file.starts_with("velvet-ballistics:")
         || file.starts_with(".jj/")
         || file.starts_with(".beads/")
         || file.starts_with(".evidence/")
@@ -213,6 +230,8 @@ pub fn is_excluded(file: &str) -> bool {
         || file.starts_with("cargo_home/")
         || file.starts_with(".cargo/registry/")
         || file.contains("/target/")
+        || file.contains("/kani-target/")
+        || file.contains("/velvet-ballistics:")
         || file.contains("/.jj/")
         || file.contains("/.beads/")
         || file.contains("/.evidence/")

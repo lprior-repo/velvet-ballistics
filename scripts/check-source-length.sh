@@ -31,22 +31,26 @@ split_or_retire_quarterly_self_test() {
 
   local current_count=0
   if [ -f "$source_ledger" ]; then
-    local src_count
-    if grep -q "split-or-retire-before-release" "$source_ledger" 2>/dev/null; then
-      src_count="$(grep -c "split-or-retire-before-release" "$source_ledger" 2>/dev/null)"
-    else
-      src_count=0
-    fi
-    current_count=$((current_count + src_count))
+    local source_file owner split_bead removal_plan reason source_extra
+    while IFS='|' read -r source_file owner split_bead removal_plan reason source_extra || [ -n "${source_file:-}" ]; do
+      case "$source_file" in
+        ''|\#*) continue ;;
+      esac
+      if [ -n "${owner:-}" ] && [ -n "${split_bead:-}" ] && [ -n "${removal_plan:-}" ] && [ -n "${reason:-}" ] && [ -z "${source_extra:-}" ]; then
+        current_count=$((current_count + 1))
+      fi
+    done < "$source_ledger"
   fi
   if [ -f "$hot_ledger" ]; then
-    local hot_count
-    if grep -q "split-or-retire-before-release" "$hot_ledger" 2>/dev/null; then
-      hot_count="$(grep -c "split-or-retire-before-release" "$hot_ledger" 2>/dev/null)"
-    else
-      hot_count=0
-    fi
-    current_count=$((current_count + hot_count))
+    local hot_file start_line hot_owner hot_split_bead hot_removal_plan hot_reason hot_extra
+    while IFS='|' read -r hot_file start_line hot_owner hot_split_bead hot_removal_plan hot_reason hot_extra || [ -n "${hot_file:-}" ]; do
+      case "$hot_file" in
+        ''|\#*) continue ;;
+      esac
+      if [ -n "${start_line:-}" ] && [ -n "${hot_owner:-}" ] && [ -n "${hot_split_bead:-}" ] && [ -n "${hot_removal_plan:-}" ] && [ -n "${hot_reason:-}" ] && [ -z "${hot_extra:-}" ]; then
+        current_count=$((current_count + 1))
+      fi
+    done < "$hot_ledger"
   fi
 
   local violation=0
@@ -65,14 +69,13 @@ split_or_retire_quarterly_self_test() {
       if [ -z "$q" ] || [ -z "$c" ]; then
         continue
       fi
-      if [ "$q" = "$current_quarter" ]; then
-        current_already_recorded=1
-        continue
-      fi
       if [ "$current_count" -gt "$c" ]; then
         violation=1
         local delta=$((current_count - c))
         violation_report="${violation_report}  - quarter ${q} recorded ${c} rows; current ${current_quarter} has ${current_count} (+${delta})"$'\n'
+      fi
+      if [ "$q" = "$current_quarter" ]; then
+        current_already_recorded=1
       fi
     done < "$state_file"
   fi

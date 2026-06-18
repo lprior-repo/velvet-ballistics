@@ -231,7 +231,11 @@ fn write_json_line_to_temp_file(
     match write_result {
         Ok(()) => published_path_identity_for_file(&file),
         Err(write_error) => {
-            let _ = cleanup_unpublished_temp_file(&target.parent_dir, temp_name, write_error).ok();
+            let cleanup_failed =
+                cleanup_unpublished_temp_file(&target.parent_dir, temp_name, write_error).is_err();
+            if cleanup_failed {
+                return Err(DeliverSinkError::PublishStateUnknown);
+            }
             Err(DeliverSinkError::PublishStateUnknown)
         }
     }

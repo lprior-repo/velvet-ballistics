@@ -296,6 +296,10 @@ path = "tests/vb_a7t6_2_percentile_math_tests.rs"
 name = "vb_a7t6_3_instruction_count_tests"
 path = "tests/vb_a7t6_3_instruction_count_tests.rs"
 
+[[test]]
+name = "vb_a0t1_source_length_gate_tests"
+path = "tests/vb_a0t1_source_length_gate_tests.rs"
+
 [[bench]]
 name = "rtrb"
 harness = false

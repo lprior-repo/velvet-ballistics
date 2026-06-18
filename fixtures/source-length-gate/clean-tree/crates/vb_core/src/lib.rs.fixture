@@ -1,0 +1,4 @@
+pub fn short_function() -> u8 {
+    let value = 0;
+    value
+}

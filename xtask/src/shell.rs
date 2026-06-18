@@ -78,3 +78,15 @@ pub(crate) fn write_stdout(args: std::fmt::Arguments<'_>) -> anyhow::Result<()> 
         .context("Failed to write newline to stdout")?;
     Ok(())
 }
+
+pub(crate) fn write_stderr(args: std::fmt::Arguments<'_>) -> anyhow::Result<()> {
+    let stderr = std::io::stderr();
+    let mut handle = stderr.lock();
+    handle
+        .write_fmt(args)
+        .context("Failed to write to stderr")?;
+    handle
+        .write_all(b"\n")
+        .context("Failed to write newline to stderr")?;
+    Ok(())
+}
