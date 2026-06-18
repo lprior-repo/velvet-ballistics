@@ -41,7 +41,7 @@ tasks:
         shift
         (
           ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
-          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani "$@"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER CARGO_INCREMENTAL=0 RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani "$@"
         )
       }
       run_core_harness() {
