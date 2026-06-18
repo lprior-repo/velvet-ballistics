@@ -91,7 +91,7 @@ impl WholeWorkflowBudget {
 
         #[cfg(not(kani))]
         {
-            use super::traversal_fanout::compute_fanout_and_depth;
+            use super::traversal_driver::compute_fanout_and_depth;
             use super::traversal_step_count::count_total_steps;
             use super::traversal_tracking::bounded_tracking_vec;
 
