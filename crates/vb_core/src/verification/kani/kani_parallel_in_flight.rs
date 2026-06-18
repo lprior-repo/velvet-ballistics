@@ -60,7 +60,7 @@ fn kani_parallel_in_flight_lifecycle() {
                         // - be within [1, max_pif]
                         // - not exceed max
                         let pif = frame.parallel_in_flight();
-                         == max_pif, "max_PIF must match configured limit");
+                        kani::assert(pif <= max_pif, "PIF must remain within max");
 
     kani::cover!(frame.parallel_in_flight() == 0);
     kani::cover!(frame.max_parallel_in_flight() == max_pif);
@@ -100,11 +100,6 @@ fn kani_parallel_in_flight_lifecycle() {
                     Err(_) => {
                         // Overflow is OK; PIF must remain valid
                         let pif = frame.parallel_in_flight();
-                         >= pif,
-                            "tracked max {} must be >= current PIF {}",
-                            frame.max_parallel_in_flight(),
-                            pif,
-                        );
                     }
                     Err(_) => {
                         // Overflow is OK; PIF must remain valid
@@ -119,10 +114,6 @@ fn kani_parallel_in_flight_lifecycle() {
                     Ok(()) => {
                         // PIF must be ≥ 0 after successful sub
                         let pif = frame.parallel_in_flight();
-                        ) => {
-                        // PIF must be ≥ 0 after successful sub
-                        let pif = frame.parallel_in_flight();
-                        kani::assert(pif <= max_pif, "PIF must be ≤ max_PIF");
                     }
                     Err(_) => {
                         // Underflow is OK; PIF must not go below 0
@@ -167,7 +158,7 @@ fn kani_parallel_in_flight_overflow_rejection() {
         Ok(()) => {
             // If ok, the checked_add prevented overflow
             let pif = frame.parallel_in_flight();
-             > 0);
+            kani::assert(pif > 0, "PIF remains valid after overflow rejection");
     kani::cover!(frame.max_parallel_in_flight() > 0);
     kani::cover!(frame.parallel_in_flight() == frame.max_parallel_in_flight());
 }

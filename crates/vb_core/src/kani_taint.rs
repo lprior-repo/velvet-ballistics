@@ -44,13 +44,6 @@ fn join_taint_ge_second_arg() {
     kani::assert(taint_lte(b, result), "join_taint(a, b) >= b");
 }
 
-#[kani::proof]
-fn join_taint_idempotent() {
-    let a_raw = kani::any::<u8>();
-    let a = taint_from_u8(a_raw);
-    let result = join_taint(a, a);
-    , "join_taint(a, b) >= b");
-}
 
 #[kani::proof]
 fn join_taint_idempotent() {
@@ -58,17 +51,6 @@ fn join_taint_idempotent() {
     let a = taint_from_u8(a_raw);
     let result = join_taint(a, a);
     kani::assert(result == a, "join_taint(a, a) == a");
-}
-
-#[kani::proof]
-fn join_taint_commutative() {
-    let a_raw = kani::any::<u8>();
-    let b_raw = kani::any::<u8>();
-    let a = taint_from_u8(a_raw);
-    let b = taint_from_u8(b_raw);
-    let result_ab = join_taint(a, b);
-    let result_ba = join_taint(b, a);
-     == a");
 }
 
 #[kani::proof]

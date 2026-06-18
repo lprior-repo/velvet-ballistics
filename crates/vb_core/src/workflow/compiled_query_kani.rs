@@ -74,10 +74,9 @@ fn vb_ajc40_query_decode_smoke_cases() {
             kani::assert(admitted.len() == 1);
             assert_eq!(admitted.remaining_budget(), 0);
         }
-        Err(_) =>  == 1);
-            assert_eq!(admitted.remaining_budget(), 0);
+        Err(_) => {
+            kani::assert(false, "expected Ok result");
         }
-        Err(_) => kani::assert(false),
     }
 }
 
@@ -171,19 +170,10 @@ fn vb_ajc40_query_budget_boundaries() {
         0,
     ) {
         Err(QueryParseError::YbBudgetExceeded { total, max }) => {
-            ].into_boxed_slice(),
-            total_yield_cost: 1,
-        },
-        0,
-    ) {
-        Err(QueryParseError::YbBudgetExceeded { total, max }) => {
-            kani::assert(total == 1);
+            kani::assert(total == 1, "kani harness assertion");
             assert_eq!(max, 0);
         }
-        _ => total == 1);
-            assert_eq!(max, 0);
-        }
-        _ => kani::assert(false),
+        _ => kani::assert(false, "kani harness assertion"),
     }
 }
 
@@ -231,16 +221,9 @@ fn vb_ajc40_query_count_65535_65536() {
 
     match validate_compiled_query_count(QUERY_COUNT_OVER_LIMIT) {
         Err(QueryParseError::TooManyQueries { count, max }) => {
-            .is_ok(),
-        "kani harness assertion",
-    );
-
-    match validate_compiled_query_count(QUERY_COUNT_OVER_LIMIT) {
-        Err(QueryParseError::TooManyQueries { count, max }) => {
-            kani::assert(count == QUERY_COUNT_OVER_LIMIT);
-            count == QUERY_COUNT_OVER_LIMIT);
-            kani::assert(max == MAX_QUERIES_PER_WORKFLOW);
+            kani::assert(count == QUERY_COUNT_OVER_LIMIT, "kani harness assertion");
+            kani::assert(max == MAX_QUERIES_PER_WORKFLOW, "kani harness assertion");
         }
-        _ => assert!(false),
+        _ => kani::assert(false, "kani harness assertion"),
     }
 }

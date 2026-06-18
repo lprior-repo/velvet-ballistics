@@ -188,10 +188,6 @@ fn tla_add_word_matches_rust_checked_add_for_all_u64() {
                     "TLA AddWord Ok value matches checked_add",
                 );
             }
-            Err(_) =>  == expected,
-                    "TLA AddWord Ok value matches checked_add",
-                );
-            }
             Err(_) => kani::assert(
                 false,
                 "TLA AddWord must not overflow when checked_add succeeds",
@@ -220,10 +216,6 @@ fn tla_sub_word_matches_rust_checked_sub_for_all_u64() {
             Ok(actual) => {
                 kani::assert(word_type_ok(actual), "TLA SubWord Ok preserves WordTypeOK");
                 kani::assert(word_to_u64(actual) == expected,
-                    "TLA SubWord Ok value matches checked_sub",
-                );
-            }
-            Err(_) =>  == expected,
                     "TLA SubWord Ok value matches checked_sub",
                 );
             }

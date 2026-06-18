@@ -1,4 +1,4 @@
-VERUS_TARGET_COUNT=25
+VERUS_TARGET_COUNT=27
 VERUS_VERSION=Verus
   Version: 0.2026.05.05.d03e906
   Profile: release
@@ -31,4 +31,6 @@ PASS verus crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
 PASS verus crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
 PASS verus contracts/verus/vb_boundary_inventory_validation_spec.rs
 PASS verus crates/vb_storage/src/verification/verus/classification_specs.rs
+PASS verus crates/vb_queue_semantics/verification/verus/queue_semantics_exec_bridges.rs
+PASS verus crates/vb_queue_semantics/verification/verus/queue_semantics_specs.rs
 VERUS_TRUST_SCAN_OK

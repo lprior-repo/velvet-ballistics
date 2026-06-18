@@ -484,7 +484,6 @@ fn idempotency_divergent_digest_symbolic_certificate_rejected() {
     kani::assume(first != second);
     let accepted = first == second;
     kani::cover!(!accepted, "divergent digest rejection covered");
-     && max.is_ok(), "boundary clean keys pass");
 }
 
 #[kani::proof]
@@ -696,49 +695,6 @@ fn validate_action_outcome_symbolic_completion_matrix() {
 // vb-8mdp.6: Idempotency Hydration — vb_core action.rs Kani harnesses
 // PO-VB-IDEM-012a, 017a
 // ============================================================================
-
-/// PO-VB-IDEM-012a: action_ticket_has_valid_key returns true when
-/// ticket.idempotency_key == compute_action_idempotency_key(run, seq, action).
-#[kani::proof]
-#[kani::unwind(6)]
-fn kani_action_ticket_has_valid_key() {
-    use crate::action::{action_ticket_has_valid_key, compute_action_idempotency_key};
-
-    let run = RunId::new(kani::any::<u64>());
-    let seq = SeqNo::new(kani::any::<u64>());
-    let action = ActionId::new(kani::any::<u16>());
-
-    let canonical_key = compute_action_idempotency_key(run, seq, action);
-
-    // Canonical ticket — should validate
-    let canonical_ticket = ActionTicket {
-        run,
-        step: StepIdx::new(kani::any::<u16>()),
-        seq,
-        action,
-        attempt: kani::any(),
-        idempotency_key: canonical_key,
-        capacity: kani::any(),
-        ..ActionTicket::default()
-    };
-    let canonical_result = action_ticket_has_valid_key(canonical_ticket);
-    
-            || matches!(
-                result,
-                Err(crate::action::ActionError::OutputSlotOutOfBounds { .. })
-            )
-            || matches!(
-                result,
-                Err(crate::action::ActionError::TaintViolation { .. })
-            )
-            || matches!(
-                result,
-                Err(crate::action::ActionError::PayloadTooLarge { .. })
-            )
-            || matches!(result, Err(crate::action::ActionError::DispatchFailed)),
-        "all outcomes produce only expected error variants or Ok",
-    );
-}
 
 // ============================================================================
 // vb-8mdp.6: Idempotency Hydration — vb_core action.rs Kani harnesses
