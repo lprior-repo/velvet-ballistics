@@ -1,0 +1,33 @@
+[audit]
+date = "2026-06-17"
+auditor = "user-request"
+scope = "Tier A v1.0 release plan bead hygiene"
+
+[inventory]
+total_beads_pre_audit = 61
+total_beads_post_audit = 24
+tier_a_beads = 22
+deferred_backlog_pre = 17
+p4_beads_deleted = 17
+
+[actions]
+nuked = 22
+moved_to_deferred_backlog = 17
+labeled_tier_a = 22
+deleted_p4 = 17
+vb_calg_reclassified = true
+
+[nuked_reasons]
+ui_makepad_section_76 = ["vb-0tq8","vb-3c1l","vb-3f88","vb-7i3g","vb-7nr3","vb-7p5y","vb-b1hq","vb-fjx5","vb-g61i","vb-o083","vb-qi37.19","vb-qi37.20","vb-qi37.21","vb-r90d"]
+codegen_section_58 = ["vb-h3fx","vb-h8h0","vb-mnv0","vb-w20g","vb-qi37.9.4","vb-qi37.9.4.1","vb-qi37.9.5"]
+mislabeled_wave5 = ["vb-calg"]
+
+[moved_to_deferred_backlog]
+infra_cleanup = ["vb-2pwp","vb-4ki5","vb-i7xn","vb-i8vq","vb-mq96","vb-qi37.14","vb-qi37.14.4","vb-qi37.15","vb-qi37.15.4","vb-qi37.15.5","vb-qi37.17","vb-qi37.17.2","vb-qi37.17.3","vb-qi37.17.4","vb-qi37.18","vb-u8yg","vb-ygy2"]
+
+[final_state]
+total_open_beads = 24
+tier_a_open = 22
+tier_a_p0 = 16
+tier_a_p1 = 6
+p4_beads_remaining = 0
