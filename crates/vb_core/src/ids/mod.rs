@@ -1,477 +1,63 @@
-#![allow(
-    clippy::absurd_extreme_comparisons,
-    clippy::approx_constant,
-    clippy::arithmetic_side_effects,
-    clippy::as_conversions,
-    clippy::assertions_on_constants,
-    clippy::bool_assert_comparison,
-    clippy::bool_comparison,
-    clippy::cast_abs_to_unsigned,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::clone_on_copy,
-    clippy::collapsible_if,
-    clippy::collapsible_match,
-    clippy::duplicated_attributes,
-    clippy::expect_fun_call,
-    clippy::expect_used,
-    clippy::field_reassign_with_default,
-    clippy::filter_map_next,
-    clippy::from_iter_instead_of_collect,
-    clippy::if_let_mutex,
-    clippy::if_not_else,
-    clippy::implicit_clone,
-    clippy::inconsistent_struct_constructor,
-    clippy::indexing_slicing,
-    clippy::inefficient_to_string,
-    clippy::iter_filter_is_ok,
-    clippy::iter_filter_is_some,
-    clippy::iter_not_returning_iterator,
-    clippy::iter_over_hash_type,
-    clippy::iter_without_into_iter,
-    clippy::large_digit_groups,
-    clippy::large_futures,
-    clippy::large_types_passed_by_value,
-    clippy::len_zero,
-    clippy::let_and_return,
-    clippy::let_underscore_must_use,
-    clippy::manual_div_ceil,
-    clippy::manual_let_else,
-    clippy::manual_map,
-    clippy::manual_strip,
-    clippy::match_like_matches_macro,
-    clippy::misnamed_getters,
-    clippy::missing_safety_doc,
-    clippy::module_inception,
-    clippy::mutable_key_type,
-    clippy::needless_bool,
-    clippy::needless_bool_assign,
-    clippy::needless_borrow,
-    clippy::needless_collect,
-    clippy::needless_pass_by_value,
-    clippy::needless_range_loop,
-    clippy::needless_return,
-    clippy::needless_update,
-    clippy::neg_cmp_op_on_partial_ord,
-    clippy::nonminimal_bool,
-    clippy::ok_expect,
-    clippy::option_if_let_else,
-    clippy::or_fun_call,
-    clippy::panic,
-    clippy::panic_in_result_fn,
-    clippy::path_buf_push_overwrite,
-    clippy::print_stderr,
-    clippy::print_stdout,
-    clippy::pub_with_shorthand,
-    clippy::range_minus_one,
-    clippy::range_plus_one,
-    clippy::redundant_clone,
-    clippy::redundant_closure,
-    clippy::redundant_else,
-    clippy::redundant_guards,
-    clippy::redundant_locals,
-    clippy::redundant_pattern_matching,
-    clippy::redundant_pub_crate,
-    clippy::ref_binding_to_reference,
-    clippy::ref_option_ref,
-    clippy::shadow_unrelated,
-    clippy::similar_names,
-    clippy::single_match,
-    clippy::single_match_else,
-    clippy::suspicious_operation_groupings,
-    clippy::todo,
-    clippy::too_many_lines,
-    clippy::trivially_copy_pass_by_ref,
-    clippy::unimplemented,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_cast,
-    clippy::unnecessary_unwrap,
-    clippy::unnecessary_wraps,
-    clippy::unneeded_struct_pattern,
-    clippy::unnested_or_patterns,
-    clippy::unreadable_literal,
-    clippy::unused_async,
-    clippy::unused_io_amount,
-    clippy::unused_self,
-    clippy::unused_trait_names,
-    clippy::unwrap_used,
-    clippy::useless_conversion,
-    clippy::useless_format,
-    clippy::useless_vec,
-    clippy::vec_init_then_push,
-    clippy::wildcard_enum_match_arm,
-    clippy::wildcard_imports,
-    dead_code,
-    let_underscore_drop,
-    unused_imports,
-    unused_variables,
-)]
+//! Compact numeric identifiers used by the hot runtime.
+//!
+//! Module layout:
+//! - `workflow_ids` — `WorkflowId`, `RunId`, `StepIdx`, `SlotIdx`, `EventSeq`, `SeqNo`
+//! - `index_ids` — `ExprIdx`, `AccessorIdx`, `ConstIdx`
+//! - `symbol_ids` — `SymbolId`, `ListId`, `ObjectId`
+//! - `storage_ids` — `BlobId`, `ActionId`
+//! - `domain_values` — `BranchIdx`, `FanoutLimit`, `MaxAttempts`, `RetryCount`, `BranchCount`
+//! - `digest` — `WorkflowDigest`
+//! - `kani` — Kani bounded model checking harnesses
 
 #![forbid(unsafe_code)]
 
-//! Compact numeric identifiers used by the hot runtime.
+// ── Domain modules ─────────────────────────────────────────────────────
 
-use core::num::ParseIntError;
-use core::str::FromStr;
-use serde::{Deserialize, Serialize};
+pub mod workflow_ids;
+pub mod index_ids;
+pub mod symbol_ids;
+pub mod storage_ids;
+pub mod domain_values;
+pub mod digest;
 
-macro_rules! numeric_id {
-    ($name:ident, $inner:ty, $accessor:ident) => {
-        #[doc = concat!(stringify!($name), " numeric identifier.")]
-        #[derive(
-            Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-        )]
-        #[repr(transparent)]
-        pub struct $name($inner);
+#[cfg(kani)]
+pub mod kani;
 
-        impl $name {
-            /// Creates an identifier from a validated integer.
-            #[must_use]
-            pub const fn new(value: $inner) -> Self {
-                Self(value)
-            }
+// ── Re-exports (flat namespace) ────────────────────────────────────────
 
-            /// Returns the raw identifier value.
-            #[must_use]
-            pub const fn $accessor(self) -> $inner {
-                self.0
-            }
-        }
+// Workflow identifiers
+pub use workflow_ids::EventSeq;
+pub use workflow_ids::RunId;
+pub use workflow_ids::SeqNo;
+pub use workflow_ids::SlotIdx;
+pub use workflow_ids::StepIdx;
+pub use workflow_ids::WorkflowId;
 
-        impl FromStr for $name {
-            type Err = ParseIntError;
+// Index identifiers
+pub use index_ids::AccessorIdx;
+pub use index_ids::ConstIdx;
+pub use index_ids::ExprIdx;
 
-            fn from_str(input: &str) -> Result<Self, Self::Err> {
-                input.parse::<$inner>().map(Self)
-            }
-        }
-    };
-}
+// Symbol identifiers
+pub use symbol_ids::ListId;
+pub use symbol_ids::ObjectId;
+pub use symbol_ids::SymbolId;
 
-macro_rules! checked_index {
-    ($name:ident) => {
-        impl $name {
-            /// Returns the index as `usize` for checked slice access.
-            #[must_use]
-            pub fn as_usize(self) -> usize {
-                usize::from(self.0)
-            }
-        }
-    };
-}
+// Storage identifiers
+pub use storage_ids::ActionId;
+pub use storage_ids::BlobId;
 
-numeric_id!(WorkflowId, u32, get);
-numeric_id!(StepIdx, u16, get);
-numeric_id!(SlotIdx, u16, get);
-numeric_id!(ExprIdx, u16, get);
-numeric_id!(ActionId, u16, get);
-numeric_id!(AccessorIdx, u16, get);
-numeric_id!(ConstIdx, u16, get);
-numeric_id!(SymbolId, u32, get);
-numeric_id!(ListId, u32, get);
-numeric_id!(ObjectId, u32, get);
-numeric_id!(BlobId, u64, get);
-numeric_id!(RunId, u64, get);
-numeric_id!(EventSeq, u64, get);
-numeric_id!(SeqNo, u64, get);
+// Domain values
+pub use domain_values::BranchCount;
+pub use domain_values::BranchIdx;
+pub use domain_values::FanoutLimit;
+pub use domain_values::MaxAttempts;
+pub use domain_values::RetryCount;
 
-checked_index!(StepIdx);
-checked_index!(SlotIdx);
-checked_index!(ExprIdx);
-checked_index!(AccessorIdx);
-checked_index!(ConstIdx);
+// Digest
+pub use digest::WorkflowDigest;
 
-/// Branch index within a `Together` block.
-///
-/// First branch is 0, second is 1, etc.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct BranchIdx(u16);
-
-impl BranchIdx {
-    /// Creates a branch index from a raw value.
-    #[must_use]
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-
-    /// Returns the raw branch index value.
-    #[must_use]
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-
-    /// Returns true if this is the first branch (index 0).
-    #[must_use]
-    pub const fn is_first(self) -> bool {
-        self.0 == 0
-    }
-}
-
-impl From<u16> for BranchIdx {
-    fn from(value: u16) -> Self {
-        Self::new(value)
-    }
-}
-
-/// Fanout limit for `ForEach` iteration.
-///
-/// Enforces the maximum number of items that can be iterated in a single
-/// `ForEach` invocation. A limit of 0 means no items are allowed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct FanoutLimit(u32);
-
-impl FanoutLimit {
-    /// Creates a fanout limit from a raw value.
-    #[must_use]
-    pub const fn new(value: u32) -> Self {
-        Self(value)
-    }
-
-    /// Returns the raw limit value.
-    #[must_use]
-    pub const fn get(self) -> u32 {
-        self.0
-    }
-
-    /// Converts to `usize` for checked comparison with collection sizes.
-    ///
-    /// On platforms where `usize` is at least 32 bits this always succeeds.
-    /// On exotic narrower platforms the value saturates to `usize::MAX`.
-    #[must_use]
-    pub fn as_usize(self) -> usize {
-        match usize::try_from(self.0) {
-            Ok(v) => v,
-            Err(_) => usize::MAX,
-        }
-    }
-}
-
-impl From<u32> for FanoutLimit {
-    fn from(value: u32) -> Self {
-        Self::new(value)
-    }
-}
-
-/// Maximum number of retry/repeat attempts.
-///
-/// Must be at least 1 - a repeat with max_attempts=0 is invalid.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct MaxAttempts(u16);
-
-impl MaxAttempts {
-    /// Creates a max attempts value, validating that it is non-zero.
-    ///
-    /// # Errors
-    /// Returns `EngineError::InvalidRepeatState` if value is 0.
-    pub fn try_new(value: u16) -> Result<Self, super::errors::EngineError> {
-        if value == 0 {
-            return Err(super::errors::EngineError::InternalInvariantViolation {
-                reason: "max_attempts_cannot_be_zero",
-            });
-        }
-        Ok(Self(value))
-    }
-
-    /// Returns the raw max attempts value.
-    #[must_use]
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-}
-
-/// Current attempt counter within a retry/repeat loop.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct RetryCount(u16);
-
-impl RetryCount {
-    /// Creates a retry count from a raw value.
-    #[must_use]
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-
-    /// Returns the raw count value.
-    #[must_use]
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-
-    /// Returns the next count value, saturating at `u16::MAX`.
-    #[must_use]
-    pub fn next(self) -> Self {
-        Self(self.0.saturating_add(1))
-    }
-}
-
-/// Number of branches in a `Together` block.
-///
-/// Unlike `BranchIdx` which is an index (0, 1, 2...), `BranchCount`
-/// represents the total count of branches.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct BranchCount(u16);
-
-impl BranchCount {
-    /// Creates a branch count from a raw value.
-    #[must_use]
-    pub const fn new(value: u16) -> Self {
-        Self(value)
-    }
-
-    /// Returns the raw count value.
-    #[must_use]
-    pub const fn get(self) -> u16 {
-        self.0
-    }
-}
-
-impl From<u16> for BranchCount {
-    fn from(value: u16) -> Self {
-        Self::new(value)
-    }
-}
-
-impl RunId {
-    /// Zero run identifier.
-    pub const ZERO: Self = Self(0);
-
-    /// Returns the shard index for this run.
-    ///
-    /// Uses `checked_rem` to handle the degenerate case where
-    /// `shard_count` is 0, returning 0 in that case.
-    #[must_use]
-    pub const fn shard_index(self, shard_count: u64) -> u64 {
-        match self.0.checked_rem(shard_count) {
-            Some(index) => index,
-            None => 0,
-        }
-    }
-}
-
-impl SeqNo {
-    /// Zero sequence number.
-    pub const ZERO: Self = Self(0);
-    /// Minimum sequence number.
-    pub const MIN: Self = Self(0);
-    /// Maximum sequence number.
-    pub const MAX: Self = Self(u64::MAX);
-
-    /// Adds without overflow.
-    #[must_use]
-    pub const fn checked_add(self, rhs: u64) -> Option<Self> {
-        match self.0.checked_add(rhs) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-}
-
-impl WorkflowId {
-    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
-    pub fn as_u32(self) -> u32 {
-        self.0
-    }
-}
-
-impl BlobId {
-    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
-impl RunId {
-    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
-impl SeqNo {
-    #[deprecated(since = "0.1.0", note = "Use .get() instead")]
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
-impl StepIdx {
-    /// Zero step index.
-    pub const ZERO: Self = Self(0);
-    /// Minimum step index.
-    pub const MIN: Self = Self(0);
-    /// Maximum step index.
-    pub const MAX: Self = Self(u16::MAX);
-
-    /// Adds without overflow.
-    #[must_use]
-    pub const fn checked_add(self, rhs: u16) -> Option<Self> {
-        match self.0.checked_add(rhs) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-}
-
-impl core::fmt::Display for StepIdx {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl SlotIdx {
-    /// Zero slot index.
-    pub const ZERO: Self = Self(0);
-    /// Minimum slot index.
-    pub const MIN: Self = Self(0);
-    /// Maximum slot index.
-    pub const MAX: Self = Self(u16::MAX);
-
-    /// Adds without overflow.
-    #[must_use]
-    pub const fn checked_add(self, rhs: u16) -> Option<Self> {
-        match self.0.checked_add(rhs) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-}
-
-impl ConstIdx {
-    /// Adds without overflow.
-    #[must_use]
-    pub const fn checked_add(self, rhs: u16) -> Option<Self> {
-        match self.0.checked_add(rhs) {
-            Some(value) => Some(Self(value)),
-            None => None,
-        }
-    }
-}
-
-/// Digest of source workflow or compiled IR bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct WorkflowDigest([u8; 32]);
-
-impl WorkflowDigest {
-    /// Creates a digest from already-computed bytes.
-    #[must_use]
-    pub const fn from_bytes(bytes: [u8; 32]) -> Self {
-        Self(bytes)
-    }
-
-    /// Returns the digest bytes.
-    #[must_use]
-    pub const fn as_bytes(self) -> [u8; 32] {
-        self.0
-    }
-}
+// ── Tests ──────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -1305,12 +891,3 @@ mod tests {
         assert_eq!(hasher_a.finish(), hasher_b.finish());
     }
 }
-
-#[cfg(kani)]
-pub mod kani_id_bounds;
-
-#[cfg(kani)]
-pub mod kani_id_arbitrary;
-
-#[cfg(kani)]
-pub mod kani_shard_index_bounds;
