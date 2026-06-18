@@ -36,20 +36,6 @@
       "engine::signals::kani_overflow_guard::step_budget_no_overflow_for_valid_range",
       "engine::signals::kani_overflow_guard::step_budget_overflow_guard"
     ],
-    "crates/vb_core/src/frame.rs": [
-      "frame::frame_kani_harnesses::increment_executed_no_panic",
-      "frame::frame_kani_harnesses::read_slot_no_panic",
-      "frame::frame_kani_harnesses::set_pc_no_panic",
-      "frame::frame_kani_harnesses::set_pc_rejects_out_of_bounds",
-      "frame::frame_kani_harnesses::validate_transition_exhaustive_64",
-      "frame::frame_kani_harnesses::validate_transition_idempotent",
-      "frame::frame_kani_harnesses::validate_transition_no_panic_random",
-      "frame::frame_kani_harnesses::validate_transition_running_to_all_valid_targets",
-      "frame::frame_kani_harnesses::validate_transition_terminal_blocks_all",
-      "frame::frame_kani_harnesses::write_slot_no_panic",
-      "frame::parallel_in_flight_kani::add_parallel_in_flight_no_panic",
-      "frame::parallel_in_flight_kani::sub_parallel_in_flight_no_panic"
-    ],
     "crates/vb_core/src/frame/tests_and_verification.rs": [
       "frame::tests_and_verification::frame_kani_harnesses::add_parallel_in_flight_increases",
       "frame::tests_and_verification::frame_kani_harnesses::executed_starts_at_zero",
@@ -71,24 +57,24 @@
       "frame::tests_and_verification::frame_kani_harnesses::write_slot_with_taint_atomic",
       "frame::tests_and_verification::frame_kani_harnesses::write_taint_no_panic_initialized"
     ],
-    "crates/vb_core/src/ids/kani_id_bounds.rs": [
-      "ids::kani_id_bounds::accessor_idx_as_usize_never_panics",
-      "ids::kani_id_bounds::accessor_idx_as_usize_returns_usize_from_u16",
-      "ids::kani_id_bounds::branch_idx_get_never_panics",
-      "ids::kani_id_bounds::const_idx_as_usize_never_panics",
-      "ids::kani_id_bounds::const_idx_as_usize_returns_usize_from_u16",
-      "ids::kani_id_bounds::expr_idx_as_usize_never_panics",
-      "ids::kani_id_bounds::expr_idx_as_usize_returns_usize_from_u16",
-      "ids::kani_id_bounds::fanout_limit_as_usize_never_panics",
-      "ids::kani_id_bounds::slot_idx_as_usize_never_panics",
-      "ids::kani_id_bounds::slot_idx_as_usize_returns_usize_from_u16",
-      "ids::kani_id_bounds::step_idx_as_usize_never_panics",
-      "ids::kani_id_bounds::step_idx_as_usize_returns_usize_from_u16"
+    "crates/vb_core/src/ids/kani/kani_id_bounds.rs": [
+      "ids::kani::kani_id_bounds::accessor_idx_as_usize_never_panics",
+      "ids::kani::kani_id_bounds::accessor_idx_as_usize_returns_usize_from_u16",
+      "ids::kani::kani_id_bounds::branch_idx_get_never_panics",
+      "ids::kani::kani_id_bounds::const_idx_as_usize_never_panics",
+      "ids::kani::kani_id_bounds::const_idx_as_usize_returns_usize_from_u16",
+      "ids::kani::kani_id_bounds::expr_idx_as_usize_never_panics",
+      "ids::kani::kani_id_bounds::expr_idx_as_usize_returns_usize_from_u16",
+      "ids::kani::kani_id_bounds::fanout_limit_as_usize_never_panics",
+      "ids::kani::kani_id_bounds::slot_idx_as_usize_never_panics",
+      "ids::kani::kani_id_bounds::slot_idx_as_usize_returns_usize_from_u16",
+      "ids::kani::kani_id_bounds::step_idx_as_usize_never_panics",
+      "ids::kani::kani_id_bounds::step_idx_as_usize_returns_usize_from_u16"
     ],
-    "crates/vb_core/src/ids/kani_shard_index_bounds.rs": [
-      "ids::kani_shard_index_bounds::shard_index_bounded",
-      "ids::kani_shard_index_bounds::shard_index_cover_boundaries",
-      "ids::kani_shard_index_bounds::shard_index_u64_max"
+    "crates/vb_core/src/ids/kani/kani_shard_index_bounds.rs": [
+      "ids::kani::kani_shard_index_bounds::shard_index_bounded",
+      "ids::kani::kani_shard_index_bounds::shard_index_cover_boundaries",
+      "ids::kani::kani_shard_index_bounds::shard_index_u64_max"
     ],
     "crates/vb_core/src/kani_budget_arithmetic_refinement.rs": [
       "kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64",
@@ -206,25 +192,9 @@
       "kani_taint::write_taint_no_panic"
     ],
     "crates/vb_core/src/kani_taint_propagation.rs": [
-      "kani_taint_propagation::kani_clean_is_lattice_bottom",
       "kani_taint_propagation::kani_join_taint_associative",
-      "kani_taint_propagation::kani_join_taint_commutative",
-      "kani_taint_propagation::kani_join_taint_ge_first_arg",
-      "kani_taint_propagation::kani_join_taint_ge_second_arg",
-      "kani_taint_propagation::kani_join_taint_idempotent",
-      "kani_taint_propagation::kani_join_taint_monotonic",
-      "kani_taint_propagation::kani_read_taint_no_panic",
-      "kani_taint_propagation::kani_secret_is_left_absorbing",
-      "kani_taint_propagation::kani_secret_is_right_absorbing",
-      "kani_taint_propagation::kani_taint_lattice_transitive",
-      "kani_taint_propagation::kani_write_taint_no_panic"
-    ],
-    "crates/vb_core/src/kani_validate_resource_contract_boundaries.rs": [
-      "kani_validate_resource_contract_boundaries::kani_validate_resource_contract_accepts_default",
-      "kani_validate_resource_contract_boundaries::kani_validate_resource_contract_rejects_oversized_max_constants",
-      "kani_validate_resource_contract_boundaries::kani_validate_resource_contract_rejects_oversized_max_transitions_per_tick",
-      "kani_validate_resource_contract_boundaries::kani_validate_resource_contract_rejects_zero_max_steps",
-      "kani_validate_resource_contract_boundaries::kani_validate_resource_contract_rejects_zero_max_transitions_per_tick"
+      "kani_taint_propagation::kani_join_taint_clean_identity",
+      "kani_taint_propagation::kani_join_taint_commutative"
     ],
     "crates/vb_core/src/kani_vbjpq733_proofs.rs": [
       "kani_vbjpq733_proofs::vbjpq733_join_taint_associative",
@@ -240,8 +210,7 @@
       "kani_vbjpq733_proofs::vbjpq733_step_budget_new_pass_through",
       "kani_vbjpq733_proofs::vbjpq733_step_budget_positive_decrements",
       "kani_vbjpq733_proofs::vbjpq733_step_budget_remaining_bounded",
-      "kani_vbjpq733_proofs::vbjpq733_step_budget_try_take_no_panic",
-      "kani_vbjpq733_proofs::vbjpq733_step_budget_zero_returns_false"
+      "kani_vbjpq733_proofs::vbjpq733_step_budget_try_take_no_panic"
     ],
     "crates/vb_core/src/kani_workflow_budget_harnesses.rs": [
       "kani_workflow_budget_harnesses::kani_harness_boundedness_policy_validate",
@@ -256,11 +225,13 @@
     "crates/vb_core/src/replay/choose/kani/kani_choose_no_otherwise.rs": [
       "replay::choose::kani::kani_choose_no_otherwise::kani_choose_no_otherwise"
     ],
-    "crates/vb_core/src/replay/kani_harnesses.rs": [
-      "replay::kani_harnesses::verification::kani_replay_skips_terminal_states",
-      "replay::kani_harnesses::verification::verify_choose_slot_output_in_input_set",
-      "replay::kani_harnesses::verification::verify_replay_choose_slot_two_branches_no_panic",
-      "replay::kani_harnesses::verification::verify_replay_deterministic_for_same_input"
+    "crates/vb_core/src/replay/kani_harnesses_frame.rs": [
+      "replay::kani_harnesses_frame::kani_replay_skips_terminal_states",
+      "replay::kani_harnesses_frame::verify_replay_deterministic_for_same_input"
+    ],
+    "crates/vb_core/src/replay/kani_harnesses_slots.rs": [
+      "replay::kani_harnesses_slots::verify_choose_slot_output_in_input_set",
+      "replay::kani_harnesses_slots::verify_replay_choose_slot_two_branches_no_panic"
     ],
     "crates/vb_core/src/shard/partition/kani_key_range_properties.rs": [
       "shard::partition::kani_key_range_properties::key_range_adjacent_correctness",
@@ -275,6 +246,14 @@
     ],
     "crates/vb_core/src/value_store.rs": [
       "value_store::kani_harnesses::value_store_cap_rejects_insert_with_budget_exceeded_max_slots"
+    ],
+    "crates/vb_core/src/verification/kani/kani_parallel_in_flight.rs": [
+      "verification::kani::kani_parallel_in_flight::kani_pif_add_increments",
+      "verification::kani::kani_parallel_in_flight::kani_pif_add_overflow_error",
+      "verification::kani::kani_parallel_in_flight::kani_pif_initial_state",
+      "verification::kani::kani_parallel_in_flight::kani_pif_invariant_holds",
+      "verification::kani::kani_parallel_in_flight::kani_pif_sub_decrements",
+      "verification::kani::kani_parallel_in_flight::kani_pif_sub_underflow_error"
     ],
     "crates/vb_core/src/workflow/compiled_empty_path_kani.rs": [
       "workflow::compiled_empty_path_kani::vb_ajc40_empty_path_root_accessor"
@@ -297,12 +276,15 @@
     ],
     "crates/vb_core/src/workflow/compiled_total_cost_kani.rs": [
       "workflow::compiled_total_cost_kani::vb_ajc40_total_cost_mismatch_rejected"
+    ],
+    "crates/vb_core/src/workflow/kani_vb_dzibx_ajc40_admission.rs": [
+      "workflow::kani_vb_dzibx_ajc40_admission::vb_dzibx_ajc40_admission_kernel_boundaries"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 226,
+    "standard-harnesses": 206,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

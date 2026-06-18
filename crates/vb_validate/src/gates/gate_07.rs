@@ -2,11 +2,7 @@
 //! Gate 7: Expression stack depth bounded
 
 use crate::{ValidationError, ValidationResult};
-use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    WorkflowParts,
-};
+use vb_core::workflow::{ExprOp, WorkflowParts};
 
 /// Maximum byte length for a compiled action capability requirement name.
 pub const MAX_CAPABILITY_NAME_BYTES: usize = 128;
@@ -86,7 +82,7 @@ fn push_count(_op: &ExprOp) -> u8 {
 }
 
 #[allow(clippy::manual_unwrap_or, clippy::manual_unwrap_or_default)]
-pub(crate) fn stack_effect(_op: &ExprOp) -> i8 {
+pub fn stack_effect(_op: &ExprOp) -> i8 {
     let pop: i16 = i16::from(pop_count(_op));
     let push: i16 = i16::from(push_count(_op));
     let net = push.saturating_sub(pop);

@@ -3,7 +3,6 @@
 //! Source sha256: e8cd350a9a0ffb712c163e5e3f327d69d148f3d361ade443546d9964efdeea8d.
 //! Production output: `crates/vb_core/src/workflow/admission_kernel.rs`.
 //! Verus output: `verification/verus/vb_ajc40_admission_kernel_scalar.rs`.
-
 use vstd::prelude::*;
 
 verus! {
@@ -21,7 +20,8 @@ pub open spec fn result_is_ok_u64(result: Result<u64, AdmissionKernelError>) -> 
 }
 
 pub open spec fn result_value_u64(result: Result<u64, AdmissionKernelError>) -> int
-    recommends result_is_ok_u64(result)
+    recommends
+        result_is_ok_u64(result),
 {
     match result {
         Ok(value) => value as int,
@@ -30,7 +30,8 @@ pub open spec fn result_value_u64(result: Result<u64, AdmissionKernelError>) -> 
 }
 
 pub open spec fn result_error_u64(result: Result<u64, AdmissionKernelError>) -> AdmissionKernelError
-    recommends !result_is_ok_u64(result)
+    recommends
+        !result_is_ok_u64(result),
 {
     match result {
         Ok(_) => AdmissionKernelError::YieldBudgetExceeded,
@@ -48,20 +49,18 @@ pub fn validate_admission_summary(
     max_yield_budget: u64,
 ) -> (result: Result<u64, AdmissionKernelError>)
     ensures
-        count > max_count ==> !result_is_ok_u64(result)
-            && result_error_u64(result) == AdmissionKernelError::TooManyItems,
+        count > max_count ==> !result_is_ok_u64(result) && result_error_u64(result)
+            == AdmissionKernelError::TooManyItems,
         count <= max_count && max_path_depth > max_path_segments ==> !result_is_ok_u64(result)
             && result_error_u64(result) == AdmissionKernelError::PathTooDeep,
-        count <= max_count && max_path_depth <= max_path_segments
-            && declared_total_yield_cost != recomputed_total ==> !result_is_ok_u64(result)
-            && result_error_u64(result) == AdmissionKernelError::TotalYieldCostMismatch,
-        count <= max_count && max_path_depth <= max_path_segments
-            && declared_total_yield_cost == recomputed_total
-            && recomputed_total > max_yield_budget ==> !result_is_ok_u64(result)
+        count <= max_count && max_path_depth <= max_path_segments && declared_total_yield_cost
+            != recomputed_total ==> !result_is_ok_u64(result) && result_error_u64(result)
+            == AdmissionKernelError::TotalYieldCostMismatch,
+        count <= max_count && max_path_depth <= max_path_segments && declared_total_yield_cost
+            == recomputed_total && recomputed_total > max_yield_budget ==> !result_is_ok_u64(result)
             && result_error_u64(result) == AdmissionKernelError::YieldBudgetExceeded,
-        count <= max_count && max_path_depth <= max_path_segments
-            && declared_total_yield_cost == recomputed_total
-            && recomputed_total <= max_yield_budget ==> result_is_ok_u64(result)
+        count <= max_count && max_path_depth <= max_path_segments && declared_total_yield_cost
+            == recomputed_total && recomputed_total <= max_yield_budget ==> result_is_ok_u64(result)
             && result_value_u64(result) == max_yield_budget as int - recomputed_total as int,
 {
     if count > max_count {
@@ -82,7 +81,10 @@ pub fn validate_admission_summary(
     }
 }
 
-pub fn accumulate_yield_cost(total: u64, item_cost: u64) -> (result: Result<u64, AdmissionKernelError>)
+pub fn accumulate_yield_cost(total: u64, item_cost: u64) -> (result: Result<
+    u64,
+    AdmissionKernelError,
+>)
     ensures
         total as int + item_cost as int <= u64::MAX as int ==> result_is_ok_u64(result)
             && result_value_u64(result) == total as int + item_cost as int,
@@ -99,7 +101,8 @@ pub fn accumulate_yield_cost(total: u64, item_cost: u64) -> (result: Result<u64,
 /// empty-path admission case where path depth is 0, which is always <=
 /// any valid max_path_segments (a usize >= 0).
 pub proof fn proof_empty_root_path_not_too_deep(max_path_segments: usize)
-    ensures 0usize <= max_path_segments,
+    ensures
+        0usize <= max_path_segments,
 {
     assert(0usize <= max_path_segments);
 }

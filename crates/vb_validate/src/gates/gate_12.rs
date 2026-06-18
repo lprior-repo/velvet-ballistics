@@ -4,11 +4,8 @@
 use crate::{ValidationError, ValidationResult};
 use vb_core::action::ActionContract;
 use vb_core::capability::Capability;
-use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    WorkflowParts,
-};
+use vb_core::ids::ActionId;
+use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 pub const MAX_CAPABILITY_NAME_BYTES: usize = 128;
 

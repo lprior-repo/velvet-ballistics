@@ -2,11 +2,8 @@
 //! Gate 9: Slot references validation
 
 use crate::{ValidationError, ValidationResult};
-use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    WorkflowParts,
-};
+use vb_core::ids::SlotIdx;
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, WorkflowParts};
 
 pub fn validate_gate_09_slot_references(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
@@ -136,6 +133,9 @@ fn validate_node_slots(
         }
         CompiledNodeKind::ErrorHandler { .. } => {}
         CompiledNodeKind::Jump { .. } => {}
+        // `CompiledNodeKind` is `#[non_exhaustive]`; unknown variants
+        // contribute no slot reads (fail-soft: new variants start with no reads).
+        _ => {}
     }
     Ok(())
 }

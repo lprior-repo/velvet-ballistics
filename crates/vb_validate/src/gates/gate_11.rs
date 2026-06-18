@@ -2,11 +2,8 @@
 //! Gate 11: Loop body graph validation
 
 use crate::{ValidationError, ValidationResult};
-use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    WorkflowParts,
-};
+use vb_core::ids::StepIdx;
+use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResult<()> {
     let node_count = parts.nodes.len();
