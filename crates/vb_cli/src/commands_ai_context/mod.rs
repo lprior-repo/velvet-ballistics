@@ -22,6 +22,6 @@ mod run_status;
 mod snapshot;
 mod workflow;
 
+pub(crate) use events::redacted_slot_value;
 pub(crate) use handler::handle;
 pub(crate) use run_status::{RunStatus, suggested_ai_commands};
-pub(crate) use events::redacted_slot_value;

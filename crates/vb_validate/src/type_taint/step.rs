@@ -109,11 +109,7 @@ pub(super) fn resolve_value(value: &TypedValue, facts: &Facts, slots: &Slots) ->
     }
 }
 
-fn resolve_composite(
-    values: &[TypedValue],
-    facts: &Facts,
-    slots: &Slots,
-) -> ValueFact {
+fn resolve_composite(values: &[TypedValue], facts: &Facts, slots: &Slots) -> ValueFact {
     let mut taint = Taint::Clean;
     for value in values {
         let fact = resolve_value(value, facts, slots);

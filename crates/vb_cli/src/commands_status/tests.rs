@@ -1,7 +1,6 @@
 //! Tests for the runtime status command modules.
 
 #![forbid(unsafe_code)]
-
 #![allow(
     clippy::absurd_extreme_comparisons,
     clippy::approx_constant,

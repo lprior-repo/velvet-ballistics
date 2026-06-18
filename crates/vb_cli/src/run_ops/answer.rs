@@ -2,9 +2,9 @@
 //! Answer operation: submit a postcard-encoded SlotValue to a running run via IPC.
 
 use crate::args::OutputFormat;
+use crate::emit_json_or_return;
 use crate::exit_code::CliExitCode;
 use crate::output::json_error;
-use crate::emit_json_or_return;
 use std::path::Path;
 use std::process::ExitCode;
 use vb_ipc::client::IpcClient;

@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Unit tests for error variants not reachable via the full fuzz_expression pipeline.
 //!

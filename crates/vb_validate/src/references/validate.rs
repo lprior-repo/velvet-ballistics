@@ -21,11 +21,9 @@
 use crate::{ValidationError, ValidationResult};
 use std::collections::HashSet;
 
-use super::parse::{
-    step_field_is_output, step_index_to_step_idx, OUTPUT_FIELD_SYMBOL,
-};
-use super::tables::RefTables;
 use super::StepIdx;
+use super::parse::{OUTPUT_FIELD_SYMBOL, step_field_is_output, step_index_to_step_idx};
+use super::tables::RefTables;
 
 /// Validates all references in a workflow document.
 ///

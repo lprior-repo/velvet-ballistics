@@ -160,10 +160,9 @@ pub(super) fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode
             DiagnosticCode::new(CODE_INVALID_WAIT),
             "invalid wait".into(),
         ),
-        ValidationError::InvalidAsk => (
-            DiagnosticCode::new(CODE_INVALID_ASK),
-            "invalid ask".into(),
-        ),
+        ValidationError::InvalidAsk => {
+            (DiagnosticCode::new(CODE_INVALID_ASK), "invalid ask".into())
+        }
         ValidationError::InvalidFinish => (
             DiagnosticCode::new(CODE_INVALID_FINISH),
             "invalid finish".into(),
@@ -241,9 +240,7 @@ pub(super) fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode
             max,
         } => (
             DiagnosticCode::new(CODE_ACCESSOR_PATH_TOO_DEEP),
-            format!(
-                "accessor path too deep: accessor {accessor_index}, depth {depth}, max {max}"
-            ),
+            format!("accessor path too deep: accessor {accessor_index}, depth {depth}, max {max}"),
         ),
         ValidationError::AccessorSymbolOutOfBounds {
             accessor_index,

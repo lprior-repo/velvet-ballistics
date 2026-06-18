@@ -34,7 +34,9 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 /// If no events exist, defaults to Pending.
 #[must_use]
 #[allow(unreachable_patterns)]
-pub fn derive_lifecycle_state_from_events(events: &[crate::events::JournalEvent]) -> LifecycleState {
+pub fn derive_lifecycle_state_from_events(
+    events: &[crate::events::JournalEvent],
+) -> LifecycleState {
     events
         .last()
         .map(|e| match e {
@@ -99,25 +101,37 @@ mod tests {
     // ---- T-101: Empty events → Pending ----
     #[test]
     fn t_101_empty_events() {
-        assert_eq!(derive_lifecycle_state_from_events(&[]), LifecycleState::Pending);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&[]),
+            LifecycleState::Pending
+        );
     }
 
     // ---- T-102: RunFinished → Completed ----
     #[test]
     fn t_102_run_finished() {
-        assert_eq!(derive_lifecycle_state_from_events(&[run_finished()]), LifecycleState::Completed);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&[run_finished()]),
+            LifecycleState::Completed
+        );
     }
 
     // ---- T-103: RunFailedEvent → Failed ----
     #[test]
     fn t_103_run_failed() {
-        assert_eq!(derive_lifecycle_state_from_events(&[run_failed()]), LifecycleState::Failed);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&[run_failed()]),
+            LifecycleState::Failed
+        );
     }
 
     // ---- T-104: RunCancelled → Cancelled ----
     #[test]
     fn t_104_run_cancelled() {
-        assert_eq!(derive_lifecycle_state_from_events(&[run_cancelled()]), LifecycleState::Cancelled);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&[run_cancelled()]),
+            LifecycleState::Cancelled
+        );
     }
 
     // ---- T-105: RunResumed → Active ----
@@ -128,7 +142,10 @@ mod tests {
             seq: EventSeq::new(10),
             timestamp: chrono::Utc::now(),
         }];
-        assert_eq!(derive_lifecycle_state_from_events(&events), LifecycleState::Active);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&events),
+            LifecycleState::Active
+        );
     }
 
     // ---- T-106: RunRetried → Active ----
@@ -139,7 +156,10 @@ mod tests {
             seq: EventSeq::new(10),
             timestamp: chrono::Utc::now(),
         }];
-        assert_eq!(derive_lifecycle_state_from_events(&events), LifecycleState::Active);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&events),
+            LifecycleState::Active
+        );
     }
 
     // ---- T-107: RunAnswered → Completed ----
@@ -152,7 +172,10 @@ mod tests {
             answer: ConstValue::Bool(true),
             timestamp: chrono::Utc::now(),
         }];
-        assert_eq!(derive_lifecycle_state_from_events(&events), LifecycleState::Completed);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&events),
+            LifecycleState::Completed
+        );
     }
 
     // ---- T-108: Last event wins (active → failed) ----
@@ -174,22 +197,40 @@ mod tests {
             },
             run_failed(),
         ];
-        assert_eq!(derive_lifecycle_state_from_events(&events), LifecycleState::Failed);
+        assert_eq!(
+            derive_lifecycle_state_from_events(&events),
+            LifecycleState::Failed
+        );
     }
 
     // ---- T-109: lifecycle_state_to_inspect_status (terminal states) ----
     #[test]
     fn t_109_inspect_status_terminal() {
-        assert_eq!(lifecycle_state_to_inspect_status(LifecycleState::Cancelled), "cancelled");
-        assert_eq!(lifecycle_state_to_inspect_status(LifecycleState::Completed), "finished");
-        assert_eq!(lifecycle_state_to_inspect_status(LifecycleState::Failed), "failed");
+        assert_eq!(
+            lifecycle_state_to_inspect_status(LifecycleState::Cancelled),
+            "cancelled"
+        );
+        assert_eq!(
+            lifecycle_state_to_inspect_status(LifecycleState::Completed),
+            "finished"
+        );
+        assert_eq!(
+            lifecycle_state_to_inspect_status(LifecycleState::Failed),
+            "failed"
+        );
     }
 
     // ---- T-110: lifecycle_state_to_inspect_status (active states) ----
     #[test]
     fn t_110_inspect_status_active() {
-        assert_eq!(lifecycle_state_to_inspect_status(LifecycleState::Pending), "running");
-        assert_eq!(lifecycle_state_to_inspect_status(LifecycleState::Active), "running");
+        assert_eq!(
+            lifecycle_state_to_inspect_status(LifecycleState::Pending),
+            "running"
+        );
+        assert_eq!(
+            lifecycle_state_to_inspect_status(LifecycleState::Active),
+            "running"
+        );
         assert_eq!(
             lifecycle_state_to_inspect_status(LifecycleState::WaitingAnswer),
             "running"

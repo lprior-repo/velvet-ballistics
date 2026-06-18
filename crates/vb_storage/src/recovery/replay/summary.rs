@@ -7,15 +7,13 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::recovery::action_digest::{
-    verified_action_envelope_digest, verify_action_ticket_event,
-};
+use crate::recovery::action_digest::{verified_action_envelope_digest, verify_action_ticket_event};
+use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{
     ActionReplayTracker, RecoveredPendingAction, RecoveredRunAdmission, RecoveredSlotEntry,
     RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
     RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
-use crate::recovery::types::ActionReplayEffect;
 use crate::slot_extra::DecodedSlotWrittenExtra;
 use crate::{EventSeq, JournalEvent};
 use vb_core::replay::{ReplayEngine, ReplayError};

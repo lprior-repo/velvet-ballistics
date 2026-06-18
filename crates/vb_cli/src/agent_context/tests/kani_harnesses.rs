@@ -89,7 +89,10 @@ fn kani_build_deterministic() {
 #[kani::proof]
 fn kani_build_serializable_roundtrip() {
     let shape = arbitrary_shape();
-    kani::assert(shape.output_is_object(), "OBL-009: shape serializes as object");
+    kani::assert(
+        shape.output_is_object(),
+        "OBL-009: shape serializes as object",
+    );
 }
 
 /// OBL-010: agent_contract boolean fields are actual booleans (not strings/nulls).
@@ -146,14 +149,20 @@ fn kani_known_blockers_capability_count_exact() {
 #[kani::proof]
 fn kani_all_commands_have_summary() {
     let shape = arbitrary_shape();
-    kani::assert(shape.command_count() == 30, "OBL-015: command summary count");
+    kani::assert(
+        shape.command_count() == 30,
+        "OBL-015: command summary count",
+    );
 }
 
 /// OBL-016: build() never returns null — output is always an Object.
 #[kani::proof]
 fn kani_build_output_is_object() {
     let shape = arbitrary_shape();
-    kani::assert(shape.output_is_object(), "OBL-016: output must be an object");
+    kani::assert(
+        shape.output_is_object(),
+        "OBL-016: output must be an object",
+    );
 }
 
 /// OBL-017: enums key is always an object with the documented variants.

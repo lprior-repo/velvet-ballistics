@@ -216,10 +216,13 @@ fn vt2f_runtime_facade_semantics() {
     let mut strict_state = FacadeKernelState::seeded(selector);
     let before = strict_state.queue_depth;
     let strict_result = strict_state.submit_direct(RuntimePolicy::Strict, StoreMode::Missing);
-    kani::assert(matches!(
-        strict_result,
-        Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-    ), "strict missing artifact must reject");
+    kani::assert(
+        matches!(
+            strict_result,
+            Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
+        ),
+        "strict missing artifact must reject",
+    );
     kani::assert(before == strict_state.queue_depth, "assertion failed");
 
     let mut admitted_state = FacadeKernelState::seeded(selector);
@@ -227,13 +230,22 @@ fn vt2f_runtime_facade_semantics() {
     let admitted_result = admitted_state.submit_direct(policy, store);
     if policy == RuntimePolicy::Relaxed || store == StoreMode::Accepted {
         kani::assert(admitted_result.is_ok(), "kani harness assertion");
-        kani::assert(admitted_state.queue_depth == admitted_before.saturating_add(1), "assertion failed");
+        kani::assert(
+            admitted_state.queue_depth == admitted_before.saturating_add(1),
+            "assertion failed",
+        );
     } else {
-        kani::assert(matches!(
-            admitted_result,
-            Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
-        ), "strict missing artifact path must preserve queue depth");
-        kani::assert(admitted_state.queue_depth == admitted_before, "assertion failed");
+        kani::assert(
+            matches!(
+                admitted_result,
+                Err(KernelRuntimeError::AdmissionArtifactNotFound { .. })
+            ),
+            "strict missing artifact path must preserve queue depth",
+        );
+        kani::assert(
+            admitted_state.queue_depth == admitted_before,
+            "assertion failed",
+        );
     }
 
     let fail_state = FacadeKernelState::seeded(selector);
@@ -243,11 +255,17 @@ fn vt2f_runtime_facade_semantics() {
         fail_state.fail_action_enqueue(ticket_run).is_ok(),
         "kani harness assertion",
     );
-    kani::assert(matches!(
-        fail_state.tick_after_facade_fail_action(ticket_run),
-        Err(KernelRuntimeError::InvalidActionCompletion)
-    ), "facade fail action must reject invalid completion");
-    kani::assert(unrelated_before == fail_state.snapshot_other(100), "assertion failed");
+    kani::assert(
+        matches!(
+            fail_state.tick_after_facade_fail_action(ticket_run),
+            Err(KernelRuntimeError::InvalidActionCompletion)
+        ),
+        "facade fail action must reject invalid completion",
+    );
+    kani::assert(
+        unrelated_before == fail_state.snapshot_other(100),
+        "assertion failed",
+    );
 
     let mut ask_state = FacadeKernelState::seeded(selector);
     let ask_unrelated_before = ask_state.snapshot_other(200);
@@ -263,10 +281,10 @@ fn vt2f_runtime_facade_semantics() {
         kani::assert(ask_state.answer_taint == Taint::Clean, "assertion failed");
     } else {
         // Stale/WrongRun/AbsentRun all return RunNotFound per ERR-004 contract.
-        kani::assert(matches!(
-            answer_result,
-            Err(KernelRuntimeError::RunNotFound)
-        ), "non-matching ask answer must return RunNotFound");
+        kani::assert(
+            matches!(answer_result, Err(KernelRuntimeError::RunNotFound)),
+            "non-matching ask answer must return RunNotFound",
+        );
         kani::assert(
             matches!(tick_result, Err(KernelRuntimeError::RunNotFound)),
             "non-matching ask tick must return RunNotFound",
@@ -274,5 +292,8 @@ fn vt2f_runtime_facade_semantics() {
         kani::assert(ask_state.answer_value == None, "assertion failed");
         kani::assert(ask_state.target_active, "kani harness assertion");
     }
-    kani::assert(ask_unrelated_before == ask_state.snapshot_other(200), "assertion failed");
+    kani::assert(
+        ask_unrelated_before == ask_state.snapshot_other(200),
+        "assertion failed",
+    );
 }

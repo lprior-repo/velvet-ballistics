@@ -85,12 +85,19 @@ impl Runtime {
     }
 
     /// Returns a direct non-queued snapshot from the owning shard.
-    pub fn snapshot_run(&self, run: RunId, correlation: u64) -> RuntimeResult<crate::shard::InspectResponse> {
+    pub fn snapshot_run(
+        &self,
+        run: RunId,
+        correlation: u64,
+    ) -> RuntimeResult<crate::shard::InspectResponse> {
         Ok(self.shard_for(run)?.snapshot_run(run, correlation))
     }
 
     /// Takes a pending inspect response from the owning shard.
-    pub fn take_inspect_response(&mut self, run: RunId) -> RuntimeResult<Option<crate::shard::InspectResponse>> {
+    pub fn take_inspect_response(
+        &mut self,
+        run: RunId,
+    ) -> RuntimeResult<Option<crate::shard::InspectResponse>> {
         let index = self.shard_index(run);
         let shard = self
             .shards

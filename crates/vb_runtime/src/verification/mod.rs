@@ -46,23 +46,23 @@ pub mod loom {
 #[cfg(verus)]
 pub mod verus {
     // Timer seam proofs (vb-0l9k0) — sub-modules declared in vb-0l9k0/mod.rs
-    #[path = "verus/vb-0l9k0/mod.rs"]
+    #[path = "vb-0l9k0/mod.rs"]
     pub mod vb_0l9k0;
 
     // Attempt-fence kernel proofs (vb-y9d3v)
-    #[path = "verus/vb_y9d3v_action_fence.rs"]
+    #[path = "vb_y9d3v_action_fence.rs"]
     pub mod vb_y9d3v_action_fence;
 
     // Action completion kernel proofs (vb-kzz99)
-    #[path = "verus/vb_kzz99_action_completion.rs"]
+    #[path = "vb_kzz99_action_completion.rs"]
     pub mod vb_kzz99_action_completion;
 
     // Action dispatch/receiver proofs (vb-rxru0)
-    #[path = "verus/vb_rxru0_action_verus.rs"]
+    #[path = "vb_rxru0_action_verus.rs"]
     pub mod vb_rxru0_action_verus;
 
     // Runtime facade API proofs
-    #[path = "verus/runtime_facade_api.rs"]
+    #[path = "runtime_facade_api.rs"]
     pub mod runtime_facade_api;
 }
 
@@ -70,7 +70,6 @@ pub mod verus {
 #[cfg(kani)]
 pub(crate) mod kani {
     pub(crate) mod kani_attempt_fence_harnesses;
-    pub(crate) mod kani_rxru0_action_harnesses;
 }
 
 // Flux refinement modules for vb-rxru0 (action enum invariants & dispatch_generic)

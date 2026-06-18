@@ -37,9 +37,9 @@ pub fn build_repair_hints(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::model::SideEffect;
     use super::super::model::SideEffectCertainty;
+    use super::*;
 
     // ---- T-009: RunFailed repair hints (1 hint) ----
     #[test]

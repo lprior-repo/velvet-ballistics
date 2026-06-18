@@ -3,8 +3,8 @@
 //! Bead: vb-esq9.1 | State: 5 (proof-writer)
 //! Pure core: maps a task's profile reference to a BindingResult.
 
-use crate::profile_contract::errors::ContractGap;
 use crate::profile_contract::MASTER_PROFILE_CONTRACT;
+use crate::profile_contract::errors::ContractGap;
 use crate::profile_contract::types::ProfileName;
 use crate::profile_contract::validation::validate_against_master;
 use crate::profile_contract::workspace::WorkspaceProfileSet;

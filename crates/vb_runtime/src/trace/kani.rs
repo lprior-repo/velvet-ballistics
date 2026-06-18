@@ -3,9 +3,9 @@
 //!
 //! Lightweight bounded queues and event-kind enums used only under `cfg(kani)`.
 
+use crate::trace::TraceEvent;
 use vb_core::action::ActionFailureCode;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
-use crate::trace::TraceEvent;
 
 pub(super) const KANI_TRACE_MODEL_CAPACITY: usize = 64;
 

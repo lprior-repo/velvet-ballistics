@@ -6,6 +6,7 @@
 //! These proofs verify that `decode_record_header` returns an error (rather
 //! than panicking) when given malformed or truncated data.
 
+use crate::codec::header::header_crc32c;
 use crate::{
     codec::decode_record_header,
     codec::validation::{
@@ -13,7 +14,6 @@ use crate::{
     },
     constants::{CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES},
 };
-use crate::codec::header::header_crc32c;
 
 const MAX_PAYLOAD_LEN: u32 = 1024;
 const EXPECTED_MAGIC: u32 = 0x5642_4A45;

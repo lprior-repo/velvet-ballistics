@@ -2,8 +2,8 @@
 
 //! Reduce node handlers: fold over collections with accumulator.
 
-use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
 use vb_core::frame::RunFrame;
+use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 

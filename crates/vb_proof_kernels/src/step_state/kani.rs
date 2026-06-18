@@ -8,8 +8,7 @@ use super::state::StepState;
 
 #[cfg(kani)]
 use super::transition::{
-    is_valid_transition, next_states, terminal_cannot_transition_to_non_terminal,
-    terminal_states,
+    is_valid_transition, next_states, terminal_cannot_transition_to_non_terminal, terminal_states,
 };
 
 #[cfg(kani)]

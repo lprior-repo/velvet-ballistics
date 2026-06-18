@@ -17,11 +17,11 @@ pub use verus::*;
 
 // ── Non-Verus path: regular Rust modules ────────────────────────────────
 #[cfg(not(verus_keep_ghost))]
-mod r#type;
-#[cfg(not(verus_keep_ghost))]
 mod lattice;
 #[cfg(not(verus_keep_ghost))]
 mod properties;
+#[cfg(not(verus_keep_ghost))]
+mod r#type;
 #[cfg(not(verus_keep_ghost))]
 pub use properties::*;
 
@@ -31,6 +31,6 @@ mod tests;
 
 // ── Non-Verus re-exports ────────────────────────────────────────────────
 #[cfg(not(verus_keep_ghost))]
-pub use r#type::*;
-#[cfg(not(verus_keep_ghost))]
 pub use lattice::*;
+#[cfg(not(verus_keep_ghost))]
+pub use r#type::*;

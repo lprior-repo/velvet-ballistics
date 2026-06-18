@@ -10,12 +10,12 @@
 //! - **zero-allocation decisions**: `usize`-only paths for concrete queues
 
 use crate::capacity::CapacityRejection;
-use crate::state::{
-    QueueState, EnqueueDecision, PopTransition, PopDecision, WarningSendOutcome,
-    WarningPayload, WarningTransition, helper_queue_is_full,
-};
 #[cfg(test)]
 use crate::capacity::SHARED_QUEUE_CAPACITY_MAX;
+use crate::state::{
+    EnqueueDecision, PopDecision, PopTransition, QueueState, WarningPayload, WarningSendOutcome,
+    WarningTransition, helper_queue_is_full,
+};
 
 // ---- Verus-shared helpers (pure const fn) ----
 

@@ -53,6 +53,7 @@ pub use lemmas::*;
 // Transition helpers — cargo only
 #[cfg(not(verus_keep_ghost))]
 pub use transition::{
-    all_transitions_exhaustive, is_valid_transition, next_states, non_terminal_states,
-    terminal_cannot_transition_to_non_terminal, terminal_states, validate_transition, VALID_TRANSITIONS,
+    VALID_TRANSITIONS, all_transitions_exhaustive, is_valid_transition, next_states,
+    non_terminal_states, terminal_cannot_transition_to_non_terminal, terminal_states,
+    validate_transition,
 };

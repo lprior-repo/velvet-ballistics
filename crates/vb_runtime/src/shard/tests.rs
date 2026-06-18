@@ -128,7 +128,7 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 
 include!("tests/chunk_001.rs");

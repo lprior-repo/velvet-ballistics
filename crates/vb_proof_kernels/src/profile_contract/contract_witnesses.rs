@@ -4,9 +4,9 @@
 //! Each function carries an `ensures` clause binding it to its spec counterpart.
 
 #[cfg(verus_keep_ghost)]
-use vstd::prelude::*;
-#[cfg(verus_keep_ghost)]
 use super::contract_types::{ProfileKey, ProfileName, spec_key_category};
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
 verus! {

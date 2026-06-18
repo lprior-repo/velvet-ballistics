@@ -5,11 +5,11 @@
 //! spec functions declared in `spec.rs`.
 
 #[cfg(verus_keep_ghost)]
-use vstd::prelude::*;
-#[cfg(verus_keep_ghost)]
 use super::budget::Budget;
 #[cfg(verus_keep_ghost)]
-use super::spec::{spec_sequential_add, spec_branch_max, spec_loop_mul};
+use super::spec::{spec_branch_max, spec_loop_mul, spec_sequential_add};
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
 verus! {

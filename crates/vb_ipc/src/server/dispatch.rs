@@ -25,12 +25,12 @@ pub fn serve_ipc_with_resolver(
     server.poll_once_with_resolver(runtime, timeout, resolver)
 }
 
+use super::handlers::SubmitCommand;
 use super::handlers::{
     handle_answer_ask, handle_cancel_run, handle_complete_action, handle_fail_action,
     handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
     handle_submit_run_inline,
 };
-use super::handlers::SubmitCommand;
 use super::trace::handle_drain_trace;
 use crate::IpcCommand;
 use crate::server::IpcResponse;
@@ -53,7 +53,9 @@ pub fn dispatch_command_with_resolver(
     match header.command {
         IpcCommand::Health => handle_health(),
         IpcCommand::Shutdown => handle_shutdown(runtime),
-        IpcCommand::SubmitRun => handle_submit_run(SubmitCommand::SubmitRun, header, payload, runtime, resolver),
+        IpcCommand::SubmitRun => {
+            handle_submit_run(SubmitCommand::SubmitRun, header, payload, runtime, resolver)
+        }
         IpcCommand::SubmitRunInline => handle_submit_run_inline(payload, runtime, resolver),
         IpcCommand::CancelRun => handle_cancel_run(payload, runtime),
         IpcCommand::InspectRun => handle_inspect_run(payload, runtime),

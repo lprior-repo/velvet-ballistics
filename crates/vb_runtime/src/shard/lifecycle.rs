@@ -126,9 +126,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Run lifecycle management: submit, resume, cancel, action completion, timers.
 

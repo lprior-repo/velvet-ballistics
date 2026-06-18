@@ -46,8 +46,14 @@ mod kani_duplicate_ps009 {
         let v1 = terminal_digest_byte_or_assume(&event);
         let v2 = terminal_digest_byte_or_assume(&event);
 
-        kani::assert(v1 == v2, "same workflow digest gives same terminal payload byte");
-        kani::assert(has_terminal_digest_byte(&event), "payload model is non-empty");
+        kani::assert(
+            v1 == v2,
+            "same workflow digest gives same terminal payload byte",
+        );
+        kani::assert(
+            has_terminal_digest_byte(&event),
+            "payload model is non-empty",
+        );
     }
 
     /// C2: different events produce different encoded output.
@@ -64,10 +70,7 @@ mod kani_duplicate_ps009 {
         let v1 = terminal_digest_byte_or_assume(&e1);
         let v2 = terminal_digest_byte_or_assume(&e2);
 
-        kani::assert(
-            v1 != v2,
-            "different workflow digests change payload bytes",
-        );
+        kani::assert(v1 != v2, "different workflow digests change payload bytes");
     }
 
     /// C2: JOURNAL_KEY_BYTES is bounded and non-zero.

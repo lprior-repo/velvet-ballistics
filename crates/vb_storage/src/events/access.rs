@@ -3,9 +3,9 @@
 //!
 //! Extracts run identifiers, sequence numbers, record kinds, and attempt metadata.
 
+use super::variant::JournalEvent;
 use crate::{EventSeq, RecordKind};
 use vb_core::RunId;
-use super::variant::JournalEvent;
 
 impl JournalEvent {
     /// Run identifier carried by this event.

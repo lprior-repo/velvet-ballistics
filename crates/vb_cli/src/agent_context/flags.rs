@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(kani), allow(dead_code, unused_mut, unused_variables))]
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Emit flag accepting text, yaml, or postcard with text default.
 pub(crate) fn output_emit_flag() -> Value {

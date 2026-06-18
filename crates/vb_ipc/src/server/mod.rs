@@ -35,9 +35,9 @@ use crate::{
 };
 pub use error::IpcServerError;
 use handlers::{
-    handle_answer_ask, handle_cancel_run, handle_complete_action, handle_fail_action,
-    handle_health, handle_inspect_run, handle_list_events, handle_shutdown, handle_submit_run,
-    handle_submit_run_inline, SubmitCommand,
+    SubmitCommand, handle_answer_ask, handle_cancel_run, handle_complete_action,
+    handle_fail_action, handle_health, handle_inspect_run, handle_list_events, handle_shutdown,
+    handle_submit_run, handle_submit_run_inline,
 };
 
 pub const MAX_CLIENTS: usize = 256;

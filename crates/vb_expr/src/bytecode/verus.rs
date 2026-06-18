@@ -207,19 +207,21 @@ verus! {
 // ───────────────────────────────────────────────────────────────────────────
 
 /// Spec mirror of crate::bytecode::binary_op (const fn).
-closed spec fn binary_op_prod(op: BinaryOp) -> ExprOp {
-    match op {
-        BinaryOp::Or => ExprOp::Or,
-        BinaryOp::And => ExprOp::And,
-        BinaryOp::Eq => ExprOp::Eq,
-        BinaryOp::NotEq => ExprOp::NotEq,
-        BinaryOp::Lt => ExprOp::Lt,
-        BinaryOp::Lte => ExprOp::Lte,
-        BinaryOp::Gt => ExprOp::Gt,
-        BinaryOp::Gte => ExprOp::Gte,
-        BinaryOp::Add => ExprOp::Add,
-        BinaryOp::Sub => ExprOp::Sub,
-        BinaryOp::Mul => ExprOp::Mul,
-        BinaryOp::Div => ExprOp::Div,
+verus! {
+    closed spec fn binary_op_prod(op: BinaryOp) -> ExprOp {
+        match op {
+            BinaryOp::Or => ExprOp::Or,
+            BinaryOp::And => ExprOp::And,
+            BinaryOp::Eq => ExprOp::Eq,
+            BinaryOp::NotEq => ExprOp::NotEq,
+            BinaryOp::Lt => ExprOp::Lt,
+            BinaryOp::Lte => ExprOp::Lte,
+            BinaryOp::Gt => ExprOp::Gt,
+            BinaryOp::Gte => ExprOp::Gte,
+            BinaryOp::Add => ExprOp::Add,
+            BinaryOp::Sub => ExprOp::Sub,
+            BinaryOp::Mul => ExprOp::Mul,
+            BinaryOp::Div => ExprOp::Div,
+        }
     }
 }

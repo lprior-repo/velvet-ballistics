@@ -14,9 +14,7 @@ pub use super::attempt::{
     replay_event_has_state_effect, replay_event_is_stale_state_effect, replay_step_order_diverges,
 };
 use crate::records::RecoveryStampRecord;
-use crate::recovery::action_digest::{
-    verified_action_envelope_digest, verify_action_ticket_event,
-};
+use crate::recovery::action_digest::{verified_action_envelope_digest, verify_action_ticket_event};
 use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};

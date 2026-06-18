@@ -45,10 +45,7 @@ pub fn is_valid_transition(from: StepState, to: StepState) -> bool {
 #[cfg(not(verus_keep_ghost))]
 /// Result-based validator for callers that need an error path.
 #[must_use]
-pub fn validate_transition(
-    from: StepState,
-    to: StepState,
-) -> Result<StepState, &'static str> {
+pub fn validate_transition(from: StepState, to: StepState) -> Result<StepState, &'static str> {
     if is_valid_transition(from, to) {
         Ok(to)
     } else {

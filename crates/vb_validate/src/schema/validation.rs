@@ -3,7 +3,7 @@
 //! Validates required/unknown fields, version strings, trigger declarations,
 //! ID grammar rules, step field shapes, and single-primitive constraints.
 
-use super::types::{FieldValue, StepDoc, WorkflowDoc, STEP_PRIMITIVES};
+use super::types::{FieldValue, STEP_PRIMITIVES, StepDoc, WorkflowDoc};
 use crate::{ValidationError, ValidationResult};
 
 const CANONICAL_VERSION: &str = "velvet-ballistics/v1";
@@ -294,12 +294,16 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "wait" => {
-            if let FieldValue::Mapping(entries) = value && entries.is_empty() {
+            if let FieldValue::Mapping(entries) = value
+                && entries.is_empty()
+            {
                 return Err(ValidationError::InvalidWait);
             }
         }
         "ask" => {
-            if let FieldValue::Mapping(entries) = value && entries.is_empty() {
+            if let FieldValue::Mapping(entries) = value
+                && entries.is_empty()
+            {
                 return Err(ValidationError::InvalidAsk);
             }
         }
@@ -312,7 +316,9 @@ fn validate_step_body(step: &StepDoc) -> ValidationResult<()> {
             }
         }
         "retry" | "try_again" => {
-            if let FieldValue::Mapping(entries) = value && entries.is_empty() {
+            if let FieldValue::Mapping(entries) = value
+                && entries.is_empty()
+            {
                 return Err(ValidationError::InvalidRetry);
             }
         }

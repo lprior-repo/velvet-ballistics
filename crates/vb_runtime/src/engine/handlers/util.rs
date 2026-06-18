@@ -3,8 +3,8 @@
 //! Utility helpers shared across handlers.
 
 use vb_core::errors::EngineError;
-use vb_core::ids::SlotIdx;
 use vb_core::frame::RunFrame;
+use vb_core::ids::SlotIdx;
 use vb_core::value::SlotValue;
 
 use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult};

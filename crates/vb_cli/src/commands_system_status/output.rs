@@ -98,10 +98,7 @@ fn print_system_status_yaml(
         "  health: {}",
         build::system_health_label(&report)
     ))?;
-    crate::write_stdout_line_checked(format_args!(
-        "  backend: {}",
-        report.state.as_str()
-    ))?;
+    crate::write_stdout_line_checked(format_args!("  backend: {}", report.state.as_str()))?;
     crate::write_stdout_line_checked(format_args!(
         "  storage_health: {}",
         build::storage_health_label(&report)
@@ -115,14 +112,8 @@ fn print_system_status_yaml(
         "  snapshot_seq: {}",
         build::snapshot_seq_label(report.snapshot_seq)
     ))?;
-    crate::write_stdout_line_checked(format_args!(
-        "  blob_store_ok: {}",
-        report.blob_store_ok
-    ))?;
-    crate::write_stdout_line_checked(format_args!(
-        "  index_healthy: {}",
-        report.index_healthy
-    ))?;
+    crate::write_stdout_line_checked(format_args!("  blob_store_ok: {}", report.blob_store_ok))?;
+    crate::write_stdout_line_checked(format_args!("  index_healthy: {}", report.index_healthy))?;
     crate::write_stdout_line_checked(format_args!("  uptime_seconds: 0"))?;
     crate::write_stdout_line_checked(format_args!(
         "  active_run_count: {}",
@@ -133,9 +124,7 @@ fn print_system_status_yaml(
         "  shard_state: {}",
         build::shard_state_label(&report)
     ))?;
-    crate::write_stdout_line_checked(format_args!(
-        "  command_queue_depth: 0"
-    ))?;
+    crate::write_stdout_line_checked(format_args!("  command_queue_depth: 0"))?;
     crate::write_stdout_line_checked(format_args!(
         "  command_queue_capacity: {}",
         config.command_queue_capacity

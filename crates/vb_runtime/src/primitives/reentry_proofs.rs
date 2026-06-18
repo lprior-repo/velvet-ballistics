@@ -231,7 +231,14 @@ pub mod reentry_harnesses {
             return;
         }
 
-        let result = collect_page(&mut run, &mut store, &mut states, collector_slot, body, done);
+        let result = collect_page(
+            &mut run,
+            &mut store,
+            &mut states,
+            collector_slot,
+            body,
+            done,
+        );
         kani::assert(result.is_ok(), "collect_page re-entry should succeed");
         let Some(state_after) = run.kani_harness_step_state(body) else {
             kani::assert(false, "body step must remain readable after collect_page");
@@ -269,7 +276,10 @@ pub mod reentry_harnesses {
         }
 
         let result = crate::primitives::helpers::jump_to_body(&mut run, body);
-        kani::assert(result.is_ok(), "repeat_attempt re-entry jump should succeed");
+        kani::assert(
+            result.is_ok(),
+            "repeat_attempt re-entry jump should succeed",
+        );
         std::mem::forget(result);
         let Some(state_after) = run.kani_harness_step_state(body) else {
             kani::assert(false, "body step must remain readable after repeat_attempt");
@@ -376,7 +386,10 @@ pub mod reentry_harnesses {
         }
 
         let result = crate::primitives::helpers::jump_to_body(&mut run, body);
-        kani::assert(result.is_ok(), "repeat_attempt re-entry jump should succeed");
+        kani::assert(
+            result.is_ok(),
+            "repeat_attempt re-entry jump should succeed",
+        );
         std::mem::forget(result);
         let Some(state_after) = run.kani_harness_step_state(body) else {
             return;
@@ -428,7 +441,10 @@ pub mod reentry_harnesses {
         let executed_before = run.executed();
 
         let result = crate::primitives::helpers::jump_to_body(&mut run, body);
-        kani::assert(result.is_ok(), "jump_to_body should succeed for valid body step");
+        kani::assert(
+            result.is_ok(),
+            "jump_to_body should succeed for valid body step",
+        );
         std::mem::forget(result);
 
         let Some(state_after) = run.kani_harness_step_state(body) else {

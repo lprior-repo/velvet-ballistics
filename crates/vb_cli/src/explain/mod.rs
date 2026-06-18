@@ -9,12 +9,12 @@
 //! └── reports.rs      ← JSON failure-report builders
 //! ```
 
-pub(crate) mod dispatch;
 mod compile_error;
+pub(crate) mod dispatch;
 pub(crate) mod reports;
 
-pub(crate) use dispatch::cmd_explain;
 pub(crate) use compile_error::explain_error;
+pub(crate) use dispatch::cmd_explain;
 pub(crate) use reports::{
     explain_compile_failure_report, explain_failure_report, explain_verification_failure_report,
 };

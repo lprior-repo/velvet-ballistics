@@ -36,7 +36,8 @@ fn decode_crc_class(header: &[u8], expected_magic: u32) -> CrcDecodeClass {
     if !is_known_record_kind(decoded.record_kind) {
         return CrcDecodeClass::OtherError;
     }
-    if classify_kind_family(decoded.magic, decoded.record_kind) == RecordKindFamilyDecision::Rejected
+    if classify_kind_family(decoded.magic, decoded.record_kind)
+        == RecordKindFamilyDecision::Rejected
     {
         return CrcDecodeClass::OtherError;
     }

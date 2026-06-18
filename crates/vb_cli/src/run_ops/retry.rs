@@ -2,11 +2,11 @@
 //! Retry operation: re-run a failed/partially-executed run from the point of failure.
 
 use crate::args::OutputFormat;
+use crate::emit_json_or_return;
 use crate::exit_code::CliExitCode;
 use crate::file_io::{parse_run_id, read_journal_events, report_storage_open_error};
 use crate::lifecycle;
 use crate::output::json_error;
-use crate::emit_json_or_return;
 use std::process::ExitCode;
 
 pub(crate) fn cmd_retry(

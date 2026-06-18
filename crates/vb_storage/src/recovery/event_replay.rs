@@ -9,13 +9,13 @@
 //! These are the core replay primitives: applying deterministic state
 //! transitions from journal events onto a live RunFrame.
 
+use crate::DurableActionOutcome;
+use crate::JournalEvent;
 use crate::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryResult, types::ActionReplayEffect,
 };
-use crate::JournalEvent;
-use crate::DurableActionOutcome;
 use vb_core::SlotIdx;
-use vb_core::{ActionTicket, RunFrame, RunId, StepIdx, Taint, SlotValue};
+use vb_core::{ActionTicket, RunFrame, RunId, SlotValue, StepIdx, Taint};
 
 // ============================================================================
 // Slot taint resolution (pure, tail-event-adjacent)
@@ -48,16 +48,12 @@ pub(crate) const fn resolve_slot_taint_read(
 ) -> SlotTaintResolution {
     match observation {
         SlotTaintReadObservation::Existing(taint) => SlotTaintResolution::Use(taint),
-        SlotTaintReadObservation::Uninitialized => {
-            SlotTaintResolution::Use(vb_core::Taint::Clean)
-        }
+        SlotTaintReadObservation::Uninitialized => SlotTaintResolution::Use(vb_core::Taint::Clean),
         SlotTaintReadObservation::Failed => SlotTaintResolution::FailClosed,
     }
 }
 
-fn observe_slot_taint_read(
-    result: Result<Taint, vb_core::CoreError>,
-) -> SlotTaintReadObservation {
+fn observe_slot_taint_read(result: Result<Taint, vb_core::CoreError>) -> SlotTaintReadObservation {
     match result {
         Ok(taint) => SlotTaintReadObservation::Existing(taint),
         Err(vb_core::CoreError::SlotUninitialized { .. }) => {
@@ -82,10 +78,7 @@ fn decode_action_envelope_slot(
     })
 }
 
-fn sub_tail_parallel_in_flight(
-    frame: &mut RunFrame,
-    step: StepIdx,
-) -> RecoveryResult<()> {
+fn sub_tail_parallel_in_flight(frame: &mut RunFrame, step: StepIdx) -> RecoveryResult<()> {
     if frame.parallel_in_flight() == 0 {
         return Ok(());
     }

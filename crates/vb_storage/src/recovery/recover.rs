@@ -233,17 +233,13 @@ pub fn recover_runtime_summary_with_expected(
 }
 
 /// Converts a `RecoveryTerminalState` to its string representation.
-fn terminal_state_to_string(
-    terminal: Option<crate::recovery::RecoveryTerminalState>,
-) -> String {
+fn terminal_state_to_string(terminal: Option<crate::recovery::RecoveryTerminalState>) -> String {
     match terminal {
         None => "NoTerminal".to_owned(),
         Some(crate::recovery::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
         Some(crate::recovery::RecoveryTerminalState::Killed) => "Killed".to_owned(),
         Some(crate::recovery::RecoveryTerminalState::Failed) => "Failed".to_owned(),
-        Some(crate::recovery::RecoveryTerminalState::Finished { .. }) => {
-            "Finished".to_owned()
-        }
+        Some(crate::recovery::RecoveryTerminalState::Finished { .. }) => "Finished".to_owned(),
     }
 }
 

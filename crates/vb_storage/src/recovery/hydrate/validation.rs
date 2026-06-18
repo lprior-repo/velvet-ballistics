@@ -109,7 +109,9 @@ pub(crate) fn validate_recovery_data_present(
 }
 
 /// Maps each specific input violation to its domain error variant.
-pub(crate) fn snapshot_input_violation_to_error(violation: SnapshotRecoveryInputViolation) -> RecoveryError {
+pub(crate) fn snapshot_input_violation_to_error(
+    violation: SnapshotRecoveryInputViolation,
+) -> RecoveryError {
     match violation {
         SnapshotRecoveryInputViolation::SnapshotRunMismatch {
             snapshot_run,

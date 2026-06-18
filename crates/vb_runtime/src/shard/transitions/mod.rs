@@ -5,8 +5,8 @@
 //! - `continuation` — `keep_run`, `keep_run_with_snapshot`, `await_action`, `await_timer`
 //! - `terminal` — `finish_run`, `fail_run_state`
 
-mod fsm;
 mod continuation;
+mod fsm;
 mod terminal;
 
 /// Outcome of a snapshot write attempt.

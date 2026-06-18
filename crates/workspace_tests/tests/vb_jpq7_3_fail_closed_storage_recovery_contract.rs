@@ -147,8 +147,7 @@ use vb_storage::{
 const JOURNAL_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/journal/replay.rs");
 const JOURNAL_CORE_SOURCE: &str = include_str!("../../vb_storage/src/journal/core.rs");
 const JOURNAL_APPEND_SOURCE: &str = include_str!("../../vb_storage/src/journal/append.rs");
-const EVENT_REPLAY_SOURCE: &str =
-    include_str!("../../vb_storage/src/recovery/event_replay.rs");
+const EVENT_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/recovery/event_replay.rs");
 fn step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
     JournalEvent::StepStarted {
         run,

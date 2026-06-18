@@ -107,10 +107,9 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
 #![allow(dead_code, unused_imports)]
-
 #![forbid(unsafe_code)]
 //! Adversarial lexer tests.
 

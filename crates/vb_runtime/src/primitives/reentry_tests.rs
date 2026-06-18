@@ -122,7 +122,7 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
 
 //! Body-re-entry unit tests for loop primitives.

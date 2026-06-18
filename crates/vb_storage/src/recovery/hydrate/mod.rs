@@ -14,18 +14,16 @@ mod apply;
 pub mod invariants;
 mod validation;
 
+use crate::JournalEvent;
+use crate::recovery::action_digest::{verified_action_envelope_digest, verify_action_ticket_event};
 use crate::recovery::event_replay::apply_tail_events;
+use crate::recovery::snapshot_decode::{
+    decode_snapshot_slots, derive_dimensions_from_snapshot_and_tail,
+};
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryFrameSeed, RecoveryResult, RunSnapshot,
 };
-use crate::recovery::snapshot_decode::{
-    decode_snapshot_slots, derive_dimensions_from_snapshot_and_tail,
-};
-use crate::recovery::action_digest::{
-    verified_action_envelope_digest, verify_action_ticket_event,
-};
-use crate::JournalEvent;
 use vb_core::RunId;
 
 // Re-export invariant predicates for downstream consumers.

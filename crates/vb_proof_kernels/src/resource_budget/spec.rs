@@ -5,9 +5,9 @@
 //! production code (saturating arithmetic) must approximate.
 
 #[cfg(verus_keep_ghost)]
-use vstd::prelude::*;
-#[cfg(verus_keep_ghost)]
 use super::budget::Budget;
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
 verus! {

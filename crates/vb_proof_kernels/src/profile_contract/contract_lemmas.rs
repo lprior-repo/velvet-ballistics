@@ -4,9 +4,9 @@
 //! 13 proof lemmas covering disjointness, exhaustiveness, and partition invariants.
 
 #[cfg(verus_keep_ghost)]
-use vstd::prelude::*;
-#[cfg(verus_keep_ghost)]
 use super::contract_types::{ProfileKey, ProfileName};
+#[cfg(verus_keep_ghost)]
+use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
 verus! {

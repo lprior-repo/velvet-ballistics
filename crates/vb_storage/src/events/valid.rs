@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! Structural validity and slot-value decoding for `JournalEvent`.
 
-use crate::error::JournalError;
-use crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
 use super::variant::JournalEvent;
+use crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
+use crate::error::JournalError;
 use vb_core::SlotValue;
 
 impl JournalEvent {

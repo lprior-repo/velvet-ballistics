@@ -4,9 +4,9 @@
 // crates/vb_runtime/src/runtime/{runtime_admission,runtime_ask,runtime_control,runtime_construction,runtime_metrics,runtime_recovery,runtime_sharding}.rs)
 // Declared as `pub mod runtime;` in crates/vb_runtime/src/lib.rs.
 
-mod runtime_construction;
 mod runtime_admission;
 mod runtime_ask;
+mod runtime_construction;
 mod runtime_control;
 mod runtime_metrics;
 mod runtime_recovery;
@@ -14,9 +14,9 @@ mod runtime_sharding;
 
 pub use runtime_control::ActiveRunSummary;
 
-use crate::shard::Shard;
-use crate::journal::SharedRuntimeJournal;
 use crate::RuntimeError;
+use crate::journal::SharedRuntimeJournal;
+use crate::shard::Shard;
 use vb_core::ids::RunId;
 
 /// Multi-shard runtime facade.

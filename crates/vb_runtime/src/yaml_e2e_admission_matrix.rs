@@ -93,10 +93,9 @@ fn yaml_e2e_admission_matrix() {
                 error == expected_rejection(model),
                 "strict predicate false must reject with exact taxonomy",
             ),
-            AdmissionOutcome::Admitted => kani::assert(
-                false,
-                "strict predicate false must reject artifact",
-            ),
+            AdmissionOutcome::Admitted => {
+                kani::assert(false, "strict predicate false must reject artifact")
+            }
         }
     }
 }

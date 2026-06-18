@@ -6,15 +6,15 @@ use std::collections::VecDeque;
 
 #[cfg(not(kani))]
 use rtrb::RingBuffer;
+use vb_core::ids::RunId;
 #[cfg(not(kani))]
 use vb_core::limits::MAX_TRACE_RING_CAPACITY;
-use vb_core::ids::RunId;
 
-#[cfg(kani)]
-use super::kani::{KaniTraceQueue, KaniTraceRecord};
+use super::event::TraceEvent;
 #[cfg(all(kani, feature = "kani-trace-ring"))]
 use super::kani::KaniDrainSummary;
-use super::event::TraceEvent;
+#[cfg(kani)]
+use super::kani::{KaniTraceQueue, KaniTraceRecord};
 
 /// Bounded trace event ring for one shard.
 #[derive(Debug)]
@@ -205,10 +205,7 @@ impl TraceRing {
     }
 
     #[cfg(all(kani, feature = "kani-trace-ring"))]
-    pub(crate) fn drain_for_run_kani_limit_4_summary(
-        &mut self,
-        target: RunId,
-    ) -> KaniDrainSummary {
+    pub(crate) fn drain_for_run_kani_limit_4_summary(&mut self, target: RunId) -> KaniDrainSummary {
         let mut summary = KaniDrainSummary::new();
         for _ in 0..4 {
             let Some(event) = self.pop_pending_record() else {
@@ -270,7 +267,9 @@ impl TraceRing {
 
     #[cfg(kani)]
     fn pop_pending(&mut self) -> Option<TraceEvent> {
-        self.pending.pop_front_record().map(KaniTraceRecord::to_event)
+        self.pending
+            .pop_front_record()
+            .map(KaniTraceRecord::to_event)
     }
 
     #[cfg(all(kani, feature = "kani-trace-ring"))]

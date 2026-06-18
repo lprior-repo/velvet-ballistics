@@ -9,7 +9,9 @@ use crate::server::handlers::utilities::{decode_payload, sanitize_runtime_error}
 use crate::server::{WorkflowResolutionError, WorkflowResolver};
 use crate::{IpcCommand, IpcPayload, SubmitRunPayload};
 
-pub(super) use submit::{submit_resolved_workflow, SubmitCommand, handle_submit_run, handle_submit_run_inline};
+pub(super) use submit::{
+    SubmitCommand, handle_submit_run, handle_submit_run_inline, submit_resolved_workflow,
+};
 
 pub(super) mod submit {
     use super::*;
@@ -39,7 +41,9 @@ pub(super) mod submit {
             IpcPayload::SubmitRun(submit) if header.command == IpcCommand::SubmitRun => {
                 submit_resolved_workflow(command, submit, runtime, resolver)
             }
-            IpcPayload::SubmitRunInline(submit) if header.command == IpcCommand::SubmitRunInline => {
+            IpcPayload::SubmitRunInline(submit)
+                if header.command == IpcCommand::SubmitRunInline =>
+            {
                 submit_resolved_workflow(command, submit, runtime, resolver)
             }
             _ => IpcResponse::CommandPayloadMismatch,
@@ -53,7 +57,13 @@ pub(super) mod submit {
         resolver: Option<&mut dyn WorkflowResolver>,
     ) -> IpcResponse {
         let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0, 0, 0);
-        handle_submit_run(SubmitCommand::SubmitRunInline, &header, payload, runtime, resolver)
+        handle_submit_run(
+            SubmitCommand::SubmitRunInline,
+            &header,
+            payload,
+            runtime,
+            resolver,
+        )
     }
 
     /// Maximum allowed size for the `SubmitRunPayload.input` field.
@@ -80,7 +90,9 @@ pub(super) mod submit {
         };
         let workflow = match resolver.resolve_workflow(submit.workflow) {
             Ok(workflow) => workflow,
-            Err(WorkflowResolutionError::Required) => return IpcResponse::WorkflowResolutionRequired,
+            Err(WorkflowResolutionError::Required) => {
+                return IpcResponse::WorkflowResolutionRequired;
+            }
             Err(WorkflowResolutionError::NotFound | WorkflowResolutionError::InvalidArtifact) => {
                 return IpcResponse::WorkflowResolutionUnsupported;
             }

@@ -20,7 +20,7 @@ use crate::exit_code::CliExitCode;
 use crate::output::json_error;
 
 use super::error_reporting::*;
-use super::run_status::{run_status_from_events, RunStatus, suggested_ai_commands};
+use super::run_status::{RunStatus, run_status_from_events, suggested_ai_commands};
 use super::snapshot::latest_snapshot_for_run;
 use super::workflow::{ai_workflow_summary, workflow_digest_from_events};
 

@@ -4,7 +4,7 @@
 
 #[cfg(kani)]
 mod kani_taint_harnesses {
-    use crate::taint::{Taint, is_commutative, is_associative, is_idempotent, has_identity};
+    use crate::taint::{Taint, has_identity, is_associative, is_commutative, is_idempotent};
 
     /// PO-KANI-007: Verify lattice laws for all combinations of Taint.
     #[cfg(kani)]

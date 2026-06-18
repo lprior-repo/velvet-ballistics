@@ -107,9 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Public API, constant-folding, and stack-bound edge-case tests.
 //!
@@ -132,9 +131,7 @@ use crate::bytecode::fold::{fold_binary, fold_unary};
 use crate::bytecode::{check_expr_stack_bound, compile_expr};
 use crate::eval::eval_unary_op;
 use crate::lexer::{BinaryOp, UnaryOp, infix_binding_power, lex_expr};
-use crate::parser::{
-    ExprAst, ExprLiteral, helper_arity, helper_name, parse_helper_name,
-};
+use crate::parser::{ExprAst, ExprLiteral, helper_arity, helper_name, parse_helper_name};
 use crate::{ExprError, ExprResult};
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 

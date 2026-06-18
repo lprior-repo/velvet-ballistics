@@ -172,7 +172,10 @@ mod kani_batch_state_ps004 {
             return None;
         };
         let bytes = workflow.as_bytes();
-        bytes.last().copied().map(|terminal| (bytes.len(), terminal))
+        bytes
+            .last()
+            .copied()
+            .map(|terminal| (bytes.len(), terminal))
     }
 
     /// C5: payload serialization is deterministic — same input = same payload.

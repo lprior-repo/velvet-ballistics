@@ -482,10 +482,7 @@ mod tests {
             eprintln!("unwrap failed: {:?}", e);
             unreachable!()
         });
-        let result = PopTransition::Popped {
-            state,
-            item: 42,
-        };
+        let result = PopTransition::Popped { state, item: 42 };
         match result {
             PopTransition::Popped { state, item } => {
                 assert_eq!(item, 42);
@@ -517,10 +514,7 @@ mod tests {
         let empty: PopTransition<u8> = PopTransition::Empty { state };
         let mut items: VecDeque<u8> = VecDeque::new();
         items.push_back(1);
-        let state2 = QueueState {
-            capacity: 2,
-            items,
-        };
+        let state2 = QueueState { capacity: 2, items };
         let popped: PopTransition<u8> = PopTransition::Popped {
             state: state2,
             item: 1,

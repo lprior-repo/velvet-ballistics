@@ -2,8 +2,8 @@
 
 //! ForEach node handlers: iterate over collections.
 
-use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
 use vb_core::frame::RunFrame;
+use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 
 use crate::engine::signal::runtime_from_core;

@@ -107,9 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Verified edge-case boundary tests for lexer, parser, and evaluator.
 //!

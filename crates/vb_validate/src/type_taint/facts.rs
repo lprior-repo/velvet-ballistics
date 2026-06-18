@@ -3,7 +3,6 @@
 //!
 //! Builds a lookup of input/var/secret facts and resolves reference strings
 /// (e.g. `$input.user`, `$secrets.token`) into typed facts.
-
 use std::collections::HashMap;
 
 use super::model::{InputDecl, WorkflowTypes};

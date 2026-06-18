@@ -8,9 +8,11 @@
 //! - `increment_executed`: Bump the executed counter for a run
 //! - `apply_parallel_peak`: Derive and store max parallel in-flight from events
 
-use crate::recovery::{RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryResult};
 use crate::JournalEvent;
 use crate::recovery::event_replay::compute_parallel_in_flight;
+use crate::recovery::{
+    RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryResult,
+};
 use vb_core::{RunFrame, RunId, StepIdx};
 
 /// Write pre-decoded snapshot slots into the frame with their taint.
@@ -39,12 +41,12 @@ pub(crate) fn apply_seed_step_states(
             RecoveredStepState::Running => frame.mark_running(entry.step),
             RecoveredStepState::Succeeded => frame.mark_succeeded(entry.step),
             RecoveredStepState::Failed => frame.mark_failed(entry.step),
-            RecoveredStepState::Waiting => {
-                frame.mark_running(entry.step).and_then(|_| frame.mark_waiting(entry.step))
-            }
-            RecoveredStepState::Asking => {
-                frame.mark_running(entry.step).and_then(|_| frame.mark_asking(entry.step))
-            }
+            RecoveredStepState::Waiting => frame
+                .mark_running(entry.step)
+                .and_then(|_| frame.mark_waiting(entry.step)),
+            RecoveredStepState::Asking => frame
+                .mark_running(entry.step)
+                .and_then(|_| frame.mark_asking(entry.step)),
         };
         result.map_err(|_| RecoveryError::ReplayDivergence {
             step: entry.step,
@@ -99,10 +101,11 @@ pub(crate) fn apply_parallel_peak(
     frame: &mut RunFrame,
     events: &[JournalEvent],
 ) -> RecoveryResult<()> {
-    let peak = compute_parallel_in_flight(frame, events).map_err(|_| RecoveryError::ReplayDivergence {
-        step: StepIdx::ZERO,
-        detail: "parallel in-flight computation failed".to_owned(),
-    })?;
+    let peak =
+        compute_parallel_in_flight(frame, events).map_err(|_| RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: "parallel in-flight computation failed".to_owned(),
+        })?;
     frame.set_max_parallel_in_flight(peak);
     Ok(())
 }

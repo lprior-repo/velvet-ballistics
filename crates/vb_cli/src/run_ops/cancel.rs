@@ -5,9 +5,9 @@
 //! by the cancel workflow.
 
 use crate::args::OutputFormat;
+use crate::emit_json_or_return;
 use crate::exit_code::CliExitCode;
 use crate::output::json_error;
-use crate::emit_json_or_return;
 use std::process::ExitCode;
 
 /// Return true if the event stream contains a terminal run marker.

@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(kani), allow(dead_code, unused_mut, unused_variables))]
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use super::flags::*;
 use super::primitives;

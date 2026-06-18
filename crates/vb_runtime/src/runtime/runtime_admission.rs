@@ -264,10 +264,12 @@ impl Runtime {
 
         // Decode the WorkflowParts from the artifact's IR bytes and
         // build a CompiledWorkflow for the storage-level admission call.
-        let (mut parts, parts_remaining) = postcard::take_from_bytes::<vb_core::workflow::WorkflowParts>(&artifact.ir)
-            .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
-                digest: artifact_digest,
-            })?;
+        let (mut parts, parts_remaining) = postcard::take_from_bytes::<
+            vb_core::workflow::WorkflowParts,
+        >(&artifact.ir)
+        .map_err(|_| RuntimeError::AdmissionArtifactInvalid {
+            digest: artifact_digest,
+        })?;
         let parts_end = artifact.ir.len().checked_sub(parts_remaining.len()).ok_or(
             RuntimeError::AdmissionArtifactInvalid {
                 digest: artifact_digest,

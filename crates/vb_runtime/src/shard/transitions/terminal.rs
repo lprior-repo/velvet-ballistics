@@ -10,11 +10,11 @@
 use vb_core::ids::{RunId, SlotIdx};
 
 use super::SnapshotWriteOutcome;
-use crate::journal::RuntimeJournalEvent;
-use crate::trace::TraceEvent;
 use crate::RuntimeResult;
+use crate::journal::RuntimeJournalEvent;
 use crate::shard::helpers::result_slot_for_finished_run;
 use crate::shard::types::{RunState, Shard, TerminalOutcome};
+use crate::trace::TraceEvent;
 
 impl Shard {
     /// Marks a run as finished, releases its frame, and updates counters.

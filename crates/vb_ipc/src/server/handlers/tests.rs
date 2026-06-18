@@ -7,13 +7,13 @@
 use super::actions::handle_answer_ask;
 use crate::server::IpcResponse;
 use std::num::NonZeroUsize;
-use vb_runtime::runtime::Runtime;
 use std::sync::Arc;
 use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledWorkflow, ResourceContract, WorkflowParts};
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
+use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 
 fn runtime_config() -> ShardConfig {
@@ -200,8 +200,7 @@ fn handle_answer_ask_rejects_mismatched_answer_slot_without_consuming_pending_as
     assert_eq!(runtime.counters_snapshot().runs_completed, 0);
 
     let valid_answer = must_encoded_value(&SlotValue::I64(8));
-    let valid_payload =
-        must_answer_payload(run_id, SlotIdx::new(1), valid_answer.clone(), None);
+    let valid_payload = must_answer_payload(run_id, SlotIdx::new(1), valid_answer.clone(), None);
     assert_eq!(
         handle_answer_ask(&valid_payload, &mut runtime),
         IpcResponse::AcceptedRun { run_id: 3102 }
@@ -269,8 +268,7 @@ fn handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation(
     assert_eq!(runtime.counters_snapshot().runs_completed, 0);
 
     let valid_answer = must_encoded_value(&SlotValue::Bool(false));
-    let valid_payload =
-        must_answer_payload(run_id, SlotIdx::new(1), valid_answer.clone(), None);
+    let valid_payload = must_answer_payload(run_id, SlotIdx::new(1), valid_answer.clone(), None);
     assert_eq!(
         handle_answer_ask(&valid_payload, &mut runtime),
         IpcResponse::AcceptedRun { run_id: 3104 }

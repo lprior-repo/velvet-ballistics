@@ -40,22 +40,18 @@ pub fn analyze_incident_events(events: &[JournalEvent]) -> IncidentAnalysis {
                 last_step_started = Some(step.get());
             }
             JournalEvent::ActionCompletedEvent { step, action, .. } => {
-                result
-                    .side_effects
-                    .push(SideEffect {
-                        step: step.get(),
-                        action: action.get(),
-                        certainty: SideEffectCertainty::Confirmed,
-                    });
+                result.side_effects.push(SideEffect {
+                    step: step.get(),
+                    action: action.get(),
+                    certainty: SideEffectCertainty::Confirmed,
+                });
             }
             JournalEvent::ActionFailedEvent { step, action, .. } => {
-                result
-                    .side_effects
-                    .push(SideEffect {
-                        step: step.get(),
-                        action: action.get(),
-                        certainty: SideEffectCertainty::Failed,
-                    });
+                result.side_effects.push(SideEffect {
+                    step: step.get(),
+                    action: action.get(),
+                    certainty: SideEffectCertainty::Failed,
+                });
             }
             JournalEvent::RunFailedEvent { .. } => {
                 result.failure_found = true;

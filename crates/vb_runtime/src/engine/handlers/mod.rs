@@ -28,7 +28,5 @@ pub(crate) use reduce::{handle_reduce_finish, handle_reduce_next, handle_reduce_
 pub(crate) use repeat::{
     handle_repeat_attempt, handle_repeat_check, handle_repeat_finish, handle_repeat_start,
 };
-pub(crate) use together::{
-    handle_together_branch, handle_together_join, handle_together_start,
-};
+pub(crate) use together::{handle_together_branch, handle_together_join, handle_together_start};
 pub(crate) use wait_ask::{handle_ask, handle_ask_resume, handle_wait_event, handle_wait_until};

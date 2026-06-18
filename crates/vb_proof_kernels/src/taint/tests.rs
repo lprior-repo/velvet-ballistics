@@ -5,7 +5,10 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::taint::{Taint, join_taint, join_many, is_commutative, is_associative, is_idempotent, has_identity, secret_never_downgrades, derived_never_downgrades, all_lattice_laws};
+    use crate::taint::{
+        Taint, all_lattice_laws, derived_never_downgrades, has_identity, is_associative,
+        is_commutative, is_idempotent, join_many, join_taint, secret_never_downgrades,
+    };
 
     // ── join_taint ──────────────────────────────────────────────────────
 

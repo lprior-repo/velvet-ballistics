@@ -107,9 +107,8 @@
     clippy::if_let_mutex,
     unused_imports,
     dead_code,
-    unused_variables,
+    unused_variables
 )]
-
 #![forbid(unsafe_code)]
 //! Bound-exhaustion tests (Categories J, B, C).
 //!

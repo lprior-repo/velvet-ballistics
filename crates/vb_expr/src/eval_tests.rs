@@ -107,10 +107,8 @@
     dead_code,
     let_underscore_drop,
     unused_imports,
-    unused_variables,
+    unused_variables
 )]
-
-
 #![forbid(unsafe_code)]
 //! Tests for the expression bytecode evaluator.
 //! Extracted from eval.rs to satisfy the 300-line file limit.
@@ -3026,9 +3024,8 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(false);
         // Test with valid bool right - should return false
-        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true)).unwrap_or_else(
-            |e| panic!("And with bools must succeed, got error: {e:?}"),
-        );
+        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true))
+            .unwrap_or_else(|e| panic!("And with bools must succeed, got error: {e:?}"));
         assert_eq!(result, SlotValue::Bool(false));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
@@ -3053,9 +3050,8 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(true);
         // Test with valid bool right - should return true
-        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false)).unwrap_or_else(
-            |e| panic!("Or with bools must succeed, got error: {e:?}"),
-        );
+        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false))
+            .unwrap_or_else(|e| panic!("Or with bools must succeed, got error: {e:?}"));
         assert_eq!(result, SlotValue::Bool(true));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
@@ -3079,7 +3075,10 @@ mod tests {
         // Any non-bool left OR right produces TypeMismatch
         let non_bools = [
             (SlotValue::I64(1), "number"),
-            (SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")), "number"),
+            (
+                SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
+                "number",
+            ),
             (SlotValue::Null, "null"),
             (SlotValue::Symbol(vb_core::ids::SymbolId::new(1)), "symbol"),
         ];
@@ -3110,7 +3109,10 @@ mod tests {
         // Any non-bool left OR right produces TypeMismatch
         let non_bools = [
             (SlotValue::I64(1), "number"),
-            (SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")), "number"),
+            (
+                SlotValue::F64(FiniteF64::new(1.0).expect("1.0 is finite")),
+                "number",
+            ),
             (SlotValue::Null, "null"),
             (SlotValue::Symbol(vb_core::ids::SymbolId::new(1)), "symbol"),
         ];

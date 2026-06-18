@@ -2,18 +2,14 @@
 //! Resume operation: continue a run that was suspended at a checkpoint.
 
 use crate::args::OutputFormat;
+use crate::emit_json_or_return;
 use crate::exit_code::CliExitCode;
 use crate::file_io::{parse_run_id, read_journal_events, report_storage_open_error};
 use crate::lifecycle;
 use crate::output::json_error;
-use crate::emit_json_or_return;
 use std::process::ExitCode;
 
-pub(crate) fn cmd_resume(
-    run_id: &str,
-    db: &std::path::Path,
-    output: OutputFormat,
-) -> ExitCode {
+pub(crate) fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,

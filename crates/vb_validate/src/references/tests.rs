@@ -9,18 +9,18 @@
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
-use crate::ValidationError;
-#[cfg(test)]
 use super::tables::WorkflowRefs;
 #[cfg(test)]
+use super::validate::validate_rooted_reference;
+#[cfg(test)]
 use super::{
-    parse_step_reference, validate_references, validate_single_reference,
-    validate_single_reference_in_on_error, validate_single_reference_in_repeat,
-    validate_single_reference_with_context, validate_step_references, OUTPUT_FIELD_SYMBOL,
-    RefTables, StepIdx,
+    OUTPUT_FIELD_SYMBOL, RefTables, StepIdx, parse_step_reference, validate_references,
+    validate_single_reference, validate_single_reference_in_on_error,
+    validate_single_reference_in_repeat, validate_single_reference_with_context,
+    validate_step_references,
 };
 #[cfg(test)]
-use super::validate::validate_rooted_reference;
+use crate::ValidationError;
 
 fn make_tables(inputs: &[&str], vars: &[&str], secrets: &[&str], step_ids: &[&str]) -> RefTables {
     make_tables_with_loop_vars(inputs, vars, secrets, step_ids, &[])

@@ -38,8 +38,8 @@ pub mod workspace;
 pub use binding::{BindingResult, MoonTaskProfileBinding, ProfileRefKind, bind_moon_task};
 pub use config::ProfileConfig;
 pub use contract_constants::{
-    MASTER_PROFILE_CONTRACT, MasterProfileContract, RELEASE_REQUIRED_KEYS,
-    BENCH_REQUIRED_KEYS, HARDENED_GOVERNANCE_REQUIRED,
+    BENCH_REQUIRED_KEYS, HARDENED_GOVERNANCE_REQUIRED, MASTER_PROFILE_CONTRACT,
+    MasterProfileContract, RELEASE_REQUIRED_KEYS,
 };
 pub use errors::{
     ContractGap, GovernanceGap, ProfileKeyError, ProfileNameError, ResolveError, SettingValueError,

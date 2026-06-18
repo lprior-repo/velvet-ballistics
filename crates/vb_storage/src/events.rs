@@ -9,16 +9,16 @@
 //! - **`access`** — field extractors (`run_id`, `seq`, `record_kind`, `attempt`, etc.)
 //! - **`valid`** — structural validity checks and slot-value decoding
 
-mod outcome;
-pub mod variant;
-mod kind;
 mod access;
+mod kind;
+mod outcome;
 mod valid;
+pub mod variant;
 
 // ---------------------------------------------------------------------------
 // Re-exports
 // ---------------------------------------------------------------------------
 
+pub use kind::JournalEventKindClass;
 pub use outcome::DurableActionOutcome;
 pub use variant::JournalEvent;
-pub use kind::JournalEventKindClass;

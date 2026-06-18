@@ -73,10 +73,7 @@ impl Shard {
             }) => ticket.capacity,
             Err(error) => return Err(error),
         };
-        let ticket = normalize_scheduled_ticket(
-            &state,
-            ActionTicket { capacity, ..ticket },
-        )?;
+        let ticket = normalize_scheduled_ticket(&state, ActionTicket { capacity, ..ticket })?;
         record_scheduled_attempt(&mut state, ticket);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });

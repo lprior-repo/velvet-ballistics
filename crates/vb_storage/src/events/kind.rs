@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! MRWE5 proof-seam kind classification for journal event payloads.
 
-use crate::mrwe5_contract::{Mrwe5PayloadClass, mrwe5_canonical_kind_id};
-use crate::RecordKind;
 use super::variant::JournalEvent;
+use crate::RecordKind;
+use crate::mrwe5_contract::{Mrwe5PayloadClass, mrwe5_canonical_kind_id};
 
 /// Verus-friendly class for the two MRWE5 payloads whose record kinds must stay
 /// separated. `Other` deliberately carries no compatibility privilege.

@@ -87,12 +87,11 @@ fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() {
             },
         ],
         slots: Vec::new(),
-        
+
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: false,
             action_payloads: false,
-            
         },
     };
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
@@ -116,7 +115,6 @@ fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() {
             slot_values: false,
             slot_taint: false,
             action_payloads: false,
-            
         }
     );
 }
@@ -147,12 +145,11 @@ fn durable_frame_recovery_boundary_rejects_inconsistent_seed() {
             state: RecoveredStepState::Running,
         }],
         slots: Vec::new(),
-        
+
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: false,
             action_payloads: false,
-            
         },
     };
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
@@ -189,12 +186,11 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
             state: RecoveredStepState::Running,
         }],
         slots: Vec::new(),
-        
+
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: false,
             action_payloads: true,
-            
         },
     };
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
@@ -236,12 +232,11 @@ fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Resu
             value: SlotValue::I64(86),
             taint: Taint::Secret,
         }],
-        
+
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: false,
             action_payloads: false,
-            
         },
     };
     let frame = DurableFrameRecoveryBoundary::from_seed(seed)
@@ -311,12 +306,11 @@ fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
             },
         ],
         slots: Vec::new(),
-        
+
         unsupported: UnsupportedRecoveryState {
             slot_values: false,
             slot_taint: false,
             action_payloads: false,
-            
         },
     };
     let hydration = RecoveryHydration::FrameSeed(seed);
@@ -373,12 +367,11 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() {
             },
         ],
         slots: Vec::new(),
-        
+
         unsupported: UnsupportedRecoveryState {
             slot_values: true,
             slot_taint: true,
             action_payloads: true,
-            
         },
     };
     let hydration = RecoveryHydration::FrameSeed(seed);
@@ -436,7 +429,7 @@ fn recover_hydrates_pending_timers() -> Result<(), String> {
             },
         ],
         slots: Vec::new(),
-        
+
         unsupported: UnsupportedRecoveryState::SUPPORTED,
     };
 

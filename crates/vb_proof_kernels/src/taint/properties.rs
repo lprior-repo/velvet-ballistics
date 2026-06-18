@@ -46,5 +46,3 @@ pub fn all_lattice_laws(a: Taint, b: Taint, c: Taint) -> bool {
         && secret_never_downgrades()
         && derived_never_downgrades()
 }
-
-

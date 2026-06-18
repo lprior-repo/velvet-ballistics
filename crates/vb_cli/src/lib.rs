@@ -73,6 +73,8 @@ pub mod verify;
 pub mod verus_lifecycle;
 pub mod workflow;
 
+pub(crate) mod properties;
+
 pub use crate::dispatcher::run_from_env;
 
 // Re-enabled modules (files verified present with content).

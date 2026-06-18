@@ -33,7 +33,7 @@ pub use self::validate::{
 };
 
 // Parsing helpers (public for test access)
-pub use self::parse::{parse_step_reference, OUTPUT_FIELD_SYMBOL};
+pub use self::parse::{OUTPUT_FIELD_SYMBOL, parse_step_reference};
 
 // Re-export StepIdx for the validate module's public API
 pub use vb_core::ids::StepIdx;

@@ -15,8 +15,5 @@
 // contracts against the actual Rust helper functions/types or extracted kernels.
 use vstd::prelude::*;
 
-verus! {
-
-
-} // verus!
+verus! {} // verus!
 fn main() {}

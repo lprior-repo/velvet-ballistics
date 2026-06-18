@@ -112,8 +112,8 @@
 
 use crate::DurableActionOutcome;
 use crate::EventSeq;
-use crate::recovery::replay::summary::*;
 use crate::recovery::RecoveryTerminalState;
+use crate::recovery::replay::summary::*;
 use vb_core::action::compute_action_idempotency_key;
 use vb_core::replay::SuspensionKind;
 use vb_core::{
@@ -769,18 +769,14 @@ fn pending_actions_from_events_returns_collected_actions() {
 
     assert_eq!(result.len(), 2);
     let set: std::collections::HashSet<_> = result.into_iter().collect();
-    assert!(
-        set.contains(&crate::recovery::RecoveredPendingAction {
-            step: StepIdx::new(3),
-            action: ActionId::new(4),
-        })
-    );
-    assert!(
-        set.contains(&crate::recovery::RecoveredPendingAction {
-            step: StepIdx::new(4),
-            action: ActionId::new(5),
-        })
-    );
+    assert!(set.contains(&crate::recovery::RecoveredPendingAction {
+        step: StepIdx::new(3),
+        action: ActionId::new(4),
+    }));
+    assert!(set.contains(&crate::recovery::RecoveredPendingAction {
+        step: StepIdx::new(4),
+        action: ActionId::new(5),
+    }));
 }
 
 /// B2: Empty input → empty output.
@@ -1035,10 +1031,8 @@ fn pending_actions_from_events_handles_ticket_variants() {
     let result = pending_actions_from_events(&events);
     assert_eq!(result.len(), 1);
     let set: std::collections::HashSet<_> = result.into_iter().collect();
-    assert!(
-        set.contains(&crate::recovery::RecoveredPendingAction {
-            step: StepIdx::new(1),
-            action: ActionId::new(11),
-        })
-    );
+    assert!(set.contains(&crate::recovery::RecoveredPendingAction {
+        step: StepIdx::new(1),
+        action: ActionId::new(11),
+    }));
 }
