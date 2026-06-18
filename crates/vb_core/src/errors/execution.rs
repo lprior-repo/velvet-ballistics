@@ -53,41 +53,41 @@ pub(super) const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0
 
 /// Returns the diagnostic code for execution variants.
 #[must_use]
-pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> Option<DiagnosticCode> {
     match error {
-        crate::errors::CoreError::StepBudgetExhausted => Some(STEP_BUDGET_EXHAUSTED_CODE),
-        crate::errors::CoreError::StepCounterOverflow => Some(STEP_COUNTER_OVERFLOW_CODE),
-        crate::errors::CoreError::QueueFull => Some(QUEUE_FULL_CODE),
-        crate::errors::CoreError::ResourceLimitExceeded { .. } => {
+        crate::errors::core::CoreError::StepBudgetExhausted => Some(STEP_BUDGET_EXHAUSTED_CODE),
+        crate::errors::core::CoreError::StepCounterOverflow => Some(STEP_COUNTER_OVERFLOW_CODE),
+        crate::errors::core::CoreError::QueueFull => Some(QUEUE_FULL_CODE),
+        crate::errors::core::CoreError::ResourceLimitExceeded { .. } => {
             Some(RESOURCE_LIMIT_EXCEEDED_CODE)
         }
-        crate::errors::CoreError::AllocationFailed => Some(ALLOCATION_FAILED_CODE),
-        crate::errors::CoreError::ExpressionStackOverflow { .. } => {
+        crate::errors::core::CoreError::AllocationFailed => Some(ALLOCATION_FAILED_CODE),
+        crate::errors::core::CoreError::ExpressionStackOverflow { .. } => {
             Some(EXPRESSION_STACK_OVERFLOW_CODE)
         }
-        crate::errors::CoreError::MissingOutputSlot { .. } => Some(MISSING_OUTPUT_SLOT_CODE),
-        crate::errors::CoreError::StepStateOutOfBounds { .. } => {
+        crate::errors::core::CoreError::MissingOutputSlot { .. } => Some(MISSING_OUTPUT_SLOT_CODE),
+        crate::errors::core::CoreError::StepStateOutOfBounds { .. } => {
             Some(STEP_STATE_OUT_OF_BOUNDS_CODE)
         }
-        crate::errors::CoreError::InvalidCompiledWorkflow { .. } => {
+        crate::errors::core::CoreError::InvalidCompiledWorkflow { .. } => {
             Some(INVALID_COMPILED_WORKFLOW_CODE)
         }
-        crate::errors::CoreError::UnsupportedPrimitive { .. } => Some(UNSUPPORTED_PRIMITIVE_CODE),
-        crate::errors::CoreError::InternalInvariantViolation { .. } => {
+        crate::errors::core::CoreError::UnsupportedPrimitive { .. } => Some(UNSUPPORTED_PRIMITIVE_CODE),
+        crate::errors::core::CoreError::InternalInvariantViolation { .. } => {
             Some(INTERNAL_INVARIANT_CODE)
         }
-        crate::errors::CoreError::UnsupportedAccessorTraversal { .. } => {
+        crate::errors::core::CoreError::UnsupportedAccessorTraversal { .. } => {
             Some(UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE)
         }
-        crate::errors::CoreError::ObjectFieldNotFound { .. } => Some(OBJECT_FIELD_NOT_FOUND_CODE),
-        crate::errors::CoreError::ListIndexOutOfBounds { .. } => {
+        crate::errors::core::CoreError::ObjectFieldNotFound { .. } => Some(OBJECT_FIELD_NOT_FOUND_CODE),
+        crate::errors::core::CoreError::ListIndexOutOfBounds { .. } => {
             Some(LIST_INDEX_OUT_OF_BOUNDS_CODE)
         }
-        crate::errors::CoreError::ExpressionStackUnderflow => Some(EXPRESSION_STACK_UNDERFLOW_CODE),
-        crate::errors::CoreError::SymbolOutOfBounds { .. } => Some(SYMBOL_OUT_OF_BOUNDS_CODE),
-        crate::errors::CoreError::ListOutOfBounds { .. } => Some(LIST_OUT_OF_BOUNDS_CODE),
-        crate::errors::CoreError::ObjectOutOfBounds { .. } => Some(OBJECT_OUT_OF_BOUNDS_CODE),
-        crate::errors::CoreError::BlobOutOfBounds { .. } => Some(BLOB_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::ExpressionStackUnderflow => Some(EXPRESSION_STACK_UNDERFLOW_CODE),
+        crate::errors::core::CoreError::SymbolOutOfBounds { .. } => Some(SYMBOL_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::ListOutOfBounds { .. } => Some(LIST_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::ObjectOutOfBounds { .. } => Some(OBJECT_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::BlobOutOfBounds { .. } => Some(BLOB_OUT_OF_BOUNDS_CODE),
         _ => None,
     }
 }
@@ -96,30 +96,30 @@ pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<
 
 /// Returns the section-17 runtime code for execution variants, if any.
 #[must_use]
-pub(super) const fn runtime_code(error: &crate::errors::CoreError) -> Option<&'static str> {
+pub(super) const fn runtime_code(error: &crate::errors::core::CoreError) -> Option<&'static str> {
     match error {
-        crate::errors::CoreError::MissingOutputSlot { .. } => {
+        crate::errors::core::CoreError::MissingOutputSlot { .. } => {
             Some(MISSING_OUTPUT_SLOT_RUNTIME_CODE)
         }
-        crate::errors::CoreError::StepStateOutOfBounds { .. } => {
+        crate::errors::core::CoreError::StepStateOutOfBounds { .. } => {
             Some(STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE)
         }
-        crate::errors::CoreError::ExpressionStackOverflow { .. } => {
+        crate::errors::core::CoreError::ExpressionStackOverflow { .. } => {
             Some(EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE)
         }
-        crate::errors::CoreError::ExpressionStackUnderflow => {
+        crate::errors::core::CoreError::ExpressionStackUnderflow => {
             Some(EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE)
         }
-        crate::errors::CoreError::InvalidCompiledWorkflow { .. } => {
+        crate::errors::core::CoreError::InvalidCompiledWorkflow { .. } => {
             Some(INVALID_COMPILED_WORKFLOW_RUNTIME_CODE)
         }
-        crate::errors::CoreError::InternalInvariantViolation { .. } => {
+        crate::errors::core::CoreError::InternalInvariantViolation { .. } => {
             Some(INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE)
         }
-        crate::errors::CoreError::UnsupportedPrimitive { .. } => {
+        crate::errors::core::CoreError::UnsupportedPrimitive { .. } => {
             Some(UNSUPPORTED_PRIMITIVE_RUNTIME_CODE)
         }
-        crate::errors::CoreError::QueueFull => Some(QUEUE_FULL_RUNTIME_CODE),
+        crate::errors::core::CoreError::QueueFull => Some(QUEUE_FULL_RUNTIME_CODE),
         _ => None,
     }
 }

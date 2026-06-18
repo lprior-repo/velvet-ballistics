@@ -34,20 +34,20 @@ pub(super) const DIVISION_BY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x1
 
 /// Returns the diagnostic code for IR-validation variants.
 #[must_use]
-pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> Option<DiagnosticCode> {
     match error {
-        crate::errors::CoreError::InvalidProgramCounter { .. } => {
+        crate::errors::core::CoreError::InvalidProgramCounter { .. } => {
             Some(INVALID_PROGRAM_COUNTER_CODE)
         }
-        crate::errors::CoreError::MissingNextStep { .. } => Some(MISSING_NEXT_STEP_CODE),
-        crate::errors::CoreError::SlotOutOfBounds { .. } => Some(SLOT_OUT_OF_BOUNDS_CODE),
-        crate::errors::CoreError::SlotUninitialized { .. } => Some(SLOT_UNINITIALIZED_CODE),
-        crate::errors::CoreError::ExprOutOfBounds { .. } => Some(EXPR_OUT_OF_BOUNDS_CODE),
-        crate::errors::CoreError::ConstOutOfBounds { .. } => Some(CONST_OUT_OF_BOUNDS_CODE),
-        crate::errors::CoreError::TypeMismatch { .. } => Some(TYPE_MISMATCH_CODE),
-        crate::errors::CoreError::NonBoolCondition { .. } => Some(NON_BOOL_CONDITION_CODE),
-        crate::errors::CoreError::NonFiniteNumber => Some(NON_FINITE_NUMBER_CODE),
-        crate::errors::CoreError::DivisionByZero => Some(DIVISION_BY_ZERO_CODE),
+        crate::errors::core::CoreError::MissingNextStep { .. } => Some(MISSING_NEXT_STEP_CODE),
+        crate::errors::core::CoreError::SlotOutOfBounds { .. } => Some(SLOT_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::SlotUninitialized { .. } => Some(SLOT_UNINITIALIZED_CODE),
+        crate::errors::core::CoreError::ExprOutOfBounds { .. } => Some(EXPR_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::ConstOutOfBounds { .. } => Some(CONST_OUT_OF_BOUNDS_CODE),
+        crate::errors::core::CoreError::TypeMismatch { .. } => Some(TYPE_MISMATCH_CODE),
+        crate::errors::core::CoreError::NonBoolCondition { .. } => Some(NON_BOOL_CONDITION_CODE),
+        crate::errors::core::CoreError::NonFiniteNumber => Some(NON_FINITE_NUMBER_CODE),
+        crate::errors::core::CoreError::DivisionByZero => Some(DIVISION_BY_ZERO_CODE),
         _ => None,
     }
 }
@@ -56,11 +56,11 @@ pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<
 
 /// Returns the section-17 runtime code for IR-validation variants, if any.
 #[must_use]
-pub(super) const fn runtime_code(error: &crate::errors::CoreError) -> Option<&'static str> {
+pub(super) const fn runtime_code(error: &crate::errors::core::CoreError) -> Option<&'static str> {
     match error {
-        crate::errors::CoreError::ConstOutOfBounds { .. } => Some(CONST_OUT_OF_BOUNDS_RUNTIME_CODE),
-        crate::errors::CoreError::TypeMismatch { .. }
-        | crate::errors::CoreError::NonBoolCondition { .. } => {
+        crate::errors::core::CoreError::ConstOutOfBounds { .. } => Some(CONST_OUT_OF_BOUNDS_RUNTIME_CODE),
+        crate::errors::core::CoreError::TypeMismatch { .. }
+        | crate::errors::core::CoreError::NonBoolCondition { .. } => {
             Some(INPUT_TYPE_MISMATCH_RUNTIME_CODE)
         }
         _ => None,

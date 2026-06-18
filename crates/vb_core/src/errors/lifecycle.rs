@@ -27,22 +27,22 @@ pub(super) const REPLAY_CORRUPTION_CODE: DiagnosticCode = DiagnosticCode::new(0x
 
 /// Returns the diagnostic code for lifecycle variants.
 #[must_use]
-pub(super) const fn diagnostic_code(error: &crate::errors::CoreError) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> Option<DiagnosticCode> {
     match error {
-        crate::errors::CoreError::LifecycleStorageUnavailable { .. } => {
+        crate::errors::core::CoreError::LifecycleStorageUnavailable { .. } => {
             Some(LIFECYCLE_STORAGE_UNAVAILABLE_CODE)
         }
-        crate::errors::CoreError::LifecycleDuplicateRequest { .. } => {
+        crate::errors::core::CoreError::LifecycleDuplicateRequest { .. } => {
             Some(LIFECYCLE_DUPLICATE_REQUEST_CODE)
         }
-        crate::errors::CoreError::LifecycleStaleRequest { .. } => {
+        crate::errors::core::CoreError::LifecycleStaleRequest { .. } => {
             Some(LIFECYCLE_STALE_REQUEST_CODE)
         }
-        crate::errors::CoreError::LifecycleInvalidTransition { .. } => {
+        crate::errors::core::CoreError::LifecycleInvalidTransition { .. } => {
             Some(LIFECYCLE_INVALID_TRANSITION_CODE)
         }
-        crate::errors::CoreError::JournalWriteFailure { .. } => Some(JOURNAL_WRITE_FAILURE_CODE),
-        crate::errors::CoreError::ReplayCorruption { .. } => Some(REPLAY_CORRUPTION_CODE),
+        crate::errors::core::CoreError::JournalWriteFailure { .. } => Some(JOURNAL_WRITE_FAILURE_CODE),
+        crate::errors::core::CoreError::ReplayCorruption { .. } => Some(REPLAY_CORRUPTION_CODE),
         _ => None,
     }
 }
