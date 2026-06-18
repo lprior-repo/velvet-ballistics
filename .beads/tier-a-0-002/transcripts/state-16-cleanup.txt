@@ -1,0 +1,17 @@
+State 16 cleanup transcript summary for tier-a-0-002
+UTC: 2026-06-18T09:15:26Z
+Model: openai/gpt-5.5
+
+Verified commands:
+- bd show tier-a-0-002 -> CLOSED with close reason for commit 3f81822dc46385748fdd5712944b8c617a542939.
+- bd dolt push -> Push complete.
+- /usr/bin/git push -> Everything up-to-date before State 16 evidence commit.
+- /usr/bin/git merge-base --is-ancestor 3f81822d HEAD && /usr/bin/git rev-parse HEAD && /usr/bin/git log -1 --oneline --decorate -> HEAD was 3f81822dc46385748fdd5712944b8c617a542939, ci: add runtime fmt residue gate.
+- /usr/bin/git log --branches --not --remotes --oneline sentinel -> NO_UNPUSHED_COMMITS.
+- scoped /usr/bin/git status sentinel for .beads/tier-a-0-002 plus residue gate paths -> NO_SCOPED_TIER_A_0_002_CHANGES before State 16 evidence creation.
+- /usr/bin/git status --short --branch -> branch main...origin/main with unrelated dirty Kani/verification files outside bead scope.
+- state 15 validator -> PASS with no findings.
+- state 16 landing validator -> PASS with no findings after cleanup report and ledger row are present.
+- cleanup evidence commit/push -> State 16 evidence committed and pushed; final scoped status and unpushed-commit checks are clean.
+
+Residual risks are documented in cleanup-report.md.
