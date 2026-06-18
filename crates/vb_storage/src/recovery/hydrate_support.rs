@@ -4,9 +4,8 @@
 //! Internal helpers for slot decoding, dimension derivation, event application,
 //! and parallel in-flight tracking. Not part of the public API.
 
-use crate::recovery::types::{
-    ActionReplayEffect, ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot,
-};
+use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot};
+use crate::recovery::types::ActionReplayEffect;
 use crate::{DurableActionOutcome, JournalEvent};
 use vb_core::{ActionTicket, RunId};
 
@@ -144,7 +143,7 @@ pub(super) fn decode_snapshot_slots(
     slots_bytes: &[u8],
     taint_bytes: &[u8],
     run: RunId,
-) -> RecoveryResult<Vec<crate::recovery::types::RecoveredSlotEntry>> {
+) -> RecoveryResult<Vec<crate::recovery::RecoveredSlotEntry>> {
     if slots_bytes.is_empty() && taint_bytes.is_empty() {
         return Ok(Vec::new());
     }
@@ -174,7 +173,7 @@ pub(super) fn decode_snapshot_slots(
                 }
             })
             .unwrap_or(default_taint);
-        entries.push(crate::recovery::types::RecoveredSlotEntry {
+        entries.push(crate::recovery::RecoveredSlotEntry {
             slot,
             value,
             taint: explicit_taint,
@@ -191,7 +190,7 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
     _snapshot: &RunSnapshot,
     tail_events: &[JournalEvent],
     run: RunId,
-    snapshot_slots: &[crate::recovery::types::RecoveredSlotEntry],
+    snapshot_slots: &[crate::recovery::RecoveredSlotEntry],
 ) -> RecoveryResult<(u16, u16, vb_core::StepIdx)> {
     let mut max_step: Option<vb_core::StepIdx> = None;
     let mut min_step: Option<vb_core::StepIdx> = None;

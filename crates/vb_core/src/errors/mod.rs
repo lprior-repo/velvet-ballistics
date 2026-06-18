@@ -34,6 +34,9 @@ mod types;
 // Auxiliary types are consumed externally via `crate::errors::`.
 pub use self::types::*;
 
+// Core diagnostic types are re-exported for downstream convenience.
+pub use crate::diagnostic::DiagnosticCode;
+
 // ── CoreResult / EngineError aliases ───────────────────────────────────
 
 /// Result alias for core operations.
@@ -43,15 +46,6 @@ pub type CoreResult<T> = Result<T, CoreError>;
 pub type EngineError = CoreError;
 
 // ── CoreError enum ─────────────────────────────────────────────────────
-
-use crate::capability::{Capability, CapabilitySet};
-use crate::diagnostic::{DiagnosticCode, HasSymbolicCode, SymbolicCode};
-use crate::ids::{
-    ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
-    SymbolId,
-};
-use chrono::{DateTime, Utc};
-use thiserror::Error;
 
 /// Failures emitted by core validation and execution code.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -402,12 +396,24 @@ pub enum CoreError {
     },
 }
 
-// ── Diagnostic-code const table ────────────────────────────────────────
+// ── Imports (shared across impl blocks) ───────────────────────────────
+
+use crate::capability::{Capability, CapabilitySet};
+use crate::diagnostic::{HasSymbolicCode, SymbolicCode};
+use crate::ids::{
+    ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
+    SymbolId,
+};
+use chrono::{DateTime, Utc};
+use thiserror::Error;
+
+// ── CoreError impl: delegated diagnostic_code / runtime_code ───────────
 
 impl CoreError {
-    // ── IR/validation codes (ir.rs) ─────────────────────────────────────
+    // ── Diagnostic-code associated constants ────────────────────────────
+
     /// Historical invalid program-counter code.
-    pub const DIAGNOSTIC_CODE: u16 = ir::HISTORIC_INVALID_PROGRAM_COUNTER_CODE;
+    pub const HISTORIC_INVALID_PROGRAM_COUNTER_CODE: u16 = ir::HISTORIC_INVALID_PROGRAM_COUNTER_CODE;
     /// Invalid program counter diagnostic code.
     pub const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = ir::INVALID_PROGRAM_COUNTER_CODE;
     /// Missing next step diagnostic code.
@@ -429,48 +435,36 @@ impl CoreError {
     /// Division by zero diagnostic code.
     pub const DIVISION_BY_ZERO_CODE: DiagnosticCode = ir::DIVISION_BY_ZERO_CODE;
 
-    // ── Execution codes (execution.rs) ──────────────────────────────────
     /// Step budget exhausted diagnostic code.
-    pub const STEP_BUDGET_EXHAUSTED_CODE: DiagnosticCode =
-        execution::STEP_BUDGET_EXHAUSTED_CODE;
+    pub const STEP_BUDGET_EXHAUSTED_CODE: DiagnosticCode = execution::STEP_BUDGET_EXHAUSTED_CODE;
     /// Step counter overflow diagnostic code.
-    pub const STEP_COUNTER_OVERFLOW_CODE: DiagnosticCode =
-        execution::STEP_COUNTER_OVERFLOW_CODE;
+    pub const STEP_COUNTER_OVERFLOW_CODE: DiagnosticCode = execution::STEP_COUNTER_OVERFLOW_CODE;
     /// Queue full diagnostic code.
     pub const QUEUE_FULL_CODE: DiagnosticCode = execution::QUEUE_FULL_CODE;
     /// Resource limit exceeded diagnostic code.
-    pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode =
-        execution::RESOURCE_LIMIT_EXCEEDED_CODE;
+    pub const RESOURCE_LIMIT_EXCEEDED_CODE: DiagnosticCode = execution::RESOURCE_LIMIT_EXCEEDED_CODE;
     /// Allocation failed diagnostic code.
     pub const ALLOCATION_FAILED_CODE: DiagnosticCode = execution::ALLOCATION_FAILED_CODE;
     /// Expression stack overflow diagnostic code.
-    pub const EXPRESSION_STACK_OVERFLOW_CODE: DiagnosticCode =
-        execution::EXPRESSION_STACK_OVERFLOW_CODE;
+    pub const EXPRESSION_STACK_OVERFLOW_CODE: DiagnosticCode = execution::EXPRESSION_STACK_OVERFLOW_CODE;
     /// Missing output slot diagnostic code.
     pub const MISSING_OUTPUT_SLOT_CODE: DiagnosticCode = execution::MISSING_OUTPUT_SLOT_CODE;
     /// Step state out-of-bounds diagnostic code.
-    pub const STEP_STATE_OUT_OF_BOUNDS_CODE: DiagnosticCode =
-        execution::STEP_STATE_OUT_OF_BOUNDS_CODE;
+    pub const STEP_STATE_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::STEP_STATE_OUT_OF_BOUNDS_CODE;
     /// Invalid compiled workflow diagnostic code.
-    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode =
-        execution::INVALID_COMPILED_WORKFLOW_CODE;
+    pub const INVALID_COMPILED_WORKFLOW_CODE: DiagnosticCode = execution::INVALID_COMPILED_WORKFLOW_CODE;
     /// Unsupported primitive diagnostic code.
-    pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode =
-        execution::UNSUPPORTED_PRIMITIVE_CODE;
+    pub const UNSUPPORTED_PRIMITIVE_CODE: DiagnosticCode = execution::UNSUPPORTED_PRIMITIVE_CODE;
     /// Internal invariant diagnostic code.
     pub const INTERNAL_INVARIANT_CODE: DiagnosticCode = execution::INTERNAL_INVARIANT_CODE;
     /// Unsupported accessor traversal diagnostic code.
-    pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode =
-        execution::UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE;
+    pub const UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE: DiagnosticCode = execution::UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE;
     /// Expression stack underflow diagnostic code.
-    pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode =
-        execution::EXPRESSION_STACK_UNDERFLOW_CODE;
+    pub const EXPRESSION_STACK_UNDERFLOW_CODE: DiagnosticCode = execution::EXPRESSION_STACK_UNDERFLOW_CODE;
     /// Object accessor field not found diagnostic code.
-    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode =
-        execution::OBJECT_FIELD_NOT_FOUND_CODE;
+    pub const OBJECT_FIELD_NOT_FOUND_CODE: DiagnosticCode = execution::OBJECT_FIELD_NOT_FOUND_CODE;
     /// List accessor index out-of-bounds diagnostic code.
-    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode =
-        execution::LIST_INDEX_OUT_OF_BOUNDS_CODE;
+    pub const LIST_INDEX_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::LIST_INDEX_OUT_OF_BOUNDS_CODE;
     /// Symbol handle out-of-bounds diagnostic code.
     pub const SYMBOL_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::SYMBOL_OUT_OF_BOUNDS_CODE;
     /// List handle out-of-bounds diagnostic code.
@@ -480,10 +474,8 @@ impl CoreError {
     /// Blob handle out-of-bounds diagnostic code.
     pub const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = execution::BLOB_OUT_OF_BOUNDS_CODE;
 
-    // ── Collect/budget/capability codes (collect.rs) ────────────────────
     /// Iteration limit exceeded diagnostic code.
-    pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode =
-        collect::ITERATION_LIMIT_EXCEEDED_CODE;
+    pub const ITERATION_LIMIT_EXCEEDED_CODE: DiagnosticCode = collect::ITERATION_LIMIT_EXCEEDED_CODE;
     /// Repeat exhausted diagnostic code.
     pub const REPEAT_EXHAUSTED_CODE: DiagnosticCode = collect::REPEAT_EXHAUSTED_CODE;
     /// Collect page limit exceeded diagnostic code.
@@ -493,90 +485,73 @@ impl CoreError {
     /// Collect time limit exceeded diagnostic code.
     pub const COLLECT_TIME_LIMIT_CODE: DiagnosticCode = collect::COLLECT_TIME_LIMIT_CODE;
     /// Together branch limit exceeded diagnostic code.
-    pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode =
-        collect::TOGETHER_BRANCH_LIMIT_CODE;
+    pub const TOGETHER_BRANCH_LIMIT_CODE: DiagnosticCode = collect::TOGETHER_BRANCH_LIMIT_CODE;
     /// Budget exceeded diagnostic code.
     pub const BUDGET_EXCEEDED_CODE: DiagnosticCode = collect::BUDGET_EXCEEDED_CODE;
     /// Budget parse diagnostic code.
     pub const BUDGET_PARSE_CODE: DiagnosticCode = collect::BUDGET_PARSE_CODE;
     /// Parallel limit exceeded diagnostic code.
-    pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode =
-        collect::PARALLEL_LIMIT_EXCEEDED_CODE;
+    pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = collect::PARALLEL_LIMIT_EXCEEDED_CODE;
     /// Capability denied diagnostic code.
     pub const CAPABILITY_DENIED_CODE: DiagnosticCode = collect::CAPABILITY_DENIED_CODE;
     /// Collect page order violation diagnostic code.
-    pub const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode =
-        collect::COLLECT_PAGE_ORDER_VIOLATION_CODE;
+    pub const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode = collect::COLLECT_PAGE_ORDER_VIOLATION_CODE;
     /// Collect extra hydration failed diagnostic code.
-    pub const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode =
-        collect::COLLECT_EXTRA_HYDRATION_FAILED_CODE;
+    pub const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode = collect::COLLECT_EXTRA_HYDRATION_FAILED_CODE;
     /// Collect evidence capacity exceeded diagnostic code.
-    pub const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode =
-        collect::COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE;
+    pub const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = collect::COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE;
 
-    // ── Lifecycle/journal/replay codes (lifecycle.rs) ───────────────────
     /// Lifecycle storage unavailable diagnostic code.
-    pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode =
-        lifecycle::LIFECYCLE_STORAGE_UNAVAILABLE_CODE;
+    pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode = lifecycle::LIFECYCLE_STORAGE_UNAVAILABLE_CODE;
     /// Lifecycle duplicate request diagnostic code.
-    pub const LIFECYCLE_DUPLICATE_REQUEST_CODE: DiagnosticCode =
-        lifecycle::LIFECYCLE_DUPLICATE_REQUEST_CODE;
+    pub const LIFECYCLE_DUPLICATE_REQUEST_CODE: DiagnosticCode = lifecycle::LIFECYCLE_DUPLICATE_REQUEST_CODE;
     /// Lifecycle stale request diagnostic code.
-    pub const LIFECYCLE_STALE_REQUEST_CODE: DiagnosticCode =
-        lifecycle::LIFECYCLE_STALE_REQUEST_CODE;
+    pub const LIFECYCLE_STALE_REQUEST_CODE: DiagnosticCode = lifecycle::LIFECYCLE_STALE_REQUEST_CODE;
     /// Lifecycle invalid transition diagnostic code.
-    pub const LIFECYCLE_INVALID_TRANSITION_CODE: DiagnosticCode =
-        lifecycle::LIFECYCLE_INVALID_TRANSITION_CODE;
+    pub const LIFECYCLE_INVALID_TRANSITION_CODE: DiagnosticCode = lifecycle::LIFECYCLE_INVALID_TRANSITION_CODE;
     /// Journal write failure diagnostic code.
     pub const JOURNAL_WRITE_FAILURE_CODE: DiagnosticCode = lifecycle::JOURNAL_WRITE_FAILURE_CODE;
     /// Replay corruption diagnostic code.
     pub const REPLAY_CORRUPTION_CODE: DiagnosticCode = lifecycle::REPLAY_CORRUPTION_CODE;
 
-    // ── Runtime-code constants ──────────────────────────────────────────
+    // ── Runtime-code associated constants ───────────────────────────────
+
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = ir::CONST_OUT_OF_BOUNDS_RUNTIME_CODE;
     /// Runtime code for runtime input type mismatches.
     pub const INPUT_TYPE_MISMATCH_RUNTIME_CODE: &str = ir::INPUT_TYPE_MISMATCH_RUNTIME_CODE;
     /// Runtime code for missing output-slot failures.
-    pub const MISSING_OUTPUT_SLOT_RUNTIME_CODE: &str =
-        execution::MISSING_OUTPUT_SLOT_RUNTIME_CODE;
+    pub const MISSING_OUTPUT_SLOT_RUNTIME_CODE: &str = execution::MISSING_OUTPUT_SLOT_RUNTIME_CODE;
     /// Runtime code for step-state bounds failures.
-    pub const STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE: &str =
-        execution::STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE;
+    pub const STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE: &str = execution::STEP_STATE_OUT_OF_BOUNDS_RUNTIME_CODE;
     /// Runtime code for expression stack overflow failures.
-    pub const EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE: &str =
-        execution::EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE;
+    pub const EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE: &str = execution::EXPRESSION_STACK_OVERFLOW_RUNTIME_CODE;
     /// Runtime code for expression stack underflow failures.
-    pub const EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE: &str =
-        execution::EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE;
+    pub const EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE: &str = execution::EXPRESSION_STACK_UNDERFLOW_RUNTIME_CODE;
     /// Runtime code for invalid compiled workflow failures.
-    pub const INVALID_COMPILED_WORKFLOW_RUNTIME_CODE: &str =
-        execution::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE;
+    pub const INVALID_COMPILED_WORKFLOW_RUNTIME_CODE: &str = execution::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE;
     /// Runtime code for internal invariant failures.
-    pub const INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE: &str =
-        execution::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE;
+    pub const INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE: &str = execution::INTERNAL_INVARIANT_VIOLATION_RUNTIME_CODE;
     /// Runtime code for unsupported primitive failures.
-    pub const UNSUPPORTED_PRIMITIVE_RUNTIME_CODE: &str =
-        execution::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE;
+    pub const UNSUPPORTED_PRIMITIVE_RUNTIME_CODE: &str = execution::UNSUPPORTED_PRIMITIVE_RUNTIME_CODE;
     /// Runtime code for queue capacity failures.
     pub const QUEUE_FULL_RUNTIME_CODE: &str = execution::QUEUE_FULL_RUNTIME_CODE;
     /// Runtime code for repeat attempt-limit failures.
-    pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str =
-        collect::REPEAT_LIMIT_REACHED_RUNTIME_CODE;
+    pub const REPEAT_LIMIT_REACHED_RUNTIME_CODE: &str = collect::REPEAT_LIMIT_REACHED_RUNTIME_CODE;
     /// Runtime code for collect item/page limit failures.
-    pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str =
-        collect::COLLECT_LIMIT_REACHED_RUNTIME_CODE;
+    pub const COLLECT_LIMIT_REACHED_RUNTIME_CODE: &str = collect::COLLECT_LIMIT_REACHED_RUNTIME_CODE;
     /// Runtime code for budget exceeded failures.
     pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = collect::BUDGET_EXCEEDED_RUNTIME_CODE;
     /// Capability denied runtime code.
     pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = collect::CAPABILITY_DENIED_RUNTIME_CODE;
 
     /// Returns the stable diagnostic code for this error.
+    ///
+    /// Each submodule returns `Some` for its own variants and `None`
+    /// otherwise.  The chain is exhaustive because every `CoreError`
+    /// variant is owned by exactly one submodule.
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
-        // Each submodule returns Some for its own variants, None otherwise.
-        // The chain is exhaustive because every CoreError variant is owned
-        // by exactly one submodule.
         if let Some(code) = ir::diagnostic_code(self) {
             return code;
         }
@@ -593,7 +568,8 @@ impl CoreError {
         unreachable!("uncovered CoreError variant")
     }
 
-    /// Returns the stable section 17 runtime code when this core error crosses a runtime boundary.
+    /// Returns the stable section 17 runtime code when this core error
+    /// crosses a runtime boundary.
     #[must_use]
     pub const fn runtime_code(&self) -> Option<&'static str> {
         if let Some(code) = ir::runtime_code(self) {

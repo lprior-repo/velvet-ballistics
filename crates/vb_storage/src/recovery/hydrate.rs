@@ -12,7 +12,7 @@ use crate::recovery::hydrate_support::{
     verify_action_ticket_event,
 };
 use crate::recovery::types::ActionReplayEffect;
-use crate::recovery::types::{
+use crate::recovery::{
     ActionReplayTracker, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError,
     RecoveryFrameSeed, RecoveryResult, RunSnapshot,
 };

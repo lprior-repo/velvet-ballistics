@@ -10,11 +10,12 @@ use std::collections::{HashMap, HashSet};
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
-use crate::recovery::types::{
-    ActionReplayEffect, ActionReplayTracker, RecoveredPendingAction, RecoveredRunAdmission,
-    RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
-    RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
+use crate::recovery::{
+    ActionReplayTracker, RecoveredPendingAction, RecoveredRunAdmission, RecoveredSlotEntry,
+    RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryResult, RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
+use crate::recovery::types::ActionReplayEffect;
 use crate::slot_extra::DecodedSlotWrittenExtra;
 use crate::{EventSeq, JournalEvent};
 use vb_core::replay::{ReplayEngine, ReplayError};
@@ -60,17 +61,17 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         }
         JournalEvent::AskAnsweredEvent { .. } => {}
         JournalEvent::RunCancelled { .. } => {
-            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Cancelled);
+            summary.terminal = Some(crate::recovery::RecoveryTerminalState::Cancelled);
         }
         JournalEvent::RunKilled { .. } => {
-            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Killed);
+            summary.terminal = Some(crate::recovery::RecoveryTerminalState::Killed);
         }
         JournalEvent::RunFinished { result, .. } => {
             summary.terminal =
-                Some(crate::recovery::types::RecoveryTerminalState::Finished { result: *result });
+                Some(crate::recovery::RecoveryTerminalState::Finished { result: *result });
         }
         JournalEvent::RunFailedEvent { .. } => {
-            summary.terminal = Some(crate::recovery::types::RecoveryTerminalState::Failed);
+            summary.terminal = Some(crate::recovery::RecoveryTerminalState::Failed);
         }
         // Lifecycle events (RunResumed, RunRetried, RunAnswered) do not carry sequence
         // numbers and are not part of the durable event log ordering for recovery summary.

@@ -21,7 +21,7 @@ use crate::recovery::hydrate::{
     hydrate_snapshot_tail_preconditions, hydrate_snapshot_tail_run_matches,
     hydrate_snapshot_tail_seq_after_snapshot,
 };
-use crate::recovery::types::RunSnapshot;
+use crate::recovery::RunSnapshot;
 
 // ============================================================================
 // RunSnapshot helpers

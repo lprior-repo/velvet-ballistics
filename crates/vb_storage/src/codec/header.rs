@@ -51,7 +51,7 @@ pub fn decode_record_header(
             max: max_payload_len,
         });
     }
-    if crc32c::crc32c(header_prefix_for_crc(header)?) != decoded.header_checksum {
+    if header_crc32c(header_prefix_for_crc(header)?) != decoded.header_checksum {
         return Err(JournalError::HeaderChecksumMismatch);
     }
     Ok(decoded)
@@ -72,7 +72,7 @@ pub(crate) fn build_record_header(
     write_u32(&mut header, 12, payload_len)?;
     write_u64(&mut header, 16, sequence)?;
     write_digest(&mut header, blake3::hash(payload).as_bytes())?;
-    let checksum = crc32c::crc32c(header_prefix_for_crc(&header)?);
+    let checksum = header_crc32c(header_prefix_for_crc(&header)?);
     write_u32(&mut header, CRC_OFFSET, checksum)?;
     Ok(header)
 }
@@ -94,6 +94,31 @@ pub(crate) fn decode_record_header_unchecked_len(
 
 pub(crate) fn header_prefix_for_crc(header: &[u8]) -> Result<&[u8], JournalError> {
     header.get(..CRC_OFFSET).ok_or(JournalError::UnexpectedEof)
+}
+
+pub(crate) fn header_crc32c(prefix: &[u8]) -> u32 {
+    #[cfg(kani)]
+    {
+        modeled_header_crc32c(prefix)
+    }
+    #[cfg(not(kani))]
+    {
+        crc32c::crc32c(prefix)
+    }
+}
+
+#[cfg(kani)]
+pub(crate) fn modeled_header_crc32c(prefix: &[u8]) -> u32 {
+    let mut checksum = 0_u32;
+    let mut index = 0_usize;
+    while index < CRC_OFFSET {
+        let Some(byte) = prefix.get(index) else {
+            return checksum;
+        };
+        checksum = checksum.rotate_left(5) ^ u32::from(*byte);
+        index = index.saturating_add(1);
+    }
+    checksum
 }
 
 pub(crate) fn digest_from_header(header: &[u8]) -> Result<[u8; DIGEST_BYTES], JournalError> {

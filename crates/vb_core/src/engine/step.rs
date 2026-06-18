@@ -298,5 +298,13 @@ mod tests;
 mod edge_cases;
 
 #[cfg(test)]
-#[path = "step/error_paths.rs"]
-mod error_paths;
+#[path = "step/resume_failure.rs"]
+mod resume_failure;
+
+#[cfg(test)]
+#[path = "step/choose_branch.rs"]
+mod choose_branch;
+
+#[cfg(test)]
+#[path = "step/node_helpers_err.rs"]
+mod node_helpers_err;

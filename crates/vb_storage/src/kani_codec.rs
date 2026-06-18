@@ -13,6 +13,7 @@ use crate::{
     },
     constants::{CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES},
 };
+use crate::codec::header::header_crc32c;
 
 const MAX_PAYLOAD_LEN: u32 = 1024;
 const EXPECTED_MAGIC: u32 = 0x5642_4A45;
@@ -156,7 +157,7 @@ fn kani_wrong_magic_any_value() {
     header[6..8].copy_from_slice(&10u16.to_le_bytes());
     header[8..12].copy_from_slice(&60u32.to_le_bytes());
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
-    let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
+    let checksum = header_crc32c(&header[..CRC_OFFSET]);
     header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     kani::assert(
         decode_header_is_err(&header),
@@ -174,10 +175,8 @@ fn kani_future_schema_version() {
     header[6..8].copy_from_slice(&10u16.to_le_bytes());
     header[8..12].copy_from_slice(&60u32.to_le_bytes());
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
-    let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
-    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     kani::assert(
-        decode_header_is_err(&header),
+        classify_header_without_crc_kani(&header) == KaniHeaderClass::Rejected,
         "future schema must be rejected",
     );
 }
@@ -193,10 +192,8 @@ fn kani_past_schema_version() {
     header[6..8].copy_from_slice(&10u16.to_le_bytes());
     header[8..12].copy_from_slice(&60u32.to_le_bytes());
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
-    let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
-    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     kani::assert(
-        decode_header_is_err(&header),
+        classify_header_without_crc_kani(&header) == KaniHeaderClass::Rejected,
         "past schema must be rejected",
     );
 }

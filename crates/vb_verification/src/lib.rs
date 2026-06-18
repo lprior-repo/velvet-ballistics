@@ -10,7 +10,7 @@
 mod kani_harnesses {
     use vb_core::{RunId, StepIdx, WorkflowDigest};
     use vb_storage::recovery::hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
-    use vb_storage::recovery::types::RunSnapshot as VbRunSnapshot;
+    use vb_storage::recovery::RunSnapshot as VbRunSnapshot;
     use vb_storage::{EventSeq, JournalEvent};
 
     // Newtype wrapper to bypass orphan rule: we can impl Arbitrary for our own types

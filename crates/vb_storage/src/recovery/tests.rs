@@ -125,7 +125,7 @@
 )]
 #![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballistics journal.
-use crate::recovery::types::DigestCheckConfig;
+use crate::recovery::DigestCheckConfig;
 use crate::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
     RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,

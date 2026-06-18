@@ -6,7 +6,7 @@
 //!
 //! This harness verifies payload length validation in record header decoding.
 
-use crate::codec::header::decode_record_header;
+use crate::codec::header::{decode_record_header, header_crc32c};
 use crate::constants::{
     CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
 };
@@ -28,7 +28,7 @@ fn kani_record_payload_len_within_max() {
     header_bytes[12..16].copy_from_slice(&payload_len.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
@@ -56,7 +56,7 @@ fn kani_record_payload_len_exceeds_max() {
     header_bytes[12..16].copy_from_slice(&payload_len.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
@@ -83,7 +83,7 @@ fn kani_record_payload_len_exactly_over_max() {
     header_bytes[12..16].copy_from_slice(&payload_len.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
@@ -108,7 +108,7 @@ fn kani_record_payload_len_exactly_at_max() {
     header_bytes[12..16].copy_from_slice(&payload_len.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
@@ -136,7 +136,7 @@ fn kani_record_payload_len_rejects_nonzero_when_max_zero() {
     header_bytes[12..16].copy_from_slice(&payload_len.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);

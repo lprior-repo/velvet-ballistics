@@ -3,7 +3,7 @@
 //! VB-STORAGE-POSTCARD-ENVELOPE-001: storage record envelope decode order checks.
 
 use crate::binary::{write_digest, write_u16, write_u32, write_u64};
-use crate::codec::header::decode_record_header;
+use crate::codec::header::{decode_record_header, header_crc32c};
 use crate::codec::payload::decode_record_payload;
 use crate::{
     constants::{
@@ -27,7 +27,7 @@ fn require_write(result: Result<(), JournalError>) {
 
 fn checksum(header: &[u8; RECORD_HEADER_BYTES]) -> u32 {
     match header.get(..CRC_OFFSET) {
-        Some(prefix) => crc32c::crc32c(prefix),
+        Some(prefix) => header_crc32c(prefix),
         None => {
             kani::assume(false);
             0

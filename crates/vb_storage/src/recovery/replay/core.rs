@@ -17,7 +17,7 @@ use crate::records::RecoveryStampRecord;
 use crate::recovery::hydrate_support::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
-use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
+use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, FjallJournal, JournalEvent};
 use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
@@ -283,7 +283,7 @@ pub fn load_snapshot(
     journal: &FjallJournal,
     run: RunId,
     seq: EventSeq,
-) -> RecoveryResult<crate::recovery::types::RunSnapshot> {
+) -> RecoveryResult<crate::recovery::RunSnapshot> {
     match journal.snapshot(run, seq) {
         Ok(Some(snapshot)) => Ok(snapshot),
         Ok(None) | Err(crate::JournalError::PostcardDecodeFailed) => {
@@ -296,7 +296,7 @@ pub fn load_snapshot(
 /// Replays from a snapshot plus tail events.
 /// The snapshot provides the base state, and tail events are replayed on top.
 pub fn recover_snapshot_plus_tail(
-    snapshot: &crate::recovery::types::RunSnapshot,
+    snapshot: &crate::recovery::RunSnapshot,
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<Vec<JournalEvent>> {

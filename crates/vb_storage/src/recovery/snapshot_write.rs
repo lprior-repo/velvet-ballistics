@@ -2,7 +2,7 @@
 //! Snapshot writing for recovered runtime frame seeds.
 
 use crate::FjallJournal;
-use crate::recovery::types::{RecoveryError, RecoveryFrameSeed, RecoveryResult, RunSnapshot};
+use crate::recovery::{RecoveryError, RecoveryFrameSeed, RecoveryResult, RunSnapshot};
 use vb_core::{SlotIdx, SlotValue, Taint};
 
 /// Persists a compact [`RunSnapshot`] derived from a fully-supported

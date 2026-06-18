@@ -3,7 +3,7 @@
 
 #[cfg(kani)]
 mod kani_vb_mrwe4_seed_unsupported_state {
-    use crate::recovery::types::UnsupportedRecoveryState;
+    use crate::recovery::UnsupportedRecoveryState;
 
     #[kani::proof]
     fn vb_mrwe4_seed_unsupported_state_pending_false() {

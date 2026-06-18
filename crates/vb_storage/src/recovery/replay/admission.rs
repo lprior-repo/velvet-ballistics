@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Durable run-admission evidence checks for full-journal recovery.
 
-use crate::recovery::types::{RecoveryError, RecoveryResult};
+use crate::recovery::{RecoveryError, RecoveryResult};
 use crate::{EventSeq, JournalEvent};
 use vb_core::{RunId, RuntimePolicy, StepIdx, WorkflowDigest};
 

@@ -6,7 +6,7 @@
 //!
 //! This harness verifies CRC validation in record header decoding.
 
-use crate::codec::header::decode_record_header;
+use crate::codec::header::{decode_record_header, header_crc32c};
 use crate::constants::{
     CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
 };
@@ -27,7 +27,7 @@ fn kani_record_crc_accepts_matching() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     // Compute correct CRC over header prefix
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -78,7 +78,8 @@ fn kani_record_crc_rejects_zero() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     // Compute correct CRC
-    let correct_crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let correct_crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
+    kani::assert(correct_crc != 0, "modeled CRC for witness is non-zero");
     // Store zero instead
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&0u32.to_le_bytes());
 
@@ -96,7 +97,7 @@ fn kani_record_crc_all_ones_header() {
 
     let mut header_bytes = [0xFFu8; RECORD_HEADER_BYTES];
     // Override CRC_OFFSET to compute correct CRC
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -121,7 +122,7 @@ fn kani_record_crc_detects_single_bit_flip() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     // Compute correct CRC
-    let correct_crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let correct_crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&correct_crc.to_le_bytes());
 
     // Now flip one bit in the header (at offset 10)

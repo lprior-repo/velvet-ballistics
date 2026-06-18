@@ -2797,10 +2797,10 @@ pub fn fuzz_accepted_artifact_decode(data: &[u8]) {
         ir: data.to_vec(),
         metadata_hash: None,
     };
-    if vb_storage::admission::fuzz_access::validate_compiled_ir_record(&record).is_err() {
+    if vb_storage::admission::validate_compiled_ir_record(&record).is_err() {
         return;
     }
-    let result = vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope(&record.ir);
+    let result = vb_storage::admission::decode_accepted_artifact_envelope(&record.ir);
     match result {
         Ok(artifact) => {
             // Loaded successfully: verify structural invariants.

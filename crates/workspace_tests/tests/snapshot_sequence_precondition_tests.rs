@@ -154,7 +154,7 @@
 use proptest::prelude::*;
 use vb_core::{RunId, WorkflowDigest};
 use vb_storage::recovery::replay::core::recover_snapshot_plus_tail;
-use vb_storage::recovery::types::ActionReplayTracker;
+use vb_storage::recovery::ActionReplayTracker;
 use vb_storage::{EventSeq, JournalEvent};
 
 // ---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ use vb_storage::{EventSeq, JournalEvent};
 // ---------------------------------------------------------------------------
 
 /// Creates a minimal RunSnapshot at a given sequence.
-fn make_snapshot(run: RunId, seq: u64) -> vb_storage::recovery::types::RunSnapshot {
-    vb_storage::recovery::types::RunSnapshot {
+fn make_snapshot(run: RunId, seq: u64) -> vb_storage::recovery::RunSnapshot {
+    vb_storage::recovery::RunSnapshot {
         run,
         seq: EventSeq::new(seq),
         workflow: WorkflowDigest::from_bytes([0x42; 32]),

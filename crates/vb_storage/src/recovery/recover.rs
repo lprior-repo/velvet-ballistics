@@ -4,7 +4,7 @@
 use crate::recovery::digest::{
     first_action_abi_mismatch, first_policy_mismatch, workflow_digest_bytes_equal,
 };
-use crate::recovery::types::{
+use crate::recovery::{
     DigestCheck, DigestCheckConfig, RecoveryError, RecoveryHydration, RecoveryResult,
 };
 use crate::{FjallJournal, JournalEvent};
@@ -211,7 +211,7 @@ pub fn recover_runtime_summary(
 pub fn recover_runtime_summary_with_expected(
     journal: &FjallJournal,
     run: RunId,
-    expected: crate::recovery::types::RecoveryTerminalState,
+    expected: crate::recovery::RecoveryTerminalState,
 ) -> RecoveryResult<RecoveryHydration> {
     let events = journal.events_for_run(run)?;
     if events.is_empty() {
@@ -234,14 +234,14 @@ pub fn recover_runtime_summary_with_expected(
 
 /// Converts a `RecoveryTerminalState` to its string representation.
 fn terminal_state_to_string(
-    terminal: Option<crate::recovery::types::RecoveryTerminalState>,
+    terminal: Option<crate::recovery::RecoveryTerminalState>,
 ) -> String {
     match terminal {
         None => "NoTerminal".to_owned(),
-        Some(crate::recovery::types::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
-        Some(crate::recovery::types::RecoveryTerminalState::Killed) => "Killed".to_owned(),
-        Some(crate::recovery::types::RecoveryTerminalState::Failed) => "Failed".to_owned(),
-        Some(crate::recovery::types::RecoveryTerminalState::Finished { .. }) => {
+        Some(crate::recovery::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
+        Some(crate::recovery::RecoveryTerminalState::Killed) => "Killed".to_owned(),
+        Some(crate::recovery::RecoveryTerminalState::Failed) => "Failed".to_owned(),
+        Some(crate::recovery::RecoveryTerminalState::Finished { .. }) => {
             "Finished".to_owned()
         }
     }
@@ -251,7 +251,7 @@ fn terminal_state_to_string(
 pub fn recover_runtime_frame_seed(
     journal: &FjallJournal,
     run: RunId,
-) -> RecoveryResult<crate::recovery::types::RecoveryFrameSeed> {
+) -> RecoveryResult<crate::recovery::RecoveryFrameSeed> {
     let events = journal.events_for_run(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
@@ -263,7 +263,7 @@ pub fn recover_runtime_frame_seed(
 pub fn recover_run_admission(
     journal: &FjallJournal,
     run: RunId,
-) -> RecoveryResult<Option<crate::recovery::types::RecoveredRunAdmission>> {
+) -> RecoveryResult<Option<crate::recovery::RecoveredRunAdmission>> {
     let events = journal.events_for_run(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });

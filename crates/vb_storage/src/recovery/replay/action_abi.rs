@@ -2,7 +2,7 @@
 //! Action ABI expectation checks for replay recovery.
 
 use crate::JournalEvent;
-use crate::recovery::types::{RecoveryError, RecoveryResult};
+use crate::recovery::{RecoveryError, RecoveryResult};
 use vb_core::{ActionId, StepIdx, WorkflowDigest};
 
 pub(super) fn validate_action_abi_expectations(

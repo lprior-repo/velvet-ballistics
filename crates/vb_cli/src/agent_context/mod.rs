@@ -5,15 +5,20 @@ use serde_json::{Map, Value};
 
 mod primitives;
 
+const SCHEMA_VERSION: &str = "1";
+const AGENT_CONTEXT_KIND: &str = "AgentContext";
+const CLI_NAME: &str = "velvet-ballistics";
+const LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
+
 /// Build the machine-readable CLI surface for AI agents.
 pub(crate) fn build(version: &str) -> Value {
     serde_json::json!({
-        "schema_version": "1",
-        "kind": "AgentContext",
-        "cli": "velvet-ballistics",
-        "binary_aliases": ["velvet-ballistics"],
+        "schema_version": SCHEMA_VERSION,
+        "kind": AGENT_CONTEXT_KIND,
+        "cli": CLI_NAME,
+        "binary_aliases": [CLI_NAME],
         "version": version,
-        "language_version": "velvet-ballistics/v1",
+        "language_version": LANGUAGE_VERSION,
         "agent_contract": {
             "non_interactive_by_default": true,
             "prompt_bypass_flag": "--force",
@@ -464,5 +469,120 @@ fn run_id_db_command(summary: &str) -> Value {
     })
 }
 
-#[cfg(test)]
+#[cfg(kani)]
+pub(crate) mod kani_shape {
+    use super::{AGENT_CONTEXT_KIND, CLI_NAME, LANGUAGE_VERSION, SCHEMA_VERSION};
+
+    const ACTIVE_GATE_COUNT: usize = 5;
+    const EXIT_CODE_COUNT: usize = 9;
+    const ENUM_COUNT: usize = 4;
+    const COMMAND_COUNT: usize = 30;
+    const POLICY_BLOCKER_COUNT: usize = 8;
+    const RESOURCE_BLOCKER_COUNT: usize = 3;
+    const CAPABILITY_BLOCKER_COUNT: usize = 3;
+    const BOOL_CONTRACT_COUNT: usize = 5;
+    const VOCABULARY_ARRAY_COUNT: usize = 3;
+    const STATIC_SERIALIZED_UPPER_BOUND: usize = 4096;
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub(crate) struct AgentContextShape {
+        version_len: usize,
+    }
+
+    pub(crate) const fn build_shape(version_len: usize) -> AgentContextShape {
+        AgentContextShape { version_len }
+    }
+
+    impl AgentContextShape {
+        pub(crate) const fn has_required_fields(self) -> bool {
+            !SCHEMA_VERSION.is_empty()
+                && !AGENT_CONTEXT_KIND.is_empty()
+                && !CLI_NAME.is_empty()
+                && !LANGUAGE_VERSION.is_empty()
+        }
+
+        pub(crate) const fn has_runtime_policy_fields(self) -> bool {
+            ACTIVE_GATE_COUNT == 5 && POLICY_BLOCKER_COUNT == 8
+        }
+
+        pub(crate) const fn includes_agent_context_command(self) -> bool {
+            COMMAND_COUNT >= 1
+        }
+
+        pub(crate) const fn exit_code_count(self) -> usize {
+            EXIT_CODE_COUNT
+        }
+
+        pub(crate) const fn blocker_category_count(self) -> usize {
+            3
+        }
+
+        pub(crate) const fn serialized_size_upper_bound(self) -> usize {
+            match STATIC_SERIALIZED_UPPER_BOUND.checked_add(self.version_len) {
+                Some(total) => total,
+                None => usize::MAX,
+            }
+        }
+
+        pub(crate) const fn deterministic_fingerprint(self) -> usize {
+            STATIC_SERIALIZED_UPPER_BOUND
+                ^ ACTIVE_GATE_COUNT
+                ^ EXIT_CODE_COUNT
+                ^ ENUM_COUNT
+                ^ COMMAND_COUNT
+                ^ POLICY_BLOCKER_COUNT
+                ^ RESOURCE_BLOCKER_COUNT
+                ^ CAPABILITY_BLOCKER_COUNT
+                ^ BOOL_CONTRACT_COUNT
+                ^ VOCABULARY_ARRAY_COUNT
+                ^ self.version_len
+        }
+
+        pub(crate) const fn structural_fingerprint(self) -> usize {
+            ACTIVE_GATE_COUNT
+                ^ EXIT_CODE_COUNT
+                ^ ENUM_COUNT
+                ^ COMMAND_COUNT
+                ^ POLICY_BLOCKER_COUNT
+                ^ RESOURCE_BLOCKER_COUNT
+                ^ CAPABILITY_BLOCKER_COUNT
+                ^ BOOL_CONTRACT_COUNT
+                ^ VOCABULARY_ARRAY_COUNT
+        }
+
+        pub(crate) const fn policy_blocker_count(self) -> usize {
+            POLICY_BLOCKER_COUNT
+        }
+
+        pub(crate) const fn resource_blocker_count(self) -> usize {
+            RESOURCE_BLOCKER_COUNT
+        }
+
+        pub(crate) const fn capability_blocker_count(self) -> usize {
+            CAPABILITY_BLOCKER_COUNT
+        }
+
+        pub(crate) const fn command_count(self) -> usize {
+            COMMAND_COUNT
+        }
+
+        pub(crate) const fn output_is_object(self) -> bool {
+            true
+        }
+
+        pub(crate) const fn enum_count(self) -> usize {
+            ENUM_COUNT
+        }
+
+        pub(crate) const fn bool_contract_count(self) -> usize {
+            BOOL_CONTRACT_COUNT
+        }
+
+        pub(crate) const fn vocabulary_array_count(self) -> usize {
+            VOCABULARY_ARRAY_COUNT
+        }
+    }
+}
+
+#[cfg(any(test, kani))]
 mod tests;

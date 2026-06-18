@@ -6,7 +6,7 @@
 //!
 //! This harness verifies magic validation in record header decoding.
 
-use crate::codec::header::decode_record_header;
+use crate::codec::header::{decode_record_header, header_crc32c};
 use crate::constants::{RECORD_HEADER_BYTES, RECORD_HEADER_LEN};
 use crate::error::JournalError;
 use crate::records::RecordKind;
@@ -34,7 +34,7 @@ fn kani_record_magic_rejects_wrong_magic() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     // Write a valid CRC placeholder at offset 28 (CRC_OFFSET)
-    let crc = crc32c::crc32c(&header_bytes[0..28]);
+    let crc = header_crc32c(&header_bytes[0..28]);
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -66,7 +66,7 @@ fn kani_record_magic_accepts_correct_magic() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     // Write a valid CRC placeholder at offset 28 (CRC_OFFSET)
-    let crc = crc32c::crc32c(&header_bytes[0..28]);
+    let crc = header_crc32c(&header_bytes[0..28]);
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -98,7 +98,7 @@ fn kani_record_magic_rejects_zero() {
     header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..28]);
+    let crc = header_crc32c(&header_bytes[0..28]);
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -119,7 +119,7 @@ fn kani_record_magic_rejects_all_ones() {
     header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..28]);
+    let crc = header_crc32c(&header_bytes[0..28]);
     header_bytes[28..32].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);

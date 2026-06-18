@@ -118,7 +118,7 @@ mod tests {
         apply_summary_event, recover_run_admission_from_events,
         recover_runtime_frame_seed_from_events, summarize_recovery_events,
     };
-    use crate::recovery::types::{
+    use crate::recovery::{
         ActionReplayTracker, RecoveryError, RecoveryRuntimeSummary, RecoveryTerminalState,
         UnsupportedRecoveryState,
     };
@@ -745,7 +745,7 @@ mod tests {
         assert_eq!(seed.steps.len(), 1);
         assert_eq!(
             seed.steps[0].state,
-            crate::recovery::types::RecoveredStepState::Asking
+            crate::recovery::RecoveredStepState::Asking
         );
         assert_eq!(seed.steps[0].step, StepIdx::new(0));
     }
@@ -777,7 +777,7 @@ mod tests {
         assert_eq!(seed.steps.len(), 1);
         assert_eq!(
             seed.steps[0].state,
-            crate::recovery::types::RecoveredStepState::Waiting
+            crate::recovery::RecoveredStepState::Waiting
         );
         assert_eq!(seed.steps[0].step, StepIdx::new(1));
     }

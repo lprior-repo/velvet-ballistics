@@ -146,7 +146,7 @@ fn maybe_change_final_path_after_final_sync(
 fn maybe_change_final_path_after_final_sync(
     target: &DeliverFileTarget,
 ) -> Result<(), DeliverSinkError> {
-    crate::deliver_sink::deliver_test_support::debug_test_support::maybe_change_final_path_after_final_sync(target.delivery_path())
+    crate::deliver_sink::deliver_debug_test_support::maybe_change_final_path_after_final_sync(target.delivery_path())
 }
 
 #[cfg(all(not(test), not(feature = "instrumented-cli")))]
@@ -241,7 +241,7 @@ fn cleanup_link_path(parent_dir: &OwnedFd, path: &OsStr) -> bool {
     }
 
     #[cfg(all(not(test), feature = "instrumented-cli"))]
-    if crate::deliver_sink::deliver_test_support::debug_test_support::should_fail_cleanup(path) {
+    if crate::deliver_sink::deliver_debug_test_support::should_fail_cleanup(path) {
         return false;
     }
 
@@ -268,7 +268,7 @@ fn sync_parent_directory(parent_dir: &OwnedFd) -> Result<(), DeliverSinkError> {
 
     #[cfg(all(not(test), feature = "instrumented-cli"))]
     if let Some(result) =
-        crate::deliver_sink::deliver_test_support::debug_test_support::next_sync_result()
+        crate::deliver_sink::deliver_debug_test_support::next_sync_result()
     {
         return result;
     }

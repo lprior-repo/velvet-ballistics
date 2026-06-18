@@ -6,7 +6,7 @@
 //!
 //! This harness verifies schema version validation in record header decoding.
 
-use crate::codec::header::decode_record_header;
+use crate::codec::header::{decode_record_header, header_crc32c};
 use crate::constants::{
     CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
 };
@@ -26,7 +26,7 @@ fn kani_record_schema_accepts_current_version() {
     header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -57,7 +57,7 @@ fn kani_record_schema_rejects_future_version() {
     header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -82,7 +82,7 @@ fn kani_record_schema_rejects_old_version() {
     header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
@@ -112,7 +112,7 @@ fn kani_record_schema_zero_returns_migration_required() {
     header_bytes[12..16].copy_from_slice(&0u32.to_le_bytes());
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
-    let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
+    let crc = header_crc32c(&header_bytes[0..CRC_OFFSET]);
     header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
