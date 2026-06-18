@@ -7,10 +7,12 @@
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
     use crate::errors::{CoreError, CoreResult};
+    use crate::errors::{CoreError, CoreResult};
     use crate::frame::{
-        RunFrame, SlotIdx, SlotValue, StepIdx, StepState, Taint, is_valid_step_state_transition,
+        RunFrame, StepState, is_valid_step_state_transition,
     };
-    use crate::ids::RunId;
+    use crate::ids::{RunId, SlotIdx, StepIdx};
+    use crate::value::{SlotValue, Taint};
 
     #[test]
     fn reinitialize_resets_all_hot_state_for_new_run() {

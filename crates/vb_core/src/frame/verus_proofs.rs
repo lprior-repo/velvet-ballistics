@@ -9,7 +9,9 @@
 verus! {
     use vstd::prelude::*;
 
-    use crate::frame::{StepState, is_valid_step_state_transition, RunFrame, CoreError, CoreResult};
+    use crate::frame::{StepState, is_valid_step_state_transition, RunFrame};
+    use crate::errors::{CoreError, CoreResult};
+    use crate::ids::RunId;
 
     /// Spec: is_valid_step_state_transition — mathematical model.
     /// This spec defines the ground-truth transition relation that the
