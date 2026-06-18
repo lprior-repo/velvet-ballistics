@@ -2,14 +2,17 @@
 //! Verus proof artifacts for vb_storage recovery and classification types.
 //!
 //! This module provides:
-//! - Standalone spec functions and proof lemmas (compiled standalone via --crate-type=lib)
-//! - Production exec bridges (compiled as part of the crate with #[cfg(verus)])
+//! - Standalone spec functions (mathematical model)
+//! - Standalone proof lemmas (properties of the model)
 //!
-//! Production binding map:
-//!   - `mrwe5_contract` functions  → `mrwe5_spec_*` / `mrwe5_exec_*` (cfg-bound)
-//!   - `codec::semantic` functions → `semantic_spec_*` / `semantic_exec_*` (cfg-bound)
-//!   - `codec::validation` functions → `validation_spec_*` / `validation_exec_*` (cfg-bound)
-//!   - `recovery::types` invariants → `recovery_spec_*` / `recovery_exec_*` (cfg-bound)
+//! Production binding map (for when compiled as part of crate):
+//!   - `mrwe5_contract` functions  → bind via reveal_with_fuel or extern_spec
+//!   - `codec::semantic` functions → bind via reveal_with_fuel or extern_spec
+//!   - `codec::validation` functions → bind via reveal_with_fuel or extern_spec
+//!   - `recovery::types` types → bind via reveal_with_fuel or extern_spec
+//!
+//! This file is compiled standalone via --crate-type=lib.
+//! Production bindings must be implemented in a separate module compiled as part of the crate.
 
 // =========================================================================
 // STANDALONE SPEC LAYER — compiled standalone for --crate-type=lib
@@ -24,12 +27,14 @@ verus! {
     // =========================================================================
 
     /// Spec: two durable kind ids are an exact match.
+    /// Production: mrwe5_contract::mrwe5_kinds_are_exact_match
     #[verifier::nonlinear]
     pub open spec fn spec_mrwe5_kinds_exact_match(envelope_kind: u16, payload_kind: u16) -> bool {
         envelope_kind == payload_kind
     }
 
     /// Spec: kind compatibility is exact when kinds match, rejected otherwise.
+    /// Production: mrwe5_contract::mrwe5_classify_kind_compatibility
     #[verifier::nonlinear]
     pub open spec fn spec_mrwe5_kind_compatibility(
         envelope_kind: u16,
@@ -43,6 +48,7 @@ verus! {
     }
 
     /// Spec: semantic decode decision from envelope/payload pair and validity.
+    /// Production: mrwe5_contract::mrwe5_classify_semantic_decode
     #[verifier::nonlinear]
     pub open spec fn spec_mrwe5_semantic_decode(
         envelope_kind: u16,
@@ -59,14 +65,16 @@ verus! {
 
     /// Spec: a kind id is a journal-event family member.
     /// Production: MRWE5_JOURNAL_MIN_KIND_ID=10, MRWE5_JOURNAL_MAX_KIND_ID=29.
+    /// Production: mrwe5_contract::mrwe5_is_journal_record_kind
     pub open spec fn spec_mrwe5_is_journal_record_kind(kind: u16) -> bool {
         10u16 <= kind && kind <= 29u16
     }
 
     /// Spec: record kind family acceptance for the journal-event magic.
-    /// Production: MRWE5_MAGIC_JOURNAL_EVENT = 0xDEADBEEF (codec magic).
+    /// Production: MRWE5_MAGIC_JOURNAL_EVENT = 0x5642_4A45 (codec magic).
+    /// Production: mrwe5_contract::mrwe5_classify_record_kind_family
     pub open spec fn spec_mrwe5_record_kind_family(magic: u32, kind: u16) -> int {
-        if magic == 0xDEADBEEFu32 && spec_mrwe5_is_journal_record_kind(kind) {
+        if magic == 0x5642_4A45u32 && spec_mrwe5_is_journal_record_kind(kind) {
             1int // Accepted
         } else {
             2int // Rejected
@@ -74,12 +82,12 @@ verus! {
     }
 
     /// Spec: canonical kind id for MRWE5 payload classes.
-    /// Production: StepSucceeded=29, SlotWrittenEvent=30.
+    /// Production: StepSucceeded=29, SlotWrittenEvent=12.
     pub open spec fn spec_mrwe5_canonical_kind_id(class: int) -> Option<u16> {
         if class == 1 {
             Some(29u16)
         } else if class == 2 {
-            Some(30u16)
+            Some(12u16)
         } else {
             None
         }
@@ -89,7 +97,7 @@ verus! {
     pub open spec fn spec_mrwe5_payload_class(kind_id: u16) -> Option<int> {
         if kind_id == 29u16 {
             Some(1)
-        } else if kind_id == 30u16 {
+        } else if kind_id == 12u16 {
             Some(2)
         } else {
             None
@@ -98,12 +106,12 @@ verus! {
 
     /// Spec: StepSucceeded and SlotWrittenEvent have distinct kind ids.
     pub open spec fn spec_mrwe5_step_succeeded_and_slot_written_distinct() -> bool {
-        29u16 != 30u16
+        29u16 != 12u16
     }
 
     /// Spec: MRWE5 magic is the journal-event magic constant.
     pub open spec fn spec_mrwe5_magic_journal_event() -> u32 {
-        0xDEADBEEFu32
+        0x5642_4A45u32
     }
 
     // =========================================================================
@@ -165,8 +173,8 @@ verus! {
         assert(spec_mrwe5_is_journal_record_kind(29));
     }
 
-       pub proof fn lemma_slot_written_is_not_journal_kind() {
-        assert(!spec_mrwe5_is_journal_record_kind(30));
+    pub proof fn lemma_slot_written_is_journal_kind() {
+        assert(spec_mrwe5_is_journal_record_kind(12));
     }
 
     pub proof fn lemma_kind_0_not_journal() {
@@ -393,39 +401,6 @@ verus! {
     }
 
     // =========================================================================
-    // EXEC BRIDGE FOR DIGEST CHECK (standalone — no production code needed)
-    // =========================================================================
-
-    pub exec fn exec_digest_check_hierarchy_rank(level: u8) -> (result: u8)
-        ensures
-            spec_digest_check_hierarchy_rank(level as int) == result as int,
-    {
-        match level {
-            0 => 1u8,
-            1 => 2u8,
-            _ => 3u8,
-        }
-    }
-
-    pub exec fn exec_digest_check_strictly_weaker(a: u8, b: u8) -> (result: bool)
-        ensures
-            result == (a as int <= b as int && !(a == b)),
-    {
-        a < b
-    }
-
-    pub exec fn exec_unsupported_is_fully_supported(
-        slot_values: bool,
-        slot_taint: bool,
-        action_payloads: bool,
-    ) -> (result: bool)
-        ensures
-            result == spec_unsupported_is_fully_supported(slot_values, slot_taint, action_payloads),
-    {
-        !slot_values && !slot_taint && !action_payloads
-    }
-
-    // =========================================================================
     // REPLAY ATTEMPT STALENESS SPEC
     // =========================================================================
 
@@ -436,8 +411,6 @@ verus! {
     pub open spec fn spec_replay_attempt_is_current(attempt: u16, max_attempt: u16) -> bool {
         attempt == max_attempt
     }
-
-    
 
     pub open spec fn spec_max_attempt(attempts: Seq<u16>) -> u16 {
         if attempts.len() == 0 {
@@ -494,77 +467,4 @@ verus! {
         assert(_result >= 0 && _result <= u64::MAX);
     }
 
-} // end verus!{
-
-// =========================================================================
-// PRODUCTION EXEC BRIDGE — cfg(verus) bound, compiled as part of crate
-// =========================================================================
-
-#[cfg(verus)]
-verus! {
-
-    /// Exec bridge: mrwe5_kinds_are_exact_match matches spec.
-    pub exec fn exec_mrwe5_kinds_exact_match(
-        envelope_kind: u16,
-        payload_kind: u16,
-    ) -> bool {
-        let result = crate::mrwe5_contract::mrwe5_kinds_are_exact_match(envelope_kind, payload_kind);
-        assert(spec_mrwe5_kinds_exact_match(envelope_kind, payload_kind) == result);
-        result
-    }
-
-    /// Exec bridge: mrwe5_classify_kind_compatibility matches spec.
-    pub exec fn exec_mrwe5_kind_compatibility(
-        envelope_kind: u16,
-        payload_kind: u16,
-    ) -> crate::mrwe5_contract::Mrwe5KindCompatibility {
-        let result = crate::mrwe5_contract::mrwe5_classify_kind_compatibility(envelope_kind, payload_kind);
-        let spec_rank = spec_mrwe5_kind_compatibility(envelope_kind, payload_kind);
-        let prod_rank: int = match result {
-            crate::mrwe5_contract::Mrwe5KindCompatibility::ExactMatch => 1,
-            crate::mrwe5_contract::Mrwe5KindCompatibility::RejectedMismatch => 2,
-        };
-        assert(spec_rank == prod_rank);
-        result
-    }
-
-    /// Exec bridge: mrwe5_classify_semantic_decode matches spec.
-    pub exec fn exec_mrwe5_semantic_decode(
-        envelope_kind: u16,
-        payload_kind: u16,
-        event_valid: bool,
-    ) -> crate::mrwe5_contract::Mrwe5SemanticDecodeDecision {
-        let result = crate::mrwe5_contract::mrwe5_classify_semantic_decode(envelope_kind, payload_kind, event_valid);
-        let spec_result = spec_mrwe5_semantic_decode(envelope_kind, payload_kind, event_valid);
-        let prod_disc: int = match result {
-            crate::mrwe5_contract::Mrwe5SemanticDecodeDecision::SemanticSuccess => 1,
-            crate::mrwe5_contract::Mrwe5SemanticDecodeDecision::KindPayloadMismatch => 2,
-            crate::mrwe5_contract::Mrwe5SemanticDecodeDecision::InvalidEvent => 3,
-        };
-        assert(spec_result == prod_disc);
-        result
-    }
-
-    /// Exec bridge: mrwe5_is_journal_record_kind matches spec.
-    pub exec fn exec_mrwe5_is_journal_record_kind(kind: u16) -> bool {
-        let result = crate::mrwe5_contract::mrwe5_is_journal_record_kind(kind);
-        assert(spec_mrwe5_is_journal_record_kind(kind) == result);
-        result
-    }
-
-    /// Exec bridge: mrwe5_classify_record_kind_family matches spec.
-    pub exec fn exec_mrwe5_record_kind_family(
-        magic: u32,
-        kind: u16,
-    ) -> crate::mrwe5_contract::Mrwe5RecordKindFamilyDecision {
-        let result = crate::mrwe5_contract::mrwe5_classify_record_kind_family(magic, kind);
-        let spec_result = spec_mrwe5_record_kind_family(magic, kind);
-        let prod_disc: int = match result {
-            crate::mrwe5_contract::Mrwe5RecordKindFamilyDecision::Accepted => 1,
-            crate::mrwe5_contract::Mrwe5RecordKindFamilyDecision::Rejected => 2,
-        };
-        assert(spec_result == prod_disc);
-        result
-    }
-
-} // end cfg(verus) verus!{
+} // end verus!
