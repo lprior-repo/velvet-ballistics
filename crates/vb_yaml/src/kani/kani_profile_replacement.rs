@@ -93,12 +93,19 @@ fn bounded_ascii_string<const MAX_LEN: usize>() -> String {
 /// mirror missed this mixed-case behavior; this harness calls production.
 #[kani::proof]
 fn p_empty_body_yaml_ambiguous_case_permutations_rejected() {
-    assert_ambiguous_rejected(&symbolic_case_y());
-    assert_ambiguous_rejected(&symbolic_case_n());
-    assert_ambiguous_rejected(&symbolic_case_yes());
-    assert_ambiguous_rejected(&symbolic_case_no());
-    assert_ambiguous_rejected(&symbolic_case_on());
-    assert_ambiguous_rejected(&symbolic_case_off());
+    let selector: u8 = kani::any();
+    kani::assume(selector < 6);
+
+    let scalar = match selector {
+        0 => symbolic_case_y(),
+        1 => symbolic_case_n(),
+        2 => symbolic_case_yes(),
+        3 => symbolic_case_no(),
+        4 => symbolic_case_on(),
+        _ => symbolic_case_off(),
+    };
+
+    assert_ambiguous_rejected(&scalar);
 }
 
 /// `P-EMPTY-BODY`: direct production API is total and returns only the typed

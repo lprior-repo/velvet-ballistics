@@ -53,7 +53,8 @@ pub use record::validate_compiled_ir_record;
 pub(crate) use metadata::compute_artifact_metadata_hash;
 pub(crate) use policy::is_accepted_gate_count;
 pub(crate) use record::{
-    missing_proof_flag, validate_accepted_artifact_digest, validate_accepted_artifact_metadata,
+    MissingProofFlag, missing_proof_flag, missing_proof_flag_kind,
+    validate_accepted_artifact_digest, validate_accepted_artifact_metadata,
     validate_artifact_policy_digest,
 };
 

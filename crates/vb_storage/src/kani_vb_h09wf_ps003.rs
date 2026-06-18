@@ -3,9 +3,8 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
-use crate::admission::reject_oversized_compiled_ir_value;
+use crate::admission::bytes::{CompiledIrSizeDecision, classify_compiled_ir_value_len};
 use crate::constants::MAX_COMPILED_IR_BYTES;
-use crate::error::JournalError;
 
 fn max_compiled_ir_usize() -> usize {
     match usize::try_from(MAX_COMPILED_IR_BYTES) {
@@ -32,13 +31,16 @@ fn ps_003_size_bound() {
     };
     kani::assume(len <= upper);
 
-    let result = reject_oversized_compiled_ir_value(len);
+    let decision = classify_compiled_ir_value_len(len);
 
     if len <= max_usize {
-        kani::assert(result.is_ok(), "len within max must be accepted");
+        kani::assert(
+            decision == CompiledIrSizeDecision::WithinLimit,
+            "len within max must be accepted",
+        );
     } else {
-        match result {
-            Err(JournalError::PayloadTooLarge { len: reported, max }) => {
+        match decision {
+            CompiledIrSizeDecision::PayloadTooLarge { len: reported, max } => {
                 let converted = match u32::try_from(len) {
                     Ok(value) => value,
                     Err(_) => u32::MAX,
@@ -49,8 +51,9 @@ fn ps_003_size_bound() {
                     "PayloadTooLarge.max matches cap",
                 );
             }
-            Ok(()) => kani::assert(false, "oversized payload must be rejected"),
-            Err(_) => kani::assert(false, "size gate must use PayloadTooLarge"),
+            CompiledIrSizeDecision::WithinLimit => {
+                kani::assert(false, "oversized payload must be rejected");
+            }
         }
     }
 }
@@ -70,6 +73,17 @@ fn ps_003_u32_conversion_safe() {
 /// PS-003c: usize::MAX is rejected by the size gate.
 #[kani::proof]
 fn ps_003_usize_max_rejected() {
-    let result = reject_oversized_compiled_ir_value(usize::MAX);
-    kani::assert(result.is_err(), "usize::MAX must be rejected");
+    let decision = classify_compiled_ir_value_len(usize::MAX);
+    match decision {
+        CompiledIrSizeDecision::PayloadTooLarge { len, max } => {
+            kani::assert(len == u32::MAX, "usize::MAX rejection saturates len");
+            kani::assert(
+                max == MAX_COMPILED_IR_BYTES,
+                "usize::MAX rejection uses cap",
+            );
+        }
+        CompiledIrSizeDecision::WithinLimit => {
+            kani::assert(false, "usize::MAX must be rejected");
+        }
+    }
 }

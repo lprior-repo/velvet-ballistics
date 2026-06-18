@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(kani, allow(unused_imports))]
 //! Reference validation for workflow documents.
 //!
 //! Builds reference tables from declared inputs, vars, secrets, and step IDs,

@@ -1489,9 +1489,7 @@ proof_matrix:
     proof_strategy: "Fuzz + golden diagnostics. Do not try full formal parser proof. Prove 'no panic, typed failure, no forbidden YAML accepted'. No vb_yaml Verus artifact is registered or marked deductively_verified; prior standalone mirror-model artifacts were retired as non-proof under vb-dzibx. Future Verus for vb_yaml requires an extracted production-bound pure kernel or direct production requires/ensures binding."
     primary_level: L2
     secondary_level: L1
-    retired_non_proof_verus_artifacts:
-      - crates/vb_yaml/src/verification/verus/vb_yaml_validation_properties.rs
-      - crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs
+    retired_non_proof_verus_artifact_status: "removed from tree under vb-dzibx; no vb_yaml Verus file path is registered as proof evidence"
   vb_validate:
     proof_strategy: "Property tests over generated ASTs. Verus for small validators if extracted into pure kernels."
     primary_level: L1

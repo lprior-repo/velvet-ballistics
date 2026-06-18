@@ -9,6 +9,17 @@ use crate::types::EventSeq;
 use super::policy::{ADMISSION_GATE_COUNT, is_accepted_gate_count};
 use super::types::{AcceptedArtifact, VerificationProof};
 
+const MIN_ACCEPTED_ARTIFACT_ENVELOPE_BYTES: usize = 96;
+
+/// Accepted-artifact envelope length precheck before postcard decoding.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum AcceptedArtifactEnvelopeLengthDecision {
+    /// Input cannot contain the three fixed digest fields required by v1.
+    TooShort,
+    /// Input is long enough to attempt canonical postcard decoding.
+    Decode,
+}
+
 /// Validates and persists a compiled workflow artifact.
 ///
 /// Structure validation ensures the workflow can be reconstructed from its parts.
@@ -34,6 +45,11 @@ pub fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), Jour
 }
 
 pub fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifact, JournalError> {
+    if classify_accepted_artifact_envelope_len(bytes.len())
+        == AcceptedArtifactEnvelopeLengthDecision::TooShort
+    {
+        return Err(JournalError::ArtifactMalformed);
+    }
     let (artifact, remaining) =
         postcard::take_from_bytes(bytes).map_err(|_| JournalError::ArtifactMalformed)?;
     let declared_end = bytes
@@ -42,6 +58,16 @@ pub fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifac
         .ok_or(JournalError::UnexpectedEof)?;
     payload::reject_trailing_bytes(declared_end, bytes.len())?;
     Ok(artifact)
+}
+
+pub(crate) fn classify_accepted_artifact_envelope_len(
+    len: usize,
+) -> AcceptedArtifactEnvelopeLengthDecision {
+    if len < MIN_ACCEPTED_ARTIFACT_ENVELOPE_BYTES {
+        AcceptedArtifactEnvelopeLengthDecision::TooShort
+    } else {
+        AcceptedArtifactEnvelopeLengthDecision::Decode
+    }
 }
 
 pub(crate) fn validate_accepted_artifact_digest(
@@ -113,17 +139,45 @@ fn validate_verification_proof(proof: &VerificationProof) -> Result<(), JournalE
     Ok(())
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum MissingProofFlag {
+    Bounded,
+    TaintSafe,
+    RetrySafe,
+    IdempotencyVerified,
+    Replayable,
+}
+
+impl MissingProofFlag {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Bounded => "bounded",
+            Self::TaintSafe => "taint_safe",
+            Self::RetrySafe => "retry_safe",
+            Self::IdempotencyVerified => "idempotency_verified",
+            Self::Replayable => "replayable",
+        }
+    }
+}
+
 pub(crate) fn missing_proof_flag(proof: &VerificationProof) -> Option<&'static str> {
+    match missing_proof_flag_kind(proof) {
+        Some(flag) => Some(flag.as_str()),
+        None => None,
+    }
+}
+
+pub(crate) fn missing_proof_flag_kind(proof: &VerificationProof) -> Option<MissingProofFlag> {
     if !proof.bounded_claimed {
-        Some("bounded")
+        Some(MissingProofFlag::Bounded)
     } else if !proof.taint_safe_claimed {
-        Some("taint_safe")
+        Some(MissingProofFlag::TaintSafe)
     } else if !proof.retry_safe_claimed {
-        Some("retry_safe")
+        Some(MissingProofFlag::RetrySafe)
     } else if !proof.idempotency_verified_claimed {
-        Some("idempotency_verified")
+        Some(MissingProofFlag::IdempotencyVerified)
     } else if !proof.replayable_claimed {
-        Some("replayable")
+        Some(MissingProofFlag::Replayable)
     } else {
         None
     }

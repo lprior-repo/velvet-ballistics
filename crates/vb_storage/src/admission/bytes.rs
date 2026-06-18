@@ -4,6 +4,20 @@
 use crate::constants::MAX_COMPILED_IR_BYTES;
 use crate::error::JournalError;
 
+/// Size-gate decision before mapping to the broad storage error enum.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum CompiledIrSizeDecision {
+    /// The encoded compiled-IR envelope fits the configured storage bound.
+    WithinLimit,
+    /// The encoded compiled-IR envelope exceeds the configured storage bound.
+    PayloadTooLarge {
+        /// Observed encoded length, saturated when the source length cannot fit u32.
+        len: u32,
+        /// Maximum accepted compiled-IR envelope length.
+        max: u32,
+    },
+}
+
 /// Validates a compiled workflow artifact's serialized bytes.
 ///
 /// Performs:
@@ -38,16 +52,30 @@ pub(crate) fn canonical_workflow_ir_bytes(
 
 /// Rejects compiled-IR envelope values larger than the configured storage bound.
 pub fn reject_oversized_compiled_ir_value(len: usize) -> Result<(), JournalError> {
-    let payload_len = u32::try_from(len).map_err(|_| JournalError::PayloadTooLarge {
-        len: u32::MAX,
-        max: MAX_COMPILED_IR_BYTES,
-    })?;
+    match classify_compiled_ir_value_len(len) {
+        CompiledIrSizeDecision::WithinLimit => Ok(()),
+        CompiledIrSizeDecision::PayloadTooLarge { len, max } => {
+            Err(JournalError::PayloadTooLarge { len, max })
+        }
+    }
+}
+
+pub(crate) fn classify_compiled_ir_value_len(len: usize) -> CompiledIrSizeDecision {
+    let payload_len = match u32::try_from(len) {
+        Ok(value) => value,
+        Err(_) => {
+            return CompiledIrSizeDecision::PayloadTooLarge {
+                len: u32::MAX,
+                max: MAX_COMPILED_IR_BYTES,
+            };
+        }
+    };
     if payload_len > MAX_COMPILED_IR_BYTES {
-        Err(JournalError::PayloadTooLarge {
+        CompiledIrSizeDecision::PayloadTooLarge {
             len: payload_len,
             max: MAX_COMPILED_IR_BYTES,
-        })
+        }
     } else {
-        Ok(())
+        CompiledIrSizeDecision::WithinLimit
     }
 }

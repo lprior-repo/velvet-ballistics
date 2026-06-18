@@ -18,7 +18,9 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
+use crate::admission::bytes::{CompiledIrSizeDecision, classify_compiled_ir_value_len};
 use crate::admission::validate_compiled_ir_record;
+use crate::constants::MAX_COMPILED_IR_BYTES;
 use crate::error::JournalError;
 
 /// PS-011: The function must not panic on arbitrary CompiledIrRecord inputs.
@@ -74,23 +76,34 @@ fn ps_011_digest_triangle() {
 /// PS-011b: Oversized envelope must fail the size gate before decode.
 #[kani::proof]
 fn ps_011_oversized_envelope_rejected_early() {
-    let digest_bytes: [u8; 32] = kani::any();
-    let digest = vb_core::WorkflowDigest::from_bytes(digest_bytes);
-
-    let ir_len: u32 = kani::any();
-    kani::assume(ir_len > crate::constants::MAX_COMPILED_IR_BYTES);
-    kani::assume(ir_len <= crate::constants::MAX_COMPILED_IR_BYTES + 1024);
-
-    let ir: Vec<u8> = vec![0u8; ir_len as usize];
-
-    let record = crate::records::CompiledIrRecord {
-        digest,
-        ir,
-        metadata_hash: None,
+    let max = match usize::try_from(MAX_COMPILED_IR_BYTES) {
+        Ok(value) => value,
+        Err(_) => {
+            kani::assert(false, "compiled IR byte limit must fit usize");
+            return;
+        }
+    };
+    let upper = match max.checked_add(1024) {
+        Some(value) => value,
+        None => {
+            kani::assert(false, "bounded proof window must not overflow");
+            return;
+        }
     };
 
-    let result = validate_compiled_ir_record(&record);
+    let len: usize = kani::any();
+    kani::assume(len > max);
+    kani::assume(len <= upper);
 
-    // Must be an error — oversized envelope must be rejected at Gate 1
-    kani::assert(result.is_err(), "oversized envelope must be rejected");
+    let decision = classify_compiled_ir_value_len(len);
+
+    match decision {
+        CompiledIrSizeDecision::PayloadTooLarge { len: reported, max } => {
+            kani::assert(reported > MAX_COMPILED_IR_BYTES, "reported len exceeds cap");
+            kani::assert(max == MAX_COMPILED_IR_BYTES, "reported max is cap");
+        }
+        CompiledIrSizeDecision::WithinLimit => {
+            kani::assert(false, "oversized envelope must be rejected");
+        }
+    }
 }

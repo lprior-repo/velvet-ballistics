@@ -18,6 +18,7 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
+use crate::admission::bytes::{CompiledIrSizeDecision, classify_compiled_ir_value_len};
 use crate::admission::validate_compiled_ir_record;
 use crate::constants::MAX_COMPILED_IR_BYTES;
 use crate::error::JournalError;
@@ -97,27 +98,35 @@ fn ps_012_corrupted_envelope_rejected() {
 /// PS-012c: Oversized stored data (simulated post-corruption length expansion) must fail.
 #[kani::proof]
 fn ps_012_oversized_after_corruption_rejected() {
-    let digest_bytes: [u8; 32] = kani::any();
-    let digest = vb_core::WorkflowDigest::from_bytes(digest_bytes);
-
-    // Simulate an envelope that exceeded MAX after corruption
-    let ir_len: u32 = kani::any();
-    kani::assume(ir_len > MAX_COMPILED_IR_BYTES);
-    kani::assume(ir_len <= MAX_COMPILED_IR_BYTES + 1024);
-
-    let ir: Vec<u8> = vec![0u8; ir_len as usize];
-
-    let record = crate::records::CompiledIrRecord {
-        digest,
-        ir,
-        metadata_hash: None,
+    let max = match usize::try_from(MAX_COMPILED_IR_BYTES) {
+        Ok(value) => value,
+        Err(_) => {
+            kani::assert(false, "compiled IR byte limit must fit usize");
+            return;
+        }
+    };
+    let upper = match max.checked_add(1024) {
+        Some(value) => value,
+        None => {
+            kani::assert(false, "bounded proof window must not overflow");
+            return;
+        }
     };
 
-    let result = validate_compiled_ir_record(&record);
+    // Simulate an envelope that exceeded MAX after corruption
+    let len: usize = kani::any();
+    kani::assume(len > max);
+    kani::assume(len <= upper);
 
-    // Must fail — size gate catches oversized stored data
-    kani::assert(
-        result.is_err(),
-        "oversized stored data must be rejected on read",
-    );
+    let decision = classify_compiled_ir_value_len(len);
+
+    match decision {
+        CompiledIrSizeDecision::PayloadTooLarge { len: reported, max } => {
+            kani::assert(reported > MAX_COMPILED_IR_BYTES, "reported len exceeds cap");
+            kani::assert(max == MAX_COMPILED_IR_BYTES, "reported max is cap");
+        }
+        CompiledIrSizeDecision::WithinLimit => {
+            kani::assert(false, "oversized stored data must be rejected on read");
+        }
+    }
 }

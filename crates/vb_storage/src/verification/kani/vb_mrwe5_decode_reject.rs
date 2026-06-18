@@ -58,5 +58,8 @@ pub fn valid_postcard_mismatches_reject_before_semantics() {
         record_kind: envelope_kind.id(),
         sequence: event.seq().get(),
     };
-    kani::assert(!semantic_decode_accepts(&envelope, &event));
+    kani::assert(
+        !semantic_decode_accepts(&envelope, &event),
+        "mismatched envelope kind is rejected before semantic acceptance",
+    );
 }

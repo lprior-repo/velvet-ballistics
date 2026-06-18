@@ -220,6 +220,21 @@ pub mod kani_vbjpq733_proofs;
 pub mod kani_vb_mrwe5_record_kind;
 #[cfg(kani)]
 pub mod kani_vb_mrwe5_step_succeeded_id;
+#[cfg(all(kani, feature = "kani-vb-fn4vt"))]
+#[path = "verification/vb-fn4vt/kani/policy_digest_binding.rs"]
+pub mod vb_fn4vt_policy_digest_binding;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_compat_kind_family.rs"]
+pub mod vb_mrwe5_compat_kind_family;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_kind_parity.rs"]
+pub mod vb_mrwe5_kind_parity;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_roundtrip.rs"]
+pub mod vb_mrwe5_roundtrip;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_decode_reject.rs"]
+pub mod vb_mrwe5_decode_reject;
 
 // vb-mrwe.4: pending_actions recovery proofs
 #[cfg(kani)]

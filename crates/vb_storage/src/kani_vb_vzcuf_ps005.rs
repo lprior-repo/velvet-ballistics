@@ -17,6 +17,16 @@ mod kani_encoding_ps005 {
         }
     }
 
+    fn max_payload_len_usize() -> usize {
+        match usize::try_from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+            Ok(value) => value,
+            Err(_) => {
+                kani::assume(false);
+                0
+            }
+        }
+    }
+
     fn run_accepted(run: RunId, seq: EventSeq) -> JournalEvent {
         JournalEvent::RunAccepted {
             run,
@@ -72,9 +82,10 @@ mod kani_encoding_ps005 {
     /// C2: payload-only accounting underestimates the full encoded length.
     #[kani::proof]
     fn check_payload_only_underestimates() {
-        let event = run_accepted(RunId::new(1), EventSeq::new(0));
+        let payload_len: usize = kani::any();
+        kani::assume(payload_len > 0);
+        kani::assume(payload_len <= max_payload_len_usize());
 
-        let payload_len = payload_len_or_assume(&event);
         let full_len = encoded_len_or_assume(payload_len);
         let header_len = header_len_usize();
         kani::assert(full_len > payload_len, "full len exceeds payload len");

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(kani, allow(dead_code, unused_imports))]
 //! Schema validation for workflow documents.
 //!
 //! Validates required/unknown fields, version strings, trigger declarations,

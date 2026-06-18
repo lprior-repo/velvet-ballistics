@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 #![cfg(kani)]
 
-use crate::admission::{VerificationProof, is_accepted_gate_count, missing_proof_flag};
+use crate::admission::{
+    MissingProofFlag, VerificationProof, is_accepted_gate_count, missing_proof_flag_kind,
+};
 
 fn proof_with_flags(
     bounded: bool,
@@ -56,35 +58,36 @@ fn ps_008_proof_flags_exhaustive() {
         idempotency_verified,
         replayable,
     );
-    let missing = missing_proof_flag(&proof);
+    let missing = missing_proof_flag_kind(&proof);
 
     if bounded && taint_safe && retry_safe && idempotency_verified && replayable {
         kani::assert(missing.is_none(), "all proof flags set returns None");
     } else {
         match missing {
-            Some("bounded") => kani::assert(!bounded, "bounded is first missing flag"),
-            Some("taint_safe") => {
+            Some(MissingProofFlag::Bounded) => {
+                kani::assert(!bounded, "bounded is first missing flag");
+            }
+            Some(MissingProofFlag::TaintSafe) => {
                 kani::assert(bounded && !taint_safe, "taint_safe is first missing flag");
             }
-            Some("retry_safe") => {
+            Some(MissingProofFlag::RetrySafe) => {
                 kani::assert(
                     bounded && taint_safe && !retry_safe,
                     "retry_safe is first missing flag",
                 );
             }
-            Some("idempotency_verified") => {
+            Some(MissingProofFlag::IdempotencyVerified) => {
                 kani::assert(
                     bounded && taint_safe && retry_safe && !idempotency_verified,
                     "idempotency_verified is first missing flag",
                 );
             }
-            Some("replayable") => {
+            Some(MissingProofFlag::Replayable) => {
                 kani::assert(
                     bounded && taint_safe && retry_safe && idempotency_verified && !replayable,
                     "replayable is first missing flag",
                 );
             }
-            Some(_) => kani::assert(false, "unknown proof flag name"),
             None => kani::assert(false, "missing flag must be reported"),
         }
     }

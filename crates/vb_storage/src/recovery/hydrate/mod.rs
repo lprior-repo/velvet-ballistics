@@ -29,7 +29,8 @@ use vb_core::RunId;
 // Re-export invariant predicates for downstream consumers.
 pub use invariants as invariant;
 pub use invariants::{
-    hydrate_dimensions_positive, hydrate_events_preconditions,
+    hydrate_dimensions_positive, hydrate_events_preconditions, hydrate_snapshot_tail_has_evidence,
+    hydrate_snapshot_tail_preconditions, hydrate_snapshot_tail_run_matches,
     hydrate_snapshot_tail_seq_after_snapshot,
 };
 

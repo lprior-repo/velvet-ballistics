@@ -1,38 +1,31 @@
+#![forbid(unsafe_code)]
 //! Kani harness for `obl-vb-mrwe-5-ps001-kani-002`.
 //!
-//! Production binding: calls `JournalEvent::record_kind` and checks that the
-//! kind selected for new durable writes is congruent with the generated payload
-//! variant. The generated StepSucceeded and SlotWrittenEvent shapes are not a
-//! fixed dummy shape.
-
-#![forbid(unsafe_code)]
+//! Production binding: calls `JournalEvent::record_kind` on symbolic
+//! StepSucceeded and SlotWrittenEvent payloads and checks that new durable writes
+//! select the canonical record kind for the generated payload variant.
 
 use crate::{EventSeq, JournalEvent, RecordKind};
 use core::mem::ManuallyDrop;
 use vb_core::{RunId, SlotIdx, StepIdx};
 
 fn generated_step_succeeded() -> JournalEvent {
-    let run_raw = kani::any::<u64>() | 1;
-    let seq_raw = kani::any::<u64>() & 0x0000_0000_0000_ffff;
     JournalEvent::StepSucceeded {
-        run: RunId::new(run_raw),
-        seq: EventSeq::new(seq_raw),
+        run: RunId::new(kani::any()),
+        seq: EventSeq::new(kani::any()),
         step: StepIdx::new(kani::any()),
         output: SlotIdx::new(kani::any()),
     }
 }
 
 fn generated_slot_written() -> JournalEvent {
-    let run_raw = kani::any::<u64>() | 1;
-    let seq_raw = kani::any::<u64>() & 0x0000_0000_0000_ffff;
-    let attempt = kani::any::<u16>() | 1;
     JournalEvent::SlotWrittenEvent {
-        run: RunId::new(run_raw),
-        seq: EventSeq::new(seq_raw),
+        run: RunId::new(kani::any()),
+        seq: EventSeq::new(kani::any()),
         slot: SlotIdx::new(kani::any()),
         value: None,
         extra: None,
-        attempt,
+        attempt: kani::any(),
     }
 }
 
@@ -47,18 +40,25 @@ pub fn new_writes_use_canonical_record_kind() {
 
     match &*event {
         JournalEvent::StepSucceeded { .. } => {
-            kani::assert(event.record_kind() != RecordKind::SlotWritten, "kani harness assertion");
-            kani::assert(event.record_kind() == RecordKind::StepSucceeded, "kani harness assertion");
+            kani::assert(
+                event.record_kind() == RecordKind::StepSucceeded,
+                "StepSucceeded writes canonical StepSucceeded kind",
+            );
+            kani::assert(
+                event.record_kind() != RecordKind::SlotWritten,
+                "StepSucceeded does not write SlotWritten kind",
+            );
         }
         JournalEvent::SlotWrittenEvent { .. } => {
-            kani::assert(event.record_kind() == RecordKind::SlotWritten, "kani harness assertion");
-            kani::assert(event.record_kind() != RecordKind::StepSucceeded, "kani harness assertion");
+            kani::assert(
+                event.record_kind() == RecordKind::SlotWritten,
+                "SlotWrittenEvent writes canonical SlotWritten kind",
+            );
+            kani::assert(
+                event.record_kind() != RecordKind::StepSucceeded,
+                "SlotWrittenEvent does not write StepSucceeded kind",
+            );
         }
-        _ => {
-             != RecordKind::StepSucceeded, "kani harness assertion");
-        }
-        _ => {
-            kani::assert(false, "kani harness assertion");
-        }
+        _ => kani::assert(false, "generator only creates MRWE5 event pair"),
     }
 }

@@ -44,8 +44,14 @@ pub fn step_succeeded_and_slot_written_roundtrip_with_envelope_assertions() {
         record_kind: RecordKind::StepSucceeded.id(),
         sequence: step_event.seq().get(),
     };
-    kani::assert(semantic_decode_accepts(&step_envelope, &step_event));
-    kani::assert(matches!(&*step_event, JournalEvent::StepSucceeded { .. }));
+    kani::assert(
+        semantic_decode_accepts(&step_envelope, &step_event),
+        "step succeeded envelope is semantically accepted",
+    );
+    kani::assert(
+        matches!(&*step_event, JournalEvent::StepSucceeded { .. }),
+        "step event preserves variant",
+    );
 
     let slot_envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,
@@ -53,7 +59,12 @@ pub fn step_succeeded_and_slot_written_roundtrip_with_envelope_assertions() {
         record_kind: RecordKind::SlotWritten.id(),
         sequence: slot_event.seq().get(),
     };
-    kani::assert(semantic_decode_accepts(&slot_envelope, &slot_event));
-    kani::assert(matches!(
-        &*slot_event, JournalEvent::SlotWrittenEvent { .. }));
+    kani::assert(
+        semantic_decode_accepts(&slot_envelope, &slot_event),
+        "slot written envelope is semantically accepted",
+    );
+    kani::assert(
+        matches!(&*slot_event, JournalEvent::SlotWrittenEvent { .. }),
+        "slot event preserves variant",
+    );
 }
