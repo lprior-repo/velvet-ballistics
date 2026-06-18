@@ -1,19 +1,31 @@
 #![forbid(unsafe_code)]
-//! RunFrame hydration support functions.
+//! Event replay and tail application for RunFrame hydration.
 //!
-//! Internal helpers for slot decoding, dimension derivation, event application,
-//! and parallel in-flight tracking. Not part of the public API.
+//! Provides:
+//! - `apply_tail_events`: applies journal events to a mutable RunFrame
+//! - `compute_parallel_in_flight`: computes peak parallel in-flight from events
+//! - `SlotTaintReadObservation` / `SlotTaintResolution` / `resolve_slot_taint_read`
+//!
+//! These are the core replay primitives: applying deterministic state
+//! transitions from journal events onto a live RunFrame.
 
-use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot};
-use crate::recovery::types::ActionReplayEffect;
-use crate::{DurableActionOutcome, JournalEvent};
-use vb_core::{ActionTicket, RunId};
+use crate::recovery::{
+    ActionReplayTracker, RecoveryError, RecoveryResult, types::ActionReplayEffect,
+};
+use crate::JournalEvent;
+use crate::DurableActionOutcome;
+use vb_core::SlotIdx;
+use vb_core::{ActionTicket, RunFrame, RunId, StepIdx, Taint, SlotValue};
+
+// ============================================================================
+// Slot taint resolution (pure, tail-event-adjacent)
+// ============================================================================
 
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintReadObservation {
     /// Existing taint was read successfully.
-    Existing(vb_core::Taint),
+    Existing(Taint),
     /// The slot is not initialized, so Clean is the only allowed default.
     Uninitialized,
     /// The taint read failed for any other reason and must fail closed.
@@ -24,7 +36,7 @@ pub(crate) enum SlotTaintReadObservation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintResolution {
     /// Continue with the selected taint value.
-    Use(vb_core::Taint),
+    Use(Taint),
     /// Abort replay instead of downgrading taint to Clean.
     FailClosed,
 }
@@ -36,13 +48,15 @@ pub(crate) const fn resolve_slot_taint_read(
 ) -> SlotTaintResolution {
     match observation {
         SlotTaintReadObservation::Existing(taint) => SlotTaintResolution::Use(taint),
-        SlotTaintReadObservation::Uninitialized => SlotTaintResolution::Use(vb_core::Taint::Clean),
+        SlotTaintReadObservation::Uninitialized => {
+            SlotTaintResolution::Use(vb_core::Taint::Clean)
+        }
         SlotTaintReadObservation::Failed => SlotTaintResolution::FailClosed,
     }
 }
 
 fn observe_slot_taint_read(
-    result: Result<vb_core::Taint, vb_core::CoreError>,
+    result: Result<Taint, vb_core::CoreError>,
 ) -> SlotTaintReadObservation {
     match result {
         Ok(taint) => SlotTaintReadObservation::Existing(taint),
@@ -53,67 +67,15 @@ fn observe_slot_taint_read(
     }
 }
 
-pub(crate) fn verify_action_ticket_event(run: RunId, ticket: ActionTicket) -> RecoveryResult<()> {
-    if ticket.run != run {
-        return Err(RecoveryError::ReplayDivergence {
-            step: ticket.step,
-            detail: String::from("action ticket run mismatch"),
-        });
-    }
-    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
-        return Err(RecoveryError::ReplayDivergence {
-            step: ticket.step,
-            detail: String::from("action ticket attempt bounds invalid"),
-        });
-    }
-    if !vb_core::action::action_ticket_has_valid_key(ticket) {
-        return Err(RecoveryError::ReplayDivergence {
-            step: ticket.step,
-            detail: String::from("action ticket idempotency key mismatch"),
-        });
-    }
-    Ok(())
-}
-
-pub(crate) fn verified_action_envelope_digest(
-    run: RunId,
-    ticket: ActionTicket,
-    outcome: DurableActionOutcome,
-    value: &[u8],
-    encoded_len: u32,
-    expected: [u8; 32],
-) -> RecoveryResult<[u8; 32]> {
-    verify_action_ticket_event(run, ticket)?;
-    match outcome {
-        DurableActionOutcome::Ready => {}
-    }
-    let actual_len = u32::try_from(value.len()).map_err(|_| RecoveryError::ReplayDivergence {
-        step: ticket.step,
-        detail: String::from("action completion value length exceeds u32"),
-    })?;
-    if actual_len != encoded_len {
-        return Err(RecoveryError::ReplayDivergence {
-            step: ticket.step,
-            detail: String::from("action completion encoded length mismatch"),
-        });
-    }
-
-    let found = *blake3::hash(value).as_bytes();
-    if found == expected {
-        Ok(expected)
-    } else {
-        Err(RecoveryError::ReplayDivergence {
-            step: ticket.step,
-            detail: String::from("action completion value digest mismatch"),
-        })
-    }
-}
+// ============================================================================
+// Action envelope helpers (tail-event-adjacent)
+// ============================================================================
 
 fn decode_action_envelope_slot(
-    ticket: vb_core::ActionTicket,
-    output: vb_core::SlotIdx,
+    ticket: ActionTicket,
+    output: SlotIdx,
     value: &[u8],
-) -> RecoveryResult<vb_core::SlotValue> {
+) -> RecoveryResult<SlotValue> {
     postcard::from_bytes(value).map_err(|_| RecoveryError::ReplayDivergence {
         step: ticket.step,
         detail: format!("slot value decode failed for slot {:?}", output),
@@ -121,8 +83,8 @@ fn decode_action_envelope_slot(
 }
 
 fn sub_tail_parallel_in_flight(
-    frame: &mut vb_core::RunFrame,
-    step: vb_core::StepIdx,
+    frame: &mut RunFrame,
+    step: StepIdx,
 ) -> RecoveryResult<()> {
     if frame.parallel_in_flight() == 0 {
         return Ok(());
@@ -135,131 +97,15 @@ fn sub_tail_parallel_in_flight(
         })
 }
 
-/// Decodes snapshot slot/taint bytes into recovered slot entries.
-///
-/// Expects postcard-encoded `Vec<(SlotIdx, SlotValue, Taint)>` in the slots field,
-/// and the same format in the taint field (used for validation/merge).
-pub(super) fn decode_snapshot_slots(
-    slots_bytes: &[u8],
-    taint_bytes: &[u8],
-    run: RunId,
-) -> RecoveryResult<Vec<crate::recovery::RecoveredSlotEntry>> {
-    if slots_bytes.is_empty() && taint_bytes.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let slots: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)> =
-        postcard::from_bytes(slots_bytes).map_err(|_| RecoveryError::CorruptSnapshot {
-            run,
-            seq: crate::EventSeq::new(0),
-        })?;
-
-    let taint: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)> =
-        postcard::from_bytes(taint_bytes).map_err(|_| RecoveryError::CorruptSnapshot {
-            run,
-            seq: crate::EventSeq::new(0),
-        })?;
-
-    // Merge slots and taint, preferring explicit taint from the taint vector
-    let mut entries = Vec::new();
-    for (slot, value, default_taint) in slots {
-        let explicit_taint = taint
-            .iter()
-            .find_map(|(t_slot, _, t_taint)| {
-                if *t_slot == slot {
-                    Some(*t_taint)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(default_taint);
-        entries.push(crate::recovery::RecoveredSlotEntry {
-            slot,
-            value,
-            taint: explicit_taint,
-        });
-    }
-
-    Ok(entries)
-}
-
-/// Derives step_count, slot_count, and first_step from snapshot + tail events.
-///
-/// Accepts pre-decoded snapshot slots to avoid double-decoding the snapshot bytes.
-pub(super) fn derive_dimensions_from_snapshot_and_tail(
-    _snapshot: &RunSnapshot,
-    tail_events: &[JournalEvent],
-    run: RunId,
-    snapshot_slots: &[crate::recovery::RecoveredSlotEntry],
-) -> RecoveryResult<(u16, u16, vb_core::StepIdx)> {
-    let mut max_step: Option<vb_core::StepIdx> = None;
-    let mut min_step: Option<vb_core::StepIdx> = None;
-    let mut max_slot: Option<vb_core::SlotIdx> = None;
-
-    // Use pre-decoded snapshot slots to find max slot index
-    if !snapshot_slots.is_empty() {
-        for entry in snapshot_slots {
-            max_slot = Some(max_slot.map_or(entry.slot, |s| s.max(entry.slot)));
-        }
-    }
-
-    // Scan tail events for max step/slot
-    for event in tail_events {
-        match event {
-            JournalEvent::StepStarted { step, .. }
-            | JournalEvent::StepSucceeded { step, .. }
-            | JournalEvent::ActionScheduled { step, .. }
-            | JournalEvent::ActionCompletedEvent { step, .. }
-            | JournalEvent::ActionFailedEvent { step, .. }
-            | JournalEvent::WaitScheduledEvent { step, .. }
-            | JournalEvent::AskScheduledEvent { step, .. }
-            | JournalEvent::RetryScheduledEvent { step, .. } => {
-                max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
-                min_step = Some(min_step.map_or(*step, |s| s.min(*step)));
-            }
-            JournalEvent::ActionScheduledTicket { ticket, .. } => {
-                max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));
-                min_step = Some(min_step.map_or(ticket.step, |s| s.min(ticket.step)));
-            }
-            JournalEvent::ActionCompletedEnvelope { ticket, output, .. } => {
-                max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));
-                min_step = Some(min_step.map_or(ticket.step, |s| s.min(ticket.step)));
-                max_slot = Some(max_slot.map_or(*output, |s| s.max(*output)));
-            }
-            JournalEvent::SlotWrittenEvent { slot, .. }
-            | JournalEvent::RunFinished { result: slot, .. } => {
-                max_slot = Some(max_slot.map_or(*slot, |s| s.max(*slot)));
-            }
-            _ => {}
-        }
-    }
-
-    let step_count = max_step
-        .map(|s| {
-            s.get()
-                .checked_add(1)
-                .ok_or(RecoveryError::FrameDimensionOverflow { run })
-        })
-        .unwrap_or(Ok(0))?;
-
-    let slot_count = max_slot
-        .map(|s| {
-            s.get()
-                .checked_add(1)
-                .ok_or(RecoveryError::FrameDimensionOverflow { run })
-        })
-        .unwrap_or(Ok(0))?;
-
-    let first_step = min_step.unwrap_or(vb_core::StepIdx::ZERO);
-
-    Ok((step_count, slot_count, first_step))
-}
+// ============================================================================
+// Tail event application
+// ============================================================================
 
 /// Applies tail journal events to a mutable RunFrame, tracking action resolution.
 ///
 /// Returns the count of state-affecting events applied.
 pub(super) fn apply_tail_events(
-    frame: &mut vb_core::RunFrame,
+    frame: &mut RunFrame,
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<u64> {
@@ -309,7 +155,7 @@ pub(super) fn apply_tail_events(
                 output,
                 ..
             } => {
-                verify_action_ticket_event(*run, *ticket)?;
+                super::action_digest::verify_action_ticket_event(*run, *ticket)?;
                 let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
                 if effect == ActionReplayEffect::Duplicate {
                     continue;
@@ -344,7 +190,7 @@ pub(super) fn apply_tail_events(
                 value_digest,
                 ..
             } => {
-                let verified_digest = verified_action_envelope_digest(
+                let verified_digest = super::action_digest::verified_action_envelope_digest(
                     *run,
                     *ticket,
                     *outcome,
@@ -393,7 +239,7 @@ pub(super) fn apply_tail_events(
                 if let Some(bytes) = value {
                     let slot_value = postcard::from_bytes(bytes).map_err(|_| {
                         RecoveryError::ReplayDivergence {
-                            step: vb_core::StepIdx::ZERO,
+                            step: StepIdx::ZERO,
                             detail: format!("slot value decode failed for slot {:?}", slot),
                         }
                     })?;
@@ -408,7 +254,7 @@ pub(super) fn apply_tail_events(
                     frame
                         .write_slot_with_taint(*slot, slot_value, taint)
                         .map_err(|_| RecoveryError::ReplayDivergence {
-                            step: vb_core::StepIdx::ZERO,
+                            step: StepIdx::ZERO,
                             detail: "slot write out of bounds".to_owned(),
                         })?;
                 }
@@ -470,14 +316,19 @@ pub(super) fn apply_tail_events(
     Ok(executed)
 }
 
+// ============================================================================
+// Parallel in-flight peak computation
+// ============================================================================
+
 /// Computes parallel in-flight counters from action events without mutating step states.
 ///
 /// This is used by `hydrate_run_frame_from_events` after the seed has already
-/// applied step states. It only tracks action scheduling/completion for parallel counters.
+/// applied step states. It only tracks action scheduling/completion for parallel
+/// counters.
 ///
 /// Returns the peak parallel in-flight count observed.
 pub(super) fn compute_parallel_in_flight(
-    frame: &mut vb_core::RunFrame,
+    frame: &mut RunFrame,
     events: &[JournalEvent],
 ) -> RecoveryResult<u16> {
     let mut tracker = ActionReplayTracker::new();
@@ -509,7 +360,7 @@ pub(super) fn compute_parallel_in_flight(
                 output,
                 ..
             } => {
-                verify_action_ticket_event(*run, *ticket)?;
+                super::action_digest::verify_action_ticket_event(*run, *ticket)?;
                 let effect = tracker.mark_scheduled_ticket_effect(*ticket, *input, *output)?;
                 if effect == ActionReplayEffect::Duplicate {
                     continue;
@@ -550,7 +401,7 @@ pub(super) fn compute_parallel_in_flight(
                 value_digest,
                 ..
             } => {
-                let verified_digest = verified_action_envelope_digest(
+                let verified_digest = super::action_digest::verified_action_envelope_digest(
                     *run,
                     *ticket,
                     *outcome,

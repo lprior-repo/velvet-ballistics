@@ -9,8 +9,6 @@ use crate::diagnostic::DiagnosticCode;
 
 // ── Diagnostic-code constants ──────────────────────────────────────────
 
-/// Historical invalid program-counter code.
-pub(super) const HISTORIC_INVALID_PROGRAM_COUNTER_CODE: u16 = 0x1001;
 /// Invalid program counter diagnostic code.
 pub(super) const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = DiagnosticCode::new(0x1001);
 /// Missing next step diagnostic code.

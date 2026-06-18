@@ -1562,9 +1562,9 @@ fn missing_taint_evidence_fails_closed() {
     // If a slot write event has no taint metadata, recovery must fail
     // rather than silently default to clean taint.
 
-    // This is enforced by the hydrate_support::decode_snapshot_slots path
+    // This is enforced by the snapshot_decode::decode_snapshot_slots path
     // where missing taint bytes for a non-empty slot map result in error.
-    // The exact failure mode is tested in vb_storage's hydrate_support tests.
+    // The exact failure mode is tested in vb_storage's snapshot_decode tests.
 
     // For this BDD test: verify that a snapshot with non-empty slots
     // but empty taint vector returns an error rather than silently filling in Clean.

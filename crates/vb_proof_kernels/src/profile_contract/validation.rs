@@ -5,7 +5,7 @@
 //! governance gaps.
 
 use crate::profile_contract::errors::{ContractGap, GovernanceGap};
-use crate::profile_contract::master::{HARDENED_GOVERNANCE_REQUIRED, MasterProfileContract};
+use crate::profile_contract::{HARDENED_GOVERNANCE_REQUIRED, MasterProfileContract};
 use crate::profile_contract::types::{ProfileKey, ProfileName};
 use crate::profile_contract::workspace::WorkspaceProfileSet;
 

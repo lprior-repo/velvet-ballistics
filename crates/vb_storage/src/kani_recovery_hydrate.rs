@@ -13,7 +13,7 @@ use crate::recovery::hydrate::{
     SnapshotRecoveryInputViolation, TailEventMetadata, validate_recovery_data_present,
     validate_snapshot_metadata, validate_tail_run_metadata, validate_tail_seq_after_snapshot,
 };
-use crate::recovery::hydrate_support::{
+use crate::recovery::event_replay::{
     SlotTaintReadObservation, SlotTaintResolution, resolve_slot_taint_read,
 };
 use crate::{EventSeq, JournalError};

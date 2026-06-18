@@ -168,30 +168,24 @@ pub(super) struct CollectLowering<'a> {
 
 /// Lower a canonical collect primitive into 4 compiled nodes.
 ///
-/// # GOD RULE 2 Contract (Verus model binding)
+/// # GOD RULE 2 Contract (Verus abstract model)
 ///
-/// The mathematical contract for this function is proved by the Verus model at
-/// `verification/verus/collect_lowering.rs` (L1-L6) and the spec block at the
-/// end of this file. In summary, when the starting `id` satisfies
-/// `id + 3 <= u16::MAX` (65535):
+/// The mathematical contract for this function is modeled by the spec block at
+/// the end of this file (ghost code). The spec models the three offset
+/// calculations: `id+1`, `id+2`, `id+3`. When the starting `id` satisfies
+/// `id + 3 <= u16::MAX` (65535), all offsets are in bounds.
 ///
-/// - **L1 (strict monotonicity):** `body_step < page < done`.
-/// - **L2 (4 distinct IDs):** All four node IDs (`id`, `id+1`, `id+2`, `id+3`)
-///   are within `u16` bounds.
-/// - **L3 (consecutive IDs):** The offsets are exactly `+1` from each
-///   predecessor.
-/// - **L4 (max valid start):** The maximum starting `id` is `u16::MAX - 3`
-///   (= 65532).
-/// - **L5 (default safety):** `pages.unwrap_or(1)` and `items.unwrap_or(1)`
-///   always produce a value `>= 1`.
-/// - **L6 (full emission chain):** All of the above hold simultaneously.
+/// L1-L4 and L6 (self-contained arithmetic lemmas) were removed in proof-writer
+/// repair because they proved basic math facts, not production code properties.
+/// L5 (`vb_lemma_option_default_at_least_one`) is retained as it references
+/// the production `Option::unwrap_or(1)` pattern.
 ///
 /// The production function cannot carry Verus `requires`/`ensures` annotations
 /// directly because it uses external crate types (`vb_core::StepIdx`,
 /// `vb_core::CompiledNode`, `CompileErrors`, `SlotCompiler`) and mutable state
-/// (`&mut SlotCompiler`) that Verus cannot track. Instead, the mathematical
-/// contract is proved in the spec block below and in the standalone Verus
-/// artifacts.
+/// (`&mut SlotCompiler`) that Verus cannot track. The abstract spec model
+/// documents the mathematical contract that production offset arithmetic must
+/// satisfy.
 pub(super) fn lower_canonical_collect(
     index: usize,
     id: StepIdx,
@@ -256,15 +250,19 @@ pub(super) fn lower_canonical_collect(
 }
 
 // ─────────────────────────────────────────────────────────────────
-// GOD RULE 2 Verus Spec Block
+// Verus Spec Block (ghost code, abstract models)
 //
-// Binding: mathematical contract for lower_canonical_collect (above).
-//   Proves the same L1-L6 properties as the standalone Verus model at
-//   verification/verus/collect_lowering.rs.
+// Binding: abstract mathematical model for lower_canonical_collect (above).
+// The spec functions vb_spec_checked_step_offset and vb_spec_collect_offsets
+// are ghost code — they document the mathematical contract but have different
+// signatures from production and cannot be reveal_with_fuel bound.
 //
 // This block is conditionally compiled by Verus via #[cfg(verus_keep_ghost)].
 // Regular Rust builds (cargo check / cargo build) skip it entirely.
-// Verus sees this block and verifies the lemmas.
+//
+// REMOVED (proof-writer repair):
+//   L1-L4, L6: self-contained arithmetic lemmas (GOD RULE 2 violation).
+//   Retained: vb_lemma_option_default_at_least_one (L5, production binding).
 //
 // The production exec fn lower_canonical_collect CANNOT be annotated with
 // Verus requires/ensures directly because:
@@ -274,11 +272,8 @@ pub(super) fn lower_canonical_collect(
 //   (c) The ? operator on custom CompileErrors types is not supported.
 //   (d) Callees like emit_single_body_set use external types.
 //
-// Instead, this spec block proves the pure mathematical contract that the
-// production function's offset arithmetic must satisfy. The binding:
-//   - Production: checked_step_offset(id, 1) → StepIdx::checked_add(1)
-//   - Spec model:  spec_checked_step_offset(id, 1) → Ok(id + 1) when valid
-//   - Both use u16 arithmetic with MAX = 65535.
+// Instead, this spec block provides abstract models of the pure mathematical
+// contract that the production function's offset arithmetic must satisfy.
 //
 // Verification command:
 //   verus --crate-type=lib \
@@ -329,82 +324,22 @@ pub open spec fn vb_spec_collect_offsets(id: int)
 }
 
 // ─────────────────────────────────────────────────────────────────
-// L1: Strict monotonicity — body < page < done
-// ─────────────────────────────────────────────────────────────────
-
-pub proof fn vb_lemma_collect_steps_strictly_increasing(id: int)
-    requires
-        id >= 0,
-        id + 3 <= vb_u16_max(),
-    ensures
-        id + 1 < id + 2 < id + 3,
-{
-    assert(id + 1 < id + 2);
-    assert(id + 2 < id + 3);
-    assert(id + 1 < id + 3);
-}
-
-// ─────────────────────────────────────────────────────────────────
-// L2: 4 distinct IDs within u16 bounds
-// ─────────────────────────────────────────────────────────────────
-
-pub proof fn vb_lemma_collect_4_ids_in_bounds(id: int)
-    requires
-        id >= 0,
-        id + 3 <= vb_u16_max(),
-    ensures
-        id + 1 <= vb_u16_max(),
-        id + 2 <= vb_u16_max(),
-        id + 3 <= vb_u16_max(),
-{
-    assert(id + 1 <= vb_u16_max()) by {
-        assert(id + 3 <= vb_u16_max());
-        assert(id + 1 <= id + 3);
-    }
-    assert(id + 2 <= vb_u16_max()) by {
-        assert(id + 3 <= vb_u16_max());
-        assert(id + 2 <= id + 3);
-    }
-    assert(id + 3 <= vb_u16_max());
-}
-
-// ─────────────────────────────────────────────────────────────────
-// L3: Consecutive IDs — each offset differs by exactly 1
-// ─────────────────────────────────────────────────────────────────
-
-pub proof fn vb_lemma_collect_ids_consecutive(id: int)
-    requires
-        id >= 0,
-        id + 3 <= vb_u16_max(),
-    ensures
-        (id + 1) - id == 1,
-        (id + 2) - (id + 1) == 1,
-        (id + 3) - (id + 2) == 1,
-{
-    assert((id + 1) - id == 1) by { }
-    assert((id + 2) - (id + 1) == 1) by { }
-    assert((id + 3) - (id + 2) == 1) by { }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// L4: Maximum valid start ID is u16::MAX - 3 (= 65532)
-// ─────────────────────────────────────────────────────────────────
-
-pub proof fn vb_lemma_max_valid_collect_start()
-    ensures
-        vb_u16_max() - 3 >= 0,
-        (vb_u16_max() - 3) + 3 == vb_u16_max(),
-        (vb_u16_max() - 3) + 3 <= vb_u16_max(),
-{
-    assert(vb_u16_max() - 3 >= 0) by {
-        assert(vb_u16_max() >= 3);
-    }
-    assert((vb_u16_max() - 3) + 3 == vb_u16_max()) by { }
-    assert((vb_u16_max() - 3) + 3 <= vb_u16_max()) by { }
-}
-
+// L1-L4, L6: Deleted (proof-writer repair).
+// These were self-contained arithmetic lemmas proving basic math facts
+// (id + 1 < id + 2 < id + 3, u16 bounds, consecutive IDs, etc.)
+// that do not bind to production code. GOD RULE 2: no disconnected proofs.
+//
+// REMOVED:
+//   vb_lemma_collect_steps_strictly_increasing (L1) — arithmetic only
+//   vb_lemma_collect_4_ids_in_bounds (L2) — arithmetic only
+//   vb_lemma_collect_ids_consecutive (L3) — arithmetic only
+//   vb_lemma_max_valid_collect_start (L4) — arithmetic only
+//   vb_lemma_full_collect_emission_chain (L6) — depends only on L1-L4
+//
 // ─────────────────────────────────────────────────────────────────
 // L5: Option unwrap safety — default value is >= 1
+// Production binding: lower_canonical_collect uses
+//   collect.pages.unwrap_or(1) and collect.items.unwrap_or(1)
 // ─────────────────────────────────────────────────────────────────
 
 pub proof fn vb_lemma_option_default_at_least_one(v: Option<u32>)
@@ -416,33 +351,6 @@ pub proof fn vb_lemma_option_default_at_least_one(v: Option<u32>)
 {
 }
 
-// ─────────────────────────────────────────────────────────────────
-// L6: Full emission chain (L1 + L2 + L3 + spec binding)
-// ─────────────────────────────────────────────────────────────────
-
-pub proof fn vb_lemma_full_collect_emission_chain(id: int)
-    requires
-        id >= 0,
-        id + 3 <= vb_u16_max(),
-    ensures
-        id + 1 <= vb_u16_max(),
-        id + 2 <= vb_u16_max(),
-        id + 3 <= vb_u16_max(),
-        id + 1 < id + 2 < id + 3,
-        (id + 1) - id == 1,
-        (id + 2) - (id + 1) == 1,
-        (id + 3) - (id + 2) == 1,
-        vb_spec_collect_offsets(id) == Ok::<(int, int, int), VbSpecCompileError>(
-            (id + 1, id + 2, id + 3)),
-{
-    vb_lemma_collect_4_ids_in_bounds(id);
-    vb_lemma_collect_steps_strictly_increasing(id);
-    vb_lemma_collect_ids_consecutive(id);
-    assert(vb_spec_checked_step_offset(id, 1).is_ok());
-    assert(vb_spec_checked_step_offset(id, 2).is_ok());
-    assert(vb_spec_checked_step_offset(id, 3).is_ok());
-}
-
-fn main() {}
+// L6 was removed (proof-writer repair): depended only on deleted L1-L4 lemmas.
 
 } // verus!

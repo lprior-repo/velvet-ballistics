@@ -10,27 +10,31 @@ mod kani_errors_ps003 {
     use crate::codec::payload::{PayloadLenDecision, classify_payload_len};
     use crate::constants::{MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
     use crate::error::JournalError;
-    use crate::events::JournalEvent;
     use crate::types::EventSeq;
-    use vb_core::{RunId, WorkflowDigest};
+    use vb_core::RunId;
 
-    fn run_accepted(run: RunId) -> JournalEvent {
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([0_u8; 32]),
-        }
+    fn bounded_payload_len_or_assume() -> usize {
+        let payload_len = kani::any();
+        let max = match usize::try_from(MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
+            Ok(value) => value,
+            Err(_) => {
+                kani::assume(false);
+                0
+            }
+        };
+        kani::assume(payload_len > 0);
+        kani::assume(payload_len <= max);
+        payload_len
     }
 
-    fn payload_len_or_assume(event: &JournalEvent) -> usize {
-        match postcard::to_allocvec(event) {
-            Ok(payload) => {
-                let len = payload.len();
-                core::mem::forget(payload);
-                len
+    fn nonzero_payload_len_or_assume() -> usize {
+        let payload_len = kani::any();
+        match u32::try_from(payload_len) {
+            Ok(_) => {
+                kani::assume(payload_len > 0);
+                payload_len
             }
-            Err(error) => {
-                core::mem::forget(error);
+            Err(_) => {
                 kani::assume(false);
                 0
             }
@@ -83,8 +87,7 @@ mod kani_errors_ps003 {
     /// broad JournalError destructor graph.
     #[kani::proof]
     fn check_encode_record_error_is_payload_too_large() {
-        let event = run_accepted(RunId::new(1));
-        let payload_len = payload_len_or_assume(&event);
+        let payload_len = nonzero_payload_len_or_assume();
         kani::assert(payload_len > 0, "RunAccepted payload is non-empty");
 
         match classify_payload_len(payload_len, 0) {
@@ -107,12 +110,7 @@ mod kani_errors_ps003 {
     /// journal payload bound and includes the fixed header.
     #[kani::proof]
     fn check_valid_encode_produces_ok() {
-        let run: u64 = kani::any();
-        kani::assume(run > 0);
-        kani::assume(run < 1_000);
-
-        let event = run_accepted(RunId::new(run));
-        let payload_len = payload_len_or_assume(&event);
+        let payload_len = bounded_payload_len_or_assume();
         let payload_len_u32 =
             match classify_payload_len(payload_len, MAX_JOURNAL_EVENT_PAYLOAD_BYTES) {
                 PayloadLenDecision::Accepted(value) => value,

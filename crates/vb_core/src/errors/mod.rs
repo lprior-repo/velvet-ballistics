@@ -413,7 +413,7 @@ impl CoreError {
     // ── Diagnostic-code associated constants ────────────────────────────
 
     /// Historical invalid program-counter code.
-    pub const HISTORIC_INVALID_PROGRAM_COUNTER_CODE: u16 = ir::HISTORIC_INVALID_PROGRAM_COUNTER_CODE;
+    pub const HISTORIC_INVALID_PROGRAM_COUNTER_CODE: u16 = 0x1001;
     /// Invalid program counter diagnostic code.
     pub const INVALID_PROGRAM_COUNTER_CODE: DiagnosticCode = ir::INVALID_PROGRAM_COUNTER_CODE;
     /// Missing next step diagnostic code.

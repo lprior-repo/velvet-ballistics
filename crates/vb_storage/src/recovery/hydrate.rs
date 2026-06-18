@@ -6,10 +6,12 @@
 //! - `hydrate_run_frame_from_events`: Reconstruct live RunFrame from events only
 
 use crate::JournalEvent;
-use crate::recovery::hydrate_support::{
-    apply_tail_events, compute_parallel_in_flight, decode_snapshot_slots,
-    derive_dimensions_from_snapshot_and_tail, verified_action_envelope_digest,
-    verify_action_ticket_event,
+use crate::recovery::event_replay::{apply_tail_events, compute_parallel_in_flight};
+use crate::recovery::snapshot_decode::{
+    decode_snapshot_slots, derive_dimensions_from_snapshot_and_tail,
+};
+use crate::recovery::action_digest::{
+    verified_action_envelope_digest, verify_action_ticket_event,
 };
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{

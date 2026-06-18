@@ -12,11 +12,11 @@ use crate::value::{SlotValue, Taint};
 use crate::value_store::ValueStore;
 use crate::workflow::CompiledWorkflow;
 
+pub(crate) mod basic;
+pub(crate) mod collect;
 pub mod choose;
 pub mod ops;
 pub mod step;
-
-pub use step::{ReplayAction, SuspensionKind};
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -223,7 +223,7 @@ impl<'a> ReplayEngine<'a> {
         run: RunFrame,
         mode: ReplayTargetMode,
     ) -> Result<RunFrame, ReplayError> {
-        let collect_states = step::ReplayCollectStates::new();
+        let collect_states = collect::ReplayCollectStates::new();
         std::iter::successors(Some(self.plan.entry()), |step| Some(*step))
             .take(replay_step_budget_len())
             .try_fold(
@@ -255,7 +255,7 @@ impl<'a> ReplayEngine<'a> {
         current: StepIdx,
         run: &mut RunFrame,
         store: &mut ValueStore,
-        collect_states: &mut step::ReplayCollectStates,
+        collect_states: &mut collect::ReplayCollectStates,
     ) -> Result<Option<StepIdx>, ReplayFoldStop> {
         let node =
             self.plan
@@ -339,7 +339,7 @@ pub(crate) fn eval_expr_for_replay(
 // Re-export for tests and re-exports from submodules
 pub use ops::pop_i64_pair;
 pub use ops::pop_pair;
-pub use step::replay_step;
+pub use step::{ReplayAction, SuspensionKind, replay_step, replay_step_with_collect};
 
 #[cfg(test)]
 #[path = "tests.rs"]

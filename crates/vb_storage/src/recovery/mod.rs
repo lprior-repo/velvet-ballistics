@@ -14,11 +14,13 @@
 //! - Snapshot-plus-tail journal recovery
 //! - Full journal recovery when no snapshot available
 
+pub(crate) mod action_digest;
 pub(crate) mod digest;
+pub mod event_replay;
 pub mod hydrate;
-pub mod hydrate_support;
 pub mod recover;
 pub mod replay;
+pub mod snapshot_decode;
 pub mod snapshot_write;
 pub mod types;
 

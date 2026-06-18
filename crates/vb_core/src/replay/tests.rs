@@ -1227,7 +1227,7 @@ fn replay_collect_state_restores_in_flight_ordering_and_taint() {
 fn replay_collect_pages_with_taint() -> Result<ReplayCollectPages, CoreError> {
     let mut store = ValueStore::new();
     let (plan, mut run) = collect_source_frame(&mut store)?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let start = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -1282,7 +1282,7 @@ fn replay_collect_next_without_hydrated_state_reports_typed_error() {
 fn replay_collect_next_without_hydrated_state() -> Result<Result<(), ReplayError>, CoreError> {
     let mut store = ValueStore::new();
     let (plan, mut run) = collect_source_frame(&mut store)?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let start = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -1296,7 +1296,7 @@ fn replay_collect_next_without_hydrated_state() -> Result<Result<(), ReplayError
 
     super::step::replay_step_with_collect(start, &mut run, &mut store, &plan, &mut states)
         .map_err(replay_err_to_core)?;
-    let mut empty_states = super::step::ReplayCollectStates::new();
+    let mut empty_states = super::collect::ReplayCollectStates::new();
     Ok(
         super::step::replay_step_with_collect(next, &mut run, &mut store, &plan, &mut empty_states)
             .map(|_| ()),
@@ -1370,7 +1370,7 @@ fn replay_collect_start_page_bound() -> Result<Result<(), ReplayError>, CoreErro
         plan.slot_count(),
     )?;
     run.write_slot(SlotIdx::new(0), SlotValue::List(source))?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let start = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -1487,7 +1487,7 @@ fn replay_collect_page_finish_and_empty_next_paths() -> Result<(), CoreError> {
     )?;
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(source), Taint::Secret)?;
 
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(0))?;
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(1))?;
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(2))?;
@@ -1573,7 +1573,7 @@ fn replay_plan_step(
     plan: &crate::workflow::CompiledWorkflow,
     run: &mut RunFrame,
     store: &mut ValueStore,
-    states: &mut super::step::ReplayCollectStates,
+    states: &mut super::collect::ReplayCollectStates,
     step: StepIdx,
 ) -> Result<(), CoreError> {
     let node = plan
@@ -1588,7 +1588,7 @@ fn replay_plan_step(
 fn replay_collect_start_empty_source_jumps_done() -> Result<(), CoreError> {
     let mut store = ValueStore::new();
     let (plan, mut run) = collect_empty_source_frame(&mut store)?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
 
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(0))?;
 
@@ -1682,7 +1682,7 @@ fn replay_collect_start_zero_page_size() -> Result<Result<(), ReplayError>, Core
         plan.slot_count(),
     )?;
     run.write_slot(SlotIdx::new(0), SlotValue::List(source))?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -1723,7 +1723,7 @@ fn replay_collect_start_source_over_limit() -> Result<Result<(), ReplayError>, C
         plan.slot_count(),
     )?;
     run.write_slot(SlotIdx::new(0), SlotValue::List(source))?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -1836,7 +1836,7 @@ fn replay_error_handler_node_reports_unsupported_replay_kind() -> Result<(), Cor
         plan.slot_count(),
     )?;
     let mut store = ValueStore::new();
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -2038,7 +2038,7 @@ fn replay_collect_start_reports_page_insert_failure() -> Result<(), CoreError> {
         plan.slot_count(),
     )?;
     run.write_slot(SlotIdx::new(0), SlotValue::List(source))?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -2084,7 +2084,7 @@ fn replay_collect_next_rejects_missing_current_page() -> Result<(), CoreError> {
 fn replay_collect_next_rejects_changed_source_length() -> Result<(), CoreError> {
     let mut store = ValueStore::new();
     let (plan, mut run) = collect_source_frame(&mut store)?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
 
     replay_plan_step(&plan, &mut run, &mut store, &mut states, StepIdx::new(0))?;
 
@@ -2154,7 +2154,7 @@ fn replay_value_writers_report_missing_output_slots() -> Result<(), CoreError> {
         vec![expr],
     )?;
     let mut store = ValueStore::new();
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
 
     let set_const = replay_node_error(
         &plan,
@@ -2211,7 +2211,7 @@ fn replay_value_writers_report_missing_output_slots() -> Result<(), CoreError> {
 fn replay_node_error(
     plan: &crate::workflow::CompiledWorkflow,
     store: &mut ValueStore,
-    states: &mut super::step::ReplayCollectStates,
+    states: &mut super::collect::ReplayCollectStates,
     kind: CompiledNodeKind,
 ) -> Result<&'static str, CoreError> {
     let node = CompiledNode {
@@ -2279,7 +2279,7 @@ fn replay_build_object_reports_insert_failure() -> Result<(), CoreError> {
         .map_err(|_| CoreError::InternalInvariantViolation {
             reason: "test cap filler insert failed",
         })?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -2338,7 +2338,7 @@ fn replay_build_list_reports_insert_failure() -> Result<(), CoreError> {
         .map_err(|_| CoreError::InternalInvariantViolation {
             reason: "test cap filler insert failed",
         })?;
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan
         .node(StepIdx::new(0))
         .ok_or(CoreError::InvalidProgramCounter {
@@ -2363,7 +2363,7 @@ fn replay_step_error(
     step: StepIdx,
 ) -> Result<(), ReplayError> {
     let mut store = ValueStore::new();
-    let mut states = super::step::ReplayCollectStates::new();
+    let mut states = super::collect::ReplayCollectStates::new();
     let node = plan.node(step).ok_or(ReplayError::StepNotFound { step })?;
     super::step::replay_step_with_collect(node, run, &mut store, plan, &mut states).map(|_| ())
 }

@@ -15,10 +15,10 @@ pub(crate) mod proptest {
     pub(crate) mod vb_rxru0_action_properties;
 }
 
-// Verus proof modules (compiled with verus toolchain)
+// Verus proof modules (compiled with verus toolchain).
+// Note: production-binding proofs live in-frame in frame.rs and action.rs
+// via #[cfg(verus)] verus! { reveal_with_fuel(...) blocks.
 #[cfg(verus)]
 pub mod verus {
-    pub mod run_frame_new_exec_proofs;
-    pub mod step_state_absorbing_proofs;
-    pub mod vb_rxru0_action_specs;
+    // reserved: add new verus modules here
 }

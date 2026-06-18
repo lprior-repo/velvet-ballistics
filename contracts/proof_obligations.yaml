@@ -528,20 +528,23 @@ obligations:
   - id: VB-CORE-RUNFRAME-EXEC-001
     section: [83]
     statement: |
-      exec fn wrappers in run_frame_new_exec_proofs.rs bind production RunFrame::new.
+      In-frame Verus lemmas in frame.rs bind production RunFrame::new.
       Preconditions: step_count > 0, first_step.as_usize() < step_count
       Postconditions: Ok(frame) with correct field initialization
+      Binding: reveal_with_fuel on RunFrame::new inside lemma_run_frame_new_* proofs.
     proof_level: L4
     crate: vb_core
     files:
-      - crates/vb_core/src/verification/verus/run_frame_new_exec_proofs.rs
       - crates/vb_core/src/frame.rs
     required:
       verus_crate: full-crate verus build via cargo verus
     commands:
-      - verus --crate-type=lib ...  # STANDALONE BLOCKED - requires crate-level build
+      - cargo check -p vb_core --features verus  # or verus toolchain equivalent
     verification_status: tooling_blocked_standalone
-    note: "Verified by code inspection. Compensating controls: 34 specs + Flux + 450+ tests."
+    note: "Standalone proof files deleted 2026-06-17: run_frame_new_exec_proofs.rs,
+      step_state_absorbing_proofs.rs, vb_rxru0_action_specs.rs — all were disconnected
+      spec mirrors with zero reveal_with_fuel binding. Production binding exists
+      in-frame in frame.rs and action.rs via #[cfg(verus)] verus! { } blocks."
     bead: vb-481r.5
 
   # ============================================================

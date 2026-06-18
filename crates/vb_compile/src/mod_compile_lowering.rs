@@ -15,18 +15,19 @@ mod part_12;
 mod part_13;
 mod part_14;
 
-// Verus extern_spec proofs for nested reduce body lowering (vb-xi2f.24).
-// GOD RULE 2: extern_spec binds spec functions to production body_width,
-// canonical_body_step_width, checked_step_offset, and emit_single_body_set.
-// This module does NOT modify production behavior — only adds verification specs.
+// Verus abstract models for nested reduce body lowering (vb-xi2f.24).
+// These spec functions model production behavior in part_01, part_04, part_12
+// as ghost code. No extern_spec! blocks are present (signature mismatches
+// with production functions). All proof lemmas removed — they proved spec
+// properties only, not production code properties.
 #[cfg(verus)]
 mod verus_reduce_proofs;
 
-// Verus production-bound proofs for Together width/parity/ordering.
-// GOD RULE 2: All spec functions model actual production behavior in
-// part_01 (body_width, together_width, canonical_body_step_width) and
-// part_04 (emit_single_body_set, emit_single_body_together).
-// No external_body, no toy types, no vacuous proofs.
+// Verus abstract models for Together width/parity/ordering.
+// All spec functions are ghost code (abstract uniform models).
+// No production bindings (exec fns were re-implementations — GOD RULE 2 violation).
+// No trust markers (lemma_nat_mul_* used assume(...) — GOD RULE 1 violation).
+// No proof lemmas (proved spec properties only, not production code).
 #[cfg(verus)]
 mod proofs;
 

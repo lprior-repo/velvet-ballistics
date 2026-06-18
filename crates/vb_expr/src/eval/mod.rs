@@ -12,10 +12,6 @@ mod ops;
 mod stack;
 mod type_enforcers;
 
-// Verus proofs (compiled under verus toolchain only)
-#[cfg(verus)]
-pub(crate) mod verus;
-
 pub use crate::lexer::{BinaryOp, UnaryOp};
 pub use crate::parser::ExprHelper;
 pub use crate::{ExprError, ExprResult};

@@ -147,8 +147,8 @@ use vb_storage::{
 const JOURNAL_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/journal/replay.rs");
 const JOURNAL_CORE_SOURCE: &str = include_str!("../../vb_storage/src/journal/core.rs");
 const JOURNAL_APPEND_SOURCE: &str = include_str!("../../vb_storage/src/journal/append.rs");
-const HYDRATE_SUPPORT_SOURCE: &str =
-    include_str!("../../vb_storage/src/recovery/hydrate_support.rs");
+const EVENT_REPLAY_SOURCE: &str =
+    include_str!("../../vb_storage/src/recovery/event_replay.rs");
 fn step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
     JournalEvent::StepStarted {
         run,
@@ -385,11 +385,11 @@ fn given_public_hydration_tail_slot_cannot_be_dimensioned_when_recovery_runs_the
 
     // And: the lower-level tail write helper keeps the fail-closed taint lattice wired.
     let defaults_failed_read_to_clean =
-        HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean)");
-    let uses_typed_read_taint_error = HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot)")
-        && HYDRATE_SUPPORT_SOURCE.contains("resolve_slot_taint_read")
-        && HYDRATE_SUPPORT_SOURCE.contains("SlotTaintResolution::FailClosed")
-        && HYDRATE_SUPPORT_SOURCE.contains("RecoveryError::SlotTaintReadFailed");
+        EVENT_REPLAY_SOURCE.contains("frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean)");
+    let uses_typed_read_taint_error = EVENT_REPLAY_SOURCE.contains("frame.read_taint(*slot)")
+        && EVENT_REPLAY_SOURCE.contains("resolve_slot_taint_read")
+        && EVENT_REPLAY_SOURCE.contains("SlotTaintResolution::FailClosed")
+        && EVENT_REPLAY_SOURCE.contains("RecoveryError::SlotTaintReadFailed");
 
     assert_eq!(defaults_failed_read_to_clean, false);
     assert_eq!(uses_typed_read_taint_error, true);

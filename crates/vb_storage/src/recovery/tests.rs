@@ -3230,7 +3230,7 @@ fn recovery_error_terminal_state_mismatch_constructs_correctly() {
 // ============================================================================
 
 mod hydrate_run_frame_tests {
-    use crate::recovery::hydrate_support::apply_tail_events;
+    use crate::recovery::event_replay::apply_tail_events;
     use crate::recovery::{
         ActionReplayTracker, RecoveryError, RunSnapshot, hydrate_run_frame,
         hydrate_run_frame_from_events,

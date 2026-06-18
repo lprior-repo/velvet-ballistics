@@ -19,12 +19,12 @@
 //! ## Exec Fn Binding
 //!
 //! IMPORTANT: This file contains SPEC functions only. The actual exec fn wrappers
-//! that call production RunFrame::new are in:
-//!   `crates/vb_runtime/src/verification/verus/run_frame_new_exec_proofs.rs`
+//! that call production RunFrame::new and verify postconditions live in:
+//!   `crates/vb_core/src/frame.rs` (#[cfg(verus)] verus! { lemma_run_frame_new_* } blocks)
 //!
-//! The exec fns in run_frame_new_exec_proofs.rs actually call RunFrame::new and
-//! verify postconditions. This spec file provides the mathematical model that
-//! the exec fns are bound to.
+//! The spec functions in this file provide the mathematical model. The in-frame
+//! proof lemmas in frame.rs bind production RunFrame::new to this spec via
+//! reveal_with_fuel. This spec file provides the ground-truth model.
 //!
 //! ## Trust Boundaries
 //!

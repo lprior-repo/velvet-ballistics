@@ -1,17 +1,17 @@
-#![forbid(unsafe_code)]
-//! Reference validation for compiled workflow ASTs.
+//! AST walk functions for reference collection.
 //!
-//! Delegates core reference validation to `vb_validate::references` to avoid
-//! duplicating validation logic. Handles compile-specific references (slot
-//! accessors) locally since those are not part of the standalone validator's
-//! surface.
+//! Two parallel walks exist: the standard walk (with step context and
+//! `in_repeat_body = false`) and the repeat-body walk (no step context,
+//! `in_repeat_body = true` which lifts the `$attempt.*` scope guard).
 
-use crate::SourceMark;
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
-use vb_validate::references::{RefTables, validate_single_reference_with_context};
+use super::tables::build_ref_tables;
+use super::validate::validate_compile_reference;
+use vb_validate::references::RefTables;
 
+/// Entry point: validates all references in a workflow AST.
 pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErrors> {
     let tables = build_ref_tables(ast);
     let mut errors = Vec::new();
@@ -29,63 +29,7 @@ pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErro
     }
 }
 
-fn build_ref_tables(ast: &WorkflowAst) -> RefTables {
-    let inputs = entry_names_owned(&ast.inputs);
-    let vars = entry_names_owned(&ast.vars);
-    let secrets = secret_names_owned(&ast.secrets);
-    let step_ids = step_names_owned(&ast.steps);
-    let step_outputs = output_step_names_owned(&ast.steps);
-    RefTables::from_slices_with_outputs(&inputs, &vars, &secrets, &step_ids, &[], &step_outputs)
-}
-
-fn entry_names_owned<T>(entries: &[AstMapEntry<T>]) -> Vec<String> {
-    let mut names = Vec::with_capacity(entries.len());
-    for entry in entries {
-        names.push(entry.name.as_ref().to_owned());
-    }
-    names
-}
-
-fn secret_names_owned(entries: &[AstMapEntry<Box<str>>]) -> Vec<String> {
-    let mut names = Vec::with_capacity(entries.len());
-    for entry in entries {
-        names.push(entry.name.as_ref().to_owned());
-    }
-    names
-}
-
-fn step_names_owned(steps: &[StepAst]) -> Vec<String> {
-    let mut names = Vec::with_capacity(steps.len());
-    for step in steps {
-        names.push(step.id.as_ref().to_owned());
-    }
-    names
-}
-
-fn output_step_names_owned(steps: &[StepAst]) -> Vec<String> {
-    let mut names = Vec::with_capacity(steps.len());
-    for step in steps {
-        if step_kind_produces_output(&step.kind) {
-            names.push(step.id.as_ref().to_owned());
-        }
-    }
-    names
-}
-
-fn step_kind_produces_output(kind: &crate::ast::StepKindAst) -> bool {
-    use crate::ast::StepKindAst;
-    matches!(
-        kind,
-        StepKindAst::Run { .. }
-            | StepKindAst::Save { .. }
-            | StepKindAst::ForEach { .. }
-            | StepKindAst::Together { .. }
-            | StepKindAst::Collect { .. }
-            | StepKindAst::Reduce { .. }
-            | StepKindAst::Repeat { .. }
-            | StepKindAst::Ask { .. }
-    )
-}
+// ── Top-level entry walkers ──────────────────────────────────────────────
 
 fn collect_references_from_value_entries(
     entries: &[AstMapEntry<AstValue>],
@@ -161,6 +105,8 @@ fn collect_references_from_step_kind(
         }
     }
 }
+
+// ── Repeat-body walkers (no step context, in_repeat_body = true) ─────────
 
 /// Walks a `Repeat` body with the scope flag that allows `$attempt.*`.
 ///
@@ -284,6 +230,8 @@ fn collect_references_from_repeat_body_value_entries(
     }
 }
 
+// ── Single-value expression walkers (standard, with step context) ────────
+
 fn collect_references_from_expression(
     expression: &AstExpression,
     tables: &RefTables,
@@ -361,209 +309,3 @@ fn collect_references_from_value(
         AstValue::Null | AstValue::Bool(_) | AstValue::I64(_) | AstValue::Text(_) => {}
     }
 }
-
-/// Validates a reference from the compiler AST.
-///
-/// Handles compile-specific references (`$slot.*`) locally and delegates
-/// everything else to `vb_validate::references::validate_single_reference_with_context`.
-///
-/// `in_repeat_body` lifts the `$attempt.*` scope guard for references that
-/// appear inside a `Repeat` body. The flag is propagated from
-/// `collect_references_from_repeat_body` and is `false` for top-level
-/// references (where `$attempt.*` is rejected with `InvalidVariableScope`).
-fn validate_compile_reference(
-    reference: &str,
-    tables: &RefTables,
-    step_index: Option<usize>,
-    in_repeat_body: bool,
-) -> Result<(), CompileError> {
-    let Some(body) = reference.strip_prefix('$') else {
-        return Ok(());
-    };
-    let Some((root, tail)) = body.split_once('.') else {
-        // Bare reference -- delegate to shared validation. Inside a repeat
-        // body the bare `$attempt` is still illegal (it is only meaningful
-        // with the `.number` accessor), so the scope guard does not lift for
-        // bare references.
-        return validate_single_reference_with_context(reference, tables, step_index, false, false)
-            .map_err(|e| map_validation_error(reference, &e));
-    };
-    if root == "attempt" {
-        if in_repeat_body {
-            return Ok(());
-        }
-        return Err(reject_attempt_scope(reference));
-    }
-    // Compile-specific: slot references are not in the standalone validator
-    if matches!(root, "slot" | "slots") {
-        return validate_slot_reference(reference, root, tail);
-    }
-    // Compile-specific: reject accessor paths after declared names
-    // (e.g., $vars.data.field is unsupported because the compiler
-    // does not support accessor traversal on vars/inputs/secrets)
-    if let Some(error) = check_accessor_path(reference, root, tail, tables) {
-        return Err(error);
-    }
-    validate_single_reference_with_context(reference, tables, step_index, false, false)
-        .map_err(|e| map_validation_error(reference, &e))
-}
-
-/// Rejects a `$attempt.*` reference observed outside a `Repeat` body.
-///
-/// Scope guard: `$attempt.*` is only legal inside a `Repeat` body step.
-/// Architectural invariant: the cold AST (master spec §45) drops
-/// `StepKindAst::Repeat` body expressions at construction. Any
-/// `$attempt.*` reference that reaches this validator is therefore
-/// by definition outside a `Repeat` body — there is no per-step
-/// "in a Repeat body" flag on `RefTables` (only declared name
-/// sets), and the cold-AST `Repeat` variant carries no body to
-/// inspect. The blanket reject is correct under the cold-AST
-/// invariant. When canonical lowering adds body retention (master
-/// §45 follow-up), this guard will need a `repeat_step_indices`
-/// set threaded through `RefTables` to support the legal
-/// use case (see `references_scope_guard_tests.rs` for the
-/// architectural note).
-fn reject_attempt_scope(reference: &str) -> CompileError {
-    CompileError::InvalidVariableScope {
-        reference: Box::from(reference),
-        context: "outside repeat body",
-        allowed: Box::from(["repeat_attempt.body", "repeat_check"].as_slice()),
-        mark: SourceMark::unavailable(),
-    }
-}
-
-/// Validates a `$slot.*` reference (compile-specific).
-fn validate_slot_reference(reference: &str, root: &str, tail: &str) -> Result<(), CompileError> {
-    let (slot, path) = match tail.split_once('.') {
-        Some((slot, path)) => (slot, Some(path)),
-        None => (tail, None),
-    };
-    if slot.parse::<u16>().is_err() {
-        return Err(CompileError::UnknownReferenceName {
-            kind: "slot",
-            reference: Box::from(reference),
-            name: Box::from(slot),
-        });
-    }
-    if let Some(path) = path {
-        if numeric_accessor_path(path) {
-            return Ok(());
-        }
-        let accessor_root = format!("{root}.{slot}");
-        return Err(CompileError::UnsupportedAccessorReference {
-            reference: Box::from(reference),
-            root: Box::from(accessor_root),
-            path: Box::from(path),
-        });
-    }
-    Ok(())
-}
-
-fn numeric_accessor_path(path: &str) -> bool {
-    let mut saw_segment = false;
-    for segment in path.split('.') {
-        // Reject empty segments (e.g., from "$slot.1..0") and non-numeric segments.
-        if segment.is_empty() {
-            return false;
-        }
-        if segment.parse::<u32>().is_err() {
-            return false;
-        }
-        saw_segment = true;
-    }
-    saw_segment
-}
-
-/// Checks for unsupported accessor paths after declared names.
-///
-/// For example, `$vars.data.field` has an accessor path `field` after the
-/// declared name `data`, which the compiler does not support.
-fn check_accessor_path(
-    reference: &str,
-    root: &str,
-    tail: &str,
-    tables: &RefTables,
-) -> Option<CompileError> {
-    // Only check accessor paths for name-rooted references
-    #[allow(clippy::question_mark)]
-    let Some((name, path)) = tail.split_once('.') else {
-        return None;
-    };
-    // Check if the root+name is declared; if so, the trailing path is unsupported
-    let is_declared = match root {
-        "input" | "inputs" => tables.contains_input(name),
-        "var" | "vars" => tables.contains_var(name),
-        "secrets" => tables.contains_secret(name),
-        _ => return None,
-    };
-    if is_declared {
-        let accessor_root = format!("{root}.{name}");
-        return Some(CompileError::UnsupportedAccessorReference {
-            reference: Box::from(reference),
-            root: Box::from(accessor_root),
-            path: Box::from(path),
-        });
-    }
-    None
-}
-
-/// Maps a `vb_validate::ValidationError` from shared reference validation into
-/// a `CompileError` with source-location context.
-fn map_validation_error(reference: &str, error: &vb_validate::ValidationError) -> CompileError {
-    match error {
-        vb_validate::ValidationError::SecretNotDeclared { secret } => {
-            // The shared vb_validate layer reports undeclared secret references
-            // as `SecretNotDeclared { secret }`. The compile layer surfaces
-            // these to users as `UnknownReferenceName { kind: "secrets", .. }`
-            // so the error type and reference-kind reporting are uniform with
-            // other unknown-reference cases.
-            CompileError::UnknownReferenceName {
-                kind: "secrets",
-                reference: Box::from(reference),
-                name: Box::from(secret.as_str()),
-            }
-        }
-        vb_validate::ValidationError::UnknownReference { .. } => {
-            let Some(body) = reference.strip_prefix('$') else {
-                return CompileError::UnknownReferenceRoot {
-                    reference: Box::from(reference),
-                    root: Box::from(reference),
-                };
-            };
-            let Some((root, tail)) = body.split_once('.') else {
-                return CompileError::UnknownReferenceRoot {
-                    reference: Box::from(reference),
-                    root: Box::from(body),
-                };
-            };
-            let name = match tail.split_once('.') {
-                Some((name, _)) => name,
-                None => tail,
-            };
-            let kind = match root {
-                "input" => "input",
-                "var" | "vars" => "var",
-                "secrets" => "secrets",
-                "step" | "steps" => "step",
-                _ => {
-                    return CompileError::UnknownReferenceRoot {
-                        reference: Box::from(reference),
-                        root: Box::from(root),
-                    };
-                }
-            };
-            CompileError::UnknownReferenceName {
-                kind,
-                reference: Box::from(reference),
-                name: Box::from(name),
-            }
-        }
-        _ => CompileError::IllegalReference {
-            reference: Box::from(reference),
-        },
-    }
-}
-
-#[cfg(test)]
-#[path = "references/tests.rs"]
-mod tests;

@@ -7,7 +7,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::recovery::hydrate_support::{
+use crate::recovery::action_digest::{
     verified_action_envelope_digest, verify_action_ticket_event,
 };
 use crate::recovery::{
