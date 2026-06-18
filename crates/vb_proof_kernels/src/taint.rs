@@ -1,7 +1,10 @@
 //! Taint lattice proof kernel.
 //!
-//! This is a tiny, pure, sequential Rust kernel for taint lattice verification.
-//! Suitable for Verus/Aeneas extraction to Lean.
+//! Local-only taint lattice sanity kernel. This file defines its own `Taint`
+//! mirror type and is not bound to `vb_core::value::Taint` or production
+//! `vb_core::value::join_taint`. Verus checks in this file are therefore
+//! non-proof local model checks and must not be registered as production
+//! evidence unless a future pass adds a reviewed production binding.
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 

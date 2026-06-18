@@ -1,134 +1,140 @@
-//! Standalone model for numeric timer seam types.
+//! Verus specification and proof for Numeric Timer Seam — vb-0l9k0.
 //!
-//! Production binding targets:
-//! - `crates/vb_runtime/src/shard/types.rs:865-974`
-//!   - TimerTick (865-899)
-//!   - TimerDuration (901-929)
-//!   - TimerDeadline (931-961)
-//!   - TimerKind (963-974)
+//! Production bindings:
+//! - `spec_timer_tick_elapsed` → `shard/timer.rs:76-78`
+//! - `spec_timer_deadline_from_tick_and_duration` → `shard/timer.rs:132-134`
+//! - `spec_timer_deadline_is_past` → `shard/timer.rs:138-140`
 
 use vstd::prelude::*;
 
 verus! {
 
-    // Standalone model types
+    // ===========================================================================
+    // Spec: timer tick elapsed check
+    //
+    // Production binding: shard/timer.rs:76-78
+    //
+    //   pub fn has_elapsed(self, deadline: TimerDeadline) -> bool {
+    //       self.0 >= deadline.get()
+    //   }
+    // ===========================================================================
 
-    /// Model of TimerTick - monotonically increasing timer value
-    pub struct TimerTick {
-        pub val: u64,
-    }
-
-    /// Model of TimerDuration
-    pub struct TimerDuration {
-        pub nanos: u64,
-    }
-
-    /// Model of TimerDeadline
-    pub struct TimerDeadline {
-        pub tick: u64,
-    }
-
-    /// Model of TimerKind
-    pub enum TimerKind {
-        Absolute,
-        Relative,
-    }
-
-    /// Model: TimerTick is valid when val >= 0 (always true for u64).
-    pub open spec fn timer_tick_valid(t: TimerTick) -> bool {
-        t.val >= 0
-    }
-
-    /// Model: TimerDeadline is valid when tick > 0.
-    pub open spec fn timer_deadline_valid(d: TimerDeadline) -> bool {
-        d.tick > 0
+    pub closed spec fn spec_timer_tick_elapsed(current_tick: nat, deadline: u64) -> bool {
+        current_tick >= deadline as nat
     }
 
     // ===========================================================================
-    // Exec fn: timer_tick_valid binding — proves tick validity invariant
+    // Proof: timer tick at deadline is elapsed
     // ===========================================================================
 
-    /// Exec fn: proves TimerTick validity for any u64 value.
-    /// Since u64 is always >= 0, this returns true (tautology).
-    /// Serves as exec fn binding point for production TimerTick validation.
-    pub exec fn exec_timer_tick_valid(tick_val: u64) -> (result: bool)
-        ensures result == timer_tick_valid(TimerTick { val: tick_val })
+    pub proof fn proof_timer_tick_at_deadline_is_elapsed(deadline: u64)
+        ensures
+            spec_timer_tick_elapsed(deadline as nat, deadline),
     {
-        true
+        assert(spec_timer_tick_elapsed(deadline as nat, deadline));
     }
 
-    /// Exec fn: proves TimerDeadline validity — returns tick > 0.
-    pub exec fn exec_timer_deadline_valid(deadline_tick: u64) -> (result: bool)
-        ensures result == timer_deadline_valid(TimerDeadline { tick: deadline_tick })
+    // ===========================================================================
+    // Proof: timer tick past deadline is elapsed
+    // ===========================================================================
+
+    pub proof fn proof_timer_tick_past_deadline_is_elapsed(deadline: u64, extra: nat)
+        requires
+            extra > 0,
+        ensures
+            spec_timer_tick_elapsed((deadline as nat) + extra, deadline),
     {
-        deadline_tick > 0
+        assert(spec_timer_tick_elapsed((deadline as nat) + extra, deadline));
     }
 
     // ===========================================================================
-    // Proof: TimerTick validity is always true for u64
+    // Proof: timer tick before deadline is NOT elapsed
     // ===========================================================================
 
-    pub proof fn proof_timer_tick_always_valid()
-        ensures forall |v: u64| timer_tick_valid(TimerTick { val: v })
+    pub proof fn proof_timer_tick_before_deadline_not_elapsed(deadline: u64, before: u64)
+        requires
+            before < deadline,
+        ensures
+            !spec_timer_tick_elapsed(before as nat, deadline),
     {
-        assert(forall |v: u64| timer_tick_valid(TimerTick { val: v }));
+        assert(!spec_timer_tick_elapsed(before as nat, deadline));
     }
 
     // ===========================================================================
-    // Proof: TimerDeadline valid iff tick > 0
+    // Spec: timer deadline from tick and duration
+    //
+    // Production binding: shard/timer.rs:132-134
+    //
+    //   pub fn from_tick_and_duration(tick: TimerTick, duration: TimerDuration) -> Option<Self> {
+    //       tick.get().checked_add(duration.get()).map(Self)
+    //   }
     // ===========================================================================
 
-    pub proof fn proof_timer_deadline_valid_positive(tick: u64)
-        requires tick > 0
-        ensures timer_deadline_valid(TimerDeadline { tick })
+    pub closed spec fn spec_timer_deadline_from_tick_and_duration(
+        tick: u64,
+        duration: u64,
+    ) -> Option<u64> {
+        tick.checked_add(duration)
+    }
+
+    // ===========================================================================
+    // Proof: deadline from tick and duration is Some when no overflow
+    // ===========================================================================
+
+    pub proof fn proof_deadline_from_tick_no_overflow(
+        tick: u64,
+        duration: u64,
+    )
+        requires
+            tick <= u64::MAX - duration,
+        ensures
+            spec_timer_deadline_from_tick_and_duration(tick, duration).is_some(),
     {
-        assert(timer_deadline_valid(TimerDeadline { tick })) by (compute);
-    }
-
-    pub proof fn proof_timer_deadline_invalid_zero()
-        ensures !timer_deadline_valid(TimerDeadline { tick: 0 })
-    {
-        assert(!timer_deadline_valid(TimerDeadline { tick: 0 })) by (compute);
+        assert(spec_timer_deadline_from_tick_and_duration(tick, duration).is_some());
     }
 
     // ===========================================================================
-    // Spec: TimerDeadline arithmetic (used by timer wheel operations)
+    // Proof: deadline from tick and duration is None on overflow
     // ===========================================================================
 
-    /// Spec: absolute deadline is valid iff its tick is positive.
-    pub open spec fn spec_absolute_deadline_valid(tick: u64) -> bool {
-        timer_deadline_valid(TimerDeadline { tick })
-    }
-
-    /// Spec: relative deadline adds duration to current tick.
-    pub open spec fn spec_relative_deadline(current_tick: u64, duration_nanos: u64) -> u64 {
-        current_tick.wrapping_add(duration_nanos)
+    pub proof fn proof_deadline_from_tick_overflow(
+        tick: u64,
+        duration: u64,
+    )
+        requires
+            tick > u64::MAX - duration,
+        ensures
+            spec_timer_deadline_from_tick_and_duration(tick, duration).is_none(),
+    {
+        assert(spec_timer_deadline_from_tick_and_duration(tick, duration).is_none());
     }
 
     // ===========================================================================
-    // Exec fn: relative deadline computation — proves wrapping correctness
+    // Spec: timer deadline is past
+    //
+    // Production binding: shard/timer.rs:138-140
+    //
+    //   pub fn is_past(self, current: TimerTick) -> bool {
+    //       current.has_elapsed(self)
+    //   }
     // ===========================================================================
 
-    /// Exec fn: reimplements spec_relative_deadline logic to prove spec-exec binding.
-    pub exec fn exec_relative_deadline(current_tick: u64, duration_nanos: u64) -> (result: u64)
-        ensures result == spec_relative_deadline(current_tick, duration_nanos)
-    {
-        current_tick.wrapping_add(duration_nanos)
+    pub closed spec fn spec_timer_deadline_is_past(current_tick: u64, deadline: u64) -> bool {
+        spec_timer_tick_elapsed(current_tick as nat, deadline)
     }
 
-    /// Proof: relative deadline is always a valid u64 (wrapping arithmetic).
-    pub proof fn proof_relative_deadline_wrapping()
-        ensures spec_relative_deadline(u64::MAX, 1) == 0
-    {
-        assert(spec_relative_deadline(u64::MAX, 1) == 0) by (compute);
-    }
+    // ===========================================================================
+    // Theorem: timer deadline past is equivalent to tick elapsed
+    // ===========================================================================
 
-    /// Proof: relative deadline preserves order when no overflow.
-    pub proof fn proof_relative_deadline_monotonic(current: u64, duration: u64)
-        requires current + duration <= u64::MAX
-        ensures spec_relative_deadline(current, duration) > current || duration == 0
+    pub proof fn theorem_timer_deadline_past_equivalence(
+        current_tick: u64,
+        deadline: u64,
+    )
+        ensures
+            spec_timer_deadline_is_past(current_tick, deadline) == spec_timer_tick_elapsed(current_tick as nat, deadline),
     {
-        assert(spec_relative_deadline(current, duration) > current || duration == 0) by (compute);
+        assert(spec_timer_deadline_is_past(current_tick, deadline) == spec_timer_tick_elapsed(current_tick as nat, deadline));
     }
 
 } // verus!

@@ -22,7 +22,7 @@
 {"file": "verification/verus/ipc_strict_admission.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
 {"file": "verification/verus/recovery_hydration_contracts.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/recovery_verification.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
-{"file": "verification/verus/resource_budget.rs", "lane": "verus", "status": "BLOCKED", "has_gaps": true, "gap_summary": "Self-admitted DISCONNECTED SPEC MIRROR - GOD RULE 2 VIOLATION"}
+{"file": "verification/verus/resource_budget.rs", "lane": "verus", "status": "RETIRED_LOCAL_MODEL", "has_gaps": true, "gap_summary": "Retired by vb-dzibx: disconnected mirror model; not production-bound evidence for vb_core resource arithmetic. Future repair must use production contracts or reviewed bridges without external_body laundering."}
 {"file": "verification/verus/run_frame_invariant.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/run_frame_new_postconditions.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/run_loop_termination.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
@@ -34,10 +34,10 @@
 {"file": "verification/verus/step_budget.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
 {"file": "verification/verus/step_budget_bound_proofs.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
 {"file": "verification/verus/step_offset.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
-{"file": "verification/verus/step_state_machine.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/step_state_machine.rs", "lane": "verus", "status": "RETIRED_LOCAL_MODEL", "has_gaps": true, "gap_summary": "Retired by vb-dzibx: standalone step-state mirror is not bound to vb_core::frame transition code."}
 {"file": "verification/verus/storage_kind_family.rs", "lane": "verus", "status": "BLOCKED", "has_gaps": true, "gap_summary": "Production blocker vb-b8i8f-BLOCK-001: production is_known_record_kind does not yet include kind 28"}
 {"file": "verification/verus/strict_admission_witness.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
-{"file": "verification/verus/taint_lattice.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/taint_lattice.rs", "lane": "verus", "status": "RETIRED_LOCAL_MODEL", "has_gaps": true, "gap_summary": "Retired by vb-dzibx: SpecTaint mirror is not bound to vb_core::value::Taint or production join_taint."}
 {"file": "verification/verus/try_from_parts.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
 {"file": "verification/verus/v1_primitive_lowering.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/value_store_invariant.rs", "lane": "verus", "status": "NOT_VERIFIED", "has_gaps": true, "gap_summary": "Empty proof bodies (vacuous tautologies, no computational content)"}
@@ -122,7 +122,7 @@
 {"file": "verification/verus/vb_compile/width_parity_proof.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/vb_jnz9_journal_event_seq_valid.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/vb_jpq724_events_for_run_production.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
-{"file": "verification/verus/vb_kyyf_normalization.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
+{"file": "verification/verus/vb_kyyf_normalization.rs", "lane": "verus", "status": "RETIRED_LOCAL_MODEL", "has_gaps": true, "gap_summary": "Retired by vb-dzibx: includes vb_proof_kernels local scalar mirror only; not bound to runtime/storage/CLI/codegen production adapters."}
 {"file": "verification/verus/vb_mrwe5_compat_kind_family.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/vb_mrwe5_decode_reject.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}
 {"file": "verification/verus/vb_mrwe5_kind_parity.rs", "lane": "verus", "status": "VERIFIED", "has_gaps": false, "gap_summary": ""}

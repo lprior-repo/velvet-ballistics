@@ -1,7 +1,9 @@
 //! Resource budget proof kernel.
 //!
-//! This is a tiny, pure, sequential Rust kernel for resource budget verification.
-//! Suitable for Verus/Aeneas extraction to Lean.
+//! Local-only resource budget sanity kernel. The Verus layer models a mirror
+//! `Budget` type with mathematical `nat` fields; it is not bound to production
+//! `vb_core` resource-budget types or methods. Successful Verus checking of
+//! this file is local model evidence only, not production deductive evidence.
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
@@ -45,7 +47,7 @@ impl Budget {
     }
 }
 
-// ── Spec: sequential add (field-wise saturating add and max) ───────────
+// ── Spec: sequential add (field-wise mathematical add and max) ─────────
 pub open spec fn spec_sequential_add(a: Budget, b: Budget) -> Budget {
     Budget {
         steps: a.steps + b.steps,
@@ -284,7 +286,7 @@ proof fn lemma_loop_mul_non_negative(body: Budget, n: nat)
     assert(spec_loop_mul(body, n).steps >= 0);
 }
 
-// ── Exec: sequential_add — field-wise saturating add and max ────────────
+// ── Exec: sequential_add — field-wise mathematical add and max ──────────
 pub fn sequential_add(a: Budget, b: Budget) -> (result: Budget)
     ensures
         result == spec_sequential_add(a, b),
@@ -292,15 +294,39 @@ pub fn sequential_add(a: Budget, b: Budget) -> (result: Budget)
     Budget {
         steps: a.steps + b.steps,
         actions: a.actions + b.actions,
-        parallel: a.parallel.max(b.parallel),
-        retries: a.retries.max(b.retries),
+        parallel: if a.parallel >= b.parallel {
+            a.parallel
+        } else {
+            b.parallel
+        },
+        retries: if a.retries >= b.retries {
+            a.retries
+        } else {
+            b.retries
+        },
         gather_pages: a.gather_pages + b.gather_pages,
         gather_items: a.gather_items + b.gather_items,
-        for_each_iters: a.for_each_iters.max(b.for_each_iters),
-        together_branches: a.together_branches.max(b.together_branches),
-        repeat_attempts: a.repeat_attempts.max(b.repeat_attempts),
+        for_each_iters: if a.for_each_iters >= b.for_each_iters {
+            a.for_each_iters
+        } else {
+            b.for_each_iters
+        },
+        together_branches: if a.together_branches >= b.together_branches {
+            a.together_branches
+        } else {
+            b.together_branches
+        },
+        repeat_attempts: if a.repeat_attempts >= b.repeat_attempts {
+            a.repeat_attempts
+        } else {
+            b.repeat_attempts
+        },
         run_time_secs: a.run_time_secs + b.run_time_secs,
-        result_bytes: a.result_bytes.max(b.result_bytes),
+        result_bytes: if a.result_bytes >= b.result_bytes {
+            a.result_bytes
+        } else {
+            b.result_bytes
+        },
         slots_written: a.slots_written + b.slots_written,
     }
 }
@@ -311,22 +337,54 @@ pub fn branch_max(a: Budget, b: Budget) -> (result: Budget)
         result == spec_branch_max(a, b),
 {
     Budget {
-        steps: a.steps.max(b.steps),
-        actions: a.actions.max(b.actions),
-        parallel: a.parallel.max(b.parallel),
-        retries: a.retries.max(b.retries),
-        gather_pages: a.gather_pages.max(b.gather_pages),
-        gather_items: a.gather_items.max(b.gather_items),
-        for_each_iters: a.for_each_iters.max(b.for_each_iters),
-        together_branches: a.together_branches.max(b.together_branches),
-        repeat_attempts: a.repeat_attempts.max(b.repeat_attempts),
-        run_time_secs: a.run_time_secs.max(b.run_time_secs),
-        result_bytes: a.result_bytes.max(b.result_bytes),
-        slots_written: a.slots_written.max(b.slots_written),
+        steps: if a.steps >= b.steps { a.steps } else { b.steps },
+        actions: if a.actions >= b.actions { a.actions } else { b.actions },
+        parallel: if a.parallel >= b.parallel { a.parallel } else { b.parallel },
+        retries: if a.retries >= b.retries { a.retries } else { b.retries },
+        gather_pages: if a.gather_pages >= b.gather_pages {
+            a.gather_pages
+        } else {
+            b.gather_pages
+        },
+        gather_items: if a.gather_items >= b.gather_items {
+            a.gather_items
+        } else {
+            b.gather_items
+        },
+        for_each_iters: if a.for_each_iters >= b.for_each_iters {
+            a.for_each_iters
+        } else {
+            b.for_each_iters
+        },
+        together_branches: if a.together_branches >= b.together_branches {
+            a.together_branches
+        } else {
+            b.together_branches
+        },
+        repeat_attempts: if a.repeat_attempts >= b.repeat_attempts {
+            a.repeat_attempts
+        } else {
+            b.repeat_attempts
+        },
+        run_time_secs: if a.run_time_secs >= b.run_time_secs {
+            a.run_time_secs
+        } else {
+            b.run_time_secs
+        },
+        result_bytes: if a.result_bytes >= b.result_bytes {
+            a.result_bytes
+        } else {
+            b.result_bytes
+        },
+        slots_written: if a.slots_written >= b.slots_written {
+            a.slots_written
+        } else {
+            b.slots_written
+        },
     }
 }
 
-// ── Exec: loop_mul — field-wise saturating multiply ────────────────────
+// ── Exec: loop_mul — field-wise mathematical multiply ──────────────────
 pub fn loop_mul(body: Budget, iterations: nat) -> (result: Budget)
     ensures
         result == spec_loop_mul(body, iterations),

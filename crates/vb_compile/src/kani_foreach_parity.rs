@@ -312,17 +312,6 @@ fn foreach_all_nodes_reachable() {
 
         // Verify entry is valid
         let entry = parts.entry.as_usize();
-        ,
-        "for_each IR should pass CompiledWorkflow::try_from_parts validation",
-    );
-
-    if let Ok(_workflow) = workflow_result {
-        // BFS reachability check: all nodes reachable from entry (StepIdx(0))
-        let node_count = parts.nodes.len();
-        kani::assume(node_count == 4); // We build exactly 4 nodes
-
-        // Verify entry is valid
-        let entry = parts.entry.as_usize();
         kani::assert(entry < node_count, "entry must be within node range");
 
         // Manually check the key edges that make all nodes reachable:

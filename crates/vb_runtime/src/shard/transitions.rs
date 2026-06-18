@@ -13,6 +13,7 @@ use crate::shard::types::{
 };
 
 /// Outcome of a snapshot write attempt.
+#[cfg_attr(kani, allow(dead_code))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SnapshotWriteOutcome {
     /// Snapshot was written successfully.

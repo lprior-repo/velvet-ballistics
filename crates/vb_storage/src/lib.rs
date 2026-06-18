@@ -274,6 +274,28 @@ pub mod vb_mrwe6_completion_policy;
 #[path = "verification/kani/vb_mrwe6_recovery_reliance.rs"]
 pub mod vb_mrwe6_recovery_reliance;
 
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_bounds;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_commit_before_drain;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_concurrency;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_drain_all;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_duplicates;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_durability;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_fjall_seam;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_recovery;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+pub mod kani_vb_mrwe_7_report;
+#[cfg(all(kani, feature = "kani-vb-mrwe-7"))]
+#[path = "queue/kani_vb_mrwe_7_atomic.rs"]
+pub mod queue_kani_vb_mrwe_7_atomic;
+
 #[cfg(all(flux, feature = "vb-mrwe6-flux-refinements"))]
 pub mod mrwe6_flux_storage {
     #[path = "../verification/flux/vb_mrwe6_duplicate_refinements.rs"]

@@ -232,6 +232,7 @@ tasks:
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
       mkdir -p "$PWD/target/kani-vb-storage"
+      KANI_STORAGE_FEATURES='legacy-kani,kani-digest-checks-vb-2bzz,kani-typed-partitioned-ids,kani-storage-trailing-bytes,kani-vb-u8gi-decode-taxonomy,kani-vb-vzcuf,kani-vb-h09wf,kani-vb-mrwe5,kani-vb-fn4vt,kani-vb-mrwe6,kani-vb-mrwe-7,test-support,fuzzing'
       run_kani_bounded() {
         local _target_dir_unused="$1"
         shift
@@ -243,7 +244,7 @@ tasks:
       run_storage_harness() {
         local harness="$1"
         printf 'verify-kani-vb-storage: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-storage -p vb_storage --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-storage -p vb_storage --features "$KANI_STORAGE_FEATURES" --harness "$harness"
       }
       run_storage_harness check_admission_safe
       run_storage_harness check_all_existing_kinds_known
@@ -482,6 +483,7 @@ tasks:
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
       mkdir -p "$PWD/target/kani-vb-runtime"
+      KANI_RUNTIME_FEATURES='test-util,kani-admission-store,kani-capability-harnesses,kani-collect-pagination,kani-engine-yaml-admission,kani-reentry-proofs,kani-shard-command-queue,kani-trace-ring,kani-vt2f-runtime-facade,kani-vt2f-shard-lower-semantics,kani-yaml-e2e-admission-matrix'
       run_kani_bounded() {
         local _target_dir_unused="$1"
         shift
@@ -493,7 +495,7 @@ tasks:
       run_runtime_harness() {
         local harness="$1"
         printf 'verify-kani-vb-runtime: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-runtime -p vb_runtime --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-runtime -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
       }
       run_runtime_harness check_action_registry_panic_free
       run_runtime_harness check_action_registry_resolve_by_name_panic_free

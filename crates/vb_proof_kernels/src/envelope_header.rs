@@ -1,7 +1,9 @@
 //! Envelope header proof kernel.
 //!
-//! This is a tiny, pure, sequential Rust kernel for envelope header verification.
-//! Suitable for Verus/Aeneas extraction to Lean.
+//! Local-only envelope-header sanity kernel. This file models a mirror header
+//! and validation relation; it is not bound to production IPC/storage envelope
+//! parsing or allocation guards. Retained Verus checks are non-proof local model
+//! evidence only.
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
@@ -186,51 +188,6 @@ proof fn lemma_payload_len_monotone_lo(hi: nat, lo1: nat, lo2: nat)
         spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2),
 {
     assert(spec_payload_len(hi, lo1) < spec_payload_len(hi, lo2));
-}
-
-// ── Exec: validate_before_alloc — header validation before allocation ──
-//
-// Uses u32/u64 in exec context; casts to nat in ensures clause for
-// bridging to the spec model.  checked_mul/checked_add are used to
-// handle potential overflow of payload_len_hi * 2^32 + payload_len_u32.
-pub fn validate_before_alloc(
-    magic: u32,
-    payload_len_hi: u64,
-    payload_len_u32: u64,
-    max_payload: u64,
-) -> (result: ValidationSpecResult)
-    ensures
-        result == spec_validate_before_alloc(
-            magic as nat,
-            payload_len_hi as nat,
-            payload_len_u32 as nat,
-            max_payload as nat,
-        ),
-{
-    if magic != 0x564C5F42 {
-        ValidationSpecResult::InvalidMagic
-    } else {
-        // Compute payload length with overflow-safe arithmetic.
-        // If multiplication overflows, the true payload length exceeds
-        // u64::MAX, which is certainly > max_payload.
-        let mul_result = payload_len_hi.checked_mul(4294967296u64);
-        match mul_result {
-            Some(m) => {
-                let add_result = m.checked_add(payload_len_u32);
-                match add_result {
-                    Some(payload_len) => {
-                        if payload_len > max_payload {
-                            ValidationSpecResult::PayloadTooLarge
-                        } else {
-                            ValidationSpecResult::Ok
-                        }
-                    }
-                    None => ValidationSpecResult::PayloadTooLarge,
-                }
-            }
-            None => ValidationSpecResult::PayloadTooLarge,
-        }
-    }
 }
 
 } // verus!

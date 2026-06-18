@@ -38,17 +38,13 @@ pub closed spec fn spec_max_u16(a: u16, b: u16) -> u16 {
     if a >= b { a } else { b }
 }
 
-pub exec fn max_u16(a: u16, b: u16) -> (result: u16)
-    ensures result == spec_max_u16(a, b)
-{
-    if a >= b { a } else { b }
-}
-
 // ===========================================================================
 // Spec: classify_ticket_attempt  (mirrors helpers/action.rs classify_ticket_attempt)
 // ===========================================================================
 
 /// Spec: pure ticket classification kernel.
+///
+/// Production binding: crate::shard::helpers::action::classify_ticket_attempt
 ///
 /// Postconditions:
 /// - `capacity == 0 || attempt == 0 || attempt > capacity` → `Err(AttemptBeyondMax{attempt, max: capacity})`
@@ -68,28 +64,6 @@ pub closed spec fn spec_classify_ticket_attempt(
     } else if attempt < current.unwrap() {
         Err(AttemptFenceError::StaleAttempt { incoming: attempt, current: current.unwrap() })
     } else if attempt > current.unwrap() {
-        Err(AttemptFenceError::InvalidActionCompletion)
-    } else {
-        Ok(())
-    }
-}
-
-// Exec fn: classifies ticket attempt, proving it matches spec_classify_ticket_attempt.
-// This is the exec fn binding to production code.
-pub exec fn classify_ticket_attempt(
-    current: Option<u16>,
-    ticket_attempt: u16,
-    ticket_capacity: u16,
-) -> (result: Result<(), AttemptFenceError>)
-    ensures result == spec_classify_ticket_attempt(current, ticket_attempt, ticket_capacity)
-{
-    if ticket_capacity == 0 || ticket_attempt == 0 || ticket_attempt > ticket_capacity {
-        Err(AttemptFenceError::AttemptBeyondMax { attempt: ticket_attempt, max: ticket_capacity })
-    } else if current.is_none() {
-        Err(AttemptFenceError::InvalidActionCompletion)
-    } else if ticket_attempt < current.unwrap() {
-        Err(AttemptFenceError::StaleAttempt { incoming: ticket_attempt, current: current.unwrap() })
-    } else if ticket_attempt > current.unwrap() {
         Err(AttemptFenceError::InvalidActionCompletion)
     } else {
         Ok(())
@@ -182,26 +156,12 @@ pub proof fn proof_classify_exact(attempt: u16, capacity: u16)
 }
 
 // ===========================================================================
-// Exec fn: validate_ticket_attempt — proves the attempt fence invariant.
-// Given a current attempt counter, the classify function produces the correct
-// classification result. This is the exec fn binding.
-// ===========================================================================
-
-pub exec fn exec_classify_ticket_attempt(
-    current: Option<u16>,
-    ticket_attempt: u16,
-    ticket_capacity: u16,
-) -> Result<(), AttemptFenceError> {
-    let result = classify_ticket_attempt(current, ticket_attempt, ticket_capacity);
-    assert(spec_classify_ticket_attempt(current, ticket_attempt, ticket_capacity) == result);
-    result
-}
-
-// ===========================================================================
 // Spec: normalize_scheduled_attempt  (mirrors helpers/action.rs normalize_scheduled_attempt)
 // ===========================================================================
 
 /// Spec: pure scheduled-ticket normalization kernel.
+///
+/// Production binding: crate::shard::helpers::action::normalize_scheduled_attempt
 ///
 /// Postconditions:
 /// - `current.is_none()` → `Err(InvalidActionCompletion)`
@@ -220,27 +180,6 @@ pub closed spec fn spec_normalize_scheduled_attempt(
         let normalized = spec_max_u16(spec_max_u16(c, attempt), 1);
         if capacity == 0 || normalized > capacity {
             Err(AttemptFenceError::AttemptBeyondMax { attempt: normalized, max: capacity })
-        } else {
-            Ok(normalized)
-        }
-    }
-}
-
-// Exec fn: normalizes scheduled attempt, proving it matches spec.
-pub exec fn normalize_scheduled_attempt(
-    current: Option<u16>,
-    ticket_attempt: u16,
-    ticket_capacity: u16,
-) -> (result: Result<u16, AttemptFenceError>)
-    ensures result == spec_normalize_scheduled_attempt(current, ticket_attempt, ticket_capacity)
-{
-    if current.is_none() {
-        Err(AttemptFenceError::InvalidActionCompletion)
-    } else {
-        let c = current.unwrap();
-        let normalized = max_u16(max_u16(c, ticket_attempt), 1);
-        if ticket_capacity == 0 || normalized > ticket_capacity {
-            Err(AttemptFenceError::AttemptBeyondMax { attempt: normalized, max: ticket_capacity })
         } else {
             Ok(normalized)
         }
@@ -301,24 +240,12 @@ pub proof fn proof_normalize_monotonic(attempt: u16, current: u16, capacity: u16
 }
 
 // ===========================================================================
-// Exec fn: exec_normalize_scheduled_attempt — proves normalization invariant.
-// ===========================================================================
-
-pub exec fn exec_normalize_scheduled_attempt(
-    current: Option<u16>,
-    ticket_attempt: u16,
-    ticket_capacity: u16,
-) -> Result<u16, AttemptFenceError> {
-    let result = normalize_scheduled_attempt(current, ticket_attempt, ticket_capacity);
-    assert(spec_normalize_scheduled_attempt(current, ticket_attempt, ticket_capacity) == result);
-    result
-}
-
-// ===========================================================================
 // Spec: scheduled_attempt_after  (mirrors helpers/action.rs scheduled_attempt_after)
 // ===========================================================================
 
 /// Spec: pure scheduled-attempt recording kernel.
+///
+/// Production binding: crate::shard::helpers::action::scheduled_attempt_after
 ///
 /// Postconditions:
 /// - `ticket_attempt == 0` → `current`
@@ -329,27 +256,6 @@ pub closed spec fn spec_scheduled_attempt_after(
     current: Option<u16>,
     ticket_attempt: u16,
 ) -> Option<u16> {
-    if ticket_attempt == 0 {
-        current
-    } else if current.is_none() {
-        Some(ticket_attempt)
-    } else {
-        let c = current.unwrap();
-        if c == 0 || ticket_attempt > c {
-            Some(ticket_attempt)
-        } else {
-            Some(c)
-        }
-    }
-}
-
-// Exec fn: records scheduled attempt, proving it matches spec.
-pub exec fn scheduled_attempt_after(
-    current: Option<u16>,
-    ticket_attempt: u16,
-) -> (result: Option<u16>)
-    ensures result == spec_scheduled_attempt_after(current, ticket_attempt)
-{
     if ticket_attempt == 0 {
         current
     } else if current.is_none() {
@@ -408,23 +314,12 @@ pub proof fn proof_scheduled_unchanged(current: u16, ticket_attempt: u16)
 }
 
 // ===========================================================================
-// Exec fn: exec_scheduled_attempt_after — proves scheduling invariant.
-// ===========================================================================
-
-pub exec fn exec_scheduled_attempt_after(
-    current: Option<u16>,
-    ticket_attempt: u16,
-) -> Option<u16> {
-    let result = scheduled_attempt_after(current, ticket_attempt);
-    assert(spec_scheduled_attempt_after(current, ticket_attempt) == result);
-    result
-}
-
-// ===========================================================================
 // Spec: retry_attempt_after  (mirrors helpers/retry.rs retry_attempt_after)
 // ===========================================================================
 
 /// Spec: pure retry-transition kernel.
+///
+/// Production binding: crate::shard::helpers::retry::retry_attempt_after
 ///
 /// Postconditions:
 /// - `max_attempts == 0 || ticket_attempt == 0 || ticket_attempt > max_attempts`
@@ -448,32 +343,6 @@ pub closed spec fn spec_retry_attempt_after(
     } else {
         let c = current.unwrap();
         let base = spec_max_u16(c, ticket_attempt);
-        if base >= max_attempts {
-            Ok((base, false))
-        } else {
-            Ok((base.wrapping_add(1), true))
-        }
-    }
-}
-
-// Exec fn: computes retry transition, proving it matches spec.
-pub exec fn retry_attempt_after(
-    current: Option<u16>,
-    ticket_attempt: u16,
-    max_attempts: u16,
-) -> (result: Result<(u16, bool), AttemptFenceError>)
-    ensures result == spec_retry_attempt_after(current, ticket_attempt, max_attempts)
-{
-    if max_attempts == 0 || ticket_attempt == 0 || ticket_attempt > max_attempts {
-        Err(AttemptFenceError::AttemptBeyondMax {
-            attempt: ticket_attempt,
-            max: max_attempts,
-        })
-    } else if current.is_none() {
-        Err(AttemptFenceError::InvalidActionCompletion)
-    } else {
-        let c = current.unwrap();
-        let base = max_u16(c, ticket_attempt);
         if base >= max_attempts {
             Ok((base, false))
         } else {
@@ -585,20 +454,6 @@ pub proof fn proof_retry_recorded_bounded(current: u16, ticket_attempt: u16, max
     ensures spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()
 {
     assert(spec_retry_attempt_after(Some(current), ticket_attempt, max_attempts).is_ok()) by (compute);
-}
-
-// ===========================================================================
-// Exec fn: exec_retry_attempt_after — proves retry transition invariant.
-// ===========================================================================
-
-pub exec fn exec_retry_attempt_after(
-    current: Option<u16>,
-    ticket_attempt: u16,
-    max_attempts: u16,
-) -> Result<(u16, bool), AttemptFenceError> {
-    let result = retry_attempt_after(current, ticket_attempt, max_attempts);
-    assert(spec_retry_attempt_after(current, ticket_attempt, max_attempts) == result);
-    result
 }
 
 // ===========================================================================

@@ -25,6 +25,9 @@ pub mod metrics;
 pub mod payloads;
 pub mod server;
 
+#[cfg(verus)]
+pub mod verification;
+
 #[cfg(kani)]
 pub mod kani_ipc_header;
 
@@ -42,6 +45,9 @@ pub mod kani_ipc_command_exhaustive;
 
 #[cfg(kani)]
 pub mod kani_ipc_dispatch_exhaustive;
+
+#[cfg(kani)]
+pub mod kani_handler_runtime_bridge;
 
 pub use crate::action_output::IpcActionOutputPayload;
 pub use crate::bounded::{

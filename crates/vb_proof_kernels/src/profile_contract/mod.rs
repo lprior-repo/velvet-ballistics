@@ -3,10 +3,10 @@
 //! Bead: vb-esq9.1 | State: 5 (proof-writer)
 //! Pure core: no I/O, no unsafe, no panics.
 //!
-//! This module defines the formal specification for the workspace Cargo.toml
-//! profile configuration. It ensures types match the master contract
-//! (velvet-ballistics-MASTER.md §34:1375-1386) and governance
-//! (docs/rust-governance.md:61).
+//! This module defines a pure local model for workspace Cargo.toml profile
+//! validation. It is not a production-bound formal proof of the root Cargo.toml
+//! parser or profile enforcement until a future pass adds reviewed production
+//! bindings.
 
 #![forbid(unsafe_code)]
 
@@ -36,5 +36,6 @@ pub use workspace::WorkspaceProfileSet;
 // Maximum inheritance chain depth (safety guard).
 pub const MAX_INHERITANCE_DEPTH: u8 = 8;
 
-#[cfg(kani)]
-pub mod kani;
+// Retired by vb-dzibx: the Kani harness modules contain fixed master-profile
+// shapes and are not production-bound proof evidence. Keep the source files for
+// future repair, but do not compile/register them as active Kani harnesses.

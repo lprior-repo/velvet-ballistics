@@ -45,7 +45,7 @@ pub mod loom {
 // impossible cfg (Verus uses its own compiler frontend).
 #[cfg(verus)]
 pub mod verus {
-    // Timer seam proofs (vb-0l9k0)
+    // Timer seam proofs (vb-0l9k0) — sub-modules declared in vb-0l9k0/mod.rs
     #[path = "verus/vb-0l9k0/mod.rs"]
     pub mod vb_0l9k0;
 
@@ -53,25 +53,25 @@ pub mod verus {
     #[path = "verus/vb_y9d3v_action_fence.rs"]
     pub mod vb_y9d3v_action_fence;
 
-    // Action dispatch proofs (vb-rxru0)
-    #[path = "verus/vb_rxru0_action_verus.rs"]
-    pub mod vb_rxru0_action_verus;
-
-    // Runtime facade API proofs (vb-evkno)
-    #[path = "verus/runtime_facade_api.rs"]
-    pub mod runtime_facade_api;
-
-    // Runtime error variant exhaustiveness (vb-evkno)
-    #[path = "verus/runtime_facade_typed_errors.rs"]
-    pub mod runtime_facade_typed_errors;
-
-    // Runtime module topology proofs (vb-evkno)
-    #[path = "verus/runtime_module_topology.rs"]
-    pub mod runtime_module_topology;
-
     // Action completion kernel proofs (vb-kzz99)
     #[path = "verus/vb_kzz99_action_completion.rs"]
     pub mod vb_kzz99_action_completion;
+
+    // Action dispatch/receiver proofs (vb-rxru0)
+    #[path = "verus/vb_rxru0_action_verus.rs"]
+    pub mod vb_rxru0_action_verus;
+
+    // Runtime facade API proofs
+    #[path = "verus/runtime_facade_api.rs"]
+    pub mod runtime_facade_api;
+
+    // Runtime typed error category proofs
+    #[path = "verus/runtime_facade_typed_errors.rs"]
+    pub mod runtime_facade_typed_errors;
+
+    // Runtime module topology proofs
+    #[path = "verus/runtime_module_topology.rs"]
+    pub mod runtime_module_topology;
 }
 
 // Kani harnesses (compiled with cargo kani)

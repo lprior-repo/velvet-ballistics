@@ -1,754 +1,270 @@
-//! vb_5iebh Verus proof bindings for IPC buffer extent types.
+//! Local Verus sanity model for selected `vb_ipc` wire-format constants.
 //!
-//! This module provides Verus specifications and proofs for vb_ipc buffer
-//! extent types. The spec types are structurally isomorphic to the production
-//! types in `vb_ipc::bounded`, establishing binding to production code.
+//! **Status:** retired as production proof evidence by bead `vb-dzibx`.
 //!
-//! Production binding (structural isomorphism):
-//! - SpecBoundedReadExtent <-> crate::bounded::BoundedReadExtent (offset, length)
-//! - SpecBoundedWriteDrainExtent <-> crate::bounded::BoundedWriteDrainExtent (offset, capacity)
-//! - SpecBoundedPayload <-> crate::bounded::BoundedPayload (payload bytes + size constraint)
-//! - SpecIngressFrame <-> crate::ingress::IngressFrame (run_id, workflow, bounded payload)
-//! - SpecIpcFrameHeader <-> crate::frame_types::IpcFrameHeader (command, flags, correlation, payload_len)
+//! This file is intentionally **not** a deductive proof of production Rust
+//! behavior.  It contains no `extern_spec!`, no `assume_specification`, and no
+//! production `requires`/`ensures` binding for `crate::bounded`,
+//! `crate::frame_types`, `crate::ingress`, or `crate::codec` functions.  The
+//! previous version claimed structural isomorphism to production types while
+//! using divergent mirror types and wrong wire constants; those claims and the
+//! tautological roundtrip lemma have been removed.
 //!
-//! GOD RULE 2: Every spec type is structurally isomorphic to a production type.
-//! Every spec function models the mathematical behavior of a production function.
-//! GOD RULE 4: All proofs are non-vacuous — each establishes a real property.
+//! Retained checks are local-model sanity checks only:
+//! - IPC magic is the production `VBLT` value (`0x5642_4C54`).
+//! - IPC fixed header length is 24 bytes.
+//! - The local error enum names every currently present `IpcError` variant.
+//! - Header construction uses a local command enum instead of a raw command id.
 
 use vstd::prelude::*;
 
 verus! {
 
     // =========================================================================
-    // Spec types — structurally isomorphic to production types
+    // Local constants mirroring the documented production wire values.
     // =========================================================================
 
-    /// Spec mirror of `crate::bounded::BoundedReadExtent`.
-    /// Production: `struct BoundedReadExtent(usize, usize)` with `new`, `offset`, `length`, `end`.
+    pub closed spec fn spec_ipc_magic() -> u32 {
+        0x5642_4C54u32
+    }
+
+    pub closed spec fn spec_ipc_version() -> u16 {
+        1u16
+    }
+
+    pub closed spec fn spec_ipc_header_len() -> usize {
+        24usize
+    }
+
+    pub closed spec fn spec_ipc_header_layout_width() -> nat {
+        4 + 2 + 2 + 2 + 2 + 8 + 4
+    }
+
+    // =========================================================================
+    // Local analogues only.  No production binding or isomorphism is claimed.
+    // =========================================================================
+
+    /// Local analogue of `crate::commands::IpcCommand`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct SpecBoundedReadExtent {
-        pub offset: usize,
-        pub length: usize,
+    pub enum SpecIpcCommand {
+        SubmitRun,
+        SubmitRunInline,
+        CancelRun,
+        InspectRun,
+        ListEvents,
+        AnswerAsk,
+        CompleteAction,
+        FailAction,
+        DrainTrace,
+        Health,
+        Shutdown,
+        UnknownCommand(u16),
     }
 
-    impl SpecBoundedReadExtent {
-        /// Matches `BoundedReadExtent::new(offset, length)`.
-        pub open spec fn new(offset: usize, length: usize) -> Option<SpecBoundedReadExtent> {
-            Some(SpecBoundedReadExtent { offset, length })
-        }
-
-        /// Matches `BoundedReadExtent::offset()`.
-        pub open spec fn offset(&self) -> usize {
-            self.offset
-        }
-
-        /// Matches `BoundedReadExtent::length()`.
-        pub open spec fn length(&self) -> usize {
-            self.length
-        }
-
-        /// Matches `BoundedReadExtent::end()` (saturating_add in production).
-        pub open spec fn end(&self) -> usize {
-            self.offset.saturating_add(self.length)
-        }
-    }
-
-    /// Spec mirror of `crate::bounded::BoundedWriteDrainExtent`.
-    /// Production: `struct BoundedWriteDrainExtent(usize, usize)` with `new`, `offset`, `capacity`, `end`.
+    /// Local analogue of `crate::bounded::MaxPayloadBytes`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct SpecBoundedWriteDrainExtent {
-        pub offset: usize,
-        pub capacity: usize,
+    pub struct SpecMaxPayloadBytes {
+        pub value: usize,
     }
 
-    impl SpecBoundedWriteDrainExtent {
-        /// Matches `BoundedWriteDrainExtent::new(offset, capacity)`.
-        pub open spec fn new(offset: usize, capacity: usize) -> Option<SpecBoundedWriteDrainExtent> {
-            Some(SpecBoundedWriteDrainExtent { offset, capacity })
+    impl SpecMaxPayloadBytes {
+        pub open spec fn valid(self) -> bool {
+            self.value > 0
         }
 
-        /// Matches `BoundedWriteDrainExtent::offset()`.
-        pub open spec fn offset(&self) -> usize {
-            self.offset
-        }
-
-        /// Matches `BoundedWriteDrainExtent::capacity()`.
-        pub open spec fn capacity(&self) -> usize {
-            self.capacity
-        }
-
-        /// Matches `BoundedWriteDrainExtent::end()` (saturating_add in production).
-        pub open spec fn end(&self) -> usize {
-            self.offset.saturating_add(self.capacity)
+        pub open spec fn get(self) -> usize {
+            self.value
         }
     }
 
-    /// Spec mirror of `crate::bounded::BoundedPayload`.
-    /// Production: `struct BoundedPayload(Bytes)` with `new(payload, max)`, `bytes()`.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct SpecBoundedPayload {
-        pub bytes: Vec<u8>,
-    }
-
-    impl SpecBoundedPayload {
-        /// Matches `BoundedPayload::new(payload, max)`.
-        /// Returns Ok with the payload when len <= max, Err otherwise.
-        pub closed spec fn new(payload: Vec<u8>, max_len: usize) -> Result<SpecBoundedPayload, SpecIpcError> {
-            if payload.len() > max_len {
-                Err(SpecIpcError::PayloadTooLarge)
-            } else {
-                Ok(SpecBoundedPayload { bytes: payload })
-            }
-        }
-
-        /// Matches `BoundedPayload::bytes()`.
-        pub open spec fn bytes(&self) -> Vec<u8> {
-            self.bytes
-        }
-    }
-
-    /// Spec mirror of `crate::error::IpcError` (minimal variant set for proofs).
-    #[derive(Debug)]
-    pub enum SpecIpcError {
-        Full,
-        Disconnected,
-        PayloadTooLarge,
-        PayloadLengthMismatch { header: usize, actual: usize },
-    }
-
-    /// Spec mirror of `crate::ingress::IngressFrame`.
-    /// Production: struct with `run_id`, `workflow`, `payload`.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct SpecIngressFrame {
-        pub run_id: u64,
-        pub workflow_digest: [u8; 32],
-        pub payload: SpecBoundedPayload,
-    }
-
-    impl SpecIngressFrame {
-        /// Matches `IngressFrame::new(run_id, workflow, payload_bytes, max_payload)`.
-        /// Succeeds when the payload passes the bounded check.
-        pub closed spec fn new(
-            run_id: u64,
-            workflow_digest: [u8; 32],
-            payload_bytes: Vec<u8>,
-            max_payload: usize,
-        ) -> Result<SpecIngressFrame, SpecIpcError> {
-            match SpecBoundedPayload::new(payload_bytes, max_payload) {
-                Ok(payload) => Ok(SpecIngressFrame {
-                    run_id,
-                    workflow_digest,
-                    payload,
-                }),
-                Err(e) => Err(e),
-            }
-        }
-
-        /// Matches `IngressFrame::payload()`.
-        pub open spec fn payload(&self) -> &SpecBoundedPayload {
-            spec_ref(&self.payload)
-        }
-    }
-
-    /// Spec mirror of `crate::frame_types::IpcFrameHeader`.
-    /// Production: struct with `command`, `flags`, `correlation`, `payload_len`.
+    /// Local analogue of `crate::frame_types::IpcFrameHeader`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct SpecIpcFrameHeader {
-        pub command: u16,
+        pub command: SpecIpcCommand,
         pub flags: u16,
         pub correlation: u64,
         pub payload_len: u32,
     }
 
     impl SpecIpcFrameHeader {
-        /// Matches `IpcFrameHeader::new(command, flags, correlation, payload_len)`.
-        pub open spec fn new(command: u16, flags: u16, correlation: u64, payload_len: u32) -> SpecIpcFrameHeader {
+        pub open spec fn new(
+            command: SpecIpcCommand,
+            flags: u16,
+            correlation: u64,
+            payload_len: u32,
+        ) -> SpecIpcFrameHeader {
             SpecIpcFrameHeader { command, flags, correlation, payload_len }
         }
     }
 
-    /// Spec mirror of `crate::ingress::MemoryIngress` queue length.
+    /// Local analogue of every currently present `crate::error::IpcError` variant.
+    #[allow(inconsistent_fields)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct SpecMemoryIngress {
-        pub len: usize,
-        pub capacity: usize,
+    pub enum SpecIpcError {
+        Full,
+        Disconnected,
+        PayloadTooLarge { actual: usize, limit: usize },
+        InvalidMagic { actual: u32 },
+        UnsupportedVersion { actual: u16 },
+        UnknownCommand(u16),
+        ReservedNonZero { actual: u16 },
+        PayloadLengthMismatch { header: usize, actual: usize },
+        HeaderEncodeFailed,
+        HeaderDecodeFailed,
+        PayloadLengthOutOfRange { actual: u32 },
+        PayloadEncodeFailed,
+        PayloadDecodeFailed,
+        ResponseDecodeFailed,
     }
 
-    impl SpecMemoryIngress {
-        /// Matches `MemoryIngress::len()`.
-        pub open spec fn len(&self) -> usize {
-            self.len
-        }
-
-        /// Matches `MemoryIngress::is_empty()`.
-        pub open spec fn is_empty(&self) -> bool {
-            self.len == 0
-        }
+    pub closed spec fn spec_ipc_error_variant_count() -> nat {
+        14
     }
 
-    // =========================================================================
-    // Core spec predicates
-    // =========================================================================
-
-    /// Spec: read extent's end position equals offset + length (as int).
-    /// This is the mathematical model of `BoundedReadExtent::end()`.
-    pub closed spec fn spec_read_extent_end_int(ext: SpecBoundedReadExtent) -> int {
-        (ext.offset as int) + (ext.length as int)
+    pub closed spec fn spec_payload_len_fits_usize(payload_len: u32) -> bool {
+        (payload_len as int) <= (usize::MAX as int)
     }
 
-    /// Spec: read extent end fits in usize (no overflow).
-    /// Since production uses saturating_add, this always holds.
-    pub closed spec fn spec_read_extent_end_fits(ext: SpecBoundedReadExtent) -> bool {
-        true
-    }
-
-    /// Spec: read extent end is non-negative (always true).
-    pub closed spec fn spec_read_extent_end_nonneg(ext: SpecBoundedReadExtent) -> bool {
-        spec_read_extent_end_int(ext) >= 0
-    }
-
-    /// Spec: read extent length is bounded by end.
-    pub closed spec fn spec_read_length_le_end(ext: SpecBoundedReadExtent) -> bool {
-        (ext.length as int) <= spec_read_extent_end_int(ext)
-    }
-
-    /// Spec: write extent end position equals offset + capacity (as int).
-    pub closed spec fn spec_write_extent_end_int(ext: SpecBoundedWriteDrainExtent) -> int {
-        (ext.offset as int) + (ext.capacity as int)
-    }
-
-    /// Spec: write extent end fits in usize.
-    /// Since production uses saturating_add, this always holds.
-    pub closed spec fn spec_write_extent_end_fits(ext: SpecBoundedWriteDrainExtent) -> bool {
-        true
-    }
-
-    /// Spec: write extent end is non-negative.
-    pub closed spec fn spec_write_extent_end_nonneg(ext: SpecBoundedWriteDrainExtent) -> bool {
-        spec_write_extent_end_int(ext) >= 0
-    }
-
-    /// Spec: write extent capacity is bounded by end.
-    pub closed spec fn spec_write_capacity_le_end(ext: SpecBoundedWriteDrainExtent) -> bool {
-        (ext.capacity as int) <= spec_write_extent_end_int(ext)
-    }
-
-    /// Spec: bounded payload accepts when payload fits, rejects when it doesn't.
-    pub closed spec fn spec_bounded_payload_accepts(payload_len: usize, max_len: usize) -> bool {
-        payload_len <= max_len
-    }
-
-    /// Spec: bounded payload preserves original bytes on successful construction.
-    pub closed spec fn spec_bounded_payload_preserves(bp: &SpecBoundedPayload, orig_len: usize) -> bool {
-        bp.bytes.len() == orig_len
-    }
-
-    /// Spec: ingress frame payload is bounded by max.
-    pub closed spec fn spec_ingress_payload_bounded(frame: &SpecIngressFrame, max: usize) -> bool {
-        frame.payload().bytes.len() <= max
-    }
-
-    /// Spec: queue length is non-negative.
-    pub closed spec fn spec_queue_len_nonneg(len: usize) -> bool {
-        len >= 0
-    }
-
-    /// Spec: is_empty iff queue length is zero.
-    pub closed spec fn spec_queue_empty(len: usize) -> bool {
-        len == 0
-    }
-
-    /// Spec: header payload_len fits in usize.
-    pub closed spec fn spec_header_payload_len_fits(header: &SpecIpcFrameHeader) -> bool {
-        (header.payload_len as int) <= (usize::MAX as int)
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-001: Read extent end = offset + length (spec model).
-    // =========================================================================
-
-    /// Proof: spec_read_extent_end_int always equals offset + length.
-    pub proof fn proof_read_end_model(ext: SpecBoundedReadExtent)
-        ensures
-            spec_read_extent_end_int(ext) == (ext.offset as int) + (ext.length as int),
-    {
-        // By definition of spec_read_extent_end_int.
-        assert(spec_read_extent_end_int(ext) == (ext.offset as int) + (ext.length as int));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-002: Read extent end is non-negative.
-    // =========================================================================
-
-    /// Proof: Since offset, length >= 0, end is always >= 0.
-    pub proof fn proof_read_end_nonneg(ext: SpecBoundedReadExtent)
-        ensures
-            spec_read_extent_end_nonneg(ext),
-    {
-        assert(spec_read_extent_end_nonneg(ext));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-003: Read extent length <= end.
-    // =========================================================================
-
-    /// Proof: Since offset >= 0, length <= end.
-    pub proof fn proof_read_length_le_end(ext: SpecBoundedReadExtent)
-        ensures
-            spec_read_length_le_end(ext),
-    {
-        assert(spec_read_length_le_end(ext));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-004: Write extent end = offset + capacity (spec model).
-    // =========================================================================
-
-    /// Proof: spec_write_extent_end_int always equals offset + capacity.
-    pub proof fn proof_write_end_model(ext: SpecBoundedWriteDrainExtent)
-        ensures
-            spec_write_extent_end_int(ext) == (ext.offset as int) + (ext.capacity as int),
-    {
-        assert(spec_write_extent_end_int(ext) == (ext.offset as int) + (ext.capacity as int));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-005: Write extent end is non-negative.
-    // =========================================================================
-
-    /// Proof: Since offset, capacity >= 0, end is always >= 0.
-    pub proof fn proof_write_end_nonneg(ext: SpecBoundedWriteDrainExtent)
-        ensures
-            spec_write_extent_end_nonneg(ext),
-    {
-        assert(spec_write_extent_end_nonneg(ext));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-006: Write extent capacity <= end.
-    // =========================================================================
-
-    /// Proof: Since offset >= 0, capacity <= end.
-    pub proof fn proof_write_capacity_le_end(ext: SpecBoundedWriteDrainExtent)
-        ensures
-            spec_write_capacity_le_end(ext),
-    {
-        assert(spec_write_capacity_le_end(ext));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-007: BoundedPayload::new accepts when within limit.
-    // =========================================================================
-
-    /// Proof: When payload.len() <= max, spec says new returns Ok.
-    pub proof fn proof_bounded_payload_accepts(
-        payload_len: usize,
-        max_len: usize,
-    )
-        requires
-            payload_len <= max_len,
-        ensures
-            spec_bounded_payload_accepts(payload_len, max_len),
-    {
-        assert(spec_bounded_payload_accepts(payload_len, max_len));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-008: BoundedPayload::new rejects when exceeding limit.
-    // =========================================================================
-
-    /// Proof: When payload.len() > max, spec says new returns Err.
-    pub proof fn proof_bounded_payload_rejects(
-        payload_len: usize,
-        max_len: usize,
-    )
-        requires
-            payload_len > max_len,
-        ensures
-            !spec_bounded_payload_accepts(payload_len, max_len),
-    {
-        assert(!spec_bounded_payload_accepts(payload_len, max_len));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-009: Ingress frame payload boundedness.
-    // =========================================================================
-
-    /// Proof: A valid IngressFrame has payload length <= max_payload.
-    pub proof fn proof_ingress_payload_bounded(
-        frame: SpecIngressFrame,
-        max: usize,
-    )
-        requires
-            frame.payload().bytes.len() <= max,
-        ensures
-            spec_ingress_payload_bounded(&frame, max),
-    {
-        assert(spec_ingress_payload_bounded(&frame, max));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-010: Header payload_len fits in usize.
-    // =========================================================================
-
-    /// Proof: For any header, payload_len as int fits in usize max.
-    pub proof fn proof_header_payload_fits(header: SpecIpcFrameHeader)
-        ensures
-            spec_header_payload_len_fits(&header),
-    {
-        // u32 as int is always <= usize::MAX on 64-bit targets.
-        // On 32-bit targets, this is the bound that the decoder enforces.
-        assert(spec_header_payload_len_fits(&header));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-011: MemoryIngress queue length non-negative.
-    // =========================================================================
-
-    /// Proof: Queue length is always >= 0.
-    pub proof fn proof_queue_len_nonneg(mi: SpecMemoryIngress)
-        ensures
-            spec_queue_len_nonneg(mi.len()),
-    {
-        assert(spec_queue_len_nonneg(mi.len()));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-012: MemoryIngress is_empty iff len == 0.
-    // =========================================================================
-
-    /// Proof: is_empty correctly reflects zero-length.
-    pub proof fn proof_queue_empty(mi: SpecMemoryIngress)
-        ensures
-            spec_queue_empty(mi.len()) == mi.is_empty(),
-    {
-        assert(mi.is_empty() == (mi.len() == 0));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-013: Read extent construction preserves fields.
-    // =========================================================================
-
-    /// Proof: new() preserves offset and length exactly.
-    pub proof fn proof_read_extent_fields_preserved(
-        offset: usize,
-        length: usize,
-    )
-        ensures
-            {
-                let opt = SpecBoundedReadExtent::new(offset, length);
-                opt.is_some() ==> {
-                    let e = opt.unwrap();
-                    e.offset == offset && e.length == length
-                }
-            },
-    {
-        let e = SpecBoundedReadExtent::new(offset, length).unwrap();
-        assert(e.offset == offset);
-        assert(e.length == length);
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-014: Write extent construction preserves fields.
-    // =========================================================================
-
-    /// Proof: new() preserves offset and capacity exactly.
-    pub proof fn proof_write_extent_fields_preserved(
-        offset: usize,
-        capacity: usize,
-    )
-        ensures
-            {
-                let opt = SpecBoundedWriteDrainExtent::new(offset, capacity);
-                opt.is_some() ==> {
-                    let e = opt.unwrap();
-                    e.offset == offset && e.capacity == capacity
-                }
-            },
-    {
-        let e = SpecBoundedWriteDrainExtent::new(offset, capacity).unwrap();
-        assert(e.offset == offset);
-        assert(e.capacity == capacity);
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-015: BoundedPayload preserves bytes length.
-    // =========================================================================
-
-    /// Proof: When BoundedPayload::new succeeds, bytes().len() == original payload.len().
-    pub proof fn proof_bounded_payload_preserves(payload: Vec<u8>, max_len: usize)
-        requires
-            payload.len() <= max_len,
-        ensures
-            {
-                let result = SpecBoundedPayload::new(payload, max_len);
-                result.is_ok() ==> {
-                    let bp = result.unwrap();
-                    bp.bytes.len() == payload.len()
-                }
-            },
-    {
-        let result = SpecBoundedPayload::new(payload, max_len);
-        assert(result.is_ok());
-        let bp = result.unwrap();
-        assert(bp.bytes.len() == payload.len());
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-016: Read extent end fits in usize.
-    // =========================================================================
-
-    /// Proof: A constructed read extent's end fits in usize.
-    pub proof fn proof_read_extent_end_fits(
-        offset: usize,
-        length: usize,
-    )
-        ensures
-            {
-                let ext = SpecBoundedReadExtent::new(offset, length).unwrap();
-                spec_read_extent_end_fits(ext)
-            },
-    {
-        let ext = SpecBoundedReadExtent::new(offset, length).unwrap();
-        assert(spec_read_extent_end_fits(ext));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-017: Write extent end fits in usize.
-    // =========================================================================
-
-    /// Proof: A constructed write extent's end fits in usize.
-    pub proof fn proof_write_extent_end_fits(
-        offset: usize,
-        capacity: usize,
-    )
-        ensures
-            {
-                let ext = SpecBoundedWriteDrainExtent::new(offset, capacity).unwrap();
-                spec_write_extent_end_fits(ext)
-            },
-    {
-        let ext = SpecBoundedWriteDrainExtent::new(offset, capacity).unwrap();
-        assert(spec_write_extent_end_fits(ext));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-018: IngressFrame construction enforces payload bound.
-    // =========================================================================
-
-    /// Proof: When IngressFrame::new succeeds, the payload is bounded.
-    pub proof fn proof_ingress_frame_enforces_bound(
-        run_id: u64,
-        workflow_digest: [u8; 32],
-        payload: Vec<u8>,
-        max_payload: usize,
-    )
-        requires
-            payload.len() <= max_payload,
-        ensures
-            {
-                let result = SpecIngressFrame::new(run_id, workflow_digest, payload, max_payload);
-                result.is_ok() ==> spec_ingress_payload_bounded(&result.unwrap(), max_payload)
-            },
-    {
-        let result = SpecIngressFrame::new(run_id, workflow_digest, payload, max_payload);
-        assert(result.is_ok());
-        let frame = result.unwrap();
-        assert(frame.payload().bytes.len() == payload.len());
-        assert(frame.payload().bytes.len() <= max_payload);
-    }
-
-    // =========================================================================
-    // Helper: spec_ref for returning references in specs
-    // =========================================================================
-
-    /// Helper spec fn that returns a reference to a value.
-    pub closed spec fn spec_ref<T>(x: &T) -> &T {
-        x
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-019: IpcFrameHeader encode preserves fields (wire format spec).
-    // =========================================================================
-
-    /// Spec: encode produces a 22-byte header with correct magic (0x49504332),
-    /// version (1), command, flags, correlation, and payload_len in little-endian order.
-    pub closed spec fn spec_encode_header_fields(
-        command: u16,
-        flags: u16,
-        correlation: u64,
+    pub closed spec fn spec_payload_within_max(
         payload_len: u32,
+        max_payload: SpecMaxPayloadBytes,
     ) -> bool {
-        // The encoded header contains: magic(4) + version(2) + command(2) + flags(2) + reserved(2) + correlation(8) + payload_len(4) = 22 bytes
-        (payload_len as int) >= 0
+        (payload_len as int) <= (max_payload.get() as int)
     }
 
-    /// Proof: IpcFrameHeader::new preserves all fields (structural isomorphism).
-    pub proof fn proof_header_new_preserves_fields(
-        command: u16,
-        flags: u16,
-        correlation: u64,
-        payload_len: u32,
-    )
-        ensures
-            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).command == command &&
-            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).flags == flags &&
-            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).correlation == correlation &&
-            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).payload_len == payload_len,
-    {
-        let h = SpecIpcFrameHeader::new(command, flags, correlation, payload_len);
-        assert(h.command == command);
-        assert(h.flags == flags);
-        assert(h.correlation == correlation);
-        assert(h.payload_len == payload_len);
+    pub closed spec fn spec_decode_fixed_fields_accept(
+        magic: u32,
+        version: u16,
+        reserved: u16,
+    ) -> bool {
+        magic == spec_ipc_magic() && version == spec_ipc_version() && reserved == 0u16
     }
 
-    // =========================================================================
-    // PO-BOUNDED-020: IpcFrameHeader decode validates magic, version, reserved.
-    // =========================================================================
-
-    /// Spec: decode accepts when magic=0x49504332, version=1, reserved=0, payload_len fits.
-    pub closed spec fn spec_decode_accepts_valid(
+    pub closed spec fn spec_decode_accepts_valid_header_shape(
         magic: u32,
         version: u16,
         reserved: u16,
         payload_len: u32,
-        max_payload: usize,
+        max_payload: SpecMaxPayloadBytes,
     ) -> bool {
-        magic == 0x49504332u32 && version == 1u16 && reserved == 0u16 && (payload_len as usize) <= max_payload
+        spec_decode_fixed_fields_accept(magic, version, reserved)
+            && spec_payload_len_fits_usize(payload_len)
+            && spec_payload_within_max(payload_len, max_payload)
     }
 
-    /// Proof: decode accepts when all validation checks pass.
-    pub proof fn proof_decode_accepts_valid(
-        magic: u32,
-        version: u16,
-        reserved: u16,
-        payload_len: u32,
-        max_payload: usize,
-    )
-        requires
-            magic == 0x49504332u32,
-            version == 1u16,
-            reserved == 0u16,
-            (payload_len as usize) <= max_payload,
-        ensures
-            spec_decode_accepts_valid(magic, version, reserved, payload_len, max_payload),
-    {
-        assert(spec_decode_accepts_valid(magic, version, reserved, payload_len, max_payload));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-021: IpcFrame::new validates header/payload length agreement.
-    // =========================================================================
-
-    /// Spec: IpcFrame is valid when header.payload_len matches actual payload length.
-    pub closed spec fn spec_frame_length_agrees(header_payload_len: u32, actual_payload_len: usize) -> bool {
-        (header_payload_len as usize) == actual_payload_len
-    }
-
-    /// Proof: frame construction succeeds when lengths agree and payload is bounded.
-    pub proof fn proof_frame_new_validates_length(
+    pub closed spec fn spec_frame_length_agrees(
         header_payload_len: u32,
-        payload: Vec<u8>,
-        max_payload: usize,
-    )
-        requires
-            (header_payload_len as usize) == payload.len(),
-            payload.len() <= max_payload,
-        ensures
-            spec_frame_length_agrees(header_payload_len, payload.len()),
-    {
-        assert(spec_frame_length_agrees(header_payload_len, payload.len()));
+        actual_payload_len: usize,
+    ) -> bool {
+        (header_payload_len as int) == (actual_payload_len as int)
     }
 
-    // =========================================================================
-    // PO-BOUNDED-022: Codec encode produces bounded payload.
-    // =========================================================================
-
-    /// Spec: encode_payload produces bytes that fit within max_payload.
-    pub closed spec fn spec_encode_payload_fits(serialized_len: usize, max_payload: usize) -> bool {
-        serialized_len <= max_payload
-    }
-
-    /// Proof: encoded payload fits when within limit.
-    pub proof fn proof_encode_payload_fits(
-        serialized_len: usize,
-        max_payload: usize,
-    )
-        requires
-            serialized_len <= max_payload,
-        ensures
-            spec_encode_payload_fits(serialized_len, max_payload),
-    {
-        assert(spec_encode_payload_fits(serialized_len, max_payload));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-023: Codec decode accepts bounded payload.
-    // =========================================================================
-
-    /// Spec: decode_payload accepts when payload bytes are non-empty and bounded.
-    pub closed spec fn spec_decode_payload_accepts(bytes_len: usize, max_payload: usize) -> bool {
-        bytes_len > 0 && bytes_len <= max_payload
-    }
-
-    /// Proof: decoded payload is accepted when bounded.
-    pub proof fn proof_decode_payload_accepts(
-        bytes_len: usize,
-        max_payload: usize,
-    )
-        requires
-            bytes_len > 0,
-            bytes_len <= max_payload,
-        ensures
-            spec_decode_payload_accepts(bytes_len, max_payload),
-    {
-        assert(spec_decode_payload_accepts(bytes_len, max_payload));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-024: Roundtrip encoding preserves semantic content.
-    // =========================================================================
-
-    /// Spec: encode followed by decode preserves the original bytes.
-    pub closed spec fn spec_roundtrip_preserves(orig_bytes: Vec<u8>) -> bool {
-        orig_bytes == orig_bytes // structural tautology — actual roundtrip requires postcard model
-    }
-
-    /// Proof: roundtrip is a tautology on the spec model (placeholder for postcard).
-    pub proof fn proof_roundtrip_tautology(payload: Vec<u8>)
-        ensures
-            spec_roundtrip_preserves(payload),
-    {
-        assert(spec_roundtrip_preserves(payload));
-    }
-
-    // =========================================================================
-    // PO-BOUNDED-025: End-to-end boundedness invariant.
-    // =========================================================================
-
-    /// Spec: end-to-end boundedness — payload is bounded at every stage.
     pub closed spec fn spec_end_to_end_bounded(
         payload_len: usize,
-        max_payload: usize,
+        max_payload: SpecMaxPayloadBytes,
         header_payload_len: u32,
     ) -> bool {
-        payload_len <= max_payload &&
-        (header_payload_len as usize) == payload_len
+        (payload_len as int) <= (max_payload.get() as int)
+            && spec_frame_length_agrees(header_payload_len, payload_len)
     }
 
-    /// Proof: end-to-end boundedness holds when all stages are valid.
-    pub proof fn proof_end_to_end_bounded(
+    // =========================================================================
+    // Local-model sanity lemmas.  These are not production proof evidence.
+    // =========================================================================
+
+    pub proof fn local_proof_constants_match_vblt_header_layout()
+        ensures
+            spec_ipc_magic() == 0x5642_4C54u32,
+            spec_ipc_version() == 1u16,
+            spec_ipc_header_len() == 24usize,
+            spec_ipc_header_layout_width() == 24,
+            spec_ipc_error_variant_count() == 14,
+    {
+        assert(spec_ipc_magic() == 0x5642_4C54u32);
+        assert(spec_ipc_version() == 1u16);
+        assert(spec_ipc_header_len() == 24usize);
+        assert(spec_ipc_header_layout_width() == 24);
+        assert(spec_ipc_error_variant_count() == 14);
+    }
+
+    pub proof fn local_proof_header_new_preserves_fields(
+        command: SpecIpcCommand,
+        flags: u16,
+        correlation: u64,
+        payload_len: u32,
+    )
+        ensures
+            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).command == command,
+            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).flags == flags,
+            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).correlation == correlation,
+            SpecIpcFrameHeader::new(command, flags, correlation, payload_len).payload_len == payload_len,
+    {
+        let header = SpecIpcFrameHeader::new(command, flags, correlation, payload_len);
+        assert(header.command == command);
+        assert(header.flags == flags);
+        assert(header.correlation == correlation);
+        assert(header.payload_len == payload_len);
+    }
+
+    pub proof fn local_proof_decode_accepts_valid_header_shape(
+        magic: u32,
+        version: u16,
+        reserved: u16,
+        payload_len: u32,
+        max_payload: SpecMaxPayloadBytes,
+    )
+        requires
+            magic == spec_ipc_magic(),
+            version == spec_ipc_version(),
+            reserved == 0u16,
+            spec_payload_len_fits_usize(payload_len),
+            spec_payload_within_max(payload_len, max_payload),
+        ensures
+            spec_decode_accepts_valid_header_shape(
+                magic,
+                version,
+                reserved,
+                payload_len,
+                max_payload,
+            ),
+    {
+        assert(spec_decode_fixed_fields_accept(magic, version, reserved));
+        assert(spec_payload_len_fits_usize(payload_len));
+        assert(spec_payload_within_max(payload_len, max_payload));
+        assert(spec_decode_accepts_valid_header_shape(
+            magic,
+            version,
+            reserved,
+            payload_len,
+            max_payload,
+        ));
+    }
+
+    pub proof fn local_proof_frame_length_agreement(
+        header_payload_len: u32,
+        actual_payload_len: usize,
+    )
+        requires
+            (header_payload_len as int) == (actual_payload_len as int),
+        ensures
+            spec_frame_length_agrees(header_payload_len, actual_payload_len),
+    {
+        assert(spec_frame_length_agrees(header_payload_len, actual_payload_len));
+    }
+
+    pub proof fn local_proof_end_to_end_bounded(
         payload_len: usize,
-        max_payload: usize,
+        max_payload: SpecMaxPayloadBytes,
         header_payload_len: u32,
     )
         requires
-            payload_len <= max_payload,
-            (header_payload_len as usize) == payload_len,
+            (payload_len as int) <= (max_payload.get() as int),
+            spec_frame_length_agrees(header_payload_len, payload_len),
         ensures
             spec_end_to_end_bounded(payload_len, max_payload, header_payload_len),
     {
+        assert((payload_len as int) <= (max_payload.get() as int));
+        assert(spec_frame_length_agrees(header_payload_len, payload_len));
         assert(spec_end_to_end_bounded(payload_len, max_payload, header_payload_len));
     }
 

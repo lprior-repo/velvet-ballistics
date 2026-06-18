@@ -1,5 +1,6 @@
-use vb_storage::recovery::RunSnapshot;
 use crate::shard::transitions::SnapshotWriteOutcome;
+#[cfg(not(kani))]
+use vb_storage::recovery::RunSnapshot;
 
 impl Shard {
     /// Appends a journal event, buffering it during the coalesce window.
@@ -117,6 +118,7 @@ impl Shard {
     /// journal write errors are converted to `SnapshotWriteOutcome::Failed`
     /// so the caller can continue the run lifecycle. Only the `Written`
     /// outcome carries a successful sequence advance.
+    #[cfg(not(kani))]
     pub(crate) fn write_snapshot_for_run(
         &mut self,
         run: RunId,
@@ -220,5 +222,26 @@ impl Shard {
                 SnapshotWriteOutcome::Failed
             }
         }
+    }
+}
+
+// =========================================================================
+// `#[cfg(kani)]` stubs — avoid real I/O and complex types in Kani proofs
+// =========================================================================
+
+/// `#[cfg(kani)]` replacement for `write_snapshot_for_run`.
+/// Kani proofs use a stub that always returns `SkippedDisabled`.
+/// Trust boundary: TB-journal-stub-kani.
+#[cfg(kani)]
+impl Shard {
+    pub(crate) fn write_snapshot_for_run(
+        &mut self,
+        _run: RunId,
+        _state: &RunState,
+        _interval: u64,
+        _executed: u64,
+        _last_snapshot_executed: u64,
+    ) -> SnapshotWriteOutcome {
+        SnapshotWriteOutcome::SkippedDisabled
     }
 }

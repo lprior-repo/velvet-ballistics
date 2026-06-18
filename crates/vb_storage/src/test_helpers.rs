@@ -37,7 +37,7 @@ pub use crate::codec::{
     decode_record, decode_record_header, encode_record, encode_record_header, verify_digest_match,
 };
 
-pub use crate::batch::BatchBuilder;
+pub use crate::queue::BatchBuilder;
 pub use crate::queue::JournalWriterQueue;
 pub use crate::recovery::{ActionReplayTracker, RunSnapshot};
 

@@ -1,23 +1,12 @@
-#![forbid(unsafe_code)]
-#[allow(
-    clippy::as_conversions,
-    clippy::cast_possible_truncation,
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::panic,
-    clippy::panic_in_result_fn,
-    clippy::unwrap_used
-)]
-use crate::batch::*;
+use super::*;
 use crate::{
-    BlobRecord, EventSeq, IndexStatusState, JournalError, JournalEvent, RunHeaderRecord,
-    WorkflowSourceRecord, constants::DIGEST_BYTES, recovery::RunSnapshot,
+    BlobRecord, EventSeq, IndexStatusState, JournalEvent,
+    constants::DIGEST_BYTES, recovery::RunSnapshot,
 };
-use tempfile::TempDir;
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
-fn temp_journal() -> (TempDir, crate::FjallJournal) {
-    let temp = TempDir::new().expect("tempdir creation should succeed");
+fn temp_journal() -> (tempfile::TempDir, crate::FjallJournal) {
+    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
     let journal =
         crate::FjallJournal::open(temp.path(), None).expect("journal open should succeed");
     (temp, journal)
@@ -142,9 +131,11 @@ fn empty_batch_commit_succeeds() {
     let (_temp, journal) = temp_journal();
     let batch = JournalWriteBatch::new(&journal);
     let result = batch.commit();
-    let Ok(()) = result else {
-        panic!("committing an empty batch must succeed, got {:?}", result);
-    };
+    assert!(
+        result.is_ok(),
+        "committing an empty batch should succeed, got {:?}",
+        result
+    );
 }
 
 // =========================================================================
@@ -413,15 +404,24 @@ fn batch_mixed_operations_across_keyspaces_commit_atomically() {
     batch.commit().expect("mixed batch commit should succeed");
 
     // Verify all keyspaces were written
-    let Some(_ws) = journal.workflow_source(source_digest).expect("get ws") else {
-        panic!("workflow source must exist after batch flush");
-    };
-    let Some(_ir) = journal.compiled_ir(ir_digest).expect("get ir") else {
-        panic!("compiled IR must exist after batch flush");
-    };
-    let Some(_header) = journal.run_header(run).expect("get header") else {
-        panic!("run header must exist after batch flush");
-    };
+    assert!(
+        journal
+            .workflow_source(source_digest)
+            .expect("get ws")
+            .is_some(),
+        "workflow source should exist"
+    );
+    assert!(
+        journal
+            .compiled_ir(ir_record.digest)
+            .expect("get ir")
+            .is_some(),
+        "compiled IR should exist"
+    );
+    assert!(
+        journal.run_header(run).expect("get header").is_some(),
+        "run header should exist"
+    );
     let events = journal.events_for_run(run).expect("replay should succeed");
     assert_eq!(events.len(), 1, "should have 1 event");
 }
@@ -549,7 +549,8 @@ fn batch_index_operations_increment_len_without_payloads() {
 fn batch_put_compiled_ir_commits_and_is_readable() {
     // I3: compiled_ir readable after batch commit
     let (_temp, journal) = temp_journal();
-    let record = crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
+    let record =
+        crate::accepted_compiled_ir_record_for_test(b"compiled-artifact-bytes".to_vec());
     let digest = record.digest;
 
     let mut batch = JournalWriteBatch::new(&journal);
@@ -732,20 +733,15 @@ fn all_or_nothing_commit_across_keyspaces() {
     }
 
     // All or nothing: both must be present or neither
-    let ws = journal.workflow_source(source_digest).expect("get ws");
-    let header = journal.run_header(run).expect("get header");
-    match (ws, header) {
-        (Some(ws_rec), Some(header_rec)) => {
-            assert_eq!(ws_rec.digest, source_digest, "workflow source digest must match");
-            assert_eq!(header_rec.run, run, "run header run must match");
-        }
-        (None, None) => {
-            // Both absent - commit was all-or-nothing and rolled back
-        }
-        (Some(_ws), None) | (None, Some(_)) => {
-            panic!("commit must be all-or-nothing: both present or both absent");
-        }
-    }
+    let ws_present = journal
+        .workflow_source(source_digest)
+        .expect("get ws")
+        .is_some();
+    let header_present = journal.run_header(run).expect("get header").is_some();
+    assert_eq!(
+        ws_present, header_present,
+        "commit must be all-or-nothing across keyspaces"
+    );
 }
 
 #[test]

@@ -1,9 +1,10 @@
 //! vb-kyyf replay normalization and comparison proof seam.
 //!
-//! This module is the production-owned pure kernel for cross-run and replay
-//! comparison. Runtime, storage, CLI, and codegen adapters project public
-//! observations into these scalar fields; this kernel deliberately performs no
-//! I/O, allocation, hashing, formatting, or clock/path/process inspection.
+//! Local-only normalization sanity kernel. Runtime, storage, CLI, and codegen
+//! adapters do not currently call this crate module or carry Verus contracts
+//! tying their observations to these scalar fields. Verus checks over this file
+//! are therefore local model evidence only, not production evidence for vb-kyyf
+//! replay or generated-IR determinism.
 
 #[allow(unused_macros)]
 macro_rules! digest_all_match_body {

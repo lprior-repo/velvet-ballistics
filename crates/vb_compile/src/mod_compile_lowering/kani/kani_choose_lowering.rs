@@ -129,37 +129,299 @@ fn kani_choose_lowering_fanout_limit() {
                     }
                 )
             });
-            //!
-//! Kani harnesses for ChooseSlot lowering — TLA bridge RRO-TLA-CHOOSE-LOWERING-001.
-//!
-//! Bead: vb-282my
-//! Obligations: PO-vb282my-CL-KANI-001 through PO-vb282my-CL-KANI-007
-//!
-//! Target: crate::mod_compile_lowering::lower_canonical_choose
-//!         (re-export from part_02 ← part_14)
-//!
-//! GOD RULE 1: All inputs use kani::any() with bounded assumptions.
-//! GOD RULE 2: Calls actual production lower_canonical_choose and lower_choose.
-
-#![forbid(unsafe_code)]
-#![allow(unused_must_use)]
-
-use crate::mod_compile_errors::{CompileError, CompileErrors};
-use crate::mod_compile_lowering::{
-    SlotCompiler, lower_canonical_choose, lower_choose, validate_branch_route,
-};
-use vb_core::{CompiledNodeKind, SlotBranch, SlotIdx, StepIdx, WorkflowError};
-use vb_yaml::ast::ChooseBranch;
+            kani::assert(
+                found,
+                "fanout > 64 branches must produce PrimitiveLoweringLimitExceeded",
+            );
+        }
+        _ => {}
+    }
+    kani::cover!(result.is_err(), "fanout_exceeded_err");
+    kani::cover!(result.is_ok(), "fanout_ok");
+}
 
 // =========================================================================
-// Bounded input generators
+// PO-vb282my-CL-KANI-002: Empty branch table without otherwise
+// branches.is_empty() && otherwise.is_none() → Err(EmptyBranchTable)
 // =========================================================================
 
-#[allow(clippy::unnecessary_fallible_conversions)]
-/// Generate a bounded label string via byte-array construction.
-/// Max length: 8 ASCII alphanumeric/underscore chars.
-fn any_bounded_label(max_len: usize) -> String {
-    let num_bytes: usize = kani::any();
+#[kani::proof]
+#[kani::unwind(10)]
+fn kani_choose_lowering_empty_branch_no_otherwise() {
+    let index: usize = kani::any();
+    kani::assume(index < 4096);
+    let id = StepIdx::new(0);
+    let branches: Vec<ChooseBranch> = Vec::new();
+    let next = Some(StepIdx::new(10));
+    let step_names: Vec<Box<str>> = vec!["start".into()];
+    let mut builder = SlotCompiler::new();
+
+    let result =
+        lower_canonical_choose(index, id, &branches, None, next, &step_names, &mut builder);
+
+    match &result {
+        Err(CompileErrors(errs)) => {
+            let found = errs
+                .iter()
+                .any(|e| matches!(e, CompileError::Workflow(WorkflowError::EmptyBranchTable)));
+            kani::assert(
+                found,
+                "empty branches without otherwise must produce EmptyBranchTable",
+            );
+        }
+        Ok(()) => {
+            kani::assert(false, "empty branches without otherwise should not succeed");
+        }
+    }
+    kani::cover!(result.is_err(), "empty_no_otherwise_err");
+}
+
+// =========================================================================
+// PO-vb282my-CL-KANI-003: Empty branch table with otherwise
+// branches.is_empty() && otherwise.is_some() → Ok
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(10)]
+fn kani_choose_lowering_empty_with_otherwise() {
+    let index: usize = kani::any();
+    kani::assume(index < 4096);
+    let id = StepIdx::new(0);
+    let branches: Vec<ChooseBranch> = Vec::new();
+    let next = Some(StepIdx::new(10));
+    let step_names: Vec<Box<str>> = vec!["target".into()];
+    let mut builder = SlotCompiler::new();
+
+    let result = lower_canonical_choose(
+        index,
+        id,
+        &branches,
+        Some("target"),
+        next,
+        &step_names,
+        &mut builder,
+    );
+
+    // Should not be EmptyBranchTable
+    match &result {
+        Err(CompileErrors(errs)) => {
+            let is_empty = errs
+                .iter()
+                .any(|e| matches!(e, CompileError::Workflow(WorkflowError::EmptyBranchTable)));
+            kani::assert(
+                !is_empty,
+                "empty branches with otherwise must not produce EmptyBranchTable",
+            );
+        }
+        _ => {}
+    }
+    kani::cover!(result.is_ok(), "empty_with_otherwise_ok");
+    kani::cover!(result.is_err(), "empty_with_otherwise_err_other");
+}
+
+// =========================================================================
+// PO-vb282my-CL-KANI-004: Non-empty branch body
+// Any branch with non-empty steps → Err(UnsupportedStepPrimitive)
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(65)]
+fn kani_choose_lowering_nonempty_branch_body() {
+    let index: usize = kani::any();
+    kani::assume(index < 4096);
+    let id = StepIdx::new(0);
+
+    // Generate branches where at least one has non-empty body
+    let mut branches: Vec<ChooseBranch> = Vec::new();
+    let bcount: u8 = kani::any();
+    let bcount = bcount.min(64).max(1);
+    for _i in 0..bcount {
+        let when = any_bounded_label(4);
+        branches.push(ChooseBranch {
+            when,
+            steps: Vec::new(),
+        });
+    }
+
+    let has_nonempty = branches.iter().any(|b| !b.steps.is_empty());
+
+    let next = Some(StepIdx::new(10));
+    let step_names: Vec<Box<str>> = vec!["t".into()];
+    let mut builder = SlotCompiler::new();
+
+    let result = lower_canonical_choose(
+        index,
+        id,
+        &branches,
+        Some("t"),
+        next,
+        &step_names,
+        &mut builder,
+    );
+
+    if has_nonempty {
+        // Non-empty branch bodies produce UnsupportedStepPrimitive
+        kani::assert(result.is_err(), "non-empty branch body must produce Err");
+    }
+    kani::cover!(result.is_err(), "nonempty_body_err");
+    kani::cover!(result.is_ok(), "all_empty_body_ok");
+}
+
+// =========================================================================
+// PO-vb282my-CL-KANI-005: Valid otherwise label resolves correctly
+// otherwise label in step_names → resolved StepIdx in output
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(10)]
+fn kani_choose_lowering_valid_otherwise_label() {
+    let index: usize = 0;
+    let id = StepIdx::new(0);
+
+    // Single empty branch
+    let branches = vec![ChooseBranch {
+        when: "0".to_string(),
+        steps: Vec::new(),
+    }];
+
+    // otherwise label exists in step_names
+    let otherwise_label = "target_step";
+    let next = Some(StepIdx::new(42));
+    let step_names: Vec<Box<str>> = vec!["entry".into(), otherwise_label.into(), "exit".into()];
+
+    let mut builder = SlotCompiler::new();
+    let result = lower_canonical_choose(
+        index,
+        id,
+        &branches,
+        Some(otherwise_label),
+        next,
+        &step_names,
+        &mut builder,
+    );
+
+    match &result {
+        Err(CompileErrors(errs)) => {
+            let is_unknown = errs
+                .iter()
+                .any(|e| matches!(e, CompileError::UnknownStepLabel { .. }));
+            kani::assert(
+                !is_unknown,
+                "known otherwise label must not produce UnknownStepLabel",
+            );
+        }
+        _ => {}
+    }
+    kani::cover!(result.is_ok(), "valid_otherwise_label_ok");
+}
+
+// =========================================================================
+// PO-vb282my-CL-KANI-006: Unknown otherwise label
+// otherwise label NOT in step_names → Err(UnknownStepLabel)
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(10)]
+fn kani_choose_lowering_unknown_otherwise_label() {
+    let index: usize = kani::any();
+    kani::assume(index < 4096);
+    let id = StepIdx::new(0);
+
+    let branches = vec![ChooseBranch {
+        when: "0".to_string(),
+        steps: Vec::new(),
+    }];
+
+    let next = Some(StepIdx::new(10));
+    // step_names only contains known labels
+    let step_names: Vec<Box<str>> = vec!["alpha".into(), "beta".into()];
+
+    // otherwise label is definitely not in step_names
+    let mut builder = SlotCompiler::new();
+    let result = lower_canonical_choose(
+        index,
+        id,
+        &branches,
+        Some("unknown_label"),
+        next,
+        &step_names,
+        &mut builder,
+    );
+
+    match &result {
+        Err(CompileErrors(errs)) => {
+            let found = errs
+                .iter()
+                .any(|e| matches!(e, CompileError::UnknownStepLabel { .. }));
+            kani::assert(
+                found,
+                "unknown otherwise label must produce UnknownStepLabel",
+            );
+        }
+        _ => {}
+    }
+    kani::cover!(result.is_err(), "unknown_otherwise_label_err");
+}
+
+// =========================================================================
+// PO-vb282my-CL-KANI-007: Slot-branch fanout (lower_choose direct)
+// Slot branches produce ChooseSlot node with preserved branch count
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(50)]
+fn kani_choose_lowering_fanout_slot() {
+    let id = StepIdx::new(0);
+    let slot_count: u8 = kani::any();
+    kani::assume(slot_count > 0);
+    kani::assume(slot_count <= 32);
+
+    let mut branches: Vec<SlotBranch> = Vec::new();
+    for i in 0..slot_count {
+        branches.push(SlotBranch {
+            condition: SlotIdx::new(u16::from(i)),
+            target: StepIdx::new(u16::from(i + 100)),
+        });
+    }
+
+    let otherwise = Some(StepIdx::new(99));
+    let mut builder = SlotCompiler::new();
+
+    let result = lower_choose(id, branches.clone(), otherwise, &mut builder);
+
+    match result {
+        Ok(ref node) => {
+            kani::assert(node.id == id, "node id preserved");
+            match &node.kind {
+                CompiledNodeKind::ChooseSlot {
+                    branches: out_branches,
+                    otherwise: out_otherwise,
+                } => {
+                    kani::assert(
+                        out_branches.len() == branches.len(),
+                        "output branch count equals input branch count",
+                    );
+                    kani::assert(*out_otherwise == otherwise, "otherwise target preserved");
+                }
+                _ => {
+                    kani::assert(false, "expected ChooseSlot node kind");
+                }
+            }
+        }
+        Err(_) => {}
+    }
+    kani::cover!(result.is_ok(), "output_shape_ok");
+    kani::cover!(result.is_err(), "output_shape_err");
+}
+
+// =========================================================================
+// Supplementary: lower_choose + validate_branch_route direct test
+// Tests the lower_choose function directly for correct CompiledNode output
+// =========================================================================
+
+#[kani::proof]
+#[kani::unwind(50)]
+fn kani_choose_lowering_direct() {
     let num_bytes = num_bytes.min(max_len);
     let mut out = String::with_capacity(num_bytes);
     for _ in 0..num_bytes {
@@ -295,80 +557,16 @@ fn kani_choose_lowering_empty_branch_no_otherwise() {
             let found = errs
                 .iter()
                 .any(|e| matches!(e, CompileError::Workflow(WorkflowError::EmptyBranchTable)));
-            , "fanout_exceeded_err");
-    kani::cover!(result.is_ok(), "fanout_ok");
-}
-
-// =========================================================================
-// PO-vb282my-CL-KANI-002: Empty branch table without otherwise
-// branches.is_empty() && otherwise.is_none() → Err(EmptyBranchTable)
-// =========================================================================
-
-#[kani::proof]
-#[kani::unwind(10)]
-fn kani_choose_lowering_empty_branch_no_otherwise() {
-    let index: usize = kani::any();
-    kani::assume(index < 4096);
-    let id = StepIdx::new(0);
-    let branches: Vec<ChooseBranch> = Vec::new();
-    let next = Some(StepIdx::new(10));
-    let step_names: Vec<Box<str>> = vec!["start".into()];
-    let mut builder = SlotCompiler::new();
-
-    let result =
-        lower_canonical_choose(index, id, &branches, None, next, &step_names, &mut builder);
-
-    match &result {
-        Err(CompileErrors(errs)) => {
-            let found = errs
-                .iter()
-                .any(|e| matches!(e, CompileError::Workflow(WorkflowError::EmptyBranchTable)));
             kani::assert(
                 found,
                 "empty branches without otherwise must produce EmptyBranchTable",
             );
         }
         Ok(()) => {
-            ) => {
             kani::assert(false, "empty branches without otherwise should not succeed");
         }
     }
     kani::cover!(result.is_err(), "empty_no_otherwise_err");
-}
-
-// =========================================================================
-// PO-vb282my-CL-KANI-003: Empty branch table with otherwise
-// branches.is_empty() && otherwise.is_some() → Ok
-// =========================================================================
-
-#[kani::proof]
-#[kani::unwind(10)]
-fn kani_choose_lowering_empty_with_otherwise() {
-    let index: usize = kani::any();
-    kani::assume(index < 4096);
-    let id = StepIdx::new(0);
-    let branches: Vec<ChooseBranch> = Vec::new();
-    let next = Some(StepIdx::new(10));
-    let step_names: Vec<Box<str>> = vec!["target".into()];
-    let mut builder = SlotCompiler::new();
-
-    let result = lower_canonical_choose(
-        index,
-        id,
-        &branches,
-        Some("target"),
-        next,
-        &step_names,
-        &mut builder,
-    );
-
-    // Should not be EmptyBranchTable
-    match &result {
-        Err(CompileErrors(errs)) => {
-            let is_empty = errs
-                .iter()
-                .any(|e| matches!(e, CompileError::Workflow(WorkflowError::EmptyBranchTable)));
-            , "empty_no_otherwise_err");
 }
 
 // =========================================================================
@@ -500,50 +698,6 @@ fn kani_choose_lowering_valid_otherwise_label() {
             let is_unknown = errs
                 .iter()
                 .any(|e| matches!(e, CompileError::UnknownStepLabel { .. }));
-            , "non-empty branch body must produce Err");
-    }
-    kani::cover!(result.is_err(), "nonempty_body_err");
-    kani::cover!(result.is_ok(), "all_empty_body_ok");
-}
-
-// =========================================================================
-// PO-vb282my-CL-KANI-005: Valid otherwise label resolves correctly
-// otherwise label in step_names → resolved StepIdx in output
-// =========================================================================
-
-#[kani::proof]
-#[kani::unwind(10)]
-fn kani_choose_lowering_valid_otherwise_label() {
-    let index: usize = 0;
-    let id = StepIdx::new(0);
-
-    // Single empty branch
-    let branches = vec![ChooseBranch {
-        when: "0".to_string(),
-        steps: Vec::new(),
-    }];
-
-    // otherwise label exists in step_names
-    let otherwise_label = "target_step";
-    let next = Some(StepIdx::new(42));
-    let step_names: Vec<Box<str>> = vec!["entry".into(), otherwise_label.into(), "exit".into()];
-
-    let mut builder = SlotCompiler::new();
-    let result = lower_canonical_choose(
-        index,
-        id,
-        &branches,
-        Some(otherwise_label),
-        next,
-        &step_names,
-        &mut builder,
-    );
-
-    match &result {
-        Err(CompileErrors(errs)) => {
-            let is_unknown = errs
-                .iter()
-                .any(|e| matches!(e, CompileError::UnknownStepLabel { .. }));
             kani::assert(
                 !is_unknown,
                 "known otherwise label must not produce UnknownStepLabel",
@@ -552,47 +706,6 @@ fn kani_choose_lowering_valid_otherwise_label() {
         _ => {}
     }
     kani::cover!(result.is_ok(), "valid_otherwise_label_ok");
-}
-
-// =========================================================================
-// PO-vb282my-CL-KANI-006: Unknown otherwise label
-// otherwise label NOT in step_names → Err(UnknownStepLabel)
-// =========================================================================
-
-#[kani::proof]
-#[kani::unwind(10)]
-fn kani_choose_lowering_unknown_otherwise_label() {
-    let index: usize = kani::any();
-    kani::assume(index < 4096);
-    let id = StepIdx::new(0);
-
-    let branches = vec![ChooseBranch {
-        when: "0".to_string(),
-        steps: Vec::new(),
-    }];
-
-    let next = Some(StepIdx::new(10));
-    // step_names only contains known labels
-    let step_names: Vec<Box<str>> = vec!["alpha".into(), "beta".into()];
-
-    // otherwise label is definitely not in step_names
-    let mut builder = SlotCompiler::new();
-    let result = lower_canonical_choose(
-        index,
-        id,
-        &branches,
-        Some("unknown_label"),
-        next,
-        &step_names,
-        &mut builder,
-    );
-
-    match &result {
-        Err(CompileErrors(errs)) => {
-            let found = errs
-                .iter()
-                .any(|e| matches!(e, CompileError::UnknownStepLabel { .. }));
-            , "valid_otherwise_label_ok");
 }
 
 // =========================================================================
@@ -745,13 +858,24 @@ fn kani_choose_lowering_direct() {
 
     match result {
         Ok(ref node) => {
-             == branches.len(),
+            kani::assert(node.id == id, "node id preserved");
+            match &node.kind {
+                CompiledNodeKind::ChooseSlot {
+                    branches: out_branches,
+                    otherwise: out_otherwise,
+                } => {
+                    kani::assert(
+                        out_branches.len() == branches.len(),
                         "output branch count equals input branch count",
                     );
+                    kani::assert(*out_otherwise == otherwise, "otherwise target preserved");
                 }
-                _ => {}
+                _ => {
+                    kani::assert(false, "expected ChooseSlot node kind");
+                }
             }
         }
+        Err(_) => {}
     }
     kani::cover!(result.is_ok(), "output_shape_ok");
     kani::cover!(result.is_err(), "output_shape_err");
@@ -793,9 +917,6 @@ fn kani_choose_lowering_direct() {
                 } => {
                     kani::assert(
                         out_branches.len() == branches.len(),
-                        "slot branch count preserved",
-                    );
-                     == branches.len(),
                         "slot branch count preserved",
                     );
                     kani::assert(*out_otherwise == otherwise, "otherwise target preserved");

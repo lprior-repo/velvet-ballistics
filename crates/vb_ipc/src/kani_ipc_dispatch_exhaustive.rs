@@ -68,12 +68,9 @@ fn kani_unknown_command_returns_bad_request() {
     };
 
     // Verify the decoding produced the expected variant.
-    kani::assert_eq!(
-        command,
-        IpcCommand::UnknownCommand(value),
-        "Value {} must decode to UnknownCommand({})",
-        value,
-        value
+    kani::assert(
+        command == IpcCommand::UnknownCommand(value),
+        "value must decode to UnknownCommand",
     );
 
     // Exercise the production dispatch function.
@@ -84,12 +81,9 @@ fn kani_unknown_command_returns_bad_request() {
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
     // Invariant: UnknownCommand MUST return BadRequest.
-    kani::assert_eq!(
-        response,
-        IpcResponse::BadRequest,
-        "UnknownCommand({}) must dispatch to BadRequest, got {:?}",
-        value,
-        response
+    kani::assert(
+        response == IpcResponse::BadRequest,
+        "UnknownCommand must dispatch to BadRequest",
     );
 }
 
@@ -108,7 +102,7 @@ fn kani_dispatch_arm_count() {
     let mut runtime = make_runtime();
 
     // Verify count is exactly 11.
-    kani::assert_eq!(11, 11, "Exactly 11 semantic command variants must exist");
+    kani::assert(11 == 11, "Exactly 11 semantic command variants must exist", "kani harness assertion");
 
     // Verify a single symbolic semantic command dispatches without panicking.
     let cmd_raw: u16 = kani::any();
@@ -135,11 +129,8 @@ fn kani_dispatch_arm_count() {
     let payload: &[u8] = &[];
     let response = dispatch_command_with_resolver(&header, payload, &mut runtime, None);
 
-    kani::assert_eq!(
-        response,
-        IpcResponse::BadRequest,
-        "UnknownCommand must dispatch to BadRequest"
-    );
+    kani::assert(response == IpcResponse::BadRequest,
+        "UnknownCommand must dispatch to BadRequest", "kani harness assertion");
 
     // Coverage note: the semantic command and UnknownCommand arms
     // have been exercised. The Rust compiler enforces exhaustiveness of

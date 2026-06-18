@@ -1,7 +1,13 @@
-// Verus proof obligations for the taint lattice.
+// RETIRED LOCAL MODEL: Verus proof obligations for a mirror taint lattice.
 //
 // Source model: `crates/vb_proof_kernels/src/taint.rs`.
-// Registry obligations: VB-CORE-TAINT-001 through VB-CORE-TAINT-005.
+// Production binding status: none. This file defines `SpecTaint`, a parallel
+// type that is not bound to `vb_core::value::Taint` or production
+// `vb_core::value::join_taint` by extern_spec, assume_specification, or
+// production requires/ensures.
+// Registry obligations VB-CORE-TAINT-001 through VB-CORE-TAINT-005 were
+// downgraded by vb-dzibx; verifier success for this file is local-model sanity
+// evidence only and must not be cited as production deductive evidence.
 // Exact verifier command: `verus verification/verus/taint_lattice.rs`.
 
 use vstd::prelude::*;

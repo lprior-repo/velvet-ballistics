@@ -1,32 +1,9 @@
 #![forbid(unsafe_code)]
-//! Kani harnesses for `lower_repeat` and `lower_ask` id+1 control lowering.
-//! Bead: vb-onsk; scope: current public `vb_compile` APIs.
+//! Kani harnesses for `lower_repeat`, `lower_ask`, and `lower_choose` control lowering.
+//! Bead: vb-onsk/vb-awhr; scope: current public `vb_compile` APIs.
 
 use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
-use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
-
-const MAX_NON_OVERFLOWING_STEP_RAW: u16 = 65_534;
-
-fn symbolic_non_max_step_raw() -> u16 {
-    let raw: u16 = kani::any();
-    kani::assume(raw < u16::MAX);
-    kani::cover!(raw == 0, "non-max step domain includes zero");
-    kani::cover!(
-        raw == MAX_NON_OVERFLOWING_STEP_RAW,
-        "non-max step domain includes max-minus-one"
-    );
-    raw
-}
-
-fn expected_successor(raw: u16) -> u16 {
-    match raw.checked_add(1) {
-        Some(value) => value,
-        None => {
-            #![forbid(unsafe_code)]
-//! Kani harnesses for `lower_repeat` and `lower_ask` id+1 control lowering.
-//! Bead: vb-onsk; scope: current public `vb_compile` APIs.
-
-use crate::{CompileError, SlotCompiler, lower_ask, lower_choose, lower_repeat};
+use vb_core::workflow::SlotBranch;
 use vb_core::{CompiledNode, CompiledNodeKind, SlotIdx, StepIdx};
 
 const MAX_NON_OVERFLOWING_STEP_RAW: u16 = 65_534;
@@ -78,32 +55,10 @@ fn symbolic_timeout() -> Option<SlotIdx> {
     }
 }
 
-fn assert_repeat_nodes(
-    nodes: &[CompiledNode],
-    id: StepIdx,
-    max_attempts: u16,
-    body: StepIdx,
-    done: StepIdx,
-    expected_slot: SlotIdx,
-) {
-    match nodes {
-        [start, attempt, finish] => {
-            assert_repeat_start(start, id, max_attempts, body, done);
-            assert_repeat_attempt(attempt, body, done, expected_slot);
-            assert_repeat_finish(finish, done, expected_slot);
-        }
-        _ => )
-}
-
-fn symbolic_slot() -> SlotIdx {
-    SlotIdx::new(kani::any::<u16>())
-}
-
-fn symbolic_timeout() -> Option<SlotIdx> {
-    if kani::any::<bool>() {
-        Some(symbolic_slot())
-    } else {
-        None
+fn symbolic_branch() -> SlotBranch {
+    SlotBranch {
+        condition: symbolic_slot(),
+        target: symbolic_step(),
     }
 }
 
@@ -156,15 +111,6 @@ fn assert_repeat_attempt(
     kani::assert(node.id == body, "RepeatAttempt id must equal body step");
     kani::assert(
         node.output == Some(expected_slot),
-        "RepeatAttempt output id + 1",
-    );
-    match node.kind {
-        CompiledNodeKind::RepeatAttempt {
-            attempt_slot,
-            body: actual_body,
-            done: actual_done,
-        } => {
-            ,
         "RepeatAttempt output id + 1",
     );
     match node.kind {
@@ -233,10 +179,6 @@ fn assert_ask_resume(node: &CompiledNode, expected_resume: StepIdx, answer: Slot
     match node.kind {
         CompiledNodeKind::AskResume {
             answer: actual_answer,
-        } => , "AskResume output answer slot");
-    match node.kind {
-        CompiledNodeKind::AskResume {
-            answer: actual_answer,
         } => kani::assert(actual_answer == answer, "AskResume answer preserved"),
         _ => kani::assert(false, "second ask node must be AskResume"),
     }
@@ -285,8 +227,6 @@ fn lower_repeat_rejects_max_id_without_overflow() {
         Err(CompileError::StepIndexOutOfRange { value }) => {
             kani::assert(value == max_step_plus_one(), "repeat reports id + 1");
         }
-        Err(_) => , "repeat reports id + 1");
-        }
         Err(_) => kani::assert(false, "lower_repeat must reject with limit error"),
     }
     std::mem::forget(builder);
@@ -305,15 +245,6 @@ fn lower_ask_accepts_non_max_id_and_uses_id_plus_one_resume() {
 
     kani::cover!(prompt == answer, "ask prompt and answer may alias");
     kani::cover!(timeout_slot.is_some(), "ask timeout includes Some");
-    kani::cover!(timeout_slot.is_none(), "ask timeout includes None");
-
-    let mut builder = SlotCompiler::new();
-    match lower_ask(id, prompt, answer, timeout_slot, &mut builder) {
-        Ok(nodes) => {
-            assert_ask_nodes(&nodes, id, expected_resume, prompt, answer, timeout_slot);
-            std::mem::forget(nodes);
-        }
-        Err(_) => , "ask timeout includes Some");
     kani::cover!(timeout_slot.is_none(), "ask timeout includes None");
 
     let mut builder = SlotCompiler::new();
@@ -349,68 +280,20 @@ fn lower_ask_rejects_max_id_without_overflow() {
             kani::assert(value == usize::from(u16::MAX), "ask reports max id");
             kani::assert(limit == usize::from(u16::MAX), "ask reports step limit");
         }
-        Err(_) => , "ask reports step limit");
-        }
         Err(_) => kani::assert(false, "lower_ask must reject with limit error"),
     }
     std::mem::forget(builder);
 }
-
-// ───────────────────────────────────────────────────────────────────────────
-// vb-awhr harnesses: fanout limit and otherwise label resolution
-// ───────────────────────────────────────────────────────────────────────────
-
-use vb_core::workflow::SlotBranch;
 
 /// PO-001 H1: lower_choose correctly enforces the 64-branch fanout limit.
 #[kani::proof]
 #[kani::unwind(128)]
 fn lower_choose_fanout_bound() {
     let test_rejection: bool = kani::any();
-
     let branches: Vec<SlotBranch> = if test_rejection {
-        (0..65)
-            .map(|_| SlotBranch {
-                condition: SlotIdx::new(kani::any()),
-                target: StepIdx::new(kani::any()),
-            })
-            .collect()
+        (0..65).map(|_| symbolic_branch()).collect()
     } else {
-        (0..64)
-            .map(|_| SlotBranch {
-                condition: SlotIdx::new(kani::any()),
-                target: StepIdx::new(kani::any()),
-            })
-            .collect()
-    };
-
-    let mut builder = SlotCompiler::new();
-    let result = lower_choose(
-        StepIdx::new(0),
-        branches,
-        Some(StepIdx::new(1)),
-        &mut builder,
-    );
-
-    if test_rejection {
-        match result {
-            Err(CompileError::PrimitiveLoweringLimitExceeded {
-                primitive,
-                field,
-                value,
-                limit,
-            }) => {
-                ,
-                target: StepIdx::new(kani::any()),
-            })
-            .collect()
-    } else {
-        (0..64)
-            .map(|_| SlotBranch {
-                condition: SlotIdx::new(kani::any()),
-                target: StepIdx::new(kani::any()),
-            })
-            .collect()
+        (0..64).map(|_| symbolic_branch()).collect()
     };
 
     let mut builder = SlotCompiler::new();
@@ -451,13 +334,7 @@ fn lower_choose_fanout_bound() {
 #[kani::proof]
 #[kani::unwind(128)]
 fn lower_choose_live_api_has_fanout_check() {
-    let branches: Vec<SlotBranch> = (0..65)
-        .map(|_| SlotBranch {
-            condition: SlotIdx::new(kani::any()),
-            target: StepIdx::new(kani::any()),
-        })
-        .collect();
-
+    let branches: Vec<SlotBranch> = (0..65).map(|_| symbolic_branch()).collect();
     let mut builder = SlotCompiler::new();
     let result = lower_choose(
         StepIdx::new(0),
@@ -468,47 +345,11 @@ fn lower_choose_live_api_has_fanout_check() {
 
     match result {
         Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {}
-        Ok(_) => {
-            , "≤64 branches must be accepted");
+        Ok(_) => kani::assert(false, "public lower_choose must reject 65 branches"),
+        Err(_) => kani::assert(
+            false,
+            "public lower_choose must reject with PrimitiveLoweringLimitExceeded",
+        ),
     }
     std::mem::forget(builder);
 }
-
-/// PO-001 H2: Public lower_choose API enforces the fanout limit.
-#[kani::proof]
-#[kani::unwind(128)]
-fn lower_choose_live_api_has_fanout_check() {
-    let branches: Vec<SlotBranch> = (0..65)
-        .map(|_| SlotBranch {
-            condition: SlotIdx::new(kani::any()),
-            target: StepIdx::new(kani::any()),
-        })
-        .collect();
-
-    let mut builder = SlotCompiler::new();
-    let result = lower_choose(
-        StepIdx::new(0),
-        branches,
-        Some(StepIdx::new(1)),
-        &mut builder,
-    );
-
-    match result {
-        Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {}
-        Ok(_) => {
-            kani::assert(false, "public lower_choose must reject 65 branches");
-        }
-        Err(_) => {
-            false, "public lower_choose must reject 65 branches");
-        }
-        Err(_) => {
-            kani::assert(
-                false,
-                "public lower_choose must reject with PrimitiveLoweringLimitExceeded",
-            );
-        }
-    }
-    std::mem::forget(builder);
-}
-
-// otherwise label resolution harness is in mod_compile_lowering/kani_vb_awhr.rs

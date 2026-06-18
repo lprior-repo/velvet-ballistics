@@ -110,11 +110,16 @@
     unused_variables
 )]
 
-//! MasterProfileContract — the immutable reference contract from the master document.
+//! MasterProfileContract — local mirror of the profile contract.
 //!
 //! Bead: vb-esq9.1 | State: 5 (proof-writer)
 //! Derived from velvet-ballistics-MASTER.md §34 lines 1375-1386.
 //! Governance requirements from docs/rust-governance.md:61.
+//!
+//! The Verus layer in this file is local-only: it defines parallel
+//! `ProfileName`/`ProfileKey` mirror types and is not bound to the executable
+//! profile validation modules or root Cargo.toml parsing. It must not be
+//! registered as production deductive evidence without a future reviewed binding.
 
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
@@ -216,29 +221,6 @@ pub open spec fn spec_key_category(key: ProfileKey) -> nat {
         ProfileKey::Panic => 2,
         ProfileKey::Inherits => 3,
     }
-}
-
-// ── Release/Bench required key specs ───────────────────────────────
-//
-// These are the nat-encoded key-value pairs from the master contract.
-// We encode each pair as a single nat for proof convenience.
-//
-// Encoding: key_index * 100 + value_tag
-// where value_tag: U8(3) = 3, U16(1) = 1, String(Thin) = 10,
-//     String(Release) = 11, Bool(true) = 20
-pub open spec fn spec_release_required_keys() -> nat {
-    // 4 required keys for release
-    4
-}
-
-pub open spec fn spec_bench_required_keys() -> nat {
-    // 4 required keys for bench
-    4
-}
-
-pub open spec fn spec_hardened_gov_required() -> nat {
-    // 2 governance keys for hardened
-    2
 }
 
 // ── Lemma: exactly 6 profile names exist ───────────────────────────
@@ -379,50 +361,6 @@ proof fn lemma_inherits_unique_inheritance_key(key: ProfileKey)
     }
 }
 
-// ── Lemma: release keys count ──────────────────────────────────────
-proof fn lemma_release_key_count()
-    ensures
-        spec_release_required_keys() == 4,
-{
-    assert(spec_release_required_keys() == 4);
-}
-
-// ── Lemma: bench keys count ────────────────────────────────────────
-proof fn lemma_bench_key_count()
-    ensures
-        spec_bench_required_keys() == 4,
-{
-    assert(spec_bench_required_keys() == 4);
-}
-
-// ── Lemma: hardened governance key count ───────────────────────────
-proof fn lemma_hardened_gov_key_count()
-    ensures
-        spec_hardened_gov_required() == 2,
-{
-    assert(spec_hardened_gov_required() == 2);
-}
-
-// ── Lemma: release has more optimization keys than safety keys ─────
-proof fn lemma_release_optimization_dominance()
-    ensures
-        spec_release_required_keys() >= spec_hardened_gov_required(),
-{
-    assert(spec_release_required_keys() == 4);
-    assert(spec_hardened_gov_required() == 2);
-    assert(spec_release_required_keys() >= spec_hardened_gov_required());
-}
-
-// ── Lemma: bench and release have same key count ───────────────────
-proof fn lemma_bench_release_same_key_count()
-    ensures
-        spec_bench_required_keys() == spec_release_required_keys(),
-{
-    assert(spec_bench_required_keys() == 4);
-    assert(spec_release_required_keys() == 4);
-    assert(spec_bench_required_keys() == spec_release_required_keys());
-}
-
 // ── Exec: is_required — check if profile is required ────────────────
 pub fn is_required(name: ProfileName) -> (required: bool)
     ensures
@@ -455,30 +393,6 @@ pub fn key_category(key: ProfileKey) -> (cat: u8)
         ProfileKey::Panic => 2,
         ProfileKey::Inherits => 3,
     }
-}
-
-// ── Exec: release_required_count — count of required release keys ──
-pub fn release_required_count() -> (count: u8)
-    ensures
-        (count as nat) == spec_release_required_keys(),
-{
-    4
-}
-
-// ── Exec: bench_required_count — count of required bench keys ───────
-pub fn bench_required_count() -> (count: u8)
-    ensures
-        (count as nat) == spec_bench_required_keys(),
-{
-    4
-}
-
-// ── Exec: hardened_gov_count — count of governance keys for hardened ─
-pub fn hardened_gov_count() -> (count: u8)
-    ensures
-        (count as nat) == spec_hardened_gov_required(),
-{
-    2
 }
 
 // ── Exec: profile_names_are_distinct — all 6 names are pairwise unequal ─

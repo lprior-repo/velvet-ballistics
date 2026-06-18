@@ -205,13 +205,18 @@ obligations:
     files:
       - crates/vb_core/src/value.rs
     required:
-      verus: verification/verus/taint_lattice.rs
+      retired_local_verus_model: verification/verus/taint_lattice.rs
       tests: [taint_join_associative, taint_join_commutative, taint_join_idempotent]
     commands:
       - cargo nextest run -p vb_core taint_join
-      - verus verification/verus/taint_lattice.rs
     verified:
-      taint_lattice: deductively_verified
+      taint_lattice: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    note: |
+      vb-dzibx retired the prior standalone `verification/verus/taint_lattice.rs`
+      L4 claim. That file defines parallel `SpecTaint` values and is not bound
+      to production `vb_core::value::Taint` / `join_taint`; it may be run only
+      as a local sanity model until a production-bound Verus contract lands.
 
   - id: VB-CORE-TAINT-002
     section: [47]
@@ -222,9 +227,11 @@ obligations:
     files:
       - crates/vb_core/src/value.rs
     required:
-      verus: verification/verus/taint_lattice.rs
-    commands:
-      - verus verification/verus/taint_lattice.rs
+      retired_local_verus_model: verification/verus/taint_lattice.rs
+    commands: []
+    verified:
+      taint_lattice: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-CORE-TAINT-003
     section: [47]
@@ -235,9 +242,11 @@ obligations:
     files:
       - crates/vb_core/src/value.rs
     required:
-      verus: verification/verus/taint_lattice.rs
-    commands:
-      - verus verification/verus/taint_lattice.rs
+      retired_local_verus_model: verification/verus/taint_lattice.rs
+    commands: []
+    verified:
+      taint_lattice: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-CORE-TAINT-004
     section: [47]
@@ -248,11 +257,13 @@ obligations:
     files:
       - crates/vb_core/src/value.rs
     required:
-      verus: verification/verus/taint_lattice.rs
+      retired_local_verus_model: verification/verus/taint_lattice.rs
       kani: kani_taint_lattice.rs
     commands:
-      - verus verification/verus/taint_lattice.rs
       - cargo kani --harness kani_taint_lattice
+    verified:
+      taint_lattice: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-CORE-TAINT-005
     section: [47]
@@ -263,9 +274,11 @@ obligations:
     files:
       - crates/vb_core/src/value.rs
     required:
-      verus: verification/verus/taint_lattice.rs
-    commands:
-      - verus verification/verus/taint_lattice.rs
+      retired_local_verus_model: verification/verus/taint_lattice.rs
+    commands: []
+    verified:
+      taint_lattice: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-CORE-TAINT-006
     section: [47, 68]
@@ -302,13 +315,19 @@ obligations:
     files:
       - crates/vb_core/src/frame.rs
     required:
-      verus: verification/verus/step_state_machine.rs
+      retired_local_verus_model: verification/verus/step_state_machine.rs
       kani: kani_step_state.rs
       tests: [step_state_valid_transitions, step_state_invalid_transitions_rejected]
     commands:
-      - verus verification/verus/step_state_machine.rs
       - cargo kani --harness kani_step_state
       - cargo nextest run -p vb_core step_state
+    verified:
+      step_state_machine: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    note: |
+      vb-dzibx removed standalone Verus step-state models from production L4
+      evidence. Current Verus state-machine artifacts are mirror models, not
+      contracts on `vb_core::frame` transition code.
 
   - id: VB-CORE-STATE-002
     section: [45]
@@ -446,11 +465,17 @@ obligations:
     files:
       - crates/vb_core/src/resource.rs
     required:
-      verus: verification/verus/resource_budget.rs
+      retired_local_verus_model: verification/verus/resource_budget.rs
       tests: [resource_budget_sequential_sum_safe]
     commands:
-      - verus verification/verus/resource_budget.rs
       - cargo nextest run -p vb_core resource_budget
+    verified:
+      resource_budget: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    note: |
+      vb-dzibx keeps resource-budget Verus artifacts as local sanity models only.
+      They are not bound to production resource arithmetic and must not close L4
+      until production contracts or reviewed bridge proofs exist.
 
   - id: VB-CORE-RESOURCE-002
     section: [64]
@@ -461,9 +486,11 @@ obligations:
     files:
       - crates/vb_core/src/resource.rs
     required:
-      verus: verification/verus/resource_budget.rs
-    commands:
-      - verus verification/verus/resource_budget.rs
+      retired_local_verus_model: verification/verus/resource_budget.rs
+    commands: []
+    verified:
+      resource_budget: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-CORE-RESOURCE-003
     section: [64]
@@ -474,9 +501,11 @@ obligations:
     files:
       - crates/vb_core/src/resource.rs
     required:
-      verus: verification/verus/resource_budget.rs
-    commands:
-      - verus verification/verus/resource_budget.rs
+      retired_local_verus_model: verification/verus/resource_budget.rs
+    commands: []
+    verified:
+      resource_budget: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-CORE-RESOURCE-004
     section: [64]
@@ -582,11 +611,19 @@ obligations:
       - crates/vb_ipc/src/ingress.rs
       - crates/vb_ipc/src/frame_types.rs
     required:
-      verus: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+      retired_local_verus_model: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
     commands:
-      - verus crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+      - cargo build -p vb_ipc
     verified:
-      vb_5iebh: deductively_verified
+      vb_5iebh: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    note: |
+      vb-dzibx retired the prior `vb_5iebh.rs` deductive-verification claim.
+      The file is retained only as a local Verus sanity model for IPC wire
+      constants/header shape and is not evidence for the production behavior of
+      BoundedReadExtent, BoundedWriteDrainExtent, BoundedPayload, IngressFrame,
+      IpcFrameHeader, IpcFrame, encode_payload, or decode_payload. Future L4
+      closure requires production-bound contracts or reviewed bridge proofs.
 
   # ============================================================
   # RECORD ENVELOPE DECODE (Section 18, 49)
@@ -1097,9 +1134,9 @@ obligations:
       - cargo xtask loom --model bounded_queue
 
 # ============================================================
-# VB-RQMW: Verus vacuum proof repair (2026-06-01)
-# All files verified with 0 errors. Proof bodies use explicit assert()
-# for open spec functions (computable by SMT solver).
+# VB-RQMW: prior Verus vacuum proof repair entries
+# vb-dzibx correction: standalone mirror-model entries in this section are not
+# production-bound evidence unless each obligation below says otherwise.
 # ============================================================
   - id: VB-RQMW-001
     section: [36, 37, 40]
@@ -1112,11 +1149,12 @@ obligations:
       - crates/vb_core/src/frame.rs
       - crates/vb_core/src/engine/step.rs
     required:
-      verus: verification/verus/step_state_machine.rs
+      retired_local_verus_model: verification/verus/step_state_machine.rs
     commands:
-      - verus verification/verus/step_state_machine.rs
+      - cargo build -p vb_core
     verified:
-      step_state_machine: deductively_verified
+      step_state_machine: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: VB-RQMW-002
     section: [40]
@@ -1241,38 +1279,48 @@ obligations:
       public u16, zero values are valid and constructible — GOD RULE 2 violation corrected).
 
   # ============================================================
-  # ACTION COMPLETION KERNEL — vb-kzz99 (GOD RULE 2: pure kernel binding)
+  # ACTION COMPLETION KERNEL — vb-kzz99 (GOD RULE 2 repair: retired local model)
   # ============================================================
   - id: VB-RUNTIME-ACT-002
     section: [49]
     statement: |
-      Action completion kernel: advance_after_action_completion returns Err when
-      node is missing, Ok(()) for terminal steps, Err when PC set fails, and
-      Ok(()) when node has a next and PC set succeeds.
-      Input validation: validate_input_bytes returns Err when max_input_bytes == 0
-      AND input_slot_count > 0; Ok(()) otherwise.
-      Scheduled attempt recording: record_scheduled_attempt computes new attempt
-      via scheduled_attempt_after when ticket_attempt > 0 and step in bounds;
-      no-op when ticket_attempt == 0.
-      Compositional dispatch guard: if validation passes AND node exists with
-      valid next, advance succeeds.
+      OPEN production-bound obligation: prove the actual vb_runtime action
+      completion paths, not a local primitive mirror. Required future closure
+      must bind to these production signatures:
+      - validate_input_bytes(&ActionInput, &ActionContract) -> ActionResult<()>
+      - advance_after_action_completion(&mut RunState, StepIdx) -> RuntimeResult<()>
+      - record_scheduled_attempt(&mut RunState, ActionTicket)
+      - scheduled_attempt_after(Option<u16>, u16) -> Option<u16>
+
+      The prior vb_kzz99 Verus file used unbound bool/u16/u32 specs and a
+      local dispatch-composition theorem. That artifact has been retired and
+      no longer discharges this obligation.
     proof_level: L4
     crate: vb_runtime
     files:
+      - crates/vb_runtime/src/action.rs
       - crates/vb_runtime/src/shard/helpers/action.rs
       - crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
     required:
-      verus: crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+      retired_local_verus_model: crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+      production_bound_verus: pending
     commands:
       - verus --crate-type=lib crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+      - cargo build -p vb_runtime
     verified:
-      vb_kzz99_action_completion: deductively_verified
+      vb_kzz99_action_completion: not_production_bound_retired
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
     note: |
-      19 verified, 0 errors (verus --crate-type=lib). Spec/proof layer covers
-      spec_validate_input_bytes, spec_advance_after_action_completion,
-      spec_record_scheduled_attempt, scheduled_attempt_after_spec and their
-      exec bindings + theorem_dispatch_guard_composition.
-      All proofs use compute; no quantifier triggers needed.
+      vb-dzibx retired the previous `vb_kzz99_action_completion.rs` claim.
+      The prior 19 Verus checks were local primitive-model checks over bool,
+      u16, and u32 parameters. They did not bind to the production signatures
+      involving ActionInput, ActionContract, RunState, StepIdx, or ActionTicket;
+      they did not use extern_spec, assume_specification, or production
+      requires/ensures; and the dispatch-composition theorem was local and
+      tautological. The retained file is an empty retirement artifact. Running
+      Verus on it is a syntax/trust regression check only, not evidence of
+      production correctness. Future closure requires a reviewed production
+      binding or a shared production kernel.
 
   # ============================================================
   # BOUNDARY INVENTORY VALIDATION (Section TBD)
@@ -1292,14 +1340,15 @@ obligations:
     commands:
       - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
     verified:
-      vb_boundary_inventory_validation: deductively_verified
+      vb_boundary_inventory_validation: not_connected_pending_production_binding
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: OBL-BI-002
     section: [boundary_inventory]
     statement: |
-      validate_freshness — freshness validation: known markers are valid;
-      unknown markers require review_status Other with non-empty text and
-      waiver; Unknown freshness with waiver is valid.
+      validate_freshness — evidence is fresh when evidence_version is at
+      least source_version and at least schema_version; otherwise production
+      returns StaleEvidence.
     proof_level: L4
     crate: vb_boundary_inventory
     files:
@@ -1309,13 +1358,15 @@ obligations:
     commands:
       - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
     verified:
-      vb_boundary_inventory_validation: deductively_verified
+      vb_boundary_inventory_validation: not_connected_pending_production_binding
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: OBL-BI-003
     section: [boundary_inventory]
     statement: |
-      class_from_marker — marker to class mapping: Unknown marker maps
-      to Unknown class; other known markers map to their correct class.
+      class_from_marker — marker to class mapping: each known marker maps
+      to its correct class; an unknown marker returns UnknownBoundaryClass
+      rather than returning BoundaryClass::Unknown.
     proof_level: L4
     crate: vb_boundary_inventory
     files:
@@ -1325,14 +1376,15 @@ obligations:
     commands:
       - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
     verified:
-      vb_boundary_inventory_validation: deductively_verified
+      vb_boundary_inventory_validation: not_connected_pending_production_binding
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: OBL-BI-004
     section: [boundary_inventory]
     statement: |
-      ReviewStatus invariant: All fields (Known, Other, Unknown) are
-      well-formed. Known/Unknown always valid; Other valid iff non-empty
-      text (no waiver required for Other).
+      ReviewStatus invariant: Approved is valid; Waived is valid only with
+      a present and valid waiver evidence reference; Other and missing review
+      status are invalid.
     proof_level: L4
     crate: vb_boundary_inventory
     files:
@@ -1342,7 +1394,8 @@ obligations:
     commands:
       - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
     verified:
-      vb_boundary_inventory_validation: deductively_verified
+      vb_boundary_inventory_validation: not_connected_pending_production_binding
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: OBL-BI-005
     section: [boundary_inventory]
@@ -1358,13 +1411,16 @@ obligations:
     commands:
       - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
     verified:
-      vb_boundary_inventory_validation: deductively_verified
+      vb_boundary_inventory_validation: not_connected_pending_production_binding
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
   - id: OBL-BI-006
     section: [boundary_inventory]
     statement: |
-      stable_id — deterministic identifier generation: result starts
-      with "vb-y1zq-" prefix; same inputs always produce same output.
+      stable_id — deterministic identifier generation: production formats
+      "vb-y1zq-{class:?}-{source}" from the BoundaryClass and source Path,
+      then replaces '/', '.', and '_' with '-'; same inputs always produce
+      same output.
     proof_level: L4
     crate: vb_boundary_inventory
     files:
@@ -1374,7 +1430,8 @@ obligations:
     commands:
       - verus --crate-type=lib contracts/verus/vb_boundary_inventory_validation_spec.rs
     verified:
-      vb_boundary_inventory_validation: deductively_verified
+      vb_boundary_inventory_validation: not_connected_pending_production_binding
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
 
 # ============================================================
 # EVIDENCE FORMAT
@@ -1393,9 +1450,9 @@ evidence_schema:
   remaining_assumptions:
     - string
   verified:
-    taint_lattice: deductively_verified | property_tested | fuzzed | externally_assumed
-    step_state: deductively_verified | bounded_model_checked | property_tested
-    resource_budget: deductively_verified | bounded_model_checked | property_tested
+    taint_lattice: deductively_verified | property_tested | fuzzed | externally_assumed | not_production_bound_retired
+    step_state: deductively_verified | bounded_model_checked | property_tested | not_production_bound_retired
+    resource_budget: deductively_verified | bounded_model_checked | property_tested | not_production_bound_retired
     ipc_decoder: fuzzed_and_bounded_model_checked | bounded_model_checked | fuzzed
     generated_parity: differentially_tested | property_tested
     replay_safety: model_checked_and_crash_lab_evidenced | model_checked | fuzzed
@@ -1410,11 +1467,11 @@ proof_matrix:
     primary_level: L3
     secondary_level: L4
   vb_core::value:
-    proof_strategy: "Verus/Kani for taint lattice, ConstValue total mapping, handle validity. Tests for FiniteF64."
+    proof_strategy: "Kani/property tests for production taint lattice, ConstValue total mapping, handle validity. Tests for FiniteF64. The standalone Verus taint_lattice mirror is retired as non-production-bound under vb-dzibx; future Verus must bind directly to vb_core::value::Taint/join_taint."
     primary_level: L4
     secondary_level: L3
   vb_core::frame:
-    proof_strategy: "Verus for step-state transitions and slot bounds. Kani for StepBudget."
+    proof_strategy: "Kani/tests for production step-state transitions and slot bounds. Standalone Verus step-state mirrors are retired as non-production-bound under vb-dzibx; future Verus must bind to production frame transition code. Kani for StepBudget."
     primary_level: L4
     secondary_level: L3
   vb_core::engine:
@@ -1426,9 +1483,12 @@ proof_matrix:
     primary_level: L2
     secondary_level: L3
   vb_yaml:
-    proof_strategy: "Fuzz + golden diagnostics. Do not try full formal parser proof. Prove 'no panic, typed failure, no forbidden YAML accepted'."
+    proof_strategy: "Fuzz + golden diagnostics. Do not try full formal parser proof. Prove 'no panic, typed failure, no forbidden YAML accepted'. No vb_yaml Verus artifact is registered or marked deductively_verified; prior standalone mirror-model artifacts were retired as non-proof under vb-dzibx. Future Verus for vb_yaml requires an extracted production-bound pure kernel or direct production requires/ensures binding."
     primary_level: L2
     secondary_level: L1
+    retired_non_proof_verus_artifacts:
+      - crates/vb_yaml/src/verification/verus/vb_yaml_validation_properties.rs
+      - crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs
   vb_validate:
     proof_strategy: "Property tests over generated ASTs. Verus for small validators if extracted into pure kernels."
     primary_level: L1
@@ -1437,6 +1497,13 @@ proof_matrix:
     proof_strategy: "Differential tests: YAML → AST → IR → reference model. Verus/Kani for WholeWorkflowBudget arithmetic."
     primary_level: L2
     secondary_level: L4
+  vb_ajc40_flux:
+    proof_strategy: "Flux/proptest smoke only; no current L4 production-binding closure. The prior verification/verus/vb_ajc40_flux_contracts.rs artifact is retired as a local mirror model under vb-dzibx; it must not be cited as deductively_verified evidence for vb_core admission or vb_ajc40_flux positive.rs contracts unless replaced by a mechanically auditable production binding. The dead positive.rs #[cfg(verus)] block was removed rather than treated as proof."
+    primary_level: L1
+    secondary_level: L4
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    retired_non_proof_verus_artifacts:
+      - verification/verus/vb_ajc40_flux_contracts.rs
   vb_storage:
     proof_strategy: "Kani for envelope header decode, length checks, sequence arithmetic. Fuzz records. Crash-lab for journal/recovery semantics."
     primary_level: L3
@@ -1446,13 +1513,31 @@ proof_matrix:
     primary_level: L3
     secondary_level: L4
   vb_ipc:
-    proof_strategy: "Verus for buffer extent arithmetic (L4). Kani + fuzz for IPC decode, length checks, and reject-before-allocation."
+    proof_strategy: "Kani + fuzz for IPC decode, length checks, and reject-before-allocation. The prior vb_5iebh Verus artifact is retired as a local model only under vb-dzibx; IPC has no current L4 closure until production-bound contracts or reviewed bridge proofs land."
     primary_level: L3
     secondary_level: L4
   vb_queue_semantics:
-    proof_strategy: "Verus for queue capacity arithmetic, enqueue/pop decision correctness, warning threshold bounds. All specs bind to production functions via exec fn bridges (L4). Model functions mirror usize production behavior with int-typed spec proofs."
+    proof_strategy: "Unit/property-style Rust tests and existing helper annotations cover current queue behavior. The prior queue_semantics Verus specs/bridges were retired under vb-dzibx as local non-proof sketches: they used mirror types/local models, lacked extern_spec or production contracts, and must not be counted as L4 closure. Future Verus requires production-bound contracts against crates/vb_queue_semantics/src/lib.rs or an extracted reviewed kernel."
     primary_level: L2
     secondary_level: L4
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    retired_non_proof_verus_artifacts:
+      - crates/vb_queue_semantics/verification/verus/queue_semantics_exec_bridges.rs
+      - crates/vb_queue_semantics/verification/verus/queue_semantics_specs.rs
+  vb_proof_kernels:
+    proof_strategy: "Local sanity kernels only. vb-dzibx marks taint.rs, profile_contract/master.rs, resource_budget.rs, step_state.rs, envelope_header.rs, and vb_kyyf_normalization.rs as non-production-bound until reviewed bridges or production contracts exist."
+    primary_level: L0
+    secondary_level: L4
+    verification_status: retired_vacuum_verus_artifact_pending_production_binding
+    retired_non_proof_verus_artifacts:
+      - crates/vb_proof_kernels/src/taint.rs
+      - crates/vb_proof_kernels/src/profile_contract/master.rs
+      - crates/vb_proof_kernels/src/resource_budget.rs
+      - crates/vb_proof_kernels/src/step_state.rs
+      - crates/vb_proof_kernels/src/envelope_header.rs
+      - crates/vb_proof_kernels/src/vb_kyyf_normalization.rs
+      - verification/verus/taint_lattice.rs
+      - verification/verus/vb_kyyf_normalization.rs
   vb_ui_model:
     proof_strategy: "Schema tests, redaction tests, bounded-list tests."
     primary_level: L1
@@ -1467,7 +1552,23 @@ proof_matrix:
     secondary_level: L6
 
 
-verus: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
-verus: crates/vb_storage/src/verification/verus/classification_specs.rs
-verus: crates/vb_queue_semantics/verification/verus/queue_semantics_exec_bridges.rs
-verus: crates/vb_queue_semantics/verification/verus/queue_semantics_specs.rs
+verus_registry_targets:
+  # RETIRED by vb-dzibx proof-writer repair: verification/verus/taint_lattice.rs,
+  # verification/verus/step_state_machine.rs, verification/verus/resource_budget.rs,
+  # and verification/verus/vb_kyyf_normalization.rs are local mirror models, not
+  # production-bound registry proof evidence.
+  # RETIRED by vb-dzibx proof-writer repair: vb_ipc vb_5iebh.rs is a
+  # local-only sanity model, not registry proof evidence.
+  # RETIRED by vb-dzibx proof-writer repair: the former vb_storage
+  # classification_specs.rs target was a standalone, production-unbound
+  # model with phantom recovery-stamp constants. It must not be counted as
+  # deductively_verified or as registry proof evidence unless replaced by a
+  # production-bound obligation and reviewed again.
+  # RETIRED by vb-dzibx proof-writer repair: the vb_queue_semantics
+  # queue_semantics_* files are local non-proof sketches only. They must not be
+  # registered as active L4 evidence until replaced by production-bound contracts
+  # against crates/vb_queue_semantics/src/lib.rs or reviewed extracted kernels.
+  # RETIRED by vb-dzibx proof-writer repair: the former
+  # verification/verus/vb_ajc40_flux_contracts.rs target was a local copy of
+  # Flux/admission behavior, not a production-bound proof artifact.
+  []

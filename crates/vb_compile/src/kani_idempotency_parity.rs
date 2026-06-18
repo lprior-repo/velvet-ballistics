@@ -104,9 +104,6 @@ fn idempotency_gate_parity() {
                 kani::assert(static_result.is_ok() == expected_accept,
                     "validate reason class must match the canonical decision table",
                 );
-                 == expected_accept,
-                    "validate reason class must match the canonical decision table",
-                );
                 kani::assert(
                     compile_ok == expected_accept,
                     "compile reason class must match the canonical decision table",

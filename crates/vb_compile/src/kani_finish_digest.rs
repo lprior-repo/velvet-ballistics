@@ -247,7 +247,8 @@ fn finish_integer_result_injectivity() {
     let encoded2 = encode_finish_integer(i2);
 
     // Distinct i64 ⇒ distinct [u8; 8] (i64::to_le_bytes is bijective).
-    ,
+    kani::assert(
+        encoded1 != encoded2,
         "distinct byte slices must produce distinct Finish String encodings",
     );
 }

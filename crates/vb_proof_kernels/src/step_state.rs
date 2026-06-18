@@ -1,7 +1,9 @@
 //! Step state machine proof kernel.
 //!
-//! This is a tiny, pure, sequential Rust kernel for step state verification.
-//! Suitable for Verus/Aeneas extraction to Lean.
+//! Local-only step-state sanity kernel. This file defines a mirror `StepState`
+//! and transition relation; it is not bound to production `vb_core::frame` state
+//! transition code. Retained Verus checks are local model checks only and must
+//! not be cited as production deductive evidence.
 #[cfg(verus_keep_ghost)]
 use vstd::prelude::*;
 
@@ -167,70 +169,6 @@ proof fn lemma_terminal_self_transition_valid(terminal: StepState)
     // Succeeded->Succeeded, Failed->Failed, Cancelled->Cancelled, Skipped->Skipped
     // are all listed in spec_valid_transition.
     assert(spec_valid_transition(terminal, terminal));
-}
-
-// ── Exec: is_valid_transition — state machine transition validator ─────
-pub fn is_valid_transition(from: StepState, to: StepState) -> (valid: bool)
-    ensures
-        valid == spec_valid_transition(from, to),
-{
-    from.eq(&to) || (from.eq(&StepState::Pending)
-        && (to.eq(&StepState::Running) || to.eq(&StepState::Succeeded)
-            || to.eq(&StepState::Failed) || to.eq(&StepState::Cancelled)
-            || to.eq(&StepState::Skipped)))
-        || (from.eq(&StepState::Running)
-            && (to.eq(&StepState::Succeeded) || to.eq(&StepState::Failed)
-                || to.eq(&StepState::Waiting) || to.eq(&StepState::Asking)
-                || to.eq(&StepState::Cancelled) || to.eq(&StepState::Skipped)))
-        || (from.eq(&StepState::Waiting) && to.eq(&StepState::Running))
-        || (from.eq(&StepState::Asking) && to.eq(&StepState::Running))
-        || (from.eq(&StepState::Succeeded) && to.eq(&StepState::Succeeded))
-        || (from.eq(&StepState::Failed) && to.eq(&StepState::Failed))
-        || (from.eq(&StepState::Cancelled) && to.eq(&StepState::Cancelled))
-        || (from.eq(&StepState::Skipped) && to.eq(&StepState::Skipped))
-}
-
-// ── Exec: is_terminal — state classification ──────────────────────────
-pub fn is_terminal(s: StepState) -> (terminal: bool)
-    ensures
-        terminal == spec_is_terminal(s),
-{
-    s.eq(&StepState::Succeeded) || s.eq(&StepState::Failed)
-        || s.eq(&StepState::Cancelled) || s.eq(&StepState::Skipped)
-}
-
-// ── Exec: validate_transition — returns Ok if transition is valid ──────
-pub fn validate_transition(from: StepState, to: StepState) -> (result: Result<
-    StepState,
-    &'static str,
->)
-    ensures
-        match result {
-            Ok(s) => s.eq(&to) && spec_valid_transition(from, to),
-            Err(_) => !spec_valid_transition(from, to),
-        },
-{
-    // Inline the transition relation (same logic as spec_valid_transition)
-    // using .eq(&...) calls since spec fn calls are not allowed in exec body.
-    let valid = from.eq(&to) || (from.eq(&StepState::Pending)
-        && (to.eq(&StepState::Running) || to.eq(&StepState::Succeeded)
-            || to.eq(&StepState::Failed) || to.eq(&StepState::Cancelled)
-            || to.eq(&StepState::Skipped)))
-        || (from.eq(&StepState::Running)
-            && (to.eq(&StepState::Succeeded) || to.eq(&StepState::Failed)
-                || to.eq(&StepState::Waiting) || to.eq(&StepState::Asking)
-                || to.eq(&StepState::Cancelled) || to.eq(&StepState::Skipped)))
-        || (from.eq(&StepState::Waiting) && to.eq(&StepState::Running))
-        || (from.eq(&StepState::Asking) && to.eq(&StepState::Running))
-        || (from.eq(&StepState::Succeeded) && to.eq(&StepState::Succeeded))
-        || (from.eq(&StepState::Failed) && to.eq(&StepState::Failed))
-        || (from.eq(&StepState::Cancelled) && to.eq(&StepState::Cancelled))
-        || (from.eq(&StepState::Skipped) && to.eq(&StepState::Skipped));
-    if valid {
-        Ok(to)
-    } else {
-        Err("invalid_state_transition")
-    }
 }
 
 } // verus!

@@ -6,6 +6,7 @@
 
 use vstd::prelude::*;
 
-verus! {
-    // Module file — timer wheel specs and proofs live in individual files.
-}
+mod helpers;
+mod numeric_timer;
+mod pending_timer;
+mod timer_wheel;

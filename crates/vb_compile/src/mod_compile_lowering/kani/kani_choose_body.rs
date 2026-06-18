@@ -166,12 +166,6 @@ fn kani_emit_choose_branch_body_count() {
                 }
             }
         }
-        Err(_) =>  == common_next.as_usize(),
-                        "last body node must chain to common_next",
-                    );
-                }
-            }
-        }
         Err(_) => kani::assert(false, "unexpected error emitting Set body steps"),
     }
 }

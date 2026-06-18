@@ -1,14 +1,14 @@
-// Verus proof obligations for vb-kyyf cross-run determinism normalization kernel.
+// RETIRED LOCAL MODEL: Verus obligations for a vb-kyyf normalization mirror.
 //
 // Obligations: PO-009 / VERUS-KYYF-001.
 // Contract clauses: PRE-004, INV-002, INV-003, POST-001, POST-002, POST-005.
 //
-// This artifact proves the pure Rust decision algebra for normalized
-// cross-run and cross-replay observation comparison.  Fjall I/O, hashing,
-// CLI execution, wall-clock time, and filesystem paths are trusted shell
-// boundaries documented in proof evidence.  The pure normalization kernel
-// receives raw public observations after they have been validated at the
-// shell boundary.
+// Production binding status: none. The included `vb_proof_kernels` module is a
+// local scalar mirror and is not called by the runtime/storage/CLI/codegen
+// adapters below, nor bound to them by production contracts. Verifier success
+// for this file is local-model sanity evidence only and must not be cited as
+// production deductive evidence until a future reviewed production binding is
+// added.
 //
 // Public surfaces (trusted boundary):
 //   - crates/vb_storage/src/recovery/recover.rs::verify_digests

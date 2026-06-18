@@ -7,12 +7,15 @@ version = "0.1.0"
 [package.metadata.flux]
 enabled = true
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(flux)'] }
+
 [dependencies]
+flux-rs = { git = "https://github.com/flux-rs/flux", rev = "4d329f2", package = "flux-rs", optional = true }
 vb_core = { path = "../vb_core" }
 
 [features]
 default = []
 positive = []
 negative = ["positive"]
-
-
+flux-refinements = ["dep:flux-rs"]
