@@ -8,10 +8,11 @@ use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
 use crate::explain_repair::explain_repair_hint;
 use crate::explain_reports::{
-    explain_compile_repair_hint, explain_gate_status, explain_verification_failure,
-    verify_error_message,
+    explain_compile_repair_hint, explain_gate_status, verify_error_message,
 };
-use crate::explain_validation::explain_validation_error;
+use crate::explain_validation::{
+    validation::explain_validation_error, verification::explain_verification_failure,
+};
 use crate::file_io::{parse_run_id, read_file, read_journal_events, report_storage_open_error};
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::output::{

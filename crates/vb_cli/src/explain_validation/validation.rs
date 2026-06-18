@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Validation error explanation and failure formatting.
+//! Validation error explanation for `vb_validate::ValidationError` variants.
 
 use crate::args::{OutputFormat, ParseError};
 use crate::exit_code::CliExitCode;
@@ -12,103 +12,7 @@ use crate::output::{
 use crate::output_utils::*;
 use std::process::ExitCode;
 
-pub(crate) fn explain_verification_failure(err: &crate::commands_verify::VerifyError) {
-    use crate::commands_verify::VerifyError;
-    match err {
-        VerifyError::YamlParse(msg) => {
-            crate::outln!("YAML Parse Error:");
-            crate::outln!("  {msg}");
-            crate::outln!("");
-            explain_repair_hint(
-                "yaml_parse",
-                &[
-                    "Fix YAML syntax: use spaces for indentation, not tabs",
-                    "Ensure all quotes are matched",
-                    "Validate the YAML with an external parser",
-                ],
-            );
-        }
-        VerifyError::Compile(errors) => {
-            crate::outln!("Compilation Error:");
-            for e in errors {
-                crate::outln!("  - {e}");
-            }
-            crate::outln!("");
-            explain_repair_hint(
-                "compilation",
-                &[
-                    "Fix the compilation errors shown above",
-                    "Review the Velvet v1 schema for correct field types",
-                ],
-            );
-        }
-        VerifyError::IrValidation(msg) => {
-            crate::outln!("IR Validation Error:");
-            crate::outln!("  {msg}");
-            crate::outln!("");
-            explain_repair_hint(
-                "ir_validation",
-                &[
-                    "The compiled workflow has an invalid internal structure",
-                    "This usually indicates a bug in the compiler",
-                    "Try re-compiling the workflow from source",
-                ],
-            );
-        }
-        VerifyError::BudgetPolicy(msg) => {
-            crate::outln!("Budget Policy Violation:");
-            crate::outln!("  {msg}");
-            crate::outln!("");
-            explain_repair_hint(
-                "budget_policy",
-                &[
-                    "Reduce the workflow's resource consumption",
-                    "Simplify step logic or reduce step count",
-                    "Use 'vb verify --profile quick' for faster iteration",
-                    "Review the budget policy in the Velvet documentation",
-                ],
-            );
-        }
-        VerifyError::StorageError(msg) => {
-            crate::outln!("Storage Error:");
-            crate::outln!("  {msg}");
-            crate::outln!("");
-            explain_repair_hint(
-                "storage",
-                &[
-                    "Check that the storage path exists and is writable",
-                    "Ensure sufficient disk space is available",
-                ],
-            );
-        }
-        VerifyError::ReplayDivergence(msg) => {
-            crate::outln!("Replay Divergence:");
-            crate::outln!("  {msg}");
-            crate::outln!("");
-            explain_repair_hint(
-                "replay",
-                &[
-                    "The workflow produces different results on replay",
-                    "Ensure all actions are deterministic or properly handled",
-                    "Check for non-deterministic data sources",
-                ],
-            );
-        }
-        VerifyError::DeferredGates(result) => {
-            crate::outln!("Deferred Verification Gates:");
-            crate::outln!("  {}", result.checks.join(", "));
-            crate::outln!("");
-            explain_repair_hint(
-                "deferred_gates",
-                &[
-                    "Close every deferred master §63 gate before using full verification as acceptance evidence",
-                    "Standard and quick profiles remain advisory while deferred gates exist",
-                ],
-            );
-        }
-    }
-}
-
+/// Explain a [`vb_validate::ValidationError`] in human-readable form.
 pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
     use vb_validate::ValidationError;
     match err {

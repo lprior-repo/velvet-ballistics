@@ -4,7 +4,7 @@
 use crate::args::{OutputFormat, ParseError};
 use crate::exit_code::CliExitCode;
 use crate::explain_repair::explain_repair_hint;
-use crate::explain_validation::explain_validation_error;
+use crate::explain_validation::validation::explain_validation_error;
 use crate::io_helpers::{exit_from_io, write_help_stdout, write_version_stdout};
 use crate::output::{
     json_error, json_out, output_error_exit, write_failure_message, write_stderr_line,
@@ -111,7 +111,7 @@ pub(crate) fn explain_step_errors(err: &vb_compile::CompileError) {
             crate::outln!("  {e}");
         }
         CompileError::Validation(e) => {
-            super::explain_validation::explain_validation_error(e);
+            super::explain_validation::validation::explain_validation_error(e);
         }
         _ => {
             crate::outln!("Compilation Error");
