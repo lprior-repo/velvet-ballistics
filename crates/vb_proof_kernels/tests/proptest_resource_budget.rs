@@ -9,12 +9,12 @@
 //! `crates/vb_proof_kernels/src/resource_budget/spec.rs`:
 //!
 //! - spec_sat_mul_u64 (`u64_max_int`):
-//!     `result = if a*b fits in u64 then a*b else u64::MAX`.
+//!   `result = if a*b fits in u64 then a*b else u64::MAX`.
 //! - spec_loop_mul_field_at: index into 12-field Budget product.
 //! - lemma_loop_mul_saturated_eq_production:
-//!     For every field index 0..12, `spec_loop_mul_field_at(body, iter, i) >= 0`.
+//!   For every field index 0..12, `spec_loop_mul_field_at(body, iter, i) >= 0`.
 //! - spec_loop_mul zero/one-iteration lemmas:
-//!     `spec_loop_mul(body, 0) == empty` and `spec_loop_mul(body, 1) == body`.
+//!   `spec_loop_mul(body, 0) == empty` and `spec_loop_mul(body, 1) == body`.
 //!
 //! Production binding: `loop_mul` here is the public
 //! `cargo_kernel::Budget::loop_mul` (which uses `u64::saturating_mul`).

@@ -6,17 +6,17 @@
 //! Each property mirrors a Verus spec:
 //!
 //! - LEMMA-TYPE-001 (`spec_expect_bool`):
-//!     `expect_bool(v) == Ok(b)` iff `v == SlotValue::Bool(b)`,
-//!     otherwise `Err(TypeMismatch { expected: "boolean", found: type_name(v) })`.
+//!   `expect_bool(v) == Ok(b)` iff `v == SlotValue::Bool(b)`,
+//!   otherwise `Err(TypeMismatch { expected: "boolean", found: type_name(v) })`.
 //! - LEMMA-TYPE-002 (`spec_expect_i64`):
-//!     `expect_i64(v) == Ok(n)` iff `v == SlotValue::I64(n)`.
-//!     F64 values are explicitly rejected (production behavior).
+//!   `expect_i64(v) == Ok(n)` iff `v == SlotValue::I64(n)`.
+//!   F64 values are explicitly rejected (production behavior).
 //! - LEMMA-TYPE-003 (`spec_expect_symbol`):
-//!     `expect_symbol(v) == Ok(id)` iff `v == SlotValue::Symbol(id)`.
+//!   `expect_symbol(v) == Ok(id)` iff `v == SlotValue::Symbol(id)`.
 //! - LEMMA-TYPE-004 (`spec_expect_list`):
-//!     `expect_list(v) == Ok(id)` iff `v == SlotValue::List(id)`.
+//!   `expect_list(v) == Ok(id)` iff `v == SlotValue::List(id)`.
 //! - LEMMA-TYPE-005 (`spec_expect_object`):
-//!     `expect_object(v) == Ok(id)` iff `v == SlotValue::Object(id)`.
+//!   `expect_object(v) == Ok(id)` iff `v == SlotValue::Object(id)`.
 //!
 //! Production binding: each property exercises the actual
 //! `crate::eval::type_enforcers::expect_*` exec fn via the `#[doc(hidden)]`
