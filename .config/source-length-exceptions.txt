@@ -337,7 +337,7 @@ crates/workspace_tests/tests/postcard_envelope_wire_tests.rs|lewis|vb-jpq7.47|sp
 crates/workspace_tests/tests/proptest_compile_error_codes.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (306 lines); split compile error code proptests by code family before removing exception.
 crates/workspace_tests/tests/raii_introspection_registry_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (487 lines); split RAII introspection registry tests by registration family before removing exception.
 crates/workspace_tests/tests/recovery_watermark_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (658 lines); split recovery watermark tests by watermark scenario before removing exception.
-crates/workspace_tests/tests/restate_postcard_newtype_compat_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (668 lines); split Restate postcard newtype compatibility tests by compatibility scenario before removing exception.
+crates/workspace_tests/tests/postcard_newtype_compat_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (668 lines); split Restate postcard newtype compatibility tests by compatibility scenario before removing exception.
 crates/workspace_tests/tests/runtime_version_barrier_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (610 lines); split runtime version barrier tests by version scenario before removing exception.
 crates/workspace_tests/tests/storage_contract_pack_runner.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (664 lines); split storage contract pack runner by contract family before removing exception.
 crates/workspace_tests/tests/symbolic_code_behavior_tests.rs|lewis|vb-jpq7.47|split-or-retire-before-release|Current source-length rebaseline offender (361 lines); split symbolic code behavior tests by registry behavior before removing exception.
@@ -407,17 +407,17 @@ crates/vb_validate/src/references/tests.rs|lewis|vb-2lu1|split-or-retire-before-
 crates/vb_validate/src/schema/tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1746-line file.
 crates/workspace_tests/ipc_magic_gate.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 413-line file.
 crates/workspace_tests/tests/proptest_error_types_nonzero_codes.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 478-line file.
-crates/workspace_tests/tests/restate_doctor_key_decode_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 714-line file.
-crates/workspace_tests/tests/restate_doctor_storage_scan_decode_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1661-line file.
-crates/workspace_tests/tests/restate_explicit_migration_skeleton_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1206-line file.
-crates/workspace_tests/tests/restate_fifo_backpressure_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 356-line file.
-crates/workspace_tests/tests/restate_ipc_flag_matrix_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1597-line file.
-crates/workspace_tests/tests/restate_journal_tail_scan_fallback_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1430-line file.
-crates/workspace_tests/tests/restate_shard_partition_math_properties.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 431-line file.
-crates/workspace_tests/tests/restate_shutdown_drain_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 474-line file.
-crates/workspace_tests/tests/restate_storage_blackhat_fixture_corpus.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 535-line file.
-crates/workspace_tests/tests/restate_sync_drr_scheduler_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 533-line file.
-crates/workspace_tests/tests/restate_timer_deadline_primitive_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1974-line file.
+crates/workspace_tests/tests/doctor_key_decode_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 714-line file.
+crates/workspace_tests/tests/doctor_storage_scan_decode_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1661-line file.
+crates/workspace_tests/tests/explicit_migration_skeleton_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1206-line file.
+crates/workspace_tests/tests/fifo_backpressure_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 356-line file.
+crates/workspace_tests/tests/ipc_flag_matrix_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1597-line file.
+crates/workspace_tests/tests/journal_tail_scan_fallback_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1430-line file.
+crates/workspace_tests/tests/shard_partition_math_properties.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 431-line file.
+crates/workspace_tests/tests/shutdown_drain_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 474-line file.
+crates/workspace_tests/tests/storage_blackhat_fixture_corpus.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 535-line file.
+crates/workspace_tests/tests/sync_drr_scheduler_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 533-line file.
+crates/workspace_tests/tests/timer_deadline_primitive_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 1974-line file.
 crates/workspace_tests/tests/vb_8mdp_7_resource_admission_props.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 815-line file.
 crates/workspace_tests/tests/vb_eepg_bdd_tests.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 852-line file.
 verification/verus/vb_8mdp_12_storage_queue_exec_spec.rs|lewis|vb-2lu1|split-or-retire-before-release|vb-2lu1 add exception for 353-line file.

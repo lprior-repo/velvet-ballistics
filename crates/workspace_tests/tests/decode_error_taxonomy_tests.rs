@@ -242,7 +242,7 @@ proptest! {
     // The `ReservedNonZero` error variant still exists in the IpcError enum
     // (with diagnostic code 0x3007) for forward compatibility, but the
     // proptest no longer exercises it. Coverage for the post-SEC-01 reserved
-    // semantics lives in `restate_ipc_flag_matrix_tests.rs`.
+    // semantics lives in `ipc_flag_matrix_tests.rs`.
     fn ipc_decode_order_proptest(selector in 0_u8..5, value in any::<u32>()) {
         let mut bytes = ipc_header_bytes()?;
         match selector {

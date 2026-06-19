@@ -95,8 +95,8 @@ name = "recovery_watermark_tests"
 path = "tests/recovery_watermark_tests.rs"
 
 [[test]]
-name = "restate_doctor_storage_scan_decode_tests"
-path = "tests/restate_doctor_storage_scan_decode_tests.rs"
+name = "doctor_storage_scan_decode_tests"
+path = "tests/doctor_storage_scan_decode_tests.rs"
 
 [[test]]
 name = "snapshot_sequence_precondition_tests"
@@ -139,24 +139,24 @@ name = "vb_test_validate_diagnostic_behavior"
 path = "tests/vb_test_validate_diagnostic_behavior.rs"
 
 [[test]]
-name = "restate_adapter_contamination_guard"
-path = "tests/restate_adapter_contamination_guard.rs"
+name = "adapter_contamination_guard"
+path = "tests/adapter_contamination_guard.rs"
 
 [[test]]
-name = "restate_completion_watermark_tests"
-path = "tests/restate_completion_watermark_tests.rs"
+name = "completion_watermark_tests"
+path = "tests/completion_watermark_tests.rs"
 
 [[test]]
-name = "restate_retry_policy_math_tests"
-path = "tests/restate_retry_policy_math_tests.rs"
+name = "retry_policy_math_tests"
+path = "tests/retry_policy_math_tests.rs"
 
 [[test]]
-name = "restate_typed_partitioned_id_tests"
-path = "tests/restate_typed_partitioned_id_tests.rs"
+name = "typed_partitioned_id_tests"
+path = "tests/typed_partitioned_id_tests.rs"
 
 [[test]]
-name = "restate_journal_tail_scan_fallback_tests"
-path = "tests/restate_journal_tail_scan_fallback_tests.rs"
+name = "journal_tail_scan_fallback_tests"
+path = "tests/journal_tail_scan_fallback_tests.rs"
 
 [[test]]
 name = "vb_eepg_bdd_tests"
@@ -245,26 +245,26 @@ path = "tests/e2e_diagnostic_chain.rs"
 # === vb-8mdp.11 Doctor Key-Decode Tests ===
 
 [[test]]
-name = "restate_doctor_key_decode_tests"
-path = "tests/restate_doctor_key_decode_tests.rs"
+name = "doctor_key_decode_tests"
+path = "tests/doctor_key_decode_tests.rs"
 
 # === vb-8mdp.7 Resource Admission Proptests ===
 
 [[test]]
-name = "restate_shutdown_drain_tests"
-path = "tests/restate_shutdown_drain_tests.rs"
+name = "shutdown_drain_tests"
+path = "tests/shutdown_drain_tests.rs"
 
 [[test]]
-name = "restate_fifo_backpressure_tests"
-path = "tests/restate_fifo_backpressure_tests.rs"
+name = "fifo_backpressure_tests"
+path = "tests/fifo_backpressure_tests.rs"
 
 [[test]]
-name = "restate_timer_deadline_primitive_tests"
-path = "tests/restate_timer_deadline_primitive_tests.rs"
+name = "timer_deadline_primitive_tests"
+path = "tests/timer_deadline_primitive_tests.rs"
 
 [[test]]
-name = "restate_sync_drr_scheduler_tests"
-path = "tests/restate_sync_drr_scheduler_tests.rs"
+name = "sync_drr_scheduler_tests"
+path = "tests/sync_drr_scheduler_tests.rs"
 
 [[test]]
 name = "vb_8mdp_7_resource_admission_props"

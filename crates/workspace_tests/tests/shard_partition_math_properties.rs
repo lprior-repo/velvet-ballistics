@@ -141,7 +141,7 @@
 //! **Obligations:**
 //! - PO-001..PO-013, PO-018: 14 proptest properties
 //!
-//! **Command:** `cargo test -p velvet-ballistics-workspace-tests --test restate_shard_partition_math_properties -- --nocapture`
+//! **Command:** `cargo test -p velvet-ballistics-workspace-tests --test shard_partition_math_properties -- --nocapture`
 
 #![forbid(unsafe_code)]
 

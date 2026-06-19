@@ -26,7 +26,7 @@
 //!
 //! ```bash
 //! cargo test -p velvet-ballistics-workspace-tests \
-//!   --test restate_explicit_migration_skeleton_tests
+//!   --test explicit_migration_skeleton_tests
 //! ```
 //!
 //! # Trusted Base

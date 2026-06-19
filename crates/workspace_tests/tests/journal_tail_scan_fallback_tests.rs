@@ -152,7 +152,7 @@
 //! - O(1) bounded resource scan (REQ-vb-om21-07)
 //! - Typed error distinction (REQ-vb-om21-02)
 //!
-//! Run with: `cargo test -p workspace_tests --test restate_journal_tail_scan_fallback_tests`
+//! Run with: `cargo test -p workspace_tests --test journal_tail_scan_fallback_tests`
 //!
 //! NOTE: These tests are TEST-FIRST (implementation follows in State 11).
 //! They target the contract-defined behavior through the public API surface.

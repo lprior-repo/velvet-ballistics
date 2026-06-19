@@ -2128,7 +2128,7 @@ mod value_semantics {
 }
 
 // =========================================================================
-// vb-u09ai: 4-variant RetrySafety restate-timer-deadline test (Tier 1).
+// vb-u09ai: 4-variant RetrySafety timer-deadline test (Tier 1).
 // =========================================================================
 
 /// Tier 1: `vb_core::action::is_idempotent(RetrySafety::Idempotent) == true`
@@ -2136,7 +2136,7 @@ mod value_semantics {
 /// fn is a TDD target State 11 will add — on 3-variant code this test
 /// fails to compile (preserves the failing-first signal).
 #[test]
-fn restate_timer_deadline_idempotent_retry_safety_recognized() {
+fn timer_deadline_idempotent_retry_safety_recognized() {
     use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
