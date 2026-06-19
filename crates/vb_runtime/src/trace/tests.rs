@@ -879,9 +879,10 @@ fn miri_trace_operations_no_ub() {
     let events = ring.drain();
     assert_eq!(events.len(), 3, "all pushed events are drained");
 
-    // Snapshot for a run
+    // Snapshot for a run. Draining pending events must not erase remembered
+    // trace history, because IPC trace snapshots rely on post-drain evidence.
     let snap = ring.snapshot_for_run(RunId::new(1), 10);
-    assert_eq!(snap.len(), 0, "empty after drain");
+    assert_eq!(snap.len(), 3, "history survives drain");
 
     // Push and check terminal detection
     assert!(ring.push(TraceEvent::RunFinished { run: RunId::new(2) }));

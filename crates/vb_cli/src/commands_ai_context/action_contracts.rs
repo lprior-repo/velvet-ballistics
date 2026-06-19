@@ -22,13 +22,7 @@ pub(super) fn ai_action_contracts(
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|value| match value.as_u64() {
-            None => None,
-            Some(raw) => match u32::try_from(raw) {
-                Ok(n) => Some(n),
-                Err(_) => None,
-            },
-        });
+        .filter_map(|value| value.as_u64().and_then(|raw| u32::try_from(raw).ok()));
     let event_ids = events.iter().filter_map(|event| match event {
         vb_storage::JournalEvent::ActionScheduled { action, .. }
         | vb_storage::JournalEvent::ActionCompletedEvent { action, .. }

@@ -84,6 +84,7 @@ const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
             "kani-resource-contract-boundaries",
             "kani-vb-5iebh-check-scope",
             "kani-vb-ajc40",
+            "kani-vb-god2f-proof-kernels",
             "test-util",
             "volatile",
             "vb-rxru0-flux-refinements",

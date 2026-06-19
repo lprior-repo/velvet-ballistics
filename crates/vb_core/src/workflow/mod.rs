@@ -12,6 +12,9 @@ pub mod lifecycle;
 pub mod node;
 pub mod resource_contract;
 pub mod validation;
+// Keep this compatibility module public: downstream code may refer to
+// `vb_core::workflow::workflow::{CompiledWorkflow, WorkflowParts}`.
+#[allow(clippy::module_inception)]
 pub mod workflow;
 
 // HVR-PO-CORE-004: exclude legacy workflow Kani modules from vb-god2f resource lane discovery.

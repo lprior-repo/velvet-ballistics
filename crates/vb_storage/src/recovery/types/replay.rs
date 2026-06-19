@@ -2,9 +2,51 @@
 //! Replay tracking types for idempotent action replay during recovery.
 
 use serde::{Deserialize, Serialize};
-use vb_core::{ActionId, ActionTicket, SlotIdx, Taint};
+use vb_core::{ActionId, ActionTicket, SlotIdx, StepIdx, Taint};
 
 use super::error::RecoveryResult;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+#[path = "replay_kani_collections.rs"]
+mod kani_replay_collections;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+use kani_replay_collections::{KaniReplayMap, KaniReplaySet};
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+const KANI_REPLAY_BOUND: usize = 8;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+type ReplayMap<K, V> = KaniReplayMap<K, V, KANI_REPLAY_BOUND>;
+
+#[cfg(not(all(kani, feature = "kani-vb-god2f-hard-verus")))]
+type ReplayMap<K, V> = std::collections::HashMap<K, V>;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+type ReplaySet<T> = KaniReplaySet<T, KANI_REPLAY_BOUND>;
+
+#[cfg(not(all(kani, feature = "kani-vb-god2f-hard-verus")))]
+type ReplaySet<T> = std::collections::HashSet<T>;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+fn new_replay_map<K: Copy + Eq, V: Copy>() -> ReplayMap<K, V> {
+    ReplayMap::new()
+}
+
+#[cfg(not(all(kani, feature = "kani-vb-god2f-hard-verus")))]
+fn new_replay_map<K, V>() -> ReplayMap<K, V> {
+    ReplayMap::new()
+}
+
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+fn new_replay_set<T: Copy + Eq>() -> ReplaySet<T> {
+    ReplaySet::new()
+}
+
+#[cfg(not(all(kani, feature = "kani-vb-god2f-hard-verus")))]
+fn new_replay_set<T>() -> ReplaySet<T> {
+    ReplaySet::new()
+}
 
 /// Internal evidence for a scheduled action ticket.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,22 +77,20 @@ pub(crate) enum ActionReplayEffect {
 /// re-execution of non-idempotent actions.
 #[derive(Debug, Clone)]
 pub struct ActionReplayTracker {
-    scheduled_tickets: std::collections::HashMap<(ActionId, StepIdx), ActionScheduleEvidence>,
-    completed: std::collections::HashSet<(ActionId, StepIdx)>,
-    failed: std::collections::HashSet<(ActionId, StepIdx)>,
-    completed_envelopes: std::collections::HashMap<(ActionId, StepIdx), ActionCompletionEvidence>,
+    scheduled_tickets: ReplayMap<(ActionId, StepIdx), ActionScheduleEvidence>,
+    completed: ReplaySet<(ActionId, StepIdx)>,
+    failed: ReplaySet<(ActionId, StepIdx)>,
+    completed_envelopes: ReplayMap<(ActionId, StepIdx), ActionCompletionEvidence>,
 }
-
-use vb_core::StepIdx;
 
 impl ActionReplayTracker {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            scheduled_tickets: std::collections::HashMap::new(),
-            completed: std::collections::HashSet::new(),
-            failed: std::collections::HashSet::new(),
-            completed_envelopes: std::collections::HashMap::new(),
+            scheduled_tickets: new_replay_map(),
+            completed: new_replay_set(),
+            failed: new_replay_set(),
+            completed_envelopes: new_replay_map(),
         }
     }
 

@@ -269,7 +269,7 @@ fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\"]\ncrates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballistics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
+        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"kani-vb-god2f-proof-kernels\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\"]\ncrates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballistics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
     );
     Ok(())
 }
@@ -283,7 +283,7 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"kani-resource-contract-boundaries\", \"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"test-util\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
+        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"kani-resource-contract-boundaries\", \"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"kani-vb-god2f-proof-kernels\", \"test-util\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
 }

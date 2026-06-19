@@ -24,22 +24,12 @@ enum FinalPathChange {
     ReplaceFinalPath,
 }
 
+#[derive(Default)]
 struct Hooks {
     loaded: bool,
     cleanup_failures: Vec<OsString>,
     post_commit_final_path_change: Option<FinalPathChange>,
     sync_results: VecDeque<Result<(), DeliverSinkError>>,
-}
-
-impl Default for Hooks {
-    fn default() -> Self {
-        Self {
-            loaded: false,
-            cleanup_failures: Vec::new(),
-            post_commit_final_path_change: None,
-            sync_results: VecDeque::new(),
-        }
-    }
 }
 
 thread_local! {

@@ -60,23 +60,14 @@ fn scan_file_returns_input_read_failed_when_file_input_is_missing() {
 }
 
 #[test]
-fn scan_file_returns_legacy_language_version_finding_when_legacy_language_version_token_is_seen() {
+fn scan_file_returns_no_finding_when_canonical_language_version_token_is_seen() {
     let mut config = maximum_bounded_scan_config();
     config.scan_patterns = vec!["velvet-ballistics/v1".to_string()];
     let input = text_scan_input("fixtures/workflow.yaml", "language: velvet-ballistics/v1\n");
 
     let result = scan_file(input, &config);
 
-    assert_eq!(
-        result,
-        Ok(vec![finding_with_class(
-            "fixtures/workflow.yaml",
-            1,
-            11,
-            SpellingClass::LegacyLanguageVersionSpelling,
-            CANONICAL_LANGUAGE_VERSION,
-        )])
-    );
+    assert_eq!(result, Ok(Vec::new()));
 }
 
 #[test]
@@ -98,7 +89,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_crate_module_i
 }
 
 #[test]
-fn scan_repository_returns_invalid_canonical_spelling_when_legacy_language_version_is_in_real_file()
+fn scan_repository_returns_zero_findings_when_canonical_language_version_is_in_real_file()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     write_fixture_file(
@@ -112,7 +103,7 @@ fn scan_repository_returns_invalid_canonical_spelling_when_legacy_language_versi
 
     let result = scan_repository(root, config);
 
-    assert_legacy_language_version_repository_result(result);
+    assert_eq!(result.map(|report| report.findings), Ok(Vec::new()));
     Ok(())
 }
 

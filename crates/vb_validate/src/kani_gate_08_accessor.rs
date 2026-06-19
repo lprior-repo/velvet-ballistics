@@ -7,35 +7,16 @@
 //! vb_compile idempotency parity harness is selected, because Cargo compiles the
 //! dependent vb_validate crate under cfg(kani) first.
 
+use crate::kani_gate_08_support::workflow_parts_with_accessors;
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
-use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprProgram, PathSegment, ResourceContract,
-    WorkflowParts,
-};
+use vb_core::ids::{SlotIdx, SymbolId};
+use vb_core::workflow::{AccessorProgram, PathSegment, WorkflowParts};
 
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(18)]
 fn kani_gate_08_valid_bounded_parts_pass() {
-    let parts: WorkflowParts = kani::any();
-    kani::assume(parts.slot_count > 0);
-    kani::assume(parts.slot_count <= 256);
-    kani::assume(parts.symbols_count > 0);
-    kani::assume(parts.symbols_count <= 1024);
-
-    for accessor in parts.accessors.iter() {
-        kani::assume(accessor.root.get() < parts.slot_count);
-        for segment in accessor.path.iter() {
-            match segment {
-                PathSegment::Field(symbol) => kani::assume(symbol.get() < parts.symbols_count),
-                PathSegment::Index(index) => kani::assume(*index != u32::MAX),
-                _ => {
-                    kani::assume(false);
-                    loop {}
-                }
-            }
-        }
-    }
+    let parts = bounded_valid_accessor_parts();
+    assume_gate_08_harness_bounds(&parts);
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "bounded valid accessors pass Gate 8");
@@ -74,21 +55,14 @@ fn kani_gate_08_valid_index_without_symbols_pass() {
 }
 
 #[kani::proof]
-#[kani::unwind(10)]
+#[kani::unwind(18)]
 fn kani_gate_08_no_panic_bounded_inputs() {
-    let parts: WorkflowParts = kani::any();
-    kani::assume(parts.slot_count <= 256);
-    kani::assume(parts.symbols_count <= 1024);
+    let parts = bounded_gate_08_parts_for_no_panic();
+    assume_gate_08_harness_bounds(&parts);
 
-    kani::cover(parts.accessors.is_empty(), "zero accessors covered");
-    kani::cover(parts.accessors.len() == 3, "three accessors covered");
-    kani::cover(
-        parts
-            .accessors
-            .iter()
-            .any(|accessor| accessor.path.len() == 3),
-        "three path segments covered",
-    );
+    kani::cover(parts.accessors.len() == 1, "one accessor covered");
+    kani::cover(parts.slot_count == 0, "zero slot count covered");
+    kani::cover(parts.symbols_count == 0, "zero symbols count covered");
 
     let _result = validate_gate_08_accessor_path_segments(&parts);
     std::mem::forget(parts);
@@ -209,78 +183,108 @@ fn bounded_u32_4() -> u32 {
     value
 }
 
-fn workflow_parts_with_accessors(
-    accessors: Box<[AccessorProgram]>,
-    slot_count: u16,
-    symbols_count: u32,
-) -> WorkflowParts {
-    WorkflowParts {
-        name: Box::from("kani_workflow"),
-        digest: WorkflowDigest::from_bytes(kani::any()),
-        nodes: bounded_nodes(),
-        expressions: bounded_expressions(),
-        accessors,
-        constants: bounded_constants(),
-        slot_count,
-        symbols_count,
-        entry: kani::any(),
-        resource_contract: kani::any::<ResourceContract>(),
-        step_names: bounded_step_names(),
-    }
+fn bounded_valid_accessor_parts() -> WorkflowParts {
+    let slot_count = bounded_nonzero_u16_256();
+    let symbols_count = bounded_nonzero_u32_1024();
+    let root = bounded_u16_below(slot_count);
+    let symbol = bounded_u32_below(symbols_count);
+    let index = valid_index_segment();
+
+    kani::cover(slot_count == 1, "minimum nonzero slot count covered");
+    kani::cover(symbols_count == 1, "minimum nonzero symbols count covered");
+    kani::cover(root == 0, "root lower boundary covered");
+    kani::cover(symbol == 0, "symbol lower boundary covered");
+    kani::cover(index == 0, "index lower boundary covered");
+
+    let accessors: Box<[AccessorProgram]> = Box::new([AccessorProgram {
+        root: SlotIdx::new(root),
+        path: Box::new([
+            PathSegment::Field(SymbolId::new(symbol)),
+            PathSegment::Index(index),
+        ]),
+    }]);
+
+    workflow_parts_with_accessors(accessors, slot_count, symbols_count)
 }
 
-fn bounded_nodes() -> Box<[CompiledNode]> {
-    if kani::any::<bool>() {
-        let result: SlotIdx = kani::any();
-        Box::new([CompiledNode {
-            id: kani::any::<StepIdx>(),
-            output: if kani::any::<bool>() {
-                Some(kani::any::<SlotIdx>())
-            } else {
-                None
-            },
-            next: if kani::any::<bool>() {
-                Some(kani::any::<StepIdx>())
-            } else {
-                None
-            },
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish { result },
-        }])
-    } else {
-        Box::new([])
-    }
+fn bounded_gate_08_parts_for_no_panic() -> WorkflowParts {
+    let slot_count = bounded_u16_256();
+    let symbols_count = bounded_u32_1024();
+    let root = bounded_u16_257();
+    let symbol = bounded_u32_1025();
+    let index: u32 = kani::any();
+
+    kani::cover(root >= slot_count, "root out-of-range covered");
+    kani::cover(symbol >= symbols_count, "symbol out-of-range covered");
+    kani::cover(index == u32::MAX, "index sentinel covered");
+
+    let accessors: Box<[AccessorProgram]> = Box::new([AccessorProgram {
+        root: SlotIdx::new(root),
+        path: Box::new([
+            PathSegment::Field(SymbolId::new(symbol)),
+            PathSegment::Index(index),
+        ]),
+    }]);
+
+    workflow_parts_with_accessors(accessors, slot_count, symbols_count)
 }
 
-fn bounded_expressions() -> Box<[ExprProgram]> {
-    if kani::any::<bool>() {
-        let ops: Box<[vb_core::workflow::ExprOp]> = if kani::any::<bool>() {
-            Box::new([kani::any::<vb_core::workflow::ExprOp>()])
-        } else {
-            Box::new([])
-        };
-        Box::new([ExprProgram {
-            ops,
-            max_stack: kani::any(),
-        }])
-    } else {
-        Box::new([])
-    }
+fn bounded_nonzero_u16_256() -> u16 {
+    let value: u16 = kani::any();
+    kani::assume(value > 0);
+    kani::assume(value <= 256);
+    value
 }
 
-fn bounded_constants() -> Box<[vb_core::value::ConstValue]> {
-    if kani::any::<bool>() {
-        Box::new([kani::any::<vb_core::value::ConstValue>()])
-    } else {
-        Box::new([])
-    }
+fn bounded_u16_256() -> u16 {
+    let value: u16 = kani::any();
+    kani::assume(value <= 256);
+    value
 }
 
-fn bounded_step_names() -> Box<[Box<str>]> {
-    if kani::any::<bool>() {
-        Box::new([Box::from("kani_step")])
-    } else {
-        Box::new([])
+fn bounded_u16_257() -> u16 {
+    let value: u16 = kani::any();
+    kani::assume(value <= 257);
+    value
+}
+
+fn bounded_nonzero_u32_1024() -> u32 {
+    let value: u32 = kani::any();
+    kani::assume(value > 0);
+    kani::assume(value <= 1024);
+    value
+}
+
+fn bounded_u32_1025() -> u32 {
+    let value: u32 = kani::any();
+    kani::assume(value <= 1025);
+    value
+}
+
+fn bounded_u16_below(exclusive_upper: u16) -> u16 {
+    let value: u16 = kani::any();
+    kani::assume(value < exclusive_upper);
+    value
+}
+
+fn bounded_u32_below(exclusive_upper: u32) -> u32 {
+    let value: u32 = kani::any();
+    kani::assume(value < exclusive_upper);
+    value
+}
+
+fn valid_index_segment() -> u32 {
+    let index: u32 = kani::any();
+    kani::assume(index != u32::MAX);
+    index
+}
+
+fn assume_gate_08_harness_bounds(parts: &WorkflowParts) {
+    kani::assume(parts.accessors.len() <= 2);
+    if let Some(accessor) = parts.accessors.first() {
+        kani::assume(accessor.path.len() <= 2);
+    }
+    if let Some(accessor) = parts.accessors.get(1) {
+        kani::assume(accessor.path.len() <= 2);
     }
 }

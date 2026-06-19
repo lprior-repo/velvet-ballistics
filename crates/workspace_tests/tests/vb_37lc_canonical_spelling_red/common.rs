@@ -12,7 +12,7 @@ pub(crate) use vb_cli::naming_scan::{
 
 pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballastics";
 pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
-pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballastics/v1";
+pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
 pub(crate) const LEGACY_PROJECT: &str = "Velvet-Ballastics";
 pub(crate) const CURRENT_REPOSITORY_PATH: &str =
     "https://github.com/priorlewis43/Velvet-Ballastics";

@@ -121,8 +121,7 @@ fn classify_occurrence_returns_legacy_crate_module_class_when_legacy_crate_modul
 }
 
 #[test]
-fn classify_occurrence_returns_legacy_language_version_class_when_legacy_language_version_token_is_seen()
- {
+fn classify_occurrence_returns_canonical_language_version_when_language_version_token_is_seen() {
     let config = maximum_bounded_scan_config();
     let path = repo_path("fixtures/workflow.yaml");
 
@@ -130,9 +129,9 @@ fn classify_occurrence_returns_legacy_language_version_class_when_legacy_languag
 
     assert_eq!(
         result,
-        Ok(OccurrenceClass::InvalidLegacy {
-            spelling_class: SpellingClass::LegacyLanguageVersionSpelling,
-            remediation: CANONICAL_LANGUAGE_VERSION.to_string(),
+        Ok(OccurrenceClass::CanonicalLanguageVersion {
+            canonical: CANONICAL_LANGUAGE_VERSION.to_string(),
+            kind: CanonicalNameKind::LanguageVersion,
         })
     );
 }

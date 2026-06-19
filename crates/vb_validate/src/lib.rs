@@ -74,6 +74,9 @@ pub mod kani_idempotency_contract;
 #[cfg(kani)]
 pub mod kani_gate_08_accessor;
 
+#[cfg(kani)]
+mod kani_gate_08_support;
+
 // Kani structural harnesses for Gate 8 full WorkflowParts coverage (vb-919g).
 #[cfg(kani)]
 pub mod kani_gate_08_structural;

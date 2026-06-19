@@ -15,15 +15,17 @@ pub(crate) fn compute_slot_deltas(
     slots_before: &[Option<SlotValue>],
     slots_after: &[Option<SlotValue>],
 ) -> Vec<SlotDelta> {
-    let count = slots_before.len().min(slots_after.len());
-    slots_before[..count]
+    slots_before
         .iter()
-        .zip(slots_after[..count].iter())
+        .zip(slots_after.iter())
         .enumerate()
         .filter_map(|(i, (before, after))| {
             if before != after {
+                let Ok(slot) = u16::try_from(i) else {
+                    return None;
+                };
                 Some(SlotDelta {
-                    slot: i as u16,
+                    slot,
                     before: *before,
                     after: *after,
                 })
@@ -41,15 +43,17 @@ pub(crate) fn compute_taint_deltas(
     taint_before: &[Taint],
     taint_after: &[Taint],
 ) -> Vec<TaintDelta> {
-    let count = taint_before.len().min(taint_after.len());
-    taint_before[..count]
+    taint_before
         .iter()
-        .zip(taint_after[..count].iter())
+        .zip(taint_after.iter())
         .enumerate()
         .filter_map(|(i, (before, after))| {
             if before != after {
+                let Ok(slot) = u16::try_from(i) else {
+                    return None;
+                };
                 Some(TaintDelta {
-                    slot: i as u16,
+                    slot,
                     before: *before,
                     after: *after,
                 })
@@ -67,15 +71,17 @@ pub(crate) fn compute_state_deltas(
     states_before: &[StepState],
     states_after: &[StepState],
 ) -> Vec<StateDelta> {
-    let count = states_before.len().min(states_after.len());
-    states_before[..count]
+    states_before
         .iter()
-        .zip(states_after[..count].iter())
+        .zip(states_after.iter())
         .enumerate()
         .filter_map(|(i, (before, after))| {
             if before != after {
+                let Ok(step) = u16::try_from(i) else {
+                    return None;
+                };
                 Some(StateDelta {
-                    step: i as u16,
+                    step,
                     before: *before,
                     after: *after,
                 })

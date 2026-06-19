@@ -882,7 +882,10 @@ tasks:
       run_miri_smoke vb_storage codec_miri_tests
       run_miri_smoke vb_runtime miri_trace
       run_miri_smoke_integration vb_runtime vb_ko29_7_idempotency_miri miri_idempotency
-      run_miri_smoke vb_ipc frame
+      # Keep vb_ipc Miri scoped to pure frame validation; broader `frame`
+      # also matches socket/client tests that need filesystem syscalls outside
+      # Miri's default isolation contract.
+      run_miri_smoke vb_ipc frame_validation
     toolchains:
       - rust
     inputs:

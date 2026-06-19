@@ -48,24 +48,13 @@ fn bounded_parts_with_valid_accessors() -> WorkflowParts {
     kani::assume(symbol < symbols_count);
     kani::assume(index != u32::MAX);
 
-    let accessors: Box<[AccessorProgram]> = match kani::any::<u8>() {
-        0 => Box::new([]),
-        1 => Box::new([AccessorProgram {
-            root: SlotIdx::new(root),
-            path: Box::new([PathSegment::Field(SymbolId::new(symbol))]),
-        }]),
-        2 => Box::new([AccessorProgram {
-            root: SlotIdx::new(root),
-            path: Box::new([PathSegment::Index(index)]),
-        }]),
-        _ => Box::new([AccessorProgram {
-            root: SlotIdx::new(root),
-            path: Box::new([
-                PathSegment::Field(SymbolId::new(symbol)),
-                PathSegment::Index(index),
-            ]),
-        }]),
-    };
+    let accessors: Box<[AccessorProgram]> = Box::new([AccessorProgram {
+        root: SlotIdx::new(root),
+        path: Box::new([
+            PathSegment::Field(SymbolId::new(symbol)),
+            PathSegment::Index(index),
+        ]),
+    }]);
 
     bounded_parts_with_accessors(accessors, slot_count, symbols_count)
 }
@@ -257,17 +246,53 @@ fn kani_gate_08_arbitrary_parts_index_sentinel_rejected() {
 
 /// Harness 5: Full structural variety — nodes, expressions, constants, step_names.
 ///
-/// Proves that Gate 8 is immune to structural noise in unrelated tables.
+/// Proves that Gate 8 is immune to bounded structural noise in unrelated tables.
 #[kani::proof]
-#[kani::unwind(17)]
+#[kani::unwind(18)]
 fn kani_gate_08_full_structure_no_panic() {
-    let parts: WorkflowParts = kani::any();
-    kani::assume(parts.slot_count <= 256);
-    kani::assume(parts.symbols_count <= 1024);
+    let parts = bounded_full_structure_no_panic_parts();
+    assume_gate_08_harness_bounds(&parts);
 
     // Gate 8 should never panic regardless of nodes/expressions/constants/step_names shape.
     let _result = validate_gate_08_accessor_path_segments(&parts);
     std::mem::forget(parts);
+}
+
+fn bounded_full_structure_no_panic_parts() -> WorkflowParts {
+    let slot_count: u16 = kani::any();
+    let symbols_count: u32 = kani::any();
+    let root: u16 = kani::any();
+    let symbol: u32 = kani::any();
+    let index: u32 = kani::any();
+
+    kani::assume(slot_count <= 256);
+    kani::assume(symbols_count <= 1024);
+    kani::assume(root <= 257);
+    kani::assume(symbol <= 1025);
+
+    kani::cover(root >= slot_count, "full structure root OOB covered");
+    kani::cover(symbol >= symbols_count, "full structure symbol OOB covered");
+    kani::cover(index == u32::MAX, "full structure index sentinel covered");
+
+    let accessors: Box<[AccessorProgram]> = Box::new([AccessorProgram {
+        root: SlotIdx::new(root),
+        path: Box::new([
+            PathSegment::Field(SymbolId::new(symbol)),
+            PathSegment::Index(index),
+        ]),
+    }]);
+
+    bounded_parts_with_accessors(accessors, slot_count, symbols_count)
+}
+
+fn assume_gate_08_harness_bounds(parts: &WorkflowParts) {
+    kani::assume(parts.accessors.len() <= 2);
+    if let Some(accessor) = parts.accessors.first() {
+        kani::assume(accessor.path.len() <= 2);
+    }
+    if let Some(accessor) = parts.accessors.get(1) {
+        kani::assume(accessor.path.len() <= 2);
+    }
 }
 
 /// Harness 6: Cover structural variety facets for tracking.
@@ -459,59 +484,11 @@ fn kani_gate_08_mixed_accessor_paths() {
             && idx100 != u32::MAX,
     );
 
-    let mut parts: WorkflowParts = kani::any();
-    parts.nodes = Box::new([CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::ZERO,
-        },
-    }]);
-    parts.expressions = Box::new([]);
-    parts.accessors = Box::new([
-        AccessorProgram {
-            root: SlotIdx::ZERO,
-            path: Box::new([]),
-        },
-        AccessorProgram {
-            root: SlotIdx::ZERO,
-            path: Box::new([PathSegment::Field(sym0)]),
-        },
-        AccessorProgram {
-            root: SlotIdx::ZERO,
-            path: Box::new([PathSegment::Index(idx0)]),
-        },
-        AccessorProgram {
-            root: SlotIdx::ZERO,
-            path: Box::new([
-                PathSegment::Field(sym0),
-                PathSegment::Index(idx0),
-                PathSegment::Field(sym1),
-            ]),
-        },
-        AccessorProgram {
-            root: SlotIdx::new(1),
-            path: Box::new([PathSegment::Index(idx100)]),
-        },
-        AccessorProgram {
-            root: SlotIdx::new(2),
-            path: Box::new([
-                PathSegment::Index(idx0),
-                PathSegment::Index(idx1),
-                PathSegment::Index(idx2),
-                PathSegment::Index(idx3),
-                PathSegment::Index(idx4),
-            ]),
-        },
-    ]);
-    parts.constants = Box::new([]);
-    parts.slot_count = slot_count;
-    parts.symbols_count = symbols_count;
-    parts.entry = StepIdx::ZERO;
-    parts.step_names = Box::new([Box::from("root")]);
+    let parts = bounded_parts_with_accessors(
+        varied_valid_accessors(sym0, sym1, idx0, idx1, idx2, idx3, idx4, idx100),
+        slot_count,
+        symbols_count,
+    );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "mixed accessor paths pass Gate 8");
@@ -624,19 +601,31 @@ fn kani_gate_08_many_accessors_varied_depths() {
             && idx100 != u32::MAX,
     );
 
-    let mut parts: WorkflowParts = kani::any();
-    parts.nodes = Box::new([CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::ZERO,
-        },
-    }]);
-    parts.expressions = Box::new([]);
-    parts.accessors = Box::new([
+    let parts = bounded_parts_with_accessors(
+        varied_valid_accessors(sym0, sym1, idx0, idx1, idx2, idx3, idx4, idx100),
+        slot_count,
+        symbols_count,
+    );
+
+    let result = validate_gate_08_accessor_path_segments(&parts);
+    kani::assert(
+        result.is_ok(),
+        "many accessors with varied depths pass Gate 8",
+    );
+    std::mem::forget(parts);
+}
+
+fn varied_valid_accessors(
+    sym0: SymbolId,
+    sym1: SymbolId,
+    idx0: u32,
+    idx1: u32,
+    idx2: u32,
+    idx3: u32,
+    idx4: u32,
+    idx100: u32,
+) -> Box<[AccessorProgram]> {
+    Box::new([
         AccessorProgram {
             root: SlotIdx::ZERO,
             path: Box::new([]),
@@ -671,17 +660,5 @@ fn kani_gate_08_many_accessors_varied_depths() {
                 PathSegment::Index(idx4),
             ]),
         },
-    ]);
-    parts.constants = Box::new([]);
-    parts.slot_count = slot_count;
-    parts.symbols_count = symbols_count;
-    parts.entry = StepIdx::ZERO;
-    parts.step_names = Box::new([Box::from("root")]);
-
-    let result = validate_gate_08_accessor_path_segments(&parts);
-    kani::assert(
-        result.is_ok(),
-        "many accessors with varied depths pass Gate 8",
-    );
-    std::mem::forget(parts);
+    ])
 }

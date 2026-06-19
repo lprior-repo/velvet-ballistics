@@ -220,20 +220,16 @@ impl TraceRing {
 
     #[cfg(not(kani))]
     fn remember(&mut self, event: TraceEvent) {
-        if self.history.len() >= self.capacity {
-            if self.history.pop_front().is_none() {
-                return;
-            }
+        if self.history.len() >= self.capacity && self.history.pop_front().is_none() {
+            return;
         }
         self.history.push_back(event);
     }
 
     #[cfg(kani)]
     fn remember_record(&mut self, record: KaniTraceRecord) {
-        if self.history.len() >= self.capacity {
-            if self.history.pop_front_record().is_none() {
-                return;
-            }
+        if self.history.len() >= self.capacity && self.history.pop_front_record().is_none() {
+            return;
         }
         let _stored = self.history.push_back(record, self.capacity);
     }

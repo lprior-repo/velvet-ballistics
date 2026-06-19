@@ -420,10 +420,10 @@ fn gate_9_rejects_error_slot_reference_out_of_bounds() {
 
     let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
     let result = validate(&parts);
-    assert!(matches!(
-        result,
-        Err(ValidationError::SlotReferenceOutOfRange { .. })
-    ));
+    assert!(
+        matches!(result, Err(ValidationError::SlotReferenceOutOfRange { .. })),
+        "expected Gate 9 slot reference error, got {result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------

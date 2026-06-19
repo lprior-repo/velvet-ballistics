@@ -1,1 +1,1 @@
-{"bench_id":"ipc_frame_decode","sample_count":1,"min_ns":60160,"max_ns":60160,"total_ns":60160,"mean_ns":60160,"p50_latency_ns":60160,"p95_latency_ns":60160,"p99_latency_ns":60160}
+{"bench_id":"ipc_frame_decode","sample_count":1,"min_ns":35749,"max_ns":35749,"total_ns":35749,"mean_ns":35749,"p50_latency_ns":35749,"p95_latency_ns":35749,"p99_latency_ns":35749}

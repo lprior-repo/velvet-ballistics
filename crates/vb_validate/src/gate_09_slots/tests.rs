@@ -154,6 +154,23 @@ fn rejects_output_slot_out_of_range() {
 }
 
 #[test]
+fn rejects_error_slot_out_of_range() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: Some(SlotIdx::new(99)),
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = make_parts(vec![node], 1);
+    assert!(matches!(
+        validate_gate_09_slot_references(&parts),
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
+}
+
+#[test]
 fn rejects_copy_source_out_of_range() {
     let node = CompiledNode {
         id: StepIdx::new(0),

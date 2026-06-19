@@ -304,6 +304,23 @@ fn gate_09_rejects_output_slot_out_of_range() {
 }
 
 #[test]
+fn gate_09_rejects_error_slot_out_of_range() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: Some(SlotIdx::new(99)),
+        kind: CompiledNodeKind::Nop,
+    };
+    let parts = make_parts(vec![node], 1);
+    assert!(matches!(
+        validate_gate_09_slot_references(&parts),
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
+}
+
+#[test]
 fn gate_09_rejects_copy_source_out_of_range() {
     let node = copy_node(0, 50, 0); // source=50 out of range for slot_count=1
     let parts = make_parts(vec![node], 1);

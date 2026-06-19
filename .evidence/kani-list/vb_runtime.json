@@ -2,10 +2,14 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion.rs": [
-      "verification::kani::kani_vb_god2f_action_completion::vb_god2f_advance_after_action_completion_pc_cases",
-      "verification::kani::kani_vb_god2f_action_completion::vb_god2f_record_scheduled_attempt_monotonic",
-      "verification::kani::kani_vb_god2f_action_completion::vb_god2f_validate_input_bytes_contract_boundaries"
+    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion/input_boundaries.rs": [
+      "verification::kani::kani_vb_god2f_action_completion::input_boundaries::vb_god2f_validate_input_bytes_contract_boundaries"
+    ],
+    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion/pc_completion.rs": [
+      "verification::kani::kani_vb_god2f_action_completion::pc_completion::vb_god2f_advance_after_action_completion_pc_cases"
+    ],
+    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion/scheduled_attempt.rs": [
+      "verification::kani::kani_vb_god2f_action_completion::scheduled_attempt::vb_god2f_record_scheduled_attempt_monotonic"
     ]
   },
   "contract-harnesses": {},

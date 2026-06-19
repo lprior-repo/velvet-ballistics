@@ -1,56 +1,19 @@
 #![forbid(unsafe_code)]
-//! Lifecycle command surface for bead state management.
+//! Lifecycle command handlers: cancel, resume, retry, answer.
 //!
-//! This module provides the CLI-facing lifecycle commands (cancel, resume,
-//! retry, answer) and the journal replay functionality for state recovery.
-//!
-//! ## State Machine
-//!
-//! - `Pending`: Run accepted but not yet active
-//! - `Active`: Run is executing
-//! - `WaitingAnswer`: Run blocked waiting for external answer
-//! - `Cancelled`: Run was cancelled
-//! - `Completed`: Run finished successfully
-//! - `Failed`: Run encountered an error
-//!
-//! ## Valid Transitions
-//!
-//! | From State     | Command | Valid |
-//! |----------------|---------|-------|
-//! | Active         | Cancel  | Yes   |
-//! | WaitingAnswer  | Cancel  | Yes   |
-//! | WaitingAnswer  | Resume  | Yes   |
-//! | Failed         | Retry   | Yes   |
-//! | WaitingAnswer  | Answer  | Yes   |
+//! Each handler follows the same guard pattern:
+//! 1. Read current state from journal
+//! 2. Check for duplicate (state already reflects the command)
+//! 3. Check for stale (state has advanced past the command's valid range)
+//! 4. Validate the transition
+//! 5. Append the domain event
 
+use super::state::{current_state_from_journal, EventSeqExt, LifecycleResult};
 use chrono::Utc;
 use vb_core::errors::CoreError;
 use vb_core::ids::RunId;
-use vb_core::workflow::{LifecycleCommand, LifecycleState, RunState, check_lifecycle_transition};
-use vb_storage::{EventSeq, FjallJournal, JournalEvent, derive_lifecycle_state_from_events};
-
-/// Result type for lifecycle operations using CoreError.
-pub type LifecycleResult<T> = Result<T, CoreError>;
-
-/// Derives the current lifecycle state for a run directly from the journal.
-///
-/// This is the primary state lookup used by lifecycle commands. Unlike
-/// `replay()` which builds global state, this derives state for a single run
-/// by reading its event sequence from the journal.
-fn current_state_from_journal(
-    run: RunId,
-    journal: &FjallJournal,
-) -> LifecycleResult<LifecycleState> {
-    let events = journal
-        .events_for_run(run)
-        .map_err(|e| CoreError::ReplayCorruption {
-            code: CoreError::REPLAY_CORRUPTION_CODE,
-            context: format!("failed to read events for run {:?}: {}", run, e),
-            timestamp: Utc::now(),
-            bead_id: Some(run),
-        })?;
-    Ok(derive_lifecycle_state_from_events(&events))
-}
+use vb_core::workflow::{LifecycleCommand, LifecycleState, check_lifecycle_transition};
+use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
 /// Cancels a running bead.
 ///
@@ -404,63 +367,9 @@ pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleRe
     Ok(())
 }
 
-/// Replays the journal to reconstruct run states.
-///
-/// # Arguments
-///
-/// * `journal` - The journal to replay
-///
-/// # Errors
-///
-/// Returns `CoreError`:
-/// - `ReplayCorruption` if the journal replay fails due to corruption or sequence gaps
-pub fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
-    // Enumerate all runs from the journal header keyspace
-    let headers = journal
-        .run_headers()
-        .map_err(|e| CoreError::ReplayCorruption {
-            code: CoreError::REPLAY_CORRUPTION_CODE,
-            context: format!("failed to read run headers: {}", e),
-            timestamp: Utc::now(),
-            bead_id: None,
-        })?;
-
-    // For each run, derive final state from event sequence and collect directly
-    let mut states = Vec::new();
-    for header in &headers {
-        let events =
-            journal
-                .events_for_run(header.run)
-                .map_err(|e| CoreError::ReplayCorruption {
-                    code: CoreError::REPLAY_CORRUPTION_CODE,
-                    context: format!("replay corruption for run {:?}: {}", header.run, e),
-                    timestamp: Utc::now(),
-                    bead_id: Some(header.run),
-                })?;
-        let lifecycle = derive_lifecycle_state_from_events(&events);
-        states.push(RunState {
-            run_id: header.run,
-            lifecycle,
-        });
-    }
-
-    Ok(states)
-}
-
-// Extension trait for EventSeq increment
-trait EventSeqExt {
-    fn increment(self) -> Self;
-}
-
-impl EventSeqExt for EventSeq {
-    fn increment(self) -> Self {
-        Self::new(self.get().saturating_add(1))
-    }
-}
-
 // TEST INFRASTRUCTURE — NOT PRODUCTION API
 // These helpers bypass journal and are for integration test state setup only.
-pub mod test_helpers {
+pub(crate) mod test_helpers {
     use super::*;
 
     /// Creates a minimal run header in the journal so that run_headers() returns the run.

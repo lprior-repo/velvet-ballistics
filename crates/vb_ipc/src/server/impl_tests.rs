@@ -168,9 +168,15 @@ use vb_core::{RunId, WorkflowDigest};
 
 static SOCKET_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
+fn test_temp_dir() -> PathBuf {
+    let dir = std::env::temp_dir();
+    std::fs::create_dir_all(&dir).expect("test temp dir should exist");
+    dir
+}
+
 fn temp_socket_path(_name: &str) -> PathBuf {
     let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
-    PathBuf::from(format!("/tmp/vbi{}_{}.sock", std::process::id(), sequence))
+    test_temp_dir().join(format!("vbi{}_{}.sock", std::process::id(), sequence))
 }
 
 fn make_runtime() -> Runtime {
@@ -260,11 +266,8 @@ fn bind_removes_existing_socket_file() {
 #[test]
 fn bind_to_nested_directory_fails() {
     let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let path = PathBuf::from(format!(
-        "/tmp/vbi{}_nested_{}/sock",
-        std::process::id(),
-        sequence
-    ));
+    let path = test_temp_dir().join(format!("vbi{}_nested_{}", std::process::id(), sequence));
+    let path = path.join("sock");
     let result = IpcServer::bind(&path);
 
     let Err(_) = result else {
@@ -1263,7 +1266,7 @@ fn bind_succeeds_after_previous_server_dropped() {
 #[test]
 fn bind_fails_when_path_is_existing_directory() {
     let sequence = SOCKET_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let dir = PathBuf::from(format!("/tmp/vbi{}_dir_{}", std::process::id(), sequence));
+    let dir = test_temp_dir().join(format!("vbi{}_dir_{}", std::process::id(), sequence));
     let _dir_cleanup = CleanupDir(&dir);
     std::fs::create_dir_all(&dir).expect("should create temp dir");
 

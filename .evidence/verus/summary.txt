@@ -24,3 +24,5 @@ PASS verus verification/verus/budget_bounded.rs
 PASS verus verification/verus/idempotency_replay_tracker.rs
 PASS verus verification/verus/accepted_artifact_admission_decision.rs
 PASS verus crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+PASS verus contracts/verus/vb_boundary_inventory_validation_spec.rs
+VERUS_TRUST_SCAN_OK
