@@ -1,6 +1,6 @@
 {
   "discovery_root": "crates/vb_core/src",
-  "harness_count": 80,
+  "harness_count": 85,
   "harnesses": [
     {
       "cfg_kani": false,
@@ -360,6 +360,46 @@
       "harness": "write_taint_no_panic",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_workflow_parts_arbitrary_roundtrip",
+      "kani_arbitrary_status": "kani_arbitrary_impl",
+      "path": "crates/vb_core/src/kani_workflow_arbitrary.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_run_frame_arbitrary_roundtrip",
+      "kani_arbitrary_status": "kani_arbitrary_impl",
+      "path": "crates/vb_core/src/kani_workflow_arbitrary.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_action_contract_arbitrary_roundtrip",
+      "kani_arbitrary_status": "kani_arbitrary_impl",
+      "path": "crates/vb_core/src/kani_workflow_arbitrary.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_compiled_node_arbitrary_roundtrip",
+      "kani_arbitrary_status": "kani_arbitrary_impl",
+      "path": "crates/vb_core/src/kani_workflow_arbitrary.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_compiled_workflow_arbitrary_roundtrip",
+      "kani_arbitrary_status": "kani_arbitrary_impl",
+      "path": "crates/vb_core/src/kani_workflow_arbitrary.rs",
       "required_features": []
     },
     {
