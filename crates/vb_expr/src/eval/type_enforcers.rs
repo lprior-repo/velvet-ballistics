@@ -1,12 +1,21 @@
 #![forbid(unsafe_code)]
 //! Type enforcement utilities for expression evaluation.
+//!
+//! These helpers are the production implementations that the Verus
+//! `spec_expect_*` functions in `crate::eval::verus` are bound to. They are
+//! `pub` so the integration test target
+//! `tests/proptest_type_enforcer.rs` (L1 evidence for VB-EXPR-TYPE-001..005)
+//! can exercise them directly via the `#[doc(hidden)]` re-exports in
+//! `lib.rs`.  Each function performs a single-variant match on
+//! `SlotValue` and returns a `TypeMismatch` error carrying the production
+//! `type_name()` payload for any non-matching variant.
 
 use vb_core::SlotValue;
 use vb_core::ids::{ListId, ObjectId, SymbolId};
 
 use crate::ExprResult;
 
-pub(crate) fn expect_bool(value: SlotValue) -> ExprResult<bool> {
+pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     match value {
         SlotValue::Bool(b) => Ok(b),
         other => Err(crate::ExprError::TypeMismatch {
@@ -16,7 +25,7 @@ pub(crate) fn expect_bool(value: SlotValue) -> ExprResult<bool> {
     }
 }
 
-pub(crate) fn expect_i64(value: SlotValue) -> ExprResult<i64> {
+pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     match value {
         SlotValue::I64(n) => Ok(n),
         other => Err(crate::ExprError::TypeMismatch {
@@ -26,7 +35,7 @@ pub(crate) fn expect_i64(value: SlotValue) -> ExprResult<i64> {
     }
 }
 
-pub(crate) fn expect_symbol(value: SlotValue) -> ExprResult<SymbolId> {
+pub fn expect_symbol(value: SlotValue) -> ExprResult<SymbolId> {
     match value {
         SlotValue::Symbol(id) => Ok(id),
         other => Err(crate::ExprError::TypeMismatch {
@@ -36,7 +45,7 @@ pub(crate) fn expect_symbol(value: SlotValue) -> ExprResult<SymbolId> {
     }
 }
 
-pub(crate) fn expect_list(value: SlotValue) -> ExprResult<ListId> {
+pub fn expect_list(value: SlotValue) -> ExprResult<ListId> {
     match value {
         SlotValue::List(id) => Ok(id),
         other => Err(crate::ExprError::TypeMismatch {
@@ -46,7 +55,7 @@ pub(crate) fn expect_list(value: SlotValue) -> ExprResult<ListId> {
     }
 }
 
-pub(crate) fn expect_object(value: SlotValue) -> ExprResult<ObjectId> {
+pub fn expect_object(value: SlotValue) -> ExprResult<ObjectId> {
     match value {
         SlotValue::Object(id) => Ok(id),
         other => Err(crate::ExprError::TypeMismatch {

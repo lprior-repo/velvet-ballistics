@@ -10,12 +10,15 @@ mod evaluate;
 mod helpers;
 mod ops;
 mod stack;
-// vb-5y4te: promoted from `mod type_enforcers;` to `pub(crate) mod` so that
-// vb-bc33k proptests (crates/vb_expr/src/eval_tests.rs) and the matching
-// kani harnesses (crates/vb_expr/src/kani/vb_bc33k_type_enforcer.rs) can
-// import the expect_* helpers via `crate::eval::type_enforcers::*`.
-// Kept crate-local — no downstream crate should depend on this module.
-pub(crate) mod type_enforcers;
+// vb-5y4te: promoted from `mod type_enforcers;` to `pub mod` so that the
+// vb-bc33k proptests at `crates/vb_expr/tests/proptest_type_enforcer.rs`
+// (L1 evidence for VB-EXPR-TYPE-001..005) can import the expect_* helpers
+// directly. The functions are mirrored back through `#[doc(hidden)]`
+// re-exports in lib.rs so they remain hidden from rustdoc.  No downstream
+// crate should depend on this module — it is `pub` only to satisfy
+// Cargo's integration test discovery (which compiles `tests/*.rs` as
+// a separate crate that sees only the library's public surface).
+pub mod type_enforcers;
 
 pub use crate::lexer::{BinaryOp, UnaryOp};
 pub use crate::parser::ExprHelper;

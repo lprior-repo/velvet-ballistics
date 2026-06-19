@@ -55,6 +55,18 @@ pub use eval::{
     eval_helper_with_store, eval_unary_op,
 };
 
+// vb-bc33k / vb-987b9: hidden re-exports of internal type_enforcers so the
+// integration test target `tests/proptest_type_enforcer.rs` (L1 evidence
+// for the 5 LEMMA-TYPE-001..005 iff-correctness properties) can exercise
+// the production `expect_*` functions directly. Production module visibility
+// remains `pub(crate)` to keep these helpers crate-local; only the named
+// symbols are re-exported under `#[doc(hidden)]` so they do not appear in
+// rustdoc and cannot be reached from downstream consumers.
+#[doc(hidden)]
+pub use crate::eval::type_enforcers::{
+    expect_bool, expect_i64, expect_list, expect_object, expect_symbol,
+};
+
 use thiserror::Error;
 
 /// Explicit accessor availability for expression evaluation.
