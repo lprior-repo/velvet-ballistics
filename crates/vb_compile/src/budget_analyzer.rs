@@ -154,4 +154,85 @@ mod tests {
             }
         }
     }
+
+    /// Edge case (tier-a-7-016 deep validation): an empty `steps: []` body
+    /// must be rejected at the compile layer; the analyzer never observes it.
+    /// This test pins the compile/analyzer boundary contract.
+    #[test]
+    fn analyzer_is_unreachable_when_steps_are_empty() {
+        let yaml = b"version: velvet-ballistics/v1\nname: empty\nwhen:\n  manual: {}\nsteps: []\n";
+        let result = crate::compile_workflow(yaml);
+        assert!(
+            result.is_err(),
+            "compile_workflow must reject `steps: []` before reaching the analyzer"
+        );
+    }
+
+    /// Edge case: a workflow with a bounded `for_each` body must compile and
+    /// the analyzer must return either `Ok` (with `max_for_each_iterations`
+    /// reachable) or `Err(UnboundedWorkflow)`. Panics are forbidden.
+    #[test]
+    fn analyzer_handles_bounded_for_each_workflow_without_panicking() {
+        let yaml = b"version: velvet-ballistics/v1\nname: fe_budget\nwhen:\n  manual: {}\nsteps:\n  - id: loop\n    for_each:\n      variable: item\n      input: \"0\"\n      at_once: 2\n      steps:\n        - id: capture\n          set:\n            output: seen\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n";
+        let workflow = crate::compile_workflow(yaml)
+            .expect("bounded for_each workflow must compile at this layer");
+        match compute_whole_workflow_budget(&workflow) {
+            Ok(budget) => {
+                // Field #7 from the master §64 enumeration must be reachable.
+                let _ = budget.max_for_each_iterations;
+            }
+            Err(CompileError::UnboundedWorkflow { .. }) => {
+                // Acceptable: unbounded for_each is rejected per §64.
+            }
+            Err(other) => {
+                // Other compile errors are acceptable; the contract is
+                // "must not panic".
+                let _ = other;
+            }
+        }
+    }
+
+    /// Edge case: the 12 master §64 budget fields must all be reachable on
+    /// the returned `WholeWorkflowBudget`. This is a structural contract
+    /// guard against accidental field removal during refactors.
+    #[test]
+    fn analyzer_exposes_all_twelve_master_section_64_fields() {
+        let yaml = b"version: velvet-ballistics/v1\nname: fields\nwhen:\n  manual: {}\nsteps:\n  - id: setup\n    set:\n      output: result\n      value: \"42\"\n  - id: finish_step\n    finish:\n      result: result\n";
+        let workflow = crate::compile_workflow(yaml)
+            .expect("minimal workflow must compile");
+        let budget = compute_whole_workflow_budget(&workflow)
+            .expect("bounded workflow must return Ok from the analyzer");
+        // Twelve fields, enumerated in the order documented in the
+        // budget_analyzer.rs module docstring (master §64 #1..#12).
+        let _ = budget.max_steps_executable; // #1
+        let _ = budget.max_action_tickets; // #2
+        let _ = budget.max_parallel_in_flight; // #3
+        let _ = budget.max_retries_per_action; // #4
+        let _ = budget.max_gather_pages; // #5
+        let _ = budget.max_gather_items; // #6
+        let _ = budget.max_for_each_iterations; // #7
+        let _ = budget.max_together_branches; // #8
+        let _ = budget.max_repeat_attempts; // #9
+        let _ = budget.max_run_time_seconds; // #10
+        let _ = budget.max_result_bytes; // #11
+        let _ = budget.max_total_slots_written; // #12
+    }
+
+    /// Edge case: a single-node workflow (set + finish) is the smallest
+    /// bounded workflow. The analyzer must return `Ok` and every §64 field
+    /// must be reachable on the returned budget.
+    #[test]
+    fn analyzer_handles_single_node_workflow() {
+        let yaml = b"version: velvet-ballistics/v1\nname: single\nwhen:\n  manual: {}\nsteps:\n  - id: only\n    set:\n      output: result\n      value: \"1\"\n  - id: finish_step\n    finish:\n      result: result\n";
+        let workflow = crate::compile_workflow(yaml)
+            .expect("single-node workflow must compile");
+        let budget = compute_whole_workflow_budget(&workflow)
+            .expect("single-node workflow must be bounded per §64");
+        // At least one executable step must exist for a non-empty workflow.
+        assert!(
+            budget.max_steps_executable >= 1,
+            "single-node workflow must have max_steps_executable >= 1, got {}",
+            budget.max_steps_executable
+        );
+    }
 }

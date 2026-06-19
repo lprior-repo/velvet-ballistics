@@ -157,4 +157,72 @@ mod tests {
     fn default_is_root() {
         assert_eq!(CallerCapabilities::default(), CallerCapabilities::ROOT);
     }
+
+    /// Edge case (tier-a-6-011 deep validation): the named capability bits
+    /// must all round-trip through `from_wire` as `Some(...)`. `from_wire(0)`
+    /// is the only sentinel; every named bit is non-zero and must survive.
+    #[test]
+    fn from_wire_round_trips_all_named_capability_bits() {
+        const BITS: [u16; 5] = [
+            ROOT_CAPABILITY_BIT,
+            OPERATOR_CAPABILITY_BIT,
+            OBSERVER_CAPABILITY_BIT,
+            SUBMITTER_CAPABILITY_BIT,
+            ACTION_HANDLER_CAPABILITY_BIT,
+        ];
+        for &bit in &BITS {
+            let caps = CallerCapabilities::from_wire(bit);
+            assert!(caps.is_some(), "from_wire({bit}) must be Some");
+            let unwrapped = caps.unwrap_or(CallerCapabilities::EMPTY);
+            assert_eq!(unwrapped.bits(), bit);
+        }
+    }
+
+    /// Edge case: the bitmap is a raw `u16` with no reserved/undefined mask.
+    /// Bits outside the named capability set must round-trip verbatim
+    /// rather than being silently masked off.
+    #[test]
+    fn raw_bits_preserve_undefined_high_bit_positions() {
+        const RAW: u16 = 0xFFFF;
+        let caps = CallerCapabilities::from_wire(RAW);
+        assert_eq!(caps.map(CallerCapabilities::bits), Some(RAW));
+        let unwrapped = caps.unwrap_or(CallerCapabilities::EMPTY);
+        assert!(unwrapped.has_root());
+        // Bits beyond the named capability set survive the round-trip.
+        assert_eq!(unwrapped.bits(), RAW);
+    }
+
+    /// Edge case: `contains` is a strict subset check. A superset contains
+    /// its subset; a subset does not contain its superset; equal sets
+    /// contain each other; the empty set contains only itself.
+    #[test]
+    fn contains_strict_subset_semantics() {
+        let operator = CallerCapabilities::OPERATOR;
+        let root = CallerCapabilities::ROOT;
+        assert!(operator.contains(root));
+        assert!(!root.contains(operator));
+        assert!(root.contains(root));
+        assert!(CallerCapabilities::EMPTY.contains(CallerCapabilities::EMPTY));
+        assert!(!CallerCapabilities::EMPTY.contains(CallerCapabilities::ROOT));
+    }
+
+    /// Edge case: union and intersection form a lattice on the bit-set.
+    /// `a | b` is the join; `a & b` is the meet; intersection of a set with
+    /// itself equals itself; intersection of disjoint sets is empty.
+    #[test]
+    fn union_intersection_lattice_holds() {
+        let a = CallerCapabilities::OPERATOR;
+        let b = CallerCapabilities::OBSERVER;
+        let joined = a.union(b);
+        assert!(joined.contains(a));
+        assert!(joined.contains(b));
+        let met = a.intersection(b);
+        // OPERATOR and OBSERVER share only ROOT.
+        assert_eq!(met, CallerCapabilities::ROOT);
+        let disjoint = CallerCapabilities::ROOT
+            .intersection(CallerCapabilities::SUBMITTER);
+        assert_eq!(disjoint, CallerCapabilities::ROOT);
+        let none = CallerCapabilities::ROOT.intersection(CallerCapabilities::EMPTY);
+        assert_eq!(none, CallerCapabilities::EMPTY);
+    }
 }

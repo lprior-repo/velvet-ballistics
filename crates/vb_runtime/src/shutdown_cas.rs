@@ -256,4 +256,69 @@ mod tests {
         }
         assert_eq!(ShutdownPhase::from_u8(99), None);
     }
+
+    /// Edge case (tier-a-6-013 deep validation): 100 concurrent callers
+    /// race on `try_begin_shutdown`. Exactly one must observe `Begin`; the
+    /// other 99 must observe `AlreadyShuttingDown`. This is the core
+    /// TOCTOU-elimination contract for the atomic compare-and-swap path.
+    #[test]
+    fn hundred_concurrent_callers_see_exactly_one_begin() {
+        const N: usize = 100;
+        let state = Arc::new(ShutdownState::new());
+        let mut handles = Vec::with_capacity(N);
+        for _ in 0..N {
+            let state_clone = Arc::clone(&state);
+            handles.push(thread::spawn(move || state_clone.try_begin_shutdown()));
+        }
+        let outcomes: Vec<ShutdownTransition> = handles
+            .into_iter()
+            .map(|h| h.join().expect("thread join"))
+            .collect();
+        let begin_count = outcomes
+            .iter()
+            .filter(|o| **o == ShutdownTransition::Begin)
+            .count();
+        assert_eq!(
+            begin_count, 1,
+            "exactly one of {N} concurrent callers must observe Begin"
+        );
+        for outcome in outcomes
+            .iter()
+            .filter(|o| **o != ShutdownTransition::Begin)
+        {
+            assert_eq!(
+                *outcome,
+                ShutdownTransition::AlreadyShuttingDown,
+                "every loser must observe AlreadyShuttingDown, not AlreadyShutdown"
+            );
+        }
+    }
+
+    /// Edge case: 100 concurrent callers arriving after `complete_shutdown`
+    /// must all observe `AlreadyShutdown`. No caller may observe `Begin`
+    /// or `AlreadyShuttingDown` once the state has advanced to terminal.
+    #[test]
+    fn hundred_concurrent_callers_after_complete_see_already_shutdown() {
+        const N: usize = 100;
+        let state = Arc::new(ShutdownState::new());
+        assert_eq!(state.try_begin_shutdown(), ShutdownTransition::Begin);
+        assert!(state.complete_shutdown());
+
+        let mut handles = Vec::with_capacity(N);
+        for _ in 0..N {
+            let state_clone = Arc::clone(&state);
+            handles.push(thread::spawn(move || state_clone.try_begin_shutdown()));
+        }
+        let outcomes: Vec<ShutdownTransition> = handles
+            .into_iter()
+            .map(|h| h.join().expect("thread join"))
+            .collect();
+        for outcome in outcomes {
+            assert_eq!(
+                outcome,
+                ShutdownTransition::AlreadyShutdown,
+                "post-terminal callers must observe AlreadyShutdown"
+            );
+        }
+    }
 }
