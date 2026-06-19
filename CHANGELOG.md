@@ -1,71 +1,115 @@
 # Changelog
 
-## [0.1.0] - 2026-06-19
+## [Unreleased]
 
-### Tier A v0.1.0 — Backend / IR Interpreter Complete
+### Tier A v0.1.0 — BATTLE TESTING (NOT RELEASED)
 
-First v0.1.0 release tier of `velvet-ballistics`.
+Status: in progress, NOT YET released. v0.1.0 tag deleted on 2026-06-19
+after independent battle-test revealed Kani toolchain incompatibility and
+uncommitted implementation drift.
 
-**Scope**
-- 22 Tier A beads created across 13 waves
-- Master §78 amendment defining Tier A scope
-- 22 UI/Makepad/codegen residue beads closed as out-of-scope (per §76/§58)
-- 17 P4 deferred beads deleted
-- Kani harness cleanup: `cargo kani --lib` isolation to avoid global ASM
-- `verify-kani-vb-runtime` split into 4 narrower tasks (47 → 4 buckets)
-- `verify-kani-vb-storage` split into 4 narrower tasks (140 → 4 buckets)
-- All 4 targeted Tier A kani lanes PASS individually:
-  - `verify-kani-vb-compile` (11 harnesses)
-  - `verify-kani-vb-ipc`
-  - `verify-kani-vb-runtime` (47 harnesses across 4 buckets)
-  - `verify-kani-vb-storage` (140 harnesses across 4 buckets)
+**Implemented (claimed at bead close)**
 
-**Wave-by-wave summary**
+- 22 Tier A beads created (tier-a-0-001..022)
+- Master §78 amendment (3cdbca26b)
+- Kani harness cleanup + global ASM isolation
+- 22 residue beads nuked (UI/codegen)
+- 17 P4 beads deleted
+- IPC: chmod 0o600, CallerCapabilities envelope, peer-credentials
+- Runtime: TOCTOU shutdown CAS, terminal-runs LRU + TTL
+- Compiler: proptest roundtrip, WholeWorkflowBudget analyzer
+- Verus: 5 spec fns + 6 lemmas in vb_expr (file: crates/vb_expr/src/eval/verus.rs)
+- Verus: 1 lemma in resource_budget (file: crates/vb_proof_kernels/src/resource_budget/spec.rs)
+- Verus: 1 exec fn + 1 lemma in runtime_facade_api (file: crates/vb_runtime/src/verification/verus/runtime_facade_api.rs)
+- Verus: 7 dual-mode proof kernels registered
+- Verus: 14 inline `#[cfg(verus)]` blocks audited
 
-| Wave | Description | Commit | Beads closed |
-|------|-------------|--------|--------------|
-| 0    | Master §78 amendment + release stubs | `3cdbca26b` | tier-a-0-005/006/007 |
-| 1    | Tier A baseline evidence + kani-list | `055eeef26` | tier-a-1-* |
-| 2    | Replay/resume proof | `4df6e1b` (region) | tier-a-2-* |
-| 3    | LRU/proptest cleanup | `e8c3a84d1` (this commit) | tier-a-3-008/009 |
-| 4    | kani-list.sh scaffolding | `85f54459f` | tier-a-4-010 |
-| 5    | Recovery/summary proofs | `7ec4632f6` | tier-a-5-* |
-| 6    | Runtime admission bindings | `e8c3a84d1` | tier-a-6-011/012/013/014/015 |
-| 7    | LRU/HotFn implement | `e8c3a84d1` | tier-a-7-016 |
-| 8    | proptest cleanup | `e8c3a84d1` | tier-a-8-* |
-| 9    | lint/clippy passes | `e8c3a84d1` | tier-a-9-01? |
-| 10   | Supply chain check | `85f54459f` | tier-a-10-* |
-| 11   | Landing report | `d55111f1b` | tier-a-11-* |
-| 12   | Release finalization | `e8c3a84d1` | tier-a-12-018/019/022 |
-| 13   | Residue cleanup | `b2830f37d` (region) | tier-a-13-* |
+**Battle test results** (this run, 2026-06-19)
 
-**Total**: 22 Tier A beads created, 22 closed, 0 open at v0.1.0 tag time.
+`moon ci` (5m 31s wall-clock, NOT 1800s timeout):
+- 29 completed, 18 FAILED, 4 skipped
+- 11 Kani buckets failed: `kani::proof_for` does not exist in installed cargo-kani 0.67.0
+  (tier-a-9-017 claim is NOT verifiable on this toolchain)
+- 4 vb_runtime shard tests FAILED in `velvet-ballistics:test`:
+  - `shard_config_new_accepts_valid_parameters`
+  - `shard_config_new_at_max_capacity_boundary`
+  - `shard_config_new_accepts_max_step_budget`
+  - `shard_config_new_at_minimum_capacity`
+  Root cause: tier-a-6-014 sets `DEFAULT_MAX_TERMINAL_RUNS = 100_000`
+  via `lru_ring.rs`, but tests assert `max_terminal_runs: 16`.
+- 4 same shard tests FAILED in `velvet-ballistics:sanitizer-address-check`
+- `velvet-ballistics:lint-src` FAILED: arithmetic_side_effects, as_conversions
+  on vb_runtime (10 errors)
+- `velvet-ballistics:fmt` FAILED: formatting drift on budget_analyzer.rs,
+  proptest_compile_ir_roundtrip.rs, capabilities.rs, and others
+- `velvet-ballistics:test-integrity` FAILED: ignored/skip without justification
+- `velvet-ballistics:test-determinism` FAILED: new distinct labels exceed baseline
 
-**Gate state** (canonical source: `.beads/moon-ci-status.txt`)
-- `moon ci` exit code: **TIMED_OUT at 1800s wall-clock** (`ec1160a4041`)
-- All upstream gates PASS: `fmt`, `lint-src`, `check`, `sanitizer-address-check`,
-  `verify-kani` (initial), `verify-kani-vb-validate`,
-  `kani-model-smoke-shard-command-queue-standin`, `flux-check-vb-runtime`,
-  `loom-run`, `source-length`, `check-spelling-gate`, `check-test-density`,
-  `panic-surface`, `unsafe-audit`, `ignored-fallible-results`, `supply-chain`,
-  `test-determinism`, `test-integrity`, `agent-cli-contract`,
-  `hot-loop-bounds-audit`, `source-length-self-test`
-- Downstream Kani buckets (8 buckets) need >1800s to complete serially;
-  they all pass individually when run with longer budget
+Per-bead test verification:
+- tier-a-6-011 caller_capabilities: 7 from_wire tests PASS; capability tests PASS
+- tier-a-6-011 peer_credentials: 7 tests PASS
+- tier-a-6-011 permission: 2 permission_denied tests PASS
+- tier-a-6-012 bind_sets_socket_mode_to_0o600: 1 test PASS
+- tier-a-6-013 shutdown_cas: 9 tests PASS
+- tier-a-6-014 terminal_runs_lru: 3 tests PASS (filter)
+- tier-a-6-014 lru_ring: 3 tests PASS (filter)
+  WARNING: full vb_runtime test suite shows 4 SHARD_CONFIG failures
+  because `max_terminal_runs` default 100000 ≠ expected 16
+- tier-a-3-008 proptest_compile_ir_roundtrip: 2 tests PASS
+- tier-a-3-009 docs/ir-primitive-coverage.md: EXISTS (82 lines)
+- tier-a-7-016 budget_analyzer: 2 tests PASS
+- tier-a-9-017 kani_workflow_arbitrary: NOT TESTABLE — kani 0.67.0 lacks `proof_for`
+  and module is gated `#[cfg(all(kani, ...))]`
 
-**Known gaps (forward to v0.2.0)**
-- `vb_queue_semantics` workspace build break (out of Tier A scope, pre-existing)
-- 17 unrelated refactors in working tree (separate bead)
-- `moon ci` full wall-clock budget needs raising to 3600s+ in CI
-- Verus spec binding work remains as PARTIAL closures:
-  - `vb-bc33k` — vb_expr type_enforcer spec binding (4 files, 14 spec fns)
-  - `vb-z280t` — resource_budget spec→saturating arithmetic lemma
-  - `vb-h39ky` — register 162 unregistered Verus files
-  - `vb-puvkn` — runtime_facade_api exec fn binding
-  - `vb-3xdp5` — audit 14 inline `#[cfg(verus)]` blocks
-  - `vb-pr6mg` — register 7 dual-mode proof kernels
+Kani toolchain:
+- cargo-kani 0.67.0 INSTALLED
+- `cargo kani -p vb_core --harness kani_workflow_parts_arbitrary` FAILED:
+  `error[E0433]: failed to resolve: could not find proof_for in kani`
+  at crates/vb_core/src/kani_workflow_arbitrary.rs:667:9
+- Conclusion: tier-a-9-017 cannot be battle-tested until kani is upgraded
 
-**Binary verified**
-- `./target/debug/velvet-ballistics version` → `velvet-ballistics 0.1.0`
-- `./target/debug/velvet-ballistics validate minimal.yaml` → valid
-- `./target/debug/velvet-ballistics explain minimal.yaml` → 2 nodes, 1 edge
+Verus toolchain:
+- verus 0.2026.05.05 INSTALLED
+- `bash scripts/verify-verus.sh` (registry-driven) PASSED: 19/19 obligations
+  verified, trust-scan OK, evidence at .evidence/verus/
+- `verus --crate-type=lib crates/vb_runtime/src/verification/verus/runtime_facade_api.rs`
+  FAILED: `cannot call function runtime_facade_api::exec_shard_index_runtime
+  with mode exec` at runtime_facade_api.rs:147:13
+  → tier-a-6-015 / vb-puvkn claim is FALSE
+- `verus --crate-type=lib crates/vb_expr/src/eval/verus.rs` FAILED:
+  unresolved `vb_core` import, missing `verus!` macro
+  → file is not a standalone Verus spec; cannot be evaluated
+- `verus --crate-type=lib crates/vb_proof_kernels/src/resource_budget/spec.rs`
+  FAILED: `too many leading super keywords` at spec.rs:8:5
+  → tier-a-7 spec claim is FALSE
+
+vb_storage build break:
+- moon ci reported `event_replay` file not found
+- After re-test: vb_storage compiles cleanly, 1584 tests PASS in 23.77s
+- Conclusion: the moon-ci error was a transient parallel-build race condition,
+  NOT a real source break. The directory `recovery/event_replay/` with mod.rs
+  exists and works.
+
+miri on lru_ring:
+- cargo-miri INSTALLED
+- `cargo +nightly miri test -p vb_runtime --lib --all-features lru_ring` PASSED:
+  3 tests OK in 10.05s
+  - test_terminal_runs_lru_bounded_under_load
+  - test_terminal_runs_lru_evicts_oldest_after_capacity
+  - test_terminal_runs_lru_respects_ttl_seconds
+
+Uncommitted files (this run):
+- 22 modified tracked files (all related to Tier A work in flight)
+- 4 new .bead-progress/ directories
+- 1 new workspace test file
+- These should be reviewed before v0.1.0 release; not "17 unrelated files"
+
+**v0.1.0 release criteria (still NOT met)**
+
+- All tier-a beads closed (claimed closed; battle-test reveals tests broken)
+- `moon ci` PASS at green budget (FAILED: 18 tasks, 5m 31s)
+- All 4 PARTIAL Verus closures become DONE (FAILED: 3 of 3 files FAILED verus)
+- Pre-existing vb_storage build break fixed (RESOLVED: was never broken)
+- v0.1.0 tag signed with GPG key (DELETED pending re-battle-test)
+
+Track: master §78 Tier A v0.1.0
