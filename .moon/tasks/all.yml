@@ -361,7 +361,7 @@ tasks:
     command: 'python3 scripts/check-primitive-durability-doc.py'
     inputs:
       - 'scripts/check-primitive-durability-doc.py'
-      - 'crates/vb_core/src/workflow/types.rs'
+      - 'crates/vb_core/src/workflow/node.rs'
       - 'docs/storage-journal.md'
       - '.moon/tasks/all.yml'
     options:
@@ -670,6 +670,7 @@ tasks:
     inputs:
       - 'scripts/verify_no_legacy_primitives.sh'
       - 'crates/vb_core/src/workflow/**/*'
+      - 'crates/vb_validate/src/schema/**/*'
       - '.moon/tasks/all.yml'
     options:
       runInCI: true
@@ -1208,9 +1209,8 @@ tasks:
     toolchains:
       - rust
     inputs:
-      - 'crates/vb_proof_kernels/src/step_state.rs'
-    outputs:
       - 'scripts/check-stepstate-matrix.sh'
+      - 'crates/vb_proof_kernels/src/step_state/**/*.rs'
     options:
       cache: false
       runInCI: true

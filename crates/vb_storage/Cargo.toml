@@ -43,6 +43,8 @@ kani-vb-h09wf = []
 kani-vb-mrwe5 = []
 kani-vb-fn4vt = []
 kani-vb-mrwe6 = []
+# HVR-PO-STORAGE-002/HVR-PO-STORAGE-005: isolate vb-god2f storage Kani harnesses.
+kani-vb-god2f-hard-verus = []
 kani-vb-mrwe-7 = []
 loom-vb-mrwe-7 = ["dep:loom"]
 vb-mrwe6-flux-refinements = ["dep:flux-rs"]

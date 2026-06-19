@@ -401,7 +401,8 @@ impl PartitionPlan {
 // Kani Arbitrary (GOD RULE #1)
 // ============================================================================
 
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude legacy shard partition Kani modules from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_arbitrary {
     use super::*;
 
@@ -473,8 +474,8 @@ pub mod proptest_strategies {
 // Kani harnesses
 // ============================================================================
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_key_range_properties;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_partition_plan_safety;

@@ -68,7 +68,7 @@ const RESERVED_IDS: &[&str] = &[
 ];
 
 /// Validates a workflow document against the v1 schema.
-pub(crate) fn validate_workflow_schema(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub fn validate_workflow_schema(doc: &WorkflowDoc) -> ValidationResult<()> {
     validate_duplicate_fields(doc)?;
     validate_required_fields(doc)?;
     validate_unknown_fields(doc)?;
@@ -102,7 +102,7 @@ fn validate_no_duplicate_names(fields: &[(String, FieldValue)]) -> ValidationRes
 }
 
 /// Checks that the version field matches the canonical version string.
-pub(crate) fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
     match doc.get_string("version") {
         Some(version) if version == CANONICAL_VERSION => Ok(()),
         Some(version) => Err(ValidationError::InvalidVersion {
@@ -115,7 +115,7 @@ pub(crate) fn validate_version(doc: &WorkflowDoc) -> ValidationResult<()> {
 }
 
 /// Validates the trigger (when) block accepts canonical v1 triggers and rejects HTTP.
-pub(crate) fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     let trigger = doc
         .get_mapping("when")
         .ok_or_else(|| ValidationError::MissingRequiredField {
@@ -181,7 +181,7 @@ fn validate_named_string_trigger(
 }
 
 /// Validates all step and top-level IDs against grammar, reserved words, and duplicates.
-pub(crate) fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
     let name = doc
         .get_string("name")
         .ok_or_else(|| ValidationError::MissingRequiredField {
@@ -212,7 +212,7 @@ pub(crate) fn validate_ids(doc: &WorkflowDoc) -> ValidationResult<()> {
 }
 
 /// Validates step field shapes and the single-primitive constraint.
-pub(crate) fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
+pub fn validate_step_fields(doc: &WorkflowDoc) -> ValidationResult<()> {
     let steps = doc
         .get_sequence("steps")
         .ok_or_else(|| ValidationError::MissingRequiredField {
@@ -383,7 +383,7 @@ pub fn validate_single_primitive(step: &StepDoc) -> ValidationResult<()> {
     Ok(())
 }
 
-pub(crate) fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
+pub fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
     if !is_valid_id(id) {
         return Err(ValidationError::InvalidId {
             id: format!("{field}: {id}"),
@@ -397,7 +397,7 @@ pub(crate) fn validate_id(field: &str, id: &str) -> ValidationResult<()> {
     Ok(())
 }
 
-pub(crate) fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
+pub fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()> {
     if !is_valid_id(id) {
         return Err(ValidationError::InvalidId { id: id.to_owned() });
     }
@@ -410,7 +410,7 @@ pub(crate) fn validate_single_id(id: &str, seen: &[&str]) -> ValidationResult<()
     Ok(())
 }
 
-pub(crate) fn is_valid_id(id: &str) -> bool {
+pub fn is_valid_id(id: &str) -> bool {
     if id.is_empty() || id.len() > 64 {
         return false;
     }
@@ -429,6 +429,6 @@ pub(crate) fn is_valid_id(id: &str) -> bool {
     true
 }
 
-pub(crate) fn is_reserved_id(id: &str) -> bool {
+pub fn is_reserved_id(id: &str) -> bool {
     RESERVED_IDS.contains(&id)
 }

@@ -5,7 +5,7 @@ use vb_core::frame::StepState;
 use vb_core::ids::{BlobId, ListId, ObjectId, SymbolId};
 use vb_core::value::{SlotValue, Taint};
 
-/// Generate a random `SlotValue` variant.
+// Generate a random `SlotValue` variant.
 prop_compose! {
     fn arb_slot_value()(
         variant in prop_oneof![
@@ -22,7 +22,7 @@ prop_compose! {
     }
 }
 
-/// Generate a random `Taint` variant.
+// Generate a random `Taint` variant.
 prop_compose! {
     fn arb_taint()(
         t in prop_oneof![
@@ -35,7 +35,7 @@ prop_compose! {
     }
 }
 
-/// Generate a random `StepState` variant.
+// Generate a random `StepState` variant.
 prop_compose! {
     fn arb_step_state()(
         s in prop_oneof![

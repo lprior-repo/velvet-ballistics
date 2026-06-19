@@ -11,13 +11,10 @@
 #[cfg(test)]
 use super::tables::WorkflowRefs;
 #[cfg(test)]
-use super::validate::validate_rooted_reference;
-#[cfg(test)]
 use super::{
-    OUTPUT_FIELD_SYMBOL, RefTables, StepIdx, parse_step_reference, validate_references,
-    validate_single_reference, validate_single_reference_in_on_error,
-    validate_single_reference_in_repeat, validate_single_reference_with_context,
-    validate_step_references,
+    RefTables, StepIdx, parse_step_reference, validate_references, validate_single_reference,
+    validate_single_reference_in_on_error, validate_single_reference_in_repeat,
+    validate_single_reference_with_context, validate_step_references,
 };
 #[cfg(test)]
 use crate::ValidationError;

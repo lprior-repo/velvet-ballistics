@@ -131,7 +131,8 @@ pub enum EngineSignal {
 mod tests;
 
 // Verified by: OBL-VB-BUDGET-KANI-006 (overflow guard)
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude this legacy overflow harness from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_overflow_guard {
     use super::StepBudget;
     use crate::errors::EngineError;

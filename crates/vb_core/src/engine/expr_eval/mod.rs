@@ -18,10 +18,11 @@ mod stack_tests;
 pub use accessors::{eval_accessor, eval_accessor_with_store};
 pub use core::{eval_expr, eval_expr_with_store};
 
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude legacy expression Kani modules from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_stack;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_div_zero;
 
 #[cfg(test)]

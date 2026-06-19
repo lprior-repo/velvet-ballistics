@@ -32,6 +32,8 @@ kani-diagnostic-codes = []
 kani-resource-contract-boundaries = []
 kani-vb-5iebh-check-scope = []
 kani-vb-ajc40 = []
+# HVR-PO-CORE-001/HVR-PO-CORE-003/HVR-PO-CORE-004: isolate vb-god2f Kani proof-kernel replacements.
+kani-vb-god2f-proof-kernels = []
 test-util = []
 volatile = []
 vb-rxru0-flux-refinements = []

@@ -12,10 +12,10 @@ pub(crate) mod slots;
 
 // Re-export public API
 pub use frame_seed::{
-    recovery_dimension_count_from_index, recovery_observed_dimension_is_positive,
-    recovery_seed_dimensions_positive, reject_workflow_digest_mismatch,
-    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_events_with_workflow,
-    RecoveryFrameSeedBuilder,
+    RecoveryFrameSeedBuilder, recover_runtime_frame_seed_from_events,
+    recover_runtime_frame_seed_from_events_with_workflow, recovery_dimension_count_from_index,
+    recovery_observed_dimension_is_positive, recovery_seed_dimensions_positive,
+    reject_workflow_digest_mismatch,
 };
 pub use runtime_summary::{
     apply_summary_event, recover_run_admission_from_events, summarize_recovery_events,
@@ -23,7 +23,7 @@ pub use runtime_summary::{
 pub use slots::pending_actions_from_events;
 
 // Re-export items used by tests
-pub(crate) use slots::{replay_error_to_recovery, RecoveredSlots};
+pub(crate) use slots::{RecoveredSlots, replay_error_to_recovery};
 
 #[cfg(test)]
 #[path = "tests.rs"]

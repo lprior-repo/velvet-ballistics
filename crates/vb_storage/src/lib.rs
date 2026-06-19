@@ -128,8 +128,8 @@
 // Public surface: thin re-export delegations (implementation in exports.rs)
 // ============================================================================
 
-pub use crate::exports::*;
 pub use crate::convenience::*;
+pub use crate::exports::*;
 
 // ============================================================================
 // Submodules
@@ -153,6 +153,8 @@ pub mod journal;
 pub mod kani_codec;
 pub mod mrwe5_contract;
 pub mod mrwe6_seams;
+
+// HVR-PO-STORAGE-002/HVR-PO-STORAGE-005: legacy Kani modules stay out of the vb-god2f feature lane.
 
 #[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_record_magic;
@@ -219,13 +221,17 @@ pub mod kani_vb_vzcuf_ps008;
 #[cfg(all(kani, feature = "kani-vb-vzcuf"))]
 pub mod kani_vb_vzcuf_ps009;
 
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_vbjpq733_proofs;
 
+// HVR-PO-STORAGE-002/HVR-PO-STORAGE-005: feature-isolated vb-god2f storage Kani harnesses.
+#[cfg(all(kani, feature = "kani-vb-god2f-hard-verus"))]
+pub mod kani_vb_god2f_classification_recovery;
+
 // vb-mrwe.5: StepSucceeded record kind parity proofs
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
 pub mod kani_vb_mrwe5_record_kind;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
 pub mod kani_vb_mrwe5_step_succeeded_id;
 #[cfg(all(kani, feature = "kani-vb-fn4vt"))]
 #[path = "verification/vb-fn4vt/kani/policy_digest_binding.rs"]
@@ -234,19 +240,19 @@ pub mod vb_fn4vt_policy_digest_binding;
 #[path = "verification/kani/vb_mrwe5_compat_kind_family.rs"]
 pub mod vb_mrwe5_compat_kind_family;
 #[cfg(all(kani, feature = "kani-vb-mrwe5"))]
+#[path = "verification/kani/vb_mrwe5_decode_reject.rs"]
+pub mod vb_mrwe5_decode_reject;
+#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
 #[path = "verification/kani/vb_mrwe5_kind_parity.rs"]
 pub mod vb_mrwe5_kind_parity;
 #[cfg(all(kani, feature = "kani-vb-mrwe5"))]
 #[path = "verification/kani/vb_mrwe5_roundtrip.rs"]
 pub mod vb_mrwe5_roundtrip;
-#[cfg(all(kani, feature = "kani-vb-mrwe5"))]
-#[path = "verification/kani/vb_mrwe5_decode_reject.rs"]
-pub mod vb_mrwe5_decode_reject;
 
 // vb-mrwe.4: pending_actions recovery proofs
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_vb_mrwe4_reject_unsupported_state;
-#[cfg(kani)]
+#[cfg(all(kani, feature = "legacy-kani"))]
 pub mod kani_vb_mrwe4_seed_unsupported_state;
 
 // --- vb-h09wf Kani harnesses (PS-001 through PS-012) ---

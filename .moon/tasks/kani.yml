@@ -47,7 +47,7 @@ tasks:
       run_core_harness() {
         local harness="$1"
         printf 'verify-kani: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-core --lib -p vb_core --all-features --harness "$harness"
+        run_kani_bounded target/kani-vb-core --lib -p vb_core --harness "$harness"
       }
       run_core_harness kani_budget_add_dim_zero
       run_core_harness kani_budget_sub_dim_zero

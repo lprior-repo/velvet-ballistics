@@ -1,6 +1,7 @@
 # Explicit exceptions for scripts/hotpath-scan.sh.
 # Format: crates/<crate>/src/<file>.rs|TOKEN|owner=<name>|reviewed_by=<name>|test=<evidence>|reason=<why>
 crates/vb_core/src/replay/step.rs|HashMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=replay collect state keyed by bounded SlotIdx during deterministic replay
+crates/vb_core/src/replay/collect/mod.rs|HashMap|owner=runtime-core|reviewed_by=architectural-drift|test=moon-run-hotpath-scan|reason=replay collect state keyed by bounded SlotIdx during deterministic replay
 crates/vb_core/src/value_store.rs|IndexMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=value store preserves object field insertion order for deterministic semantics
 crates/vb_runtime/src/action_queue.rs|std::sync::mpsc|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=bounded SyncSender/Receiver queue with explicit capacity and existing behavior tests
 crates/vb_runtime/src/action_queue.rs|channel(|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=sync_channel construction is the bounded action queue implementation point
@@ -24,7 +25,10 @@ crates/vb_runtime/src/shard/timer_wheel.rs|HashMap|owner=runtime-core|reviewed_b
 crates/vb_runtime/src/shard/types.rs|IndexMap|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=shard aggregate state preserves deterministic iteration for replay and diagnostics
 crates/vb_runtime/src/shard/types.rs|IndexSet|owner=runtime-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=terminal run set preserves deterministic iteration for lifecycle transitions
 crates/vb_storage/src/batch.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=moon-run-hotpath-scan|reason=compiled-IR mutation map is cfg(test) evidence state, not production batch hot path
+crates/vb_storage/src/batch/write.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=moon-run-hotpath-scan|reason=compiled-IR mutation map is cfg(test) evidence state, not production batch hot path
 crates/vb_storage/src/recovery/replay/summary.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=recovery replay summary indexes bounded recovered state by typed ids
+crates/vb_storage/src/recovery/replay/summary/frame_seed.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=moon-run-hotpath-scan|reason=recovery replay summary indexes bounded recovered state by typed ids
+crates/vb_storage/src/recovery/types/replay.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=moon-run-hotpath-scan|reason=action replay tracker indexes bounded recovery evidence by typed ActionId and StepIdx during recovery
 crates/vb_storage/src/recovery/types.rs|HashMap|owner=storage-core|reviewed_by=architectural-drift|test=moon-run-hotpath-scan|reason=action replay tracker indexes bounded recovery evidence by typed ActionId and StepIdx during recovery
 crates/vb_ipc/src/server/impl_.rs|HashMap|owner=ipc-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=server connection registry needs direct lookup by connection id
 crates/vb_ipc/src/server/mod.rs|HashMap|owner=ipc-core|reviewed_by=architectural-drift|test=bash-scripts-hotpath-scan|reason=server state owns explicit connection registry by id

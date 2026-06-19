@@ -15,8 +15,8 @@ use super::runtime_summary::apply_summary_event;
 use crate::recovery::action_digest::{verified_action_envelope_digest, verify_action_ticket_event};
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{
-    ActionReplayTracker, RecoveryError, RecoveryFrameSeed, RecoveryResult,
-    RecoveryRuntimeSummary, UnsupportedRecoveryState,
+    ActionReplayTracker, RecoveryError, RecoveryFrameSeed, RecoveryResult, RecoveryRuntimeSummary,
+    UnsupportedRecoveryState,
 };
 use crate::{EventSeq, JournalEvent};
 use vb_core::replay::ReplayEngine;
@@ -380,9 +380,10 @@ impl FrameSeedAccumulator {
             .map(|bytes| postcard::from_bytes::<SlotValue>(bytes))
         {
             Some(Ok(slot_value)) => {
-                let recovered_taint = crate::recovery::replay::summary::slots::recovered_slot_taint(
-                    slot, slot_value, extra,
-                )?;
+                let recovered_taint =
+                    crate::recovery::replay::summary::slots::recovered_slot_taint(
+                        slot, slot_value, extra,
+                    )?;
                 self.slot_values.insert(slot, slot_value);
                 self.slot_taint.insert(slot, recovered_taint.taint);
                 self.event_slot_taint_unsupported |= recovered_taint.unsupported;
@@ -425,9 +426,12 @@ impl FrameSeedAccumulator {
         self.summary.slots_written = self.summary.slots_written.saturating_add(1);
         self.pending_actions
             .remove(&(envelope.ticket.action, envelope.ticket.step));
-        self.record_step(envelope.ticket.step, crate::recovery::RecoveredStepState::Succeeded)
-            .record_last_succeeded(envelope.ticket.step)
-            .record_envelope_slot(envelope.output, envelope.value, envelope.taint)
+        self.record_step(
+            envelope.ticket.step,
+            crate::recovery::RecoveredStepState::Succeeded,
+        )
+        .record_last_succeeded(envelope.ticket.step)
+        .record_envelope_slot(envelope.output, envelope.value, envelope.taint)
     }
 
     fn record_envelope_slot(

@@ -7,9 +7,9 @@
 use crate::constants;
 use crate::recovery;
 use crate::{
-    AcceptedArtifact, ActionReplayTracker, BlobRecord, CompiledIrRecord, EventSeq,
-    FjallJournal, JournalError, JournalEvent, JournalWriterFlushReport, JournalWriterQueue,
-    RunHeaderRecord, RunSnapshot, VerificationProof, WorkflowSourceRecord,
+    AcceptedArtifact, ActionReplayTracker, BlobRecord, CompiledIrRecord, EventSeq, FjallJournal,
+    JournalError, JournalEvent, JournalWriterFlushReport, JournalWriterQueue, RunHeaderRecord,
+    RunSnapshot, VerificationProof, WorkflowSourceRecord,
 };
 
 // ============================================================================
@@ -193,4 +193,3 @@ fn seed_value_for_test(seed: &[u8]) -> i64 {
         acc.wrapping_mul(31).wrapping_add(i64::from(*byte))
     })
 }
-

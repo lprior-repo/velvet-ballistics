@@ -160,9 +160,7 @@ fn replay_err_to_core(e: ReplayError) -> CoreError {
         ReplayError::StepNotFound { step } => CoreError::InvalidProgramCounter { step },
         ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
         ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
-        ReplayError::NonDeterministicStep { step, .. } => {
-            CoreError::InvalidProgramCounter { step }
-        }
+        ReplayError::NonDeterministicStep { step, .. } => CoreError::InvalidProgramCounter { step },
         ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
     }
 }

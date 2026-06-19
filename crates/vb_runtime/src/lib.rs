@@ -95,8 +95,9 @@ pub mod trace;
 #[cfg(all(kani, feature = "kani-yaml-e2e-admission-matrix"))]
 pub mod yaml_e2e_admission_matrix;
 
+// HVR-PO-RUNTIME-001..006: discovery wiring for vb-god2f runtime Kani/proptest artifacts.
 // Verification harnesses gated internally (kani/test/verus/flux via cfg)
-#[cfg(any(verus, loom, flux))]
+#[cfg(any(verus, loom, flux, kani, test))]
 pub mod verification;
 
 pub use error::{InputMappingFailureKind, RuntimeError, RuntimeResult};

@@ -42,7 +42,9 @@ pub(super) const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode =
 
 /// Returns the diagnostic code for collect/budget/capability variants.
 #[must_use]
-pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(
+    error: &crate::errors::core::CoreError,
+) -> Option<DiagnosticCode> {
     match error {
         crate::errors::core::CoreError::IterationLimitExceeded { .. } => {
             Some(ITERATION_LIMIT_EXCEEDED_CODE)
@@ -79,14 +81,18 @@ pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> O
 #[must_use]
 pub(super) const fn runtime_code(error: &crate::errors::core::CoreError) -> Option<&'static str> {
     match error {
-        crate::errors::core::CoreError::RepeatExhausted { .. } => Some(REPEAT_LIMIT_REACHED_RUNTIME_CODE),
+        crate::errors::core::CoreError::RepeatExhausted { .. } => {
+            Some(REPEAT_LIMIT_REACHED_RUNTIME_CODE)
+        }
         crate::errors::core::CoreError::CollectPageLimitExceeded
         | crate::errors::core::CoreError::CollectItemLimitExceeded
         | crate::errors::core::CoreError::CollectTimeLimitExceeded => {
             Some(COLLECT_LIMIT_REACHED_RUNTIME_CODE)
         }
         crate::errors::core::CoreError::BudgetExceeded { .. } => Some(BUDGET_EXCEEDED_RUNTIME_CODE),
-        crate::errors::core::CoreError::CapabilityDenied { .. } => Some(CAPABILITY_DENIED_RUNTIME_CODE),
+        crate::errors::core::CoreError::CapabilityDenied { .. } => {
+            Some(CAPABILITY_DENIED_RUNTIME_CODE)
+        }
         _ => None,
     }
 }

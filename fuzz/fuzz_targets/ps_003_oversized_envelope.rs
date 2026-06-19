@@ -9,7 +9,7 @@
 // Defends against H13 resource exhaustion.
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::fuzz_access::reject_oversized_compiled_ir_value
+//   vb_storage::admission::reject_oversized_compiled_ir_value
 
 #![no_main]
 
@@ -37,7 +37,7 @@ fuzz_target!(|data: &[u8]| {
 });
 
 fn assert_len_contract(len: usize, max: u32, max_usize: usize) {
-    let result = vb_storage::admission::fuzz_access::reject_oversized_compiled_ir_value(len);
+    let result = vb_storage::admission::reject_oversized_compiled_ir_value(len);
 
     match result {
         Ok(()) => {

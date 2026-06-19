@@ -1,6 +1,7 @@
 //! Verification artifacts for vb_core.
 
-#[cfg(kani)]
+// HVR-PO-CORE-001/HVR-PO-CORE-003/HVR-PO-CORE-004: exclude legacy verification Kani modules from vb-god2f lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub(crate) mod kani;
 
 // Flux refinement modules (compiled with flux-rs; extern specs)

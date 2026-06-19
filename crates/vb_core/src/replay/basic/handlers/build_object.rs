@@ -3,8 +3,8 @@
 
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
-use crate::ids::SymbolId;
 use crate::ids::SlotIdx;
+use crate::ids::SymbolId;
 use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::ObjectField;
 use crate::value_store::ValueStore;
@@ -33,9 +33,7 @@ pub(super) fn replay_build_object(
         })?;
         let value = *run.read_slot(*slot).map_err(|e| match e {
             EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
-            EngineError::SlotUninitialized { slot: s } => {
-                ReplayError::SlotNotAvailable { slot: s }
-            }
+            EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
             _ => ReplayError::Internal {
                 reason: "unexpected error reading build_object field slot",
             },

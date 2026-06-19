@@ -15,17 +15,6 @@ use crate::workflow::{
     ResourceContract, SlotBranch, WorkflowParts,
 };
 
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
-
 // ---------------------------------------------------------------------------
 // 3. choose_expr_branch — non-boolean result (I64 → TypeMismatch)
 // ---------------------------------------------------------------------------

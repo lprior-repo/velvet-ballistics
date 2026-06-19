@@ -2,80 +2,16 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_runtime/src/kani_admission_store.rs": [
-      "kani_admission_store::kani_store_proofs::compiled_ir_exists_no_panic_max_digest",
-      "kani_admission_store::kani_store_proofs::compiled_ir_exists_returns_false_for_empty_journal",
-      "kani_admission_store::kani_store_proofs::storage_artifact_store_send",
-      "kani_admission_store::kani_store_proofs::storage_artifact_store_sync"
-    ],
-    "crates/vb_runtime/src/kani_capability_harnesses.rs": [
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_action_match_name_denies",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_action_match_name_grants",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_action_mismatch_name_denies",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_action_mismatch_name_grants",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_grants_exact_match",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_harness",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_hierarchical_rejects_subpath",
-      "kani_capability_harnesses::kani_capability_harnesses::check_capability_partial_segment_rejected",
-      "kani_capability_harnesses::kani_capability_harnesses::strict_admission_digest_mismatch_rejects_required_blocker",
-      "kani_capability_harnesses::kani_capability_harnesses::strict_admission_invalid_artifact_cases_reject",
-      "kani_capability_harnesses::kani_capability_harnesses::strict_admission_invalid_capability_rejects",
-      "kani_capability_harnesses::kani_capability_harnesses::strict_admission_valid_artifact_admits",
-      "kani_capability_harnesses::kani_capability_harnesses::strict_legacy_presence_only_bypass_rejects_required_blocker"
-    ],
-    "crates/vb_runtime/src/kani_engine_yaml_admission.rs": [
-      "kani_engine_yaml_admission::engine_yaml_admission_rejects_digest_mismatch",
-      "kani_engine_yaml_admission::engine_yaml_admission_rejects_dummy_proof",
-      "kani_engine_yaml_admission::engine_yaml_admission_rejects_raw_ir",
-      "kani_engine_yaml_admission::engine_yaml_admission_requires_capability_gate"
-    ],
-    "crates/vb_runtime/src/kani_shard_command_queue.rs": [
-      "kani_shard_command_queue::kani_shard_command_queue_bounded_invariant",
-      "kani_shard_command_queue::kani_shard_command_queue_drain",
-      "kani_shard_command_queue::kani_shard_command_queue_push"
-    ],
-    "crates/vb_runtime/src/kani_trace_ring.rs": [
-      "kani_trace_ring::verify_drain_for_run_correctness",
-      "kani_trace_ring::verify_terminal_event_detection",
-      "kani_trace_ring::verify_trace_ring_bounds",
-      "kani_trace_ring::verify_trace_ring_dropped_monotonic"
-    ],
-    "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs": [
-      "kani_vt2f_runtime_facade::vt2f_runtime_facade_semantics"
-    ],
-    "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs": [
-      "kani_vt2f_shard_lower_semantics::vt2f_shard_lower_semantics"
-    ],
-    "crates/vb_runtime/src/primitives/collect/kani.rs": [
-      "primitives::collect::kani::collect_page_pagination_bounds"
-    ],
-    "crates/vb_runtime/src/primitives/reentry_proofs.rs": [
-      "primitives::reentry_proofs::reentry_harnesses::collect_next_reentry",
-      "primitives::reentry_proofs::reentry_harnesses::collect_page_reentry",
-      "primitives::reentry_proofs::reentry_harnesses::for_each_next_reentry",
-      "primitives::reentry_proofs::reentry_harnesses::kani_for_each_reentry_body_state_immutable",
-      "primitives::reentry_proofs::reentry_harnesses::kani_jump_to_body_no_state_mutation",
-      "primitives::reentry_proofs::reentry_harnesses::kani_reduce_reentry_body_state_immutable",
-      "primitives::reentry_proofs::reentry_harnesses::kani_remaining_primitives_reentry_body_state_immutable",
-      "primitives::reentry_proofs::reentry_harnesses::reduce_next_reentry",
-      "primitives::reentry_proofs::reentry_harnesses::repeat_attempt_reentry",
-      "primitives::reentry_proofs::reentry_harnesses::repeat_check_reentry"
-    ],
-    "crates/vb_runtime/src/shard/lifecycle/chunk_003_kani.rs": [
-      "shard::lifecycle::chunk_003_kani::kani_taint_guard::clean_input_never_triggers_guard",
-      "shard::lifecycle::chunk_003_kani::kani_taint_guard::every_non_clean_taint_triggers_guard_for_deterministicpure",
-      "shard::lifecycle::chunk_003_kani::kani_taint_guard::guard_decision_panic_free",
-      "shard::lifecycle::chunk_003_kani::kani_taint_guard::guard_fires_exactly_for_non_clean_deterministicpure",
-      "shard::lifecycle::chunk_003_kani::kani_taint_guard::non_deterministicpure_never_triggers_guard"
-    ],
-    "crates/vb_runtime/src/yaml_e2e_admission_matrix.rs": [
-      "yaml_e2e_admission_matrix::yaml_e2e_admission_matrix"
+    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion.rs": [
+      "verification::kani::kani_vb_god2f_action_completion::vb_god2f_advance_after_action_completion_pc_cases",
+      "verification::kani::kani_vb_god2f_action_completion::vb_god2f_record_scheduled_attempt_monotonic",
+      "verification::kani::kani_vb_god2f_action_completion::vb_god2f_validate_input_bytes_contract_boundaries"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 47,
+    "standard-harnesses": 3,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

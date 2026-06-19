@@ -262,7 +262,7 @@ impl KaniTraceQueue {
 /// Summary of a bounded drain operation used by Kani verification harnesses.
 #[cfg(feature = "kani-trace-ring")]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct KaniDrainSummary {
+pub(crate) struct KaniDrainSummary {
     matched: u8,
     first: Option<KaniTraceEventKind>,
     second: Option<KaniTraceEventKind>,
@@ -271,7 +271,7 @@ pub(super) struct KaniDrainSummary {
 
 #[cfg(feature = "kani-trace-ring")]
 impl KaniDrainSummary {
-    pub(super) const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             matched: 0,
             first: None,

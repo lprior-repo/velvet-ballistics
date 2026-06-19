@@ -113,11 +113,14 @@
 use crate::DurableActionOutcome;
 use crate::EventSeq;
 use crate::JournalEvent;
-use crate::recovery::{RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepState, RecoveryError, RecoveryRuntimeSummary, RecoveryTerminalState};
 use crate::recovery::replay::summary::*;
+use crate::recovery::{
+    RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepState, RecoveryError,
+    RecoveryRuntimeSummary, RecoveryTerminalState,
+};
+use vb_core::SlotValue;
 use vb_core::action::compute_action_idempotency_key;
 use vb_core::replay::{ReplayError, SuspensionKind};
-use vb_core::SlotValue;
 use vb_core::{
     ActionId, ActionTicket, CapabilitySet, FiniteF64, ListId, MockMarker, ObjectId, RunId,
     RuntimePolicy, SeqNo, SlotIdx, StepIdx, Taint, WorkflowDigest,

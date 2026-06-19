@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TYPES_PATH = ROOT / "crates/vb_core/src/workflow/types.rs"
+TYPES_PATH = ROOT / "crates/vb_core/src/workflow/node.rs"
 DOC_PATH = ROOT / "docs/storage-journal.md"
 START_MARKER = "<!-- BEGIN PRIMITIVE DURABILITY PROOF MATRIX -->"
 END_MARKER = "<!-- END PRIMITIVE DURABILITY PROOF MATRIX -->"

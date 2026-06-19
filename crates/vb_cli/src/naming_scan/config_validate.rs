@@ -3,7 +3,6 @@
 /// Takes a [`RawScanConfig`] and produces a [`ScanConfig`], checking
 /// allowlist rules, scan patterns, and entry completeness in one
 /// deterministic pipeline.
-
 use super::config_build::table_from_entries;
 use super::config_types::*;
 use super::types::*;

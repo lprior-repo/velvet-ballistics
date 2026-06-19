@@ -13,7 +13,7 @@ pub mod validation;
 mod tests;
 
 pub use types::{FieldValue, StepDoc, WorkflowDoc};
-pub(crate) use validation::{
+pub use validation::{
     is_reserved_id, is_valid_id, validate_id, validate_ids, validate_single_id,
     validate_single_primitive, validate_step_fields, validate_trigger, validate_version,
     validate_workflow_schema,

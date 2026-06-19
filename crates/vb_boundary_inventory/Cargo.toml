@@ -11,5 +11,10 @@ serde_json.workspace = true
 proptest.workspace = true
 tempfile.workspace = true
 
+[features]
+default = []
+# HVR-PO-BI-001: isolate vb-god2f boundary-inventory Kani harnesses.
+kani-vb-god2f-boundary-inventory = []
+
 [lints]
 workspace = true

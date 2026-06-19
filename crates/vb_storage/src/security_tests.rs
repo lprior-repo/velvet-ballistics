@@ -256,7 +256,7 @@ mod tests {
     fn valid_blob_digest_accepted() {
         let (_temp, journal) = temp_journal();
         let bytes = b"valid blob content".to_vec();
-       let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
         let record = BlobRecord { digest, bytes };
         journal
             .put_blob(&record)
@@ -280,7 +280,7 @@ mod tests {
     fn batch_valid_blob_digest_accepted() {
         let (_temp, journal) = temp_journal();
         let bytes = b"valid batch blob".to_vec();
-       let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
         let mut batch = journal.batch();
         batch
             .put_blob(&BlobRecord { digest, bytes })
@@ -765,7 +765,7 @@ mod tests {
     #[test]
     fn verify_digest_match_accepts_correct() {
         let payload = b"hello world";
-       let digest: [u8; DIGEST_BYTES] = blake3::hash(payload).into();
+        let digest: [u8; DIGEST_BYTES] = blake3::hash(payload).into();
         let result = verify_digest_match(payload, digest);
         assert!(result.is_ok(), "correct digest should pass verification");
     }

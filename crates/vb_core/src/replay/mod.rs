@@ -345,9 +345,10 @@ pub use step::{ReplayAction, SuspensionKind, replay_step, replay_step_with_colle
 #[path = "tests.rs"]
 mod tests;
 
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude legacy replay Kani modules from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_harnesses_frame;
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_harnesses_plan;
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_harnesses_slots;

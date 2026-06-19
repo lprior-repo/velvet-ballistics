@@ -39,25 +39,20 @@ pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> boo
     if current == new {
         return true;
     }
-    const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
-        (StepState::Pending, StepState::Running),
-        (StepState::Pending, StepState::Succeeded),
-        (StepState::Pending, StepState::Failed),
-        (StepState::Pending, StepState::Cancelled),
-        (StepState::Pending, StepState::Skipped),
-        (StepState::Running, StepState::Succeeded),
-        (StepState::Running, StepState::Failed),
-        (StepState::Running, StepState::Waiting),
-        (StepState::Running, StepState::Asking),
-        (StepState::Running, StepState::Cancelled),
-        (StepState::Running, StepState::Skipped),
-        (StepState::Waiting, StepState::Running),
-        (StepState::Asking, StepState::Running),
-    ];
-    for &(f, t) in VALID_TRANSITIONS {
-        if f == current && t == new {
-            return true;
-        }
-    }
-    false
+    matches!(
+        (current, new),
+        (StepState::Pending, StepState::Running)
+            | (StepState::Pending, StepState::Succeeded)
+            | (StepState::Pending, StepState::Failed)
+            | (StepState::Pending, StepState::Cancelled)
+            | (StepState::Pending, StepState::Skipped)
+            | (StepState::Running, StepState::Succeeded)
+            | (StepState::Running, StepState::Failed)
+            | (StepState::Running, StepState::Waiting)
+            | (StepState::Running, StepState::Asking)
+            | (StepState::Running, StepState::Cancelled)
+            | (StepState::Running, StepState::Skipped)
+            | (StepState::Waiting, StepState::Running)
+            | (StepState::Asking, StepState::Running)
+    )
 }

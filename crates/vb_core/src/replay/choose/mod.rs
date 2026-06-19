@@ -444,5 +444,6 @@ mod tests {
     }
 }
 
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude legacy replay-choose Kani modules from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani;

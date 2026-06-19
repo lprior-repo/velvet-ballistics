@@ -1,9 +1,9 @@
 //! Action-spec generation logic: static data, contract builders, and CLI output.
 
+use crate::action_specs::types::{ActionContractDetail, ActionTableRow, CliActionSpec};
 use crate::args::OutputFormat;
 use crate::exit_code::CliExitCode;
 use crate::output::json_error;
-use crate::action_specs::types::{ActionContractDetail, ActionTableRow, CliActionSpec};
 use std::process::ExitCode;
 
 /// Static CLI action specs — the only source of registered actions.

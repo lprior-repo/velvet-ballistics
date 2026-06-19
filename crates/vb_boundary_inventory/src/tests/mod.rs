@@ -12,3 +12,5 @@ mod error_tests;
 mod parser_tests;
 mod property_tests;
 mod validation_tests;
+// HVR-PO-BI-002: generated boundary-inventory validation properties.
+mod vb_god2f_validation_properties;

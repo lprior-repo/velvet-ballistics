@@ -20,7 +20,8 @@ pub mod storage_ids;
 pub mod symbol_ids;
 pub mod workflow_ids;
 
-#[cfg(kani)]
+// HVR-PO-CORE-001/HVR-PO-CORE-003/HVR-PO-CORE-004: exclude legacy ID Kani modules from vb-god2f lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani;
 
 // ── Re-exports (flat namespace) ────────────────────────────────────────

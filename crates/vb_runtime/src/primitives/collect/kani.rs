@@ -26,7 +26,10 @@ fn collect_page_pagination_bounds() {
             kani::assert(ps > 0, "positive page_size must produce positive usize");
             kani::assert(ps <= 1024, "page_size result must respect harness bound");
         }
-        Err(_) => {}
+        Err(error) => kani::assert(
+            error.diagnostic_code().code() != 0,
+            "page_size error must carry a typed diagnostic code",
+        ),
     }
 
     verify_page_bound_accepts_within_limit();
@@ -84,6 +87,9 @@ fn verify_copy_prefix_bounded_items() {
             page.len() <= expected_bound,
             "copied page length must respect page and item bounds",
         ),
-        Err(_) => {}
+        Err(error) => kani::assert(
+            error.diagnostic_code().code() != 0,
+            "copy_prefix error must carry a typed diagnostic code",
+        ),
     }
 }

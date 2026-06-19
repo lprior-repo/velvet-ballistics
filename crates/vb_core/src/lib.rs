@@ -32,55 +32,56 @@ pub mod value;
 pub mod value_store;
 pub mod workflow;
 
-#[cfg(kani)]
+// HVR-PO-CORE-001/HVR-PO-CORE-003/HVR-PO-CORE-004: keep legacy Kani groups out of the vb-god2f feature lane.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_expr_bound;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_capability_harnesses;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_idempotency_gates;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_taint_propagation;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_step_budget_zero;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_step_budget_one;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_step_budget;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_step_budget_try_take_arbitrary;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_budget_arithmetic_refinement;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_index_access;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_resource_budget_bounded;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_workflow_arbitrary;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_workflow_budget_harnesses;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_step_harnesses;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_step_state_transition;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_taint;
 
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 pub mod kani_vbjpq733_proofs;
 
 #[cfg(all(kani, feature = "kani-diagnostic-codes"))]
@@ -88,6 +89,15 @@ pub mod kani;
 
 #[cfg(all(kani, feature = "kani-resource-contract-boundaries"))]
 pub mod kani_validate_resource_contract_boundaries;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-proof-kernels"))]
+pub mod kani_vb_god2f_resource_replacement;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-proof-kernels"))]
+pub mod kani_vb_god2f_step_state_replacement;
+
+#[cfg(all(kani, feature = "kani-vb-god2f-proof-kernels"))]
+pub mod kani_vb_god2f_taint_replacement;
 
 pub mod verification;
 

@@ -420,7 +420,8 @@ fn blob_index(id: BlobId) -> CoreResult<usize> {
     usize::try_from(id.get()).map_err(|_| CoreError::BlobOutOfBounds { blob: id })
 }
 
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude legacy value-store Kani modules from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod kani_harnesses {
     fn same_static_str(left: &'static str, right: &'static str) -> bool {
         left.len() == right.len() && core::ptr::eq(left.as_ptr(), right.as_ptr())

@@ -40,9 +40,7 @@ mod shared {
     }
 
     /// Increments the run's executed counter with overflow guard.
-    pub(crate) fn increment_replay_executed(
-        run: &mut RunFrame,
-    ) -> Result<(), ReplayError> {
+    pub(crate) fn increment_replay_executed(run: &mut RunFrame) -> Result<(), ReplayError> {
         run.increment_executed().map_err(|_| ReplayError::Internal {
             reason: "executed counter overflow",
         })
@@ -98,9 +96,7 @@ pub(crate) fn replay_step_kind(
         crate::workflow::CompiledNodeKind::SetConst { value } => {
             set_const::replay_set_const(plan, run, node, *value)
         }
-        crate::workflow::CompiledNodeKind::Copy { source } => {
-            copy::replay_copy(run, node, *source)
-        }
+        crate::workflow::CompiledNodeKind::Copy { source } => copy::replay_copy(run, node, *source),
         crate::workflow::CompiledNodeKind::EvalExpr { expr } => {
             eval_expr::replay_eval_expr(plan, run, store, node, *expr)
         }
@@ -110,9 +106,7 @@ pub(crate) fn replay_step_kind(
         crate::workflow::CompiledNodeKind::BuildList { items } => {
             build_list::replay_build_list(run, store, node, items)
         }
-        crate::workflow::CompiledNodeKind::Finish { result } => {
-            finish::replay_finish(run, *result)
-        }
+        crate::workflow::CompiledNodeKind::Finish { result } => finish::replay_finish(run, *result),
         crate::workflow::CompiledNodeKind::Jump { target } => jump::replay_jump(run, *target),
         crate::workflow::CompiledNodeKind::Do { .. } => {
             Ok(replay_suspend(node, SuspensionKind::ActionPending))

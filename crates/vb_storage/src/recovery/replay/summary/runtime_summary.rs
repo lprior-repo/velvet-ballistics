@@ -6,7 +6,7 @@
 //! - `summarize_recovery_events` — full summary hydration
 //! - `recover_run_admission_from_events` — latest admission metadata
 
-use crate::recovery::action_digest::{verify_action_ticket_event, verified_action_envelope_digest};
+use crate::recovery::action_digest::{verified_action_envelope_digest, verify_action_ticket_event};
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult, RecoveryRuntimeSummary};
 use crate::{EventSeq, JournalEvent};
@@ -165,7 +165,9 @@ fn apply_summary_event_checked(
 
 /// Recovers the latest admission metadata from ordered journal events.
 #[must_use]
-pub fn recover_run_admission_from_events(events: &[JournalEvent]) -> Option<crate::recovery::RecoveredRunAdmission> {
+pub fn recover_run_admission_from_events(
+    events: &[JournalEvent],
+) -> Option<crate::recovery::RecoveredRunAdmission> {
     events.iter().rev().find_map(|event| match event {
         JournalEvent::RunAdmission {
             run,
@@ -186,7 +188,9 @@ pub fn recover_run_admission_from_events(events: &[JournalEvent]) -> Option<crat
 // ── Full summary hydration ──────────────────────────────────────────────────
 
 /// Builds a summary-only recovery product from already ordered journal events.
-pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<crate::recovery::RecoveryHydration> {
+pub fn summarize_recovery_events(
+    events: &[JournalEvent],
+) -> RecoveryResult<crate::recovery::RecoveryHydration> {
     let Some(first) = events.first() else {
         return Err(RecoveryError::NoRecoveryData { run: RunId::new(0) });
     };

@@ -53,7 +53,9 @@ pub(super) const BLOB_OUT_OF_BOUNDS_CODE: DiagnosticCode = DiagnosticCode::new(0
 
 /// Returns the diagnostic code for execution variants.
 #[must_use]
-pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(
+    error: &crate::errors::core::CoreError,
+) -> Option<DiagnosticCode> {
     match error {
         crate::errors::core::CoreError::StepBudgetExhausted => Some(STEP_BUDGET_EXHAUSTED_CODE),
         crate::errors::core::CoreError::StepCounterOverflow => Some(STEP_COUNTER_OVERFLOW_CODE),
@@ -72,18 +74,24 @@ pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> O
         crate::errors::core::CoreError::InvalidCompiledWorkflow { .. } => {
             Some(INVALID_COMPILED_WORKFLOW_CODE)
         }
-        crate::errors::core::CoreError::UnsupportedPrimitive { .. } => Some(UNSUPPORTED_PRIMITIVE_CODE),
+        crate::errors::core::CoreError::UnsupportedPrimitive { .. } => {
+            Some(UNSUPPORTED_PRIMITIVE_CODE)
+        }
         crate::errors::core::CoreError::InternalInvariantViolation { .. } => {
             Some(INTERNAL_INVARIANT_CODE)
         }
         crate::errors::core::CoreError::UnsupportedAccessorTraversal { .. } => {
             Some(UNSUPPORTED_ACCESSOR_TRAVERSAL_CODE)
         }
-        crate::errors::core::CoreError::ObjectFieldNotFound { .. } => Some(OBJECT_FIELD_NOT_FOUND_CODE),
+        crate::errors::core::CoreError::ObjectFieldNotFound { .. } => {
+            Some(OBJECT_FIELD_NOT_FOUND_CODE)
+        }
         crate::errors::core::CoreError::ListIndexOutOfBounds { .. } => {
             Some(LIST_INDEX_OUT_OF_BOUNDS_CODE)
         }
-        crate::errors::core::CoreError::ExpressionStackUnderflow => Some(EXPRESSION_STACK_UNDERFLOW_CODE),
+        crate::errors::core::CoreError::ExpressionStackUnderflow => {
+            Some(EXPRESSION_STACK_UNDERFLOW_CODE)
+        }
         crate::errors::core::CoreError::SymbolOutOfBounds { .. } => Some(SYMBOL_OUT_OF_BOUNDS_CODE),
         crate::errors::core::CoreError::ListOutOfBounds { .. } => Some(LIST_OUT_OF_BOUNDS_CODE),
         crate::errors::core::CoreError::ObjectOutOfBounds { .. } => Some(OBJECT_OUT_OF_BOUNDS_CODE),

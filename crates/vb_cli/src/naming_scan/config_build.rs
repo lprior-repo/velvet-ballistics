@@ -2,7 +2,6 @@
 ///
 /// Transforms a validated slice of [`CanonicalEntry`] into a
 /// [`CanonicalSpellingTable`], enforcing uniqueness and token correctness.
-
 use super::config_types::*;
 use super::types::*;
 

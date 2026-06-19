@@ -7,7 +7,7 @@
 #          are inconsistent with VALID_TRANSITIONS.
 #
 # Parser notes:
-#   The source file declares `pub enum StepState` twice (once inside the
+#   The split state source declares `pub enum StepState` twice (once inside the
 #   `verus!` spec block, once inside the `cargo_kernel` runtime module).
 #   A naive `sed /start/,/end/p` range cycles across both occurrences
 #   because GNU sed re-enters the range on every start match, which
@@ -21,10 +21,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$ROOT/crates/vb_proof_kernels/src/step_state.rs"
+STATE_SRC="$ROOT/crates/vb_proof_kernels/src/step_state/state.rs"
+TRANSITION_SRC="$ROOT/crates/vb_proof_kernels/src/step_state/transition.rs"
 
-if [[ ! -f "$SRC" ]]; then
-  echo "ERROR: $SRC not found" >&2
+if [[ ! -f "$STATE_SRC" ]]; then
+  echo "ERROR: $STATE_SRC not found" >&2
+  exit 1
+fi
+
+if [[ ! -f "$TRANSITION_SRC" ]]; then
+  echo "ERROR: $TRANSITION_SRC not found" >&2
   exit 1
 fi
 
@@ -114,11 +120,11 @@ extract_stepstate_refs() {
   printf '%s\n' "$1" | grep -oE 'StepState::[A-Za-z_]+' | sed 's/StepState:://' | sort -u
 }
 
-VARIANTS=$(extract_enum_variants "$SRC")
+VARIANTS=$(extract_enum_variants "$STATE_SRC")
 VARIANT_COUNT=$(printf '%s\n' "$VARIANTS" | grep -c . || true)
 echo "Found $VARIANT_COUNT enum variants: $(printf '%s\n' "$VARIANTS" | tr '\n' ' ')"
 
-VT_BLOCK=$(extract_const_block_lines "$SRC" 'const VALID_TRANSITIONS')
+VT_BLOCK=$(extract_const_block_lines "$TRANSITION_SRC" 'const VALID_TRANSITIONS')
 TRANSITION_STATES=$(extract_stepstate_refs "$VT_BLOCK")
 TRANSITION_STATE_COUNT=$(printf '%s\n' "$TRANSITION_STATES" | grep -c . || true)
 echo "Found $TRANSITION_STATE_COUNT unique states in VALID_TRANSITIONS: $(printf '%s\n' "$TRANSITION_STATES" | tr '\n' ' ')"
@@ -149,10 +155,10 @@ if [[ -n "$PHANTOM" ]]; then
   exit 1
 fi
 
-IS_TERMINAL_BLOCK=$(extract_fn_block "$SRC" "is_terminal")
+IS_TERMINAL_BLOCK=$(extract_fn_block "$STATE_SRC" "is_terminal")
 TERMINAL_FROM_MATCHES=$(extract_stepstate_refs "$IS_TERMINAL_BLOCK")
 
-TERMINAL_STATES_BLOCK=$(extract_fn_block "$SRC" "terminal_states")
+TERMINAL_STATES_BLOCK=$(extract_fn_block "$TRANSITION_SRC" "terminal_states")
 TERMINAL_FROM_FUNC=$(extract_stepstate_refs "$TERMINAL_STATES_BLOCK")
 
 if [[ "$TERMINAL_FROM_MATCHES" != "$TERMINAL_FROM_FUNC" ]]; then
@@ -168,7 +174,7 @@ NON_TERMINAL_FROM_MATCHES=$(printf '%s\n' "$VARIANTS" | while read -r v; do
   fi
 done | sort -u)
 
-NON_TERMINAL_STATES_BLOCK=$(extract_fn_block "$SRC" "non_terminal_states")
+NON_TERMINAL_STATES_BLOCK=$(extract_fn_block "$TRANSITION_SRC" "non_terminal_states")
 NON_TERMINAL_FROM_FUNC=$(extract_stepstate_refs "$NON_TERMINAL_STATES_BLOCK")
 
 if [[ "$NON_TERMINAL_FROM_MATCHES" != "$NON_TERMINAL_FROM_FUNC" ]]; then

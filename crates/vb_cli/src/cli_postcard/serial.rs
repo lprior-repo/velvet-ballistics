@@ -12,7 +12,10 @@ use super::error::PostcardError;
 /// Low-level helper: read a fixed-size byte slice from `data` at `start`.
 ///
 /// Returns `DecodeFailed` on bounds errors.
-pub(crate) fn read_array<const N: usize>(data: &[u8], start: usize) -> Result<[u8; N], PostcardError> {
+pub(crate) fn read_array<const N: usize>(
+    data: &[u8],
+    start: usize,
+) -> Result<[u8; N], PostcardError> {
     let end = start.checked_add(N).ok_or(PostcardError::DecodeFailed)?;
     let bytes = data.get(start..end).ok_or(PostcardError::DecodeFailed)?;
     <[u8; N]>::try_from(bytes).map_err(|_| PostcardError::DecodeFailed)

@@ -31,9 +31,7 @@ pub(super) fn replay_build_list(
         })?;
         let value = *run.read_slot(*slot).map_err(|e| match e {
             EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
-            EngineError::SlotUninitialized { slot: s } => {
-                ReplayError::SlotNotAvailable { slot: s }
-            }
+            EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
             _ => ReplayError::Internal {
                 reason: "unexpected error reading build_list item slot",
             },

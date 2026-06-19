@@ -8,7 +8,7 @@
 // trailing bytes rejected. Defends against concatenation attacks (H5).
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope
+//   vb_storage::admission::decode_accepted_artifact_envelope
 //   vb_storage::codec::fuzz_validation::reject_trailing_bytes
 
 #![no_main]
@@ -51,7 +51,7 @@ fuzz_target!(|data: &[u8]| {
     let declared_end = envelope.len();
     append_nonempty_trailer(&mut envelope, data);
     let actual_len = envelope.len();
-    let result = vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope(&envelope);
+    let result = vb_storage::admission::decode_accepted_artifact_envelope(&envelope);
     assert!(
         matches!(
             result,
@@ -140,7 +140,7 @@ fn append_nonempty_trailer(envelope: &mut Vec<u8>, data: &[u8]) {
 }
 
 fn assert_valid_envelope_decodes(envelope: &[u8]) {
-    let result = vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope(envelope);
+    let result = vb_storage::admission::decode_accepted_artifact_envelope(envelope);
     assert!(
         result.is_ok(),
         "baseline accepted-artifact envelope must decode before trailer mutation: {result:?}"

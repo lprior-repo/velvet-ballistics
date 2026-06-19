@@ -1,6 +1,6 @@
 #![no_main]
 
-//! Fuzz target: kind_validation — PO-FUZZ-001 (vb-b8i8f)
+//! Fuzz target: kind_validation — PO-FUZZ-001 (vb-b8i8f), HVR-PO-STORAGE-004.
 //!
 //! Exercises validate_kind_family, is_known_record_kind, and validate_known_kind
 //! with arbitrary (magic, kind) pairs from byte input.
@@ -8,8 +8,8 @@
 //! GOD RULE: Zero panics, zero crashes. All errors must be typed JournalError variants.
 //!
 //! Coverage goals:
-//! - Kind 28 accepted for MAGIC_JOURNAL_EVENT
-//! - Kind 28 rejected for MAGIC_SNAPSHOT, MAGIC_BLOB, etc.
+//! - Kind 29 accepted for MAGIC_JOURNAL_EVENT (upper MRWE5 journal-family boundary)
+//! - Kind 29 rejected for MAGIC_SNAPSHOT, MAGIC_BLOB, etc.
 //! - Unknown kinds rejected with UnknownRecordKind
 //! - All known magic values exercised
 //!
@@ -61,8 +61,8 @@ fuzz_target!(|data: &[u8]| {
             match magic {
                 m if m == vb_storage::MAGIC_JOURNAL_EVENT => {
                     assert!(
-                        (10..=28).contains(&kind),
-                        "MAGIC_JOURNAL_EVENT accepted kind {} not in 10..=28",
+                        (10..=29).contains(&kind),
+                        "MAGIC_JOURNAL_EVENT accepted kind {} not in 10..=29",
                         kind
                     );
                 }

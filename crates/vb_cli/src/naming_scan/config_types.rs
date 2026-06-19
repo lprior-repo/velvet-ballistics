@@ -2,7 +2,6 @@
 ///
 /// These are immutable domain constants and pure utility functions;
 /// the core never mutates them.
-
 use std::path::PathBuf;
 
 /// Canonical product name token.
@@ -31,8 +30,12 @@ pub(crate) fn fingerprint_for_destination(destination: Option<&PathBuf>) -> Stri
 ///
 /// Shared by both the build and validate submodules; no domain state
 /// dependency makes it a natural home in the types module.
-pub(crate) fn invalid_config<T>(reason: &str) -> Result<T, crate::naming_scan::types::NamingScanError> {
-    Err(crate::naming_scan::types::NamingScanError::InvalidConfiguration {
-        reason: reason.to_owned(),
-    })
+pub(crate) fn invalid_config<T>(
+    reason: &str,
+) -> Result<T, crate::naming_scan::types::NamingScanError> {
+    Err(
+        crate::naming_scan::types::NamingScanError::InvalidConfiguration {
+            reason: reason.to_owned(),
+        },
+    )
 }

@@ -15,7 +15,7 @@ use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{
     ActionReplayTracker, RecoveredPendingAction, RecoveredSlotEntry, RecoveryError, RecoveryResult,
 };
-use crate::slot_extra::{decode_slot_written_extra, DecodedSlotWrittenExtra};
+use crate::slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra};
 use crate::{EventSeq, JournalEvent};
 use vb_core::replay::ReplayError;
 use vb_core::value_store::ValueStore;

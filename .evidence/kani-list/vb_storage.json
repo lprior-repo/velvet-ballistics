@@ -2,32 +2,15 @@
   "kani-version": "0.67.0",
   "file-version": "0.1",
   "standard-harnesses": {
-    "crates/vb_storage/src/kani_vbjpq733_proofs.rs": [
-      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_all_states",
-      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_each_flag",
-      "kani_vbjpq733_proofs::vbjpq733_is_fully_supported_supported_constant",
-      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_all_combos",
-      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_commutative",
-      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_idempotent",
-      "kani_vbjpq733_proofs::vbjpq733_unsupported_union_supported_identity"
-    ],
-    "crates/vb_storage/src/verification/kani/vb_mrwe5_compat_kind_family.rs": [
-      "vb_mrwe5_compat_kind_family::kind_ids_and_legacy_policy_are_narrow"
-    ],
-    "crates/vb_storage/src/verification/kani/vb_mrwe5_decode_reject.rs": [
-      "vb_mrwe5_decode_reject::valid_postcard_mismatches_reject_before_semantics"
-    ],
-    "crates/vb_storage/src/verification/kani/vb_mrwe5_kind_parity.rs": [
-      "vb_mrwe5_kind_parity::new_writes_use_canonical_record_kind"
-    ],
-    "crates/vb_storage/src/verification/kani/vb_mrwe5_roundtrip.rs": [
-      "vb_mrwe5_roundtrip::step_succeeded_and_slot_written_roundtrip_with_envelope_assertions"
+    "crates/vb_storage/src/kani_vb_god2f_classification_recovery.rs": [
+      "kani_vb_god2f_classification_recovery::vb_god2f_recovery_digest_and_action_replay_state",
+      "kani_vb_god2f_classification_recovery::vb_god2f_storage_kind_family_and_semantic_decode"
     ]
   },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 11,
+    "standard-harnesses": 2,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

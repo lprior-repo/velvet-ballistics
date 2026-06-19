@@ -27,6 +27,8 @@ use crate::shard::types::{
 
 mod chunk_003_completion;
 mod chunk_003_error;
+// HVR-PO-RUNTIME-001/HVR-PO-RUNTIME-002/HVR-PO-RUNTIME-006: keep legacy lifecycle Kani harnesses out of the vb-god2f feature lane.
+#[cfg(all(kani, not(feature = "vb-god2f-action-completion")))]
 mod chunk_003_kani;
 
 // Re-export for convenience

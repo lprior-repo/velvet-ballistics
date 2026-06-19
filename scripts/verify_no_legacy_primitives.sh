@@ -33,57 +33,64 @@ echo "Meta-lint: Legacy Primitive Name Check (vb-xi2f.16)"
 echo "=============================================="
 echo ""
 
-# Check vb_validate/src/schema.rs
-echo "Checking vb_validate/src/schema.rs..."
-SCHEMA_FILE="$REPO_ROOT/crates/vb_validate/src/schema.rs"
+# Check split vb_validate/src/schema module files.
+echo "Checking vb_validate/src/schema/types.rs..."
+SCHEMA_TYPES_FILE="$REPO_ROOT/crates/vb_validate/src/schema/types.rs"
+echo "Checking vb_validate/src/schema/validation.rs..."
+SCHEMA_VALIDATION_FILE="$REPO_ROOT/crates/vb_validate/src/schema/validation.rs"
 
-if [ ! -f "$SCHEMA_FILE" ]; then
-    echo -e "${RED}ERROR: $SCHEMA_FILE not found${NC}"
+if [ ! -f "$SCHEMA_TYPES_FILE" ]; then
+    echo -e "${RED}ERROR: $SCHEMA_TYPES_FILE not found${NC}"
+    exit 1
+fi
+
+if [ ! -f "$SCHEMA_VALIDATION_FILE" ]; then
+    echo -e "${RED}ERROR: $SCHEMA_VALIDATION_FILE not found${NC}"
     exit 1
 fi
 
 # Check STEP_PRIMITIVES constant for "parallel"
-if grep -n 'STEP_PRIMITIVES' "$SCHEMA_FILE" > /dev/null 2>&1; then
+if grep -n 'STEP_PRIMITIVES' "$SCHEMA_TYPES_FILE" > /dev/null 2>&1; then
     # Extract the STEP_PRIMITIVES array and check for legacy names
-    if grep -A 20 'const STEP_PRIMITIVES' "$SCHEMA_FILE" | grep -q '"parallel"'; then
-        echo -e "${RED}FAIL: STEP_PRIMITIVES in schema.rs contains 'parallel' (should use 'together')${NC}"
-        grep -n '"parallel"' "$SCHEMA_FILE" || true
+    if grep -A 20 'const STEP_PRIMITIVES' "$SCHEMA_TYPES_FILE" | grep -q '"parallel"'; then
+        echo -e "${RED}FAIL: STEP_PRIMITIVES in schema/types.rs contains 'parallel' (should use 'together')${NC}"
+        grep -n '"parallel"' "$SCHEMA_TYPES_FILE" || true
         ERRORS=$((ERRORS + 1))
     else
-        echo -e "${GREEN}PASS: STEP_PRIMITIVES in schema.rs does not contain 'parallel'${NC}"
+        echo -e "${GREEN}PASS: STEP_PRIMITIVES in schema/types.rs does not contain 'parallel'${NC}"
     fi
 
-    if grep -A 20 'const STEP_PRIMITIVES' "$SCHEMA_FILE" | grep -q '"aggregate"'; then
-        echo -e "${RED}FAIL: STEP_PRIMITIVES in schema.rs contains 'aggregate' (should use 'reduce')${NC}"
-        grep -n '"aggregate"' "$SCHEMA_FILE" || true
+    if grep -A 20 'const STEP_PRIMITIVES' "$SCHEMA_TYPES_FILE" | grep -q '"aggregate"'; then
+        echo -e "${RED}FAIL: STEP_PRIMITIVES in schema/types.rs contains 'aggregate' (should use 'reduce')${NC}"
+        grep -n '"aggregate"' "$SCHEMA_TYPES_FILE" || true
         ERRORS=$((ERRORS + 1))
     else
-        echo -e "${GREEN}PASS: STEP_PRIMITIVES in schema.rs does not contain 'aggregate'${NC}"
+        echo -e "${GREEN}PASS: STEP_PRIMITIVES in schema/types.rs does not contain 'aggregate'${NC}"
     fi
 else
-    echo -e "${YELLOW}WARNING: STEP_PRIMITIVES not found in schema.rs${NC}"
+    echo -e "${YELLOW}WARNING: STEP_PRIMITIVES not found in schema/types.rs${NC}"
 fi
 
 # Check ALLOWED_STEP_FIELDS constant for "parallel"
-if grep -n 'ALLOWED_STEP_FIELDS' "$SCHEMA_FILE" > /dev/null 2>&1; then
-    if grep -A 30 'const ALLOWED_STEP_FIELDS' "$SCHEMA_FILE" | grep -q '"parallel"'; then
-        echo -e "${RED}FAIL: ALLOWED_STEP_FIELDS in schema.rs contains 'parallel'${NC}"
+if grep -n 'ALLOWED_STEP_FIELDS' "$SCHEMA_VALIDATION_FILE" > /dev/null 2>&1; then
+    if grep -A 30 'const ALLOWED_STEP_FIELDS' "$SCHEMA_VALIDATION_FILE" | grep -q '"parallel"'; then
+        echo -e "${RED}FAIL: ALLOWED_STEP_FIELDS in schema/validation.rs contains 'parallel'${NC}"
         ERRORS=$((ERRORS + 1))
     else
-        echo -e "${GREEN}PASS: ALLOWED_STEP_FIELDS in schema.rs does not contain 'parallel'${NC}"
+        echo -e "${GREEN}PASS: ALLOWED_STEP_FIELDS in schema/validation.rs does not contain 'parallel'${NC}"
     fi
 
-    if grep -A 30 'const ALLOWED_STEP_FIELDS' "$SCHEMA_FILE" | grep -q '"aggregate"'; then
-        echo -e "${RED}FAIL: ALLOWED_STEP_FIELDS in schema.rs contains 'aggregate'${NC}"
+    if grep -A 30 'const ALLOWED_STEP_FIELDS' "$SCHEMA_VALIDATION_FILE" | grep -q '"aggregate"'; then
+        echo -e "${RED}FAIL: ALLOWED_STEP_FIELDS in schema/validation.rs contains 'aggregate'${NC}"
         ERRORS=$((ERRORS + 1))
     else
-        echo -e "${GREEN}PASS: ALLOWED_STEP_FIELDS in schema.rs does not contain 'aggregate'${NC}"
+        echo -e "${GREEN}PASS: ALLOWED_STEP_FIELDS in schema/validation.rs does not contain 'aggregate'${NC}"
     fi
 fi
 
 echo ""
 
-echo "schema_fields.rs retired; consolidated vocabulary lives in vb_validate/src/schema.rs"
+echo "schema_fields.rs retired; consolidated vocabulary lives in vb_validate/src/schema/"
 
 echo ""
 echo "=============================================="

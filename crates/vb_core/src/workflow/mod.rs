@@ -14,13 +14,14 @@ pub mod resource_contract;
 pub mod validation;
 pub mod workflow;
 
-#[cfg(kani)]
+// HVR-PO-CORE-004: exclude legacy workflow Kani modules from vb-god2f resource lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod compiled_empty_path_kani;
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod compiled_query_kani;
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod compiled_slug_kani;
-#[cfg(kani)]
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod compiled_total_cost_kani;
 #[cfg(all(kani, feature = "kani-vb-ajc40"))]
 mod kani_vb_dzibx_ajc40_admission; // RPO-AJC40-004 verifier-only harness module.

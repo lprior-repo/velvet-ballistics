@@ -34,9 +34,18 @@ pub fn step_succeeded_and_slot_written_roundtrip_with_envelope_assertions() {
         attempt: kani::any::<u16>() | 1,
     });
 
-    kani::assert(step_event.record_kind() == RecordKind::StepSucceeded, "kani harness assertion");
-    kani::assert(slot_event.record_kind() == RecordKind::SlotWritten, "kani harness assertion");
-    kani::assert(step_event.record_kind() != slot_event.record_kind(), "kani harness assertion");
+    kani::assert(
+        step_event.record_kind() == RecordKind::StepSucceeded,
+        "kani harness assertion",
+    );
+    kani::assert(
+        slot_event.record_kind() == RecordKind::SlotWritten,
+        "kani harness assertion",
+    );
+    kani::assert(
+        step_event.record_kind() != slot_event.record_kind(),
+        "kani harness assertion",
+    );
 
     let step_envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,

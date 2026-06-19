@@ -14,17 +14,6 @@ use crate::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
-fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
-where
-    T: core::fmt::Debug + PartialEq,
-{
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(format!("expected {expected:?}, found {actual:?}"))
-    }
-}
-
 // ---------------------------------------------------------------------------
 // 6. node_helpers::set_const — ConstOutOfBounds
 // ---------------------------------------------------------------------------

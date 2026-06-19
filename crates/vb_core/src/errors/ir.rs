@@ -34,7 +34,9 @@ pub(super) const DIVISION_BY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x1
 
 /// Returns the diagnostic code for IR-validation variants.
 #[must_use]
-pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> Option<DiagnosticCode> {
+pub(super) const fn diagnostic_code(
+    error: &crate::errors::core::CoreError,
+) -> Option<DiagnosticCode> {
     match error {
         crate::errors::core::CoreError::InvalidProgramCounter { .. } => {
             Some(INVALID_PROGRAM_COUNTER_CODE)
@@ -58,7 +60,9 @@ pub(super) const fn diagnostic_code(error: &crate::errors::core::CoreError) -> O
 #[must_use]
 pub(super) const fn runtime_code(error: &crate::errors::core::CoreError) -> Option<&'static str> {
     match error {
-        crate::errors::core::CoreError::ConstOutOfBounds { .. } => Some(CONST_OUT_OF_BOUNDS_RUNTIME_CODE),
+        crate::errors::core::CoreError::ConstOutOfBounds { .. } => {
+            Some(CONST_OUT_OF_BOUNDS_RUNTIME_CODE)
+        }
         crate::errors::core::CoreError::TypeMismatch { .. }
         | crate::errors::core::CoreError::NonBoolCondition { .. } => {
             Some(INPUT_TYPE_MISMATCH_RUNTIME_CODE)

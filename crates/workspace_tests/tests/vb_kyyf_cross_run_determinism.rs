@@ -176,6 +176,7 @@ const KYYF_POLICY_EVIDENCE: &str = ".evidence/vb-kyyf/non-replay-safe-actions.md
 const KYYF_CORRUPT_EVIDENCE: &str = ".evidence/vb-kyyf/recovery-bdd-errors.md";
 const KYYF_ACCEPTANCE_CATALOG_EVIDENCE: &str =
     ".evidence/vb-kyyf/acceptance-catalog-traceability.md";
+const HVR_PO_KYYF_001_LIMITATION: &str = "HVR-PO-KYYF-001 guards the public vb_proof_kernels normalization/compare surface only; it is not runtime/storage/codegen proof closure until adapters map into PublicObservation.";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum VbKyyfScenarioDiagnostic {
@@ -2249,6 +2250,13 @@ fn digest_status_all_match_is_true_only_for_all_sixteen_matching_bit_combination
             }
         }
     }
+}
+
+#[test]
+fn hvr_po_kyyf_001_records_public_surface_nonclosure_boundary() {
+    assert!(HVR_PO_KYYF_001_LIMITATION.contains("public vb_proof_kernels"));
+    assert!(HVR_PO_KYYF_001_LIMITATION.contains("not runtime/storage/codegen proof closure"));
+    assert!(HVR_PO_KYYF_001_LIMITATION.contains("PublicObservation"));
 }
 
 #[test]

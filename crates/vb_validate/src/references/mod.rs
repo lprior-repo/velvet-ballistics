@@ -40,4 +40,5 @@ pub use self::parse::{OUTPUT_FIELD_SYMBOL, parse_step_reference};
 pub use vb_core::ids::StepIdx;
 
 // Internal helper that tests reach via `super::validate_rooted_reference`.
+#[cfg(test)]
 pub(crate) use self::validate::validate_rooted_reference;

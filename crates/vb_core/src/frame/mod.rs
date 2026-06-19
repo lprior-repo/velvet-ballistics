@@ -34,5 +34,6 @@ pub use step_state::{StepState, is_valid_step_state_transition};
 #[cfg(verus)]
 pub mod verus_proofs;
 
-#[cfg(kani)]
+// HVR-PO-CORE-003: exclude legacy frame Kani modules from vb-god2f step-state lane discovery.
+#[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
 mod tests_and_verification;

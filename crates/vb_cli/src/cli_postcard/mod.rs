@@ -29,17 +29,17 @@ mod validation;
 pub(crate) use classify::{ClassifyError, classify_envelope};
 pub(crate) use codec::{decode_cli_payload, decode_postcard_payload, encode_postcard};
 pub(crate) use constants::{
-    CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE, HEADER_SIZE_U32,
-    MAX_PAYLOAD, MAX_PAYLOAD_U32,
+    CLI_MAGIC, CLI_POSTCARD_KIND, CLI_SCHEMA_VERSION, HEADER_SIZE, HEADER_SIZE_U32, MAX_PAYLOAD,
+    MAX_PAYLOAD_U32,
 };
 pub(crate) use deserial::{CliPostcardKind, UnknownCliPostcardKind};
 pub(crate) use error::PostcardError;
 pub(crate) use serial::PostcardHeader;
 pub(crate) use types::{
-    CliPostcardPayload, DiagnosticReport, DiffEntry, DiffReport, EnvelopeSchemaVersion,
-    EventEntry, EventsReport, ExplainErrorEntry, ExplainReport, GenericPayload,
-    ReplayReport, TraceEntry, TraceReport, ValidateReport, VerifyArtifactSection,
-    VerifyDurabilitySection, VerifyReplaySection, VerifyReport,
+    CliPostcardPayload, DiagnosticReport, DiffEntry, DiffReport, EnvelopeSchemaVersion, EventEntry,
+    EventsReport, ExplainErrorEntry, ExplainReport, GenericPayload, ReplayReport, TraceEntry,
+    TraceReport, ValidateReport, VerifyArtifactSection, VerifyDurabilitySection,
+    VerifyReplaySection, VerifyReport,
 };
 pub(crate) use types_more::{AiContextPacketReport, SystemStatusReport, WorkflowDiffReport};
 pub(crate) use validation::{decode_postcard, payload_digest};

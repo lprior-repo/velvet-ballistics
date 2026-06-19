@@ -8,6 +8,11 @@
 
 mod types;
 mod write;
+#[cfg(test)]
+mod write_compiled_ir;
+mod write_event;
+mod write_indexes;
+mod write_records;
 
 // ── Public re-exports ───────────────────────────────────────────────────────
 

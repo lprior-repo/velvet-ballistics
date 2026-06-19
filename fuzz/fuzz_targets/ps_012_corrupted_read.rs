@@ -9,7 +9,7 @@
 // and verifies validation returns a typed error rather than silently returning Ok.
 //
 // PRODUCTION BINDING:
-//   vb_storage::admission::fuzz_access::validate_compiled_ir_record
+//   vb_storage::admission::validate_compiled_ir_record
 
 #![no_main]
 
@@ -86,7 +86,7 @@ fn canonical_workflow_ir(workflow: &vb_core::CompiledWorkflow) -> Result<Vec<u8>
 }
 
 fn assert_valid_record_is_accepted(record: &CompiledIrRecord) {
-    let result = vb_storage::admission::fuzz_access::validate_compiled_ir_record(record);
+    let result = vb_storage::admission::validate_compiled_ir_record(record);
     assert!(
         result.is_ok(),
         "baseline compiled-ir record must validate before corruption: {result:?}"
@@ -100,7 +100,7 @@ fn assert_digest_mismatch_is_rejected(record: CompiledIrRecord) {
         ir: record.ir,
         metadata_hash: None,
     };
-    let result = vb_storage::admission::fuzz_access::validate_compiled_ir_record(&corrupted);
+    let result = vb_storage::admission::validate_compiled_ir_record(&corrupted);
     assert!(
         matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
         "digest mismatch must be rejected as ArtifactChecksumMismatch: {result:?}"
@@ -119,7 +119,7 @@ fn assert_inner_payload_checksum_is_rejected(record: CompiledIrRecord) {
         Ok(corrupted) => corrupted,
         Err(error) => panic!("inner payload checksum setup failed: {error}"),
     };
-    let result = vb_storage::admission::fuzz_access::validate_compiled_ir_record(&corrupted);
+    let result = vb_storage::admission::validate_compiled_ir_record(&corrupted);
     assert!(
         matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
         "inner accepted-artifact IR mutation must be rejected by recomputed checksum: {result:?}"
@@ -128,7 +128,7 @@ fn assert_inner_payload_checksum_is_rejected(record: CompiledIrRecord) {
 
 fn inner_payload_checksum_corruption(record: CompiledIrRecord) -> Result<CompiledIrRecord, String> {
     let mut artifact =
-        vb_storage::admission::fuzz_access::decode_accepted_artifact_envelope(&record.ir)
+        vb_storage::admission::decode_accepted_artifact_envelope(&record.ir)
             .map_err(|error| format!("artifact envelope decode failed: {error}"))?;
     let alternate = alternate_workflow()?;
     reject_policy_digest_drift(&artifact, &alternate)?;
@@ -169,7 +169,7 @@ fn assert_trailing_envelope_is_rejected(mut record: CompiledIrRecord, data: &[u8
         _ => record.ir.push(0),
     }
     let actual_len = record.ir.len();
-    let result = vb_storage::admission::fuzz_access::validate_compiled_ir_record(&record);
+    let result = vb_storage::admission::validate_compiled_ir_record(&record);
     assert!(
         matches!(
             result,

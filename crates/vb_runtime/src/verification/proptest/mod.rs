@@ -2,6 +2,10 @@
 #[cfg(test)]
 mod proptest_attempt_fence;
 
+// HVR-PO-RUNTIME-003/HVR-PO-RUNTIME-004/HVR-PO-RUNTIME-005: vb-god2f runtime generated properties.
+#[cfg(test)]
+mod proptest_vb_god2f_action_completion;
+
 #[cfg(test)]
 mod proptest_idempotency {
     use proptest::prelude::*;

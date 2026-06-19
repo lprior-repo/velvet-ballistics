@@ -50,7 +50,10 @@ pub fn valid_postcard_mismatches_reject_before_semantics() {
     } else {
         RecordKind::StepStarted
     };
-    kani::assert(envelope_kind != event.record_kind(), "kani harness assertion");
+    kani::assert(
+        envelope_kind != event.record_kind(),
+        "kani harness assertion",
+    );
 
     let envelope = RecordEnvelope {
         magic: MAGIC_JOURNAL_EVENT,

@@ -16,12 +16,12 @@ pub use crate::constants::{
     PREFIX_WORKFLOW_SOURCE, RECORD_HEADER_BYTES, RECORD_HEADER_LEN, RECOVERY_STAMP_KEY_BYTES,
 };
 pub use crate::error::{JournalError, KeyDecodeError};
-pub use crate::recovery::{ActionReplayTracker, RunSnapshot};
 pub use crate::events::{DurableActionOutcome, JournalEvent};
 pub use crate::records::{
     BlobRecord, CompiledIrRecord, RecordKind, RecoveryStampRecord, RunHeaderRecord,
     WorkflowSourceRecord,
 };
+pub use crate::recovery::{ActionReplayTracker, RunSnapshot};
 pub use crate::slot_extra::{
     DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
     SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
