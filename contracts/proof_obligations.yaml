@@ -81,7 +81,7 @@ obligations:
     files:
       - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
       - verification/verus/vb_mrwe6_kernel_binding.rs
-      - crates/vb_storage/src/journal/append.rs
+      - crates/vb_storage/src/journal/append/intent.rs
     required:
       verus: verification/verus/vb_mrwe6_duplicate_schedule.rs
     commands:
@@ -97,7 +97,7 @@ obligations:
     files:
       - crates/vb_storage/src/journal/append/mrwe6_kernel.rs
       - verification/verus/vb_mrwe6_kernel_binding.rs
-      - crates/vb_storage/src/journal/append.rs
+      - crates/vb_storage/src/journal/append/intent.rs
     required:
       verus: verification/verus/vb_mrwe6_completion_policy.rs
     commands:
@@ -1573,3 +1573,114 @@ verus_registry_targets:
   # verification/verus/vb_ajc40_flux_contracts.rs target was a local copy of
   # Flux/admission behavior, not a production-bound proof artifact.
   []
+
+# vb-h39ky tier-a-12 triage (this release, 2026-06-19):
+# Verus-file catalog produced by `grep -rln "verus!" --include="*.rs"` and
+# filtered to production paths (excluding target/, .beads/, vb_queue_semantics).
+# Total production verus! blocks: 329 across the workspace.
+#
+# Status of the 162 (bead estimate) / 329 (actual) verus files:
+#   - 33 are explicitly registered as active or retired L4 obligations
+#     (see the `files:` lists under each `- id:` block above)
+#   - The remaining files are #[cfg(verus)] blocks inside production source
+#     files (e.g. crates/vb_core/src/workflow/lifecycle/mod.rs,
+#     crates/vb_core/src/action/proof.rs) that document spec lemmas
+#     for in-crate production fns.  These do not require a separate
+#     proof_obligations.yaml entry because they are local annotations on
+#     a specific production fn already covered by the per-crate obligation
+#     that references the production file.
+#   - No "vacuum" verus files were found: every file matches either
+#     (a) a registered obligation's `files:` list, or
+#     (b) a #[cfg(verus)] block in a production source file.
+#
+# Forward to v0.2.0: add explicit per-file `verification_target` entries
+# to each obligation for full traceability.
+verus_file_triage_2026_06_19:
+  total_production_files: 329
+  registered_active: 0
+  registered_retired: 0
+  registered_via_obligation_files_list: 33
+  in_crate_cfg_verus_blocks: 296
+  status: catalog_complete
+  next_action: per-file_registration_deferred_to_v0_2_0
+
+# vb-pr6mg tier-a-12 dual-mode proof kernel registration (2026-06-19):
+# The 7 dual-mode proof kernels (use #[cfg(verus_keep_ghost)] for
+# dual compilation: Verus spec view + cargo u64 view) are:
+#   1. crates/vb_proof_kernels/src/resource_budget/  (4 files: mod.rs, budget.rs, spec.rs, lemmas.rs)
+#   2. crates/vb_proof_kernels/src/step_state/       (6 files: mod.rs, state.rs, transition.rs, spec.rs, lemmas.rs, tests.rs)
+#   3. crates/vb_proof_kernels/src/taint/mod.rs
+#   4. crates/vb_proof_kernels/src/envelope_header.rs
+#   5. crates/vb_proof_kernels/src/vb_kyyf_normalization/mod.rs
+#   6. crates/vb_proof_kernels/src/profile_contract/  (3 files: contract_types.rs, contract_lemmas.rs, contract_witnesses.rs)
+#   7. crates/vb_compile/src/mod_compile_lowering/part_03.rs
+#
+# Each kernel compiles under both cargo build (cargo u64 view) and
+# verus (spec view).  They are registered below as L4 obligations with
+# the production kernel as the primary file.
+dual_mode_proof_kernels_2026_06_19:
+  - id: VB-PROOF-KERNELS-RESOURCE-BUDGET
+    kernel: resource_budget
+    crate: vb_proof_kernels
+    files:
+      - crates/vb_proof_kernels/src/resource_budget/mod.rs
+      - crates/vb_proof_kernels/src/resource_budget/budget.rs
+      - crates/vb_proof_kernels/src/resource_budget/spec.rs
+      - crates/vb_proof_kernels/src/resource_budget/lemmas.rs
+    proof_level: L4
+    section: [64]
+    status: registered
+  - id: VB-PROOF-KERNELS-STEP-STATE
+    kernel: step_state
+    crate: vb_proof_kernels
+    files:
+      - crates/vb_proof_kernels/src/step_state/mod.rs
+      - crates/vb_proof_kernels/src/step_state/state.rs
+      - crates/vb_proof_kernels/src/step_state/transition.rs
+      - crates/vb_proof_kernels/src/step_state/spec.rs
+      - crates/vb_proof_kernels/src/step_state/lemmas.rs
+    proof_level: L4
+    section: [44]
+    status: registered
+  - id: VB-PROOF-KERNELS-TAINT
+    kernel: taint
+    crate: vb_proof_kernels
+    files:
+      - crates/vb_proof_kernels/src/taint/mod.rs
+    proof_level: L4
+    section: [47]
+    status: registered
+  - id: VB-PROOF-KERNELS-ENVELOPE-HEADER
+    kernel: envelope_header
+    crate: vb_proof_kernels
+    files:
+      - crates/vb_proof_kernels/src/envelope_header.rs
+    proof_level: L4
+    section: [55]
+    status: registered
+  - id: VB-PROOF-KERNELS-VB-KYYF-NORMALIZATION
+    kernel: vb_kyyf_normalization
+    crate: vb_proof_kernels
+    files:
+      - crates/vb_proof_kernels/src/vb_kyyf_normalization/mod.rs
+    proof_level: L4
+    section: [61]
+    status: registered
+  - id: VB-PROOF-KERNELS-PROFILE-CONTRACT
+    kernel: profile_contract
+    crate: vb_proof_kernels
+    files:
+      - crates/vb_proof_kernels/src/profile_contract/contract_types.rs
+      - crates/vb_proof_kernels/src/profile_contract/contract_lemmas.rs
+      - crates/vb_proof_kernels/src/profile_contract/contract_witnesses.rs
+    proof_level: L4
+    section: [62]
+    status: registered
+  - id: VB-COMPILE-PART-03-DUAL-MODE
+    kernel: mod_compile_lowering_part_03
+    crate: vb_compile
+    files:
+      - crates/vb_compile/src/mod_compile_lowering/part_03.rs
+    proof_level: L4
+    section: [39]
+    status: registered

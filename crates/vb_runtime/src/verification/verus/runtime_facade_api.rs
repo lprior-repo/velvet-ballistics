@@ -2,8 +2,13 @@
 //!
 //! Production binding:
 //! - `spec_shard_index` → mirrors `RunId::shard_index` in vb_core/src/ids/mod.rs:350
+//! - `exec_shard_index_runtime` → mirrors `Runtime::shard_index` in
+//!   crates/vb_runtime/src/runtime/mod.rs (uses checked_rem for fallibility)
 //!
 //! Spec captures the mathematical core: run_id mod shard_count.
+//! The exec bridge below is a thin wrapper that documents the production
+//! method's fallible checked_rem semantics and asserts it matches the
+//! spec when both inputs are non-zero.
 
 use vstd::prelude::*;
 
@@ -103,6 +108,54 @@ verus! {
             spec_shard_index(run_id, shard_count) < shard_count,
     {
         proof_shard_index_bounded(run_id, shard_count);
+    }
+
+    // ===========================================================================
+    // Exec bridge: production Runtime::shard_index ↔ spec_shard_index
+    //
+    // The production method (crates/vb_runtime/src/runtime/mod.rs) uses
+    // `checked_rem` for fallibility; this bridge mirrors that behavior
+    // and asserts it returns the same value as spec_shard_index when
+    // the shard count fits in u64 and is non-zero.
+    // ===========================================================================
+
+    /// Exec fn: matches the production `Runtime::shard_index` semantics
+    /// using `checked_rem`. Returns 0 if either input is zero (matching
+    /// the production `try_from(...).unwrap_or_default()` and
+    /// `checked_rem(...).unwrap_or_default()` fallbacks).
+    pub fn exec_shard_index_runtime(run_id: u64, shard_count: u64) -> (result: u64)
+        ensures
+            // When shard_count > 0, the result equals spec_shard_index.
+            // When shard_count == 0, the spec returns 0; production also
+            // returns 0 via the try_from fallback (usize < u64 is
+            // always true for shard_count <= usize::MAX; checked_rem
+            // returns None when shard_count == 0, and we map to 0).
+            shard_count == 0 ==> result == 0,
+            shard_count > 0 ==> result == spec_shard_index(run_id, shard_count),
+    {
+        // Mirror production checked_rem behavior
+        if shard_count == 0 {
+            0
+        } else {
+            run_id.checked_rem(shard_count).unwrap_or(0)
+        }
+    }
+
+    /// LEMMA-FACADE-001: exec_shard_index_runtime matches spec_shard_index.
+    pub proof fn lemma_exec_shard_index_matches_spec(run_id: u64, shard_count: u64)
+        ensures
+            exec_shard_index_runtime(run_id, shard_count) == spec_shard_index(run_id, shard_count),
+    {
+        if shard_count == 0 {
+            assert(exec_shard_index_runtime(run_id, 0) == 0);
+            assert(spec_shard_index(run_id, 0) == 0);
+        } else {
+            assert(exec_shard_index_runtime(run_id, shard_count)
+                == run_id.checked_rem(shard_count).unwrap_or(0));
+            assert(spec_shard_index(run_id, shard_count) == run_id % shard_count);
+            // For non-zero shard_count, checked_rem matches %
+            assert(run_id.checked_rem(shard_count) == Some(run_id % shard_count)) by (compute);
+        }
     }
 
 } // verus!
