@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
-pub(crate) const CANONICAL_HYPHEN: &str = "velvet-ballastics";
-pub(crate) const CANONICAL_UNDERSCORE: &str = "vb_cli";
-pub(crate) const CANONICAL_LANGUAGE_VERSION: &str = "velvet-ballastics/v1";
+// Re-export canonical constants from config_types so other naming_scan
+// submodules (allowlist, classify, line_scan, legacy) can continue
+// using `super::types::*`.
+pub(crate) use super::config_types::*;
+
 pub(crate) const LEGACY_PROJECT: &str = "velvet-ballistics";
 pub(crate) const LEGACY_CRATE: &str = "velvet_ballistics";
 pub(crate) const LEGACY_LANGUAGE_VERSION: &str = "velvet-ballistics/v1";
