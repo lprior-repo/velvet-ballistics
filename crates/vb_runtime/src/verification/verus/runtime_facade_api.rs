@@ -141,20 +141,27 @@ verus! {
         }
     }
 
-    /// LEMMA-FACADE-001: exec_shard_index_runtime matches spec_shard_index.
+    /// LEMMA-FACADE-001: mathematical facts underlying the exec/spec bridge.
+    ///
+    /// The exec fn `exec_shard_index_runtime` is independently verified by
+    /// Verus to satisfy its `ensures` clauses:
+    ///   `shard_count == 0 ==> result == 0`
+    ///   `shard_count > 0 ==> result == spec_shard_index(run_id, shard_count)`
+    ///
+    /// This lemma establishes the spec-side mathematical facts that those
+    /// ensures clauses rest on, without calling the exec fn from proof
+    /// context (proof fns cannot invoke exec fns directly).  Combined with
+    /// the exec fn's verified ensures, the bridge
+    /// `exec_shard_index_runtime == spec_shard_index` is closed.
     pub proof fn lemma_exec_shard_index_matches_spec(run_id: u64, shard_count: u64)
         ensures
-            exec_shard_index_runtime(run_id, shard_count) == spec_shard_index(run_id, shard_count),
+            shard_count == 0 ==> spec_shard_index(run_id, shard_count) == 0,
+            shard_count > 0 ==> spec_shard_index(run_id, shard_count) == run_id % shard_count,
     {
         if shard_count == 0 {
-            assert(exec_shard_index_runtime(run_id, 0) == 0);
-            assert(spec_shard_index(run_id, 0) == 0);
+            assert(spec_shard_index(run_id, 0) == 0) by (compute);
         } else {
-            assert(exec_shard_index_runtime(run_id, shard_count)
-                == run_id.checked_rem(shard_count).unwrap_or(0));
-            assert(spec_shard_index(run_id, shard_count) == run_id % shard_count);
-            // For non-zero shard_count, checked_rem matches %
-            assert(run_id.checked_rem(shard_count) == Some(run_id % shard_count)) by (compute);
+            assert(spec_shard_index(run_id, shard_count) == run_id % shard_count) by (compute);
         }
     }
 
