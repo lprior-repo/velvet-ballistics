@@ -6,12 +6,12 @@
 //! defines:
 //!
 //! - `spec_shard_index(run_id, shard_count)`:
-//!     `if shard_count == 0 { 0 } else { run_id % shard_count }`.
+//!   `if shard_count == 0 { 0 } else { run_id % shard_count }`.
 //! - `exec_shard_index_runtime(run_id, shard_count)`:
-//!     Bridge that uses `checked_rem` with fallback to 0 when either
-//!     input is zero, mirroring production
-//!     `Runtime::shard_index(&self, run: RunId) -> usize` and
-//!     `RunId::shard_index(self, shard_count: u64) -> u64`.
+//!   Bridge that uses `checked_rem` with fallback to 0 when either
+//!   input is zero, mirroring production
+//!   `Runtime::shard_index(&self, run: RunId) -> usize` and
+//!   `RunId::shard_index(self, shard_count: u64) -> u64`.
 //!
 //! Each property in this file exercises the production methods directly
 //! via the public `RunId::shard_index` and asserts they implement the
@@ -20,6 +20,9 @@
 //! these tests close the L1/L3/L4 lanes for `exec_shard_index_runtime`.
 
 #![forbid(unsafe_code)]
+// The spec_shard_index reference uses u64 modulo arithmetic to mirror the
+// Verus spec at runtime; the % operator is intentional here, not a bug.
+#![allow(clippy::arithmetic_side_effects)]
 
 use proptest::prelude::*;
 use vb_core::ids::RunId;

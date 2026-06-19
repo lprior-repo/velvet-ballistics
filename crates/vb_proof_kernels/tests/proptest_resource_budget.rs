@@ -27,9 +27,6 @@
 use proptest::prelude::*;
 use vb_proof_kernels::resource_budget::Budget;
 
-/// `u64::MAX` as a literal `u64`. Matches the Verus `u64_max_int()` spec.
-const U64_MAX: u64 = 18_446_744_073_709_551_615;
-
 /// Strategy: a u64 with bias toward boundary values that exercise
 /// saturating arithmetic (0, 1, u64::MAX/2, u64::MAX).
 fn arb_u64_biased() -> impl Strategy<Value = u64> {
