@@ -1,41 +1,23 @@
-EXIT_CODE: 1
-STATE: FAILED
-RUN_DATE: 2026-06-18T04:04:52Z
-COMMIT: 9669f3581
-OUTPUT: .beads/moon-ci-output-20260617-230049.txt
-ACTION_COUNT: 48
-REQUESTED_TARGETS: 98
-RESOLVED_TARGETS: 38
-TASKS_COMPLETED: 30 observed unique completion markers; Moon emitted no final Tasks summary because the run ended with process::failed.
-TASKS_CACHED: 9 observed unique cached markers.
-TASKS_FAILED: 4 observed failed task lanes before final process::failed.
-TASKS_SKIPPED: not emitted by Moon in this run.
-FIRST_FAILURE: velvet-ballistics:verify-kani-vb-runtime — generator crate contains global ASM unsupported by Kani; rerun hint is `-Z unstable-options --ignore-global-asm`.
-FINAL_FAILURE: process::failed — git exit code 128 opening missing `crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs`.
+EXIT_CODE: 141
+STATE: TIMED_OUT
+RUN_DATE: 2026-06-19T12:44:49Z
+COMMIT: 76d73463cc95b60fe2ef3d48e2be7dea9b6406e5
+OUTPUT: .beads/moon-ci-output-20260619-074235.txt
+TIMEOUT_BUDGET: 1500s
 NOTES: |
-  Targeted repair scope files were already syntactically clean when inspected:
-    - crates/vb_core/src/kani/kani_reverse_lookup.rs
-    - crates/vb_core/src/kani/kani_serde_roundtrip.rs
-    - crates/vb_core/src/kani/vb_5iebh_check_scope.rs
-    - crates/vb_core/src/kani_validate_resource_contract_boundaries.rs
-    - crates/vb_yaml/src/kani/kani_all_variants_registered.rs
-    - crates/vb_yaml/src/kani/kani_checked_add.rs
-    - crates/vb_yaml/src/kani/kani_panic_freedom.rs
-    - crates/vb_yaml/src/kani/kani_yaml_error_code.rs
-    - crates/vb_storage/src/kani_vbjpq733_proofs.rs
-  Targeted cargo checks passed:
-    - cargo check -p vb_core --all-targets
-    - cargo check -p vb_yaml --all-targets
-    - cargo check -p vb_storage --all-targets
-    - cargo check --workspace --all-targets --all-features
-  Focused Kani/Moon gate passed:
-    - moon run :verify-kani (Tasks: 1 completed)
-  Moon CI remaining failures are outside the requested nine-file cleanup scope:
-    - verify-kani-vb-runtime: Kani rejects global ASM in transitive generator crate.
-    - verify-kani-vb-compile: crates/vb_compile/src/kani_lower_control.rs has four mismatched closing-delimiter errors from prior botched assert migration.
-    - verify-kani-vb-storage: same generator global ASM blocker.
-    - verify-kani-vb-ipc: `crates/vb_runtime/src/shard/impl_parts/journal_helpers.rs` unused import and `SnapshotWriteOutcome` dead-code errors under `-D warnings`.
-    - final git process failure: missing `crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs`.
+  Tier A kani gate repairs (the 4 blockers from moon-ci-output-20260617-230049.txt):
+    - verify-kani-vb-compile: PASS (10m 20s) - kani_lower_control.rs structurally clean.
+    - verify-kani-vb-ipc: PASS (1m 54s) - kani_harnesses_plan.rs + kani_parallel_in_flight.rs already fixed.
+    - verify-kani-vb-runtime: PASS (5m 53s) - cargo kani --lib excludes dev-deps, blocks loom -> generator global ASM.
+    - verify-kani-vb-storage: PASS (11m 9s) - same --lib fix.
+  Missing crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs: not tracked in current
+  git tree (deleted in 9bd22a41f under vb-dzibx, see contracts/proof_obligations.yaml:1488-1492);
+  source-length task's .exists() filter now drops the dead reference.
+  Full moon ci: TIMED_OUT at 1500s during verify-kani-vb-runtime long-running harness
+  (drop_in_place unwind loop iterations 7-15+). The four targeted Tier A kani lanes all
+  complete SUCCESSFUL when run individually; the overall wall-clock budget for the
+  49-action graph exceeds 1500s.
 NEXT_TURN_PLAN: |
-  Create/claim a follow-up bead for the remaining non-local moon-ci blockers.
-  Recommended first action: repair `crates/vb_compile/src/kani_lower_control.rs` structural corruption in an isolated commit, then address Kani global ASM policy/tool flags and vb_runtime warning escalations separately.
+  Increase moon ci wall-clock budget to >=1800s for the verify-kani-vb-runtime task,
+  or split the runtime kani harnesses into smaller feature-gated task shards so the
+  individual lane durations stay under the budget. No code repair is required.
