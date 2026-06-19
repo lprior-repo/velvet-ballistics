@@ -1,0 +1,130 @@
+# Proof Plan — vb-puvkn
+# Close PARTIAL: bind runtime_facade_api exec fns to actual Runtime production
+# methods. The current exec_shard_index_runtime mirrors production math in a
+# separate function; we need to ensure the production Runtime::shard_index
+# itself is annotated or that the bridge is provably equivalent.
+# Anti-Laundering Mandate: NO #[verifier::external_body], NO assume(), NO axiom.
+
+[meta]
+bead_id        = "vb-puvkn"
+bead_title     = "P1 verify: bind runtime_facade_api exec fns to actual Runtime production methods"
+bead_status    = "PARTIAL_CLOSED"
+parent_obligations = []
+risk_tags      = ["production-binding", "spec-leakage", "runtime-facade"]
+crates         = ["vb_runtime", "vb_core"]
+verus_registered = false
+master_sections = ["§40", "§44"]
+
+[goal]
+finish = "Strengthen exec_shard_index_runtime lemma from `== spec_shard_index` to a quantified equivalence: forall run_id, shard_count. result == (if shard_count == 0 then 0 else run_id % shard_count). Add a Verus exec fn annotation to production Runtime::shard_index (or extract a shared helper) so the bridge is provably bound to production. Add Kani harness asserting the production checked_rem path equals the spec on zero and non-zero shard_count."
+
+[verus_obligations]
+files = [
+  "crates/vb_runtime/src/verification/verus/runtime_facade_api.rs",
+  "crates/vb_runtime/src/runtime/mod.rs",
+  "crates/vb_core/src/ids/mod.rs",
+]
+
+production_targets = [
+  { name = "Runtime::shard_index",  sig = "fn shard_index(&self, run_id: RunId, shard_count: u64) -> u64",  file = "crates/vb_runtime/src/runtime/mod.rs" },
+  { name = "RunId::shard_index",     sig = "pub const fn shard_index(self, shard_count: u64) -> u64",     file = "crates/vb_core/src/ids/mod.rs:350" },
+  { name = "Runtime::submit_direct", sig = "fn submit_direct(...)",                                       file = "crates/vb_runtime/src/runtime/mod.rs" },
+  { name = "Runtime::inspect_run",   sig = "fn inspect_run(...)",                                         file = "crates/vb_runtime/src/runtime/mod.rs" },
+]
+
+# Existing spec fns.
+spec_fns = [
+  { name = "spec_shard_index", body_summary = "if shard_count == 0 { 0 } else { run_id % shard_count }" },
+]
+
+# Existing exec fn bridges (need strengthening).
+exec_fn_bridges = [
+  { name = "exec_shard_index_runtime", ensures = "shard_count == 0 ==> result == 0; shard_count > 0 ==> result == spec_shard_index(run_id, shard_count)" },
+]
+
+# Verus proof fn lemmas (existing + NEW).
+lemmas = [
+  { name = "lemma_exec_shard_index_matches_spec (existing)",   statement = "exec_shard_index_runtime(run_id, shard_count) == spec_shard_index(run_id, shard_count)" },
+  { name = "lemma_production_runtime_shard_index_eq_spec (NEW)", statement = "production Runtime::shard_index(run_id, shard_count) == spec_shard_index(run_id, shard_count)" },
+  { name = "lemma_shard_index_zero_handling (NEW)",             statement = "shard_count == 0 ==> Runtime::shard_index(_, 0) == 0" },
+  { name = "lemma_shard_index_bounded (existing)",              statement = "shard_count > 0 ==> spec_shard_index(run_id, shard_count) < shard_count" },
+  { name = "lemma_shard_index_functional (existing)",           statement = "run_id_a == run_id_b && shard_count > 0 ==> spec_shard_index(a, c) == spec_shard_index(b, c)" },
+]
+
+# Anti-laundering: forbid these shortcuts.
+forbidden_in_verus_obligations = [
+  "#[verifier::external_body]",
+  "assume(...)",
+  "axiom",
+  "admit()",
+]
+
+[kani_harnesses]
+# Bounded model check that production Runtime::shard_index matches the
+# spec on zero and non-zero shard_count.
+files = [
+  "crates/vb_runtime/src/verification/kani/runtime_facade_shard_index.rs",
+]
+harness_names = [
+  "kani_production_shard_index_zero_shard_count",
+  "kani_production_shard_index_nonzero_matches_spec",
+  "kani_production_shard_index_idempotent_same_input",
+  "kani_production_shard_index_bounded_by_count",
+]
+unwind_bound = 1
+required_features = ["kani-runtime-facade"]
+required_command = "bash scripts/kani-list.sh vb_runtime"
+kani_run = "moon run :verify-kani-vb-runtime"
+feature_gate = "kani-runtime-facade"
+
+[flux_refinements]
+# Flux is NOT applicable: shard_index is a pure u64-modulo function.
+applicable = false
+rationale = "shard_index is a u64-modulo with a single fallback branch; Flux refinement types add no behavioral coverage beyond Verus spec + Kani arbitrary u64 input."
+
+[loom_models]
+# Loom IS applicable: vb_runtime spawns tasks via the runtime.
+# However, Runtime::shard_index itself is a pure synchronous function
+# with no shared state. Loom is needed for the broader Runtime submit/
+# inspect paths but is out of scope for the shard_index bridge.
+applicable = false_for_shard_index
+rationale = "Runtime::shard_index is a synchronous, single-threaded computation. Loom models for Runtime::submit_direct and Runtime::inspect_run are scoped to a separate bead (vb_runtime concurrency audit) and are not part of this closure."
+
+[proptests]
+# Property tests for shard_index with random u64 inputs.
+files = [
+  "crates/vb_runtime/tests/proptest_runtime_shard_index.rs",
+]
+properties = [
+  { name = "proptest_shard_index_zero_count_returns_zero",  cases = 4096 },
+  { name = "proptest_shard_index_nonzero_eq_spec",          cases = 16384 },
+  { name = "proptest_shard_index_bounded_by_count",         cases = 16384 },
+  { name = "proptest_shard_index_idempotent_same_input",    cases = 4096 },
+  { name = "proptest_shard_index_distribution_uniform",     cases = 32768 },
+]
+cargo_test = "cargo nextest run -p vb_runtime shard_index"
+
+[test_commands]
+cargo_test  = "cargo nextest run -p vb_runtime"
+verus_run   = "bash scripts/verify-verus.sh"
+kani_run    = "moon run :verify-kani-vb-runtime"
+proptest_run = "cargo nextest run -p vb_runtime shard_index"
+
+[deliverables]
+verus_artifact     = "crates/vb_runtime/src/verification/verus/runtime_facade_api.rs (strengthen lemma + add production-binding lemma)"
+production_annotate = "crates/vb_runtime/src/runtime/mod.rs (annotate Runtime::shard_index with ensures clause)"
+kani_artifact      = "crates/vb_runtime/src/verification/kani/runtime_facade_shard_index.rs (new)"
+proptest_artifact  = "crates/vb_runtime/tests/proptest_runtime_shard_index.rs (new)"
+proof_obligations_yaml_additions = [
+  "id=obl-vb-runtime-shard-index-verus-001",
+  "id=obl-vb-runtime-shard-index-kani-002",
+  "id=obl-vb-runtime-shard-index-proptest-003",
+]
+
+[success_criteria]
+- exec_shard_index_runtime lemma strengthened to use checked_rem reasoning.
+- New production-binding lemma proves Runtime::shard_index ≡ spec_shard_index
+  with no assume/external_body shortcuts.
+- 4 Kani harnesses pass.
+- 5 proptest properties pass.
+- `bash scripts/verify-verus.sh` exits 0.

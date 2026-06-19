@@ -1,0 +1,134 @@
+# Proof Plan — vb-z280t
+# Close PARTIAL: bridge resource_budget spec (nat) to production
+# saturating arithmetic — write exec fn lemma.
+# Anti-Laundering Mandate: NO #[verifier::external_body], NO assume(), NO axiom.
+# The bridge MUST use a saturating exec fn whose body matches the production
+# cargo_kernel loop_mul, plus a proof that exec_result == spec_result when
+# inputs are u64-bounded AND spec_result fits in u64.
+
+[meta]
+bead_id       = "vb-z280t"
+bead_title    = "P0 verify: bridge resource_budget spec (nat) to production saturating arithmetic"
+bead_status   = "PARTIAL_CLOSED"
+parent_obligations = ["VB-CORE-RESOURCE-001", "VB-CORE-RESOURCE-002", "VB-CORE-RESOURCE-003"]
+risk_tags     = ["saturating-arithmetic", "production-binding", "u64-overflow"]
+crates        = ["vb_proof_kernels", "vb_core"]
+verus_registered = true
+master_sections = ["§40", "§44", "§64"]
+
+[goal]
+finish = "Provide an exec fn bridge for spec_loop_mul that uses saturating_mul (matching production Budget::loop_mul) and a proof fn lemma that proves: when both body fields and iterations are u64-bounded, exec result == spec result (clamped to u64::MAX). Add Kani harness that asserts cargo_kernel::Budget::loop_mul matches the spec on boundary inputs (u64::MAX, 0, 1)."
+
+[verus_obligations]
+# ── File-by-file Verus obligations ─────────────────────────────────────────
+
+files = [
+  "crates/vb_proof_kernels/src/resource_budget/spec.rs",
+  "crates/vb_proof_kernels/src/resource_budget/budget.rs",
+  "crates/vb_proof_kernels/src/resource_budget/lemmas.rs",
+]
+
+production_targets = [
+  { name = "Budget::loop_mul",    sig = "(&mut self, iterations: u64)",          file = "crates/vb_proof_kernels/src/resource_budget/budget.rs:112-125" },
+  { name = "Budget::sequential_add", sig = "(&mut self, other: &Budget)",         file = "crates/vb_proof_kernels/src/resource_budget/budget.rs:82-95" },
+  { name = "Budget::branch_max",   sig = "(&mut self, other: &Budget)",            file = "crates/vb_proof_kernels/src/resource_budget/budget.rs:97-110" },
+]
+
+# Verus spec fns (already written).
+spec_fns = [
+  { name = "spec_loop_mul",          body_summary = "field-wise nat mul (12 fields × iterations)" },
+  { name = "spec_sat_mul_u64",       body_summary = "if a*b fits in u64 then a*b else u64::MAX" },
+  { name = "spec_loop_mul_field_at", body_summary = "index into 12-field Budget product" },
+  { name = "u64_max_int",            body_summary = "constant 18446744073709551615" },
+]
+
+# Verus exec fn bridge for spec_loop_mul (NEW).
+exec_fn_bridges = [
+  { name = "exec_sat_loop_mul", ensures = "forall|i: int| 0 <= i < 12 ==> exec_sat_loop_mul_field_at(body, iterations, i) == spec_sat_mul_u64(body_field_i, iterations)" },
+  { name = "exec_sat_mul_u64",   ensures = "result <= u64::MAX && (result == a*b || result == u64::MAX)" },
+]
+
+# Verus proof fn lemmas (NEW + EXISTING).
+lemmas = [
+  { name = "lemma_exec_sat_loop_mul_matches_spec_loop_mul_when_no_overflow",   statement = "When body_field_i * iterations <= u64::MAX, exec_sat_mul_u64 == spec_loop_mul" },
+  { name = "lemma_exec_sat_loop_mul_clamps_to_u64_max_on_overflow",            statement = "When body_field_i * iterations > u64::MAX, exec_sat_mul_u64 == u64::MAX" },
+  { name = "lemma_loop_mul_saturated_eq_production (strengthen existing)",      statement = "Field-wise: exec result == production cargo_kernel result, assuming u64-bounded inputs" },
+  { name = "lemma_spec_loop_mul_field_at_index",                                 statement = "spec_loop_mul_field_at(b, n, i) == b.field_i * n" },
+]
+
+# Anti-laundering: forbid these shortcuts.
+forbidden_in_verus_obligations = [
+  "#[verifier::external_body]",
+  "assume(...)",
+  "axiom",
+  "admit()",
+]
+
+[kani_harnesses]
+# Bounded model check that cargo_kernel::Budget::loop_mul matches the
+# spec on u64 boundary inputs (u64::MAX, 0, 1).
+files = [
+  "crates/vb_proof_kernels/src/verification/kani/resource_budget_loop_mul.rs",
+]
+harness_names = [
+  "kani_resource_budget_loop_mul_u64_max",
+  "kani_resource_budget_loop_mul_zero",
+  "kani_resource_budget_loop_mul_one",
+  "kani_resource_budget_loop_mul_under_u64",
+  "kani_resource_budget_loop_mul_overflow_to_max",
+]
+unwind_bound = 12
+required_features = ["kani-resource-budget"]
+required_command = "bash scripts/kani-list.sh vb_proof_kernels"
+kani_run = "moon run :verify-kani-vb-proof-kernels"
+feature_gate = "kani-resource-budget"
+
+[flux_refinements]
+# Flux is NOT applicable: spec_loop_mul uses nat, an unbounded integer type
+# that Verus handles natively. Flux's refinement types over u64 would not
+# express the saturation contract more strongly than Verus spec_sat_mul_u64.
+applicable = false
+rationale = "Saturation is a non-linear numeric predicate (result == a*b || result == u64::MAX) that requires Verus's `int` quantifier or Kani's bounded search. Flux's `#[refined_by]` would not strengthen the bridge."
+
+[loom_models]
+# Loom is NOT applicable: Budget operations are synchronous, single-threaded.
+applicable = false
+rationale = "Budget::loop_mut is a synchronous field-wise mul on owned u64 fields; no spawn, no shared state, no concurrent mutation."
+
+[proptests]
+# Property tests using u64 arbitrary generation; saturating_mul is in std.
+files = [
+  "crates/vb_proof_kernels/tests/proptest_resource_budget.rs",
+]
+properties = [
+  { name = "proptest_sat_mul_u64_matches_native_mul_under_bound", cases = 8192 },
+  { name = "proptest_sat_mul_u64_clamps_to_max_over_bound",       cases = 8192 },
+  { name = "proptest_loop_mul_idempotent_at_zero_iterations",     cases = 1024 },
+  { name = "proptest_loop_mul_idempotent_at_one_iteration",       cases = 1024 },
+  { name = "proptest_loop_mul_fieldwise_saturation",              cases = 16384 },
+]
+cargo_test = "cargo nextest run -p vb_proof_kernels resource_budget"
+
+[test_commands]
+cargo_test = "cargo nextest run -p vb_proof_kernels resource_budget"
+verus_run = "bash scripts/verify-verus.sh"
+kani_run = "moon run :verify-kani-vb-proof-kernels"
+proptest_run = "cargo nextest run -p vb_proof_kernels resource_budget"
+
+[deliverables]
+verus_artifact     = "crates/vb_proof_kernels/src/resource_budget/spec.rs (add exec_sat_loop_mul exec fn + strengthen lemma)"
+kani_artifact      = "crates/vb_proof_kernels/src/verification/kani/resource_budget_loop_mul.rs (new)"
+proptest_artifact  = "crates/vb_proof_kernels/tests/proptest_resource_budget.rs (new)"
+proof_obligations_yaml_additions = [
+  "id=obl-vb-core-resource-verus-005 (saturating bridge)",
+  "id=obl-vb-core-resource-kani-006 (boundary u64 inputs)",
+  "id=obl-vb-core-resource-proptest-007 (sat_mul roundtrip)",
+]
+
+[success_criteria]
+- exec_sat_loop_mul body uses `.saturating_mul()` for each of the 12 fields; no assume, no external_body.
+- Lemma proves that for u64-bounded inputs, the field-wise exec result equals spec_sat_mul_u64 (clamped).
+- 5 Kani harnesses pass: u64::MAX, 0, 1, under-bound, over-bound cases.
+- 5 proptest properties pass with the documented case counts.
+- `bash scripts/verify-verus.sh` exits 0 — no shortcuts detected.
+- Update VB-CORE-RESOURCE-001/002/003 in proof_obligations.yaml to status `deductively_verified`.

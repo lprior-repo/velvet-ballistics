@@ -1,0 +1,149 @@
+# Proof Plan — vb-bc33k
+# Close PARTIAL: bind vb_expr type_enforcer Verus specs to production exec fns
+# Anti-Laundering Mandate: NO #[verifier::external_body], NO assume(), NO axiom.
+# Every spec MUST be tied to the actual production code via exec fns whose
+# bodies replicate the production match logic and carry `requires`/`ensures`
+# clauses that quote the spec.
+
+[meta]
+bead_id        = "vb-bc33k"
+bead_title     = "P0 verify: bind vb_expr Verus specs to production type_enforcers"
+bead_status    = "PARTIAL_CLOSED"
+parent_obligations = ["VB-EXPR-TYPE-001", "VB-EXPR-TYPE-002"]
+risk_tags      = ["type-state", "production-binding", "tautology-elimination"]
+crates         = ["vb_expr"]
+verus_registered = false
+master_sections = ["§40", "§44"]
+
+[goal]
+finish = "Replace tautological Verus spec_only models with exec fn bridges that carry the actual type_enforcers::expect_* match logic and an ensures clause that names spec_expect_*. Six lemmas (LEMMA-TYPE-001..006) must prove, not just reveal."
+
+[verus_obligations]
+# ── File-by-file Verus obligations ─────────────────────────────────────────
+# Each entry names the artifact path, the spec fn to produce, the exec fn
+# that mirrors the production body, and the lemma that binds them.
+
+files = [
+  "crates/vb_expr/src/eval/verus.rs",
+  "crates/vb_expr/src/eval/type_enforcers.rs",
+]
+
+# Production exec fns that MUST be mirrored by Verus exec fns.
+production_targets = [
+  { name = "expect_bool",   sig = "(SlotValue) -> ExprResult<bool>",        file = "crates/vb_expr/src/eval/type_enforcers.rs:9" },
+  { name = "expect_i64",    sig = "(SlotValue) -> ExprResult<i64>",         file = "crates/vb_expr/src/eval/type_enforcers.rs:19" },
+  { name = "expect_symbol", sig = "(SlotValue) -> ExprResult<SymbolId>",    file = "crates/vb_expr/src/eval/type_enforcers.rs:29" },
+  { name = "expect_list",   sig = "(SlotValue) -> ExprResult<ListId>",      file = "crates/vb_expr/src/eval/type_enforcers.rs:39" },
+  { name = "expect_object", sig = "(SlotValue) -> ExprResult<ObjectId>",    file = "crates/vb_expr/src/eval/type_enforcers.rs:49" },
+]
+
+# Verus spec fns (already written; must remain, but must NOT be tautological).
+spec_fns = [
+  { name = "spec_expect_bool",   body_summary = "match SlotValue -> Result<bool, TypeMismatchError>" },
+  { name = "spec_expect_i64",    body_summary = "match SlotValue -> Result<i64, TypeMismatchError>" },
+  { name = "spec_expect_symbol", body_summary = "match SlotValue -> Result<SymbolId, TypeMismatchError>" },
+  { name = "spec_expect_list",   body_summary = "match SlotValue -> Result<ListId, TypeMismatchError>" },
+  { name = "spec_expect_object", body_summary = "match SlotValue -> Result<ObjectId, TypeMismatchError>" },
+  { name = "spec_slot_value_partition", body_summary = "all 28 pairwise (v is A) != (v is B)" },
+]
+
+# Verus exec fn bridges (NEW — must replicate production match body exactly).
+exec_fn_bridges = [
+  { name = "exec_expect_bool",   ensures = "match value { SlotValue::Bool(b) => Ok(b), other => Err(...) } == spec_expect_bool(value)" },
+  { name = "exec_expect_i64",    ensures = "result.is_ok() == value is I64" },
+  { name = "exec_expect_symbol", ensures = "result.is_ok() == value is Symbol" },
+  { name = "exec_expect_list",   ensures = "result.is_ok() == value is List" },
+  { name = "exec_expect_object", ensures = "result.is_ok() == value is Object" },
+]
+
+# Verus proof fn lemmas (must PROVE, not just reveal).
+lemmas = [
+  { name = "LEMMA-TYPE-001-iff",     statement = "exec_expect_bool(v).is_ok() == (v is Bool)" },
+  { name = "LEMMA-TYPE-002-iff",     statement = "exec_expect_i64(v).is_ok() == (v is I64)" },
+  { name = "LEMMA-TYPE-003-iff",     statement = "exec_expect_symbol(v).is_ok() == (v is Symbol)" },
+  { name = "LEMMA-TYPE-004-iff",     statement = "exec_expect_list(v).is_ok() == (v is List)" },
+  { name = "LEMMA-TYPE-005-iff",     statement = "exec_expect_object(v).is_ok() == (v is Object)" },
+  { name = "LEMMA-TYPE-006-partition", statement = "forall v: SlotValue. spec_slot_value_partition(v)" },
+]
+
+# Anti-laundering: forbid these shortcuts.
+forbidden_in_verus_obligations = [
+  "#[verifier::external_body]",
+  "assume(...)",
+  "axiom",
+  "admit()",
+  "// proof skipped: trivial"
+]
+
+[kani_harnesses]
+# Bounded model checking for the new exec fn bridges.
+# Each harness uses kani::any() for SlotValue; NO hardcoded dummy data.
+files = [
+  "crates/vb_expr/src/verification/kani/type_enforcer_arbitrary.rs",
+]
+harness_names = [
+  "kani_exec_expect_bool_iff_bool",
+  "kani_exec_expect_i64_iff_i64",
+  "kani_exec_expect_symbol_iff_symbol",
+  "kani_exec_expect_list_iff_list",
+  "kani_exec_expect_object_iff_object",
+  "kani_exec_partition_cover_all",
+]
+unwind_bound = 1
+required_features = ["kani-type-enforcer"]
+required_command = "bash scripts/kani-list.sh vb_expr"
+kani_run = "moon run :verify-kani-vb-expr"
+feature_gate = "kani-type-enforcer"
+
+[flux_refinements]
+# Flux is NOT applicable here: the production type_enforcers functions are
+# total 1-arity match expressions on a finite enum (8 variants). Flux's
+# refinement-type machinery does not add behavioral coverage beyond what
+# the closed spec fn already provides. Skipping is documented below.
+applicable = false
+rationale = "Type enforcer bodies are exhaustive 8-arm matches on SlotValue. The closed spec fn + Verus exec bridge + Kani arbitrary harness together cover all variants. Adding Flux would duplicate the partitioning argument without binding to different runtime behavior."
+
+[loom_models]
+# Loom is NOT applicable: vb_expr eval/type_enforcers are pure synchronous
+# functions with no interior mutability and no thread interaction.
+applicable = false
+rationale = "expect_* functions take SlotValue by value, perform one match, and return ExprResult. There is no spawn, no Arc, no Mutex, no async, and no shared state. Concurrency lane is structurally inapplicable for vb_expr eval layer."
+
+[proptests]
+# Rust behavior forcing lane — random SlotValue generation, assert iff.
+files = [
+  "crates/vb_expr/tests/proptest_type_enforcer.rs",
+]
+properties = [
+  { name = "proptest_expect_bool_iff_bool",   cases = 4096 },
+  { name = "proptest_expect_i64_iff_i64",     cases = 4096 },
+  { name = "proptest_expect_symbol_iff_symbol", cases = 4096 },
+  { name = "proptest_expect_list_iff_list",   cases = 4096 },
+  { name = "proptest_expect_object_iff_object", cases = 4096 },
+  { name = "proptest_partition_cover_all",    cases = 16384 },
+]
+strategy = "Arbitrary SlotValue with 8-variant distribution + matching proptest! macro"
+cargo_test = "cargo nextest run -p vb_expr type_enforcer"
+
+[test_commands]
+cargo_test = "cargo nextest run -p vb_expr"
+verus_run = "bash scripts/verify-verus.sh"
+kani_run = "moon run :verify-kani-vb-expr"
+proptest_run = "cargo nextest run -p vb_expr type_enforcer"
+
+[deliverables]
+verus_artifact       = "crates/vb_expr/src/eval/verus.rs (updated: 5 exec fn bridges + 6 proving lemmas)"
+kani_artifact        = "crates/vb_expr/src/verification/kani/type_enforcer_arbitrary.rs (new)"
+proptest_artifact    = "crates/vb_expr/tests/proptest_type_enforcer.rs (new)"
+proof_obligations_yaml_additions = [
+  "id=obl-vb-expr-type-enforcer-verus-001",
+  "id=obl-vb-expr-type-enforcer-kani-002",
+  "id=obl-vb-expr-type-enforcer-proptest-003",
+]
+
+[success_criteria]
+- 5 exec fn bridges compile under `verus --crate-type=lib` with full match bodies (no external_body).
+- 6 proof fn lemmas pass under Verus verifier (no `reveal(...)` shortcut that hides trivial proof obligations).
+- 6 Kani harnesses pass with kani::any::<SlotValue>() (no hardcoded dummy data).
+- 6 proptest properties pass with 4096+ cases each.
+- `bash scripts/verify-verus.sh` exits 0 (no assume/external/axiom shortcuts detected).

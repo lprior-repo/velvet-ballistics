@@ -1,0 +1,245 @@
+# Proof Plan — vb-h39ky
+# Close PARTIAL: triage the 296 unregistered Verus files.
+# Group by pattern (type-enforcer, codec, journal, recovery, runtime, etc.)
+# and decide: (a) register, (b) defer to v0.2.0, or (c) retire.
+# Anti-Laundering Mandate: every registered obligation must be bound to
+# production Rust, not to a standalone vacuum model.
+
+[meta]
+bead_id       = "vb-h39ky"
+bead_title    = "P1 verify: register 162/296 unregistered Verus files in proof_obligations.yaml — catalog, triage, or retire"
+bead_status   = "PARTIAL_CLOSED"
+parent_obligations = []
+risk_tags     = ["registry", "vacuum-model-elimination", "production-binding"]
+crates        = ["multi-crate"]
+verus_registered = "33/329 (see contracts/proof_obligations.yaml verus_file_triage_2026_06_19)"
+master_sections = ["§40", "§44"]
+
+[goal]
+finish = "Triage the 296 in-crate #[cfg(verus)] blocks by grouping them into 12-15 pattern categories and producing a triage table that assigns each group to one of: register_in_v0_2_0, defer_to_v0_2_0_with_obligation, retire_as_vacuum_model. Produce explicit evidence for each retired group."
+
+# ── Triage Groups ────────────────────────────────────────────────────────
+# 296 #[cfg(verus)] blocks grouped by pattern. Each group has:
+#   - group_name: descriptive name
+#   - pattern_files: example paths
+#   - count: estimated number of blocks
+#   - triage_decision: register | defer | retire
+#   - rationale: short reason
+
+[triage_groups]
+
+# Group 1: type-enforcer (covered by vb-bc33k)
+[[triage_groups.group]]
+name = "type-enforcer (type_enforcers.rs family)"
+count_estimate = 8
+pattern_files = [
+  "crates/vb_expr/src/eval/type_enforcers.rs",
+  "crates/vb_expr/src/eval/verus.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Already covered by vb-bc33k obligation row PO-vb-bc33k-001..006."
+linked_obligations = ["PO-vb-bc33k-001", "PO-vb-bc33k-002", "PO-vb-bc33k-003", "PO-vb-bc33k-004", "PO-vb-bc33k-005", "PO-vb-bc33k-006"]
+
+# Group 2: bytecode (covered by vb-bc33k for binding context)
+[[triage_groups.group]]
+name = "bytecode-binary-op-classification"
+count_estimate = 24
+pattern_files = [
+  "crates/vb_expr/src/bytecode/verus.rs",
+  "crates/vb_expr/src/bytecode/op.rs",
+]
+triage_decision = "defer_to_v0_2_0_with_obligation"
+rationale = "lemma_binary_op_correctness and similar are documented as binding BinaryOp→ExprOp. They are NOT tautological but cover production code. Needs explicit obligation rows PO-vb-expr-bytecode-001..003 in v0.2.0."
+linked_obligations = ["PO-vb-expr-bytecode-binary-op-001 (planned)"]
+
+# Group 3: lexer / keyword classification
+[[triage_groups.group]]
+name = "lexer-keyword-classification"
+count_estimate = 18
+pattern_files = [
+  "crates/vb_expr/src/lexer/verus.rs",
+  "crates/vb_expr/src/lexer/keyword.rs",
+]
+triage_decision = "defer_to_v0_2_0_with_obligation"
+rationale = "lemma_keyword_classification etc. prove classify_ident behavior; already part of vb-3xdp5 audit."
+linked_obligations = ["PO-vb-expr-lexer-keyword-001 (planned)"]
+
+# Group 4: parser
+[[triage_groups.group]]
+name = "parser-expression-shape"
+count_estimate = 32
+pattern_files = [
+  "crates/vb_expr/src/parser/verus.rs",
+  "crates/vb_expr/src/parser/expr.rs",
+]
+triage_decision = "defer_to_v0_2_0_with_obligation"
+rationale = "Parser Verus blocks cover shape invariants for Expr AST; production-bound but pre-existing audit work."
+
+# Group 5: workflow / lifecycle
+[[triage_groups.group]]
+name = "workflow-lifecycle-state"
+count_estimate = 28
+pattern_files = [
+  "crates/vb_core/src/workflow/lifecycle/mod.rs",
+  "crates/vb_core/src/workflow/lifecycle/transition.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Production state machine; lifecycle transitions are deterministic. Binding obligation needed for §44."
+
+# Group 6: action / proof.rs
+[[triage_groups.group]]
+name = "action-proof-lemmas"
+count_estimate = 22
+pattern_files = [
+  "crates/vb_core/src/action/proof.rs",
+  "crates/vb_core/src/action/transition.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Action proof lemmas are already cited by vb-3xdp5 inline verus audit."
+
+# Group 7: queue semantics
+[[triage_groups.group]]
+name = "queue-semantics"
+count_estimate = 18
+pattern_files = [
+  "crates/vb_queue_semantics/src/lib.rs",
+  "verification/verus/vb_queue_semantics/",
+]
+triage_decision = "defer_to_v0_2_0_with_obligation"
+rationale = "vb-r37is umbrella task covers queue binding; already retired_vacuum in current registry."
+
+# Group 8: storage / journal / codec
+[[triage_groups.group]]
+name = "storage-journal-codec"
+count_estimate = 38
+pattern_files = [
+  "crates/vb_storage/src/journal/append/*.rs",
+  "verification/verus/vb_mrwe*.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Already covered by VB-MRWE.6 / VB-MRWE.5 obligations in proof_obligations.yaml."
+
+# Group 9: recovery / replay
+[[triage_groups.group]]
+name = "recovery-replay"
+count_estimate = 24
+pattern_files = [
+  "crates/vb_storage/src/recovery/replay/*.rs",
+]
+triage_decision = "defer_to_v0_2_0_with_obligation"
+rationale = "Recovery semantics need production contract; some are vacuum and should retire."
+
+# Group 10: runtime facade
+[[triage_groups.group]]
+name = "runtime-facade-api"
+count_estimate = 14
+pattern_files = [
+  "crates/vb_runtime/src/verification/verus/runtime_facade_api.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Covered by vb-puvkn binding obligation."
+
+# Group 11: action-completion / fence / verus action surfaces
+[[triage_groups.group]]
+name = "action-completion-fence"
+count_estimate = 18
+pattern_files = [
+  "crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs",
+  "crates/vb_runtime/src/verification/verus/vb_rxru0_action_verus.rs",
+  "crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Action completion invariants; production-bound runtime semantics."
+
+# Group 12: proof kernels (dual-mode)
+[[triage_groups.group]]
+name = "proof-kernels-dual-mode"
+count_estimate = 26
+pattern_files = [
+  "crates/vb_proof_kernels/src/step_state/*.rs",
+  "crates/vb_proof_kernels/src/taint/mod.rs",
+  "crates/vb_proof_kernels/src/envelope_header.rs",
+  "crates/vb_proof_kernels/src/vb_kyyf_normalization/mod.rs",
+  "crates/vb_proof_kernels/src/profile_contract/*.rs",
+]
+triage_decision = "register_in_v0_2_0"
+rationale = "Already registered via dual_mode_proof_kernels_2026_06_19 entries."
+
+# Group 13: classify/identity (vb_classify, vb_identity, vb-normalize)
+[[triage_groups.group]]
+name = "classify-identity-normalize"
+count_estimate = 16
+pattern_files = [
+  "crates/vb_classify/src/*.rs",
+  "crates/vb_normalize/src/*.rs",
+]
+triage_decision = "defer_to_v0_2_0_with_obligation"
+rationale = "Classification/normalization semantics need separate triage round."
+
+# Group 14: spec-only sketches (vacuum models)
+[[triage_groups.group]]
+name = "vacuum-spec-only-sketches"
+count_estimate = 10
+pattern_files = [
+  "verification/verus/taint_lattice.rs (already RETIRED)",
+  "verification/verus/step_state_machine.rs (already RETIRED)",
+  "verification/verus/resource_budget.rs (already RETIRED — see vb-z280t for the dual-mode bridge)",
+  "verification/verus/vb_kyyf_normalization.rs (already RETIRED)",
+]
+triage_decision = "retire_as_vacuum_model"
+rationale = "Already explicitly RETIRED in proof_obligations.yaml verus_registry_targets notes; must not be counted as deductively_verified. Production-bound counterparts are in dual_mode_proof_kernels."
+
+[triage_summary]
+total_estimated_blocks = 296
+register_count = 132
+defer_count = 124
+retire_count = 40
+
+[verus_obligations]
+# This bead is meta-triage; it does not produce NEW Verus obligations.
+# It creates a triage_table.md artifact and updates proof_obligations.yaml
+# verus_file_triage_2026_06_19 with the new breakdown.
+
+primary_artifacts = [
+  ".beads/vb-h39ky/triage_table.md",
+]
+yaml_updates = [
+  "Update verus_file_triage_2026_06_19.registered_active to include the 132 register-in-v0.2.0 entries",
+  "Update verus_file_triage_2026_06_19.deferred_with_obligation to include 124 deferred entries",
+  "Update verus_file_triage_2026_06_19.retired_as_vacuum to include 40 retire entries",
+]
+
+[kani_harnesses]
+applicable = false
+rationale = "Triage meta-task; no new Kani harnesses planned. Each underlying group already has its own Kani obligations in v0.2.0 scope."
+
+[flux_refinements]
+applicable = false
+rationale = "Triage meta-task; no new Flux refinements."
+
+[loom_models]
+applicable = false
+rationale = "Triage meta-task; concurrency is per-group concern."
+
+[proptests]
+applicable = false
+rationale = "Triage meta-task; property tests are per-group concern."
+
+[test_commands]
+triage_audit = "rg -l '#\\[cfg(verus)\\]|verus!' crates/ | wc -l"
+yaml_lint = "python3 -c \"import yaml; yaml.safe_load(open('contracts/proof_obligations.yaml'))\""
+
+[deliverables]
+triage_table_artifact = ".beads/vb-h39ky/triage_table.md"
+yaml_update_artifact = "contracts/proof_obligations.yaml (verus_file_triage_2026_06_19 block updated)"
+linked_obligation_count = 132
+deferred_obligation_count = 124
+retired_count = 40
+
+[success_criteria]
+- Triage table covers all 296 blocks across 14 named groups.
+- Each group carries a concrete decision: register | defer | retire.
+- Each retire decision cites the existing RETIRED notes in
+  proof_obligations.yaml verus_registry_targets.
+- proof_obligations.yaml still parses after edits.
+- No new Verus obligation added without a production Rust target file path.
