@@ -82,10 +82,7 @@ fn arb_budget() -> impl Strategy<Value = Budget> {
 
 /// Reference `spec_sat_mul_u64`: `result = if a*b fits in u64 then a*b else u64::MAX`.
 fn spec_sat_mul_u64(a: u64, b: u64) -> u64 {
-    match a.checked_mul(b) {
-        Some(v) => v,
-        None => u64::MAX,
-    }
+    a.checked_mul(b).map_or(u64::MAX, |v| v)
 }
 
 // ----------------------------------------------------------------------------
@@ -101,11 +98,16 @@ proptest! {
         prop_assert_eq!(spec, prod, "spec_sat_mul_u64 must equal u64::saturating_mul");
     }
 
-    /// `spec_sat_mul_u64` never overflows: result <= u64::MAX.
+    /// `spec_sat_mul_u64` never overflows: result fits in u64.
+    /// (u64 fields are always <= u64::MAX by type, so this is a tautology
+    /// checked at runtime via `prop_assert_eq!` against the type's upper bound.)
     #[test]
     fn spec_sat_mul_u64_bounded(a in arb_u64_biased(), b in arb_u64_biased()) {
         let result = spec_sat_mul_u64(a, b);
-        prop_assert!(result <= U64_MAX, "spec_sat_mul_u64 must be <= u64::MAX, got {}", result);
+        // The saturation property is captured by `saturating_mul` equivalence:
+        // if a*b would overflow, `spec_sat_mul_u64` clamps to u64::MAX,
+        // which is the maximum representable value of the u64 type.
+        prop_assert_eq!(result, a.saturating_mul(b));
     }
 
     /// Boundary: spec_sat_mul_u64(u64::MAX, 1) == u64::MAX (no overflow path).
@@ -157,24 +159,31 @@ proptest! {
         prop_assert_eq!(b.slots_written, spec_sat_mul_u64(body.slots_written, iter));
     }
 
-    /// Every loop_mul result field is <= u64::MAX (the saturation property
-    /// named in `lemma_loop_mul_saturated_eq_production`).
+    /// Every loop_mul result field equals the spec_sat_mul_u64 reference.
+    /// This implicitly verifies the saturation property: when the
+    /// multiplication would overflow u64, the production loop_mul saturates
+    /// to u64::MAX (the maximum representable value of the field type),
+    /// matching the Verus spec.
     #[test]
     fn loop_mul_never_overflows(body in arb_budget(), iter in arb_u64_biased()) {
+        let original = body.clone();
         let mut b = body;
         b.loop_mul(iter);
-        prop_assert!(b.steps <= U64_MAX);
-        prop_assert!(b.actions <= U64_MAX);
-        prop_assert!(b.parallel <= U64_MAX);
-        prop_assert!(b.retries <= U64_MAX);
-        prop_assert!(b.gather_pages <= U64_MAX);
-        prop_assert!(b.gather_items <= U64_MAX);
-        prop_assert!(b.for_each_iters <= U64_MAX);
-        prop_assert!(b.together_branches <= U64_MAX);
-        prop_assert!(b.repeat_attempts <= U64_MAX);
-        prop_assert!(b.run_time_secs <= U64_MAX);
-        prop_assert!(b.result_bytes <= U64_MAX);
-        prop_assert!(b.slots_written <= U64_MAX);
+        // Each field must equal the saturating multiplication reference.
+        // u64 fields are always <= u64::MAX by type, so the saturation
+        // property is captured by the equality with `spec_sat_mul_u64`.
+        prop_assert_eq!(b.steps, spec_sat_mul_u64(original.steps, iter));
+        prop_assert_eq!(b.actions, spec_sat_mul_u64(original.actions, iter));
+        prop_assert_eq!(b.parallel, spec_sat_mul_u64(original.parallel, iter));
+        prop_assert_eq!(b.retries, spec_sat_mul_u64(original.retries, iter));
+        prop_assert_eq!(b.gather_pages, spec_sat_mul_u64(original.gather_pages, iter));
+        prop_assert_eq!(b.gather_items, spec_sat_mul_u64(original.gather_items, iter));
+        prop_assert_eq!(b.for_each_iters, spec_sat_mul_u64(original.for_each_iters, iter));
+        prop_assert_eq!(b.together_branches, spec_sat_mul_u64(original.together_branches, iter));
+        prop_assert_eq!(b.repeat_attempts, spec_sat_mul_u64(original.repeat_attempts, iter));
+        prop_assert_eq!(b.run_time_secs, spec_sat_mul_u64(original.run_time_secs, iter));
+        prop_assert_eq!(b.result_bytes, spec_sat_mul_u64(original.result_bytes, iter));
+        prop_assert_eq!(b.slots_written, spec_sat_mul_u64(original.slots_written, iter));
     }
 
     /// loop_mul(0) leaves a zero budget unchanged (since 0*x == 0).
