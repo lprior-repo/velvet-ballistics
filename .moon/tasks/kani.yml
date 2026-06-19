@@ -5,6 +5,20 @@
 # below exercises only the private Kani-only stand-in in
 # `crates/vb_runtime/src/kani_shard_command_queue.rs`; it shares the public
 # capacity predicate but does not prove production Crossbeam behavior.
+#
+# === Wall-clock budget (v0.1.0) =============================================
+# 187 harnesses split across 8 buckets (verify-kani-vb-runtime-capability,
+# verify-kani-vb-runtime-reentry, verify-kani-vb-runtime-trace,
+# verify-kani-vb-runtime-misc, verify-kani-vb-storage-encode,
+# verify-kani-vb-storage-record, verify-kani-vb-storage-state,
+# verify-kani-vb-storage-beads). Per-harness observed ~95s; largest bucket
+# (storage-record, 39 harnesses) ~62 min serially. Moon v2 has no built-in
+# wall-clock knob for `moon ci`; the wall-clock budget is enforced by the
+# outer `rtk timeout 3600 moon ci` wrapper (was 1800s, TIMED_OUT at v0.1.0).
+# Each bucket uses its own CARGO_TARGET_DIR so parallel `moon ci` runs do
+# not contend on the cargo target lock. Run with MOON_CONCURRENCY=8 to
+# parallelize the buckets.
+# ============================================================================
 
 fileGroups:
   kani_core_sources:

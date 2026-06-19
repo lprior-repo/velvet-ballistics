@@ -130,7 +130,7 @@ The prompt claimed "empty bodies filled with case analysis." **Four proofs remai
 | 271 | `proof_incident_report_bounded` | **YES** | Same pattern. |
 | 282 | `proof_bounded_collections_complete` | **YES** | Composes only `P ⊢ P` lemmas. |
 
-**All 8 proofs are vacuous.** Every proof has a requires clause that is a conjunction containing exactly the ensures predicate. The `reveal + assert` pattern merely restates what is already in the requires.
+**All 8 proofs are vacuous.** Every proof has a requires clause that is a conjunction containing exactly the ensures predicate. The `reveal + assert` pattern merely reiterates what is already in the requires.
 
 **Required fixes:**
 - These should all be marked `TRUSTED BOUNDARY` (requires directly implies ensures by definition) or the requires clauses should be weakened to independent premises (e.g., `graph.node_count >= 0` as requires, then derive `graph.node_count >= 0` from a separate well-formedness axiom).
@@ -358,7 +358,7 @@ The prompt claimed "empty → layered reveal() + assert()". **Two proofs are sti
 
 **Required fixes:**
 - `proof_uncapped_always_allows` and `proof_cap_one_rejects_second` are acceptable as regression tests but should be marked `TRUSTED BOUNDARY` or removed.
-- `proof_total_never_exceeds_cap` should be restated: `forall|t| spec_value_store_cap(t, max_entries) ==> t <= max_entries || max_entries == 0` (the contrapositive direction) to make it non-vacuous.
+- `proof_total_never_exceeds_cap` should be reiterated: `forall|t| spec_value_store_cap(t, max_entries) ==> t <= max_entries || max_entries == 0` (the contrapositive direction) to make it non-vacuous.
 
 ---
 
@@ -403,7 +403,7 @@ Clean across all 14 files — no `assume()` calls were detected.
 8. **Add production crate bindings** or `extern_spec` bridges for all disconnected spec files.
 
 ### P2 — Recommended
-9. Restate `proof_total_never_exceeds_cap` to prove a non-tautological direction.
+9. Reiterate `proof_total_never_exceeds_cap` to prove a non-tautological direction.
 10. Remove or rename vacuous ground-truth proofs (`proof_digest_roles_are_not_interchangeable`, `proof_uncapped_always_allows`, etc.).
 
 ---

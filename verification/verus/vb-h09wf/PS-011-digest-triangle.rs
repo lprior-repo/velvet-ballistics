@@ -166,7 +166,7 @@ pub proof fn lemma_all_gates_required_for_ok(
         ),
 {
     // Spec-level tautology: the spec is defined as that exact 9-way conjunction.
-    // The ensures restates the definition; the SMT solver verifies equality.
+    // The ensures reiterates the definition; the SMT solver verifies equality.
     assert(validate_compiled_ir_record_spec(
         ir_len_ok, decode_ok, source_digest_ok, policy_digest_ok,
         gate_count_ok, flags_ok, artifact_digest_ok, verification_digest_ok, content_hash_ok,

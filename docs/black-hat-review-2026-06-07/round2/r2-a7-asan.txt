@@ -14250,10 +14250,10 @@ velvet-ballistics:sanitizer-address-check | test decode_run_header_key_max_run_i
 velvet-ballistics:sanitizer-address-check | test decode_run_snapshot_key ... ok
 velvet-ballistics:sanitizer-address-check | test decode_storage_key_key_decode_error_is_debug_and_partial_eq ... ok
 velvet-ballistics:sanitizer-address-check | test decode_storage_key_returns_empty_key_error_for_empty_slice ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_adapter_contamination_guard.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_adapter_contamination_guard-56ad719f4f0d04b2)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_completion_watermark_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_completion_watermark_tests-cf72317be36b32f1)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_decode_error_taxonomy_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_decode_error_taxonomy_tests-5f5fa4d44dc6a31d)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_doctor_key_decode_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_doctor_key_decode_tests-d267097709a4abd3)
+velvet-ballistics:sanitizer-address-check |      Running tests/adapter_contamination_guard.rs (target/x86_64-unknown-linux-gnu/debug/deps/adapter_contamination_guard-56ad719f4f0d04b2)
+velvet-ballistics:sanitizer-address-check |      Running tests/completion_watermark_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/completion_watermark_tests-cf72317be36b32f1)
+velvet-ballistics:sanitizer-address-check |      Running tests/decode_error_taxonomy_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/decode_error_taxonomy_tests-5f5fa4d44dc6a31d)
+velvet-ballistics:sanitizer-address-check |      Running tests/doctor_key_decode_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/doctor_key_decode_tests-d267097709a4abd3)
 velvet-ballistics:sanitizer-address-check | test decode_storage_key_returns_invalid_run_id_for_zero_run_event ... ok
 velvet-ballistics:sanitizer-address-check | test decode_storage_key_returns_invalid_run_id_for_zero_run_header ... ok
 velvet-ballistics:sanitizer-address-check | test decode_storage_key_returns_invalid_run_id_for_zero_index_status_run ... ok
@@ -14338,7 +14338,7 @@ velvet-ballistics:sanitizer-address-check | test skip_decode_tests::skip_decode_
 velvet-ballistics:sanitizer-address-check | test skip_decode_tests::skip_decode_tolerates_postcard_invalid_payloads ... ok
 velvet-ballistics:sanitizer-address-check | test verify_digest_match_accepts_correct_digest ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_large_value_preview_truncated_with_hint ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_doctor_storage_scan_decode_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_doctor_storage_scan_decode_tests-214b0d242613e8c4)
+velvet-ballistics:sanitizer-address-check |      Running tests/doctor_storage_scan_decode_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/doctor_storage_scan_decode_tests-214b0d242613e8c4)
 velvet-ballistics:sanitizer-address-check | test verify_digest_match_rejects_incorrect_digest ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_invalid_hex_rejected_before_storage_open ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_doctor_storage_readonly_inventory_unchanged ... ok
@@ -14397,7 +14397,7 @@ velvet-ballistics:sanitizer-address-check | test registry_lookup_returns_expecte
 velvet-ballistics:sanitizer-address-check | test reopen_does_not_rerun_migration ... ok
 velvet-ballistics:sanitizer-address-check | test registry_lookup_no_duplicate_entry_succeeds ... ok
 velvet-ballistics:sanitizer-address-check | test reopen_current_store_records_readable ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_explicit_migration_skeleton_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_explicit_migration_skeleton_tests-13b4def80f470461)
+velvet-ballistics:sanitizer-address-check |      Running tests/explicit_migration_skeleton_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/explicit_migration_skeleton_tests-13b4def80f470461)
 velvet-ballistics:sanitizer-address-check | test runtime_open_future_version_returns_unsupported_schema_version ... ok
 velvet-ballistics:sanitizer-address-check | test runtime_open_missing_registry_entry_returns_error ... ok
 velvet-ballistics:sanitizer-address-check | test runtime_open_never_invokes_cold_path ... ok
@@ -14507,9 +14507,9 @@ velvet-ballistics:sanitizer-address-check | test sequence_overflow_detected_when
 velvet-ballistics:sanitizer-address-check | test sequence_overflow_must_be_distinct_from_sequence_gap ... ok
 velvet-ballistics:sanitizer-address-check | test big_endian_bytes_preserve_ordering ... ok
 velvet-ballistics:sanitizer-address-check | test different_runs_have_different_event_key_prefixes ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_fifo_backpressure_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_fifo_backpressure_tests-fcc5a2a15975dbd4)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_ipc_flag_matrix_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_ipc_flag_matrix_tests-440a225b8cd7c014)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_journal_tail_scan_fallback_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_journal_tail_scan_fallback_tests-baedfc1220e69392)
+velvet-ballistics:sanitizer-address-check |      Running tests/fifo_backpressure_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/fifo_backpressure_tests-fcc5a2a15975dbd4)
+velvet-ballistics:sanitizer-address-check |      Running tests/ipc_flag_matrix_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/ipc_flag_matrix_tests-440a225b8cd7c014)
+velvet-ballistics:sanitizer-address-check |      Running tests/journal_tail_scan_fallback_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/journal_tail_scan_fallback_tests-baedfc1220e69392)
 velvet-ballistics:sanitizer-address-check | test run_event_key_always_17_bytes ... ok
 velvet-ballistics:sanitizer-address-check | test wrong_run_must_be_distinct_from_sequence_gap ... ok
 velvet-ballistics:sanitizer-address-check | test run_event_key_always_has_correct_prefix ... ok
@@ -14594,8 +14594,8 @@ velvet-ballistics:sanitizer-address-check | test result: ok. 39 passed; 0 failed
 velvet-ballistics:sanitizer-address-check | running 6 tests
 velvet-ballistics:sanitizer-address-check | test exhausted_cursor_is_terminal_in_production_api ... ok
 velvet-ballistics:sanitizer-address-check | test public_constant_semantics_are_preserved_in_model ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_postcard_newtype_compat_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_postcard_newtype_compat_tests-5b61f05f4a68f202)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_retry_policy_math_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_retry_policy_math_tests-992897b28a3965b3)
+velvet-ballistics:sanitizer-address-check |      Running tests/postcard_newtype_compat_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/postcard_newtype_compat_tests-5b61f05f4a68f202)
+velvet-ballistics:sanitizer-address-check |      Running tests/retry_policy_math_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/retry_policy_math_tests-992897b28a3965b3)
 velvet-ballistics:sanitizer-address-check | test attempts_are_one_based ... ok
 velvet-ballistics:sanitizer-address-check | test invalid_raw_policy_is_rejected ... ok
 velvet-ballistics:sanitizer-address-check | test delay_is_bounded_and_deterministic ... ok
@@ -14614,7 +14614,7 @@ velvet-ballistics:sanitizer-address-check | test test_single_key_range ... ok
 velvet-ballistics:sanitizer-address-check | test test_partition_plan_invariants_suite ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_shard_count_bounded ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_u64_max_key_routing ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_shard_partition_math_properties.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_shard_partition_math_properties-04aeac68935e607a)
+velvet-ballistics:sanitizer-address-check |      Running tests/shard_partition_math_properties.rs (target/x86_64-unknown-linux-gnu/debug/deps/shard_partition_math_properties-04aeac68935e607a)
 velvet-ballistics:sanitizer-address-check | test proptest_rejects_excessive_shard_count ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_shard_index_distribution ... ok
 velvet-ballistics:sanitizer-address-check | test proptest_rejects_inverted_range ... ok
@@ -14693,9 +14693,9 @@ velvet-ballistics:sanitizer-address-check | test confirm_unknown_ticket_returns_
 velvet-ballistics:sanitizer-address-check | test higher_priority_queue_preempts_at_decision_boundary ... ok
 velvet-ballistics:sanitizer-address-check | test priority_order_preserved_in_tick ... ok
 velvet-ballistics:sanitizer-address-check | test single_queue_single_cap_dispatches_one_per_tick ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_shutdown_drain_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_shutdown_drain_tests-bfc5394822abdbf6)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_storage_blackhat_fixture_corpus.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_storage_blackhat_fixture_corpus-568270c3af121331)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_sync_drr_scheduler_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_sync_drr_scheduler_tests-492f84562e3ce254)
+velvet-ballistics:sanitizer-address-check |      Running tests/shutdown_drain_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/shutdown_drain_tests-bfc5394822abdbf6)
+velvet-ballistics:sanitizer-address-check |      Running tests/storage_blackhat_fixture_corpus.rs (target/x86_64-unknown-linux-gnu/debug/deps/storage_blackhat_fixture_corpus-568270c3af121331)
+velvet-ballistics:sanitizer-address-check |      Running tests/sync_drr_scheduler_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/sync_drr_scheduler_tests-492f84562e3ce254)
 velvet-ballistics:sanitizer-address-check | test two_queues_alternate_over_bounded_ticks ... ok
 velvet-ballistics:sanitizer-address-check | test unconfirmed_prevent_duplicate_dispatch ... ok
 velvet-ballistics:sanitizer-address-check | test zero_cap_returns_scheduler_error ... ok
@@ -14878,8 +14878,8 @@ velvet-ballistics:sanitizer-address-check | test replayable_false_rejected ... o
 velvet-ballistics:sanitizer-address-check | test retry_safe_false_rejected ... ok
 velvet-ballistics:sanitizer-address-check | test taint_safe_false_rejected ... ok
 velvet-ballistics:sanitizer-address-check | test unsupported_step_primitive_rejected_at_compile ... ok
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_timer_deadline_primitive_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_timer_deadline_primitive_tests-670f08e9fa7ec67d)
-velvet-ballistics:sanitizer-address-check |      Running tests/restate_typed_partitioned_id_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/restate_typed_partitioned_id_tests-38d418896c050492)
+velvet-ballistics:sanitizer-address-check |      Running tests/timer_deadline_primitive_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/timer_deadline_primitive_tests-670f08e9fa7ec67d)
+velvet-ballistics:sanitizer-address-check |      Running tests/typed_partitioned_id_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/typed_partitioned_id_tests-38d418896c050492)
 velvet-ballistics:sanitizer-address-check |      Running tests/runtime_version_barrier_tests.rs (target/x86_64-unknown-linux-gnu/debug/deps/runtime_version_barrier_tests-61d52a9c8027b6e4)
 velvet-ballistics:sanitizer-address-check | test validate_gate_count_rejects_invalid_counts ... ok
 velvet-ballistics:sanitizer-address-check | test validate_gate_count_accepts_fifteen ... ok

@@ -20,7 +20,7 @@
 | `kani_idempotency_contract.rs` | symbolic generators produce 5×3 | must produce 7×4 | `crates/vb_validate/src/kani_idempotency_contract.rs` (35 hits) |
 | `kani_idempotency_gates.rs` | symbolic generators + `MissingKey(SideEffect::Writes)` literal | must use master variant names | `crates/vb_core/src/kani_idempotency_gates.rs:43-58, 196, 220, 730, 765` |
 | Dead test module | `crates/vb_compile/src/enums/{mod,tests/*}.rs` not declared in `lib.rs` and has malformed import | must be wired in | `crates/vb_compile/src/enums/mod.rs:1-24` |
-| Test files | 28 files reference broken variant names (compile-error surface) | must use master names | grep shows: `idempotency_parity.rs`, `idempotency_contract_red.rs`, `action/tests.rs`, `integration_capability_behavior.rs`, `kani_idempotency_gates.rs`, `kani_idempotency_contract.rs`, `primitives/retry/tests.rs`, `restate_timer_deadline_primitive_tests.rs`, `vb_test_core_yaml_chain_behavior.rs`, `engine/tests.rs`, `action_specs.rs`, `engine/execute_tests.rs`, `engine/execute/execute_tests.rs`, `kani_workflow_arbitrary.rs`, `admission/tests.rs`, `primitives/retry.rs`, `gate_12_14_15_tests.rs`, `action_dispatch_root_migrated.rs`, `idempotency_contract.rs`, `admission.rs`, `engine/drive_tests.rs`, etc. |
+| Test files | 28 files reference broken variant names (compile-error surface) | must use master names | grep shows: `idempotency_parity.rs`, `idempotency_contract_red.rs`, `action/tests.rs`, `integration_capability_behavior.rs`, `kani_idempotency_gates.rs`, `kani_idempotency_contract.rs`, `primitives/retry/tests.rs`, `timer_deadline_primitive_tests.rs`, `vb_test_core_yaml_chain_behavior.rs`, `engine/tests.rs`, `action_specs.rs`, `engine/execute_tests.rs`, `engine/execute/execute_tests.rs`, `kani_workflow_arbitrary.rs`, `admission/tests.rs`, `primitives/retry.rs`, `gate_12_14_15_tests.rs`, `action_dispatch_root_migrated.rs`, `idempotency_contract.rs`, `admission.rs`, `engine/drive_tests.rs`, etc. |
 
 `bd list` shows no MAJOR-6 bead (verified: 44 issues, none with `idempotency` or `taxonomy` in title). A new umbrella bead must be filed.
 
@@ -103,7 +103,7 @@ Total broken window: one commit that swaps the enum source-of-truth and updates 
   - `crates/vb_validate/src/gates/tests.rs`, `gate_12_14_15/tests.rs`
   - `crates/vb_validate/tests/capability_contract_schema.rs`
   - `crates/vb_validate/benches/capability_schema.rs`
-  - `crates/workspace_tests/tests/{restate_timer_deadline_primitive_tests,vb_test_core_yaml_chain_behavior,gate_12_14_15_tests}.rs`
+  - `crates/workspace_tests/tests/{timer_deadline_primitive_tests,vb_test_core_yaml_chain_behavior,gate_12_14_15_tests}.rs`
   - `crates/workspace_tests/benches/action_dispatch.rs`, `action_dispatch_root_migrated.rs`
   - `crates/workspace_tests/tests/proptest_compile_error_codes.rs`, `integration_validation_tests.rs`, `bdd_validation_tests.rs`, `cancel_kill_lattice_tests.rs`, `vb_vt2f_direct_runtime_api_acceptance.rs`, `vb_test_runtime_lifecycle_state_behavior.rs`, `vb_c1s0_orchestration_runtime_tests.rs`, `proptest_validation.rs`
   - `crates/vb_core/src/kani_workflow_arbitrary.rs:8`

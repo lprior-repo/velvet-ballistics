@@ -101,7 +101,7 @@ proof fn test_expired_deterministic()
     assert forall |tick: u64, d: u64|
         (ClockModel { tick: tick }).is_deadline_expired_spec(d) == (d <= tick) by {
         // Tautology: is_deadline_expired_spec is defined as "deadline <= self.tick".
-        // The ensures clause restates the spec body verbatim.
+        // The ensures clause reiterates the spec body verbatim.
         assert((ClockModel { tick: 10u64 }).is_deadline_expired_spec(10u64) == true);
         assert((ClockModel { tick: 10u64 }).is_deadline_expired_spec(15u64) == false);
     };

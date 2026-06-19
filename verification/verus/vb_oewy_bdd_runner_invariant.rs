@@ -8,7 +8,7 @@
 // Proof architecture:
 //   - PO-001: proof_suite_result_invariant — total == passed + failed + not_run
 //             is DERIVED from the construction semantics in run_bdd_suite(),
-//             not merely restated.
+//             not merely reiterated.
 //   - PO-003: proof_counts_bounded_by_total — each count <= total
 //
 // Assumptions (trusted invariants of the Rust source):

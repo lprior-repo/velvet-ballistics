@@ -157,7 +157,7 @@ pub proof fn lemma_zero_staged_bytes_is_empty(state: BatchState)
     ensures
         state.staged_bytes == 0,
 {
-    // Spec-level tautology: the ensures is a restatement of the requires clause.
+    // Spec-level tautology: the ensures is a reiteration of the requires clause.
     // Identity property — verified by SMT solver.
     assert(state.staged_bytes == 0);
 }

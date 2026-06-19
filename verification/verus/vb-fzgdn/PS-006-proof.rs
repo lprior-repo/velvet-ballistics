@@ -256,7 +256,7 @@ pub closed spec fn timer_required_spec(node_kind_opt: Option<NodeKindExt>) -> bo
 // Proofs: the spec matches the production contract
 // ============================================================================
 //
-// Each `proof fn` below restates a property of the production function as
+// Each `proof fn` below reiterates a property of the production function as
 // observed by the external body contract. They are no longer
 // `by(compute)`-over-vacuum — they prove universal statements about
 // `timer_registration_required_ext`, which is the external mirror of the

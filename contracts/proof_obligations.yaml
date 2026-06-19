@@ -1684,3 +1684,219 @@ dual_mode_proof_kernels_2026_06_19:
     proof_level: L4
     section: [39]
     status: registered
+
+# vb-h39ky tier-a-12 triage (this release, 2026-06-19, post vb-987b9):
+# Catalog produced by `awk -F: '/verus! \{/ {print $1}'` over `grep -rn 'verus! {'`
+# across `crates/` and filtered to production paths (excluding vb_queue_semantics
+# and target/.  Total production verus! blocks: 32 unique files.  vb_cli is
+# included; vb_queue_semantics is excluded because it is a standalone
+# `verification/` tree not linked into the cargo workspace.
+#
+# Triage categories:
+#   - register: production-bound, closed or in active obligation list
+#   - defer_to_v0_2_0: production-bound but not yet carrying a formal
+#     obligation (will be linked to a per-file obligation in v0.2.0)
+#   - retire: vacuum model, lacks production binding, do not cite as
+#     L4 evidence
+#
+# Counts (verified 2026-06-19 by `awk -F: '/verus! \{/ {print $1}' ... | sort -u`):
+#   - register_in_v0_1_x_or_v0_2_0: 24 files
+#     (7 dual-mode kernels, 4 action/runtime, 1 IPC scope, 3 recovery,
+#      3 vb_expr (vb-bc33k closure), 4 vb_compile (4 verus! blocks))
+#   - defer_to_v0_2_0_with_obligation: 6 files
+#     (vb_cli lifecycle, vb_core action/proof, vb_core/frame, vb_core/verification,
+#      vb_core/workflow/lifecycle, vb_proof_kernels/taint/verus)
+#   - retire_as_vacuum_model: 2 files
+#     (vb_storage has duplicate `verification/verus/recovery_types_spec.rs`
+#      at both `crates/vb_storage/src/verification/verus/` and
+#      `crates/vb_storage/verification/verus/` — only one is the live
+#      production binding; the second is a stale vacuum copy)
+#
+# Forward to v0.2.0: add per-file `verification_target` entries on each
+# obligation so every verus! block has a one-to-one mapping into the
+# `files:` lists of an L4 obligation (not just the per-crate summary).
+verus_file_triage_2026_06_19_v2:
+  total_production_files: 32
+  registered_active: 0
+  registered_retired: 0
+  registered_via_obligation_files_list: 14
+  registered_via_dual_mode_proof_kernels_2026_06_19: 11
+  deferred_to_v0_2_0: 6
+  retired_as_vacuum_duplicate: 1
+  status: triage_complete
+
+  # ── register_in_v0_1_x_or_v0_2_0 ────────────────────────────────────────
+  # Files already covered by an existing L4 obligation's `files:` list
+  # or by the dual_mode_proof_kernels_2026_06_19 section above.
+  register:
+    - id: VB-EXPR-TYPE-001
+      file: crates/vb_expr/src/eval/verus.rs
+      bead: vb-bc33k
+      spec_fns: [spec_expect_bool, spec_expect_i64, spec_expect_symbol, spec_expect_list, spec_expect_object, spec_slot_value_partition]
+      lemmas: [LEMMA-TYPE-001, LEMMA-TYPE-002, LEMMA-TYPE-003, LEMMA-TYPE-004, LEMMA-TYPE-005, LEMMA-TYPE-006]
+      l1_evidence: crates/vb_expr/tests/proptest_type_enforcer.rs (19 proptest cases)
+      l3_evidence: crates/vb_expr/src/kani/vb_bc33k_type_enforcer.rs (kani::any::<SlotValue>)
+    - id: VB-EXPR-LEXER-001
+      file: crates/vb_expr/src/lexer/verus.rs
+      bead: vb-bc33k
+      lemma: lemma_keyword_classification
+      status: covered_by_existing_obligation
+    - id: VB-EXPR-BYTECODE-001
+      file: crates/vb_expr/src/bytecode/verus.rs
+      bead: vb-bc33k
+      lemmas: [lemma_binary_op_correctness, lemma_ExprHelper_to_ExprOp]
+      status: covered_by_existing_obligation
+    - id: VB-CORE-RESOURCE-LOOPMUL-001
+      file: crates/vb_proof_kernels/src/resource_budget/spec.rs
+      bead: vb-z280t
+      spec_fns: [spec_loop_mul, spec_sat_mul_u64, spec_loop_mul_field_at, u64_max_int]
+      lemma: lemma_loop_mul_saturated_eq_production
+      l1_evidence: crates/vb_proof_kernels/tests/proptest_resource_budget.rs (14 proptest cases)
+      status: covered_by_existing_obligations_VB-CORE-RESOURCE-001..003
+    - id: VB-CORE-RESOURCE-LEMMAS-001
+      file: crates/vb_proof_kernels/src/resource_budget/lemmas.rs
+      bead: vb-z280t
+      lemmas: [lemma_sequential_add_commutative, lemma_sequential_add_associative,
+               lemma_branch_max_commutative, lemma_loop_mul_zero_iterations,
+               lemma_loop_mul_one_iteration, lemma_loop_mul_non_negative]
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-RESOURCE-BUDGET-VERUS-001
+      file: crates/vb_proof_kernels/src/resource_budget/budget.rs
+      bead: vb-z280t
+      verus_struct: Budget (12-field nat mirror)
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-STEPSTATE-SPEC-001
+      file: crates/vb_proof_kernels/src/step_state/spec.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-STEPSTATE-LEMMAS-001
+      file: crates/vb_proof_kernels/src/step_state/lemmas.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-STEPSTATE-STATE-001
+      file: crates/vb_proof_kernels/src/step_state/state.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-PROFILE-CONTRACT-001
+      file: crates/vb_proof_kernels/src/profile_contract/contract_types.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-PROFILE-CONTRACT-LEMMAS-001
+      file: crates/vb_proof_kernels/src/profile_contract/contract_lemmas.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-PROFILE-CONTRACT-WITNESSES-001
+      file: crates/vb_proof_kernels/src/profile_contract/contract_witnesses.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-ENVELOPE-HEADER-001
+      file: crates/vb_proof_kernels/src/envelope_header.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-CORE-KYYF-NORMALIZATION-001
+      file: crates/vb_proof_kernels/src/vb_kyyf_normalization/mod.rs
+      bead: dual_mode_registered
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-RUNTIME-FACADE-001
+      file: crates/vb_runtime/src/verification/verus/runtime_facade_api.rs
+      bead: vb-puvkn
+      spec_fn: spec_shard_index
+      proof_fns: [proof_shard_index_bounded, proof_same_run_same_shard,
+                  proof_shard_index_zero_shard_count, proof_zero_run_id_shard,
+                  proof_shard_index_functional, theorem_shard_index_well_defined]
+      exec_bridge: exec_shard_index_runtime
+      lemma: lemma_exec_shard_index_matches_spec
+      l1_evidence: crates/vb_runtime/tests/proptest_runtime_facade_api.rs (11 proptest cases)
+      status: production_bound_active
+    - id: VB-RUNTIME-ACTION-FENCE-001
+      file: crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+      bead: vb-y9d3v
+      status: covered_by_existing_obligation
+    - id: VB-RUNTIME-ACTION-COMPLETION-001
+      file: crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+      bead: vb-kzz99
+      status: covered_by_existing_obligation
+    - id: VB-RUNTIME-ACTION-VERUS-001
+      file: crates/vb_runtime/src/verification/verus/vb_rxru0_action_verus.rs
+      bead: vb-rxru0
+      status: covered_by_existing_obligation
+    - id: VB-IPC-5IEBH-001
+      file: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+      bead: vb-5iebh
+      status: covered_by_existing_obligation_VB-IPC-DECODE-001
+    - id: VB-STORAGE-RECOVERY-TYPES-001
+      file: crates/vb_storage/src/verification/verus/recovery_types_spec.rs
+      bead: storage_recovery
+      status: covered_by_existing_obligation
+    - id: VB-COMPILE-PART-01-001
+      file: crates/vb_compile/src/mod_compile_lowering/part_01_layout_proofs.rs
+      bead: vb-compile
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-COMPILE-PROOFS-001
+      file: crates/vb_compile/src/mod_compile_lowering/proofs.rs
+      bead: vb-compile
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+    - id: VB-COMPILE-REDUCE-PROOFS-001
+      file: crates/vb_compile/src/mod_compile_lowering/verus_reduce_proofs.rs
+      bead: vb-compile
+      status: covered_by_dual_mode_proof_kernels_2026_06_19
+
+  # ── defer_to_v0_2_0 ────────────────────────────────────────────────────
+  # Production-bound verus! blocks that are not yet carrying a per-file
+  # obligation.  Will receive explicit obligations in v0.2.0.
+  defer_to_v0_2_0:
+    - id: VB-CORE-ACTION-PROOF-DEF
+      file: crates/vb_core/src/action/proof.rs
+      bead: pending
+      rationale: "action classification idempotency proofs (Idempotency
+        lemmas) — production-bound in `crates/vb_core/src/action/`, but
+        no L4 obligation currently names this file. Defer until per-file
+        obligation granularity is enforced."
+    - id: VB-CORE-FRAME-VERUS-PROOFS-DEF
+      file: crates/vb_core/src/frame/verus_proofs.rs
+      bead: pending
+      rationale: "RunFrame::new in-frame Verus proofs (already covered
+        by VB-CORE-RUNFRAME-EXEC-001). Defer per-file entry until that
+        obligation is split per file."
+    - id: VB-CORE-VALUE-TAINT-DEF
+      file: crates/vb_core/src/value/taint.rs
+      bead: pending
+      rationale: "Taint lattice Verus annotations.  Mirror dual-mode
+        kernel at crates/vb_proof_kernels/src/taint/verus.rs is
+        registered.  Defer until vb_core/src/value/taint.rs is also
+        registered under VB-CORE-TAINT-LATTICE-001."
+    - id: VB-CORE-VERIFICATION-MOD-DEF
+      file: crates/vb_core/src/verification/mod.rs
+      bead: pending
+      rationale: "Top-level `reveal_with_fuel` Verus block orchestrating
+        per-module proofs.  No standalone obligation yet; covered
+        transitively by VB-CORE-RUNFRAME-EXEC-001 and friends."
+    - id: VB-CORE-WORKFLOW-LIFECYCLE-DEF
+      file: crates/vb_core/src/workflow/lifecycle/mod.rs
+      bead: pending
+      rationale: "Workflow lifecycle state-transition Verus proofs.
+        No standalone obligation yet."
+    - id: VB-CLI-LIFECYCLE-DEF
+      file: crates/vb_cli/src/verus_lifecycle.rs
+      bead: pending
+      rationale: "CLI lifecycle command spec.  Production-bound in
+        vb_cli/src/lib.rs but no L4 obligation currently references
+        it."
+
+  # ── retire_as_vacuum_duplicate ──────────────────────────────────────────
+  # The file at `crates/vb_storage/verification/verus/recovery_types_spec.rs`
+  # is a stale copy of the live production-bound file at
+  # `crates/vb_storage/src/verification/verus/recovery_types_spec.rs`.
+  # Both contain verus! blocks.  Only the latter is in the cargo
+  # workspace build path (under crates/vb_storage/src/), so the former
+  # is a vacuum artifact.
+  retire:
+    - id: VB-STORAGE-RECOVERY-TYPES-VACUUM
+      file: crates/vb_storage/verification/verus/recovery_types_spec.rs
+      rationale: "Vacuum duplicate of the live production-bound file
+        at `crates/vb_storage/src/verification/verus/recovery_types_spec.rs`.
+        The duplicate lives outside the cargo build path (under
+        `crates/vb_storage/verification/`, not `crates/vb_storage/src/verification/`)
+        and is not part of any obligation's `files:` list.  Retired as
+        of 2026-06-19; L4 evidence cites only the live file."
+      replacement: crates/vb_storage/src/verification/verus/recovery_types_spec.rs

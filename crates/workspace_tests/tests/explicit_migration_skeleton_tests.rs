@@ -44,11 +44,11 @@ use vb_storage::constants::CURRENT_SCHEMA_VERSION;
 // Skeleton Constants (mirrors planned migrations.rs)
 // ============================================================================
 
-/// RESTATE v1 source version — the old schema version being migrated FROM.
+/// LEGACY v1 source version — the old schema version being migrated FROM.
 /// This is the only supported old schema version for this test-first bead.
 /// CURRENT_SCHEMA_VERSION is 1; old versions are < 1, so the old supported
-/// version here is 0 (the pre-current Restate v1 on-disk format).
-const RESTATE_V1_VERSION: u16 = 0;
+/// version here is 0 (the pre-current Legacy v1 on-disk format).
+const LEGACY_V1_VERSION: u16 = 0;
 
 /// Maximum record count for skeleton bounded tests.
 const MAX_RECORDS: u64 = 8;
@@ -276,7 +276,7 @@ fn runtime_open_result(version: u16) -> Result<(), MigErr> {
     }
 }
 
-/// Simulated migration registry: maps `RESTATE_V1_VERSION` → "restate-v1-to-current".
+/// Simulated migration registry: maps `LEGACY_V1_VERSION` → "legacy-v1-to-current".
 fn lookup_migration(version: u16) -> Result<&'static str, MigErr> {
     if is_current_version(version) {
         return Err(MigErr::UnsupportedMigrationSource {
@@ -290,8 +290,8 @@ fn lookup_migration(version: u16) -> Result<&'static str, MigErr> {
             to: CURRENT_SCHEMA_VERSION,
         });
     }
-    if version == RESTATE_V1_VERSION {
-        Ok("restate-v1-to-current")
+    if version == LEGACY_V1_VERSION {
+        Ok("legacy-v1-to-current")
     } else {
         // Supported version range but no entry (missing registry entry)
         Err(MigErr::MissingMigrationRegistryEntry {
@@ -303,9 +303,9 @@ fn lookup_migration(version: u16) -> Result<&'static str, MigErr> {
 
 /// Simulates registry lookup for supported-and-present entry. Returns name.
 fn lookup_migration_exact(version: u16) -> Result<&'static str, MigErr> {
-    // Only RESTATE_V1_VERSION is known
-    if version == RESTATE_V1_VERSION {
-        Ok("restate-v1-to-current")
+    // Only LEGACY_V1_VERSION is known
+    if version == LEGACY_V1_VERSION {
+        Ok("legacy-v1-to-current")
     } else if is_supported_old_version(version) {
         Err(MigErr::MissingMigrationRegistryEntry {
             from: version,
@@ -326,7 +326,7 @@ fn lookup_migration_check_duplicate(
     version: u16,
     has_duplicate: bool,
 ) -> Result<&'static str, MigErr> {
-    if has_duplicate && version == RESTATE_V1_VERSION {
+    if has_duplicate && version == LEGACY_V1_VERSION {
         Err(MigErr::DuplicateMigrationRegistryEntry {
             from: version,
             to: CURRENT_SCHEMA_VERSION,
@@ -434,7 +434,7 @@ fn cleanup_then_advance(old_records: u64, cleanup_required: bool) -> Result<Phas
 fn manifest_version_after_phase(phase: Phase) -> u16 {
     match phase {
         Phase::Committed => CURRENT_SCHEMA_VERSION,
-        Phase::Planned | Phase::Copied | Phase::Verified | Phase::Cleaned => RESTATE_V1_VERSION,
+        Phase::Planned | Phase::Copied | Phase::Verified | Phase::Cleaned => LEGACY_V1_VERSION,
     }
 }
 
@@ -451,18 +451,18 @@ fn cold_path_invoked() -> bool {
 /// B5: Every supported old storage version maps to exactly one named migration entry.
 #[test]
 fn registry_lookup_returns_expected_name_for_supported_version() {
-    // Given: known supported version RESTATE_V1_VERSION = 1 (old)
+    // Given: known supported version LEGACY_V1_VERSION = 1 (old)
     // When: lookup_migration is called
-    let result = lookup_migration(RESTATE_V1_VERSION);
+    let result = lookup_migration(LEGACY_V1_VERSION);
     // Then: exact entry name is returned
-    assert_eq!(result, Ok("restate-v1-to-current"));
+    assert_eq!(result, Ok("legacy-v1-to-current"));
 }
 
-/// B5: Version 0 (known RESTATE v1) returns the registered entry.
+/// B5: Version 0 (known LEGACY v1) returns the registered entry.
 #[test]
 fn registry_lookup_returns_entry_for_known_version() {
-    let result = lookup_migration_exact(RESTATE_V1_VERSION);
-    assert_eq!(result, Ok("restate-v1-to-current"));
+    let result = lookup_migration_exact(LEGACY_V1_VERSION);
+    assert_eq!(result, Ok("legacy-v1-to-current"));
 }
 
 /// B5: MAX supported version lookup boundary.
@@ -498,11 +498,11 @@ fn registry_lookup_rejects_u16_max_version() {
 fn registry_lookup_missing_entry_returns_typed_error() {
     // Use lookup_missing_entry to model a scenario where a supported
     // old version has no registry entry.
-    let result = lookup_missing_entry(RESTATE_V1_VERSION);
+    let result = lookup_missing_entry(LEGACY_V1_VERSION);
     assert_eq!(
         result,
         Err(MigErr::MissingMigrationRegistryEntry {
-            from: RESTATE_V1_VERSION,
+            from: LEGACY_V1_VERSION,
             to: CURRENT_SCHEMA_VERSION
         })
     );
@@ -511,13 +511,13 @@ fn registry_lookup_missing_entry_returns_typed_error() {
 /// B7: Duplicate registry entry returns typed error.
 #[test]
 fn registry_lookup_duplicate_entry_returns_typed_error() {
-    // When: registry has duplicate for RESTATE_V1_VERSION
-    let result = lookup_migration_check_duplicate(RESTATE_V1_VERSION, true);
+    // When: registry has duplicate for LEGACY_V1_VERSION
+    let result = lookup_migration_check_duplicate(LEGACY_V1_VERSION, true);
     // Then: DuplicateMigrationRegistryEntry
     assert_eq!(
         result,
         Err(MigErr::DuplicateMigrationRegistryEntry {
-            from: RESTATE_V1_VERSION,
+            from: LEGACY_V1_VERSION,
             to: CURRENT_SCHEMA_VERSION
         })
     );
@@ -526,8 +526,8 @@ fn registry_lookup_duplicate_entry_returns_typed_error() {
 /// B7: Without duplicate, same version succeeds.
 #[test]
 fn registry_lookup_no_duplicate_entry_succeeds() {
-    let result = lookup_migration_check_duplicate(RESTATE_V1_VERSION, false);
-    assert_eq!(result, Ok("restate-v1-to-current"));
+    let result = lookup_migration_check_duplicate(LEGACY_V1_VERSION, false);
+    assert_eq!(result, Ok("legacy-v1-to-current"));
 }
 
 /// B18: Checked arithmetic succeeds within bounds.
@@ -647,8 +647,8 @@ proptest! {
     #[test]
     fn vb_aoah_migration_registry_totality_uniqueness(version in 0u16..=MAX_SUPPORTED_VERSIONS + 2) {
         let result = lookup_migration(version);
-        if is_supported_old_version(version) && version == RESTATE_V1_VERSION {
-            prop_assert_eq!(result, Ok("restate-v1-to-current"));
+        if is_supported_old_version(version) && version == LEGACY_V1_VERSION {
+            prop_assert_eq!(result, Ok("legacy-v1-to-current"));
         } else if is_supported_old_version(version) {
             prop_assert_eq!(
                 result,
@@ -923,7 +923,7 @@ fn registry_lookup_matrix_covers_all_version_classes() {
     // (version, expected_result)
     let cases: Vec<(u16, Result<&str, MigErr>)> = vec![
         // Known old version with registered entry
-        (RESTATE_V1_VERSION, Ok("restate-v1-to-current")),
+        (LEGACY_V1_VERSION, Ok("legacy-v1-to-current")),
         // Current version
         (
             CURRENT_SCHEMA_VERSION,
@@ -1048,18 +1048,18 @@ fn runtime_open_future_version_returns_unsupported_schema_version() {
 #[test]
 fn runtime_open_missing_registry_entry_returns_error() {
     // Use lookup_missing_entry to verify the MissingMigrationRegistryEntry variant
-    let result = lookup_missing_entry(RESTATE_V1_VERSION);
+    let result = lookup_missing_entry(LEGACY_V1_VERSION);
     assert_eq!(
         result,
         Err(MigErr::MissingMigrationRegistryEntry {
-            from: RESTATE_V1_VERSION,
+            from: LEGACY_V1_VERSION,
             to: CURRENT_SCHEMA_VERSION
         })
     );
 
     // Also verify the variant is not returned for normal lookup of known version
-    let known_result = lookup_migration_exact(RESTATE_V1_VERSION);
-    assert_eq!(known_result, Ok("restate-v1-to-current"));
+    let known_result = lookup_migration_exact(LEGACY_V1_VERSION);
+    assert_eq!(known_result, Ok("legacy-v1-to-current"));
 }
 
 /// B8: Manifest advance from Copied phase → rejected.
@@ -1093,13 +1093,13 @@ fn advance_manifest_from_planned_phase_is_rejected() {
 /// B9: Advance rejected — manifest version stays at old version.
 #[test]
 fn advance_rejected_manifest_version_stays_old() {
-    // Copied phase → advance rejected, manifest stays at RESTATE_V1_VERSION
+    // Copied phase → advance rejected, manifest stays at LEGACY_V1_VERSION
     let ver = manifest_version_after_phase(Phase::Copied);
-    assert_eq!(ver, RESTATE_V1_VERSION);
+    assert_eq!(ver, LEGACY_V1_VERSION);
 
     // Planned phase → manifest stays old
     let ver = manifest_version_after_phase(Phase::Planned);
-    assert_eq!(ver, RESTATE_V1_VERSION);
+    assert_eq!(ver, LEGACY_V1_VERSION);
 }
 
 /// B10: Advance from Verified (cleanup done) → succeeds, manifest is current.
@@ -1193,7 +1193,7 @@ fn runtime_open_never_invokes_cold_path() {
     assert!(!cold_path_invoked());
 
     // For old store: detection returns error, not Ok
-    let result = runtime_open_result(RESTATE_V1_VERSION);
+    let result = runtime_open_result(LEGACY_V1_VERSION);
     assert!(result.is_err());
 
     // For future store: detection returns error
