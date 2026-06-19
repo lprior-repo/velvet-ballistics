@@ -223,16 +223,20 @@ tasks:
       cache: false
       runInCI: true
 
-  verify-kani-vb-storage:
+  # verify-kani-vb-storage was split into 4 narrower tasks at v0.1.0 to fit the
+  # moon ci wall-clock budget. Same pattern as verify-kani-vb-runtime: 140
+  # harnesses × KANI_TIMEOUT=15m exceeds the wall-clock budget even with
+  # --lib isolation. Splitting lets moon ci run the four buckets in parallel.
+  verify-kani-vb-storage-encode:
     env:
-      CARGO_TARGET_DIR: '$PWD/target/kani-vb-storage'
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-storage-encode'
     script: |
       set -euo pipefail
       KANI_TIMEOUT=15m
       KANI_MEMORY_LIMIT_KB=6291456
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
-      mkdir -p "$PWD/target/kani-vb-storage"
+      mkdir -p "$PWD/target/kani-vb-storage-encode"
       KANI_STORAGE_FEATURES='legacy-kani,kani-digest-checks-vb-2bzz,kani-typed-partitioned-ids,kani-storage-trailing-bytes,kani-vb-u8gi-decode-taxonomy,kani-vb-vzcuf,kani-vb-h09wf,kani-vb-mrwe5,kani-vb-fn4vt,kani-vb-mrwe6,kani-vb-mrwe-7,test-support,fuzzing'
       run_kani_bounded() {
         local _target_dir_unused="$1"
@@ -242,151 +246,262 @@ tasks:
           TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
         )
       }
-      run_storage_harness() {
+      run_encode_harness() {
         local harness="$1"
-        printf 'verify-kani-vb-storage: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-storage -p vb_storage --features "$KANI_STORAGE_FEATURES" --harness "$harness"
+        printf 'verify-kani-vb-storage-encode: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-storage-encode -p vb_storage --features "$KANI_STORAGE_FEATURES" --harness "$harness"
       }
-      run_storage_harness check_admission_safe
-      run_storage_harness check_all_existing_kinds_known
-      run_storage_harness check_batch_total_byte_limit
-      run_storage_harness check_bridge_accommodates_single_event
-      run_storage_harness check_bridge_value_u32_safe
-      run_storage_harness check_byte_limit_arithmetic_safe
-      run_storage_harness check_checked_add_safety
-      run_storage_harness check_default_batch_byte_limit
-      run_storage_harness check_different_events_different_encoding
-      run_storage_harness check_duplicate_accounting_policies
-      run_storage_harness check_duplicate_before_queue_full
-      run_storage_harness check_encoded_length_minimum
-      run_storage_harness check_encode_record_deterministic
-      run_storage_harness check_encode_record_error_is_payload_too_large
-      run_storage_harness check_encode_record_includes_header
-      run_storage_harness check_encode_record_max_param
-      run_storage_harness check_encode_record_minimum_length
-      run_storage_harness check_encode_record_no_panic
-      run_storage_harness check_encoding_before_admission_necessity
-      run_storage_harness check_error_variants_distinct
-      run_storage_harness check_error_variants_for_state_preservation
-      run_storage_harness check_header_len_nonzero
-      run_storage_harness check_journal_key_bytes_valid
-      run_storage_harness check_kind_28_blob_family_rejected
-      run_storage_harness check_kind_28_journal_family
-      run_storage_harness check_kind_28_known
-      run_storage_harness check_kind_28_snapshot_family_rejected
-      run_storage_harness check_kind_28_validate_known_kind
-      run_storage_harness check_max_batch_count_reasonable
-      run_storage_harness check_max_batch_nonzero
-      run_storage_harness check_max_encoded_fits_in_u64
-      run_storage_harness check_max_encoded_fits_u64
-      run_storage_harness check_max_payload_nonzero
-      run_storage_harness check_multiple_event_kinds_encode
-      run_storage_harness check_multiple_events_within_limit
-      run_storage_harness check_new_batch_is_empty
-      run_storage_harness check_overflow_produces_none
-      run_storage_harness check_payload_only_underestimates
-      run_storage_harness check_payload_too_large_carries_fields
-      run_storage_harness check_queue_full_before_encoding
-      run_storage_harness check_queue_full_error_message
-      run_storage_harness check_queue_full_is_idempotent
-      run_storage_harness check_record_kind_mapping
-      run_storage_harness check_replay_duplicate_detection
-      run_storage_harness check_replay_sequence_gap_detection
-      run_storage_harness check_runkilled_fields_preserved
-      run_storage_harness check_runkilled_zero_attempt_invalid
-      run_storage_harness check_runkilled_zero_run_invalid
-      run_storage_harness check_same_event_same_encoding
-      run_storage_harness check_silent_drift_detectable
-      run_storage_harness check_single_event_fits_default_limit
-      run_storage_harness check_staged_bytes_monotonic
-      run_storage_harness check_storage_constants_well_defined
-      run_storage_harness check_u32_to_u64_widening_safe
-      run_storage_harness check_unknown_kind_rejected
-      run_storage_harness check_usize_to_u64_safe
-      run_storage_harness check_valid_encode_produces_ok
-      run_storage_harness check_zero_limit_rejects_all
-      run_storage_harness kani_arbitrary_header_60_bytes
-      run_storage_harness kani_bad_crc
-      run_storage_harness kani_bad_magic_bytes
-      run_storage_harness kani_decode_header_exhaustive_error_coverage
-      run_storage_harness kani_dimensions_positive_accepts_positive
-      run_storage_harness kani_dimensions_positive_rejects_both_zero
-      run_storage_harness kani_dimensions_positive_rejects_zero_slot
-      run_storage_harness kani_dimensions_positive_rejects_zero_step
-      run_storage_harness kani_events_preconditions_empty
-      run_storage_harness kani_events_preconditions_non_empty
-      run_storage_harness kani_future_schema_version
-      run_storage_harness kani_has_evidence_all_empty
-      run_storage_harness kani_has_evidence_slots_non_empty
-      run_storage_harness kani_has_evidence_tail_non_empty
-      run_storage_harness kani_past_schema_version
-      run_storage_harness kani_preconditions_all_met
-      run_storage_harness kani_preconditions_false_run_mismatch
-      run_storage_harness kani_record_crc_accepts_matching
-      run_storage_harness kani_record_crc_all_ones_header
-      run_storage_harness kani_record_crc_detects_single_bit_flip
-      run_storage_harness kani_record_crc_rejects_mismatch
-      run_storage_harness kani_record_crc_rejects_zero
-      run_storage_harness kani_record_magic_accepts_correct_magic
-      run_storage_harness kani_record_magic_rejects_all_ones
-      run_storage_harness kani_record_magic_rejects_wrong_magic
-      run_storage_harness kani_record_magic_rejects_zero
-      run_storage_harness kani_record_payload_len_exactly_at_max
-      run_storage_harness kani_record_payload_len_exactly_over_max
-      run_storage_harness kani_record_payload_len_exceeds_max
-      run_storage_harness kani_record_payload_len_rejects_nonzero_when_max_zero
-      run_storage_harness kani_record_payload_len_within_max
-      run_storage_harness kani_record_schema_accepts_current_version
-      run_storage_harness kani_record_schema_rejects_future_version
-      run_storage_harness kani_record_schema_rejects_old_version
-      run_storage_harness kani_record_schema_zero_returns_migration_required
-      run_storage_harness kani_run_matches_event_differs
-      run_storage_harness kani_run_matches_snapshot_differs
-      run_storage_harness kani_run_matches_true
-      run_storage_harness kani_seq_after_false_before
-      run_storage_harness kani_seq_after_false_equal
-      run_storage_harness kani_seq_after_true
-      run_storage_harness kani_truncated_header_30_bytes
-      run_storage_harness kani_truncated_header_59_bytes
-      run_storage_harness kani_truncated_header_zero_bytes
-      run_storage_harness kani_wrong_magic_any_value
-      run_storage_harness kind_ids_and_legacy_policy_are_narrow
-      run_storage_harness new_writes_use_canonical_record_kind
-      run_storage_harness policy_digest_deterministic
-      run_storage_harness ps_003_u32_conversion_safe
-      run_storage_harness ps_003_usize_max_rejected
-      run_storage_harness ps_004_truncated_header_rejected
-      run_storage_harness ps_004_zero_length_rejected
-      run_storage_harness ps_005_single_trailing_byte
-      run_storage_harness ps_005_zero_length_case
-      run_storage_harness ps_008_proof_flags_exhaustive
-      run_storage_harness ps_011_oversized_envelope_rejected_early
-      run_storage_harness ps_012_oversized_after_corruption_rejected
-      run_storage_harness step_succeeded_and_slot_written_roundtrip_with_envelope_assertions
-      run_storage_harness valid_postcard_mismatches_reject_before_semantics
-      run_storage_harness vb_eepg_record_kind_contracts
-      run_storage_harness vb_eepg_typed_partitioned_ids
-      run_storage_harness vb_eepg_unknown_record_kind_error_contract
-      run_storage_harness vb_mrwe4_reject_does_not_use_pending_actions
-      run_storage_harness vb_mrwe4_seed_unsupported_state_pending_false
-      run_storage_harness vb_mrwe5_record_kind_injectivity
-      run_storage_harness vb_mrwe5_step_succeeded_id
-      run_storage_harness vb_mrwe6_architecture_binding_all_domains
-      run_storage_harness vb_mrwe6_atomic_index_all_cases
-      run_storage_harness vb_mrwe6_completion_policy_all_cases
-      run_storage_harness vb_mrwe6_duplicate_arbitrary_facts
-      run_storage_harness vb_mrwe6_queue_intent_preservation
-      run_storage_harness vb_mrwe6_recovery_inventory_all_cases
-      run_storage_harness vb_mrwe_7_atomic_batch_size_bounds
-      run_storage_harness vb_mrwe_7_commit_before_drain_retry
-      run_storage_harness vb_mrwe_7_drain_all_bound_and_retention
-      run_storage_harness vb_mrwe_7_duplicate_policy
-      run_storage_harness vb_mrwe_7_durability_classification
-      run_storage_harness vb_mrwe_7_fjall_seam_single_commit
-      run_storage_harness vb_mrwe_7_flush_batch_atomic_all_or_retained
-      run_storage_harness vb_mrwe_7_flush_report_mapping
-      run_storage_harness vb_mrwe_7_no_silent_torn_batch
-      run_storage_harness vb_mrwe_7_queue_lifecycle_invariants
+      run_encode_harness check_admission_safe
+      run_encode_harness check_batch_total_byte_limit
+      run_encode_harness check_bridge_accommodates_single_event
+      run_encode_harness check_bridge_value_u32_safe
+      run_encode_harness check_byte_limit_arithmetic_safe
+      run_encode_harness check_checked_add_safety
+      run_encode_harness check_default_batch_byte_limit
+      run_encode_harness check_duplicate_accounting_policies
+      run_encode_harness check_duplicate_before_queue_full
+      run_encode_harness check_encoded_length_minimum
+      run_encode_harness check_encode_record_deterministic
+      run_encode_harness check_encode_record_error_is_payload_too_large
+      run_encode_harness check_encode_record_includes_header
+      run_encode_harness check_encode_record_max_param
+      run_encode_harness check_encode_record_minimum_length
+      run_encode_harness check_encode_record_no_panic
+      run_encode_harness check_encoding_before_admission_necessity
+      run_encode_harness check_max_batch_count_reasonable
+      run_encode_harness check_max_batch_nonzero
+      run_encode_harness check_max_encoded_fits_in_u64
+      run_encode_harness check_max_encoded_fits_u64
+      run_encode_harness check_max_payload_nonzero
+      run_encode_harness check_multiple_event_kinds_encode
+      run_encode_harness check_multiple_events_within_limit
+      run_encode_harness check_new_batch_is_empty
+      run_encode_harness check_overflow_produces_none
+      run_encode_harness check_payload_only_underestimates
+      run_encode_harness check_payload_too_large_carries_fields
+      run_encode_harness check_queue_full_before_encoding
+      run_encode_harness check_queue_full_error_message
+      run_encode_harness check_queue_full_is_idempotent
+      run_encode_harness check_single_event_fits_default_limit
+      run_encode_harness check_staged_bytes_monotonic
+      run_encode_harness check_storage_constants_well_defined
+      run_encode_harness check_u32_to_u64_widening_safe
+      run_encode_harness check_usize_to_u64_safe
+      run_encode_harness check_valid_encode_produces_ok
+      run_encode_harness check_zero_limit_rejects_all
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_storage_sources)'
+      - 'crates/vb_storage/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  verify-kani-vb-storage-record:
+    env:
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-storage-record'
+    script: |
+      set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      mkdir -p "$PWD/target/kani-vb-storage-record"
+      KANI_STORAGE_FEATURES='legacy-kani,kani-digest-checks-vb-2bzz,kani-typed-partitioned-ids,kani-storage-trailing-bytes,kani-vb-u8gi-decode-taxonomy,kani-vb-vzcuf,kani-vb-h09wf,kani-vb-mrwe5,kani-vb-fn4vt,kani-vb-mrwe6,kani-vb-mrwe-7,test-support,fuzzing'
+      run_kani_bounded() {
+        local _target_dir_unused="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
+        )
+      }
+      run_record_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-storage-record: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-storage-record -p vb_storage --features "$KANI_STORAGE_FEATURES" --harness "$harness"
+      }
+      run_record_harness check_all_existing_kinds_known
+      run_record_harness check_different_events_different_encoding
+      run_record_harness check_header_len_nonzero
+      run_record_harness check_journal_key_bytes_valid
+      run_record_harness check_kind_28_blob_family_rejected
+      run_record_harness check_kind_28_journal_family
+      run_record_harness check_kind_28_known
+      run_record_harness check_kind_28_snapshot_family_rejected
+      run_record_harness check_kind_28_validate_known_kind
+      run_record_harness check_record_kind_mapping
+      run_record_harness check_same_event_same_encoding
+      run_record_harness check_silent_drift_detectable
+      run_record_harness check_unknown_kind_rejected
+      run_record_harness kani_arbitrary_header_60_bytes
+      run_record_harness kani_bad_crc
+      run_record_harness kani_bad_magic_bytes
+      run_record_harness kani_decode_header_exhaustive_error_coverage
+      run_record_harness kani_record_crc_accepts_matching
+      run_record_harness kani_record_crc_all_ones_header
+      run_record_harness kani_record_crc_detects_single_bit_flip
+      run_record_harness kani_record_crc_rejects_mismatch
+      run_record_harness kani_record_crc_rejects_zero
+      run_record_harness kani_record_magic_accepts_correct_magic
+      run_record_harness kani_record_magic_rejects_all_ones
+      run_record_harness kani_record_magic_rejects_wrong_magic
+      run_record_harness kani_record_magic_rejects_zero
+      run_record_harness kani_record_payload_len_exactly_at_max
+      run_record_harness kani_record_payload_len_exactly_over_max
+      run_record_harness kani_record_payload_len_exceeds_max
+      run_record_harness kani_record_payload_len_rejects_nonzero_when_max_zero
+      run_record_harness kani_record_payload_len_within_max
+      run_record_harness kani_record_schema_accepts_current_version
+      run_record_harness kani_record_schema_rejects_future_version
+      run_record_harness kani_record_schema_rejects_old_version
+      run_record_harness kani_record_schema_zero_returns_migration_required
+      run_record_harness kani_truncated_header_30_bytes
+      run_record_harness kani_truncated_header_59_bytes
+      run_record_harness kani_truncated_header_zero_bytes
+      run_record_harness kani_wrong_magic_any_value
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_storage_sources)'
+      - 'crates/vb_storage/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  verify-kani-vb-storage-state:
+    env:
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-storage-state'
+    script: |
+      set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      mkdir -p "$PWD/target/kani-vb-storage-state"
+      KANI_STORAGE_FEATURES='legacy-kani,kani-digest-checks-vb-2bzz,kani-typed-partitioned-ids,kani-storage-trailing-bytes,kani-vb-u8gi-decode-taxonomy,kani-vb-vzcuf,kani-vb-h09wf,kani-vb-mrwe5,kani-vb-fn4vt,kani-vb-mrwe6,kani-vb-mrwe-7,test-support,fuzzing'
+      run_kani_bounded() {
+        local _target_dir_unused="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
+        )
+      }
+      run_state_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-storage-state: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-storage-state -p vb_storage --features "$KANI_STORAGE_FEATURES" --harness "$harness"
+      }
+      run_state_harness check_error_variants_distinct
+      run_state_harness check_error_variants_for_state_preservation
+      run_state_harness check_replay_duplicate_detection
+      run_state_harness check_replay_sequence_gap_detection
+      run_state_harness check_runkilled_fields_preserved
+      run_state_harness check_runkilled_zero_attempt_invalid
+      run_state_harness check_runkilled_zero_run_invalid
+      run_state_harness kani_dimensions_positive_accepts_positive
+      run_state_harness kani_dimensions_positive_rejects_both_zero
+      run_state_harness kani_dimensions_positive_rejects_zero_slot
+      run_state_harness kani_dimensions_positive_rejects_zero_step
+      run_state_harness kani_events_preconditions_empty
+      run_state_harness kani_events_preconditions_non_empty
+      run_state_harness kani_future_schema_version
+      run_state_harness kani_has_evidence_all_empty
+      run_state_harness kani_has_evidence_slots_non_empty
+      run_state_harness kani_has_evidence_tail_non_empty
+      run_state_harness kani_past_schema_version
+      run_state_harness kani_preconditions_all_met
+      run_state_harness kani_preconditions_false_run_mismatch
+      run_state_harness kani_run_matches_event_differs
+      run_state_harness kani_run_matches_snapshot_differs
+      run_state_harness kani_run_matches_true
+      run_state_harness kani_seq_after_false_before
+      run_state_harness kani_seq_after_false_equal
+      run_state_harness kani_seq_after_true
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_storage_sources)'
+      - 'crates/vb_storage/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  verify-kani-vb-storage-beads:
+    env:
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-storage-beads'
+    script: |
+      set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      mkdir -p "$PWD/target/kani-vb-storage-beads"
+      KANI_STORAGE_FEATURES='legacy-kani,kani-digest-checks-vb-2bzz,kani-typed-partitioned-ids,kani-storage-trailing-bytes,kani-vb-u8gi-decode-taxonomy,kani-vb-vzcuf,kani-vb-h09wf,kani-vb-mrwe5,kani-vb-fn4vt,kani-vb-mrwe6,kani-vb-mrwe-7,test-support,fuzzing'
+      run_kani_bounded() {
+        local _target_dir_unused="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
+        )
+      }
+      run_beads_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-storage-beads: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-storage-beads -p vb_storage --features "$KANI_STORAGE_FEATURES" --harness "$harness"
+      }
+      run_beads_harness kind_ids_and_legacy_policy_are_narrow
+      run_beads_harness new_writes_use_canonical_record_kind
+      run_beads_harness policy_digest_deterministic
+      run_beads_harness ps_003_u32_conversion_safe
+      run_beads_harness ps_003_usize_max_rejected
+      run_beads_harness ps_004_truncated_header_rejected
+      run_beads_harness ps_004_zero_length_rejected
+      run_beads_harness ps_005_single_trailing_byte
+      run_beads_harness ps_005_zero_length_case
+      run_beads_harness ps_008_proof_flags_exhaustive
+      run_beads_harness ps_011_oversized_envelope_rejected_early
+      run_beads_harness ps_012_oversized_after_corruption_rejected
+      run_beads_harness step_succeeded_and_slot_written_roundtrip_with_envelope_assertions
+      run_beads_harness valid_postcard_mismatches_reject_before_semantics
+      run_beads_harness vb_eepg_record_kind_contracts
+      run_beads_harness vb_eepg_typed_partitioned_ids
+      run_beads_harness vb_eepg_unknown_record_kind_error_contract
+      run_beads_harness vb_mrwe4_reject_does_not_use_pending_actions
+      run_beads_harness vb_mrwe4_seed_unsupported_state_pending_false
+      run_beads_harness vb_mrwe5_record_kind_injectivity
+      run_beads_harness vb_mrwe5_step_succeeded_id
+      run_beads_harness vb_mrwe6_architecture_binding_all_domains
+      run_beads_harness vb_mrwe6_atomic_index_all_cases
+      run_beads_harness vb_mrwe6_completion_policy_all_cases
+      run_beads_harness vb_mrwe6_duplicate_arbitrary_facts
+      run_beads_harness vb_mrwe6_queue_intent_preservation
+      run_beads_harness vb_mrwe6_recovery_inventory_all_cases
+      run_beads_harness vb_mrwe_7_atomic_batch_size_bounds
+      run_beads_harness vb_mrwe_7_commit_before_drain_retry
+      run_beads_harness vb_mrwe_7_drain_all_bound_and_retention
+      run_beads_harness vb_mrwe_7_duplicate_policy
+      run_beads_harness vb_mrwe_7_durability_classification
+      run_beads_harness vb_mrwe_7_fjall_seam_single_commit
+      run_beads_harness vb_mrwe_7_flush_batch_atomic_all_or_retained
+      run_beads_harness vb_mrwe_7_flush_report_mapping
+      run_beads_harness vb_mrwe_7_no_silent_torn_batch
+      run_beads_harness vb_mrwe_7_queue_lifecycle_invariants
     toolchains:
       - rust
     inputs:
@@ -475,16 +590,21 @@ tasks:
       cache: false
       runInCI: true
 
-  verify-kani-vb-runtime:
+  # verify-kani-vb-runtime was split into 4 narrower tasks at v0.1.0 to fit the
+  # moon ci wall-clock budget. Each bucket runs a disjoint harness subset using
+  # the same --lib pattern from 76d73463c (cargo kani --lib avoids dev-deps
+  # pulling in global-ASM loom via generator). Each bucket uses its own
+  # CARGO_TARGET_DIR so parallel runs do not contend on the cargo target lock.
+  verify-kani-vb-runtime-capability:
     env:
-      CARGO_TARGET_DIR: '$PWD/target/kani-vb-runtime'
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-runtime-capability'
     script: |
       set -euo pipefail
       KANI_TIMEOUT=15m
       KANI_MEMORY_LIMIT_KB=6291456
       mkdir -p target/kani-tmp
       mkdir -p target/moon-locks
-      mkdir -p "$PWD/target/kani-vb-runtime"
+      mkdir -p "$PWD/target/kani-vb-runtime-capability"
       KANI_RUNTIME_FEATURES='test-util,kani-admission-store,kani-capability-harnesses,kani-collect-pagination,kani-engine-yaml-admission,kani-reentry-proofs,kani-shard-command-queue,kani-trace-ring,kani-vt2f-runtime-facade,kani-vt2f-shard-lower-semantics,kani-yaml-e2e-admission-matrix'
       run_kani_bounded() {
         local _target_dir_unused="$1"
@@ -494,58 +614,169 @@ tasks:
           TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
         )
       }
-      run_runtime_harness() {
+      run_capability_harness() {
         local harness="$1"
-        printf 'verify-kani-vb-runtime: running %s\n' "$harness"
-        run_kani_bounded target/kani-vb-runtime -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
+        printf 'verify-kani-vb-runtime-capability: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-runtime-capability -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
       }
-      run_runtime_harness check_capability_action_match_name_denies
-      run_runtime_harness check_capability_action_match_name_grants
-      run_runtime_harness check_capability_action_mismatch_name_denies
-      run_runtime_harness check_capability_action_mismatch_name_grants
-      run_runtime_harness check_capability_grants_exact_match
-      run_runtime_harness check_capability_harness
-      run_runtime_harness check_capability_hierarchical_rejects_subpath
-      run_runtime_harness check_capability_partial_segment_rejected
-      run_runtime_harness clean_input_never_triggers_guard
-      run_runtime_harness collect_next_reentry
-      run_runtime_harness collect_page_pagination_bounds
-      run_runtime_harness collect_page_reentry
-      run_runtime_harness compiled_ir_exists_no_panic_max_digest
-      run_runtime_harness compiled_ir_exists_returns_false_for_empty_journal
-      run_runtime_harness engine_yaml_admission_rejects_digest_mismatch
-      run_runtime_harness engine_yaml_admission_rejects_dummy_proof
-      run_runtime_harness engine_yaml_admission_rejects_raw_ir
-      run_runtime_harness engine_yaml_admission_requires_capability_gate
-      run_runtime_harness every_non_clean_taint_triggers_guard_for_deterministicpure
-      run_runtime_harness for_each_next_reentry
-      run_runtime_harness guard_decision_panic_free
-      run_runtime_harness guard_fires_exactly_for_non_clean_deterministicpure
-      run_runtime_harness kani_for_each_reentry_body_state_immutable
-      run_runtime_harness kani_jump_to_body_no_state_mutation
-      run_runtime_harness kani_reduce_reentry_body_state_immutable
-      run_runtime_harness kani_remaining_primitives_reentry_body_state_immutable
-      run_runtime_harness kani_shard_command_queue_bounded_invariant
-      run_runtime_harness kani_shard_command_queue_drain
-      run_runtime_harness kani_shard_command_queue_push
-      run_runtime_harness non_deterministicpure_never_triggers_guard
-      run_runtime_harness reduce_next_reentry
-      run_runtime_harness repeat_attempt_reentry
-      run_runtime_harness repeat_check_reentry
-      run_runtime_harness storage_artifact_store_send
-      run_runtime_harness storage_artifact_store_sync
-      run_runtime_harness strict_admission_digest_mismatch_rejects_required_blocker
-      run_runtime_harness strict_admission_invalid_artifact_cases_reject
-      run_runtime_harness strict_admission_invalid_capability_rejects
-      run_runtime_harness strict_admission_valid_artifact_admits
-      run_runtime_harness strict_legacy_presence_only_bypass_rejects_required_blocker
-      run_runtime_harness verify_drain_for_run_correctness
-      run_runtime_harness verify_terminal_event_detection
-      run_runtime_harness verify_trace_ring_bounds
-      run_runtime_harness verify_trace_ring_dropped_monotonic
-      run_runtime_harness vt2f_runtime_facade_semantics
-      run_runtime_harness vt2f_shard_lower_semantics
-      run_runtime_harness yaml_e2e_admission_matrix
+      run_capability_harness check_capability_action_match_name_denies
+      run_capability_harness check_capability_action_match_name_grants
+      run_capability_harness check_capability_action_mismatch_name_denies
+      run_capability_harness check_capability_action_mismatch_name_grants
+      run_capability_harness check_capability_grants_exact_match
+      run_capability_harness check_capability_harness
+      run_capability_harness check_capability_hierarchical_rejects_subpath
+      run_capability_harness check_capability_partial_segment_rejected
+      run_capability_harness strict_admission_invalid_capability_rejects
+      run_capability_harness engine_yaml_admission_requires_capability_gate
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_runtime_shard_command_queue_model_sources)'
+      - 'crates/vb_runtime/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  verify-kani-vb-runtime-reentry:
+    env:
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-runtime-reentry'
+    script: |
+      set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      mkdir -p "$PWD/target/kani-vb-runtime-reentry"
+      KANI_RUNTIME_FEATURES='test-util,kani-admission-store,kani-capability-harnesses,kani-collect-pagination,kani-engine-yaml-admission,kani-reentry-proofs,kani-shard-command-queue,kani-trace-ring,kani-vt2f-runtime-facade,kani-vt2f-shard-lower-semantics,kani-yaml-e2e-admission-matrix'
+      run_kani_bounded() {
+        local _target_dir_unused="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
+        )
+      }
+      run_reentry_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-runtime-reentry: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-runtime-reentry -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
+      }
+      run_reentry_harness collect_next_reentry
+      run_reentry_harness collect_page_reentry
+      run_reentry_harness collect_page_pagination_bounds
+      run_reentry_harness for_each_next_reentry
+      run_reentry_harness reduce_next_reentry
+      run_reentry_harness repeat_attempt_reentry
+      run_reentry_harness repeat_check_reentry
+      run_reentry_harness kani_for_each_reentry_body_state_immutable
+      run_reentry_harness kani_jump_to_body_no_state_mutation
+      run_reentry_harness kani_reduce_reentry_body_state_immutable
+      run_reentry_harness kani_remaining_primitives_reentry_body_state_immutable
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_runtime_shard_command_queue_model_sources)'
+      - 'crates/vb_runtime/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  verify-kani-vb-runtime-trace:
+    env:
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-runtime-trace'
+    script: |
+      set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      mkdir -p "$PWD/target/kani-vb-runtime-trace"
+      KANI_RUNTIME_FEATURES='test-util,kani-admission-store,kani-capability-harnesses,kani-collect-pagination,kani-engine-yaml-admission,kani-reentry-proofs,kani-shard-command-queue,kani-trace-ring,kani-vt2f-runtime-facade,kani-vt2f-shard-lower-semantics,kani-yaml-e2e-admission-matrix'
+      run_kani_bounded() {
+        local _target_dir_unused="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
+        )
+      }
+      run_trace_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-runtime-trace: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-runtime-trace -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
+      }
+      run_trace_harness verify_trace_ring_bounds
+      run_trace_harness verify_trace_ring_dropped_monotonic
+      run_trace_harness verify_drain_for_run_correctness
+      run_trace_harness verify_terminal_event_detection
+      run_trace_harness kani_shard_command_queue_bounded_invariant
+      run_trace_harness kani_shard_command_queue_drain
+      run_trace_harness kani_shard_command_queue_push
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(kani_runtime_shard_command_queue_model_sources)'
+      - 'crates/vb_runtime/Cargo.toml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.moon/tasks/kani.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  verify-kani-vb-runtime-misc:
+    env:
+      CARGO_TARGET_DIR: '$PWD/target/kani-vb-runtime-misc'
+    script: |
+      set -euo pipefail
+      KANI_TIMEOUT=15m
+      KANI_MEMORY_LIMIT_KB=6291456
+      mkdir -p target/kani-tmp
+      mkdir -p target/moon-locks
+      mkdir -p "$PWD/target/kani-vb-runtime-misc"
+      KANI_RUNTIME_FEATURES='test-util,kani-admission-store,kani-capability-harnesses,kani-collect-pagination,kani-engine-yaml-admission,kani-reentry-proofs,kani-shard-command-queue,kani-trace-ring,kani-vt2f-runtime-facade,kani-vt2f-shard-lower-semantics,kani-yaml-e2e-admission-matrix'
+      run_kani_bounded() {
+        local _target_dir_unused="$1"
+        shift
+        (
+          ulimit -Sv "$KANI_MEMORY_LIMIT_KB"
+          TMPDIR="$PWD/target/kani-tmp" flock --shared -w 900 target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout --kill-after=10s "$KANI_TIMEOUT" rustup run nightly-2026-04-28 cargo kani --lib "$@"
+        )
+      }
+      run_misc_harness() {
+        local harness="$1"
+        printf 'verify-kani-vb-runtime-misc: running %s\n' "$harness"
+        run_kani_bounded target/kani-vb-runtime-misc -p vb_runtime --features "$KANI_RUNTIME_FEATURES" --harness "$harness"
+      }
+      run_misc_harness clean_input_never_triggers_guard
+      run_misc_harness compiled_ir_exists_no_panic_max_digest
+      run_misc_harness compiled_ir_exists_returns_false_for_empty_journal
+      run_misc_harness engine_yaml_admission_rejects_digest_mismatch
+      run_misc_harness engine_yaml_admission_rejects_dummy_proof
+      run_misc_harness engine_yaml_admission_rejects_raw_ir
+      run_misc_harness every_non_clean_taint_triggers_guard_for_deterministicpure
+      run_misc_harness guard_decision_panic_free
+      run_misc_harness guard_fires_exactly_for_non_clean_deterministicpure
+      run_misc_harness non_deterministicpure_never_triggers_guard
+      run_misc_harness storage_artifact_store_send
+      run_misc_harness storage_artifact_store_sync
+      run_misc_harness strict_admission_digest_mismatch_rejects_required_blocker
+      run_misc_harness strict_admission_invalid_artifact_cases_reject
+      run_misc_harness strict_admission_valid_artifact_admits
+      run_misc_harness strict_legacy_presence_only_bypass_rejects_required_blocker
+      run_misc_harness vt2f_runtime_facade_semantics
+      run_misc_harness vt2f_shard_lower_semantics
+      run_misc_harness yaml_e2e_admission_matrix
     toolchains:
       - rust
     inputs:
