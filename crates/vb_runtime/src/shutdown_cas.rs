@@ -282,10 +282,7 @@ mod tests {
             begin_count, 1,
             "exactly one of {N} concurrent callers must observe Begin"
         );
-        for outcome in outcomes
-            .iter()
-            .filter(|o| **o != ShutdownTransition::Begin)
-        {
+        for outcome in outcomes.iter().filter(|o| **o != ShutdownTransition::Begin) {
             assert_eq!(
                 *outcome,
                 ShutdownTransition::AlreadyShuttingDown,

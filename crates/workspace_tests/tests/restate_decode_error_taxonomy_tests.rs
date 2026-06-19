@@ -235,14 +235,21 @@ proptest! {
     }
 
     #[test]
-    fn ipc_decode_order_proptest(selector in 0_u8..6, value in any::<u32>()) {
+    // SEC-01 repurposed wire offset 10..12 from a hard-zero reserved field to
+    // the caller-capabilities envelope. The original case 3 ("non-zero at
+    // offset 10..12 → ReservedNonZero") is therefore obsolete: writing 1 at
+    // that offset is the ROOT capability envelope and decode MUST accept it.
+    // The `ReservedNonZero` error variant still exists in the IpcError enum
+    // (with diagnostic code 0x3007) for forward compatibility, but the
+    // proptest no longer exercises it. Coverage for the post-SEC-01 reserved
+    // semantics lives in `restate_ipc_flag_matrix_tests.rs`.
+    fn ipc_decode_order_proptest(selector in 0_u8..5, value in any::<u32>()) {
         let mut bytes = ipc_header_bytes()?;
-        match selector % 6 {
+        match selector {
             0 => { let magic = if value == IPC_MAGIC { 0 } else { value }; write_u32(&mut bytes, 0, magic); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::InvalidMagic { .. })); prop_assert!(ok); }
             1 => { write_u16(&mut bytes, 4, IPC_VERSION.saturating_add(1)); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::UnsupportedVersion { .. })); prop_assert!(ok); }
             2 => { write_u16(&mut bytes, 6, 9000); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Ok(header) if header.command == IpcCommand::UnknownCommand(9000)); prop_assert!(ok); }
-            3 => { write_u16(&mut bytes, 10, 1); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::ReservedNonZero { actual: 1 })); prop_assert!(ok); }
-            4 => { write_u32(&mut bytes, 20, u32::MAX); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::new(NonZeroUsize::MIN)), Err(IpcError::PayloadTooLarge { .. })); prop_assert!(ok); }
+            3 => { write_u32(&mut bytes, 20, u32::MAX); let ok = matches!(IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT), Err(IpcError::PayloadTooLarge { .. })); prop_assert!(ok); }
             _ => { let header = decode_ipc_header(&bytes)?; let ok = matches!(decode_frame_payload(&header, &[255]), Err(IpcError::PayloadLengthMismatch { .. }) | Err(IpcError::PayloadDecodeFailed)); prop_assert!(ok); }
         }
     }

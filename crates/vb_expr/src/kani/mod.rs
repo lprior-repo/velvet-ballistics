@@ -13,3 +13,5 @@ pub mod vb_jpq7_35_stack;
 pub mod vb_jpq7_35_token_bound;
 #[cfg(kani)]
 pub mod vb_xo50x_builtin_eval;
+#[cfg(kani)]
+pub mod vb_bc33k_type_enforcer;

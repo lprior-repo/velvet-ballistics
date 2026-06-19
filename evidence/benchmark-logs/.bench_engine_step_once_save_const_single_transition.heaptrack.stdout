@@ -1,0 +1,17 @@
+heaptrack output will be written to "/home/lewis/src/velvet-ballistics/evidence/benchmark-logs/raw/bench_engine_step_once_save_const_single_transition.heaptrack.zst"
+starting application, this might take some time...
+Gnuplot not found, using plotters backend
+NOTE: heaptrack detected DEBUGINFOD_URLS but will disable it to prevent 
+unintended network delays during recording
+If you really want to use DEBUGINFOD, export HEAPTRACK_ENABLE_DEBUGINFOD=1
+Testing runtime_core/bench_engine_step_once_save_const_single_transition;profile=bench;tool=criterion-0.8;du...
+latency budget ok: benchmark=bench_engine_step_once_save_const_single_transition; max_iteration_us=0; budget_us=100000; utilization_pct=0
+Success
+
+heaptrack stats:
+	allocations:          	81331
+	leaked allocations:   	15
+	temporary allocations:	34390
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/home/lewis/src/velvet-ballistics/evidence/benchmark-logs/raw/bench_engine_step_once_save_const_single_transition.heaptrack.zst"

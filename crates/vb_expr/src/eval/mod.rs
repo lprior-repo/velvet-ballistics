@@ -10,7 +10,12 @@ mod evaluate;
 mod helpers;
 mod ops;
 mod stack;
-mod type_enforcers;
+// vb-5y4te: promoted from `mod type_enforcers;` to `pub(crate) mod` so that
+// vb-bc33k proptests (crates/vb_expr/src/eval_tests.rs) and the matching
+// kani harnesses (crates/vb_expr/src/kani/vb_bc33k_type_enforcer.rs) can
+// import the expect_* helpers via `crate::eval::type_enforcers::*`.
+// Kept crate-local — no downstream crate should depend on this module.
+pub(crate) mod type_enforcers;
 
 pub use crate::lexer::{BinaryOp, UnaryOp};
 pub use crate::parser::ExprHelper;

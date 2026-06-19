@@ -3137,4 +3137,213 @@ mod tests {
             assert_eq!(found, *expected_found, "OR non-bool right found type");
         }
     }
+
+    // ============================================================================
+    // vb-bc33k: Proptest property tests for type_enforcers.
+    //
+    // Each property mirrors a Verus spec in `crates/vb_expr/src/eval/verus.rs`:
+    //   - spec_expect_bool   -> expect_bool   (LEMMA-TYPE-001)
+    //   - spec_expect_i64    -> expect_i64    (LEMMA-TYPE-002)
+    //   - spec_expect_symbol -> expect_symbol (LEMMA-TYPE-003)
+    //   - spec_expect_list   -> expect_list   (LEMMA-TYPE-004)
+    //   - spec_expect_object -> expect_object (LEMMA-TYPE-005)
+    //
+    // Each expect_* must accept exactly one SlotValue variant and reject all
+    // others with TypeMismatch { expected, found: type_name() }.
+    // ============================================================================
+
+    use crate::eval::type_enforcers::{
+        expect_bool, expect_i64, expect_list, expect_object, expect_symbol,
+    };
+    use vb_core::ids::{BlobId, ListId, ObjectId, SymbolId};
+
+    fn arb_slot_value() -> impl Strategy<Value = SlotValue> {
+        prop_oneof![
+            Just(SlotValue::Null),
+            any::<bool>().prop_map(SlotValue::Bool),
+            any::<i64>().prop_map(SlotValue::I64),
+            (0u32..1024).prop_map(|id| SlotValue::Symbol(SymbolId::new(id))),
+            (0u32..1024).prop_map(|id| SlotValue::List(ListId::new(id))),
+            (0u32..1024).prop_map(|id| SlotValue::Object(ObjectId::new(id))),
+            (0u64..1024).prop_map(|id| SlotValue::Blob(BlobId::new(id))),
+        ]
+    }
+
+    // -- LEMMA-TYPE-001: expect_bool iff value is Bool. -----------------------
+
+    proptest! {
+        #[test]
+        fn type_enforcer_expect_bool_roundtrips_any_bool(input in any::<bool>()) {
+            let value = SlotValue::Bool(input);
+            match expect_bool(value) {
+                Ok(recovered) => prop_assert_eq!(recovered, input),
+                Err(err) => prop_assert!(false, "expect_bool must accept Bool: got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn type_enforcer_expect_bool_rejects_non_bool(value in arb_slot_value()) {
+            if matches!(value, SlotValue::Bool(_)) {
+                return Ok(());
+            }
+            match expect_bool(value) {
+                Err(ExprError::TypeMismatch { expected, found }) => {
+                    prop_assert_eq!(expected, "boolean");
+                    prop_assert_eq!(found, value.type_name());
+                }
+                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+            }
+        }
+    }
+
+    // -- LEMMA-TYPE-002: expect_i64 iff value is I64 (NOT F64). --------------
+
+    proptest! {
+        #[test]
+        fn type_enforcer_expect_i64_roundtrips_any_i64(input in any::<i64>()) {
+            let value = SlotValue::I64(input);
+            match expect_i64(value) {
+                Ok(recovered) => prop_assert_eq!(recovered, input),
+                Err(err) => prop_assert!(false, "expect_i64 must accept I64: got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn type_enforcer_expect_i64_rejects_non_i64(value in arb_slot_value()) {
+            if matches!(value, SlotValue::I64(_)) {
+                return Ok(());
+            }
+            match expect_i64(value) {
+                Err(ExprError::TypeMismatch { expected, found }) => {
+                    prop_assert_eq!(expected, "number");
+                    prop_assert_eq!(found, value.type_name());
+                }
+                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+            }
+        }
+    }
+
+    // -- LEMMA-TYPE-003: expect_symbol iff value is Symbol. -------------------
+
+    proptest! {
+        #[test]
+        fn type_enforcer_expect_symbol_roundtrips_any_id(id in any::<u32>()) {
+            let symbol_id = SymbolId::new(id);
+            let value = SlotValue::Symbol(symbol_id);
+            let result: ExprResult<SymbolId> = expect_symbol(value);
+            match result {
+                Ok(recovered) => prop_assert_eq!(recovered, symbol_id),
+                Err(err) => prop_assert!(false, "expect_symbol must accept Symbol: got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn type_enforcer_expect_symbol_rejects_non_symbol(value in arb_slot_value()) {
+            if matches!(value, SlotValue::Symbol(_)) {
+                return Ok(());
+            }
+            match expect_symbol(value) {
+                Err(ExprError::TypeMismatch { expected, found }) => {
+                    prop_assert_eq!(expected, "text");
+                    prop_assert_eq!(found, value.type_name());
+                }
+                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+            }
+        }
+    }
+
+    // -- LEMMA-TYPE-004: expect_list iff value is List. ----------------------
+
+    proptest! {
+        #[test]
+        fn type_enforcer_expect_list_roundtrips_any_id(id in any::<u32>()) {
+            let list_id = ListId::new(id);
+            let value = SlotValue::List(list_id);
+            let result: ExprResult<ListId> = expect_list(value);
+            match result {
+                Ok(recovered) => prop_assert_eq!(recovered, list_id),
+                Err(err) => prop_assert!(false, "expect_list must accept List: got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn type_enforcer_expect_list_rejects_non_list(value in arb_slot_value()) {
+            if matches!(value, SlotValue::List(_)) {
+                return Ok(());
+            }
+            match expect_list(value) {
+                Err(ExprError::TypeMismatch { expected, found }) => {
+                    prop_assert_eq!(expected, "list");
+                    prop_assert_eq!(found, value.type_name());
+                }
+                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+            }
+        }
+    }
+
+    // -- LEMMA-TYPE-005: expect_object iff value is Object. ------------------
+
+    proptest! {
+        #[test]
+        fn type_enforcer_expect_object_roundtrips_any_id(id in any::<u32>()) {
+            let object_id = ObjectId::new(id);
+            let value = SlotValue::Object(object_id);
+            let result: ExprResult<ObjectId> = expect_object(value);
+            match result {
+                Ok(recovered) => prop_assert_eq!(recovered, object_id),
+                Err(err) => prop_assert!(false, "expect_object must accept Object: got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn type_enforcer_expect_object_rejects_non_object(value in arb_slot_value()) {
+            if matches!(value, SlotValue::Object(_)) {
+                return Ok(());
+            }
+            match expect_object(value) {
+                Err(ExprError::TypeMismatch { expected, found }) => {
+                    prop_assert_eq!(expected, "object");
+                    prop_assert_eq!(found, value.type_name());
+                }
+                other => prop_assert!(false, "expected TypeMismatch, got {:?}", other),
+            }
+        }
+    }
+
+    // -- LEMMA-TYPE-006: SlotValue is a partition of variants. ---------------
+
+    proptest! {
+        #[test]
+        fn type_enforcer_null_rejected_by_all_enforcers(_unit in Just(())) {
+            let v = SlotValue::Null;
+            prop_assert!(expect_bool(v).is_err());
+            prop_assert!(expect_i64(v).is_err());
+            prop_assert!(expect_symbol(v).is_err());
+            prop_assert!(expect_list(v).is_err());
+            prop_assert!(expect_object(v).is_err());
+        }
+
+        #[test]
+        fn type_enforcer_exactly_zero_or_one_accepts(value in arb_slot_value()) {
+            let ok_bool = expect_bool(value).is_ok();
+            let ok_i64 = expect_i64(value).is_ok();
+            let ok_symbol = expect_symbol(value).is_ok();
+            let ok_list = expect_list(value).is_ok();
+            let ok_object = expect_object(value).is_ok();
+
+            let ok_count = [ok_bool, ok_i64, ok_symbol, ok_list, ok_object]
+                .iter()
+                .filter(|b| **b)
+                .count();
+
+            // The iff-correctness invariant: at most one type_enforcer accepts
+            // a given value (Null is rejected by all; every other variant is
+            // accepted by exactly one).
+            prop_assert!(
+                ok_count <= 1,
+                "at most one type_enforcer accepts a value (got {})",
+                ok_count
+            );
+        }
+    }
 }

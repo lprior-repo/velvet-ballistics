@@ -1,0 +1,17 @@
+heaptrack output will be written to "/home/lewis/src/velvet-ballistics/evidence/benchmark-logs/raw/engine_run_until_blocked_budget_10_small_workflow.heaptrack.zst"
+starting application, this might take some time...
+Gnuplot not found, using plotters backend
+NOTE: heaptrack detected DEBUGINFOD_URLS but will disable it to prevent 
+unintended network delays during recording
+If you really want to use DEBUGINFOD, export HEAPTRACK_ENABLE_DEBUGINFOD=1
+Testing runtime_core/engine_run_until_blocked_budget_10_small_workflow;profile=bench;tool=criterion-0.8;dura...
+latency budget ok: benchmark=engine_run_until_blocked_budget_10_small_workflow; max_iteration_us=0; budget_us=100000; utilization_pct=0
+Success
+
+heaptrack stats:
+	allocations:          	81323
+	leaked allocations:   	15
+	temporary allocations:	34392
+Heaptrack finished! Now run the following to investigate the data:
+
+  heaptrack --analyze "/home/lewis/src/velvet-ballistics/evidence/benchmark-logs/raw/engine_run_until_blocked_budget_10_small_workflow.heaptrack.zst"

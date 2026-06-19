@@ -198,8 +198,7 @@ mod tests {
     #[test]
     fn analyzer_exposes_all_twelve_master_section_64_fields() {
         let yaml = b"version: velvet-ballistics/v1\nname: fields\nwhen:\n  manual: {}\nsteps:\n  - id: setup\n    set:\n      output: result\n      value: \"42\"\n  - id: finish_step\n    finish:\n      result: result\n";
-        let workflow = crate::compile_workflow(yaml)
-            .expect("minimal workflow must compile");
+        let workflow = crate::compile_workflow(yaml).expect("minimal workflow must compile");
         let budget = compute_whole_workflow_budget(&workflow)
             .expect("bounded workflow must return Ok from the analyzer");
         // Twelve fields, enumerated in the order documented in the
@@ -224,8 +223,7 @@ mod tests {
     #[test]
     fn analyzer_handles_single_node_workflow() {
         let yaml = b"version: velvet-ballistics/v1\nname: single\nwhen:\n  manual: {}\nsteps:\n  - id: only\n    set:\n      output: result\n      value: \"1\"\n  - id: finish_step\n    finish:\n      result: result\n";
-        let workflow = crate::compile_workflow(yaml)
-            .expect("single-node workflow must compile");
+        let workflow = crate::compile_workflow(yaml).expect("single-node workflow must compile");
         let budget = compute_whole_workflow_budget(&workflow)
             .expect("single-node workflow must be bounded per §64");
         // At least one executable step must exist for a non-empty workflow.

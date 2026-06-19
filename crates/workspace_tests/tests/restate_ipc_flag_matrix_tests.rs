@@ -286,8 +286,11 @@ fn raw_header_with_flags(command: IpcCommand, flags: u16, reserved: u16) -> [u8;
 }
 
 /// Builds a valid raw header for a command with given command_id and flags.
+/// SEC-01: the 5th parameter (`reserved`) is now the caller-capabilities
+/// envelope. Use a non-zero value (e.g. ROOT = 0x0001) to avoid the
+/// `PermissionDenied` missing-capability sentinel.
 fn raw_header_cmd_id(command_id: u16, flags: u16) -> [u8; IPC_HEADER_LEN] {
-    raw_header_bytes(IPC_MAGIC, IPC_VERSION, command_id, flags, 0, 0, 0)
+    raw_header_bytes(IPC_MAGIC, IPC_VERSION, command_id, flags, 0x0001, 0, 0)
         .expect("raw_header_bytes must succeed for valid inputs")
 }
 
@@ -511,7 +514,16 @@ fn proptest_valid_mask_is_disjoint_from_reserved_global_mask() {
 /// When both reserved field (offset 10..12) is non-zero AND flags are
 /// invalid, `ReservedNonZero` is returned — NOT a flag error.
 /// This tests the current decode precedence order.
+///
+/// SEC-01: Wire offset 10..12 is now the caller-capabilities envelope, not
+/// a hard-zero reserved field. The decoder no longer returns
+/// `ReservedNonZero` for that slot. The `IpcError::ReservedNonZero`
+/// variant still exists in the enum (diagnostic code 0x3007) for
+/// forward compatibility but is not produced by the current decoder.
+/// This test is marked `#[ignore]` until either the variant is removed
+/// or the test is rewritten for the new capabilities-envelope semantics.
 #[test]
+#[ignore = "SEC-01: reserved field at offset 10..12 is now the capabilities envelope; ReservedNonZero is not produced from this slot"]
 fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
     use rand::Rng;
     use rand::SeedableRng;
@@ -1231,7 +1243,13 @@ fn decode_returns_reserved_bits_set_when_health_has_high_byte_flag_set() {
 ///
 /// This tests the CURRENT decode behavior where reserved field check
 /// (step 5) precedes the flag check location (step 8, future).
+///
+/// SEC-01: Wire offset 10..12 is now the caller-capabilities envelope.
+/// The decoder no longer returns `ReservedNonZero` for that slot.
+/// This test is marked `#[ignore]` until either the variant is removed
+/// or the test is rewritten for the new capabilities-envelope semantics.
 #[test]
+#[ignore = "SEC-01: reserved field at offset 10..12 is now the capabilities envelope; ReservedNonZero is not produced from this slot"]
 fn decode_returns_reserved_non_zero_not_reserved_bits_set_when_reserved_field_is_nonzero() {
     // Given: a valid-till-reserved header with reserved_field ≠ 0
     //        and flags that would be rejected if flag check ran first
@@ -1268,7 +1286,12 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0)),
+            Ok(IpcFrameHeader::new(
+                IpcCommand::UnknownCommand(0),
+                0,
+                0,
+                0,
+            )),
             "command ID 0 must preserve UnknownCommand(0)"
         );
     }
@@ -1279,7 +1302,12 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(17), 0, 0, 0)),
+            Ok(IpcFrameHeader::new(
+                IpcCommand::UnknownCommand(17),
+                0,
+                0,
+                0,
+            )),
             "command ID 17 must preserve UnknownCommand(17)"
         );
     }
@@ -1328,7 +1356,13 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
 /// This test verifies the current behavior where decode() correctly
 /// returns ReservedNonZero for the header-level reserved field, and
 /// documents where ReservedBitsSet will be returned after GAP-5.
+///
+/// SEC-01: Wire offset 10..12 is now the caller-capabilities envelope.
+/// The decoder no longer returns `ReservedNonZero` for that slot.
+/// This test is marked `#[ignore]` until either the variant is removed
+/// or the test is rewritten for the new capabilities-envelope semantics.
 #[test]
+#[ignore = "SEC-01: reserved field at offset 10..12 is now the capabilities envelope; ReservedNonZero is not produced from this slot"]
 fn decode_distinguishes_reserved_non_zero_field_from_reserved_bits_in_flags() {
     // Test A: reserved field ≠ 0, flags = 0 → ReservedNonZero
     {
@@ -1422,7 +1456,7 @@ fn decode_rejects_payload_len_exceeding_max_bound() {
         IPC_VERSION,
         IpcCommand::Health.as_u16(),
         0x0000,
-        0x0000,
+        0x0001,
         1,
         oversized,
     )
@@ -1453,7 +1487,7 @@ fn decode_rejects_payload_len_with_tight_max_bound() {
         IPC_VERSION,
         IpcCommand::Health.as_u16(),
         0x0000,
-        0x0000,
+        0x0001,
         1,
         oversized,
     )
@@ -1480,7 +1514,7 @@ fn decode_accepts_payload_len_exactly_at_tight_max_bound() {
         IPC_VERSION,
         IpcCommand::Health.as_u16(),
         0x0000,
-        0x0000,
+        0x0001,
         1,
         1024,
     )

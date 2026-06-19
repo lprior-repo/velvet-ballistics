@@ -1,0 +1,30 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5051f54e737d4fcdc14946ef2a088f18135123e91077c649411296590041b818 # shrinks to _dummy = false
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 345961d7610a75b979765058a1aada5cb9dff7bd13e4048b364c31def42928f5 # shrinks to _dummy = false
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 74f48bc03bff723b28263e248e85ada440f8123c66521f36a728f692732067ae # shrinks to _dummy = false
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5ec0a32802daaefba5fbf1a706b8c20bdd0e5bd9fb9b6910946e33ba360d7b29 # shrinks to policy_byte = 0
+cc 9942e36321f7a6c5cc304349fda9a9179c19f4db7008e3a4183d9c4c8dcfb107 # shrinks to policy_byte = 0
+cc 6c9b1efbd1dd755fc9bc18021463aeb27d857ce72d799f69558755d8f0177977 # shrinks to _dummy = false

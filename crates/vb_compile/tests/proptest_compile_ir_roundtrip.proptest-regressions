@@ -1,0 +1,17 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 401a5a9d7dc49f99985775ac46d2ba0b793321d0c8b02d81a202874f3045a494 # shrinks to id = "a", result = "\"0\""
+cc 2841399a6a406010204a8c81b157711ce7dc8070bf23a6b27104a7362ba9ee66 # shrinks to id = "a", action = "a", input = "\"0\""
+cc d4f26cbdbdd72006000d73e9e560cd29400efa6f9f9745f0a93eb9d71beab184 # shrinks to id = "a", prompt = "\"0\"", timeout = "\"3\""
+cc abd59084395d33782d2b406f8068d5c13d2777759ddb2c1ce249ccfd7e2fd6c8 # shrinks to id = "y", variable = "a", input = "\"0\"", initial = "\"0\"", body_id = "a", body_output = "a", body_value = "\"0\""
+cc d8fcc9008fb4c9d25174b1e70c48b082a07a7ebaec7cfc2c46c9f9e7fb53d824 # shrinks to id = "a", body_id = "a", body_output = "a", body_value = "\"0\""
+cc 54a22ef085b846d79674bca5af8a6459f30ea0c95ecca998166758e1a6cd18bc # shrinks to id = "a", variable = "a", input = "\"0\"", body_id = "n", body_output = "a", body_value = "\"0\""
+cc e0509546a7cc7d5d375c7495d6ea5a77cea2b565992ccb9e30435446c5a79452 # shrinks to id = "y", output = "a", value = "\"0\""
+cc acc10fd61936eec1d928810e2ae483e37afa707da49239f9670630237e2fb6f3 # shrinks to id = "a", variable = "a", source = "\"0\"", body_id = "y", body_output = "a", body_value = "\"0\""
+cc 22f62ddc6e47e18506fd97930b154fecd72631adc4ce2d6a557a7556549672c3 # shrinks to id = "y", event = "\"0\"", timeout = "\"0\""
+cc bc6f1df49f1d6070213e8ad7cf1c5baf3856f59538dc0d2e2c0f5553fc668992 # shrinks to id = "n", max_attempts = 1, body_id = "a", body_output = "a", body_value = "\"0\""
+cc a0674510f0d2f3f7934b7d6971c9cc7b94323a1178ec42fb39ab7192de64e962 # shrinks to id = "a", branch_count = 2, label_a = "a", label_b = "a", label_c = "a", body_a_id = "y", body_b_id = "a", body_c_id = "a", body_a_out = "a", body_b_out = "a", body_c_out = "a", body_a_val = "\"0\"", body_b_val = "\"0\"", body_c_val = "\"0\""

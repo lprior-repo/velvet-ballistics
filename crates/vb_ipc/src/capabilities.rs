@@ -219,8 +219,7 @@ mod tests {
         let met = a.intersection(b);
         // OPERATOR and OBSERVER share only ROOT.
         assert_eq!(met, CallerCapabilities::ROOT);
-        let disjoint = CallerCapabilities::ROOT
-            .intersection(CallerCapabilities::SUBMITTER);
+        let disjoint = CallerCapabilities::ROOT.intersection(CallerCapabilities::SUBMITTER);
         assert_eq!(disjoint, CallerCapabilities::ROOT);
         let none = CallerCapabilities::ROOT.intersection(CallerCapabilities::EMPTY);
         assert_eq!(none, CallerCapabilities::EMPTY);

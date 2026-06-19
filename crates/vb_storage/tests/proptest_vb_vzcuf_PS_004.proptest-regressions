@@ -1,0 +1,20 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3d94e1d16bd0ce839dbb5d0587365ed50bebfa391cbec46f8eac1b22cbe27d65 # shrinks to events = []
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc db23842f3822064f6546005c1eebf3884c19ec547be9c8bec5a9444ab1fc8810 # shrinks to events = []
+cc c9c9f536385f45e3f15a373fd3667c97215383585865ba74d6288e1d17701447 # shrinks to run = 478
+cc c840ff1bea2af56abaeee7caebd960a5b4f9127092b8de29cd6d4bb246c8eace # shrinks to run = 349, seq = 60
+cc 72269366b52dba0d7f37e0415817f3c28a9e24a13c9cd395c1c125f2e971db77 # shrinks to run = 395, seq = 36
+cc a01d26649f8ac505c3b1fd5d333d8eb633f56a8921861f3b55a4e6a2de6cd0c1 # shrinks to run = 921
+cc 44027724633ac5cfe2c03927d935bf150d68fb88d772368d4986342462b6b341 # shrinks to run = 924, seq = 56
+cc c3326bd78137091d5c2ae678ae185333539073524cdcdd0268221d8b4a7150f5 # shrinks to run = 912, seq = 21
