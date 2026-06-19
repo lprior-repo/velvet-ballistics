@@ -46,10 +46,7 @@ fn kani_type_enforcer_expect_bool_iff_bool() {
             let Ok(recovered) = result else {
                 return;
             };
-            kani::assert(
-                recovered == b,
-                "expect_bool must round-trip the inner bool",
-            );
+            kani::assert(recovered == b, "expect_bool must round-trip the inner bool");
         }
         _ => {
             kani::assert(result.is_err(), "expect_bool must reject non-Bool");
@@ -77,10 +74,7 @@ fn kani_type_enforcer_expect_i64_iff_i64() {
             let Ok(recovered) = result else {
                 return;
             };
-            kani::assert(
-                recovered == n,
-                "expect_i64 must round-trip the inner i64",
-            );
+            kani::assert(recovered == n, "expect_i64 must round-trip the inner i64");
         }
         _ => {
             kani::assert(result.is_err(), "expect_i64 must reject non-I64");
@@ -131,10 +125,7 @@ fn kani_type_enforcer_expect_list_iff_list() {
             let Ok(recovered) = result else {
                 return;
             };
-            kani::assert(
-                recovered == id,
-                "expect_list must round-trip the ListId",
-            );
+            kani::assert(recovered == id, "expect_list must round-trip the ListId");
         }
         _ => {
             kani::assert(result.is_err(), "expect_list must reject non-List");
@@ -164,10 +155,7 @@ fn kani_type_enforcer_expect_object_iff_object() {
             );
         }
         _ => {
-            kani::assert(
-                result.is_err(),
-                "expect_object must reject non-Object",
-            );
+            kani::assert(result.is_err(), "expect_object must reject non-Object");
             let Err(ExprError::TypeMismatch { expected, .. }) = result else {
                 return;
             };

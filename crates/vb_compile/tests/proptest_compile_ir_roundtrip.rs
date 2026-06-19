@@ -42,7 +42,7 @@
 //! canonical names; aliases are validated by `v1_primitive_lowering.rs`.
 
 use proptest::prelude::*;
-use vb_compile::{compile_workflow, CompileErrors};
+use vb_compile::{CompileErrors, compile_workflow};
 use vb_core::workflow::WorkflowParts;
 
 const HEADER: &str =

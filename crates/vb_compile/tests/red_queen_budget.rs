@@ -150,7 +150,8 @@ const FINISH: &str = "  - id: done\n    finish:\n      result: 0\n";
 /// Returns `Err(other)` for any other compile or analyzer error.
 fn try_compute_budget(yaml: &str) -> Result<(), CompileError> {
     let workflow = compile_workflow(yaml.as_bytes()).map_err(|errs| {
-        errs.0.into_iter()
+        errs.0
+            .into_iter()
             .next()
             .unwrap_or(CompileError::EmptySource)
     })?;

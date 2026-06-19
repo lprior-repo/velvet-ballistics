@@ -146,8 +146,22 @@ use vb_storage::{
 
 const JOURNAL_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/journal/replay.rs");
 const JOURNAL_CORE_SOURCE: &str = include_str!("../../vb_storage/src/journal/core.rs");
-const JOURNAL_APPEND_SOURCE: &str = include_str!("../../vb_storage/src/journal/append/intent.rs");
-const EVENT_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/recovery/event_replay/mod.rs");
+const JOURNAL_APPEND_SOURCE: &str = concat!(
+    include_str!("../../vb_storage/src/journal/append/mod.rs"),
+    include_str!("../../vb_storage/src/journal/append/intent.rs"),
+    include_str!("../../vb_storage/src/journal/append/journal_impl.rs"),
+    include_str!("../../vb_storage/src/journal/append/mrwe6_kernel.rs"),
+    include_str!("../../vb_storage/src/journal/append/decision/mod.rs"),
+    include_str!("../../vb_storage/src/journal/append/decision/duplicate.rs"),
+    include_str!("../../vb_storage/src/journal/append/decision/recovery.rs"),
+    include_str!("../../vb_storage/src/journal/append/decision/resolution.rs"),
+);
+const EVENT_REPLAY_SOURCE: &str = concat!(
+    include_str!("../../vb_storage/src/recovery/event_replay/mod.rs"),
+    include_str!("../../vb_storage/src/recovery/event_replay/tail.rs"),
+    include_str!("../../vb_storage/src/recovery/event_replay/parallel.rs"),
+    include_str!("../../vb_storage/src/recovery/event_replay/taint.rs"),
+);
 fn step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
     JournalEvent::StepStarted {
         run,

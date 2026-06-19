@@ -1286,12 +1286,7 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Ok(IpcFrameHeader::new(
-                IpcCommand::UnknownCommand(0),
-                0,
-                0,
-                0,
-            )),
+            Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(0), 0, 0, 0,)),
             "command ID 0 must preserve UnknownCommand(0)"
         );
     }
@@ -1302,12 +1297,7 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Ok(IpcFrameHeader::new(
-                IpcCommand::UnknownCommand(17),
-                0,
-                0,
-                0,
-            )),
+            Ok(IpcFrameHeader::new(IpcCommand::UnknownCommand(17), 0, 0, 0,)),
             "command ID 17 must preserve UnknownCommand(17)"
         );
     }
