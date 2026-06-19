@@ -126,7 +126,7 @@ fn shard_config_new_accepts_max_step_budget() {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-        max_terminal_runs: 16,
+        max_terminal_runs: 100_000,
         terminal_runs_ttl_ticks: 86_400,
         
 })
