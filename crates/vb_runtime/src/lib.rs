@@ -90,6 +90,7 @@ pub mod primitives;
 pub mod recovery;
 pub mod runtime;
 pub mod shard;
+pub mod shutdown_cas;
 pub mod taint;
 pub mod trace;
 #[cfg(all(kani, feature = "kani-yaml-e2e-admission-matrix"))]

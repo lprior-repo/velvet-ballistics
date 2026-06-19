@@ -136,8 +136,8 @@ use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 
 use crate::{
     BoundedPayload, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IngressFrame, IpcCommand, IpcError,
-    IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity, SubmitRunPayload,
-    decode_frame, decode_payload, encode_payload,
+    IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity, ROOT_CAPABILITY_BIT,
+    SubmitRunPayload, decode_frame, decode_payload, encode_payload,
 };
 use bytes::Bytes;
 
@@ -282,12 +282,14 @@ fn decoder_rejects_payload_above_bound() {
         Err(_) => return,
     };
     let max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+    // SEC-01: caller-capabilities envelope is the ROOT bit (non-zero), so the
+    // payload-bound check is reached and the oversized payload is rejected.
     let encoded = header_bytes(
         IPC_MAGIC,
         IPC_VERSION,
         IpcCommand::SubmitRun.as_u16(),
         0,
-        0,
+        ROOT_CAPABILITY_BIT,
         1,
         payload_len_val,
     );
@@ -305,7 +307,28 @@ fn decoder_rejects_payload_above_bound() {
 }
 
 #[test]
-fn decoder_rejects_non_zero_reserved_field() {
+fn decoder_rejects_zero_capabilities_envelope() {
+    // SEC-01: a zero caller-capabilities envelope is the missing-capability
+    // sentinel and must be rejected with PermissionDenied (replaces the old
+    // `reserved != 0 → ReservedNonZero` check).
+    let encoded = header_bytes(
+        IPC_MAGIC,
+        IPC_VERSION,
+        IpcCommand::Health.as_u16(),
+        0,
+        0,
+        1,
+        0,
+    );
+    assert_ok!(encoded, "test header should encode");
+    let Ok(encoded) = encoded else { return };
+    let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+
+    assert_eq!(decoded, Err(IpcError::PermissionDenied));
+}
+
+#[test]
+fn decoder_accepts_nonzero_capabilities_envelope() {
     let encoded = header_bytes(
         IPC_MAGIC,
         IPC_VERSION,
@@ -318,8 +341,8 @@ fn decoder_rejects_non_zero_reserved_field() {
     assert_ok!(encoded, "test header should encode");
     let Ok(encoded) = encoded else { return };
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
-
-    assert_eq!(decoded, Err(IpcError::ReservedNonZero { actual: 9 }));
+    let header = decoded.expect("non-zero capabilities envelope must be accepted");
+    assert_eq!(header.caller_capabilities.bits(), 9);
 }
 
 #[test]
@@ -552,7 +575,10 @@ fn encode_header_produces_correct_flags_bytes() {
 }
 
 #[test]
-fn encode_header_produces_zero_reserved_bytes() {
+fn encode_header_produces_root_capabilities_envelope() {
+    // SEC-01: the previously reserved slot now carries the ROOT caller-capability
+    // bit by default, so the encoded bytes at offset 10..12 must equal the
+    // ROOT bit pattern (0x0001 little-endian).
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
 
     let encoded = header.encode();
@@ -560,7 +586,10 @@ fn encode_header_produces_zero_reserved_bytes() {
     let Ok(encoded) = encoded else { return };
 
     let reserved_bytes = encoded.get(10..12);
-    assert_eq!(reserved_bytes, Some(0u16.to_le_bytes().as_slice()));
+    assert_eq!(
+        reserved_bytes,
+        Some(ROOT_CAPABILITY_BIT.to_le_bytes().as_slice())
+    );
 }
 
 #[test]
@@ -862,7 +891,8 @@ fn header_decode_rejects_unsupported_version_zero() {
 
 #[test]
 fn header_decode_accepts_unknown_command_id() {
-    let encoded = header_bytes(IPC_MAGIC, IPC_VERSION, 200, 0, 0, 1, 0);
+    // SEC-01: provide the ROOT capability envelope so the envelope check passes.
+    let encoded = header_bytes(IPC_MAGIC, IPC_VERSION, 200, 0, ROOT_CAPABILITY_BIT, 1, 0);
     assert_ok!(encoded, "test header should encode");
     let Ok(encoded) = encoded else { return };
 
@@ -984,14 +1014,16 @@ fn ut_header_encoding_roundtrips() {
 }
 
 #[test]
-fn ut_header_reserved_field_is_zero() {
+fn ut_header_envelope_bytes_carry_root_capability() {
+    // SEC-01: the bytes at offset 10..12 now carry the ROOT caller-capability
+    // bit pattern (0x0001 little-endian), not a reserved zero field.
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
     let encoded = header.encode().expect("header must encode");
-    let reserved_bytes: [u8; 2] = [encoded[10], encoded[11]];
+    let envelope_bytes: [u8; 2] = [encoded[10], encoded[11]];
     assert_eq!(
-        reserved_bytes,
-        [0x00, 0x00],
-        "reserved bytes at offset 10-11 must be zero"
+        envelope_bytes,
+        [0x01, 0x00],
+        "envelope bytes at offset 10-11 must carry ROOT capability bit"
     );
 }
 
@@ -1762,6 +1794,8 @@ fn frame_validation_zero_command_id_returns_unknown_command() {
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    // SEC-01: ROOT capability envelope so the envelope check passes.
+    header_bytes[10..12].copy_from_slice(&ROOT_CAPABILITY_BIT.to_le_bytes());
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
@@ -1777,6 +1811,7 @@ fn frame_validation_unrecognized_command_id_returns_unknown_command() {
     header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
     header_bytes[6..8].copy_from_slice(&99u16.to_le_bytes());
+    header_bytes[10..12].copy_from_slice(&ROOT_CAPABILITY_BIT.to_le_bytes());
 
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
@@ -2259,18 +2294,18 @@ fn fuzz_target_mock_exercises_all_decode_error_paths() {
         );
     }
 
-    // 4. ReservedNonZero — valid magic, version=1, reserved=1
+    // 4. PermissionDenied — valid magic, version=1, capabilities=0 sentinel
     {
         let mut h = [0u8; IPC_HEADER_LEN];
         h[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
         h[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
         h[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
-        h[10..12].copy_from_slice(&1u16.to_le_bytes()); // reserved=1
+        // capabilities envelope bytes 10..12 are already 0 (the sentinel)
         let result = crate::decode_frame_header(&h);
         assert_eq!(
             result,
-            Err(IpcError::ReservedNonZero { actual: 1 }),
-            "reserved=1 must produce ReservedNonZero"
+            Err(IpcError::PermissionDenied),
+            "zero capabilities envelope must produce PermissionDenied (SEC-01)"
         );
     }
 

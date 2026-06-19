@@ -259,14 +259,17 @@ fn vb_dzibx_ipc_header_rejection_order() {
     reserved_header[20..24].copy_from_slice(&reserved_payload_len.to_le_bytes());
 
     let reserved_result = IpcFrameHeader::decode(&reserved_header, MaxPayloadBytes::DEFAULT);
+    // SEC-01: the reserved slot is now the caller-capabilities envelope.
+    // A non-zero capability bitmap is the success path, so a valid Ok is the
+    // expected outcome here. We assert the capability is preserved bit-for-bit.
     match reserved_result {
-        Err(IpcError::ReservedNonZero { actual }) => kani::assert(
-            actual == reserved,
-            "production decode reports nonzero reserved field before payload bounds",
+        Ok(header) => kani::assert(
+            header.caller_capabilities.bits() == reserved,
+            "production decode preserves the caller-capabilities envelope bits",
         ),
         _ => kani::assert(
             false,
-            "nonzero reserved field must reject before payload-bound validation",
+            "nonzero caller-capabilities envelope must decode successfully",
         ),
     }
 

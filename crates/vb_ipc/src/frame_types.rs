@@ -6,6 +6,7 @@ use bytes::Bytes;
 use std::io::Cursor;
 
 use crate::bounded::{BoundedPayload, MaxPayloadBytes};
+use crate::capabilities::CallerCapabilities;
 use crate::commands::IpcCommand;
 use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 use crate::error::IpcError;
@@ -17,6 +18,9 @@ pub struct IpcFrameHeader {
     pub command: IpcCommand,
     /// Command-specific flags.
     pub flags: u16,
+    /// Caller-capabilities envelope bitmap. Zero is the missing-capability
+    /// sentinel and is rejected at decode time.
+    pub caller_capabilities: CallerCapabilities,
     /// Correlates requests and replies.
     pub correlation: u64,
     /// Postcard payload byte length.
@@ -24,12 +28,34 @@ pub struct IpcFrameHeader {
 }
 
 impl IpcFrameHeader {
-    /// Creates an IPC frame header.
+    /// Creates an IPC frame header with the default [`CallerCapabilities::ROOT`]
+    /// envelope.
     #[must_use]
     pub const fn new(command: IpcCommand, flags: u16, correlation: u64, payload_len: u32) -> Self {
         Self {
             command,
             flags,
+            caller_capabilities: CallerCapabilities::ROOT,
+            correlation,
+            payload_len,
+        }
+    }
+
+    /// Creates an IPC frame header with explicit caller capabilities. Use this
+    /// constructor to embed a capability other than [`CallerCapabilities::ROOT`]
+    /// (for example, the operator or observer envelope).
+    #[must_use]
+    pub const fn new_with_capabilities(
+        command: IpcCommand,
+        flags: u16,
+        caller_capabilities: CallerCapabilities,
+        correlation: u64,
+        payload_len: u32,
+    ) -> Self {
+        Self {
+            command,
+            flags,
+            caller_capabilities,
             correlation,
             payload_len,
         }
@@ -51,8 +77,10 @@ impl IpcFrameHeader {
         cursor
             .write_u16::<LittleEndian>(self.flags)
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
+        // SEC-01: previously the reserved slot — now carries the capabilities
+        // envelope bitmap.
         cursor
-            .write_u16::<LittleEndian>(0_u16)
+            .write_u16::<LittleEndian>(self.caller_capabilities.bits())
             .map_err(|_| IpcError::HeaderEncodeFailed)?;
         cursor
             .write_u64::<LittleEndian>(self.correlation)
@@ -91,12 +119,16 @@ impl IpcFrameHeader {
         let flags = cursor
             .read_u16::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;
-        let reserved = cursor
+        // SEC-01: previously the reserved slot — now reads the caller-capability
+        // envelope. A zero value is the missing-capability sentinel and is
+        // rejected with `PermissionDenied` BEFORE any payload bound check.
+        let capabilities_bits = cursor
             .read_u16::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;
-        if reserved != 0 {
-            return Err(IpcError::ReservedNonZero { actual: reserved });
-        }
+        let caller_capabilities = match CallerCapabilities::from_wire(capabilities_bits) {
+            Some(caps) => caps,
+            None => return Err(IpcError::PermissionDenied),
+        };
         let correlation = cursor
             .read_u64::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;
@@ -114,6 +146,7 @@ impl IpcFrameHeader {
         Ok(Self {
             command,
             flags,
+            caller_capabilities,
             correlation,
             payload_len,
         })

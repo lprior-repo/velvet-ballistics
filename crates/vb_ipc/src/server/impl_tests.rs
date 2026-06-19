@@ -873,11 +873,11 @@ fn server_processes_multiple_commands_from_same_client() {
     }
 }
 
-// ── reserved non-zero field handling ────────────────────────────────────────
+// ── SEC-01 caller-capabilities envelope handling ─────────────────────────────
 
 #[test]
-fn server_responds_with_error_for_nonzero_reserved_field() {
-    let path = temp_socket_path("nonzero_reserved");
+fn server_responds_with_permission_denied_for_missing_capability_envelope() {
+    let path = temp_socket_path("missing_capability");
     let _cleanup = CleanupPath(&path);
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
     let mut runtime = make_runtime();
@@ -889,18 +889,19 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
         .poll_once(&mut runtime, Some(Duration::from_millis(100)))
         .expect("accept poll should succeed");
 
-    // Build a header with reserved field set to non-zero.
+    // Build a header whose caller-capabilities envelope is the zero sentinel
+    // (replaces the old "reserved != 0" check).
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
     header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
     header_bytes[8..10].copy_from_slice(&0u16.to_le_bytes()); // flags
-    header_bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // reserved != 0
+    header_bytes[10..12].copy_from_slice(&0u16.to_le_bytes()); // missing capability sentinel
     header_bytes[12..20].copy_from_slice(&1u64.to_le_bytes()); // correlation
     header_bytes[20..24].copy_from_slice(&0u32.to_le_bytes()); // payload_len
     client
         .write_all(&header_bytes)
-        .expect("client should write nonzero reserved");
+        .expect("client should write missing capability envelope");
     client.flush().expect("client should flush");
 
     // Server processes the readable event.
@@ -933,8 +934,8 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
         match decoded {
             Ok(IpcResponse::FrameError { message }) => {
                 assert!(
-                    message.contains("reserved") || message.contains("non-zero"),
-                    "frame error should mention reserved, got '{message}'"
+                    message.contains("caller capability") || message.contains("permission"),
+                    "frame error should mention caller capability/permission, got '{message}'"
                 );
             }
             Ok(other) => {

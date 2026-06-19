@@ -5,7 +5,7 @@
 //! These proofs verify the strict decode step ordering enforced by
 //! `IpcFrameHeader::decode`:
 //! - Step 2 (magic) must precede Step 3 (version)
-//! - Step 5 (reserved) must precede Step 6 (payload_len)
+//! - Step 5 (caller-capabilities envelope, SEC-01) must precede Step 6 (payload_len)
 
 use crate::{
     bounded::MaxPayloadBytes,
@@ -31,7 +31,7 @@ fn kani_harness_ipc_decode_order() {
     bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
     bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
     bytes[8..10].copy_from_slice(&0u16.to_le_bytes()); // flags
-    bytes[10..12].copy_from_slice(&0u16.to_le_bytes()); // reserved
+    bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // caller-capabilities envelope (ROOT bit)
     bytes[12..20].copy_from_slice(&0u64.to_le_bytes()); // correlation
     bytes[20..24].copy_from_slice(&0u32.to_le_bytes()); // payload_len
 
@@ -63,8 +63,8 @@ fn kani_harness_ipc_decode_order() {
         "UnsupportedVersion error"
     );
     kani::cover!(
-        matches!(result, Err(IpcError::ReservedNonZero { .. })),
-        "ReservedNonZero error"
+        matches!(result, Err(IpcError::PermissionDenied)),
+        "PermissionDenied error"
     );
     kani::cover!(
         matches!(result, Err(IpcError::PayloadTooLarge { .. })),
@@ -73,12 +73,12 @@ fn kani_harness_ipc_decode_order() {
 }
 
 /// VB-IPC-POSTCARD-ENVELOPE-001 H2:
-/// Prove that `ReservedNonZero` is returned before `PayloadTooLarge`.
-/// For any header with non-zero reserved field, we get ReservedNonZero
-/// before any payload_len bounds check.
+/// Prove that `PermissionDenied` is returned before `PayloadTooLarge`.
+/// For any header with a zero caller-capabilities envelope, we get
+/// `PermissionDenied` before any payload_len bounds check.
 #[kani::proof]
 #[kani::unwind(4)]
-fn kani_harness_ipc_reserved_nonzero_before_payload_len() {
+fn kani_harness_ipc_capabilities_missing_before_payload_len() {
     let mut bytes: [u8; IPC_HEADER_LEN] = kani::any();
 
     // Set correct magic
@@ -88,10 +88,8 @@ fn kani_harness_ipc_reserved_nonzero_before_payload_len() {
     bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
     bytes[8..10].copy_from_slice(&0u16.to_le_bytes()); // flags
 
-    // Set non-zero reserved at offset 10..12
-    let reserved: u16 = kani::any();
-    kani::assume(reserved != 0);
-    bytes[10..12].copy_from_slice(&reserved.to_le_bytes());
+    // Set zero caller-capabilities envelope (the missing-capability sentinel)
+    bytes[10..12].copy_from_slice(&0u16.to_le_bytes());
 
     bytes[12..20].copy_from_slice(&0u64.to_le_bytes()); // correlation
 
@@ -101,26 +99,26 @@ fn kani_harness_ipc_reserved_nonzero_before_payload_len() {
 
     let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
 
-    // Must return ReservedNonZero before checking payload_len
+    // Must return PermissionDenied before checking payload_len
     match result {
-        Err(IpcError::ReservedNonZero { actual }) => {
-            kani::assert(actual == reserved, "ReservedNonZero contains wrong value");
+        Err(IpcError::PermissionDenied) => {
+            // OK: envelope check precedes payload bound check
         }
         Err(IpcError::InvalidMagic { .. }) => {
             // Magic check happens first - both are valid
         }
         Ok(_) => {
-            kani::assert(false, "non-zero reserved should not return Ok");
+            kani::assert(false, "missing capabilities should not return Ok");
         }
         Err(_) => {
-            // Other errors before ReservedNonZero
+            // Other errors before PermissionDenied
         }
     }
 
-    // COVER: ReservedNonZero path
+    // COVER: PermissionDenied path
     kani::cover!(
-        matches!(result, Err(IpcError::ReservedNonZero { .. })),
-        "reserved nonzero path"
+        matches!(result, Err(IpcError::PermissionDenied)),
+        "permission denied path"
     );
 }
 
@@ -137,7 +135,7 @@ fn kani_harness_ipc_magic_before_version() {
     bytes[4..6].copy_from_slice(&(IPC_VERSION + 1).to_le_bytes()); // wrong version
     bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
     bytes[8..10].copy_from_slice(&0u16.to_le_bytes());
-    bytes[10..12].copy_from_slice(&0u16.to_le_bytes());
+    bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // caller-capabilities envelope
     bytes[12..20].copy_from_slice(&0u64.to_le_bytes());
     bytes[20..24].copy_from_slice(&0u32.to_le_bytes());
 

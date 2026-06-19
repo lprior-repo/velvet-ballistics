@@ -135,6 +135,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
+    use crate::CallerCapabilities;
     use crate::IpcCommand;
     use crate::constants::IPC_HEADER_LEN;
     use bytes::Bytes;
@@ -169,11 +170,50 @@ mod tests {
 
     #[test]
     fn decode_rejects_nonzero_reserved_field() {
+        // The reserved slot is now the caller-capabilities envelope (SEC-01).
+        // A non-zero capability value is the success path; this test is kept
+        // for historical reasons and now asserts the *valid* decoding of a
+        // non-default capability bitmap.
         let mut bytes = make_valid_header_bytes();
         bytes[10..12].copy_from_slice(&7u16.to_le_bytes());
 
         let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-        assert_eq!(result, Err(IpcError::ReservedNonZero { actual: 7 }));
+        let header = result.expect("non-zero capability envelope must be accepted");
+        assert_eq!(header.caller_capabilities.bits(), 7);
+    }
+
+    #[test]
+    fn decode_rejects_missing_capabilities() {
+        // SEC-01: a frame whose caller-capabilities envelope is the zero
+        // sentinel must be rejected with PermissionDenied.
+        let mut bytes = make_valid_header_bytes();
+        bytes[10..12].copy_from_slice(&0u16.to_le_bytes());
+
+        let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
+        assert_eq!(result, Err(IpcError::PermissionDenied));
+    }
+
+    #[test]
+    fn decode_accepts_valid_capabilities() {
+        let bytes = make_valid_header_bytes();
+
+        let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
+        let header = result.expect("default envelope must be accepted");
+        assert_eq!(header.caller_capabilities, CallerCapabilities::ROOT);
+    }
+
+    #[test]
+    fn decode_propagates_permission_denied_before_payload_bound() {
+        // SEC-01: the envelope is checked before any payload bound check, so a
+        // missing-capability frame with an oversized payload_len must still
+        // surface as PermissionDenied (not PayloadTooLarge).
+        let mut bytes = make_valid_header_bytes();
+        bytes[10..12].copy_from_slice(&0u16.to_le_bytes());
+        let oversized = u32::MAX;
+        bytes[20..24].copy_from_slice(&oversized.to_le_bytes());
+
+        let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
+        assert_eq!(result, Err(IpcError::PermissionDenied));
     }
 
     #[test]

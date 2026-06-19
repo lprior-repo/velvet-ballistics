@@ -72,6 +72,15 @@ pub enum IpcError {
     /// Typed response payload decoding failed.
     #[error("failed to decode IPC response")]
     ResponseDecodeFailed,
+    /// Frame's caller-capabilities envelope is missing or rejected.
+    #[error("IPC frame missing or invalid caller capability envelope")]
+    PermissionDenied,
+    /// Unix socket peer-credentials check failed at accept time.
+    #[error("IPC peer credentials check failed: {0}")]
+    PeerCredentialsFailed(
+        /// Reason for the peer-credentials rejection.
+        &'static str,
+    ),
 }
 
 impl IpcError {
@@ -110,6 +119,10 @@ impl IpcError {
     pub const PAYLOAD_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300D);
     /// Diagnostic code for response decode failed.
     pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300E);
+    /// Diagnostic code for missing or invalid caller capabilities.
+    pub const PERMISSION_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x300F);
+    /// Diagnostic code for peer-credentials rejection on Unix sockets.
+    pub const PEER_CREDENTIALS_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x3010);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -129,6 +142,8 @@ impl IpcError {
             Self::PayloadEncodeFailed => Self::PAYLOAD_ENCODE_FAILED_CODE,
             Self::PayloadDecodeFailed => Self::PAYLOAD_DECODE_FAILED_CODE,
             Self::ResponseDecodeFailed => Self::RESPONSE_DECODE_FAILED_CODE,
+            Self::PermissionDenied => Self::PERMISSION_DENIED_CODE,
+            Self::PeerCredentialsFailed(_) => Self::PEER_CREDENTIALS_FAILED_CODE,
         }
     }
 
@@ -148,6 +163,9 @@ impl IpcError {
             | Self::HeaderDecodeFailed
             | Self::PayloadDecodeFailed
             | Self::ResponseDecodeFailed => Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE),
+            Self::PermissionDenied | Self::PeerCredentialsFailed(_) => {
+                Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE)
+            }
             Self::Disconnected | Self::HeaderEncodeFailed | Self::PayloadEncodeFailed => None,
         }
     }

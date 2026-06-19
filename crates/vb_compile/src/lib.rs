@@ -242,3 +242,6 @@ pub(crate) use validation::validate_public_name;
 // downstream consumers of this crate can optionally use the standalone
 // validator's error domain without depending on `vb_validate` directly.
 pub use vb_validate::{ValidationError, ValidationResult};
+
+pub mod budget_analyzer;
+pub use budget_analyzer::compute_whole_workflow_budget;

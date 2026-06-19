@@ -13,6 +13,7 @@
 
 pub mod action_output;
 pub mod bounded;
+pub mod capabilities;
 pub mod client;
 pub mod codec;
 pub mod commands;
@@ -23,6 +24,7 @@ pub mod frame_types;
 pub mod ingress;
 pub mod metrics;
 pub mod payloads;
+pub mod peer_credentials;
 pub mod server;
 
 #[cfg(verus)]
@@ -63,6 +65,10 @@ pub use crate::action_output::IpcActionOutputPayload;
 pub use crate::bounded::{
     BoundedPayload, BoundedReadExtent, BoundedWriteDrainExtent, MaxPayloadBytes, QueueCapacity,
 };
+pub use crate::capabilities::{
+    ACTION_HANDLER_CAPABILITY_BIT, CallerCapabilities, OBSERVER_CAPABILITY_BIT,
+    OPERATOR_CAPABILITY_BIT, ROOT_CAPABILITY_BIT, SUBMITTER_CAPABILITY_BIT,
+};
 pub use crate::codec::{decode_payload, encode_payload};
 pub use crate::commands::IpcCommand;
 pub use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
@@ -76,6 +82,9 @@ pub use crate::frame::{
 };
 pub use crate::frame_types::{IpcFrame, IpcFrameHeader, decode_frame};
 pub use crate::ingress::{IngressFrame, MemoryIngress, MemoryIngressSender};
+pub use crate::peer_credentials::{
+    PeerCheckOutcome, PeerIdentity, PeerPolicy, ServerIdentity,
+};
 pub use crate::metrics::{
     AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,
 };

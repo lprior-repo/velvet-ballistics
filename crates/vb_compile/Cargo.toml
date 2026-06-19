@@ -71,3 +71,7 @@ path = "tests/proptest_save_canonical_name.rs"
 [[test]]
 name = "proptest_save_digest_prefix"
 path = "tests/proptest_save_digest_prefix.rs"
+
+[[test]]
+name = "proptest_compile_ir_roundtrip"
+path = "tests/proptest_compile_ir_roundtrip.rs"

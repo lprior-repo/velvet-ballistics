@@ -65,10 +65,11 @@ pub fn admission_fuzz(data: &[u8]) {
     fuzz_lib::fuzz_admission_fuzz(data);
 }
 
-/// UI model OutputEnvelope postcard decode target.
-pub fn vb_ui_model_postcard_decode(data: &[u8]) {
-    fuzz_lib::fuzz_vb_ui_model_postcard_decode(data);
-}
+// DISABLED: vb_ui_model crate missing from workspace (master §76 + §58).
+// /// UI model OutputEnvelope postcard decode target.
+// pub fn vb_ui_model_postcard_decode(data: &[u8]) {
+//     fuzz_lib::fuzz_vb_ui_model_postcard_decode(data);
+// }
 
 /// Action tracker state transition fuzz target.
 pub fn action_tracker(data: &[u8]) {

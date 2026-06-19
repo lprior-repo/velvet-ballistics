@@ -87,6 +87,7 @@ impl CompileError {
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
+            Self::UnboundedWorkflow { .. } => "UNBOUNDED_WORKFLOW",
         };
         // Safety invariant: all symbolic strings returned by CompileError::code()
         // are registered in vb_core::CODE_REGISTRY. This is verified by

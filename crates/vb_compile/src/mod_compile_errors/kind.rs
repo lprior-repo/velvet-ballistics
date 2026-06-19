@@ -173,4 +173,16 @@ pub enum CompileError {
     ExpressionHelperArity { helper: &'static str, expected: usize, actual: usize },
     #[error("action {action:?} has side-effect {side_effect:?} with unsafe retry: {reason}")]
     IdempotencyViolation { action: ActionId, side_effect: SideEffect, reason: Box<str> },
+    /// Master §64: the workflow contains an unbounded construct (per the
+    /// WholeWorkflowBudget dataflow analyzer). Carries the budget that
+    /// triggered the rejection so the compiler can report the offending
+    /// field to the operator.
+    #[error("workflow is unbounded per §64: {reason}")]
+    UnboundedWorkflow {
+        /// Stable label of the budget field that was exceeded (e.g.
+        /// "max_total_steps", "max_fanout").
+        reason: &'static str,
+        /// The whole-workflow budget computed at the point of rejection.
+        budget_exceeded: vb_core::budget::WholeWorkflowBudget,
+    },
 }

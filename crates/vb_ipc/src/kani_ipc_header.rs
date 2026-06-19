@@ -93,17 +93,20 @@ fn kani_ipc_header_rejects_bad_version() {
     kani::assert(decoded.is_err(), "unsupported version should return error");
 }
 
-/// VB-IPC-DECODE-001/003 H4: decode rejects non-zero reserved field
+/// VB-IPC-DECODE-001/003 H4: SEC-01 decode rejects zero caller-capabilities envelope
 #[kani::proof]
-fn kani_ipc_header_rejects_reserved_nonzero() {
+fn kani_ipc_header_rejects_missing_capabilities() {
     let mut bytes = [0u8; IPC_HEADER_LEN];
     bytes[0..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     bytes[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
     bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
-    bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // non-zero reserved
+    bytes[10..12].copy_from_slice(&0u16.to_le_bytes()); // missing-capability sentinel
 
     let decoded = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-    kani::assert(decoded.is_err(), "non-zero reserved should return error");
+    kani::assert(
+        decoded.is_err(),
+        "zero caller-capabilities envelope must return error",
+    );
 }
 
 /// VB-IPC-DECODE-001/003 H5: decode with various valid commands

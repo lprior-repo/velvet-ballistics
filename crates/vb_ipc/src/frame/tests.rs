@@ -803,11 +803,12 @@ fn adversarial_unsupported_version_two_rejected() {
 
 #[test]
 fn adversarial_unknown_command_id_rejected() {
-    // Given: valid magic, version=1, command=200 (invalid)
+    // Given: valid magic, version=1, command=200 (invalid), capabilities=ROOT
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
     header_bytes[6..8].copy_from_slice(&200u16.to_le_bytes());
+    header_bytes[10..12].copy_from_slice(&crate::ROOT_CAPABILITY_BIT.to_le_bytes());
 
     // When: decoding
     let result = decode_frame_header(&header_bytes);
@@ -826,10 +827,11 @@ fn adversarial_unknown_command_id_rejected() {
 
 #[test]
 fn adversarial_command_id_zero_rejected() {
-    // Given: valid magic, version=1, command=0 (invalid)
+    // Given: valid magic, version=1, command=0 (invalid), capabilities=ROOT
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+    header_bytes[10..12].copy_from_slice(&crate::ROOT_CAPABILITY_BIT.to_le_bytes());
     // command bytes 6..8 already 0
 
     // When: decoding
@@ -844,11 +846,12 @@ fn adversarial_command_id_zero_rejected() {
 
 #[test]
 fn adversarial_command_id_max_u16_rejected() {
-    // Given: valid magic, version=1, command=u16::MAX
+    // Given: valid magic, version=1, command=u16::MAX, capabilities=ROOT
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
     header_bytes[6..8].copy_from_slice(&u16::MAX.to_le_bytes());
+    header_bytes[10..12].copy_from_slice(&crate::ROOT_CAPABILITY_BIT.to_le_bytes());
 
     // When: decoding
     let result = decode_frame_header(&header_bytes);
@@ -866,20 +869,46 @@ fn adversarial_command_id_max_u16_rejected() {
 }
 
 #[test]
-fn adversarial_nonzero_reserved_field_rejected() {
-    // Given: valid magic, version, command, but reserved=1
+fn adversarial_missing_capabilities_rejected() {
+    // Given: valid magic, version, command, but capabilities envelope is the
+    // zero sentinel (SEC-01). The previous `reserved != 0` rule has been
+    // replaced with `caller_capabilities == 0 → PermissionDenied`.
     let mut header_bytes = [0u8; IPC_HEADER_LEN];
     header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
     header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
     header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
     // flags 8..10 = 0
-    header_bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // reserved = 1
+    // caller_capabilities 10..12 = 0 (missing-capability sentinel)
 
     // When: decoding
     let result = decode_frame_header(&header_bytes);
 
-    // Then: ReservedNonZero
-    assert_eq!(result, Err(IpcError::ReservedNonZero { actual: 1 }));
+    // Then: PermissionDenied
+    assert_eq!(result, Err(IpcError::PermissionDenied));
+}
+
+#[test]
+fn adversarial_zero_reserved_field_is_now_capabilities_sentinel() {
+    // Given: valid magic, version, command, and capabilities=ROOT
+    let mut header_bytes = [0u8; IPC_HEADER_LEN];
+    header_bytes[..4].copy_from_slice(&crate::IPC_MAGIC.to_le_bytes());
+    header_bytes[4..6].copy_from_slice(&crate::IPC_VERSION.to_le_bytes());
+    header_bytes[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+    header_bytes[10..12].copy_from_slice(&crate::ROOT_CAPABILITY_BIT.to_le_bytes());
+
+    // When: decoding
+    let result = decode_frame_header(&header_bytes);
+
+    // Then: Ok with the embedded capabilities preserved.
+    assert_eq!(
+        result,
+        Ok(IpcFrameHeader::new(
+            IpcCommand::Health,
+            0,
+            0,
+            0
+        ))
+    );
 }
 
 #[test]
