@@ -1,23 +1,34 @@
 EXIT_CODE: 141
 STATE: TIMED_OUT
-RUN_DATE: 2026-06-19T12:44:49Z
-COMMIT: 76d73463cc95b60fe2ef3d48e2be7dea9b6406e5
-OUTPUT: .beads/moon-ci-output-20260619-074235.txt
-TIMEOUT_BUDGET: 1500s
+RUN_DATE: 2026-06-19T12:52:38Z
+COMMIT: 3df616482ab7c7ef722d5eb7c8b24e473d66e23b
+OUTPUT: .beads/moon-ci-output-20260619-075153.txt
+TIMEOUT_BUDGET: 3000s
 NOTES: |
-  Tier A kani gate repairs (the 4 blockers from moon-ci-output-20260617-230049.txt):
-    - verify-kani-vb-compile: PASS (10m 20s) - kani_lower_control.rs structurally clean.
-    - verify-kani-vb-ipc: PASS (1m 54s) - kani_harnesses_plan.rs + kani_parallel_in_flight.rs already fixed.
-    - verify-kani-vb-runtime: PASS (5m 53s) - cargo kani --lib excludes dev-deps, blocks loom -> generator global ASM.
-    - verify-kani-vb-storage: PASS (11m 9s) - same --lib fix.
-  Missing crates/vb_yaml/src/verification/verus/vb_yaml_error_classifier.rs: not tracked in current
-  git tree (deleted in 9bd22a41f under vb-dzibx, see contracts/proof_obligations.yaml:1488-1492);
-  source-length task's .exists() filter now drops the dead reference.
-  Full moon ci: TIMED_OUT at 1500s during verify-kani-vb-runtime long-running harness
-  (drop_in_place unwind loop iterations 7-15+). The four targeted Tier A kani lanes all
-  complete SUCCESSFUL when run individually; the overall wall-clock budget for the
-  49-action graph exceeds 1500s.
+  moon ci timed out at 3000s (50 minutes) during the kani stage.
+  Progress at kill: verify-kani-vb-runtime completed 10/45 harnesses
+  (harness 10 "collect_next_reentry" still in progress), verify-kani-vb-storage
+  started and timed out inside an unwinding loop iteration 31+
+  (slot_extra::_serde::ser::impls serialize for [u8; 32] via postcard).
+
+  Prior 1500s run (.beads/moon-ci-output-20260619-074235.txt) hit the same wall
+  but at harness 10 of vb-runtime. The wall-clock budget is the bottleneck,
+  not the harness internals. Each harness has KANI_TIMEOUT=15m internal cap;
+  45 harnesses × ~150s each ≈ 6750s just for vb-runtime, plus another ~20
+  tasks (flux/loom/verus/miri/coverage/etc.) downstream.
+
+  Per user directive: "If moon ci still times out at 3000s, report and stop --
+  don't loop." No further moon ci attempts.
+
+  Targeted lanes (vb-compile, vb-ipc, vb-runtime, vb-storage) still PASS
+  when invoked individually (see kani.yml stage definitions and prior
+  run-notes). Tier A v0.1.0 release is BLOCKED on moon ci wall-clock budget.
 NEXT_TURN_PLAN: |
-  Increase moon ci wall-clock budget to >=1800s for the verify-kani-vb-runtime task,
-  or split the runtime kani harnesses into smaller feature-gated task shards so the
-  individual lane durations stay under the budget. No code repair is required.
+  Tier A v0.1.0 release blocked. Options for the user:
+    1. Split .moon/tasks/kani.yml verify-kani-vb-runtime into 3-4 smaller
+       tasks (capability / reentry / trace-ring / vt2f) so each fits in a
+       smaller outer budget. Requires editing CI config.
+    2. Run moon ci on a dedicated runner with 7200s+ budget.
+    3. Accept moon ci timed-out status as the v0.1.0 gate with a
+       documented limitation in CHANGELOG.
+    4. Defer Tier A v0.1.0 to v0.2.0 until harness budgets are reduced.
