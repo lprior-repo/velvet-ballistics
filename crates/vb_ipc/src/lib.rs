@@ -82,13 +82,11 @@ pub use crate::frame::{
 };
 pub use crate::frame_types::{IpcFrame, IpcFrameHeader, decode_frame};
 pub use crate::ingress::{IngressFrame, MemoryIngress, MemoryIngressSender};
-pub use crate::peer_credentials::{
-    PeerCheckOutcome, PeerIdentity, PeerPolicy, ServerIdentity,
-};
 pub use crate::metrics::{
     AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,
 };
 pub use crate::payloads::{IpcPayload, IpcTraceEvent, IpcTraceEventKind, SubmitRunPayload};
+pub use crate::peer_credentials::{PeerCheckOutcome, PeerIdentity, PeerPolicy, ServerIdentity};
 
 #[cfg(test)]
 mod tests;

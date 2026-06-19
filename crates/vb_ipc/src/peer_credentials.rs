@@ -153,7 +153,14 @@ mod tests {
     #[test]
     fn peer_identity_unknown_is_detected() {
         assert!(PeerIdentity::unknown().is_unknown());
-        assert!(!PeerIdentity { euid: 1000, egid: 1000, pid: 1 }.is_unknown());
+        assert!(
+            !PeerIdentity {
+                euid: 1000,
+                egid: 1000,
+                pid: 1
+            }
+            .is_unknown()
+        );
     }
 
     #[test]
@@ -165,7 +172,14 @@ mod tests {
             PeerCheckOutcome::Accept
         );
         assert_eq!(
-            policy.evaluate(PeerIdentity { euid: 999, egid: 999, pid: 1 }, server),
+            policy.evaluate(
+                PeerIdentity {
+                    euid: 999,
+                    egid: 999,
+                    pid: 1
+                },
+                server
+            ),
             PeerCheckOutcome::Accept
         );
     }
@@ -175,10 +189,24 @@ mod tests {
         let server = ServerIdentity::new(1000);
         let policy = PeerPolicy::SameUser;
         assert_eq!(
-            policy.evaluate(PeerIdentity { euid: 1000, egid: 1000, pid: 1 }, server),
+            policy.evaluate(
+                PeerIdentity {
+                    euid: 1000,
+                    egid: 1000,
+                    pid: 1
+                },
+                server
+            ),
             PeerCheckOutcome::Accept
         );
-        match policy.evaluate(PeerIdentity { euid: 999, egid: 999, pid: 1 }, server) {
+        match policy.evaluate(
+            PeerIdentity {
+                euid: 999,
+                egid: 999,
+                pid: 1,
+            },
+            server,
+        ) {
             PeerCheckOutcome::Reject { reason } => {
                 assert_eq!(reason, "peer euid does not match server euid");
             }
@@ -201,12 +229,28 @@ mod tests {
     #[test]
     fn allow_list_accepts_listed_euid() {
         let server = ServerIdentity::new(1000);
-        let policy = PeerPolicy::AllowList { allowed: &[1000, 1234] };
+        let policy = PeerPolicy::AllowList {
+            allowed: &[1000, 1234],
+        };
         assert_eq!(
-            policy.evaluate(PeerIdentity { euid: 1234, egid: 1234, pid: 7 }, server),
+            policy.evaluate(
+                PeerIdentity {
+                    euid: 1234,
+                    egid: 1234,
+                    pid: 7
+                },
+                server
+            ),
             PeerCheckOutcome::Accept
         );
-        match policy.evaluate(PeerIdentity { euid: 9999, egid: 9999, pid: 7 }, server) {
+        match policy.evaluate(
+            PeerIdentity {
+                euid: 9999,
+                egid: 9999,
+                pid: 7,
+            },
+            server,
+        ) {
             PeerCheckOutcome::Reject { reason } => {
                 assert_eq!(reason, "peer euid not in allow list");
             }
@@ -219,7 +263,9 @@ mod tests {
         let outcome: PeerCheckOutcome = PeerCheckOutcome::Reject {
             reason: "peer euid not in allow list",
         };
-        let err = outcome.into_ipc_error().expect_err("reject must lift to error");
+        let err = outcome
+            .into_ipc_error()
+            .expect_err("reject must lift to error");
         match err {
             IpcError::PeerCredentialsFailed(reason) => {
                 assert_eq!(reason, "peer euid not in allow list");

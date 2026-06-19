@@ -21,7 +21,8 @@ use proptest::prelude::*;
 use vb_compile::{CompileErrors, compile_workflow};
 use vb_core::workflow::WorkflowParts;
 
-const HEADER: &str = "version: velvet-ballistics/v1\nname: roundtrip-workflow\nwhen:\n  manual: {}\nsteps:\n";
+const HEADER: &str =
+    "version: velvet-ballistics/v1\nname: roundtrip-workflow\nwhen:\n  manual: {}\nsteps:\n";
 
 const FINISH: &str = "  - id: finish_step\n    finish:\n      result: result\n";
 

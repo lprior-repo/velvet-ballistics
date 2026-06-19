@@ -78,7 +78,7 @@ impl ShutdownState {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            state: AtomicU8::new(ShutdownPhase::Idle as u8),
+            state: AtomicU8::new(ShutdownPhase::Idle.as_u8()),
         }
     }
 
@@ -100,8 +100,8 @@ impl ShutdownState {
     /// advanced to `Shutdown`.
     pub fn try_begin_shutdown(&self) -> ShutdownTransition {
         match self.state.compare_exchange(
-            ShutdownPhase::Idle as u8,
-            ShutdownPhase::ShuttingDown as u8,
+            ShutdownPhase::Idle.as_u8(),
+            ShutdownPhase::ShuttingDown.as_u8(),
             Ordering::AcqRel,
             Ordering::Acquire,
         ) {
@@ -124,8 +124,8 @@ impl ShutdownState {
     pub fn complete_shutdown(&self) -> bool {
         self.state
             .compare_exchange(
-                ShutdownPhase::ShuttingDown as u8,
-                ShutdownPhase::Shutdown as u8,
+                ShutdownPhase::ShuttingDown.as_u8(),
+                ShutdownPhase::Shutdown.as_u8(),
                 Ordering::AcqRel,
                 Ordering::Acquire,
             )
@@ -209,9 +209,14 @@ mod tests {
             let state = Arc::clone(&state);
             handles.push(thread::spawn(move || state.try_begin_shutdown()));
         }
-        let outcomes: Vec<ShutdownTransition> =
-            handles.into_iter().map(|h| h.join().expect("thread join")).collect();
-        let begin_count = outcomes.iter().filter(|o| **o == ShutdownTransition::Begin).count();
+        let outcomes: Vec<ShutdownTransition> = handles
+            .into_iter()
+            .map(|h| h.join().expect("thread join"))
+            .collect();
+        let begin_count = outcomes
+            .iter()
+            .filter(|o| **o == ShutdownTransition::Begin)
+            .count();
         assert_eq!(begin_count, 1, "exactly one caller must observe Begin");
         for outcome in outcomes.iter().filter(|o| **o != ShutdownTransition::Begin) {
             assert_eq!(*outcome, ShutdownTransition::AlreadyShuttingDown);
@@ -231,8 +236,10 @@ mod tests {
             let state = Arc::clone(&state);
             handles.push(thread::spawn(move || state.try_begin_shutdown()));
         }
-        let outcomes: Vec<ShutdownTransition> =
-            handles.into_iter().map(|h| h.join().expect("thread join")).collect();
+        let outcomes: Vec<ShutdownTransition> = handles
+            .into_iter()
+            .map(|h| h.join().expect("thread join"))
+            .collect();
         for outcome in outcomes {
             assert_eq!(outcome, ShutdownTransition::AlreadyShutdown);
         }

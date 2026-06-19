@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
 //! Recovery outcome logic.
 
-use crate::journal::append::intent::{ActionIndexIntent, Mrwe6EventClass, mrwe6_action_index_intent, mrwe6_event_class};
-use crate::journal::append::mrwe6_kernel::Mrwe6RecoveryOutcome;
 use crate::error::JournalError;
 use crate::events::JournalEvent;
+use crate::journal::append::intent::{
+    ActionIndexIntent, Mrwe6EventClass, mrwe6_action_index_intent, mrwe6_event_class,
+};
+use crate::journal::append::mrwe6_kernel::Mrwe6RecoveryOutcome;
 use crate::keys::index_action_key;
 
 #[cfg(kani)]
@@ -110,9 +112,7 @@ fn resolution_matches_scheduled(
             resolved_run,
             resolved_step,
         ),
-        ActionIndexIntent::Put { .. } | ActionIndexIntent::None => {
-            Ok(false)
-        }
+        ActionIndexIntent::Put { .. } | ActionIndexIntent::None => Ok(false),
     }
 }
 

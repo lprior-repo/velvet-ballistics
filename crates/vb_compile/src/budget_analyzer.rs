@@ -36,9 +36,8 @@ pub fn compute_whole_workflow_budget(
     workflow: &CompiledWorkflow,
 ) -> Result<WholeWorkflowBudget, CompileError> {
     let parts = workflow.to_parts();
-    let budget =
-        WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)
-            .map_err(|err| map_budget_error(err, &parts))?;
+    let budget = WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)
+        .map_err(|err| map_budget_error(err, &parts))?;
     // Independent re-check: if any §64 field is zero where the resource
     // contract required a positive value, the budget is still considered
     // unbounded. This is a belt-and-braces check on top of `compute`'s
@@ -59,13 +58,10 @@ fn map_budget_error(err: WorkflowError, parts: &vb_core::workflow::WorkflowParts
     match err {
         WorkflowError::BudgetPolicyExceeded { detail } => {
             // Re-run the compute to attach the budget that was rejected.
-            let budget = WholeWorkflowBudget::compute(
-                &parts.nodes,
-                parts.entry,
-                &parts.resource_contract,
-            )
-            .ok()
-            .unwrap_or_else(unbounded_default);
+            let budget =
+                WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)
+                    .ok()
+                    .unwrap_or_else(unbounded_default);
             CompileError::UnboundedWorkflow {
                 reason: detail,
                 budget_exceeded: budget,

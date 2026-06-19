@@ -64,11 +64,7 @@ impl CallerCapabilities {
     /// Reads a wire value, returning [`None`] for the no-capability sentinel.
     #[must_use]
     pub const fn from_wire(bits: u16) -> Option<Self> {
-        if bits == 0 {
-            None
-        } else {
-            Some(Self(bits))
-        }
+        if bits == 0 { None } else { Some(Self(bits)) }
     }
 
     /// Returns the raw wire value.

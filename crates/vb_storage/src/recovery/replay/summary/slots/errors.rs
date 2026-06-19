@@ -4,8 +4,8 @@
 //! Provides:
 //! - `replay_error_to_recovery` — ReplayError → RecoveryError mapping
 
-use vb_core::replay::ReplayError;
 use crate::recovery::{RecoveryError, RecoveryResult};
+use vb_core::replay::ReplayError;
 use vb_core::{RunId, SlotIdx, StepIdx};
 
 pub(crate) fn replay_error_to_recovery(error: ReplayError) -> RecoveryError {

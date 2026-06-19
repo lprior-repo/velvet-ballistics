@@ -24,6 +24,5 @@ pub use resolution::{
 
 // Re-export recovery module
 pub use recovery::{
-    mrwe6_pending_inventory_from_facts, mrwe6_recovery_outcome,
-    mrwe6_recovery_outcome_from_facts,
+    mrwe6_pending_inventory_from_facts, mrwe6_recovery_outcome, mrwe6_recovery_outcome_from_facts,
 };

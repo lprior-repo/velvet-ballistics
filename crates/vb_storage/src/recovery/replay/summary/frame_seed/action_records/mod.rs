@@ -68,7 +68,11 @@ impl FrameSeedAccumulator {
         }
     }
 
-    pub(super) fn record_action_scheduled(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+    pub(super) fn record_action_scheduled(
+        mut self,
+        action: ActionId,
+        step: StepIdx,
+    ) -> RecoveryResult<Self> {
         if self.action_tracker.is_resolved(action, step) {
             return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
         }
@@ -93,7 +97,11 @@ impl FrameSeedAccumulator {
         Ok(self)
     }
 
-    pub(super) fn record_action_completed(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+    pub(super) fn record_action_completed(
+        mut self,
+        action: ActionId,
+        step: StepIdx,
+    ) -> RecoveryResult<Self> {
         if self.action_tracker.is_resolved(action, step) {
             return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
         }
@@ -102,7 +110,11 @@ impl FrameSeedAccumulator {
         Ok(self)
     }
 
-    pub(super) fn record_action_failed(mut self, action: ActionId, step: StepIdx) -> RecoveryResult<Self> {
+    pub(super) fn record_action_failed(
+        mut self,
+        action: ActionId,
+        step: StepIdx,
+    ) -> RecoveryResult<Self> {
         if self.action_tracker.is_resolved(action, step) {
             return Err(RecoveryError::NonIdempotentActionBlocked { action, step });
         }

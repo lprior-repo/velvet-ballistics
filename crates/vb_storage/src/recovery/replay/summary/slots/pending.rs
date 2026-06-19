@@ -6,8 +6,8 @@
 
 use std::collections::HashSet;
 
-use crate::recovery::RecoveredPendingAction;
 use crate::JournalEvent;
+use crate::recovery::RecoveredPendingAction;
 use vb_core::{ActionId, StepIdx};
 
 /// Production proof surface: converts the accumulator HashSet into the

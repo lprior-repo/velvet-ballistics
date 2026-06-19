@@ -900,15 +900,7 @@ fn adversarial_zero_reserved_field_is_now_capabilities_sentinel() {
     let result = decode_frame_header(&header_bytes);
 
     // Then: Ok with the embedded capabilities preserved.
-    assert_eq!(
-        result,
-        Ok(IpcFrameHeader::new(
-            IpcCommand::Health,
-            0,
-            0,
-            0
-        ))
-    );
+    assert_eq!(result, Ok(IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0)));
 }
 
 #[test]

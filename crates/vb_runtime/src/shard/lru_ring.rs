@@ -184,13 +184,14 @@ where
         // alive. When `now.get() < ttl_ticks` we cannot use
         // `saturating_sub` (it would round to 0 and falsely evict every
         // entry), so the cutoff is treated as -1 (no expiration).
-        let cutoff: i128 = if (now.get() as i128) < (self.ttl_ticks as i128) {
-            -1
-        } else {
-            (now.get() - self.ttl_ticks) as i128
+        // The `u64 -> i128` widening `From` conversion is lossless
+        // (i128::MAX >= u64::MAX), so we never need an `as` cast.
+        let cutoff: i128 = match now.get().checked_sub(self.ttl_ticks) {
+            Some(value) => i128::from(value),
+            None => -1,
         };
         while let Some(&(value, ts)) = self.order.front() {
-            if (ts.get() as i128) <= cutoff {
+            if i128::from(ts.get()) <= cutoff {
                 self.order.pop_front();
                 self.members.swap_remove(&value);
                 self.counters.expired_evictions = self.counters.expired_evictions.saturating_add(1);

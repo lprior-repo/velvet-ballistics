@@ -5,15 +5,11 @@
 //! - `FrameSeedAccumulator` — event → frame seed state machine
 //! - `ActionEnvelopeView` — extracted view of `ActionCompletedEnvelope` data
 
-
-
 use std::collections::{HashMap, HashSet};
 
 use crate::recovery::action_digest::verify_action_ticket_event;
 use crate::recovery::replay::summary::runtime_summary::apply_summary_event;
-use crate::recovery::{
-    ActionReplayTracker, RecoveryError, RecoveryResult, RecoveryRuntimeSummary,
-};
+use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult, RecoveryRuntimeSummary};
 use crate::{EventSeq, JournalEvent};
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
@@ -187,7 +183,11 @@ impl FrameSeedAccumulator {
         }
     }
 
-    pub(super) fn record_step(mut self, step: StepIdx, state: crate::recovery::RecoveredStepState) -> Self {
+    pub(super) fn record_step(
+        mut self,
+        step: StepIdx,
+        state: crate::recovery::RecoveredStepState,
+    ) -> Self {
         self.max_step_idx = max_step(self.max_step_idx, step);
         self.min_step_idx = min_step(self.min_step_idx, step);
         self.pc = max_step(Some(self.pc), step).map_or(self.pc, |value| value);

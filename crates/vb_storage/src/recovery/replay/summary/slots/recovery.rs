@@ -96,9 +96,7 @@ fn merge_recovered_slots(
     base
 }
 
-fn recovered_event_slots(
-    accumulator: &FrameSeedAccumulator,
-) -> Vec<RecoveredSlotEntry> {
+fn recovered_event_slots(accumulator: &FrameSeedAccumulator) -> Vec<RecoveredSlotEntry> {
     accumulator
         .slot_values
         .iter()

@@ -3,8 +3,8 @@
 
 pub(super) mod decision;
 mod intent;
-pub(crate) mod mrwe6_kernel;
 mod journal_impl;
+pub(crate) mod mrwe6_kernel;
 
 pub use self::decision::{
     Mrwe6DuplicateRetryDecision, Mrwe6RecoveryOutcome, Mrwe6ResolutionCommitDecision,
@@ -36,10 +36,12 @@ pub use self::mrwe6_kernel::{
 #[cfg(kani)]
 #[allow(unused_imports)]
 pub(crate) use self::decision::{
-    VerificationDuplicateRetryDecision, VerificationRecoveryOutcome,
-    VerificationResolutionCommitDecision, verification_duplicate_retry_decision,
-    verification_recovery_outcome, verification_resolution_commit_decision,
-    verification_resolution_marker_present_after_commit,
+    duplicate::{VerificationDuplicateRetryDecision, verification_duplicate_retry_decision},
+    recovery::{VerificationRecoveryOutcome, verification_recovery_outcome},
+    resolution::{
+        VerificationResolutionCommitDecision, verification_resolution_commit_decision,
+        verification_resolution_marker_present_after_commit,
+    },
 };
 #[cfg(kani)]
 #[allow(unused_imports)]

@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! Duplicate retry decision logic.
 
+use crate::events::JournalEvent;
 use crate::journal::append::intent::{Mrwe6EventClass, mrwe6_event_class};
 use crate::journal::append::mrwe6_kernel::Mrwe6DuplicateRetryDecision;
-use crate::events::JournalEvent;
 
 #[cfg(kani)]
 #[allow(dead_code)]

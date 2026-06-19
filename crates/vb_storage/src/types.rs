@@ -10,7 +10,9 @@ mod record;
 mod seq;
 
 // Re-exports from config
-pub use config::{DurabilityProfile, FjallConfig, KeyspaceProfile, StorageLimits, keyspace_options_for};
+pub use config::{
+    DurabilityProfile, FjallConfig, KeyspaceProfile, StorageLimits, keyspace_options_for,
+};
 
 // Re-exports from seq
 pub use seq::EventSeq;
