@@ -1,9 +1,11 @@
 EXIT_CODE: 0
-STATE: RELEASE_CANDIDATE
-RUN_DATE: 2026-06-19T00:00:00Z
-COMMIT: ec1160a40417dc1186c3952736aea28c0b287636
+STATE: NOT_RELEASED
+RUN_DATE: 2026-06-19T17:52:01Z
+COMMIT: 537ca425d99bc06a0d7212ff4297d39f5944f4f2
 NOTES: |
-  Moon ci upstream gates all PASS at 1800s wall-clock.
-  Kani buckets (8 split tasks, 187 harnesses total) need >1800s to complete serially.
-  Each kani bucket PASSES individually when run with extended budget.
-  v0.1.0 is RELEASE_CANDIDATE not GREEN_RELEASE; document the gate state explicitly.
+  v0.1.0 tag deleted — premature.
+  Battle-test in progress.
+  Moon ci TIMED_OUT at 1800s wall-clock (kani buckets need >1800s serially).
+  Multiple PARTIAL bead closures (Verus binding work not verified by Verus toolchain).
+  Pre-existing vb_storage test build break.
+  17 unrelated uncommitted files in working tree.
