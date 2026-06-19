@@ -141,20 +141,21 @@ fn verification_proof_digest_binding_relaxed() {
 
 #[kani::proof]
 #[kani::unwind(40)]
-fn verification_proof_all_claim_flags_unconditional() {
+fn verification_proof_claim_flags_follow_gate_count() {
     let digest: WorkflowDigest = kani::any();
     let gate_count: u8 = kani::any();
     let durable: bool = kani::any();
 
     let proof = VerificationProof::new(digest, gate_count, durable);
+    let gates_passed = gate_count == 15;
 
     kani::assert(
-        proof.bounded_claimed
-            && proof.taint_safe_claimed
-            && proof.retry_safe_claimed
-            && proof.replayable_claimed
-            && proof.idempotency_verified_claimed,
-        "VerificationProof::new initializes every explicit _claimed flag",
+        proof.bounded_claimed == gates_passed
+            && proof.taint_safe_claimed == gates_passed
+            && proof.retry_safe_claimed == gates_passed
+            && proof.replayable_claimed == gates_passed
+            && proof.idempotency_verified_claimed == gates_passed,
+        "VerificationProof::new binds explicit _claimed flags to checked gate count",
     );
     kani::assert(
         proof.digest == digest,

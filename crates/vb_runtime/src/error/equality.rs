@@ -49,6 +49,10 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             a == b
         }
         (
+            RuntimeError::TerminalRunsLruFull { capacity: a },
+            RuntimeError::TerminalRunsLruFull { capacity: b },
+        ) => a == b,
+        (
             RuntimeError::UnsupportedOperation { operation: a },
             RuntimeError::UnsupportedOperation { operation: b },
         ) => a == b,

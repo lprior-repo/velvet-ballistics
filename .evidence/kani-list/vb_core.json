@@ -8,7 +8,9 @@
       "harness": "check_compute_action_idempotency_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -16,7 +18,9 @@
       "harness": "check_compute_action_idempotency_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -24,7 +28,9 @@
       "harness": "check_action_ticket_has_valid_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -32,7 +38,9 @@
       "harness": "check_is_retry_safe_with_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -40,7 +48,9 @@
       "harness": "check_action_ticket_serialization_size",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -48,7 +58,9 @@
       "harness": "check_action_ticket_has_valid_key_with_computed_key",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -56,7 +68,9 @@
       "harness": "tla_word_round_trips_all_rust_u64_values",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_budget_arithmetic_refinement.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -64,7 +78,9 @@
       "harness": "tla_word_order_matches_rust_u64_order",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_budget_arithmetic_refinement.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -72,7 +88,9 @@
       "harness": "tla_add_word_matches_rust_checked_add_for_all_u64",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_budget_arithmetic_refinement.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -80,7 +98,9 @@
       "harness": "tla_sub_word_matches_rust_checked_sub_for_all_u64",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_budget_arithmetic_refinement.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -88,7 +108,9 @@
       "harness": "tla_budget_field_widths_match_rust_domains",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_budget_arithmetic_refinement.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -96,7 +118,9 @@
       "harness": "harness_empty_ops_returns_zero",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -104,7 +128,9 @@
       "harness": "harness_single_loadslot_returns_one",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -112,7 +138,9 @@
       "harness": "harness_single_loadconst_returns_one",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -120,7 +148,9 @@
       "harness": "harness_single_loadaccessor_returns_one",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -128,7 +158,9 @@
       "harness": "harness_binary_op_tracks_depth_correctly",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -136,7 +168,9 @@
       "harness": "harness_unary_op_tracks_depth_correctly",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -144,7 +178,9 @@
       "harness": "harness_appendif_tracks_depth_correctly",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -152,7 +188,9 @@
       "harness": "harness_nested_binary_ops_tracks_max_depth",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -160,7 +198,9 @@
       "harness": "harness_all_unary_ops_valid",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -168,7 +208,9 @@
       "harness": "harness_all_binary_ops_valid",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -176,7 +218,9 @@
       "harness": "harness_no_overflow_within_capacity",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -184,7 +228,9 @@
       "harness": "harness_checked_sub_underflow_detection",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -192,7 +238,9 @@
       "harness": "harness_complex_expression_correct",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -200,7 +248,9 @@
       "harness": "harness_multiple_loads_max_correct",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_expr_bound.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -208,7 +258,9 @@
       "harness": "kani_write_slot_in_bounds",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_index_access.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -216,7 +268,9 @@
       "harness": "kani_read_slot_in_bounds",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_index_access.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -224,7 +278,9 @@
       "harness": "kani_write_slot_out_of_bounds",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_index_access.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -232,7 +288,9 @@
       "harness": "kani_read_slot_out_of_bounds",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_index_access.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -240,7 +298,9 @@
       "harness": "kani_step_idx_valid",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_index_access.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -248,7 +308,9 @@
       "harness": "kani_slot_idx_valid",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_index_access.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -256,7 +318,9 @@
       "harness": "kani_add_dim_max_plus_max_overflow",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -264,7 +328,9 @@
       "harness": "kani_add_dim_half_plus_half_no_overflow",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -272,7 +338,9 @@
       "harness": "kani_add_dim_max_minus_one_plus_one",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -280,7 +348,9 @@
       "harness": "kani_add_dim_max_plus_one_overflow",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -288,7 +358,9 @@
       "harness": "kani_sub_dim_zero_minus_one_underflow",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -296,7 +368,9 @@
       "harness": "kani_sub_dim_max_minus_max",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -304,7 +378,9 @@
       "harness": "kani_sub_dim_max_minus_max_minus_one",
       "kani_arbitrary_status": "no_input_generator",
       "path": "crates/vb_core/src/kani_step_budget.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -312,7 +388,9 @@
       "harness": "kani_step_state_transition_matches_contract",
       "kani_arbitrary_status": "kani_arbitrary_impl",
       "path": "crates/vb_core/src/kani_step_state_transition.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -320,7 +398,9 @@
       "harness": "join_taint_ge_first_arg",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -328,7 +408,9 @@
       "harness": "join_taint_ge_second_arg",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -336,7 +418,9 @@
       "harness": "join_taint_idempotent",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -344,7 +428,9 @@
       "harness": "join_taint_commutative",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -352,7 +438,9 @@
       "harness": "read_taint_no_panic",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": true,
@@ -360,7 +448,9 @@
       "harness": "write_taint_no_panic",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/kani_taint.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -368,7 +458,9 @@
       "harness": "harness_push_to_capacity_then_overflow",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/engine/expr_eval/kani_stack.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -376,7 +468,9 @@
       "harness": "verify_replay_choose_slot_two_branches_no_panic",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_choose_slot.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -384,7 +478,9 @@
       "harness": "verify_choose_slot_output_in_input_set",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_choose_slot.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -392,7 +488,9 @@
       "harness": "verify_choose_slot_output_in_input_set",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_choose_slot.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -400,7 +498,9 @@
       "harness": "verify_replay_deterministic_for_same_input",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_choose_slot.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -408,7 +508,9 @@
       "harness": "verify_replay_deterministic_for_same_input",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_harnesses_frame.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -416,7 +518,9 @@
       "harness": "kani_replay_skips_terminal_states",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_harnesses_frame.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -424,7 +528,9 @@
       "harness": "verify_replay_choose_slot_two_branches_no_panic",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_harnesses_slots.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -432,7 +538,9 @@
       "harness": "verify_choose_slot_output_in_input_set",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_harnesses_slots.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -440,7 +548,9 @@
       "harness": "kani_replay_skips_terminal_states",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/replay/kani_terminal_states.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -448,7 +558,9 @@
       "harness": "step_idx_as_usize_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -456,7 +568,9 @@
       "harness": "slot_idx_as_usize_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -464,7 +578,9 @@
       "harness": "expr_idx_as_usize_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -472,7 +588,9 @@
       "harness": "accessor_idx_as_usize_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -480,7 +598,9 @@
       "harness": "const_idx_as_usize_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -488,7 +608,9 @@
       "harness": "fanout_limit_as_usize_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -496,7 +618,9 @@
       "harness": "branch_idx_get_never_panics",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -504,7 +628,9 @@
       "harness": "step_idx_as_usize_returns_usize_from_u16",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -512,7 +638,9 @@
       "harness": "slot_idx_as_usize_returns_usize_from_u16",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -520,7 +648,9 @@
       "harness": "expr_idx_as_usize_returns_usize_from_u16",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -528,7 +658,9 @@
       "harness": "accessor_idx_as_usize_returns_usize_from_u16",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -536,7 +668,9 @@
       "harness": "const_idx_as_usize_returns_usize_from_u16",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_id_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -544,7 +678,9 @@
       "harness": "shard_index_bounded",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_shard_index_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -552,7 +688,9 @@
       "harness": "shard_index_u64_max",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_shard_index_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -560,7 +698,9 @@
       "harness": "shard_index_cover_boundaries",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/ids/kani/kani_shard_index_bounds.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -568,7 +708,9 @@
       "harness": "key_range_contains_correct",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/shard/partition/kani_key_range_properties.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -576,7 +718,9 @@
       "harness": "key_range_intersection_correct",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/shard/partition/kani_key_range_properties.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -584,7 +728,9 @@
       "harness": "key_range_disjoint_consistent",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/shard/partition/kani_key_range_properties.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -592,7 +738,9 @@
       "harness": "key_range_adjacent_correctness",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/shard/partition/kani_key_range_properties.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -600,7 +748,9 @@
       "harness": "check_compute_action_idempotency_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -608,7 +758,9 @@
       "harness": "check_compute_action_idempotency_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -616,7 +768,9 @@
       "harness": "check_action_ticket_has_valid_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -624,7 +778,9 @@
       "harness": "check_is_retry_safe_with_key_panic_free",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -632,7 +788,9 @@
       "harness": "check_action_ticket_serialization_size",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     },
     {
       "cfg_kani": false,
@@ -640,7 +798,9 @@
       "harness": "check_action_ticket_has_valid_key_with_computed_key",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_core/src/verification/kani/kani_rxru0_action_harnesses.rs",
-      "required_features": []
+      "required_features": [
+        "kani-vb-god2f-proof-kernels"
+      ]
     }
   ],
   "package": "vb_core",

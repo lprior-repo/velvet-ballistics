@@ -871,7 +871,7 @@ fn snapshot_plus_tail_replays_tail_slot_writes_after_snapshot() {
 /// Then:  RecoveryError::ReplayDivergence is returned
 #[test]
 fn replay_detects_decreasing_step_indices() {
-    use vb_storage::recovery::replay::core::replay_events;
+    use vb_storage::recovery::replay::replay_events;
 
     let run = RunId::new(1004);
 
@@ -930,7 +930,7 @@ fn replay_detects_decreasing_step_indices() {
 /// Then:  The second completion is blocked with NonIdempotentActionBlocked
 #[test]
 fn replay_blocks_duplicate_action_completion() {
-    use vb_storage::recovery::replay::core::replay_events;
+    use vb_storage::recovery::replay::replay_events;
 
     let run = RunId::new(1005);
     let action_id = vb_core::ActionId::new(42);
@@ -1256,7 +1256,7 @@ fn recover_full_journal_returns_no_recovery_data_for_wrong_run() {
 /// Then:  The result is Ok with an empty Vec
 #[test]
 fn replay_events_handles_empty_slice() {
-    use vb_storage::recovery::replay::core::replay_events;
+    use vb_storage::recovery::replay::replay_events;
 
     let events: Vec<JournalEvent> = vec![];
     let mut tracker = ActionReplayTracker::new();
@@ -1284,7 +1284,7 @@ fn replay_events_handles_empty_slice() {
 /// And:   Events from attempt 2 (latest) affect state
 #[test]
 fn replay_events_filters_older_attempts() {
-    use vb_storage::recovery::replay::core::replay_events;
+    use vb_storage::recovery::replay::replay_events;
 
     let run = RunId::new(4001);
 

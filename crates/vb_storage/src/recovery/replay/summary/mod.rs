@@ -17,6 +17,7 @@ pub use frame_seed::{
     recovery_observed_dimension_is_positive, recovery_seed_dimensions_positive,
     reject_workflow_digest_mismatch,
 };
+pub(crate) use frame_seed::FrameSeedAccumulator;
 pub use runtime_summary::{
     apply_summary_event, recover_run_admission_from_events, summarize_recovery_events,
 };

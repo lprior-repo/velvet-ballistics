@@ -148,6 +148,14 @@ fn runtime_error_diagnostic_code_catalog() {
         RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
         DiagnosticCode::new(0x200E)
     );
+    assert_eq!(
+        RuntimeError::TerminalRunsLruFull { capacity: 2 }.diagnostic_code(),
+        DiagnosticCode::new(0x2021)
+    );
+    assert_eq!(
+        RuntimeError::TerminalRunsLruFull { capacity: 2 }.runtime_code(),
+        Some("QUEUE_FULL")
+    );
 }
 
 // ---------------------------------------------------------------------------

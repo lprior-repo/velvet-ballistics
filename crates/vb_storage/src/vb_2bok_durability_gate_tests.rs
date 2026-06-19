@@ -85,6 +85,15 @@ mod durability_gate_tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
+    fn submit_artifact_in_fresh_journal(
+        workflow: &CompiledWorkflow,
+        policy: RuntimePolicy,
+    ) -> Result<AcceptedArtifact, String> {
+        let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
+        submit_artifact(&journal, workflow, policy)
+            .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))
+    }
+
     // =========================================================================
     // SECTION 2.1: submit_artifact — Policy Tier Behavior (Unit Tests)
     // =========================================================================
@@ -188,7 +197,6 @@ mod durability_gate_tests {
     /// Contract §2.1 Postcondition (All): artifact.digest == workflow.digest().
     #[test]
     fn submit_artifact_all_policies_set_correct_digest() -> Result<(), String> {
-        let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
         for policy in [
@@ -196,8 +204,7 @@ mod durability_gate_tests {
             RuntimePolicy::Journaled,
             RuntimePolicy::Strict,
         ] {
-            let result = submit_artifact(&journal, &workflow, policy)
-                .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+            let result = submit_artifact_in_fresh_journal(&workflow, policy)?;
             assert_eq!(
                 result.digest,
                 workflow.digest(),
@@ -212,7 +219,6 @@ mod durability_gate_tests {
     /// Contract §2.1 Postcondition (All): artifact.ir is non-empty postcard-encoded bytes.
     #[test]
     fn submit_artifact_all_policies_return_nonempty_ir() -> Result<(), String> {
-        let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
         for policy in [
@@ -220,8 +226,7 @@ mod durability_gate_tests {
             RuntimePolicy::Journaled,
             RuntimePolicy::Strict,
         ] {
-            let result = submit_artifact(&journal, &workflow, policy)
-                .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+            let result = submit_artifact_in_fresh_journal(&workflow, policy)?;
             assert!(
                 !result.ir.is_empty(),
                 "artifact.ir must be non-empty for policy {policy:?}"
@@ -450,15 +455,11 @@ mod durability_gate_tests {
     /// Contract §3.2: durable == true only for Strict.
     #[test]
     fn durable_true_only_for_strict() -> Result<(), String> {
-        let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        let relaxed = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
-            .map_err(|e| format!("relaxed failed: {e}"))?;
-        let journaled = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
-            .map_err(|e| format!("journaled failed: {e}"))?;
-        let strict = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
-            .map_err(|e| format!("strict failed: {e}"))?;
+        let relaxed = submit_artifact_in_fresh_journal(&workflow, RuntimePolicy::Relaxed)?;
+        let journaled = submit_artifact_in_fresh_journal(&workflow, RuntimePolicy::Journaled)?;
+        let strict = submit_artifact_in_fresh_journal(&workflow, RuntimePolicy::Strict)?;
 
         assert!(
             !relaxed.verification.durable,
@@ -1029,7 +1030,6 @@ mod durability_gate_tests {
     /// Contract §2.1 Postcondition (All): artifact.digest == workflow.digest().
     #[test]
     fn artifact_digest_equals_workflow_digest() -> Result<(), String> {
-        let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
         for policy in [
@@ -1037,8 +1037,7 @@ mod durability_gate_tests {
             RuntimePolicy::Journaled,
             RuntimePolicy::Strict,
         ] {
-            let artifact = submit_artifact(&journal, &workflow, policy)
-                .map_err(|e| format!("submit failed: {e}"))?;
+            let artifact = submit_artifact_in_fresh_journal(&workflow, policy)?;
 
             assert_eq!(
                 artifact.digest.as_bytes(),

@@ -86,13 +86,13 @@ impl ProofFlag {
 // VerificationProof
 // =========================================================================
 
-/// Proof that artifact verification passed at admission time.
+/// Proof evidence captured by artifact admission.
 ///
-/// GAP-001 FIX: Fields ending in `_claimed` are set unconditionally by
-/// `VerificationProof::new()` because the actual verification gates are not
-/// yet implemented. The `_claimed` suffix makes the intent explicit: these
-/// are unverified claims, not proven facts. When proper verification is
-/// implemented, the suffix should be removed and flags set based on results.
+/// The `_claimed` suffix is retained for wire compatibility with existing
+/// v0.1 artifacts, but construction is no longer unconditional: relaxed
+/// artifacts (`gate_count == 0`) carry no passed-gate claims, while checked
+/// artifacts (`gate_count == 15`) carry the claims established by the cold
+/// admission gate that built this record.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationProof {
     /// Confirmed digest of the verified artifact.
@@ -145,25 +145,25 @@ pub(crate) const fn verification_proof_core(
     gate_count: u8,
     durable: bool,
 ) -> VerificationProofCore {
+    let gates_passed = gate_count == super::policy::ADMISSION_GATE_COUNT;
     VerificationProofCore {
         digest,
         gate_count,
         durable,
-        bounded_claimed: true,
-        taint_safe_claimed: true,
-        retry_safe_claimed: true,
-        idempotency_verified_claimed: true,
-        replayable_claimed: true,
+        bounded_claimed: gates_passed,
+        taint_safe_claimed: gates_passed,
+        retry_safe_claimed: gates_passed,
+        idempotency_verified_claimed: gates_passed,
+        replayable_claimed: gates_passed,
     }
 }
 
 impl VerificationProof {
-    /// Creates a new verification proof with all proof flags set to true.
+    /// Creates a new verification proof from the admission gate count.
     ///
-    /// GAP-001 NOTE: All `_claimed` flags are unconditionally set to `true`
-    /// because actual per-gate verification is not yet implemented. The flags
-    /// are named with `_claimed` suffix to indicate they represent unverified
-    /// claims, not proven facts. See `VerificationProof` struct docs.
+    /// Relaxed admission (`gate_count == 0`) records no proof-flag claims.
+    /// Journaled/strict admission (`gate_count == 15`) records the accepted
+    /// gate claims that were established before the artifact was persisted.
     #[must_use]
     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
         let core = verification_proof_core(digest, gate_count, durable);

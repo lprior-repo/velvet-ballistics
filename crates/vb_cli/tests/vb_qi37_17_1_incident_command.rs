@@ -212,9 +212,23 @@ fn failed_run_events() -> Vec<JournalEvent> {
             step: vb_core::ids::StepIdx::new(2),
             attempt: 1,
         },
-        JournalEvent::RunFailedEvent {
+        JournalEvent::ActionScheduled {
             run: RunId::new(42),
             seq: EventSeq::new(2),
+            step: vb_core::ids::StepIdx::new(2),
+            action: vb_core::ids::ActionId::new(7),
+            attempt: 1,
+        },
+        JournalEvent::ActionFailedEvent {
+            run: RunId::new(42),
+            seq: EventSeq::new(3),
+            step: vb_core::ids::StepIdx::new(2),
+            action: vb_core::ids::ActionId::new(7),
+            attempt: 1,
+        },
+        JournalEvent::RunFailedEvent {
+            run: RunId::new(42),
+            seq: EventSeq::new(4),
             attempt: 1,
         },
     ]
@@ -373,6 +387,10 @@ fn t_017_text_output_format() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("incident report for run"));
     assert!(stdout.contains("RunFailed"));
+    assert!(stdout.contains("last_sequence"));
+    assert!(stdout.contains("event_counts"));
+    assert!(stdout.contains("side_effect_evidence"));
+    assert!(stdout.contains("failed_action_evidence"));
 }
 
 // ---------------------------------------------------------------------------
@@ -398,5 +416,17 @@ fn t_018_yaml_output_format() {
     assert!(
         stdout.contains("failure_code"),
         "YAML output should contain failure_code"
+    );
+    assert!(
+        stdout.contains("side_effect_evidence"),
+        "YAML output should contain durable side_effect_evidence"
+    );
+    assert!(
+        stdout.contains("failed_action_evidence"),
+        "YAML output should contain failed_action_evidence"
+    );
+    assert!(
+        stdout.contains("event_counts"),
+        "YAML output should contain event_counts"
     );
 }

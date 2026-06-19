@@ -117,10 +117,10 @@ use vb_storage::recovery::hydrate::{
     hydrate_dimensions_positive, hydrate_events_preconditions,
     hydrate_snapshot_tail_seq_after_snapshot,
 };
-use vb_storage::recovery::replay::core::{
+use vb_storage::recovery::replay::summary::recovery_dimension_count_from_index;
+use vb_storage::recovery::replay::{
     replay_attempt_is_current, replay_attempt_is_stale, replay_step_order_diverges,
 };
-use vb_storage::recovery::replay::summary::recovery_dimension_count_from_index;
 use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RunSnapshot, UnsupportedRecoveryState,
 };

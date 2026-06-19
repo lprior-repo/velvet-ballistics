@@ -27,5 +27,7 @@ mod handlers;
 pub(super) mod state;
 
 // Re-export public API
-pub use handlers::{answer, cancel, retry, resume};
-pub use state::{replay, LifecycleResult};
+#[doc(hidden)]
+pub use handlers::test_helpers;
+pub use handlers::{answer, cancel, resume, retry};
+pub use state::{LifecycleResult, replay};

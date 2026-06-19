@@ -10,5 +10,8 @@ pub mod model;
 pub mod repair;
 
 pub use self::lifecycle::{derive_lifecycle_state_from_events, lifecycle_state_to_inspect_status};
-pub use self::model::{IncidentAnalysis, SideEffect, SideEffectCertainty, analyze_incident_events};
+pub use self::model::{
+    IncidentAnalysis, IncidentCheckpoint, IncidentEventCounts, IncidentFailureKind, SideEffect,
+    SideEffectCertainty, SideEffectDisposition, SideEffectEvidence, analyze_incident_events,
+};
 pub use self::repair::build_repair_hints;

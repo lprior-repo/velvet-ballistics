@@ -84,10 +84,19 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
     };
 
     let json_report = serde_json::json!({
+        "schema_version": crate::cli_envelope::SCHEMA_VERSION,
+        "kind": "incident_report",
         "run_id": report.run_id,
+        "failure_found": report.failure_found,
         "failure_code": report.failure_code,
         "failed_at_step": failed_step_val,
+        "last_sequence": report.last_sequence,
+        "last_checkpoint": report.last_checkpoint,
+        "event_counts": report.event_counts,
         "side_effects": report.side_effects,
+        "side_effect_evidence": report.side_effect_evidence,
+        "failed_action_evidence": report.failed_action_evidence,
+        "pending_scheduled_actions": report.pending_scheduled_actions,
         "repair_hints": report.repair_hints,
     });
 
@@ -102,19 +111,16 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
                 Some(step) => crate::outln!("  failed_at_step: {step}"),
                 None => crate::outln!("  failed_at_step: unknown"),
             }
-            crate::outln!("  side_effects:");
-            if report.side_effects.is_empty() {
-                crate::outln!("    (none)");
-            } else {
-                for se in &report.side_effects {
-                    let step = &se["step"];
-                    let action = &se["action"];
-                    let certainty = se["certainty"]
-                        .as_str()
-                        .map_or("unknown", std::convert::identity);
-                    crate::outln!("    step={step} action={action} certainty={certainty}");
-                }
-            }
+            print_incident_sequence(report.last_sequence);
+            print_incident_checkpoint(&report.last_checkpoint);
+            print_incident_counts(&report.event_counts);
+            print_incident_side_effects(&report.side_effects);
+            print_incident_evidence("side_effect_evidence", &report.side_effect_evidence);
+            print_incident_evidence("failed_action_evidence", &report.failed_action_evidence);
+            print_incident_evidence(
+                "pending_scheduled_actions",
+                &report.pending_scheduled_actions,
+            );
             crate::outln!("  repair_hints:");
             for hint in &report.repair_hints {
                 let hint_str = hint.as_str().map_or("unknown", std::convert::identity);
@@ -140,6 +146,91 @@ pub(crate) fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFor
         }
         CliExitCode::StorageError.into()
     }
+}
+
+fn print_incident_sequence(last_sequence: Option<u64>) {
+    match last_sequence {
+        Some(seq) => crate::outln!("  last_sequence: {seq}"),
+        None => crate::outln!("  last_sequence: unknown"),
+    }
+}
+
+fn print_incident_checkpoint(checkpoint: &serde_json::Value) {
+    let available = checkpoint
+        .get("available")
+        .and_then(serde_json::Value::as_bool)
+        .is_some_and(std::convert::identity);
+    if !available {
+        crate::outln!("  last_checkpoint: unavailable");
+        return;
+    }
+
+    let seq = display_json_field(checkpoint, "seq");
+    let kind = str_field(checkpoint, "kind", "unknown");
+    let step = display_json_field(checkpoint, "step");
+    let action = display_json_field(checkpoint, "action");
+    let slot = display_json_field(checkpoint, "slot");
+    let attempt = display_json_field(checkpoint, "attempt");
+    crate::outln!(
+        "  last_checkpoint: seq={seq} kind={kind} step={step} action={action} slot={slot} attempt={attempt}"
+    );
+}
+
+fn print_incident_counts(counts: &serde_json::Value) {
+    let total = u64_field(counts, "total");
+    let scheduled = u64_field(counts, "actions_scheduled");
+    let completed = u64_field(counts, "actions_completed");
+    let failed = u64_field(counts, "actions_failed");
+    let run_failed = u64_field(counts, "run_failed");
+    let cancelled = u64_field(counts, "run_cancelled");
+    let killed = u64_field(counts, "run_killed");
+    crate::outln!(
+        "  event_counts: total={total} actions_scheduled={scheduled} actions_completed={completed} actions_failed={failed} run_failed={run_failed} run_cancelled={cancelled} run_killed={killed}"
+    );
+}
+
+fn print_incident_side_effects(side_effects: &[serde_json::Value]) {
+    crate::outln!("  side_effects:");
+    if side_effects.is_empty() {
+        crate::outln!("    (none)");
+        return;
+    }
+
+    for se in side_effects {
+        let step = display_json_field(se, "step");
+        let action = display_json_field(se, "action");
+        let certainty = str_field(se, "certainty", "unknown");
+        crate::outln!("    step={step} action={action} certainty={certainty}");
+    }
+}
+
+fn print_incident_evidence(label: &str, evidence: &[serde_json::Value]) {
+    crate::outln!("  {label}:");
+    if evidence.is_empty() {
+        crate::outln!("    (none)");
+        return;
+    }
+
+    for entry in evidence {
+        let seq = display_json_field(entry, "seq");
+        let step = display_json_field(entry, "step");
+        let action = display_json_field(entry, "action");
+        let attempt = display_json_field(entry, "attempt");
+        let disposition = str_field(entry, "disposition", "unknown");
+        crate::outln!(
+            "    seq={seq} step={step} action={action} attempt={attempt} disposition={disposition}"
+        );
+    }
+}
+
+fn display_json_field(value: &serde_json::Value, field: &str) -> String {
+    value.get(field).map_or_else(
+        || "unknown".to_owned(),
+        |entry| match entry {
+            serde_json::Value::Null => "unknown".to_owned(),
+            _ => entry.to_string(),
+        },
+    )
 }
 
 pub(crate) fn cmd_diff(

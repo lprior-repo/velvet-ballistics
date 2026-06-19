@@ -7,7 +7,8 @@
 
 use vb_storage::events::JournalEvent;
 use vb_storage::journal::incident::{
-    SideEffectCertainty, analyze_incident_events, build_repair_hints,
+    IncidentCheckpoint, IncidentEventCounts, SideEffectCertainty, SideEffectDisposition,
+    SideEffectEvidence, analyze_incident_events, build_repair_hints,
 };
 
 /// Structured incident report for CLI output.
@@ -20,8 +21,20 @@ pub struct IncidentReport {
     pub failure_found: bool,
     /// Step at which the failure occurred, if known.
     pub failed_at_step: Option<u16>,
+    /// Last journal sequence observed while building the incident report.
+    pub last_sequence: Option<u64>,
+    /// Last durable checkpoint-like journal event observed.
+    pub last_checkpoint: serde_json::Value,
+    /// Per-kind event counts from the incident journal slice.
+    pub event_counts: serde_json::Value,
     /// Side effects collected from action completed/failed events.
     pub side_effects: Vec<serde_json::Value>,
+    /// Durable action side-effect evidence, including scheduled/resolved state.
+    pub side_effect_evidence: Vec<serde_json::Value>,
+    /// Durable failed-action evidence.
+    pub failed_action_evidence: Vec<serde_json::Value>,
+    /// Actions durably scheduled but not resolved by the incident tail.
+    pub pending_scheduled_actions: Vec<serde_json::Value>,
     /// Repair hints based on failure type.
     pub repair_hints: Vec<serde_json::Value>,
 }
@@ -40,22 +53,101 @@ pub fn build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentR
         failure_code: analysis.failure_code,
         failure_found: analysis.failure_found,
         failed_at_step: analysis.failed_at_step,
+        last_sequence: analysis.last_sequence.map(|seq| seq.get()),
+        last_checkpoint: checkpoint_json(analysis.last_checkpoint),
+        event_counts: counts_json(&analysis.counts),
         side_effects: analysis
             .side_effects
             .into_iter()
-            .map(|se| {
-                serde_json::json!({
-                    "step": se.step,
-                    "action": se.action,
-                    "certainty": match se.certainty {
-                        SideEffectCertainty::Confirmed => "confirmed",
-                        SideEffectCertainty::Failed => "failed",
-                    }
-                })
-            })
+            .map(side_effect_json)
+            .collect(),
+        side_effect_evidence: analysis
+            .side_effect_evidence
+            .into_iter()
+            .map(side_effect_evidence_json)
+            .collect(),
+        failed_action_evidence: analysis
+            .failed_action_evidence
+            .into_iter()
+            .map(side_effect_evidence_json)
+            .collect(),
+        pending_scheduled_actions: analysis
+            .pending_scheduled_actions
+            .into_iter()
+            .map(side_effect_evidence_json)
             .collect(),
         repair_hints: hints.into_iter().map(serde_json::Value::String).collect(),
     }
+}
+
+fn side_effect_json(se: vb_storage::journal::incident::SideEffect) -> serde_json::Value {
+    serde_json::json!({
+        "step": se.step,
+        "action": se.action,
+        "certainty": match se.certainty {
+            SideEffectCertainty::Confirmed => "confirmed",
+            SideEffectCertainty::Failed => "failed",
+        }
+    })
+}
+
+fn side_effect_evidence_json(evidence: SideEffectEvidence) -> serde_json::Value {
+    serde_json::json!({
+        "seq": evidence.seq.get(),
+        "step": evidence.step,
+        "action": evidence.action,
+        "attempt": evidence.attempt,
+        "disposition": disposition_name(evidence.disposition)
+    })
+}
+
+fn disposition_name(disposition: SideEffectDisposition) -> &'static str {
+    match disposition {
+        SideEffectDisposition::Scheduled => "scheduled",
+        SideEffectDisposition::Completed => "completed",
+        SideEffectDisposition::Failed => "failed",
+    }
+}
+
+fn checkpoint_json(checkpoint: Option<IncidentCheckpoint>) -> serde_json::Value {
+    match checkpoint {
+        Some(value) => serde_json::json!({
+            "available": true,
+            "seq": value.seq.get(),
+            "kind": format!("{:?}", value.kind),
+            "kind_id": value.kind.id(),
+            "step": value.step,
+            "action": value.action,
+            "slot": value.slot,
+            "attempt": value.attempt
+        }),
+        None => serde_json::json!({"available": false}),
+    }
+}
+
+fn counts_json(counts: &IncidentEventCounts) -> serde_json::Value {
+    serde_json::json!({
+        "total": counts.total,
+        "run_accepted": counts.run_accepted,
+        "run_admission": counts.run_admission,
+        "steps_started": counts.steps_started,
+        "steps_succeeded": counts.steps_succeeded,
+        "actions_scheduled": counts.actions_scheduled,
+        "actions_completed": counts.actions_completed,
+        "actions_failed": counts.actions_failed,
+        "slot_writes": counts.slot_writes,
+        "waits_scheduled": counts.waits_scheduled,
+        "asks_scheduled": counts.asks_scheduled,
+        "asks_answered": counts.asks_answered,
+        "retries_scheduled": counts.retries_scheduled,
+        "run_cancelled": counts.run_cancelled,
+        "run_killed": counts.run_killed,
+        "run_finished": counts.run_finished,
+        "run_failed": counts.run_failed,
+        "run_resumed": counts.run_resumed,
+        "run_retried": counts.run_retried,
+        "run_answered": counts.run_answered
+    })
 }
 
 #[cfg(test)]
@@ -231,6 +323,17 @@ mod tests {
         }
     }
 
+    /// Helper: create a minimal ActionScheduled event at a specific sequence.
+    fn action_scheduled_at(seq: u64, step: u16, action: u16) -> JournalEvent {
+        JournalEvent::ActionScheduled {
+            run: RunId::new(1),
+            seq: EventSeq::new(seq),
+            step: StepIdx::new(step),
+            action: ActionId::new(action),
+            attempt: 1,
+        }
+    }
+
     /// Helper: create a RunFailedEvent.
     fn run_failed() -> JournalEvent {
         JournalEvent::RunFailedEvent {
@@ -356,7 +459,30 @@ mod tests {
         assert!(!report.repair_hints.is_empty());
     }
 
-    // T-009 through T-013 removed: build_repair_hints logic is now tested
+    #[test]
+    fn t_009_durable_incident_fields_are_projected() {
+        let events = vec![
+            step_event(4),
+            action_scheduled_at(2, 4, 70),
+            action_failed(4, 70),
+            run_failed(),
+        ];
+        let report = build_incident_report("run-1", &events);
+
+        assert_eq!(report.last_sequence, Some(10));
+        assert_eq!(report.last_checkpoint["kind"], "RunFailed");
+        assert_eq!(report.last_checkpoint["kind_id"], 23);
+        assert_eq!(report.event_counts["total"], 4);
+        assert_eq!(report.event_counts["actions_scheduled"], 1);
+        assert_eq!(report.event_counts["actions_failed"], 1);
+        assert_eq!(report.side_effect_evidence.len(), 2);
+        assert_eq!(report.side_effect_evidence[0]["disposition"], "scheduled");
+        assert_eq!(report.failed_action_evidence.len(), 1);
+        assert_eq!(report.failed_action_evidence[0]["disposition"], "failed");
+        assert!(report.pending_scheduled_actions.is_empty());
+    }
+
+    // Later build_repair_hints-only tests removed: build_repair_hints logic is now tested
     // in vb_storage::journal::incident (domain tests). CLI tests cover the
     // full build_incident_report pipeline which includes repair hints.
 }

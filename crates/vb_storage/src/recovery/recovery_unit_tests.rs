@@ -113,11 +113,11 @@
 #![cfg(test)]
 
 mod tests {
-    use crate::recovery::replay::core::{extract_terminal, is_terminal_event, replay_events};
     use crate::recovery::replay::summary::{
         apply_summary_event, recover_run_admission_from_events,
         recover_runtime_frame_seed_from_events, summarize_recovery_events,
     };
+    use crate::recovery::replay::{extract_terminal, is_terminal_event, replay_events};
     use crate::recovery::{
         ActionReplayTracker, RecoveryError, RecoveryRuntimeSummary, RecoveryTerminalState,
         UnsupportedRecoveryState,

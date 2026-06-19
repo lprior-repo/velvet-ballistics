@@ -54,6 +54,7 @@ impl RuntimeError {
     pub const TOGETHER_BRANCH_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4035);
     pub const FOR_EACH_ITEM_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4036);
     pub const ADMISSION_BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
+    pub const TERMINAL_RUNS_LRU_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2021);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -112,15 +113,16 @@ impl RuntimeError {
             Self::TogetherBranchFailed { .. } => Self::TOGETHER_BRANCH_FAILED_CODE,
             Self::ForEachItemFailed { .. } => Self::FOR_EACH_ITEM_FAILED_CODE,
             Self::AdmissionBudgetExceeded { .. } => Self::ADMISSION_BUDGET_EXCEEDED_CODE,
+            Self::TerminalRunsLruFull { .. } => Self::TERMINAL_RUNS_LRU_FULL_CODE,
         }
     }
 
     #[must_use]
     pub fn runtime_code(&self) -> Option<&'static str> {
         match self {
-            Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
-                Some(Self::QUEUE_FULL_RUNTIME_CODE)
-            }
+            Self::QueueFull
+            | Self::ActiveRunCapacityExceeded { .. }
+            | Self::TerminalRunsLruFull { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalFull { .. } => Some(Self::QUEUE_FULL_RUNTIME_CODE),
             Self::JournalPoisoned | Self::UnsupportedAsyncStrictAck => {
                 Some(Self::STORAGE_ERROR_RUNTIME_CODE)

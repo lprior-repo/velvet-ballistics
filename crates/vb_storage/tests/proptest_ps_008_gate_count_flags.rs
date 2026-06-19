@@ -28,11 +28,12 @@ proptest! {
 
         prop_assert_eq!(proof.gate_count, gate_count);
         prop_assert_eq!(proof.durable, durable);
-        prop_assert!(proof.bounded_claimed);
-        prop_assert!(proof.taint_safe_claimed);
-        prop_assert!(proof.retry_safe_claimed);
-        prop_assert!(proof.idempotency_verified_claimed);
-        prop_assert!(proof.replayable_claimed);
+        let flags_expected = gate_count == 15;
+        prop_assert_eq!(proof.bounded_claimed, flags_expected);
+        prop_assert_eq!(proof.taint_safe_claimed, flags_expected);
+        prop_assert_eq!(proof.retry_safe_claimed, flags_expected);
+        prop_assert_eq!(proof.idempotency_verified_claimed, flags_expected);
+        prop_assert_eq!(proof.replayable_claimed, flags_expected);
     }
 
     /// PS-008b: VerificationProof with gate_count=0 has relaxed flag.
@@ -42,6 +43,11 @@ proptest! {
         let proof = VerificationProof::new(digest, 0, false);
         prop_assert_eq!(proof.gate_count, 0);
         prop_assert!(!proof.durable);
+        prop_assert!(!proof.bounded_claimed);
+        prop_assert!(!proof.taint_safe_claimed);
+        prop_assert!(!proof.retry_safe_claimed);
+        prop_assert!(!proof.idempotency_verified_claimed);
+        prop_assert!(!proof.replayable_claimed);
     }
 
     /// PS-008c: VerificationProof with gate_count=15 has all proof flags true.

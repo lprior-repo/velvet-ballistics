@@ -99,6 +99,10 @@ fn write_capacity_or_storage_error(
         RuntimeError::JournalFull { capacity } => {
             wrote(write!(f, "runtime journal capacity exhausted: {capacity}"))
         }
+        RuntimeError::TerminalRunsLruFull { capacity } => wrote(write!(
+            f,
+            "terminal runs LRU capacity exhausted: {capacity}"
+        )),
         RuntimeError::UnsupportedOperation { operation } => {
             wrote(write!(f, "unsupported runtime operation: {operation}"))
         }

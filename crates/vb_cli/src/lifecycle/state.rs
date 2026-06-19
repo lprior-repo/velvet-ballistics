@@ -8,7 +8,7 @@ use chrono::Utc;
 use vb_core::errors::CoreError;
 use vb_core::ids::RunId;
 use vb_core::workflow::{LifecycleState, RunState};
-use vb_storage::{derive_lifecycle_state_from_events, FjallJournal, EventSeq};
+use vb_storage::{EventSeq, FjallJournal, derive_lifecycle_state_from_events};
 
 /// Result type for lifecycle operations using CoreError.
 pub type LifecycleResult<T> = Result<T, CoreError>;

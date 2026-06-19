@@ -16,7 +16,7 @@
 
 pub(crate) mod action_digest;
 pub(crate) mod digest;
-pub mod event_replay;
+pub(crate) mod event_replay;
 pub mod hydrate;
 pub mod recover;
 pub mod replay;

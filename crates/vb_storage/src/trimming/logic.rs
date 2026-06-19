@@ -245,7 +245,7 @@ impl FjallJournal {
                 crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )
             .map_err(TrimError::from)?;
-            if crate::recovery::replay::core::is_terminal_event(&event) {
+            if crate::recovery::replay::is_terminal_event(&event) {
                 return Ok(true);
             }
         }

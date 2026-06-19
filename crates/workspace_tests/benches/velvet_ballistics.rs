@@ -4870,6 +4870,8 @@ fn missing_action_complete_resume_bench(c: &mut Criterion) {
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     };
     let shard_count = match NonZeroUsize::new(1) {
         Some(n) => n,
@@ -4937,6 +4939,8 @@ fn missing_wait_timer_resume_bench(c: &mut Criterion) {
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     };
     let shard_count = match NonZeroUsize::new(1) {
         Some(n) => n,

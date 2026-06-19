@@ -281,7 +281,7 @@ pub fn recover_all_incomplete_runs(
         if events.is_empty() {
             return Err(RecoveryError::NoRecoveryData { run: header.run });
         }
-        if crate::recovery::replay::core::extract_terminal(&events).is_none() {
+        if crate::recovery::replay::extract_terminal(&events).is_none() {
             let seed =
                 crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)?;
             recovered.push(RecoveryHydration::FrameSeed(seed));

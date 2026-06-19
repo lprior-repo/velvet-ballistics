@@ -188,6 +188,17 @@ fn action_failed(run: u64, seq: u64, step: u16, action: u16) -> JournalEvent {
     }
 }
 
+/// Helper: create a minimal ActionScheduled event.
+fn action_scheduled(run: u64, seq: u64, step: u16, action: u16) -> JournalEvent {
+    JournalEvent::ActionScheduled {
+        run: RunId::new(run),
+        seq: EventSeq::new(seq),
+        step: StepIdx::new(step),
+        action: ActionId::new(action),
+        attempt: 1,
+    }
+}
+
 /// Helper: create a SlotWrittenEvent with postcard-encoded value.
 fn slot_written(run: u64, seq: u64, slot: u16, value: Option<&[u8]>) -> JournalEvent {
     JournalEvent::SlotWrittenEvent {
@@ -639,6 +650,30 @@ fn incident_multiple_events_with_failure() {
     assert_eq!(report.failed_at_step, Some(2));
     assert_eq!(report.side_effects.len(), 3);
     assert!(!report.repair_hints.is_empty());
+}
+
+/// Incident report exposes durable sequence, checkpoint, counts, and action evidence.
+#[test]
+fn incident_durable_fields_are_projected() {
+    let events = vec![
+        step_event(1, 1, 4),
+        action_scheduled(1, 2, 4, 70),
+        action_failed(1, 3, 4, 70),
+        run_failed(1, 10),
+    ];
+    let report = build_incident_report("run-1", &events);
+
+    assert_eq!(report.last_sequence, Some(10));
+    assert_eq!(report.last_checkpoint["kind"], "RunFailed");
+    assert_eq!(report.last_checkpoint["kind_id"], 23);
+    assert_eq!(report.event_counts["total"], 4);
+    assert_eq!(report.event_counts["actions_scheduled"], 1);
+    assert_eq!(report.event_counts["actions_failed"], 1);
+    assert_eq!(report.side_effect_evidence.len(), 2);
+    assert_eq!(report.side_effect_evidence[0]["disposition"], "scheduled");
+    assert_eq!(report.failed_action_evidence.len(), 1);
+    assert_eq!(report.failed_action_evidence[0]["disposition"], "failed");
+    assert!(report.pending_scheduled_actions.is_empty());
 }
 
 /// Multiple StepStarted tracking: failed_at_step is last step seen.

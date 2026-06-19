@@ -123,10 +123,11 @@ fn validate_verification_proof(proof: &VerificationProof) -> Result<(), JournalE
             found: proof.gate_count,
         });
     }
-    if proof.gate_count == 0 && proof.durable {
-        return Err(JournalError::ArtifactMalformed);
-    }
-    if let Some(flag) = missing_proof_flag(proof) {
+    if proof.gate_count == 0 {
+        if proof.durable || has_any_proof_flag(proof) {
+            return Err(JournalError::ArtifactMalformed);
+        }
+    } else if let Some(flag) = missing_proof_flag(proof) {
         return Err(JournalError::MissingRequiredProofFlag { flag });
     }
     if !proof
@@ -137,6 +138,14 @@ fn validate_verification_proof(proof: &VerificationProof) -> Result<(), JournalE
         return Err(JournalError::ArtifactMalformed);
     }
     Ok(())
+}
+
+fn has_any_proof_flag(proof: &VerificationProof) -> bool {
+    proof.bounded_claimed
+        || proof.taint_safe_claimed
+        || proof.retry_safe_claimed
+        || proof.idempotency_verified_claimed
+        || proof.replayable_claimed
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

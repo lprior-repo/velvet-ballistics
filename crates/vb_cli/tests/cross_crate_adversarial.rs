@@ -1604,6 +1604,8 @@ fn runtime_submit_and_tick_simple_workflow() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     };
     let mut runtime = Runtime::new(shard_count, config);
     let run_id = RunId::new(100);
@@ -1682,6 +1684,8 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     };
     let mut runtime = Runtime::new(shard_count, config);
     let run_id = RunId::new(200);

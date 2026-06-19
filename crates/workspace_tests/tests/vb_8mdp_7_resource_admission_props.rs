@@ -202,6 +202,8 @@ fn new_shard_config(queue_capacity: usize) -> ShardConfig {
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     }
 }
 
@@ -455,6 +457,8 @@ fn no_run_inserted_when_active_run_capacity_exceeded() {
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     });
 
     shard
@@ -500,6 +504,8 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     });
 
     // Get initial pool metrics (pool may be lazily created)
@@ -588,6 +594,8 @@ fn staged_frame_release_integration_accept_then_reject() {
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     });
 
     // Initial state: no frame pool (lazy creation), no runs
@@ -886,6 +894,9 @@ proptest! {
             policy: RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
             snapshot_interval_steps: 0,
+            max_terminal_runs: 16,
+            terminal_runs_ttl_ticks: 86_400,
+
 });
 
         // Submit unique runs
