@@ -1,6 +1,6 @@
+use crate::shard::lru_ring::LruRing;
 use crate::shard::types::{RuntimeState, TerminalOutcome};
 use crate::AskAnswer;
-use indexmap::IndexSet;
 
 impl Shard {
     /// Creates a new shard with the given configuration.
@@ -22,7 +22,7 @@ impl Shard {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
-            terminal_runs: IndexSet::new(),
+            terminal_runs: LruRing::new(config.max_terminal_runs, config.terminal_runs_ttl_ticks),
             terminal_outcomes: IndexMap::new(),
             journal_sequences: IndexMap::new(),
             pending_timers: IndexMap::new(),
@@ -194,9 +194,34 @@ impl Shard {
         self.runs.insert(run_id, state);
     }
 
-    /// Inserts a run into the terminal runs set.
+    /// Inserts a run into the bounded terminal-runs LRU ring (MEM-01).
+    ///
+    /// The legacy `()`-returning contract is preserved: callers from
+    /// `finish_run`, `fail_run_state`, `handle_cancel`, and `handle_kill`
+    /// rely on the side effect of membership, not on a typed error. When
+    /// the ring is at capacity, the entry is force-inserted (the ring
+    /// grows past capacity) and `LruRingCounters::capacity_overflows`
+    /// is incremented. The entry is therefore never silently dropped;
+    /// the overflow is observable via `terminal_runs_counters()`.
     pub fn terminal_runs_insert(&mut self, run_id: RunId) {
-        self.terminal_runs.insert(run_id);
+        let now = self.current_tick;
+        self.terminal_runs.force_insert(run_id, now);
+    }
+
+    /// Strict terminal-runs insert: returns `RuntimeError::TerminalRunsLruFull`
+    /// when the ring is at capacity and the entry cannot be admitted.
+    ///
+    /// Use this from new call sites that want the LRU to refuse the
+    /// insert rather than force-grow the ring.
+    pub fn terminal_runs_try_insert(&mut self, run_id: RunId) -> RuntimeResult<()> {
+        let now = self.current_tick;
+        self.terminal_runs.insert(run_id, now)
+    }
+
+    /// Returns a snapshot of the LRU ring's diagnostic counters.
+    #[must_use]
+    pub const fn terminal_runs_counters(&self) -> crate::shard::lru_ring::LruRingCounters {
+        self.terminal_runs.counters()
     }
 
     /// Records the terminal outcome for a run that is being moved to the
@@ -219,7 +244,7 @@ impl Shard {
 
     /// Removes a run from the terminal runs set.
     pub fn terminal_runs_remove(&mut self, run_id: RunId) {
-        self.terminal_runs.swap_remove(&run_id);
+        self.terminal_runs.remove(&run_id);
     }
 
     /// Returns a reference to the shard counters.

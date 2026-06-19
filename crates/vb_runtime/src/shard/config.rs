@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Shard configuration and main Shard struct.
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 
 use vb_core::ids::RunId;
 #[cfg(feature = "test-util")]
@@ -12,6 +12,8 @@ use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
 use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::TraceRing;
+
+use super::lru_ring::{DEFAULT_MAX_TERMINAL_RUNS, DEFAULT_TERMINAL_RUNS_TTL_TICKS, LruRing};
 
 // Re-export from queue for ShardConfig
 pub use super::queue::{
@@ -50,6 +52,22 @@ pub struct ShardConfig {
     /// This is immutable after shard creation and applies uniformly to all
     /// runs in the shard.
     pub snapshot_interval_steps: u64,
+    /// Bounded capacity of the terminal-runs LRU ring (MEM-01).
+    ///
+    /// When the ring reaches this capacity and no TTL-expired entry
+    /// can be evicted, further inserts return
+    /// `RuntimeError::TerminalRunsLruFull` (the strict
+    /// `terminal_runs_try_insert` path) or are force-inserted with
+    /// `lru_capacity_overflows` incremented (the legacy
+    /// `terminal_runs_insert` path).
+    pub max_terminal_runs: usize,
+    /// TTL in ticks for terminal-runs LRU entries (MEM-01).
+    ///
+    /// Entries inserted more than this many ticks in the past are
+    /// evicted by the lazy sweep before a new insert checks capacity.
+    /// The default of `86_400` matches a 1-tick/second operating mode;
+    /// operators using faster tick rates should scale accordingly.
+    pub terminal_runs_ttl_ticks: u64,
 }
 
 /// Returns true when a trace ring capacity can retain at least one trace event.
@@ -92,6 +110,8 @@ impl Default for ShardConfig {
             // are verified to remain green by the gates below.
             coalesce_window_ticks: 10,
             snapshot_interval_steps: 0,
+            max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
+            terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
         }
     }
 }
@@ -158,8 +178,14 @@ pub struct Shard {
     pub runs: IndexMap<RunId, RunState>,
     /// Per-run lifecycle state tracking for resume eligibility.
     pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
-    /// Terminal run ids retained as direct runtime state, independent of trace retention.
-    pub(crate) terminal_runs: IndexSet<RunId>,
+    /// Terminal run ids retained as a bounded LRU ring (MEM-01).
+    ///
+    /// Capacity and TTL are configured via `ShardConfig::max_terminal_runs`
+    /// and `ShardConfig::terminal_runs_ttl_ticks`. Idempotent membership
+    /// is preserved by the underlying `IndexSet`; insertion-order is
+    /// tracked separately so TTL sweeps can drop the oldest entries
+    /// before capacity is consulted.
+    pub(crate) terminal_runs: LruRing<RunId>,
     /// Recorded terminal outcome per run id, populated when a run is moved
     /// into `terminal_runs` via cancel/kill/finish/fail.
     pub(crate) terminal_outcomes: IndexMap<RunId, TerminalOutcome>,
@@ -174,10 +200,11 @@ pub struct Shard {
     pub(crate) coalesce_window_ticks: u32,
     pub(crate) policy: vb_core::policy::RuntimePolicy,
     pub(crate) snapshot_interval_steps: u64,
+    /// Current logical tick used as the LRU ring's clock source.
+    pub(crate) current_tick: TimerTick,
     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
     pub(crate) inspect_response: Option<InspectResponse>,
     pub(crate) shutting_down: bool,
-    pub(crate) current_tick: TimerTick,
     pub(crate) journal: SharedRuntimeJournal,
     /// Remaining ticks in the current coalesce window.
     ///

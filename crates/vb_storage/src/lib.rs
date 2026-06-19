@@ -141,8 +141,20 @@ pub mod batch;
 pub mod binary;
 pub mod blobs;
 pub mod codec;
-#[cfg(test)]
+// VERIF-002 (master §77.8 + RED-QUEEN-MASTER-ISSUE-REPORT.md):
+// `codec_miri_tests` is a Miri-only harness module. The previous
+// `#[cfg(test)]` gate caused the module to compile under plain
+// `cargo test`, where its `panic_free_*` helpers rely on
+// `std::panic::catch_unwind` semantics that do not actually prove
+// the Miri-relevant invariants (raw pointer / uninitialized memory
+// / out-of-bounds slices). The `#[cfg(any(test, miri))]` gate keeps
+// the module available to `cargo miri test` while letting us assert
+// compile-clean behavior under `cfg(miri)` from a regular `cargo
+// test` run via the sentinel module below.
+#[cfg(any(test, miri))]
 pub mod codec_miri_tests;
+#[cfg(test)]
+mod codec_miri_tests_compile_check;
 pub mod constants;
 pub mod error;
 pub mod events;

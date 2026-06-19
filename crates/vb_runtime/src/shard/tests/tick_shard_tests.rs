@@ -146,7 +146,10 @@ fn runtime_config() -> ShardConfig {
         policy: RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     }
+
 }
 
 fn contract_required_capability(action: ActionId) -> Capability {

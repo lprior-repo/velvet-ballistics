@@ -98,7 +98,10 @@ fn shard_fill_queue_to_capacity_returns_queue_full() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let shard = Shard::new(config);
     // When filling the queue exactly
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -174,7 +177,10 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;

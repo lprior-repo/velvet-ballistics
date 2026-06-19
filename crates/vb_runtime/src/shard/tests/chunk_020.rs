@@ -96,7 +96,10 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
 
     // Submit + tick -> suspended
@@ -227,7 +230,10 @@ fn shard_config_new_at_max_capacity_boundary() {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-        })
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+        
+})
     );
     assert_eq!(
         result.map(|config| config.command_queue_capacity),
@@ -249,6 +255,9 @@ fn shard_config_new_at_minimum_capacity() {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-        })
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+        
+})
     );
 }

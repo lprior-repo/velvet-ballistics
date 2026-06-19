@@ -5,7 +5,10 @@
 
     use crate::RuntimeError;
 
-    use super::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth};
+    use super::{
+        MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth,
+    };
+    use crate::shard::{DEFAULT_MAX_TERMINAL_RUNS, DEFAULT_TERMINAL_RUNS_TTL_TICKS};
 
     fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_const = CompiledNode {
@@ -52,7 +55,9 @@
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: 16,
+            terminal_runs_ttl_ticks: 86_400,
         }
     }
 
@@ -70,7 +75,9 @@
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
+            terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
         };
         assert_eq!(result, Ok(expected));
     }
@@ -122,7 +129,9 @@
             max_active_runs: 1,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
+            terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
         };
         assert_eq!(result, Ok(expected));
     }
@@ -138,8 +147,10 @@
                 step_budget_per_tick: 256,
                 max_active_runs: 32,
                 policy: vb_core::policy::RuntimePolicy::Relaxed,
-            coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+                coalesce_window_ticks: 1,
+                snapshot_interval_steps: 0,
+                max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
+                terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
             })
         );
     }
@@ -166,11 +177,7 @@
         let config = ShardConfig {
             command_queue_capacity: 4,
             trace_capacity: 4,
-            step_budget_per_tick: 4,
-            max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
-            coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            ..small_config()
         };
         let shard = Shard::new(config);
         assert_eq!(shard.command_queue_capacity(), 4);
@@ -186,11 +193,7 @@
         let config = ShardConfig {
             command_queue_capacity: 2,
             trace_capacity: 4,
-            step_budget_per_tick: 4,
-            max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
-            coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            ..small_config()
         };
         let shard = Shard::new(config);
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -238,11 +241,7 @@
         let config = ShardConfig {
             command_queue_capacity: 4,
             trace_capacity: 4,
-            step_budget_per_tick: 4,
-            max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
-            coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            ..small_config()
         };
         let mut shard = Shard::new(config);
         let Some(wf) = finished_workflow() else {
@@ -267,11 +266,7 @@
         let config = ShardConfig {
             command_queue_capacity: 2,
             trace_capacity: 4,
-            step_budget_per_tick: 4,
-            max_active_runs: 4,
-            policy: vb_core::policy::RuntimePolicy::Relaxed,
-            coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            ..small_config()
         };
         let mut shard = Shard::new(config);
         assert_eq!(

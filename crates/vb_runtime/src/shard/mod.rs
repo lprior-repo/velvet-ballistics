@@ -11,6 +11,9 @@ pub mod helpers;
 pub mod impl_;
 pub mod introspection;
 pub mod lifecycle;
+pub mod lru_ring;
+#[cfg(test)]
+mod lru_ring_tests;
 #[cfg(test)]
 pub mod property_tests;
 pub mod queue;
@@ -23,6 +26,9 @@ pub mod types;
 
 pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionWatermarkError};
 pub use directive::ShardDirective;
+pub use lru_ring::{
+    DEFAULT_MAX_TERMINAL_RUNS, DEFAULT_TERMINAL_RUNS_TTL_TICKS, LruRing, LruRingCounters,
+};
 pub use types::{
     AskAnswer, AskTicket, InspectHandle, InspectResponse, InspectSnapshot,
     InspectSnapshotFormatter, IntrospectionRegistry, MAX_COMMAND_QUEUE_CAPACITY, PendingTimer,

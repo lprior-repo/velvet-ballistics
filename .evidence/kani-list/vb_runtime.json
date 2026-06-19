@@ -1,22 +1,656 @@
 {
-  "kani-version": "0.67.0",
-  "file-version": "0.1",
-  "standard-harnesses": {
-    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion/input_boundaries.rs": [
-      "verification::kani::kani_vb_god2f_action_completion::input_boundaries::vb_god2f_validate_input_bytes_contract_boundaries"
-    ],
-    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion/pc_completion.rs": [
-      "verification::kani::kani_vb_god2f_action_completion::pc_completion::vb_god2f_advance_after_action_completion_pc_cases"
-    ],
-    "crates/vb_runtime/src/verification/kani/kani_vb_god2f_action_completion/scheduled_attempt.rs": [
-      "verification::kani::kani_vb_god2f_action_completion::scheduled_attempt::vb_god2f_record_scheduled_attempt_monotonic"
-    ]
-  },
-  "contract-harnesses": {},
-  "contracts": [],
-  "totals": {
-    "standard-harnesses": 3,
-    "contract-harnesses": 0,
-    "functions-under-contract": 0
-  }
+  "discovery_root": "crates/vb_runtime/src",
+  "harness_count": 81,
+  "harnesses": [
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_construction_preserves_fields",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_zero_run_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_overflow_seq_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_zero_attempt_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_is_known_record_kind",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_is_known_record_kind",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_journal_family_valid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_journal_family_valid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_swap_remove_absent_returns_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_swap_remove_absent_returns_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_double_swap_remove_second_returns_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_kill_identical_swap_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_kill_identical_swap_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_wins_terminal_race",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kill_wins_terminal_race",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_terminal_runs_insert_idempotent",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_pending_timers_empty_after_swap_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runs_contains_key_false_after_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_counter_only_on_successful_terminalization",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_journal_event_count_bounded",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_terminal_run_not_in_runs",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_stale_ask_answer_after_kill",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_safe_for_boundary_run_ids",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_drive_budget_exhausted_signal_terminates_loop",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_engine_signals.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_for_each_join_passthrough",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_together_branch_first_branch",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_together_join_pif_reduction",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_action_queue_capacity",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_action_queue.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "storage_artifact_store_send",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_admission_store.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "storage_artifact_store_sync",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_admission_store.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "compiled_ir_exists_returns_false_for_empty_journal",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_admission_store.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "compiled_ir_exists_no_panic_max_digest",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_admission_store.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_cancel_kill_lattice",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_terminal_record_kinds_are_known",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_terminal_events_journal_family",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_terminal_events_are_terminal",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "strict_admission_invalid_artifact_cases_reject",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "strict_admission_invalid_capability_rejects",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "strict_admission_digest_mismatch_rejects_required_blocker",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "strict_legacy_presence_only_bypass_rejects_required_blocker",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "strict_admission_valid_artifact_admits",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_harness",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_grants_exact_match",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_action_match_name_grants",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_action_match_name_denies",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_action_mismatch_name_grants",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_action_mismatch_name_denies",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_hierarchical_rejects_subpath",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_capability_partial_segment_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_capability_harnesses.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "verify_trace_ring_bounds",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_trace_ring.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "verify_trace_ring_dropped_monotonic",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_trace_ring.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "verify_terminal_event_detection",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_trace_ring.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vt2f_runtime_facade_semantics",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vt2f_shard_lower_semantics",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_construction_preserves_fields",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_zero_run_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_overflow_seq_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_zero_attempt_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_is_known_record_kind",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_is_known_record_kind",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_journal_family_valid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_journal_family_valid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_swap_remove_absent_returns_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_swap_remove_absent_returns_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_double_swap_remove_second_returns_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_kill_identical_swap_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_kill_identical_swap_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_wins_terminal_race",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kill_wins_terminal_race",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_terminal_runs_insert_idempotent",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_pending_timers_empty_after_swap_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runs_contains_key_false_after_remove",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_counter_only_on_successful_terminalization",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_journal_event_count_bounded",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_terminal_run_not_in_runs",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_stale_ask_answer_after_kill",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_cancel_safe_for_boundary_run_ids",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_cancel_kill_lattice.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_drive_budget_exhausted_signal_terminates_loop",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_engine_signals.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_for_each_join_passthrough",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_for_each_ordering.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_together_branch_first_branch",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_together_join_pif_reduction",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_runtime/src/verification/kani/kani_together_ordering.rs",
+      "required_features": []
+    }
+  ],
+  "package": "vb_runtime",
+  "package_dir": "crates/vb_runtime"
 }

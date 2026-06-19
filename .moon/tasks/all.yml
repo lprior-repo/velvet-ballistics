@@ -607,29 +607,48 @@ tasks:
       runInCI: true
 
   kani-list:
-    # Per-bead vb-ybzsz.1-adjacent: enumerates Kani harnesses for a
-    # package list. The dedicated moon wiring for the Flux/Loom
-    # obligations lives in .moon/tasks/kani.yml / loom.yml
-    # (vb-ybzsz parent bead); this task provides an off-cycle smoke
-    # that exercises kani-list.sh on the same packages.
+    # Per master §77.9: per-package Kani harness discovery. Replaces
+    # root `cargo kani list --format json` (forbidden) with a
+    # filesystem scanner that emits JSON with `kani_arbitrary_status`
+    # per harness (bead tier-a-4-010). The dedicated moon wiring for
+    # the Flux/Loom obligations lives in .moon/tasks/kani.yml /
+    # loom.yml; this task provides an off-cycle smoke that exercises
+    # kani-list.sh on the same packages.
     # why: off-CI developer smoke. The canonical Flux/Loom wiring is
     # owned by the vb-ybzsz parent bead and the per-crate Kani lanes
     # (`verify-kani*`) already cover the same packages. Running the
-    # enumeration in CI would not add evidence and `cargo kani list`
-    # requires the Kani toolchain to be installed (fail-closed
-    # otherwise).
+    # enumeration in CI would not add evidence and the canonical
+    # enumeration does not depend on the Kani toolchain being
+    # installed.
     command: 'bash scripts/kani-list.sh vb_core vb_compile'
+    deps:
+      - 'kani-list-sh-test'
     toolchains:
       - rust
     inputs:
       - 'scripts/kani-list.sh'
+      - 'scripts/test-kani-list-sh.sh'
       - 'crates/vb_core/Cargo.toml'
       - 'crates/vb_compile/Cargo.toml'
       - '.moon/tasks/all.yml'
     options:
-      # Requires `cargo kani` on PATH; fails closed when missing.
       # Off-CI; the canonical Flux/Loom wiring is owned by vb-ybzsz.
       runInCI: false
+
+  kani-list-sh-test:
+    # Per-bead tier-a-4-010: bash integration tests for kani-list.sh.
+    # Tests the three contracts required by the bead:
+    #   1. test_kani_list_sh_lists_vb_core_harnesses
+    #   2. test_kani_list_sh_emits_arbitrary_status
+    #   3. test_kani_list_sh_fails_on_missing_package
+    command: 'bash scripts/test-kani-list-sh.sh'
+    inputs:
+      - 'scripts/kani-list.sh'
+      - 'scripts/test-kani-list-sh.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      cache: false
+      runInCI: true
 
   run-tlc-checks:
     # Local TLC runner. Mirrors the .moon/tasks/tlc.yml::verify-tlc

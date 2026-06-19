@@ -503,6 +503,8 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     };
     let mut shard = Shard::new(config);
     let run = RunId::new(5810);
@@ -543,6 +545,8 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         policy: RuntimePolicy::Relaxed,
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
     };
     let mut shard = Shard::new(config);
     let run = RunId::new(5811);

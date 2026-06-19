@@ -9,7 +9,10 @@ fn shard_remaining_capacity_decrements_on_enqueue() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let shard = Shard::new(config);
     assert_eq!(shard.remaining_capacity(), 4);
     // When enqueuing commands
@@ -30,7 +33,10 @@ fn shard_remaining_capacity_is_zero_when_full() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let shard = Shard::new(config);
     // Fill the queue
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -59,7 +65,10 @@ fn shard_is_queue_full_returns_true_when_at_capacity() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let shard = Shard::new(config);
     // Fill the queue
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -79,7 +88,10 @@ fn shard_command_queue_capacity_returns_configured_value() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let shard = Shard::new(config);
     // Then the capacity method returns 512
     assert_eq!(shard.command_queue_capacity(), 512);
@@ -96,7 +108,10 @@ fn shard_remaining_capacity_after_pop() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -116,7 +131,10 @@ fn shard_queue_len_decrements_after_tick() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     // Cancel for a non-existent run returns typed error
     assert_eq!(
@@ -230,7 +248,10 @@ fn shard_config_new_accepts_valid_parameters() {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-        })
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+        
+})
     );
 }
 

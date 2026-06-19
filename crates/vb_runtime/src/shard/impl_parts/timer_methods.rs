@@ -131,7 +131,9 @@ mod timer_fired_command_tests {
             max_active_runs: 4,
             policy: RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
-        snapshot_interval_steps: 0,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: 16,
+            terminal_runs_ttl_ticks: 86_400,
         }
     }
 
@@ -162,24 +164,12 @@ mod timer_fired_command_tests {
         };
         assert_eq!(shard.pending_timer_insert(run, armed_timer), None);
 
-        // When timer_fired_command is called for that run.
-        let command = shard.timer_fired_command(run);
-
-        // Then the returned command must carry exactly the originally-armed
-        // deadline, generation, and kind — not freshly synthesized values.
-        let Some(ShardCommand::TimerFired {
-            run: fired_run,
-            generation: fired_generation,
-            deadline: fired_deadline,
-            kind: fired_kind,
-        }) = command
-        else {
-            panic!("timer_fired_command must return Some(TimerFired) for armed run");
-        };
-        assert_eq!(fired_run, run);
-        assert_eq!(fired_generation, armed_timer.generation);
-        assert_eq!(fired_deadline, armed_timer.deadline);
-        assert_eq!(fired_kind, armed_timer.kind);
-        assert_eq!(fired_deadline, armed_deadline);
+        let expected = Some(ShardCommand::TimerFired {
+            run,
+            generation: armed_timer.generation,
+            deadline: armed_deadline,
+            kind: armed_timer.kind,
+        });
+        assert_eq!(shard.timer_fired_command(run), expected);
     }
 }

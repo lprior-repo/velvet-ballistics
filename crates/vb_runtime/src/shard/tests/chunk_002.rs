@@ -9,7 +9,10 @@ fn shard_rejects_active_run_capacity_overflow() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -45,7 +48,10 @@ fn inspect_command_stores_retrievable_snapshot() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -85,7 +91,10 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     assert_eq!(shard.is_shutting_down(), false);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -123,7 +132,10 @@ fn counters_reflect_submitted_after_submit_tick() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -151,7 +163,10 @@ fn inspect_nonexistent_run_returns_not_found() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
-    };
+        max_terminal_runs: 16,
+        terminal_runs_ttl_ticks: 86_400,
+    
+};
     let mut shard = Shard::new(config);
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {

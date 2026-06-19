@@ -1,17 +1,1056 @@
 {
-  "kani-version": "0.67.0",
-  "file-version": "0.1",
-  "standard-harnesses": {
-    "crates/vb_storage/src/kani_vb_god2f_classification_recovery.rs": [
-      "kani_vb_god2f_classification_recovery::vb_god2f_recovery_digest_and_action_replay_state",
-      "kani_vb_god2f_classification_recovery::vb_god2f_storage_kind_family_and_semantic_decode"
-    ]
-  },
-  "contract-harnesses": {},
-  "contracts": [],
-  "totals": {
-    "standard-harnesses": 2,
-    "contract-harnesses": 0,
-    "functions-under-contract": 0
-  }
+  "discovery_root": "crates/vb_storage/src",
+  "harness_count": 131,
+  "harnesses": [
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_truncated_header_zero_bytes",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_truncated_header_30_bytes",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_truncated_header_59_bytes",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_bad_magic_bytes",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_wrong_magic_any_value",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_future_schema_version",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_past_schema_version",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_bad_crc",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_arbitrary_header_60_bytes",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "kani_decode_header_exhaustive_error_coverage",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_codec.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_events_preconditions_non_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_events_preconditions_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_dimensions_positive_accepts_positive",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_dimensions_positive_rejects_zero_step",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_dimensions_positive_rejects_zero_slot",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_dimensions_positive_rejects_both_zero",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_has_evidence_tail_non_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_has_evidence_slots_non_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_has_evidence_all_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_run_matches_true",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_run_matches_snapshot_differs",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_run_matches_event_differs",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_seq_after_true",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_seq_after_false_before",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_seq_after_false_equal",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_preconditions_all_met",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_preconditions_false_run_mismatch",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_hydrate_proofs.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_crc_accepts_matching",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_crc.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_crc_rejects_mismatch",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_crc.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_crc_rejects_zero",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_crc.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_crc_all_ones_header",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_crc.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_crc_detects_single_bit_flip",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_crc.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_known",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_journal_family",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_validate_known_kind",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_snapshot_family_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_kind_28_blob_family_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_unknown_kind_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_all_existing_kinds_known",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_replay_sequence_gap_detection",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_replay_duplicate_detection",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_fields_preserved",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_zero_run_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "check_runkilled_zero_attempt_invalid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_magic_rejects_wrong_magic",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_magic.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_magic_accepts_correct_magic",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_magic.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_magic_rejects_zero",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_magic.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_magic_rejects_all_ones",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_magic.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_payload_len_within_max",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_payload_len.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_payload_len_exceeds_max",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_payload_len.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_payload_len_exactly_over_max",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_payload_len.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_payload_len_exactly_at_max",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_payload_len.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_payload_len_rejects_nonzero_when_max_zero",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_payload_len.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_schema_accepts_current_version",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_schema.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_schema_rejects_future_version",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_schema.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_schema_rejects_old_version",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_schema.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": false,
+      "harness": "kani_record_schema_zero_returns_migration_required",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_record_schema.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_eepg_typed_partitioned_ids",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_typed_partitioned_ids.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_eepg_record_kind_contracts",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_typed_partitioned_ids.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_eepg_unknown_record_kind_error_contract",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_typed_partitioned_ids.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_003_u32_conversion_safe",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_003_usize_max_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_004_zero_length_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps004.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_004_truncated_header_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps004.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_005_trailing_bytes",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_005_zero_length_case",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_005_single_trailing_byte",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_008_gate_count_exhaustive",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_008_proof_flags_exhaustive",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_011_oversized_envelope_rejected_early",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps011.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "ps_012_oversized_after_corruption_rejected",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_h09wf_ps012.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_mrwe4_reject_does_not_use_pending_actions",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe4_reject_unsupported_state.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_mrwe4_seed_unsupported_state_pending_false",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe4_seed_unsupported_state.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_mrwe5_record_kind_injectivity",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_vb_mrwe5_record_kind.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "vb_mrwe5_step_succeeded_id",
+      "kani_arbitrary_status": "no_input_generator",
+      "path": "crates/vb_storage/src/kani_vb_mrwe5_step_succeeded_id.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_atomic_batch_size_bounds",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_bounds.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_commit_before_drain_retry",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_commit_before_drain.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_queue_lifecycle_invariants",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_concurrency.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_drain_all_bound_and_retention",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_drain_all.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_duplicate_policy",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_duplicates.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_durability_classification",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_durability.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_fjall_seam_single_commit",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_fjall_seam.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_no_silent_torn_batch",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_recovery.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_flush_report_mapping",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_mrwe_7_report.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_overflow_produces_none",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps001.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encode_record_minimum_length",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps001.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encode_record_includes_header",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps001.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_checked_add_safety",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps002.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_admission_safe",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps002.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_u32_to_u64_widening_safe",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps002.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_usize_to_u64_safe",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps002.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encode_record_no_panic",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps002.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_max_encoded_fits_in_u64",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps002.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_error_variants_distinct",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encode_record_error_is_payload_too_large",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_valid_encode_produces_ok",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_payload_too_large_carries_fields",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_queue_full_error_message",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps003.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_new_batch_is_empty",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_queue_full_is_idempotent",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_error_variants_for_state_preservation",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encode_record_deterministic",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encoded_length_minimum",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_payload_only_underestimates",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_multiple_event_kinds_encode",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_max_encoded_fits_u64",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_record_kind_mapping",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps005.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_max_payload_nonzero",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_header_len_nonzero",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_max_batch_nonzero",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_byte_limit_arithmetic_safe",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_single_event_fits_default_limit",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_multiple_events_within_limit",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_zero_limit_rejects_all",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps006.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_storage_constants_well_defined",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps007.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_default_batch_byte_limit",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps007.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_bridge_accommodates_single_event",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps007.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_silent_drift_detectable",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps007.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_bridge_value_u32_safe",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps007.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_batch_total_byte_limit",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps007.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_max_batch_count_reasonable",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_queue_full_before_encoding",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_duplicate_before_queue_full",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encode_record_max_param",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_encoding_before_admission_necessity",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps008.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_same_event_same_encoding",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps009.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_different_events_different_encoding",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps009.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_journal_key_bytes_valid",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps009.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_duplicate_accounting_policies",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps009.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": true,
+      "feature_gated": false,
+      "harness": "check_staged_bytes_monotonic",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps009.rs",
+      "required_features": []
+    },
+    {
+      "cfg_kani": false,
+      "feature_gated": true,
+      "harness": "vb_mrwe_7_flush_batch_atomic_all_or_retained",
+      "kani_arbitrary_status": "kani_any_only",
+      "path": "crates/vb_storage/src/queue/kani_vb_mrwe_7_atomic.rs",
+      "required_features": []
+    }
+  ],
+  "package": "vb_storage",
+  "package_dir": "crates/vb_storage"
 }

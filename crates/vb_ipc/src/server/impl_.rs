@@ -137,6 +137,8 @@ use arrayvec::ArrayVec;
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Token};
 use std::io::{Read, Write};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use vb_core::action::{ActionFailure, ActionFailureCode, ActionTicket};
@@ -183,6 +185,17 @@ impl IpcServer {
 
         let mut listener = UnixListener::bind(socket_path)
             .map_err(|source| IpcServerError::BindFailed { source })?;
+
+        // SEC-03 (master §23 + RED-QUEEN-MASTER-ISSUE-REPORT.md): restrict
+        // the bound Unix socket to owner-only read/write. Without this,
+        // any local user can connect to the socket and submit commands
+        // against the running shard.
+        #[cfg(unix)]
+        {
+            let permissions = std::fs::Permissions::from_mode(0o600);
+            std::fs::set_permissions(socket_path, permissions)
+                .map_err(|source| IpcServerError::BindFailed { source })?;
+        }
 
         let poll = Poll::new().map_err(|source| IpcServerError::PollFailed { source })?;
 

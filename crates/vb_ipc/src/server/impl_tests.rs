@@ -275,6 +275,29 @@ fn bind_to_nested_directory_fails() {
     };
 }
 
+#[cfg(unix)]
+#[test]
+fn bind_sets_socket_mode_to_0o600() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = temp_socket_path("bind_mode_0o600");
+    let _cleanup = CleanupPath(&path);
+    let result = IpcServer::bind(&path);
+    let Ok(_) = result else {
+        panic!("bind should succeed before mode check")
+    };
+    assert!(path.exists(), "socket file should exist after bind");
+    let observed = std::fs::metadata(&path)
+        .expect("metadata after bind")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(
+        observed, 0o600,
+        "bound socket must be owner-only read/write (SEC-03), got {observed:o}"
+    );
+}
+
 // ── poll_once tests ─────────────────────────────────────────────────────────
 
 #[test]
