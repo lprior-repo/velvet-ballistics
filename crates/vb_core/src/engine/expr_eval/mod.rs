@@ -11,6 +11,8 @@ mod ops_tests;
 mod ops_text_list;
 #[cfg(test)]
 mod ops_text_list_tests;
+#[cfg(test)]
+mod red_queen_property_tests;
 mod stack;
 #[cfg(test)]
 mod stack_tests;

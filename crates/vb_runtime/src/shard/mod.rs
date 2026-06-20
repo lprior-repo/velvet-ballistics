@@ -13,6 +13,8 @@ pub mod introspection;
 pub mod lifecycle;
 pub mod lru_ring;
 #[cfg(test)]
+mod lru_ring_red_queen_tests;
+#[cfg(test)]
 mod lru_ring_tests;
 #[cfg(test)]
 pub mod property_tests;
