@@ -1,26 +1,25 @@
 #![forbid(unsafe_code)]
 //! Bounded LRU ring with TTL-based eviction.
 //!
-//! `LruRing<T>` stores at most `capacity` entries. Each entry is tagged
-//! with the `TimerTick` value at insertion. On `insert`, expired entries
-//! (those whose `ts + ttl_ticks <= now`) are evicted lazily from the
-//! oldest end of the ring. After the sweep, if the ring is still at
-//! capacity, `insert` returns `RuntimeError::TerminalRunsLruFull` — the
-//! caller decides what to do.
+//! `LruRing<T>` stores at most `capacity` entries and tags each entry
+//! with its insertion `TimerTick`. On `insert`, entries whose
+//! `ts + ttl_ticks <= now` are evicted lazily from the oldest end of
+//! the ring; if the ring is still full, `insert` returns
+//! `RuntimeError::TerminalRunsLruFull` and increments
+//! `capacity_overflows`. The ring never silently drops entries.
 //!
-//! The ring never silently drops entries: every eviction is either
-//! (a) an explicit TTL sweep that increments `expired_evictions`, or
-//! (b) a refused insert that increments `capacity_overflows`.
+//! # Implementation
 //!
-//! `force_insert` is provided for callers that prefer "bounded with
-//! observable counter" over "Err-on-overflow"; the existing
-//! `Shard::terminal_runs_insert` uses that path so the legacy public
-//! signature is preserved.
+//! Backed by a slot-based arena (`Vec<Option<Node<T>>>`) holding a
+//! doubly-linked list of nodes in insertion order plus a `HashMap<T, usize>`
+//! position index. `remove` is O(1): look up the slot index, unlink the
+//! node from the linked list, push the freed index onto a LIFO free list
+//! for reuse. `sweep_expired` walks from the linked-list head so the FIFO
+//! expiration order is preserved exactly — the head is always the oldest
+//! non-removed item, regardless of which items `remove` has taken.
 
-use std::collections::VecDeque;
+use std::collections::HashMap;
 use std::hash::Hash;
-
-use indexmap::IndexSet;
 
 use crate::RuntimeError;
 use crate::shard::timer::TimerTick;
@@ -31,17 +30,25 @@ pub const DEFAULT_MAX_TERMINAL_RUNS: usize = 100_000;
 /// Default TTL in ticks for terminal-runs entries.
 pub const DEFAULT_TERMINAL_RUNS_TTL_TICKS: u64 = 86_400;
 
-/// Diagnostic counters for a `LruRing`.
-///
-/// Both counters saturate at `u64::MAX`; they never wrap and never
-/// panic. Production code reads them via `ShardCounters` aggregation.
+/// Diagnostic counters for a `LruRing`. Saturate at `u64::MAX`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct LruRingCounters {
     /// Number of entries removed by TTL sweep.
     pub expired_evictions: u64,
-    /// Number of refused inserts (capacity reached) or forced inserts
-    /// that grew the ring past `capacity`.
+    /// Number of refused inserts (capacity reached) or forced inserts that grew past `capacity`.
     pub capacity_overflows: u64,
+}
+
+/// Doubly-linked-list node stored in one arena slot.
+#[derive(Debug, Clone, Copy)]
+struct Node<T>
+where
+    T: Copy + Eq + Hash,
+{
+    item: T,
+    ts: TimerTick,
+    prev: Option<usize>,
+    next: Option<usize>,
 }
 
 /// Bounded LRU ring keyed by insertion order with TTL-based eviction.
@@ -52,8 +59,16 @@ where
 {
     capacity: usize,
     ttl_ticks: u64,
-    order: VecDeque<(T, TimerTick)>,
-    members: IndexSet<T>,
+    /// Index of the oldest live slot (front of the insertion order).
+    head: Option<usize>,
+    /// Index of the newest live slot (back of the insertion order).
+    tail: Option<usize>,
+    /// LIFO free list of slot indices available for reuse.
+    free: Vec<usize>,
+    /// Slot-based arena. `None` = free, `Some(node)` = live.
+    nodes: Vec<Option<Node<T>>>,
+    /// Item → slot index. O(1) lookup for `contains` and `remove`.
+    position: HashMap<T, usize>,
     counters: LruRingCounters,
 }
 
@@ -68,49 +83,45 @@ where
         Self {
             capacity: bounded_capacity,
             ttl_ticks,
-            order: VecDeque::with_capacity(bounded_capacity),
-            members: IndexSet::with_capacity(bounded_capacity),
+            head: None,
+            tail: None,
+            free: Vec::new(),
+            nodes: Vec::with_capacity(bounded_capacity),
+            position: HashMap::with_capacity(bounded_capacity),
             counters: LruRingCounters::default(),
         }
     }
 
-    /// Returns the configured capacity.
     #[must_use]
     pub const fn capacity(&self) -> usize {
         self.capacity
     }
 
-    /// Returns the configured TTL in ticks.
     #[must_use]
     pub const fn ttl_ticks(&self) -> u64 {
         self.ttl_ticks
     }
 
-    /// Returns the current number of entries.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.members.len()
+        self.position.len()
     }
 
-    /// Returns true when the ring holds no entries.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.members.is_empty()
+        self.position.is_empty()
     }
 
-    /// Returns true when the ring holds `capacity` entries.
     #[must_use]
     pub fn is_full(&self) -> bool {
-        self.members.len() >= self.capacity
+        self.position.len() >= self.capacity
     }
 
-    /// Returns true when the given item is in the ring.
     #[must_use]
     pub fn contains(&self, item: &T) -> bool {
-        self.members.contains(item)
+        self.position.contains_key(item)
     }
 
-    /// Returns a snapshot of the diagnostic counters.
     #[must_use]
     pub const fn counters(&self) -> LruRingCounters {
         self.counters
@@ -118,86 +129,172 @@ where
 
     /// Removes every entry from the ring (does not change capacity or TTL).
     pub fn clear(&mut self) {
-        self.order.clear();
-        self.members.clear();
+        self.head = None;
+        self.tail = None;
+        self.free.clear();
+        for slot in self.nodes.iter_mut() {
+            *slot = None;
+        }
+        self.position.clear();
     }
 
     /// Inserts `item`, sweeping TTL-expired entries first.
     ///
-    /// * If `item` is already present, returns `Ok(())` without bumping
-    ///   the insertion tick (idempotent membership is preserved).
-    /// * If the ring has room after the sweep, inserts and returns `Ok`.
-    /// * If the ring is still full, increments `capacity_overflows` and
-    ///   returns `Err(RuntimeError::TerminalRunsLruFull)`.
+    /// Idempotent if `item` is already present. Returns
+    /// `RuntimeError::TerminalRunsLruFull` when full after sweep.
     pub fn insert(&mut self, item: T, now: TimerTick) -> Result<(), RuntimeError> {
-        if self.members.contains(&item) {
+        if self.position.contains_key(&item) {
             return Ok(());
         }
         self.sweep_expired(now);
-        if self.members.len() >= self.capacity {
+        if self.position.len() >= self.capacity {
             self.counters.capacity_overflows = self.counters.capacity_overflows.saturating_add(1);
             return Err(RuntimeError::TerminalRunsLruFull {
                 capacity: self.capacity,
             });
         }
-        self.order.push_back((item, now));
-        self.members.insert(item);
+        self.push_tail(item, now);
         Ok(())
     }
 
-    /// Forces insertion, sweeping TTL-expired entries first.
-    ///
-    /// If the ring is at capacity after the sweep, increments
-    /// `capacity_overflows` and grows the ring past `capacity` rather
-    /// than returning an error. Use this when the caller prefers
-    /// "never drop" semantics and tracks overflow via counters.
+    /// Forces insertion past capacity, tracking overflow via counters.
     pub fn force_insert(&mut self, item: T, now: TimerTick) {
-        if self.members.contains(&item) {
+        if self.position.contains_key(&item) {
             return;
         }
         self.sweep_expired(now);
-        let before = self.members.len();
-        self.order.push_back((item, now));
-        self.members.insert(item);
-        if self.members.len() > before && self.members.len() > self.capacity {
+        let before = self.position.len();
+        self.push_tail(item, now);
+        if self.position.len() > before && self.position.len() > self.capacity {
             self.counters.capacity_overflows = self.counters.capacity_overflows.saturating_add(1);
         }
     }
 
     /// Removes the entry for `item` if present. No-op otherwise.
+    ///
+    /// O(1): the `position` map gives the slot index, the slot is unlinked
+    /// from the doubly-linked list, and the freed index is pushed onto
+    /// the free list for reuse.
     pub fn remove(&mut self, item: &T) {
-        if self.members.swap_remove(item) {
-            // Re-scan the order deque to drop the matching (item, ts) tuple.
-            // O(n) but rare on the terminal-runs path.
-            if let Some(position) = self.order.iter().position(|(value, _)| value == item) {
-                self.order.remove(position);
-            }
+        if let Some(slot) = self.position.remove(item) {
+            self.unlink(slot);
+            self.free.push(slot);
         }
     }
+
     /// Evicts every entry whose insertion tick satisfies `ts + ttl_ticks <= now`.
     /// Increments `expired_evictions` for every removed entry.
     pub fn sweep_expired(&mut self, now: TimerTick) {
         if self.ttl_ticks == 0 {
             return;
         }
-        // Compute the cutoff as the latest tick value still considered
-        // alive. When `now.get() < ttl_ticks` we cannot use
-        // `saturating_sub` (it would round to 0 and falsely evict every
-        // entry), so the cutoff is treated as -1 (no expiration).
-        // The `u64 -> i128` widening `From` conversion is lossless
-        // (i128::MAX >= u64::MAX), so we never need an `as` cast.
+        // `u64 -> i128` widening `From` is lossless (i128::MAX >= u64::MAX).
+        // `now.get() < ttl_ticks` cannot use `saturating_sub` (would round to
+        // 0 and falsely evict every entry), so the cutoff is treated as -1.
         let cutoff: i128 = match now.get().checked_sub(self.ttl_ticks) {
             Some(value) => i128::from(value),
             None => -1,
         };
-        while let Some(&(value, ts)) = self.order.front() {
-            if i128::from(ts.get()) <= cutoff {
-                self.order.pop_front();
-                self.members.swap_remove(&value);
-                self.counters.expired_evictions = self.counters.expired_evictions.saturating_add(1);
-            } else {
-                break;
+        // Walk from `head`, evicting every node whose tick is at or before
+        // the cutoff. The `while let` is the same control-flow shape used
+        // by the pre-existing implementation; the linked-list head is by
+        // construction the oldest non-removed entry, so we can stop at the
+        // first non-expired node and still evict every expired entry.
+        while let Some(head_slot) = self.head {
+            let expired_item = self
+                .nodes
+                .get(head_slot)
+                .and_then(Option::as_ref)
+                .filter(|node| i128::from(node.ts.get()) <= cutoff)
+                .map(|node| node.item);
+            match expired_item {
+                Some(item) => {
+                    self.position.remove(&item);
+                    self.unlink(head_slot);
+                    self.free.push(head_slot);
+                    self.counters.expired_evictions =
+                        self.counters.expired_evictions.saturating_add(1);
+                }
+                None => break,
             }
+        }
+    }
+
+    /// Allocates a slot from the free list (or appends a new one), links
+    /// the new node at the tail of the doubly-linked list, and records
+    /// the item in `position`.
+    fn push_tail(&mut self, item: T, now: TimerTick) {
+        let slot = match self.free.pop() {
+            Some(free_slot) => free_slot,
+            None => {
+                let new_slot = self.nodes.len();
+                self.nodes.push(None);
+                new_slot
+            }
+        };
+        let node = Node {
+            item,
+            ts: now,
+            prev: self.tail,
+            next: None,
+        };
+        if let Some(slot_ref) = self.nodes.get_mut(slot) {
+            *slot_ref = Some(node);
+        }
+        if let Some(old_tail) = self.tail {
+            if let Some(old_tail_node) = self.nodes.get_mut(old_tail).and_then(Option::as_mut) {
+                old_tail_node.next = Some(slot);
+            }
+        } else {
+            self.head = Some(slot);
+        }
+        self.tail = Some(slot);
+        self.position.insert(item, slot);
+    }
+
+    /// Unlinks `slot` from the doubly-linked list, repairing neighbour
+    /// pointers and clearing the slot.
+    ///
+    /// # Invariant (debug-checked)
+    /// The `prev` and `next` pointers of a live node always reference live
+    /// slots. A `debug_assert!` validates this on every call so a future
+    /// regression that breaks the invariant (e.g. wrong free-list
+    /// accounting) surfaces as a panic rather than a silent stale pointer.
+    fn unlink(&mut self, slot: usize) {
+        let (prev, next) = match self.nodes.get(slot).and_then(Option::as_ref) {
+            Some(node) => (node.prev, node.next),
+            None => return,
+        };
+        if let Some(p) = prev {
+            debug_assert!(
+                self.nodes.get(p).and_then(Option::as_ref).is_some(),
+                "unlink invariant: prev slot {p} must be live"
+            );
+        }
+        if let Some(n) = next {
+            debug_assert!(
+                self.nodes.get(n).and_then(Option::as_ref).is_some(),
+                "unlink invariant: next slot {n} must be live"
+            );
+        }
+        match prev {
+            Some(p) => {
+                if let Some(p_node) = self.nodes.get_mut(p).and_then(Option::as_mut) {
+                    p_node.next = next;
+                }
+            }
+            None => self.head = next,
+        }
+        match next {
+            Some(n) => {
+                if let Some(n_node) = self.nodes.get_mut(n).and_then(Option::as_mut) {
+                    n_node.prev = prev;
+                }
+            }
+            None => self.tail = prev,
+        }
+        if let Some(slot_ref) = self.nodes.get_mut(slot) {
+            *slot_ref = None;
         }
     }
 }
