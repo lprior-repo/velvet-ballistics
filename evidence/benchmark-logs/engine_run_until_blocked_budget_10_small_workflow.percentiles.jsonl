@@ -1,1 +1,1 @@
-{"bench_id":"engine_run_until_blocked_budget_10_small_workflow","sample_count":1,"min_ns":20,"max_ns":20,"total_ns":20,"mean_ns":20,"p50_latency_ns":20,"p95_latency_ns":20,"p99_latency_ns":20}
+{"bench_id":"engine_run_until_blocked_budget_10_small_workflow","sample_count":1,"min_ns":790,"max_ns":790,"total_ns":790,"mean_ns":790,"p50_latency_ns":790,"p95_latency_ns":790,"p99_latency_ns":790}

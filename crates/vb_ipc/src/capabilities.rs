@@ -55,7 +55,7 @@ impl CallerCapabilities {
     pub const ACTION_HANDLER: Self = Self(ROOT_CAPABILITY_BIT | ACTION_HANDLER_CAPABILITY_BIT);
 
     /// Wraps a raw wire value. Does not validate non-zero — use [`Self::from_wire`]
-    /// or [`Self::require_nonzero`] for that.
+    /// when decoding external frame bytes.
     #[must_use]
     pub const fn from_raw(bits: u16) -> Self {
         Self(bits)

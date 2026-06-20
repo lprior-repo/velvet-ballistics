@@ -5,25 +5,25 @@
 //!
 //! ## Module layout
 //!
-//! - [`command`] — entry points (`cmd_verify`, `cmd_verify_with_durability`)
-//! - [`report`] — JSON report builders and completion messages
-//! - [`error`] — error emission, formatting, and exit-code helpers
-//! - [`output`] — machine-readable stdout helpers
-//! - [`io`] — workflow file reading
+//! - `command` — entry points (`cmd_verify`, `cmd_verify_with_durability`)
+//! - `report` — JSON report builders and completion messages
+//! - `error` — error emission, formatting, and exit-code helpers
+//! - `output` — machine-readable stdout helpers
+//! - `io` — workflow file reading
 //!
 //! ## Re-exports
 //!
 //! The following items are re-exported at the module root for convenience:
-//! - [`command::cmd_verify`]
-//! - [`command::cmd_verify_with_durability`]
-//! - [`command::uses_verify_human_text`]
-//! - [`error::deferred_gate_message`]
-//! - [`error::verify_error_message`]
-//! - [`error::cli_exit_code_number`]
-//! - [`report::verify_success_report`]
-//! - [`report::verify_deferred_report`]
-//! - [`report::durability_block`]
-//! - [`report::verification_completion_message`]
+//! - `command::cmd_verify`
+//! - `command::cmd_verify_with_durability`
+//! - `command::uses_verify_human_text`
+//! - `error::deferred_gate_message`
+//! - `error::verify_error_message`
+//! - `error::cli_exit_code_number`
+//! - `report::verify_success_report`
+//! - `report::verify_deferred_report`
+//! - `report::durability_block`
+//! - `report::verification_completion_message`
 
 #![forbid(unsafe_code)]
 

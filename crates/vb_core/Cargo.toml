@@ -25,6 +25,10 @@ serde_json.workspace = true
 name = "aggregate_resource_budget"
 harness = false
 
+[[bench]]
+name = "expr_eval_micro"
+harness = false
+
 [features]
 bench = []
 default = []

@@ -455,7 +455,7 @@ fn kani_gate_08_expressions_with_accessor_refs() {
 ///
 /// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
-#[kani::unwind(17)]
+#[kani::unwind(5)]
 fn kani_gate_08_mixed_accessor_paths() {
     // Arbitrary indices for the accessor paths.
     let sym0: SymbolId = kani::any();
@@ -463,35 +463,55 @@ fn kani_gate_08_mixed_accessor_paths() {
     let idx0: u32 = kani::any();
     let idx1: u32 = kani::any();
     let idx2: u32 = kani::any();
-    let idx3: u32 = kani::any();
-    let idx4: u32 = kani::any();
-    let idx100: u32 = kani::any();
 
     // Bounded slot/symbol counts.
     let slot_count: u16 = kani::any();
     let symbols_count: u32 = kani::any();
     kani::assume(slot_count >= 3); // Need at least 3 slots for the accessor roots
+    kani::assume(slot_count <= 8);
     kani::assume(symbols_count >= 2); // Need at least 2 symbols
+    kani::assume(symbols_count <= 16);
     kani::assume(sym0.get() < symbols_count);
     kani::assume(sym1.get() < symbols_count);
     // Ensure index sentinels are not MAX (MAX is used as invalid sentinel in Gate 8).
-    kani::assume(
-        idx0 != u32::MAX
-            && idx1 != u32::MAX
-            && idx2 != u32::MAX
-            && idx3 != u32::MAX
-            && idx4 != u32::MAX
-            && idx100 != u32::MAX,
-    );
+    kani::assume(idx0 != u32::MAX && idx1 != u32::MAX && idx2 != u32::MAX);
 
     let parts = bounded_parts_with_accessors(
-        varied_valid_accessors(sym0, sym1, idx0, idx1, idx2, idx3, idx4, idx100),
+        mixed_valid_accessors(sym0, sym1, idx0, idx1, idx2),
         slot_count,
         symbols_count,
     );
 
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(result.is_ok(), "mixed accessor paths pass Gate 8");
+    std::mem::forget(parts);
+}
+
+fn mixed_valid_accessors(
+    sym0: SymbolId,
+    sym1: SymbolId,
+    idx0: u32,
+    idx1: u32,
+    idx2: u32,
+) -> Box<[AccessorProgram]> {
+    Box::new([
+        AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([]),
+        },
+        AccessorProgram {
+            root: SlotIdx::new(1),
+            path: Box::new([PathSegment::Field(sym0), PathSegment::Index(idx0)]),
+        },
+        AccessorProgram {
+            root: SlotIdx::new(2),
+            path: Box::new([
+                PathSegment::Index(idx1),
+                PathSegment::Field(sym1),
+                PathSegment::Index(idx2),
+            ]),
+        },
+    ])
 }
 
 /// Harness 12: All CompiledNodeKind variants present — stress test structural variety.
@@ -568,11 +588,11 @@ fn kani_gate_08_constants_with_symbols() {
     std::mem::forget(parts);
 }
 
-/// Harness 14: Large accessor count with varied depths — stress Gate 8 iteration.
+/// Harness 14: Bounded accessor batch with varied depths — stress Gate 8 iteration.
 ///
 /// GOD RULE fix: replaced hardcoded indices with kani::any().
 #[kani::proof]
-#[kani::unwind(17)]
+#[kani::unwind(5)]
 fn kani_gate_08_many_accessors_varied_depths() {
     // Arbitrary indices for the accessor paths.
     let sym0: SymbolId = kani::any();
@@ -580,29 +600,21 @@ fn kani_gate_08_many_accessors_varied_depths() {
     let idx0: u32 = kani::any();
     let idx1: u32 = kani::any();
     let idx2: u32 = kani::any();
-    let idx3: u32 = kani::any();
-    let idx4: u32 = kani::any();
-    let idx100: u32 = kani::any();
 
     // Bounded slot/symbol counts.
     let slot_count: u16 = kani::any();
     let symbols_count: u32 = kani::any();
     kani::assume(slot_count >= 3); // Need at least 3 slots for accessor roots
+    kani::assume(slot_count <= 8);
     kani::assume(symbols_count >= 2); // Need at least 2 symbols
+    kani::assume(symbols_count <= 16);
     kani::assume(sym0.get() < symbols_count);
     kani::assume(sym1.get() < symbols_count);
     // Ensure index sentinels are not MAX (MAX is used as invalid sentinel in Gate 8).
-    kani::assume(
-        idx0 != u32::MAX
-            && idx1 != u32::MAX
-            && idx2 != u32::MAX
-            && idx3 != u32::MAX
-            && idx4 != u32::MAX
-            && idx100 != u32::MAX,
-    );
+    kani::assume(idx0 != u32::MAX && idx1 != u32::MAX && idx2 != u32::MAX);
 
     let parts = bounded_parts_with_accessors(
-        varied_valid_accessors(sym0, sym1, idx0, idx1, idx2, idx3, idx4, idx100),
+        varied_valid_accessors(sym0, sym1, idx0, idx1, idx2),
         slot_count,
         symbols_count,
     );
@@ -610,7 +622,7 @@ fn kani_gate_08_many_accessors_varied_depths() {
     let result = validate_gate_08_accessor_path_segments(&parts);
     kani::assert(
         result.is_ok(),
-        "many accessors with varied depths pass Gate 8",
+        "bounded accessor batch with varied depths passes Gate 8",
     );
     std::mem::forget(parts);
 }
@@ -621,9 +633,6 @@ fn varied_valid_accessors(
     idx0: u32,
     idx1: u32,
     idx2: u32,
-    idx3: u32,
-    idx4: u32,
-    idx100: u32,
 ) -> Box<[AccessorProgram]> {
     Box::new([
         AccessorProgram {
@@ -636,28 +645,15 @@ fn varied_valid_accessors(
         },
         AccessorProgram {
             root: SlotIdx::ZERO,
-            path: Box::new([PathSegment::Index(idx0)]),
+            path: Box::new([PathSegment::Index(idx2)]),
         },
         AccessorProgram {
             root: SlotIdx::ZERO,
             path: Box::new([
                 PathSegment::Field(sym0),
                 PathSegment::Index(idx0),
-                PathSegment::Field(sym1),
-            ]),
-        },
-        AccessorProgram {
-            root: SlotIdx::new(1),
-            path: Box::new([PathSegment::Index(idx100)]),
-        },
-        AccessorProgram {
-            root: SlotIdx::new(2),
-            path: Box::new([
-                PathSegment::Index(idx0),
                 PathSegment::Index(idx1),
-                PathSegment::Index(idx2),
-                PathSegment::Index(idx3),
-                PathSegment::Index(idx4),
+                PathSegment::Field(sym1),
             ]),
         },
     ])

@@ -565,7 +565,7 @@ tasks:
       run_ipc_harness kani_from_u16_exhaustive
       run_ipc_harness kani_harness_ipc_decode_order
       run_ipc_harness kani_harness_ipc_magic_before_version
-      run_ipc_harness kani_harness_ipc_reserved_nonzero_before_payload_len
+      run_ipc_harness kani_harness_ipc_capabilities_missing_before_payload_len
       run_ipc_harness kani_ipc_header_accepts_exactly_at_limit
       run_ipc_harness kani_ipc_header_accepts_large_with_large_max
       run_ipc_harness kani_ipc_header_accepts_within_bound
@@ -577,7 +577,7 @@ tasks:
       run_ipc_harness kani_ipc_header_rejects_bad_version
       run_ipc_harness kani_ipc_header_rejects_exactly_over_limit
       run_ipc_harness kani_ipc_header_rejects_oversize_payload
-      run_ipc_harness kani_ipc_header_rejects_reserved_nonzero
+      run_ipc_harness kani_ipc_header_rejects_missing_capabilities
       run_ipc_harness kani_min_payload_bytes_accepts_zero
       run_ipc_harness kani_min_payload_bytes_rejects_all_nonzero
       run_ipc_harness kani_payload_length_out_of_range_path

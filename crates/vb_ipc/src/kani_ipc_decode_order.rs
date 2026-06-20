@@ -73,9 +73,10 @@ fn kani_harness_ipc_decode_order() {
 }
 
 /// VB-IPC-POSTCARD-ENVELOPE-001 H2:
-/// Prove that `PermissionDenied` is returned before `PayloadTooLarge`.
-/// For any header with a zero caller-capabilities envelope, we get
-/// `PermissionDenied` before any payload_len bounds check.
+/// Prove that the previously reserved SEC-01 envelope slot is checked for a
+/// non-zero caller-capability bitmap before `payload_len` is inspected.
+/// For any valid header prefix with a zero caller-capabilities envelope, decode
+/// returns `PermissionDenied` before any payload_len bounds check.
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_harness_ipc_capabilities_missing_before_payload_len() {
@@ -99,19 +100,17 @@ fn kani_harness_ipc_capabilities_missing_before_payload_len() {
 
     let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
 
-    // Must return PermissionDenied before checking payload_len
+    // Must return PermissionDenied before checking payload_len.
     match result {
-        Err(IpcError::PermissionDenied) => {
-            // OK: envelope check precedes payload bound check
-        }
-        Err(IpcError::InvalidMagic { .. }) => {
-            // Magic check happens first - both are valid
-        }
+        Err(IpcError::PermissionDenied) => {}
         Ok(_) => {
             kani::assert(false, "missing capabilities should not return Ok");
         }
         Err(_) => {
-            // Other errors before PermissionDenied
+            kani::assert(
+                false,
+                "missing capabilities must be rejected before payload length",
+            );
         }
     }
 
