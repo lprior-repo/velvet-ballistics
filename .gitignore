@@ -96,3 +96,14 @@ isolates/
 
 # Beads / Dolt files (added by bd init)
 .beads/proxieddb/
+
+# Review session artifacts (truth-serum, black-hat, red-queen, qa-gate)
+*-review-*.md
+qa-gate-report-*.md
+red-queen-report-*.md
+black-hat-review-*.md
+truth-serum-*.md
+
+# Rust compiler internal-compiler-error dumps
+rustc-ice-*.txt
+.tmp_orphans_*
