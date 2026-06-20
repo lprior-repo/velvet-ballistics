@@ -3,12 +3,11 @@
 //!
 //! JSONL is a projection, not this durable format.
 
-use crate::mrwe5_contract::{Mrwe5PayloadClass, mrwe5_canonical_kind_id};
-use crate::{EventSeq, RecordKind};
+use crate::EventSeq;
 use chrono::{DateTime, Utc};
 use vb_core::{
-    ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, SlotValue,
-    StepIdx, Taint, WorkflowDigest,
+    ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
+    Taint, WorkflowDigest,
 };
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.

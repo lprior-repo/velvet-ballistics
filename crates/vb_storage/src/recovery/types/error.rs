@@ -2,7 +2,6 @@
 //! Recovery error types with typed diagnostics.
 
 use crate::{EventSeq, JournalError};
-use serde::{Deserialize, Serialize};
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 
 /// Recovery failures with typed diagnostics.

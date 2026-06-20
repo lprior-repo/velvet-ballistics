@@ -275,7 +275,7 @@ mod edge_case_tests {
     fn very_large_compiled_ir_payload() {
         let (_temp, journal) = temp_journal();
         let large_ir = vec![0xAAu8; 512 * 1024];
-        let record = crate::accepted_compiled_ir_record_for_test(large_ir);
+        let record = crate::try_accepted_compiled_ir_record_for_test(large_ir).expect("test fixture should encode");
         let digest = record.digest;
         journal.put_compiled_ir(&record).expect("large ir put");
         let loaded = journal

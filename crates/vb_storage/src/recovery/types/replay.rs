@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 //! Replay tracking types for idempotent action replay during recovery.
 
-use serde::{Deserialize, Serialize};
 use vb_core::{ActionId, ActionTicket, SlotIdx, StepIdx, Taint};
 
 use super::error::RecoveryResult;

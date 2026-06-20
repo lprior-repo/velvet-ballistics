@@ -16,11 +16,8 @@ use std::collections::BTreeMap;
 
 pub(crate) use accumulator::FrameSeedAccumulator;
 
-use crate::recovery::{
-    RecoveryError, RecoveryFrameSeed, RecoveryResult, RecoveryRuntimeSummary,
-    UnsupportedRecoveryState,
-};
-use crate::{EventSeq, JournalEvent};
+use crate::JournalEvent;
+use crate::recovery::{RecoveryError, RecoveryFrameSeed, RecoveryResult, UnsupportedRecoveryState};
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 
 // ── RecoveryFrameSeedBuilder ────────────────────────────────────────────────
@@ -141,7 +138,8 @@ fn build_recovery_frame_seed(
     let step_count = dimension_count(accumulator.max_step_idx, run)?;
     let slot_count = dimension_count(accumulator.max_slot_idx, run)?;
     let first_step = accumulator.first_step();
-    let slots = crate::recovery::replay::summary::slots::recover_slots(&accumulator, workflow)?;
+    let slots =
+        crate::recovery::replay::summary::slots::recovery::recover_slots(&accumulator, workflow)?;
     let unsupported = seed_unsupported_state(&accumulator, &slots);
     let steps = recovered_steps(accumulator.step_states);
 
@@ -159,7 +157,7 @@ fn build_recovery_frame_seed(
 
 fn seed_unsupported_state(
     accumulator: &FrameSeedAccumulator,
-    slots: &crate::recovery::replay::summary::slots::RecoveredSlots,
+    slots: &crate::recovery::replay::summary::slots::recovery::RecoveredSlots,
 ) -> UnsupportedRecoveryState {
     let slot_evidence_seen =
         accumulator.summary.slots_written > 0 || accumulator.summary.steps_succeeded > 0;
@@ -193,18 +191,6 @@ fn seed_unsupported_state(
 }
 
 // ── Dimension helpers ───────────────────────────────────────────────────────
-
-fn max_step(current: Option<StepIdx>, candidate: StepIdx) -> Option<StepIdx> {
-    current.map_or(Some(candidate), |step| Some(step.max(candidate)))
-}
-
-fn min_step(current: Option<StepIdx>, candidate: StepIdx) -> Option<StepIdx> {
-    current.map_or(Some(candidate), |step| Some(step.min(candidate)))
-}
-
-fn max_slot(current: Option<SlotIdx>, candidate: SlotIdx) -> Option<SlotIdx> {
-    current.map_or(Some(candidate), |slot| Some(slot.max(candidate)))
-}
 
 pub(super) trait RecoveryIndex {
     fn index(self) -> u16;

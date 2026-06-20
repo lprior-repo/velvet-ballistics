@@ -6,7 +6,7 @@
 use super::accumulator::{ActionEnvelopeView, FrameSeedAccumulator};
 use crate::recovery::action_digest::verified_action_envelope_digest;
 use crate::recovery::types::ActionReplayEffect;
-use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult};
+use crate::recovery::{RecoveryError, RecoveryResult};
 use vb_core::{ActionId, SlotIdx, SlotValue, StepIdx, Taint};
 
 impl FrameSeedAccumulator {

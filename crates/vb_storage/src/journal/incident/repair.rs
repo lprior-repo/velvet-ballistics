@@ -36,6 +36,10 @@ pub fn build_repair_hints(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::indexing_slicing,
+    reason = "test assertions use indices into fixed-size repair hint vectors"
+)]
 mod tests {
     use super::super::model::SideEffect;
     use super::super::model::SideEffectCertainty;

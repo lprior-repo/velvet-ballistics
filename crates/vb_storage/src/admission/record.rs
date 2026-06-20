@@ -4,9 +4,8 @@
 use crate::codec::payload;
 use crate::error::JournalError;
 use crate::records::CompiledIrRecord;
-use crate::types::EventSeq;
 
-use super::policy::{ADMISSION_GATE_COUNT, is_accepted_gate_count};
+use super::policy::is_accepted_gate_count;
 use super::types::{AcceptedArtifact, VerificationProof};
 
 const MIN_ACCEPTED_ARTIFACT_ENVELOPE_BYTES: usize = 96;

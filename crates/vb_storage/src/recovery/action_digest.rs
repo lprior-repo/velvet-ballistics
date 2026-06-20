@@ -8,8 +8,8 @@
 //! These are shared replay invariants consumed by hydration, summary building,
 //! and core replay logic.
 
+use crate::DurableActionOutcome;
 use crate::recovery::{RecoveryError, RecoveryResult};
-use crate::{DurableActionOutcome, JournalEvent};
 use vb_core::{ActionTicket, RunId};
 
 /// Verifies that an action ticket is consistent with the expected run context.

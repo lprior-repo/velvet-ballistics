@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 //! Tail event application for RunFrame hydration.
 
-use crate::DurableActionOutcome;
 use crate::JournalEvent;
 use crate::recovery::event_replay::taint::{
     SlotTaintResolution, observe_slot_taint_read, resolve_slot_taint_read,
@@ -10,7 +9,7 @@ use crate::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryResult, types::ActionReplayEffect,
 };
 use vb_core::SlotIdx;
-use vb_core::{ActionTicket, RunFrame, RunId, SlotValue, StepIdx, Taint};
+use vb_core::{ActionTicket, RunFrame, SlotValue, StepIdx};
 
 fn decode_action_envelope_slot(
     ticket: ActionTicket,

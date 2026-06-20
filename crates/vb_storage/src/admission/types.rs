@@ -6,8 +6,7 @@
 
 use std::fmt;
 
-use crate::records::CompiledIrRecord;
-use crate::types::EventSeq;
+use crate::EventSeq;
 
 // =========================================================================
 // VerificationWarning
@@ -65,11 +64,9 @@ pub enum ProofFlag {
 }
 
 impl ProofFlag {
-    /// Converts a flag-name string (from `missing_proof_flag`) to the corresponding enum variant.
-    ///
-    /// This is kept as a utility for future work that needs a `ProofFlag`
-    /// value derived from the string returned by `missing_proof_flag`.
-    /// Currently `JournalError::MissingRequiredProofFlag` only requires `&'static str`.
+    /// Reserved for future flag-name parsing; currently `JournalError::MissingRequiredProofFlag`
+    /// only requires `&'static str`. Kept tight-scoped `#[allow(dead_code)]` until callers exist.
+    #[allow(dead_code, reason = "reserved for future flag-name parsing")]
     pub(crate) fn from_flag_name(name: &str) -> Self {
         match name {
             "bounded" => Self::Bounded,

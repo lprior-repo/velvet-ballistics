@@ -1,9 +1,7 @@
 //! Atomic cross-keyspace batch state and lifecycle methods.
 
-use std::collections::HashSet;
-
 use super::types::{BatchByteLimit, BatchState, DEFAULT_JOURNAL_BATCH_BYTE_LIMIT};
-use crate::{constants::JOURNAL_KEY_BYTES, error::JournalError, journal::FjallJournal};
+use crate::{error::JournalError, journal::FjallJournal};
 
 /// Atomic cross-keyspace write batch backed by Fjall.
 ///
@@ -17,7 +15,6 @@ use crate::{constants::JOURNAL_KEY_BYTES, error::JournalError, journal::FjallJou
 pub struct JournalWriteBatch<'j> {
     pub(super) inner: fjall::OwnedWriteBatch,
     pub(super) journal: &'j FjallJournal,
-    pub(super) staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     #[cfg(test)]
     pub(super) staged_ir_hashes: std::collections::HashMap<vb_core::WorkflowDigest, [u8; 32]>,
     pub(super) state: BatchState,
@@ -32,7 +29,6 @@ impl<'j> JournalWriteBatch<'j> {
         Self {
             inner: journal.database.batch(),
             journal,
-            staged_event_keys: HashSet::new(),
             #[cfg(test)]
             staged_ir_hashes: std::collections::HashMap::new(),
             state: BatchState::default(),

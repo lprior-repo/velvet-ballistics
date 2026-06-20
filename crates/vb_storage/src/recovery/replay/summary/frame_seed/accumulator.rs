@@ -218,7 +218,7 @@ impl FrameSeedAccumulator {
         {
             Some(Ok(slot_value)) => {
                 let recovered_taint =
-                    crate::recovery::replay::summary::slots::recovered_slot_taint(
+                    crate::recovery::replay::summary::slots::taint::recovered_slot_taint(
                         slot, slot_value, extra,
                     )?;
                 self.slot_values.insert(slot, slot_value);

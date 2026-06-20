@@ -10,8 +10,6 @@ mod frame_seed;
 mod runtime_summary;
 pub(crate) mod slots;
 
-// Re-export public API
-pub(crate) use frame_seed::FrameSeedAccumulator;
 pub use frame_seed::{
     RecoveryFrameSeedBuilder, recover_runtime_frame_seed_from_events,
     recover_runtime_frame_seed_from_events_with_workflow, recovery_dimension_count_from_index,
@@ -23,8 +21,10 @@ pub use runtime_summary::{
 };
 pub use slots::pending_actions_from_events;
 
-// Re-export items used by tests
-pub(crate) use slots::{RecoveredSlots, replay_error_to_recovery};
+#[cfg(test)]
+pub(crate) use slots::errors::replay_error_to_recovery;
+#[cfg(test)]
+pub(crate) use slots::recovery::RecoveredSlots;
 
 #[cfg(test)]
 #[path = "tests.rs"]

@@ -7,11 +7,7 @@
 //! - `validate_contiguous_sequences`: Sequence gap detection
 
 use super::action_abi::validate_action_abi_expectations;
-use super::admission::verify_run_admission_evidence;
-use super::attempt::{
-    replay_attempt_is_current, replay_attempt_is_stale, replay_event_has_state_effect,
-    replay_event_is_stale_state_effect, replay_step_order_diverges,
-};
+use super::attempt::replay_step_order_diverges;
 use crate::recovery::action_digest::{verified_action_envelope_digest, verify_action_ticket_event};
 use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, JournalEvent};

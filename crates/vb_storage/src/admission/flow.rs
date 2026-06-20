@@ -3,14 +3,11 @@
 
 use crate::error::JournalError;
 use crate::journal::FjallJournal;
-use crate::records::CompiledIrRecord;
 use crate::types::EventSeq;
 
-use super::bytes::{canonical_workflow_ir_bytes, validate_workflow_artifact_bytes};
+use super::bytes::validate_workflow_artifact_bytes;
 use super::contracts::{AdmissionInputs, IdempotencyEvidence};
-use super::persistence::{
-    persist_accepted_artifact_ir, serialize_accepted_artifact, verify_persisted_artifact_present,
-};
+use super::persistence::{persist_accepted_artifact_ir, verify_persisted_artifact_present};
 use super::policy::ADMISSION_GATE_COUNT;
 use super::types::{AcceptedArtifact, VerificationProof};
 

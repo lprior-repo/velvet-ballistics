@@ -7,10 +7,9 @@
 
 use crate::recovery::replay::summary::frame_seed::FrameSeedAccumulator;
 use crate::recovery::{RecoveredSlotEntry, RecoveryError, RecoveryResult};
-use crate::slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra};
 use vb_core::replay::ReplayError;
 use vb_core::value_store::ValueStore;
-use vb_core::{CompiledWorkflow, RunId, SlotIdx, SlotValue, StepIdx, Taint};
+use vb_core::{CompiledWorkflow, SlotValue, StepIdx, Taint};
 
 // ── RecoveredSlots ──────────────────────────────────────────────────────────
 

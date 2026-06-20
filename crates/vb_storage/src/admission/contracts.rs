@@ -18,18 +18,6 @@ pub(crate) struct IdempotencyEvidence {
     pub(crate) attested: Box<[vb_core::ActionId]>,
 }
 
-impl AdmissionInputs {
-    pub(crate) fn new(
-        required_capabilities: Box<[vb_core::capability::Capability]>,
-        idempotency_evidence: IdempotencyEvidence,
-    ) -> Self {
-        Self {
-            required_capabilities,
-            idempotency_evidence,
-        }
-    }
-}
-
 /// Extracts admission inputs from a slice of action contracts.
 pub(crate) fn admission_inputs_from_contracts(
     action_contracts: &[ActionContract],

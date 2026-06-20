@@ -123,34 +123,48 @@ pub fn read_run_events(
 // Test helpers
 // ============================================================================
 
-pub(crate) fn accepted_compiled_ir_record_for_test(ir: Vec<u8>) -> CompiledIrRecord {
-    let workflow = accepted_workflow_for_test(&ir);
+/// Test helper: build a fully-formed `CompiledIrRecord` for integration tests.
+/// Returns `Result` so test fixtures propagate encoding failures instead of panicking.
+#[allow(
+    dead_code,
+    reason = "test helper invoked from #[cfg(test)] modules only"
+)]
+pub(crate) fn try_accepted_compiled_ir_record_for_test(
+    ir: Vec<u8>,
+) -> Result<CompiledIrRecord, String> {
+    let workflow = try_accepted_workflow_for_test(&ir)?;
     let digest = workflow.digest();
     let mut parts = workflow.to_parts();
     parts.digest = vb_core::WorkflowDigest::from_bytes([0; constants::DIGEST_BYTES]);
-    let artifact_ir = postcard::to_allocvec(&parts).expect("WorkflowParts should encode");
+    let artifact_ir =
+        postcard::to_allocvec(&parts).map_err(|e| format!("WorkflowParts encode failed: {e}"))?;
     let artifact = AcceptedArtifact {
         digest,
         source_digest: digest,
         policy_digest: crate::admission::compute_policy_digest(&workflow)
-            .expect("policy digest should compute"),
+            .map_err(|e| format!("policy digest compute failed: {e}"))?,
         ir: artifact_ir,
         verification: VerificationProof::new(digest, 15, true),
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
     };
-    let envelope = postcard::to_allocvec(&artifact).expect("AcceptedArtifact should encode");
+    let envelope = postcard::to_allocvec(&artifact)
+        .map_err(|e| format!("AcceptedArtifact encode failed: {e}"))?;
     let metadata_hash = crate::admission::compute_artifact_metadata_hash(&artifact);
-    CompiledIrRecord {
+    Ok(CompiledIrRecord {
         digest,
         ir: envelope,
         metadata_hash: Some(metadata_hash),
-    }
+    })
 }
 
-fn accepted_workflow_for_test(seed: &[u8]) -> vb_core::CompiledWorkflow {
+#[allow(
+    dead_code,
+    reason = "test helper invoked from #[cfg(test)] modules only"
+)]
+fn try_accepted_workflow_for_test(seed: &[u8]) -> Result<vb_core::CompiledWorkflow, String> {
     let mut parts = vb_core::WorkflowParts {
-        name: Box::<str>::from("accepted_compiled_ir_record_for_test"),
+        name: Box::<str>::from("try_accepted_compiled_ir_record_for_test"),
         digest: vb_core::WorkflowDigest::from_bytes([0; constants::DIGEST_BYTES]),
         nodes: Box::new([
             vb_core::CompiledNode {
@@ -183,11 +197,17 @@ fn accepted_workflow_for_test(seed: &[u8]) -> vb_core::CompiledWorkflow {
         resource_contract: vb_core::workflow::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let digest_bytes = postcard::to_allocvec(&parts).expect("WorkflowParts should encode");
+    let digest_bytes =
+        postcard::to_allocvec(&parts).map_err(|e| format!("WorkflowParts encode failed: {e}"))?;
     parts.digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&digest_bytes).into());
-    vb_core::CompiledWorkflow::try_from_parts(parts).expect("WorkflowParts should compile")
+    vb_core::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|e| format!("WorkflowParts compile failed: {e}"))
 }
 
+#[allow(
+    dead_code,
+    reason = "test helper invoked from #[cfg(test)] modules only"
+)]
 fn seed_value_for_test(seed: &[u8]) -> i64 {
     seed.iter().fold(0_i64, |acc, byte| {
         acc.wrapping_mul(31).wrapping_add(i64::from(*byte))

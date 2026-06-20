@@ -10,7 +10,7 @@ use crate::recovery::action_digest::{verified_action_envelope_digest, verify_act
 use crate::recovery::types::ActionReplayEffect;
 use crate::recovery::{ActionReplayTracker, RecoveryError, RecoveryResult, RecoveryRuntimeSummary};
 use crate::{EventSeq, JournalEvent};
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{ActionId, RunId, StepIdx};
 
 // ── Event → summary application ──────────────────────────────────────────────
 

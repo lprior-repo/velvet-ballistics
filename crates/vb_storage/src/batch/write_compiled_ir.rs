@@ -24,13 +24,13 @@ impl<'j> JournalWriteBatch<'j> {
         };
         let h_pending = crate::admission::compute_artifact_metadata_hash(&artifact);
 
-        if let Some(&h_staged) = self.staged_ir_hashes.get(&record.digest) {
-            if h_pending != h_staged {
-                self.state = BatchState::Aborted;
-                return Err(JournalError::MetadataMutation {
-                    digest: record.digest,
-                });
-            }
+        if let Some(&h_staged) = self.staged_ir_hashes.get(&record.digest)
+            && h_pending != h_staged
+        {
+            self.state = BatchState::Aborted;
+            return Err(JournalError::MetadataMutation {
+                digest: record.digest,
+            });
         }
 
         let key = match crate::keys::compiled_ir_key(record.digest.as_bytes()) {

@@ -3,7 +3,7 @@
 
 use crate::error::JournalError;
 use crate::events::JournalEvent;
-use crate::journal::append::intent::{ActionIndexIntent, mrwe6_action_index_intent};
+use crate::journal::append::intent::ActionIndexIntent;
 use crate::journal::append::mrwe6_kernel::Mrwe6ResolutionCommitDecision;
 use crate::keys::index_action_key;
 
