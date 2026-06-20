@@ -124,7 +124,7 @@ use crate::workflow::{
 
 use super::ops::eval_expr_operator;
 use super::stack::ExprStack;
-use crate::value_store::ValueStore;
+use crate::value_store::{ObjectField, ValueStore};
 
 fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
 where
@@ -694,6 +694,205 @@ fn merge_combines_two_objects_with_right_overlapping_key() -> Result<(), String>
     ensure_equal(fields.len(), 1)?;
     // Right side overwrites
     ensure_equal(fields[0].value, SlotValue::I64(99))
+}
+
+#[test]
+fn merge_two_disjoint_objects_concatenates_right_after_left() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let sym_a = store.insert_symbol("a").map_err(|e| e.to_string())?;
+    let sym_b = store.insert_symbol("b").map_err(|e| e.to_string())?;
+    let sym_c = store.insert_symbol("c").map_err(|e| e.to_string())?;
+    let sym_d = store.insert_symbol("d").map_err(|e| e.to_string())?;
+
+    let left = store
+        .insert_object(
+            vec![
+                ObjectField {
+                    key: sym_a,
+                    value: SlotValue::I64(1),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: sym_b,
+                    value: SlotValue::I64(2),
+                    taint: Taint::Clean,
+                },
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    let right = store
+        .insert_object(
+            vec![
+                ObjectField {
+                    key: sym_c,
+                    value: SlotValue::I64(3),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: sym_d,
+                    value: SlotValue::I64(4),
+                    taint: Taint::Clean,
+                },
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let result = eval_ops_with_slots(
+        vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadSlot(SlotIdx::new(1)),
+            ExprOp::Merge,
+        ],
+        vec![SlotValue::Object(left), SlotValue::Object(right)],
+        vec![],
+        &mut store,
+    )?;
+    let merged_id = match result {
+        SlotValue::Object(id) => id,
+        other => return Err(format!("expected Object, got {other:?}")),
+    };
+    let fields = store.object(merged_id).map_err(|e| e.to_string())?;
+    ensure_equal(fields.len(), 4)?;
+    ensure_equal(fields[0].key, sym_a)?;
+    ensure_equal(fields[1].key, sym_b)?;
+    ensure_equal(fields[2].key, sym_c)?;
+    ensure_equal(fields[3].key, sym_d)?;
+    Ok(())
+}
+
+#[test]
+fn merge_empty_left_with_nonempty_right_returns_right_copy() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let sym_a = store.insert_symbol("a").map_err(|e| e.to_string())?;
+    let left = store
+        .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    let right = store
+        .insert_object(
+            vec![ObjectField {
+                key: sym_a,
+                value: SlotValue::I64(7),
+                taint: Taint::Clean,
+            }]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    let result = eval_ops_with_slots(
+        vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadSlot(SlotIdx::new(1)),
+            ExprOp::Merge,
+        ],
+        vec![SlotValue::Object(left), SlotValue::Object(right)],
+        vec![],
+        &mut store,
+    )?;
+    let merged_id = match result {
+        SlotValue::Object(id) => id,
+        other => return Err(format!("expected Object, got {other:?}")),
+    };
+    let fields = store.object(merged_id).map_err(|e| e.to_string())?;
+    ensure_equal(fields.len(), 1)?;
+    ensure_equal(fields[0].key, sym_a)
+}
+
+#[test]
+fn merge_nonempty_left_with_empty_right_returns_left_copy() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let sym_a = store.insert_symbol("a").map_err(|e| e.to_string())?;
+    let left = store
+        .insert_object(
+            vec![ObjectField {
+                key: sym_a,
+                value: SlotValue::I64(7),
+                taint: Taint::Clean,
+            }]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    let right = store
+        .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+        .map_err(|e| e.to_string())?;
+    let result = eval_ops_with_slots(
+        vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadSlot(SlotIdx::new(1)),
+            ExprOp::Merge,
+        ],
+        vec![SlotValue::Object(left), SlotValue::Object(right)],
+        vec![],
+        &mut store,
+    )?;
+    let merged_id = match result {
+        SlotValue::Object(id) => id,
+        other => return Err(format!("expected Object, got {other:?}")),
+    };
+    let fields = store.object(merged_id).map_err(|e| e.to_string())?;
+    ensure_equal(fields.len(), 1)?;
+    ensure_equal(fields[0].key, sym_a)
+}
+
+#[test]
+fn merge_overlapping_key_overwrites_in_place_preserving_left_position() -> Result<(), String> {
+    let mut store = ValueStore::new();
+    let sym_a = store.insert_symbol("a").map_err(|e| e.to_string())?;
+    let sym_b = store.insert_symbol("b").map_err(|e| e.to_string())?;
+    let sym_c = store.insert_symbol("c").map_err(|e| e.to_string())?;
+    let left = store
+        .insert_object(
+            vec![
+                ObjectField {
+                    key: sym_a,
+                    value: SlotValue::I64(1),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: sym_b,
+                    value: SlotValue::I64(2),
+                    taint: Taint::Clean,
+                },
+                ObjectField {
+                    key: sym_c,
+                    value: SlotValue::I64(3),
+                    taint: Taint::Clean,
+                },
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    let right = store
+        .insert_object(
+            vec![ObjectField {
+                key: sym_b,
+                value: SlotValue::I64(99),
+                taint: Taint::Clean,
+            }]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+    let result = eval_ops_with_slots(
+        vec![
+            ExprOp::LoadSlot(SlotIdx::new(0)),
+            ExprOp::LoadSlot(SlotIdx::new(1)),
+            ExprOp::Merge,
+        ],
+        vec![SlotValue::Object(left), SlotValue::Object(right)],
+        vec![],
+        &mut store,
+    )?;
+    let merged_id = match result {
+        SlotValue::Object(id) => id,
+        other => return Err(format!("expected Object, got {other:?}")),
+    };
+    let fields = store.object(merged_id).map_err(|e| e.to_string())?;
+    ensure_equal(fields.len(), 3)?;
+    ensure_equal(fields[0].key, sym_a)?;
+    ensure_equal(fields[1].key, sym_b)?;
+    ensure_equal(fields[1].value, SlotValue::I64(99))?;
+    ensure_equal(fields[2].key, sym_c)?;
+    Ok(())
 }
 
 // ===== LoadSlot/LoadConst dispatch rejection =====

@@ -263,6 +263,134 @@ fn const_value_to_slot_value_maps_symbol_correctly() {
 }
 
 // =========================================================================
+// Hash contract tests (vb-rrjdu) — PartialEq/Hash consistency, IndexSet use.
+// =========================================================================
+
+use core::hash::{BuildHasher, Hash, Hasher};
+use indexmap::IndexSet;
+use std::hash::RandomState;
+
+fn hash_of<H: Hasher>(build: H, value: SlotValue) -> u64
+where
+    H: Hasher,
+{
+    let mut hasher = build;
+    value.hash(&mut hasher);
+    hasher.finish()
+}
+
+#[test]
+fn finite_f64_hash_normalizes_negative_zero() -> Result<(), String> {
+    let pos_zero = FiniteF64::new(0.0_f64).map_err(|error: CoreError| error.to_string())?;
+    let neg_zero = FiniteF64::new(-0.0_f64).map_err(|error: CoreError| error.to_string())?;
+
+    let state = RandomState::new();
+    let h_pos = hash_of(state.build_hasher(), SlotValue::F64(pos_zero));
+    let h_neg = hash_of(state.build_hasher(), SlotValue::F64(neg_zero));
+
+    if h_pos != h_neg {
+        return Err(format!(
+            "hash(-0.0)={h_neg} must equal hash(+0.0)={h_pos} for Hash/Eq contract"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn finite_f64_hash_is_deterministic_across_calls() -> Result<(), String> {
+    let value = FiniteF64::new(2.5).map_err(|error: CoreError| error.to_string())?;
+    let state = RandomState::new();
+
+    let h1 = hash_of(state.build_hasher(), SlotValue::F64(value));
+    let h2 = hash_of(state.build_hasher(), SlotValue::F64(value));
+    let h3 = hash_of(state.build_hasher(), SlotValue::F64(value));
+
+    if h1 != h2 || h2 != h3 {
+        return Err(format!(
+            "hash not deterministic across calls: {h1} vs {h2} vs {h3}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn slot_value_hash_is_deterministic_across_calls() {
+    let state = RandomState::new();
+    let v = SlotValue::I64(5);
+
+    let h1 = hash_of(state.build_hasher(), v);
+    let h2 = hash_of(state.build_hasher(), v);
+    let h3 = hash_of(state.build_hasher(), v);
+
+    assert_eq!(h1, h2);
+    assert_eq!(h2, h3);
+}
+
+#[test]
+fn indexset_of_slot_value_dedups_equal_values() -> Result<(), String> {
+    let f1 = FiniteF64::new(1.0).map_err(|error: CoreError| error.to_string())?;
+    let f1_dup = FiniteF64::new(1.0).map_err(|error: CoreError| error.to_string())?;
+
+    let mut set: IndexSet<SlotValue> = IndexSet::new();
+    set.insert(SlotValue::Null);
+    set.insert(SlotValue::Bool(true));
+    set.insert(SlotValue::I64(7));
+    set.insert(SlotValue::F64(f1));
+    set.insert(SlotValue::I64(7));
+    set.insert(SlotValue::F64(f1_dup));
+    set.insert(SlotValue::Bool(true));
+
+    if set.len() != 4 {
+        return Err(format!("expected 4 distinct elements, got {}", set.len()));
+    }
+    if !set.contains(&SlotValue::Null) {
+        return Err(String::from("missing Null after dedup"));
+    }
+    if !set.contains(&SlotValue::Bool(true)) {
+        return Err(String::from("missing Bool(true) after dedup"));
+    }
+    if !set.contains(&SlotValue::I64(7)) {
+        return Err(String::from("missing I64(7) after dedup"));
+    }
+    if !set.contains(&SlotValue::F64(f1)) {
+        return Err(String::from("missing F64 after dedup"));
+    }
+    Ok(())
+}
+
+#[test]
+fn slot_value_hash_matches_eq_for_all_variants() -> Result<(), String> {
+    let state = RandomState::new();
+    let cases = [
+        SlotValue::Null,
+        SlotValue::Bool(true),
+        SlotValue::Bool(false),
+        SlotValue::I64(0),
+        SlotValue::I64(-1),
+        SlotValue::I64(i64::MAX),
+        SlotValue::F64(FiniteF64::new(0.0).map_err(|e: CoreError| e.to_string())?),
+        SlotValue::F64(FiniteF64::new(-1.5).map_err(|e: CoreError| e.to_string())?),
+        SlotValue::Symbol(SymbolId::new(1)),
+        SlotValue::List(ListId::new(2)),
+        SlotValue::Object(ObjectId::new(3)),
+        SlotValue::Blob(BlobId::new(4)),
+    ];
+
+    for (idx, a) in cases.iter().enumerate() {
+        for b in cases.iter().skip(idx) {
+            let h_a = hash_of(state.build_hasher(), *a);
+            let h_b = hash_of(state.build_hasher(), *b);
+            if a == b && h_a != h_b {
+                return Err(format!(
+                    "Hash/Eq contract violated: equal values produced different hashes ({h_a} vs {h_b})"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+// =========================================================================
 // Adversarial BDD tests — FiniteF64 edge cases
 // =========================================================================
 

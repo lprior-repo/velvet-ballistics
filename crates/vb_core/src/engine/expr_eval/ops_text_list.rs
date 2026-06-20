@@ -4,6 +4,7 @@
 use crate::errors::EngineError;
 use crate::value::SlotValue;
 use crate::value_store::ValueStore;
+use indexmap::IndexSet;
 
 use super::stack::{
     ExprStack, expect_i64, expect_list, expect_symbol, pop_pair, pop_triple, push_value,
@@ -209,14 +210,9 @@ pub(crate) fn eval_unique(
     let items = store
         .list(list_id)
         .map_err(|_| EngineError::ListOutOfBounds { list: list_id })?;
-    let mut seen: Vec<SlotValue> = Vec::new();
-    for &item in items {
-        if !seen.contains(&item) {
-            seen.push(item);
-        }
-    }
+    let seen: IndexSet<SlotValue> = items.iter().copied().collect();
     let new_list = store
-        .insert_list(seen.into_boxed_slice())
+        .insert_list(seen.into_iter().collect::<Vec<_>>().into_boxed_slice())
         .map_err(|_| EngineError::AllocationFailed)?;
     push_value(stack, SlotValue::List(new_list))
 }

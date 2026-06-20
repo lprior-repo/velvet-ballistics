@@ -183,14 +183,27 @@ fn eval_merge_combine_fields(
     left_fields: &[crate::value_store::ObjectField],
     right_fields: &[crate::value_store::ObjectField],
 ) -> Vec<crate::value_store::ObjectField> {
-    let mut merged: Vec<_> = left_fields.to_vec();
+    let mut merged: Vec<crate::value_store::ObjectField> =
+        Vec::with_capacity(left_fields.len().saturating_add(right_fields.len()));
+    let mut index: std::collections::HashMap<crate::ids::SymbolId, usize> =
+        std::collections::HashMap::with_capacity(
+            left_fields.len().saturating_add(right_fields.len()),
+        );
+    for &field in left_fields {
+        index.insert(field.key, merged.len());
+        merged.push(field);
+    }
     for &field in right_fields {
-        if let Some(pos) = merged.iter().position(|&f| f.key == field.key) {
-            if let Some(entry) = merged.get_mut(pos) {
-                *entry = field;
+        match index.get(&field.key).copied() {
+            Some(pos) => {
+                if let Some(entry) = merged.get_mut(pos) {
+                    *entry = field;
+                }
             }
-        } else {
-            merged.push(field);
+            None => {
+                index.insert(field.key, merged.len());
+                merged.push(field);
+            }
         }
     }
     merged

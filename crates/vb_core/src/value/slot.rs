@@ -4,12 +4,13 @@
 use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
 use crate::value_store::ValueStore;
 use core::fmt;
+use core::hash::Hash;
 use serde::{Deserialize, Serialize};
 
 use super::FiniteF64;
 
 /// Compact handle-based runtime value stored in numeric slots.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum SlotValue {
     /// Explicit null value.
@@ -29,8 +30,6 @@ pub enum SlotValue {
     /// Runtime blob arena/storage handle.
     Blob(BlobId),
 }
-
-impl Eq for SlotValue {}
 
 impl fmt::Display for SlotValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

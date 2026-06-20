@@ -21,6 +21,7 @@
 
 use crate::errors::{CoreError, CoreResult};
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Finite floating-point scalar accepted by the runtime value model.
@@ -29,6 +30,17 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub struct FiniteF64(f64);
 
 impl Eq for FiniteF64 {}
+
+impl Hash for FiniteF64 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let bits = if self.0 == 0.0_f64 {
+            0.0_f64.to_bits()
+        } else {
+            self.0.to_bits()
+        };
+        bits.hash(state);
+    }
+}
 
 impl fmt::Display for FiniteF64 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
