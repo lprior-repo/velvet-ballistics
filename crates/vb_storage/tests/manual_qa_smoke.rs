@@ -2,7 +2,10 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::as_conversions,
-    clippy::panic
+    clippy::panic,
+    // Diagnostic println output is the entire point of this manual-QA smoke test;
+    // it is run via `cargo test -- --nocapture` by an operator, not by CI.
+    clippy::print_stdout
 )]
 // Manual QA smoke test for vb-5h50 trimming
 // Run with: cargo test -p vb_storage --test manual_qa_smoke -- --nocapture
