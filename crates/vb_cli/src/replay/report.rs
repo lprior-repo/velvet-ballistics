@@ -8,7 +8,7 @@ use self::summary::{ReplayEventSummary, optional_sequence_label, optional_static
 use crate::args::OutputFormat;
 use crate::events::event_to_json;
 use crate::output::json_out_exit;
-use crate::storage::print_event;
+use crate::storage_event_format::print_event;
 use std::process::ExitCode;
 
 pub(super) fn write_replay_success(

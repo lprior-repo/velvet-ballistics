@@ -8,12 +8,10 @@ pub(crate) mod action_specs;
 pub(crate) mod agent_context;
 pub(crate) mod agent_io;
 pub mod args;
-pub mod bench;
 pub(crate) mod bench_run;
 pub mod cli_envelope;
 pub mod cli_error;
 pub mod cli_postcard;
-pub mod commands;
 pub mod commands_ai_context;
 pub mod commands_diff;
 pub mod commands_incident;
@@ -38,7 +36,6 @@ pub mod explain_validation;
 pub mod file_io;
 pub mod graph;
 pub mod incident_diff;
-pub mod incident_ops;
 pub mod inspect;
 pub mod io;
 pub mod io_helpers;
@@ -63,7 +60,6 @@ pub mod semantic_diff;
 pub mod simulate;
 pub mod status;
 pub mod step_helpers;
-pub mod storage;
 pub mod storage_event_format;
 pub mod submit;
 pub mod trace;
@@ -71,7 +67,6 @@ pub mod validate;
 pub mod verify;
 #[cfg(verus)]
 pub mod verus_lifecycle;
-pub mod workflow;
 
 pub(crate) mod properties;
 
