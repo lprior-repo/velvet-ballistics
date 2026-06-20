@@ -19,7 +19,19 @@ HOT_ROOTS = [
     ROOT / "crates/vb_ipc/src",
 ]
 TOKENS = ["HashMap", "IndexMap", "IndexSet", "BTreeMap", "std::sync::mpsc", "mpsc::channel", "channel("]
-COLD_PARTS = {"diagnostic", "diagnostics", "fixture", "fixtures", "harness", "kani", "loom", "proof", "property", "proptest", "proptests", "support", "test", "tests", "verification"}
+# Mirror scripts/check-hot-cold-forbidden-apis.rs COLD_MARKERS so both
+# scanners agree. Terminal-run accounting and crash-recovery paths are
+# touched only on run termination or post-crash startup, never inside
+# the per-step deterministic transition loop; lru_ring lives outside
+# the hot transition loop and is a measured cold-path LRU. See commit
+# 2551cd1d4 for the Rust scanner's matching additions.
+COLD_PARTS = {
+    "diagnostic", "diagnostics", "fixture", "fixtures", "harness",
+    "kani", "loom", "proof", "property", "proptest", "proptests",
+    "support", "test", "tests", "verification",
+    # Holman-fall-2026 alignment: functionally-cold runtime/storage paths.
+    "recovery", "lru",
+}
 ALLOW_PATH = ROOT / "scripts/hotpath-scan.allow"
 
 def fail(message: str, code: int) -> None:
