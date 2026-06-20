@@ -384,10 +384,14 @@ pub mod queue;
 pub mod records;
 pub mod recovery;
 pub mod recovery_stamps;
-pub mod security_tests;
 pub mod slot_extra;
 pub mod snapshots;
-pub mod tests;
 pub mod trimming;
 pub mod types;
-pub mod vb_2bok_durability_gate_tests;
+
+#[cfg(test)]
+mod security_tests;
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod vb_2bok_durability_gate_tests;
