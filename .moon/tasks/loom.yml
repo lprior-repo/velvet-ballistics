@@ -34,82 +34,22 @@ tasks:
       cache: false
       runInCI: true
 
-  loom-ps-001-model:
-    command: 'cargo test'
-    args: '--test ps_001_model -p vb_runtime --features loom --release'
-    env:
-      RUSTFLAGS: '--cfg loom'
-      LOOM_MAX_PREEMPTIONS: '2'
+  loom-ps-models:
+    script: |
+      set -euo pipefail
+      export RUSTFLAGS='--cfg loom'
+      export LOOM_MAX_PREEMPTIONS='2'
+      for model in 001 002 007 009 010; do
+        echo "--- PS-${model} ---"
+        cargo test --test "ps_${model}_model" -p vb_runtime --features loom --release
+      done
     toolchains:
       - rust
     inputs:
-      - 'verification/loom/vb-fzgdn/PS-001-model.rs'
-      - 'crates/vb_runtime/tests/ps_001_model.rs'
+      - 'verification/loom/vb-fzgdn/PS-0*-model.rs'
+      - 'crates/vb_runtime/tests/ps_*_model.rs'
       - 'crates/vb_runtime/Cargo.toml'
-    options:
-      cache: false
-      runInCI: true
-
-  loom-ps-002-model:
-    command: 'cargo test'
-    args: '--test ps_002_model -p vb_runtime --features loom --release'
-    env:
-      RUSTFLAGS: '--cfg loom'
-      LOOM_MAX_PREEMPTIONS: '2'
-    toolchains:
-      - rust
-    inputs:
-      - 'verification/loom/vb-fzgdn/PS-002-model.rs'
-      - 'crates/vb_runtime/tests/ps_002_model.rs'
-      - 'crates/vb_runtime/Cargo.toml'
-    options:
-      cache: false
-      runInCI: true
-
-  loom-ps-007-model:
-    command: 'cargo test'
-    args: '--test ps_007_model -p vb_runtime --features loom --release'
-    env:
-      RUSTFLAGS: '--cfg loom'
-      LOOM_MAX_PREEMPTIONS: '2'
-    toolchains:
-      - rust
-    inputs:
-      - 'verification/loom/vb-fzgdn/PS-007-model.rs'
-      - 'crates/vb_runtime/tests/ps_007_model.rs'
-      - 'crates/vb_runtime/Cargo.toml'
-    options:
-      cache: false
-      runInCI: true
-
-  loom-ps-009-model:
-    command: 'cargo test'
-    args: '--test ps_009_model -p vb_runtime --features loom --release'
-    env:
-      RUSTFLAGS: '--cfg loom'
-      LOOM_MAX_PREEMPTIONS: '2'
-    toolchains:
-      - rust
-    inputs:
-      - 'verification/loom/vb-fzgdn/PS-009-model.rs'
-      - 'crates/vb_runtime/tests/ps_009_model.rs'
-      - 'crates/vb_runtime/Cargo.toml'
-    options:
-      cache: false
-      runInCI: true
-
-  loom-ps-010-model:
-    command: 'cargo test'
-    args: '--test ps_010_model -p vb_runtime --features loom --release'
-    env:
-      RUSTFLAGS: '--cfg loom'
-      LOOM_MAX_PREEMPTIONS: '2'
-    toolchains:
-      - rust
-    inputs:
-      - 'verification/loom/vb-fzgdn/PS-010-model.rs'
-      - 'crates/vb_runtime/tests/ps_010_model.rs'
-      - 'crates/vb_runtime/Cargo.toml'
+      - '.moon/tasks/loom.yml'
     options:
       cache: false
       runInCI: true
