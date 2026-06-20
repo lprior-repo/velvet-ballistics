@@ -11,13 +11,25 @@
 //   Target: crates/vb_storage/src/batch.rs JournalWriteBatch (lines 38-257)
 //   Production fields:
 //     - inner: fjall::OwnedWriteBatch (line 39)
-//     - staged_event_keys: HashSet<[u8; 17]> (line 42)
+//     - [REMOVED FIELD]: was HashSet<[u8; 17]> (line 42, removed in 150e1489a)
 //     - aborted: bool (line 43)
 //   Production invariants:
 //     - inner.len() tracks staged operation count
 //     - aborted flag prevents commit
-//     - staged_event_keys tracks same-batch keys
+//     - [REMOVED FIELD] no longer tracks same-batch keys
 //   C5 requires: on accumulated byte rejection, none of these change.
+//
+// === REMOVED IN COMMIT 150e1489a (vb-u2psq) ===
+// The production `JournalWriteBatch::staged_event_keys: HashSet<[u8; 17]>`
+// field was dead code (no .insert()/.contains()/.remove() ever called)
+// and was removed in vb-u2psq alongside the crate-root #![allow(...)] strip.
+//
+// The proof obligations in this file are preserved as modeling artifacts:
+// they document the duplicate-accounting policies that WOULD have applied
+// had the field been used. They no longer bind to production code.
+//
+// If the field is reintroduced in the future, restore the PRODUCTION BINDING
+// block above and re-run `verus --crate-type=lib <this-file>`.
 //
 // TRUSTED BOUNDARY: Fjall WriteBatch commit is atomic; we model it as
 //   a pure function that either commits all or none.

@@ -7,12 +7,23 @@
 // Domain claim: Same-batch duplicate accounting follows the documented
 // policy and preserves staged byte invariant.
 //
+// === REMOVED IN COMMIT 150e1489a (vb-u2psq) ===
+// The production `JournalWriteBatch::staged_event_keys: HashSet<[u8; 17]>`
+// field was dead code (no .insert()/.contains()/.remove() ever called)
+// and was removed in vb-u2psq alongside the crate-root #![allow(...)] strip.
+//
+// The Kani harnesses in this file are preserved as historical evidence
+// of the duplicate-accounting policy analysis. They no longer bind to
+// the production code; see the updated PRODUCTION BINDING annotation below.
+//
 // PRODUCTION BINDING:
 //   Tests JournalWriteBatch::append_event from
 //   crates/vb_storage/src/batch.rs:209-229.
 //
-//   The production staged_event_keys HashSet<[u8; 17]> tracks
-//   same-batch keys for idempotent insert behavior (line 202-208).
+//   The production staged_event_keys HashSet<[u8; 17]> field —
+//   removed in 150e1489a. Duplicate accounting is now enforced
+//   solely via DuplicateEvent error returns and the encode_record
+//   deterministic contract (still proven below).
 //
 //   Tests encode_record determinism and hash-based key uniqueness.
 //

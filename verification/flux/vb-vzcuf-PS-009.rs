@@ -7,10 +7,16 @@
 // Domain claim: Same-batch duplicate accounting follows the documented
 // policy and preserves staged byte invariant.
 //
-// PRODUCTION BINDING:
+// PRODUCTION BINDING (REMOVED IN COMMIT 150e1489a):
 //   JournalWriteBatch::staged_event_keys HashSet in
 //   crates/vb_storage/src/batch.rs:42.
-//   Two policies modeled: conservative (count all) and precise (count distinct).
+//   Field was removed from the production struct in commit 150e1489a
+//   (bead vb-u2psq). This Flux spec is preserved as a mathematical
+//   model of the duplicate-accounting policies (conservative and
+//   precise) that previously used that field; it no longer binds
+//   to a live production field. The refinement annotations on the
+//   local helpers remain valid as standalone arithmetic models.
+//   Tracking: FINDING-008 (binding drift).
 //
 // Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-035
 

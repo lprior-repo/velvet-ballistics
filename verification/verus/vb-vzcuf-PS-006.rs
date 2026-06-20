@@ -10,13 +10,25 @@
 // PRODUCTION BINDING:
 //   Target: crates/vb_storage/src/batch.rs JournalWriteBatch (lines 38-257)
 //   Production constructor: JournalWriteBatch::new (lines 49-57)
-//     - Creates batch with inner, journal, empty staged_event_keys, aborted=false
+//     - Creates batch with inner, journal, [REMOVED FIELD] aborted=false
 //     - Does NOT currently have a byte_limit field
 //   Contract C1 requires: JournalBatchByteLimit value object, non-zero.
 //
 //   The production type JournalWriteBatch exists at batch.rs:38.
 //   This spec models the byte_limit field that must be added.
 //   The constructor must ensure limit > 0.
+//
+// === REMOVED IN COMMIT 150e1489a (vb-u2psq) ===
+// The production `JournalWriteBatch::staged_event_keys: HashSet<[u8; 17]>`
+// field was dead code (no .insert()/.contains()/.remove() ever called)
+// and was removed in vb-u2psq alongside the crate-root #![allow(...)] strip.
+//
+// The proof obligations in this file are preserved as modeling artifacts:
+// they document the duplicate-accounting policies that WOULD have applied
+// had the field been used. They no longer bind to production code.
+//
+// If the field is reintroduced in the future, restore the PRODUCTION BINDING
+// block above and re-run `verus --crate-type=lib <this-file>`.
 //
 // Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-021
 

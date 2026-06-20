@@ -7,6 +7,15 @@
 // Domain claim: Accumulated byte rejection leaves batch state unchanged
 // and does not persist the rejected event after commit.
 //
+// === REMOVED IN COMMIT 150e1489a (vb-u2psq) ===
+// The production `JournalWriteBatch::staged_event_keys: HashSet<[u8; 17]>`
+// field was dead code (no .insert()/.contains()/.remove() ever called)
+// and was removed in vb-u2psq alongside the crate-root #![allow(...)] strip.
+//
+// The Kani harnesses in this file are preserved as historical evidence
+// of the duplicate-accounting policy analysis. They no longer bind to
+// the production code; see the updated PRODUCTION BINDING annotation below.
+//
 // PRODUCTION BINDING:
 //   Tests the actual JournalWriteBatch struct from
 //   crates/vb_storage/src/batch.rs (lines 38-257).
@@ -17,6 +26,11 @@
 //   - DuplicateEvent detection preserves batch state
 //   - QueueFull rejection
 //   - commit() after rejection
+//
+//   staged_event_keys: HashSet<[u8; 17]> field — removed in 150e1489a.
+//   Duplicate-accounting policy is now enforced solely via
+//   DuplicateEvent error returns and the encode_record deterministic
+//   contract (still proven below in check_encode_record_deterministic).
 //
 // Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-014
 
@@ -37,7 +51,7 @@ mod kani_batch_state_ps004 {
         // We verify the TYPE-LEVEL invariants:
         // - JournalWriteBatch is '?Sized (trait object?) No, it's Sized.
         // - It contains inner: fjall::OwnedWriteBatch
-        // - It has staged_event_keys: HashSet
+        // - staged_event_keys: HashSet — removed in 150e1489a (dead code)
         // - aborted: bool starts false
 
         // Kani structural check: JournalWriteBatch must be constructable
