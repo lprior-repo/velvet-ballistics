@@ -5,7 +5,7 @@
 //! - `FrameSeedAccumulator` — event → frame seed state machine
 //! - `ActionEnvelopeView` — extracted view of `ActionCompletedEnvelope` data
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::recovery::action_digest::verify_action_ticket_event;
 use crate::recovery::replay::summary::runtime_summary::apply_summary_event;
@@ -47,10 +47,10 @@ pub(super) struct ActionEnvelopeView<'a> {
 pub(crate) struct FrameSeedAccumulator {
     pub(super) run: RunId,
     pub(super) summary: RecoveryRuntimeSummary,
-    pub(super) step_states: HashMap<StepIdx, crate::recovery::RecoveredStepState>,
-    pub(crate) slot_values: HashMap<SlotIdx, SlotValue>,
-    pub(crate) slot_taint: HashMap<SlotIdx, Taint>,
-    pub(super) pending_actions: HashSet<(ActionId, StepIdx)>,
+    pub(super) step_states: BTreeMap<StepIdx, crate::recovery::RecoveredStepState>,
+    pub(crate) slot_values: BTreeMap<SlotIdx, SlotValue>,
+    pub(crate) slot_taint: BTreeMap<SlotIdx, Taint>,
+    pub(super) pending_actions: BTreeSet<(ActionId, StepIdx)>,
     pub(super) action_tracker: ActionReplayTracker,
     pub(crate) max_step_idx: Option<StepIdx>,
     min_step_idx: Option<StepIdx>,
@@ -79,10 +79,10 @@ impl FrameSeedAccumulator {
                 slots_written: 0,
                 terminal: None,
             },
-            step_states: HashMap::new(),
-            slot_values: HashMap::new(),
-            slot_taint: HashMap::new(),
-            pending_actions: HashSet::new(),
+            step_states: BTreeMap::new(),
+            slot_values: BTreeMap::new(),
+            slot_taint: BTreeMap::new(),
+            pending_actions: BTreeSet::new(),
             action_tracker: ActionReplayTracker::new(),
             max_step_idx: None,
             min_step_idx: None,

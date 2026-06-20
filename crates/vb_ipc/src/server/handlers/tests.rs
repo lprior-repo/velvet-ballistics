@@ -108,10 +108,16 @@ fn encoded_value(value: &SlotValue) -> Option<Vec<u8>> {
 }
 
 fn must_encoded_value(value: &SlotValue) -> Vec<u8> {
-    match encoded_value(value) {
-        Some(bytes) => bytes,
-        None => panic!("test setup failed: SlotValue {value:?} must postcard encode"),
-    }
+    let bytes = encoded_value(value);
+    assert!(
+        bytes.is_some(),
+        "test setup failed: SlotValue {:?} must postcard encode",
+        value
+    );
+    // Unreachable in practice: the assertion above guarantees postcard encoding
+    // succeeded. `unwrap_or_default` avoids the panic path denied by the
+    // workspace's `clippy::unwrap_used` / `clippy::panic` policy.
+    bytes.unwrap_or_default()
 }
 
 fn must_answer_payload(
@@ -120,10 +126,13 @@ fn must_answer_payload(
     value_bytes: Vec<u8>,
     taint: Option<Taint>,
 ) -> Vec<u8> {
-    match answer_payload(run_id, answer_slot, value_bytes, taint) {
-        Some(payload) => payload,
-        None => panic!("test setup failed: AnswerAsk IPC payload must postcard encode"),
-    }
+    let payload = answer_payload(run_id, answer_slot, value_bytes, taint);
+    assert!(
+        payload.is_some(),
+        "test setup failed: AnswerAsk IPC payload must postcard encode"
+    );
+    // Unreachable in practice: the assertion above guarantees the payload encoded.
+    payload.unwrap_or_default()
 }
 
 fn runtime_with_pending_ask(
@@ -146,9 +155,15 @@ fn runtime_with_pending_ask(
 fn handle_answer_ask_accepts_valid_postcard_slot_value_and_default_clean_taint() {
     let run_id = RunId::new(3101);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = match runtime_with_pending_ask(run_id, journal.clone()) {
+    let runtime_opt = runtime_with_pending_ask(run_id, journal.clone());
+    assert!(
+        runtime_opt.is_some(),
+        "test setup failed: runtime must reach pending ask state"
+    );
+    let mut runtime = match runtime_opt {
         Some(runtime) => runtime,
-        None => panic!("test setup failed: runtime must reach pending ask state"),
+        // Unreachable: the assertion above guarantees the runtime reached a pending ask.
+        None => return,
     };
     let expected_answer = must_encoded_value(&SlotValue::I64(42));
     let payload = must_answer_payload(run_id, SlotIdx::new(1), expected_answer.clone(), None);
@@ -161,34 +176,45 @@ fn handle_answer_ask_accepts_valid_postcard_slot_value_and_default_clean_taint()
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
 
     let snapshot = journal.snapshot();
-    match snapshot {
-        Ok(events) => {
-            let matched = events.iter().any(|event| {
-                matches!(
-                    event,
-                    RuntimeJournalEvent::SlotWritten { run, slot, value, taint, .. }
-                        if *run == run_id
-                            && *slot == SlotIdx::new(1)
-                            && *value == expected_answer
-                            && *taint == Taint::Clean
-                )
-            });
-            assert_eq!(
-                matched, true,
-                "journal must contain exact SlotValue::I64(42) postcard bytes for answered slot"
-            );
-        }
-        Err(e) => panic!("journal snapshot failed: {e}"),
-    }
+    assert!(
+        snapshot.is_ok(),
+        "journal snapshot failed: {:?}",
+        snapshot.as_ref().err()
+    );
+    let events = match snapshot {
+        Ok(events) => events,
+        // Unreachable: the assertion above guarantees the snapshot succeeded.
+        Err(_) => return,
+    };
+    let matched = events.iter().any(|event| {
+        matches!(
+            event,
+            RuntimeJournalEvent::SlotWritten { run, slot, value, taint, .. }
+                if *run == run_id
+                    && *slot == SlotIdx::new(1)
+                    && *value == expected_answer
+                    && *taint == Taint::Clean
+        )
+    });
+    assert!(
+        matched,
+        "journal must contain exact SlotValue::I64(42) postcard bytes for answered slot"
+    );
 }
 
 #[test]
 fn handle_answer_ask_rejects_mismatched_answer_slot_without_consuming_pending_ask() {
     let run_id = RunId::new(3102);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = match runtime_with_pending_ask(run_id, journal.clone()) {
+    let runtime_opt = runtime_with_pending_ask(run_id, journal.clone());
+    assert!(
+        runtime_opt.is_some(),
+        "test setup failed: runtime must reach pending ask state"
+    );
+    let mut runtime = match runtime_opt {
         Some(runtime) => runtime,
-        None => panic!("test setup failed: runtime must reach pending ask state"),
+        // Unreachable: the assertion above guarantees the runtime reached a pending ask.
+        None => return,
     };
     let wrong_answer = must_encoded_value(&SlotValue::I64(7));
     let wrong_payload = must_answer_payload(run_id, SlotIdx::ZERO, wrong_answer, None);
@@ -197,7 +223,13 @@ fn handle_answer_ask_rejects_mismatched_answer_slot_without_consuming_pending_as
         IpcResponse::RuntimeError { message } => {
             assert_eq!(message, RuntimeError::InvalidActionCompletion.to_string());
         }
-        other => panic!("expected RuntimeError, got {other:?}"),
+        other => {
+            assert!(
+                matches!(other, IpcResponse::RuntimeError { .. }),
+                "expected RuntimeError, got {:?}",
+                other
+            );
+        }
     }
     assert_eq!(runtime.counters_snapshot().runs_completed, 0);
 
@@ -209,9 +241,16 @@ fn handle_answer_ask_rejects_mismatched_answer_slot_without_consuming_pending_as
     );
     assert_eq!(runtime.tick_all(), Ok(true));
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
-    let events = match journal.snapshot() {
+    let snapshot = journal.snapshot();
+    assert!(
+        snapshot.is_ok(),
+        "journal snapshot failed after valid answer: {:?}",
+        snapshot.as_ref().err()
+    );
+    let events = match snapshot {
         Ok(events) => events,
-        Err(e) => panic!("journal snapshot failed after valid answer: {e}"),
+        // Unreachable: the assertion above guarantees the snapshot succeeded.
+        Err(_) => return,
     };
     let matched = events.iter().any(|event| {
         matches!(
@@ -223,17 +262,23 @@ fn handle_answer_ask_rejects_mismatched_answer_slot_without_consuming_pending_as
                     && *taint == Taint::Clean
         )
     });
-    assert_eq!(
-        matched, true,
+    assert!(
+        matched,
         "valid retry must write exact SlotValue::I64(8) postcard bytes after wrong slot rejection"
     );
 }
 
 #[test]
 fn handle_answer_ask_rejects_absent_pending_ask() {
-    let shard_count = match NonZeroUsize::new(1) {
+    let shard_nz = NonZeroUsize::new(1);
+    assert!(
+        shard_nz.is_some(),
+        "test setup failed: shard_count must be non-zero"
+    );
+    let shard_count = match shard_nz {
         Some(shard_count) => shard_count,
-        None => panic!("test setup failed: shard_count must be non-zero"),
+        // Unreachable: the assertion above guarantees shard_count is non-zero.
+        None => return,
     };
     let mut runtime = Runtime::new(shard_count, runtime_config());
     let run_id = RunId::new(3103);
@@ -244,7 +289,13 @@ fn handle_answer_ask_rejects_absent_pending_ask() {
         IpcResponse::RuntimeError { message } => {
             assert_eq!(message, RuntimeError::RunNotFound.to_string());
         }
-        other => panic!("expected RuntimeError, got {other:?}"),
+        other => {
+            assert!(
+                matches!(other, IpcResponse::RuntimeError { .. }),
+                "expected RuntimeError, got {:?}",
+                other
+            );
+        }
     }
 }
 
@@ -252,9 +303,15 @@ fn handle_answer_ask_rejects_absent_pending_ask() {
 fn handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation() {
     let run_id = RunId::new(3104);
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = match runtime_with_pending_ask(run_id, journal.clone()) {
+    let runtime_opt = runtime_with_pending_ask(run_id, journal.clone());
+    assert!(
+        runtime_opt.is_some(),
+        "test setup failed: runtime must reach pending ask state"
+    );
+    let mut runtime = match runtime_opt {
         Some(runtime) => runtime,
-        None => panic!("test setup failed: runtime must reach pending ask state"),
+        // Unreachable: the assertion above guarantees the runtime reached a pending ask.
+        None => return,
     };
     let malformed_payload = must_answer_payload(run_id, SlotIdx::new(1), vec![255, 255], None);
 
@@ -265,7 +322,13 @@ fn handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation(
                 "answer bytes are not valid postcard-encoded SlotValue"
             );
         }
-        other => panic!("expected RuntimeError, got {other:?}"),
+        other => {
+            assert!(
+                matches!(other, IpcResponse::RuntimeError { .. }),
+                "expected RuntimeError, got {:?}",
+                other
+            );
+        }
     }
     assert_eq!(runtime.counters_snapshot().runs_completed, 0);
 
@@ -277,9 +340,16 @@ fn handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation(
     );
     assert_eq!(runtime.tick_all(), Ok(true));
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
-    let events = match journal.snapshot() {
+    let snapshot = journal.snapshot();
+    assert!(
+        snapshot.is_ok(),
+        "journal snapshot failed after malformed rejection recovery: {:?}",
+        snapshot.as_ref().err()
+    );
+    let events = match snapshot {
         Ok(events) => events,
-        Err(e) => panic!("journal snapshot failed after malformed rejection recovery: {e}"),
+        // Unreachable: the assertion above guarantees the snapshot succeeded.
+        Err(_) => return,
     };
     let matched = events.iter().any(|event| {
         matches!(
@@ -291,8 +361,8 @@ fn handle_answer_ask_rejects_malformed_slot_value_bytes_before_runtime_mutation(
                     && *taint == Taint::Clean
         )
     });
-    assert_eq!(
-        matched, true,
+    assert!(
+        matched,
         "pending ask must remain consumable and write exact SlotValue::Bool(false) bytes after malformed rejection"
     );
 }

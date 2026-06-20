@@ -1,6 +1,6 @@
 //! Lifecycle-state derivation from journal events.
 //!
-//! Maps journal events to [`LifecycleState`](vb_core::workflow::LifecycleState)
+//! Maps journal events to [`LifecycleState`]
 //! values and produces human-readable status strings for CLI output.
 
 use vb_core::workflow::LifecycleState;

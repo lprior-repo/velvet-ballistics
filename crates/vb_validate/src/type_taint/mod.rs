@@ -9,10 +9,10 @@
 //! # Module Layout
 //!
 //! - [`types`] — Value types, taint lattice, and value facts.
-//! - [`model`] — Workflow input model (decls, limits, steps).
-//! - [`limits`] — Resource contract bound checking.
-//! - [`facts`] — Fact table construction and reference resolution.
-//! - [`step`] — Step-level type and taint validation.
+//! - model — Workflow input model (decls, limits, steps).
+//! - limits — Resource contract bound checking.
+//! - facts — Fact table construction and reference resolution.
+//! - `step` — Step-level type and taint validation.
 
 pub mod types;
 

@@ -210,7 +210,13 @@ mod tests {
             PeerCheckOutcome::Reject { reason } => {
                 assert_eq!(reason, "peer euid does not match server euid");
             }
-            other => panic!("expected rejection, got {other:?}"),
+            other => {
+                assert!(
+                    matches!(other, PeerCheckOutcome::Reject { .. }),
+                    "expected rejection, got {:?}",
+                    other
+                );
+            }
         }
     }
 
@@ -222,7 +228,13 @@ mod tests {
             PeerCheckOutcome::Reject { reason } => {
                 assert_eq!(reason, "peer identity unavailable on this platform");
             }
-            other => panic!("expected rejection, got {other:?}"),
+            other => {
+                assert!(
+                    matches!(other, PeerCheckOutcome::Reject { .. }),
+                    "expected rejection, got {:?}",
+                    other
+                );
+            }
         }
     }
 
@@ -254,7 +266,13 @@ mod tests {
             PeerCheckOutcome::Reject { reason } => {
                 assert_eq!(reason, "peer euid not in allow list");
             }
-            other => panic!("expected rejection, got {other:?}"),
+            other => {
+                assert!(
+                    matches!(other, PeerCheckOutcome::Reject { .. }),
+                    "expected rejection, got {:?}",
+                    other
+                );
+            }
         }
     }
 
@@ -263,20 +281,34 @@ mod tests {
         let outcome: PeerCheckOutcome = PeerCheckOutcome::Reject {
             reason: "peer euid not in allow list",
         };
-        let err = outcome
-            .into_ipc_error()
-            .expect_err("reject must lift to error");
+        let result = outcome.into_ipc_error();
+        assert!(
+            result.is_err(),
+            "reject must lift to error: got {:?}",
+            result
+        );
+        let Err(err) = result else {
+            // Unreachable: the assertion above guarantees the Reject lifts to an error.
+            return;
+        };
         match err {
             IpcError::PeerCredentialsFailed(reason) => {
                 assert_eq!(reason, "peer euid not in allow list");
             }
-            other => panic!("unexpected error variant: {other:?}"),
+            other => {
+                assert!(
+                    matches!(other, IpcError::PeerCredentialsFailed(_)),
+                    "unexpected error variant: {:?}",
+                    other
+                );
+            }
         }
     }
 
     #[test]
     fn into_ipc_error_returns_ok_for_accept() {
         let outcome = PeerCheckOutcome::Accept;
-        outcome.into_ipc_error().expect("accept must lift to ok");
+        let result = outcome.into_ipc_error();
+        assert!(result.is_ok(), "accept must lift to ok: got {:?}", result);
     }
 }

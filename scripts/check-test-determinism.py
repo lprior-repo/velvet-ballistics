@@ -53,8 +53,11 @@ PATTERNS = [
     ("UncontrolledRandom", r'\brand_core', False),
 
     # shared temp state
-    ("SharedTempState", r'tempdir\(\)', False),
-    ("SharedTempState", r'TempDir', False),
+    # NOTE: bare `TempDir` (return-type name) and `tempdir()` (isolated
+    # `tempfile::tempdir()` calls) were removed as false positives — they flag
+    # isolated temp directories, not shared state. Only `/tmp/` literals and
+    # explicit `.tempdir(`/`.tmpdir(` builder calls remain; the `/tmp/` literal
+    # catches the actual shared-state cases.
     ("SharedTempState", r'\.tempdir\(', False),
     ("SharedTempState", r'\.tmpdir\(', False),
     ("SharedTempState", r'\/tmp\/', False),
@@ -94,23 +97,72 @@ def is_test_file(path: Path) -> bool:
     )
 
 
+# Markers that indicate a test seeds its RNG explicitly. When any of these is
+# present in a file, a `use rand::...` / `use fastrand::...` import line is not
+# treated as an UncontrolledRandom source (the RNG is constructed deterministically).
+SEEDING_PATTERNS: tuple[str, ...] = (
+    "StdRng::seed_from_u64",
+    "StdRng::from_seed",
+    "SmallRng::from_seed",
+    "SeedableRng::seed_from_u64",
+)
+
+
+def is_rust_comment(line: str) -> bool:
+    """Return True for Rust comment lines that must be skipped before matching.
+
+    Covers line comments (``//``, ``///``, ``//!``), block-comment opens
+    (``/*``) and block-comment continuation lines (``*``). Rust attributes
+    (``#[...]`` / ``#![...]``) are intentionally NOT comments and are kept.
+    """
+    stripped = line.lstrip()
+    if not stripped:
+        return False
+    if stripped.startswith("//"):
+        return True
+    if stripped.startswith("/*"):
+        return True
+    if stripped.startswith("*"):
+        return True
+    return False
+
+
+def is_rng_import(line: str) -> bool:
+    """Return True if the line is a ``use`` import of an RNG crate."""
+    stripped = line.lstrip()
+    if not stripped.startswith("use "):
+        return False
+    return (
+        "rand::" in stripped
+        or "fastrand::" in stripped
+        or "rand_core" in stripped
+    )
+
+
 def scan_file(path: Path) -> Iterator[Finding]:
     """Scan a single file for determinism violations."""
     try:
         content = path.read_text()
-    except Exception:
+    except (OSError, UnicodeDecodeError):
         return
+
+    has_seeding = any(marker in content for marker in SEEDING_PATTERNS)
 
     for kind, pattern, _critical_only in PATTERNS:
         regex = re.compile(pattern)
         for i, line in enumerate(content.splitlines(), start=1):
-            if regex.search(line):
-                yield Finding(
-                    kind=kind,
-                    path=str(path.relative_to(ROOT)),
-                    line=i,
-                    detail=line.strip()[:120],
-                )
+            if is_rust_comment(line):
+                continue
+            if not regex.search(line):
+                continue
+            if kind == "UncontrolledRandom" and has_seeding and is_rng_import(line):
+                continue
+            yield Finding(
+                kind=kind,
+                path=str(path.relative_to(ROOT)),
+                line=i,
+                detail=line.strip()[:120],
+            )
 
 
 def gather_findings() -> list[Finding]:

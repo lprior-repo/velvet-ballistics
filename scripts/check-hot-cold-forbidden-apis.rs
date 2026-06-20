@@ -20,6 +20,12 @@ const COLD_MARKERS: &[&str] = &[
     "test_util",
     "tests",
     "verification",
+    // Holman-fall-2026 additions: terminal-run accounting and crash-recovery
+    // paths are touched only on run termination or post-crash startup,
+    // never inside the per-step deterministic transition loop. They are
+    // functionally cold even though they live under vb_runtime/vb_storage.
+    "recovery",
+    "lru",
 ];
 
 const HOT_FIXTURE: &str = concat!(

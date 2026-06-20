@@ -5,8 +5,6 @@
 //! - `RecoveredSlots` — typed container for recovered slot entries + support flag
 //! - `recover_slots` — event → slot entries, optionally merged with workflow replay
 
-use std::collections::HashMap;
-
 use crate::recovery::replay::summary::frame_seed::FrameSeedAccumulator;
 use crate::recovery::{RecoveredSlotEntry, RecoveryError, RecoveryResult};
 use crate::slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra};

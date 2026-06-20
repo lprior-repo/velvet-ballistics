@@ -12,7 +12,7 @@
 mod accumulator;
 mod action_records;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub(crate) use accumulator::FrameSeedAccumulator;
 
@@ -266,7 +266,7 @@ pub const fn recovery_observed_dimension_is_positive(max_index: Option<u16>, cou
 // ── Steps conversion ────────────────────────────────────────────────────────
 
 fn recovered_steps(
-    step_states: HashMap<StepIdx, crate::recovery::RecoveredStepState>,
+    step_states: BTreeMap<StepIdx, crate::recovery::RecoveredStepState>,
 ) -> Vec<crate::recovery::RecoveredStepEntry> {
     step_states
         .into_iter()

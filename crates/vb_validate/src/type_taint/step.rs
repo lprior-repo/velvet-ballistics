@@ -25,7 +25,7 @@ pub fn validate_types(workflow: &WorkflowTypes) -> ValidationResult<()> {
     validate_step_types(workflow, &facts, &mut slots)
 }
 
-/// Validates secret taint tracking; emits [`SecretResultLeak`] when a `Finish`
+/// Validates secret taint tracking; emits [`ValidationError::SecretResultLeak`] when a `Finish`
 /// step produces `Secret` or `DerivedFromSecret` taint and the resource
 /// contract does not allow secret results.
 pub fn validate_taint(workflow: &WorkflowTypes) -> ValidationResult<()> {

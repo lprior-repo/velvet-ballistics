@@ -17,10 +17,8 @@
 //! `Shard::terminal_runs_insert` uses that path so the legacy public
 //! signature is preserved.
 
+use std::collections::BTreeSet;
 use std::collections::VecDeque;
-use std::hash::Hash;
-
-use indexmap::IndexSet;
 
 use crate::RuntimeError;
 use crate::shard::timer::TimerTick;
@@ -48,18 +46,18 @@ pub struct LruRingCounters {
 #[derive(Debug)]
 pub struct LruRing<T>
 where
-    T: Copy + Eq + Hash,
+    T: Copy + Eq + Ord,
 {
     capacity: usize,
     ttl_ticks: u64,
     order: VecDeque<(T, TimerTick)>,
-    members: IndexSet<T>,
+    members: BTreeSet<T>,
     counters: LruRingCounters,
 }
 
 impl<T> LruRing<T>
 where
-    T: Copy + Eq + Hash,
+    T: Copy + Eq + Ord,
 {
     /// Creates a ring with the given bounded capacity and TTL (in ticks).
     #[must_use]
@@ -69,7 +67,7 @@ where
             capacity: bounded_capacity,
             ttl_ticks,
             order: VecDeque::with_capacity(bounded_capacity),
-            members: IndexSet::with_capacity(bounded_capacity),
+            members: BTreeSet::new(),
             counters: LruRingCounters::default(),
         }
     }
@@ -166,7 +164,7 @@ where
 
     /// Removes the entry for `item` if present. No-op otherwise.
     pub fn remove(&mut self, item: &T) {
-        if self.members.swap_remove(item) {
+        if self.members.remove(item) {
             // Re-scan the order deque to drop the matching (item, ts) tuple.
             // O(n) but rare on the terminal-runs path.
             if let Some(position) = self.order.iter().position(|(value, _)| value == item) {
@@ -193,7 +191,7 @@ where
         while let Some(&(value, ts)) = self.order.front() {
             if i128::from(ts.get()) <= cutoff {
                 self.order.pop_front();
-                self.members.swap_remove(&value);
+                self.members.remove(&value);
                 self.counters.expired_evictions = self.counters.expired_evictions.saturating_add(1);
             } else {
                 break;

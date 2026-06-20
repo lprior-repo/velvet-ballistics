@@ -5,13 +5,13 @@
 //! and the re-exported `validate_resource_contract`. All validation concerns are
 //! decomposed into sub-modules:
 //!
-//! - **[`budget`]** — Whole-workflow budget computation + policy check.
-//! - **[`resource_contract`]** — Declared vs actual resource counts.
-//! - **[`nodes`]** — Per-node field validation (common fields + kind dispatch).
-//! - **[`expressions`]** — Expression bytecode stack + accessor references.
-//! - **[`symbols`]** — SymbolId bounds in constants and BuildObject fields.
-//! - **[`reachability`]** — Graph reachability from entry step.
-//! - **[`forward_edges`]** — Forward-edge ordering + loop nesting.
+//! - `budget` — Whole-workflow budget computation + policy check.
+//! - `resource_contract` — Declared vs actual resource counts.
+//! - `nodes` — Per-node field validation (common fields + kind dispatch).
+//! - `expressions` — Expression bytecode stack + accessor references.
+//! - `symbols` — SymbolId bounds in constants and BuildObject fields.
+//! - `reachability` — Graph reachability from entry step.
+//! - `forward_edges` — Forward-edge ordering + loop nesting.
 
 pub(crate) mod budget;
 pub(crate) mod expressions;

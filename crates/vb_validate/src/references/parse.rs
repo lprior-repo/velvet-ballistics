@@ -7,7 +7,7 @@
 
 use vb_core::ids::StepIdx;
 
-/// Sentinel [`SymbolId`] for the canonical
+/// Sentinel [`vb_core::ids::SymbolId`] for the canonical
 /// "output" field of a step result.
 ///
 /// The validator does not have access to the workflow's symbol table,

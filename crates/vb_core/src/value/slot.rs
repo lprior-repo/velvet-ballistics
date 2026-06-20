@@ -73,7 +73,7 @@ impl SlotValue {
     /// handle cannot be resolved (out-of-bounds, missing field, etc.).
     ///
     /// # Performance Note
-    /// This method allocates only when formatting output. The [`SlotValueDisplay`]
+    /// This method allocates only when formatting output. The `SlotValueDisplay`
     /// type defers all formatting to its `Display` implementation, keeping the
     /// hot-path value module allocation-free.
     pub fn display_with_store(&self, store: &ValueStore) -> String {

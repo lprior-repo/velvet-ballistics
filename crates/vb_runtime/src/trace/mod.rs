@@ -3,10 +3,10 @@
 //!
 //! # Module layout
 //!
-//! - [`event`]: `TraceEvent` domain enum and its accessor methods.
+//! - event: `TraceEvent` domain enum and its accessor methods.
 //! - [`ring`]: `TraceRing` bounded ring buffer.
-//! - [`kani`]: Kani verification models (gated behind `cfg(kani)`).
-//! - [`tests`]: End-to-end behavioral tests.
+//! - kani: Kani verification models (gated behind `cfg(kani)`).
+//! - tests: End-to-end behavioral tests.
 
 mod event;
 #[cfg(kani)]
