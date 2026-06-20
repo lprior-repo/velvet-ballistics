@@ -223,6 +223,14 @@ where
     /// Allocates a slot from the free list (or appends a new one), links
     /// the new node at the tail of the doubly-linked list, and records
     /// the item in `position`.
+    ///
+    /// # Invariant (debug-checked)
+    /// The slot obtained from `free.pop()` or appended at `nodes.len()`
+    /// must be `None` (free). A `debug_assert!` validates this on every
+    /// call so a future regression that breaks the free-list accounting
+    /// (e.g. pushing a live slot back onto `free`) surfaces as a panic
+    /// rather than silently overwriting an existing node and corrupting
+    /// the doubly-linked list.
     fn push_tail(&mut self, item: T, now: TimerTick) {
         let slot = match self.free.pop() {
             Some(free_slot) => free_slot,
@@ -239,6 +247,10 @@ where
             next: None,
         };
         if let Some(slot_ref) = self.nodes.get_mut(slot) {
+            debug_assert!(
+                slot_ref.is_none(),
+                "push_tail invariant: slot {slot} must be free (was Some)"
+            );
             *slot_ref = Some(node);
         }
         if let Some(old_tail) = self.tail {
