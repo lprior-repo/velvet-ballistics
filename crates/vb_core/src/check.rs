@@ -71,9 +71,8 @@ impl CheckEvidence {
     /// is within the configured threshold.
     pub fn validate(&self) -> Result<(), CheckEvidenceError> {
         // Baseline check
-        let baseline_us = match self.baseline_us {
-            Some(b) => b,
-            None => return Err(CheckEvidenceError::MissingBaseline),
+        let Some(baseline_us) = self.baseline_us else {
+            return Err(CheckEvidenceError::MissingBaseline);
         };
 
         // Budget check

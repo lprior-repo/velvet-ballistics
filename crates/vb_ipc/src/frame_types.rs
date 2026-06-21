@@ -125,9 +125,8 @@ impl IpcFrameHeader {
         let capabilities_bits = cursor
             .read_u16::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;
-        let caller_capabilities = match CallerCapabilities::from_wire(capabilities_bits) {
-            Some(caps) => caps,
-            None => return Err(IpcError::PermissionDenied),
+        let Some(caller_capabilities) = CallerCapabilities::from_wire(capabilities_bits) else {
+            return Err(IpcError::PermissionDenied);
         };
         let correlation = cursor
             .read_u64::<LittleEndian>()
