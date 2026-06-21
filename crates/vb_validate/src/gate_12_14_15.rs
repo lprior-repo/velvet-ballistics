@@ -47,31 +47,32 @@ pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> Validati
         return Ok(());
     }
     let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
-    for node in parts.nodes.iter() {
-        if let CompiledNodeKind::SetConst { value } = &node.kind {
-            let cidx = value.as_usize();
-            if cidx >= parts.constants.len() {
-                continue;
+    for node in &parts.nodes {
+        let CompiledNodeKind::SetConst { value } = &node.kind else {
+            continue;
+        };
+        let cidx = value.as_usize();
+        let Some(constant) = parts.constants.get(cidx) else {
+            continue;
+        };
+        let kind = const_value_discriminant(constant);
+        let Some(slot) = node.output else {
+            continue;
+        };
+        let su = slot.as_usize();
+        if su >= slot_count {
+            continue;
+        }
+        let existing = slot_const_kind
+            .get(su)
+            .copied()
+            .ok_or(ValidationError::SlotTypeInconsistency { slot: su })?;
+        if existing == 0 {
+            if let Some(e) = slot_const_kind.get_mut(su) {
+                *e = kind;
             }
-            if let Some(constant) = parts.constants.get(cidx) {
-                let kind = const_value_discriminant(constant);
-                if let Some(slot) = node.output {
-                    let su = slot.as_usize();
-                    if su < slot_count {
-                        let existing = slot_const_kind
-                            .get(su)
-                            .copied()
-                            .ok_or(ValidationError::SlotTypeInconsistency { slot: su })?;
-                        if existing == 0 {
-                            if let Some(e) = slot_const_kind.get_mut(su) {
-                                *e = kind;
-                            }
-                        } else if existing != kind {
-                            return Err(ValidationError::SlotTypeInconsistency { slot: su });
-                        }
-                    }
-                }
-            }
+        } else if existing != kind {
+            return Err(ValidationError::SlotTypeInconsistency { slot: su });
         }
     }
     Ok(())
@@ -94,18 +95,21 @@ pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationRe
         if !is_non_deterministic(&node.kind) {
             continue;
         }
-        if let Some(next_step) = node.next {
-            let nu = next_step.as_usize();
-            if nu < node_count {
-                if let Some(next_node) = parts.nodes.get(nu) {
-                    if is_non_deterministic(&next_node.kind) {
-                        return Err(ValidationError::NonDeterministicPath {
-                            from_node: node_index,
-                            to_node: nu,
-                        });
-                    }
-                }
-            }
+        let Some(next_step) = node.next else {
+            continue;
+        };
+        let nu = next_step.as_usize();
+        if nu >= node_count {
+            continue;
+        }
+        let Some(next_node) = parts.nodes.get(nu) else {
+            continue;
+        };
+        if is_non_deterministic(&next_node.kind) {
+            return Err(ValidationError::NonDeterministicPath {
+                from_node: node_index,
+                to_node: nu,
+            });
         }
     }
     Ok(())
@@ -118,7 +122,6 @@ fn is_non_deterministic(kind: &CompiledNodeKind) -> bool {
     )
 }
 
-#[cfg(test)]
 #[cfg(test)]
 #[path = "gate_12_14_15/tests.rs"]
 mod tests;
