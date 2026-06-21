@@ -60,7 +60,7 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() -> R
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return Ok(());
     };
-    let mut runtime = crate::runtime::Runtime::new(shard_count, small_config());
+    let mut runtime = crate::runtime::Runtime::new(shard_count, small_config())?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for runtime legacy test");
     };
@@ -363,7 +363,7 @@ fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 fn runtime_ask_timer_append_failure_does_not_register_pending_timer() -> Result<(), RuntimeError> {
     let journal = RejectTimerScheduledJournal::shared(PendingTimerKind::Ask);
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(workflow) = ask_timeout_only_workflow() else {
         panic!("ask_timeout_only_workflow fixture must compile for append failure test");
     };

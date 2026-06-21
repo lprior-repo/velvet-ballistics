@@ -207,7 +207,7 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() -> Resu
 }
 
 #[test]
-fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), String> -> Result<(), RuntimeError> {
+fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), RuntimeError> {
     let run = RunId::new(22);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -244,13 +244,10 @@ fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Resu
             action_payloads: false,
         },
     };
-    let frame = DurableFrameRecoveryBoundary::from_seed(seed)
-        .hydrate_run_frame()
-        .map_err(|error| format!("slot hydration failed: {error:?}"))?;
+    let frame = DurableFrameRecoveryBoundary::from_seed(seed).hydrate_run_frame()?;
 
     assert_eq!(frame.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(86)));
     assert_eq!(frame.read_taint(SlotIdx::new(1)), Ok(Taint::Secret));
-    Ok(())
     Ok(())
 }
 
@@ -396,7 +393,7 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() -> Result<(), Runt
 /// Verifies that a hydrated run frame from a frame-seed hydration product
 /// can be inserted into a shard with a pending timer entry.
 #[test]
-fn recover_hydrates_pending_timers() -> Result<(), String> -> Result<(), RuntimeError> {
+fn recover_hydrates_pending_timers() -> Result<(), String> {
     use crate::shard::PendingTimer;
     use crate::shard::config::ShardConfig;
     use crate::shard::timer::PendingTimerKind;
@@ -444,14 +441,13 @@ fn recover_hydrates_pending_timers() -> Result<(), String> -> Result<(), Runtime
 
     // Hydrate the frame from the seed.
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed.clone());
-    let frame = boundary
-        .hydrate_run_frame()
-        .map_err(|e| format!("hydrate_run_frame failed: {e:?}"))?;
+    let frame = boundary.hydrate_run_frame().map_err(|e| format!("hydrate_run_frame failed: {e:?}"))?;
 
     // Build a shard with relaxed policy.
     let config = ShardConfig::default();
     let journal = crate::journal::VolatileRuntimeJournal::shared();
-    let mut shard = crate::shard::Shard::new_with_journal(config, journal);
+    let mut shard = crate::shard::Shard::new_with_journal(config, journal)
+        .map_err(|e| format!("shard construction failed: {e:?}"))?;
 
     // Insert the recovered run state.
     shard
@@ -489,7 +485,7 @@ fn recover_hydrates_pending_timers() -> Result<(), String> -> Result<(), Runtime
     // Verify pending timer generation for the run.
     let generation = shard
         .next_pending_timer_generation(run)
-        .ok_or("generation should be Some(1) for new run".to_string())?;
+        .ok_or_else(|| "generation should be Some(1) for new run".to_string())?;
     if generation != 1 {
         return Err(format!(
             "expected generation 1 for new run, got {generation}"
@@ -525,11 +521,10 @@ fn recover_hydrates_pending_timers() -> Result<(), String> -> Result<(), Runtime
     // Verify next generation increments.
     let next_gen = shard
         .next_pending_timer_generation(run)
-        .ok_or("next generation should exist".to_string())?;
+        .ok_or_else(|| "next generation should exist".to_string())?;
     if next_gen != 2 {
         return Err(format!("expected next generation 2, got {next_gen}"));
     }
 
-    Ok(())
     Ok(())
 }

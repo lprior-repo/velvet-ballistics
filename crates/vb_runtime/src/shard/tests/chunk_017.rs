@@ -119,7 +119,7 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() -> Result<(), RuntimeErro
     };
     let workflow = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(w) => w,
-        Err(_) => return,
+        Err(_) => return Ok(()),
     };
     let result = crate::shard::helpers::find_error_handler_for_failure(
         // The body step (step 1) is protected by the ErrorHandler at step 0.

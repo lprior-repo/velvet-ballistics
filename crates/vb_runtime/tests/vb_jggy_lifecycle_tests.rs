@@ -419,7 +419,7 @@ fn non_retryable_failure() -> ActionFailure {
 /// B17: handle_submit_with_inputs records first scheduled action attempts
 #[test]
 fn handle_submit_with_inputs_records_first_action_attempts() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow_2step() else {
         panic!("missing workflow fixture");
     };
@@ -454,7 +454,7 @@ fn handle_submit_with_inputs_records_first_action_attempts() -> Result<(), Runti
 /// B17 variant: single step workflow records first scheduled action attempt
 #[test]
 fn handle_submit_records_first_action_attempt_single_step() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -484,7 +484,7 @@ fn handle_submit_records_first_action_attempt_single_step() -> Result<(), Runtim
 fn step_succeeded_carries_attempt_field() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -539,7 +539,7 @@ fn step_succeeded_carries_attempt_field() -> Result<(), RuntimeError> {
 fn action_failed_carries_attempt_field() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -592,7 +592,7 @@ fn action_failed_carries_attempt_field() -> Result<(), RuntimeError> {
 fn step_succeeded_carries_retry_attempt_number() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -648,7 +648,7 @@ fn step_succeeded_carries_retry_attempt_number() -> Result<(), RuntimeError> {
 fn stale_attempt_completion_rejected_before_journal_write() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -721,7 +721,7 @@ fn stale_attempt_completion_rejected_before_journal_write() -> Result<(), Runtim
 fn stale_attempt_failure_rejected_before_journal_write() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -786,7 +786,7 @@ fn stale_attempt_failure_rejected_before_journal_write() -> Result<(), RuntimeEr
 /// Verify action_attempts advances when action is scheduled (via drive_run)
 #[test]
 fn action_attempts_advances_after_scheduling() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -810,7 +810,7 @@ fn action_attempts_advances_after_scheduling() -> Result<(), RuntimeError> {
 fn action_attempts_monotonically_advances_on_retry() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = retry_workflow() else {
         panic!("missing retry workflow fixture");
@@ -884,7 +884,7 @@ fn action_attempts_monotonically_advances_on_retry() -> Result<(), RuntimeError>
 /// Verify action_attempts for a step never decreases over multiple operations
 #[test]
 fn action_attempts_never_decreases_across_operations() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -929,7 +929,7 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() -> Result
     // This test documents the expected behavior.
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
 
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -969,7 +969,7 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() -> Result
 /// B7: validate_ticket_attempt accepts valid ticket (current=1, attempt=2)
 #[test]
 fn validate_ticket_attempt_accepts_valid_ticket() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -1011,7 +1011,7 @@ fn validate_ticket_attempt_accepts_valid_ticket() -> Result<(), RuntimeError> {
 /// Equal attempt (current=1, incoming=1) is NOT stale
 #[test]
 fn equal_attempt_is_not_stale() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -1049,7 +1049,7 @@ fn equal_attempt_is_not_stale() -> Result<(), RuntimeError> {
 /// Future attempt within ticket capacity is rejected.
 #[test]
 fn future_attempt_within_capacity_is_rejected() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
     };
@@ -1087,7 +1087,7 @@ fn future_attempt_within_capacity_is_rejected() -> Result<(), RuntimeError> {
 /// Verify each step has independent attempt counter
 #[test]
 fn each_step_has_independent_attempt_counter() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow_2step() else {
         panic!("missing 2-step workflow fixture");
     };

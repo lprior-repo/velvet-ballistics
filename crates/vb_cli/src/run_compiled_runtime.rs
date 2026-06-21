@@ -137,7 +137,17 @@ pub(crate) fn run_compiled_workflow(
         Ok(journal) => journal,
         Err(code) => return code,
     };
-    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, journal);
+    let mut runtime = match vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        config,
+        journal,
+    ) {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            report_runtime_error(format_args!("runtime construction error: {e}"), output);
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, admitted_workflow, inputs) {
         report_runtime_error(format_args!("runtime submit error: {e}"), output);

@@ -135,12 +135,13 @@
 //! on `Shard`. Uses deterministic `TimerTick` values instead of `Instant`.
 
 use vb_runtime::shard::types::{Shard, ShardConfig, TimerTick};
+use vb_runtime::RuntimeError;
 
 // ---------- Behavior G1: Backward clock advance rejected ----------
 
 #[test]
 fn advance_clock_to_rejects_backward_tick_returns_error() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     let result = shard.advance_clock_to(TimerTick::new(50));
     assert_eq!(result, Err(vb_runtime::RuntimeError::InvalidTimerFire));
@@ -151,7 +152,7 @@ fn advance_clock_to_rejects_backward_tick_returns_error() -> Result<(), RuntimeE
 
 #[test]
 fn advance_clock_to_backward_tick_preserves_current_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(1000)), Ok(()));
     // Attempt to go backward
     let _ = shard.advance_clock_to(TimerTick::new(500));
@@ -162,7 +163,7 @@ fn advance_clock_to_backward_tick_preserves_current_tick() -> Result<(), Runtime
 
 #[test]
 fn advance_clock_to_rejects_single_tick_backward() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
     assert_eq!(
         shard.advance_clock_to(TimerTick::new(9)),
@@ -176,7 +177,7 @@ fn advance_clock_to_rejects_single_tick_backward() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_same_tick_is_noop() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(42));
@@ -185,7 +186,7 @@ fn advance_clock_to_same_tick_is_noop() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_same_zero_tick_is_noop() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(0));
@@ -196,7 +197,7 @@ fn advance_clock_to_same_zero_tick_is_noop() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_forward_increments_current_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(50)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(50));
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
@@ -206,7 +207,7 @@ fn advance_clock_to_forward_increments_current_tick() -> Result<(), RuntimeError
 
 #[test]
 fn advance_clock_to_multiple_forward_steps_are_monotonic() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let ticks = [1u64, 5, 10, 50, 100, 500, 1000];
     for (i, &tick) in ticks.iter().enumerate() {
         assert_eq!(shard.advance_clock_to(TimerTick::new(tick)), Ok(()));
@@ -221,7 +222,7 @@ fn advance_clock_to_multiple_forward_steps_are_monotonic() -> Result<(), Runtime
 
 #[test]
 fn advance_clock_to_large_jump_succeeds() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(1_000_000)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(1_000_000));
@@ -232,7 +233,7 @@ fn advance_clock_to_large_jump_succeeds() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_accepts_max_u64_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(u64::MAX));
     Ok(())
@@ -240,7 +241,7 @@ fn advance_clock_to_accepts_max_u64_tick() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_max_tick_then_reject_any_subsequent() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     // Any tick < u64::MAX is now backward
     assert_eq!(
@@ -256,14 +257,14 @@ fn advance_clock_to_max_tick_then_reject_any_subsequent() -> Result<(), RuntimeE
 
 #[test]
 fn current_tick_starts_at_zero_for_new_shard() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     Ok(())
 }
 
 #[test]
 fn current_tick_returns_consistent_value() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(77)), Ok(()));
     // Multiple reads all return the same value
     for _ in 0..10 {
@@ -276,7 +277,7 @@ fn current_tick_returns_consistent_value() -> Result<(), RuntimeError> {
 
 #[test]
 fn shard_status_available_after_clock_advance() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     let status = shard.status();
     // Status is available; tick does not corrupt shard state

@@ -119,7 +119,7 @@ fn vb1u88_bdd_multiple_ticks_after_shutdown_idempotent() -> Result<(), RuntimeEr
 fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(workflow) = suspended_workflow() else {
         return Ok(());
     };

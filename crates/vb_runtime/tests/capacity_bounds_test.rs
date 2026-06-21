@@ -135,6 +135,7 @@
 //! The Shard's command queue capacity is bounded by MAX_COMMAND_QUEUE_CAPACITY (65,536).
 
 use vb_runtime::shard::types::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardConfig};
+use vb_runtime::RuntimeError;
 
 // ---------- Command queue capacity bounds ----------
 
@@ -197,14 +198,14 @@ fn queue_capacity_at_limit_accepts_enqueue() -> Result<(), RuntimeError> {
 
 #[test]
 fn default_config_has_expected_capacity() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.command_queue_capacity(), 1024);
     Ok(())
 }
 
 #[test]
 fn default_config_shard_is_not_full_initially() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert!(!shard.is_queue_full());
     assert_eq!(shard.command_queue_len(), 0);
     Ok(())
@@ -214,7 +215,7 @@ fn default_config_shard_is_not_full_initially() -> Result<(), RuntimeError> {
 
 #[test]
 fn shard_pending_timer_count_starts_at_zero() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.pending_timer_count(), 0);
     Ok(())
 }
@@ -223,7 +224,7 @@ fn shard_pending_timer_count_starts_at_zero() -> Result<(), RuntimeError> {
 
 #[test]
 fn shard_active_run_count_starts_at_zero() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
 }
@@ -232,7 +233,7 @@ fn shard_active_run_count_starts_at_zero() -> Result<(), RuntimeError> {
 
 #[test]
 fn shard_not_shutting_down_on_creation() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert!(!shard.is_shutting_down());
     Ok(())
 }

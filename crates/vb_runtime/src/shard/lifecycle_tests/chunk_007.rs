@@ -1,10 +1,8 @@
 
     #[test]
     fn ask_timer_fire_fails_run_when_no_answer() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = ask_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = ask_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(500);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -24,7 +22,7 @@
     }
 
     #[test]
-    fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> -> Result<(), RuntimeError> {
+    fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 16,
             trace_capacity: 16,
@@ -41,15 +39,15 @@
         submit_run(
             &mut shard,
             RunId::new(0),
-            require_workflow("suspended", suspended_workflow())?,
+            require_workflow("suspended", suspended_workflow()).map_err(|_| RuntimeError::QueueFull)?,
         );
         submit_run(
             &mut shard,
             RunId::new(1),
-            require_workflow("suspended", suspended_workflow())?,
+            require_workflow("suspended", suspended_workflow()).map_err(|_| RuntimeError::QueueFull)?,
         );
         assert_eq!(shard.active_run_count(), 2);
-        let wf = require_workflow("suspended", suspended_workflow())?;
+        let wf = require_workflow("suspended", suspended_workflow()).map_err(|_| RuntimeError::QueueFull)?;
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(99),
@@ -63,13 +61,12 @@
             Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
         );
         Ok(())
-        Ok(())
     }
 
     #[test]
-    fn red_ask_answer_secret_redaction() -> Result<(), String> -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let wf = require_workflow("ask", ask_workflow())?;
+    fn red_ask_answer_secret_redaction() -> Result<(), RuntimeError> {
+        let mut shard = Shard::new(small_config())?;
+        let wf = require_workflow("ask", ask_workflow()).map_err(|_| RuntimeError::QueueFull)?;
         let run = RunId::new(2);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -94,13 +91,12 @@
         assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
         assert_eq!(shard.tick(), Err(RuntimeError::SecretResultNotAllowed));
         Ok(())
-        Ok(())
     }
 
     #[test]
-    fn red_ask_answer_payload_size_one_byte_over() -> Result<(), String> -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let wf = require_workflow("ask", ask_workflow())?;
+    fn red_ask_answer_payload_size_one_byte_over() -> Result<(), RuntimeError> {
+        let mut shard = Shard::new(small_config())?;
+        let wf = require_workflow("ask", ask_workflow()).map_err(|_| RuntimeError::QueueFull)?;
         let max_size = wf.resource_contract().max_ipc_payload_bytes;
         let run = RunId::new(12);
         assert_eq!(
@@ -113,7 +109,7 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         let Some(encoded_len) = max_size.checked_add(1) else {
-            return Err(String::from("max_ipc_payload_bytes overflowed"));
+            return Err(RuntimeError::QueueFull);
         };
         let answer = AskAnswer {
             ticket: AskTicket {
@@ -134,6 +130,5 @@
                 max: max_size,
             })
         );
-        Ok(())
         Ok(())
     }

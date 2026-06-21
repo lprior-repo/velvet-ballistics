@@ -15,7 +15,7 @@ fn run_numeric(id: u64) -> RunId {
 
 #[test]
 fn advance_clock_to_accepts_forward_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(10));
     Ok(())
@@ -23,7 +23,7 @@ fn advance_clock_to_accepts_forward_tick() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_accepts_equal_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(5)), Ok(()));
     // Advancing to the same tick is a no-op success
     assert_eq!(shard.advance_clock_to(TimerTick::new(5)), Ok(()));
@@ -33,7 +33,7 @@ fn advance_clock_to_accepts_equal_tick() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_rejects_backward_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
     let result = shard.advance_clock_to(TimerTick::new(5));
     assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
@@ -44,7 +44,7 @@ fn advance_clock_to_rejects_backward_tick() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_rejects_backward_from_zero() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     // Advancing to 0 from 0 should be a no-op
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
@@ -53,7 +53,7 @@ fn advance_clock_to_rejects_backward_from_zero() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_multiple_forward_steps() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(200)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(500)), Ok(()));
@@ -63,7 +63,7 @@ fn advance_clock_to_multiple_forward_steps() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_accepts_max_u64_tick() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(u64::MAX));
     Ok(())
@@ -71,7 +71,7 @@ fn advance_clock_to_accepts_max_u64_tick() -> Result<(), RuntimeError> {
 
 #[test]
 fn advance_clock_to_accepts_zero_tick_when_current_is_zero() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     Ok(())
@@ -79,7 +79,7 @@ fn advance_clock_to_accepts_zero_tick_when_current_is_zero() -> Result<(), Runti
 
 #[test]
 fn advance_clock_to_rejects_slightly_backward() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(1000)), Ok(()));
     // 999 < 1000 — should reject
     let result = shard.advance_clock_to(TimerTick::new(999));
@@ -94,7 +94,7 @@ fn advance_clock_to_rejects_slightly_backward() -> Result<(), RuntimeError> {
 
 #[test]
 fn current_tick_starts_at_zero() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     Ok(())
 }
@@ -120,7 +120,7 @@ fn current_tick_starts_at_zero_for_custom_config() -> Result<(), RuntimeError> {
 
 #[test]
 fn current_tick_reflects_last_advance() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     for tick in &[1u64, 10, 100, 1000, 10_000] {
         assert_eq!(shard.advance_clock_to(TimerTick::new(*tick)), Ok(()));
         assert_eq!(shard.current_tick(), TimerTick::new(*tick));
@@ -130,7 +130,7 @@ fn current_tick_reflects_last_advance() -> Result<(), RuntimeError> {
 
 #[test]
 fn current_tick_is_read_only_and_idempotent() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     // Reading current_tick multiple times gives the same value
     for _ in 0..5 {
@@ -145,14 +145,14 @@ fn current_tick_is_read_only_and_idempotent() -> Result<(), RuntimeError> {
 
 #[test]
 fn next_pending_timer_generation_returns_one_for_no_timer() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.next_pending_timer_generation(run_numeric(1)), Some(1));
     Ok(())
 }
 
 #[test]
 fn next_pending_timer_generation_returns_one_for_multiple_unknown_runs() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     // No timers exist, all runs get generation 1
     assert_eq!(shard.next_pending_timer_generation(run_numeric(42)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run_numeric(99)), Some(1));
@@ -161,7 +161,7 @@ fn next_pending_timer_generation_returns_one_for_multiple_unknown_runs() -> Resu
 
 #[test]
 fn next_pending_timer_generation_increments_for_existing_timer() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r = run_numeric(1);
     shard.pending_timer_insert(
         r,
@@ -178,7 +178,7 @@ fn next_pending_timer_generation_increments_for_existing_timer() -> Result<(), R
 
 #[test]
 fn next_pending_timer_generation_increments_from_one_to_two() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r = run_numeric(1);
     shard.pending_timer_insert(
         r,
@@ -195,7 +195,7 @@ fn next_pending_timer_generation_increments_from_one_to_two() -> Result<(), Runt
 
 #[test]
 fn next_pending_timer_generation_returns_none_at_max_u64() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r = run_numeric(1);
     shard.pending_timer_insert(
         r,
@@ -212,7 +212,7 @@ fn next_pending_timer_generation_returns_none_at_max_u64() -> Result<(), Runtime
 
 #[test]
 fn next_pending_timer_generation_does_not_mutate_on_overflow_check() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r = run_numeric(1);
     shard.pending_timer_insert(
         r,
@@ -233,7 +233,7 @@ fn next_pending_timer_generation_does_not_mutate_on_overflow_check() -> Result<(
 
 #[test]
 fn next_pending_timer_generation_is_independent_per_run() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r1 = run_numeric(1);
     let r2 = run_numeric(2);
     shard.pending_timer_insert(
@@ -264,7 +264,7 @@ fn next_pending_timer_generation_is_independent_per_run() -> Result<(), RuntimeE
 
 #[test]
 fn next_pending_timer_generation_at_max_minus_one_returns_max() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r = run_numeric(1);
     shard.pending_timer_insert(
         r,
@@ -285,14 +285,14 @@ fn next_pending_timer_generation_at_max_minus_one_returns_max() -> Result<(), Ru
 
 #[test]
 fn pending_timer_count_starts_at_zero_numeric_seam() -> Result<(), RuntimeError> {
-    let shard = Shard::new(ShardConfig::default());
+    let shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.pending_timer_count(), 0);
     Ok(())
 }
 
 #[test]
 fn pending_timer_count_reflects_insertions_numeric_seam() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     assert_eq!(shard.pending_timer_count(), 0);
     shard.pending_timer_insert(
         run_numeric(1),
@@ -323,7 +323,7 @@ fn pending_timer_count_reflects_insertions_numeric_seam() -> Result<(), RuntimeE
 
 #[test]
 fn advance_clock_to_does_not_affect_pending_timers() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(ShardConfig::default());
+    let mut shard = Shard::new(ShardConfig::default())?;
     let r = run_numeric(1);
     shard.pending_timer_insert(
         r,

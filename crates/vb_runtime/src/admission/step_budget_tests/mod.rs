@@ -137,7 +137,7 @@ fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(2);
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
-        .ok_or(RuntimeError::QueueFull)?;
+        .map_err(|_| RuntimeError::QueueFull)?;
     let workflow = workflow_with_max_steps(max_steps);
     let result = runtime.submit_direct(run, workflow);
     assert!(result.is_ok(), "submit_direct should accept 1000-step workflow");
@@ -237,7 +237,7 @@ fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), Runtim
 fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
-        .ok_or(RuntimeError::QueueFull)?;
+        .map_err(|_| RuntimeError::QueueFull)?;
     for offset in 0..4u64 {
         let run = RunId::new(200 + offset);
         let workflow = workflow_with_max_steps(max_steps);

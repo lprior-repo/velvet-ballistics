@@ -1,6 +1,6 @@
 #[test]
 fn future_attempt_completion_rejected_when_current_attempt_exists() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return Ok(());
@@ -43,7 +43,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() -> Result<()
 
 #[test]
 fn future_attempt_completion_beyond_max_is_action_failed_code() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return Ok(());
@@ -84,7 +84,7 @@ fn future_attempt_completion_beyond_max_is_action_failed_code() -> Result<(), Ru
 fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
         return Ok(());
@@ -165,7 +165,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() ->
 
 #[test]
 fn scheduling_propagates_zero_retry_policy_error() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = zero_retry_policy_workflow() else {
         assert_eq!(
             None::<()>,
@@ -193,7 +193,7 @@ fn scheduling_propagates_zero_retry_policy_error() -> Result<(), RuntimeError> {
 
 #[test]
 fn legacy_action_completed_on_suspended_run_succeeds() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         return Ok(());
     };
@@ -227,7 +227,7 @@ fn legacy_action_completed_on_suspended_run_succeeds() -> Result<(), RuntimeErro
 
 #[test]
 fn legacy_action_completed_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompletedLegacy {
             run: RunId::new(9999),
@@ -240,9 +240,9 @@ fn legacy_action_completed_unknown_run_returns_run_not_found() -> Result<(), Run
 }
 
 #[test]
-fn action_failure_without_handler_fails_run() -> Result<(), String> -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
-    let wf = require_workflow("suspended", suspended_workflow())?;
+fn action_failure_without_handler_fails_run() -> Result<(), RuntimeError> {
+    let mut shard = Shard::new(small_config())?;
+    let wf = require_workflow("suspended", suspended_workflow()).map_err(|_| RuntimeError::QueueFull)?;
     let run = RunId::new(60);
     submit_run(&mut shard, run, wf);
     let ticket = make_ticket(run, StepIdx::ZERO, 1);
@@ -257,7 +257,6 @@ fn action_failure_without_handler_fails_run() -> Result<(), String> -> Result<()
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
-    Ok(())
 }
 
 // =======================================================================
@@ -268,7 +267,7 @@ fn action_failure_without_handler_fails_run() -> Result<(), String> -> Result<()
 fn future_attempt_completion_does_not_mutate_state() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(wf) = suspended_workflow() else {
         return Ok(());
     };
@@ -349,7 +348,7 @@ fn future_attempt_completion_does_not_mutate_state() -> Result<(), RuntimeError>
 fn noncanonical_key_completion_does_not_mutate_state() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(wf) = suspended_workflow() else {
         return Ok(());
     };
@@ -402,7 +401,7 @@ fn noncanonical_key_completion_does_not_mutate_state() -> Result<(), RuntimeErro
 fn wrong_step_state_completion_does_not_mutate_state() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(wf) = suspended_workflow() else {
         return Ok(());
     };
@@ -450,7 +449,7 @@ fn wrong_step_state_completion_does_not_mutate_state() -> Result<(), RuntimeErro
 fn action_completion_on_missing_run_does_not_mutate_state() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let counters_before = shard.counters().snapshot();
     let journal_before = journal.snapshot();
     let output = ActionOutputReady {
@@ -478,7 +477,7 @@ fn action_completion_on_missing_run_does_not_mutate_state() -> Result<(), Runtim
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_missing() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let output = ActionOutputReady {
         output_slot: SlotIdx::ZERO,
         value: SlotValue::I64(7),
@@ -498,7 +497,7 @@ fn handle_action_completion_returns_run_not_found_when_run_missing() -> Result<(
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_cancelled() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         return Ok(());
     };
@@ -530,7 +529,7 @@ fn handle_action_completion_returns_run_not_found_when_run_cancelled() -> Result
 
 #[test]
 fn handle_action_completion_returns_run_not_found_when_run_finished() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = finished_workflow() else {
         return Ok(());
     };
@@ -568,7 +567,7 @@ fn handle_action_completion_returns_run_not_found_when_run_finished() -> Result<
 
 #[test]
 fn handle_action_failure_returns_run_not_found_when_run_missing() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
             ticket: make_ticket(RunId::new(430), StepIdx::ZERO, 1),
@@ -582,7 +581,7 @@ fn handle_action_failure_returns_run_not_found_when_run_missing() -> Result<(), 
 
 #[test]
 fn handle_action_failure_returns_stale_attempt_when_attempt_mismatch() -> Result<(), RuntimeError> {
-    let mut shard = Shard::new(small_config());
+    let mut shard = Shard::new(small_config())?;
     let Some(wf) = suspended_workflow() else {
         return Ok(());
     };

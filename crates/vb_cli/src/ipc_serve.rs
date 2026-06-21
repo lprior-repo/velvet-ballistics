@@ -48,8 +48,17 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
         None => NonZeroUsize::MIN,
     };
     let config = vb_runtime::shard::ShardConfig::default();
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, runtime_journal);
+    let mut runtime = match vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        config,
+        runtime_journal,
+    ) {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            crate::errln!("error constructing runtime: {e}");
+            return CliExitCode::IpcError.into();
+        }
+    };
 
     // Bind the IPC server
     let mut server = match vb_ipc::server::IpcServer::bind(socket) {

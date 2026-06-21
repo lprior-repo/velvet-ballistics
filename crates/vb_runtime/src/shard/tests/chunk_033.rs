@@ -122,7 +122,7 @@ fn cleanup_temp_fjall(path: &std::path::Path) {
 #[test]
 fn test_snapshot_interval_zero_no_snapshots() -> Result<(), RuntimeError> {
     let journal: SharedRuntimeJournal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(config_interval_zero(), journal);
+    let mut shard = Shard::new_with_journal(config_interval_zero(), journal)?;
 
     let run = RunId::new(1);
     let state = build_run_state(run, 100, 0);
@@ -142,7 +142,7 @@ fn test_snapshot_interval_zero_no_snapshots_fjall() -> Result<(), RuntimeError> 
         return Ok(());
     };
     let journal: SharedRuntimeJournal = Arc::new(StorageRuntimeJournal::journaled(fjall));
-    let mut shard = Shard::new_with_journal(config_interval_zero(), journal);
+    let mut shard = Shard::new_with_journal(config_interval_zero(), journal)?;
 
     let run = RunId::new(2);
     let state = build_run_state(run, 100, 0);
@@ -160,7 +160,7 @@ fn test_snapshot_interval_zero_no_snapshots_fjall() -> Result<(), RuntimeError> 
 #[test]
 fn test_snapshot_positive_interval_volatile_skips_no_storage() -> Result<(), RuntimeError> {
     let journal: SharedRuntimeJournal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(config_interval_n(10), journal);
+    let mut shard = Shard::new_with_journal(config_interval_n(10), journal)?;
 
     let run = RunId::new(3);
     let state = build_run_state(run, 50, 0);
@@ -180,7 +180,7 @@ fn test_snapshot_interval_positive_writes_midrun_snapshots() -> Result<(), Runti
         return Ok(());
     };
     let journal: SharedRuntimeJournal = Arc::new(StorageRuntimeJournal::journaled(fjall));
-    let mut shard = Shard::new_with_journal(config_interval_n(10), journal);
+    let mut shard = Shard::new_with_journal(config_interval_n(10), journal)?;
 
     let run = RunId::new(4);
 
@@ -222,7 +222,7 @@ fn test_snapshot_interval_one_fires_every_step() -> Result<(), RuntimeError> {
         return Ok(());
     };
     let journal: SharedRuntimeJournal = Arc::new(StorageRuntimeJournal::journaled(fjall));
-    let mut shard = Shard::new_with_journal(config_interval_n(1), journal);
+    let mut shard = Shard::new_with_journal(config_interval_n(1), journal)?;
 
     let run = RunId::new(5);
     let mut last = 0u64;
@@ -249,7 +249,7 @@ fn test_snapshot_at_exact_boundary() -> Result<(), RuntimeError> {
         return Ok(());
     };
     let journal: SharedRuntimeJournal = Arc::new(StorageRuntimeJournal::journaled(fjall));
-    let mut shard = Shard::new_with_journal(config_interval_n(5), journal);
+    let mut shard = Shard::new_with_journal(config_interval_n(5), journal)?;
 
     let run = RunId::new(6);
 

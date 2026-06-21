@@ -1,3 +1,5 @@
+use crate::RuntimeError;
+
 #[test]
 fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {

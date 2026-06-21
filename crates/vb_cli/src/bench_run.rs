@@ -69,7 +69,24 @@ pub(crate) fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) ->
         return CliExitCode::RuntimeFailed.into();
     };
     let config = runtime_config_for_durability(DurabilityMode::None);
-    let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
+    let mut runtime = match vb_runtime::runtime::Runtime::new(shard_count, config) {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("runtime construction error: {e}")
+                    }),
+                    CliExitCode::RuntimeFailed,
+                    output,
+                );
+            } else {
+                crate::errln!("runtime construction error: {e}");
+            }
+            return CliExitCode::RuntimeFailed.into();
+        }
+    };
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {
         if output != OutputFormat::Text {
             json_error(

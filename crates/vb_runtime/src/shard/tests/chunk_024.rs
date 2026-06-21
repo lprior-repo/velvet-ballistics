@@ -85,7 +85,7 @@ fn vb1u88_cancel_unknown_run_returns_ok() -> Result<(), RuntimeError> {
 fn vb1u88_cancel_emits_run_cancelled_journal_event() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let Some(workflow) = suspended_workflow() else {
         return Ok(());
     };
@@ -140,7 +140,7 @@ fn vb1u88_cancel_emits_run_cancelled_trace_event() -> Result<(), RuntimeError> {
 fn vb1u88_cancel_unknown_run_does_not_emit_events() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
     let before = journal.snapshot().expect("journal snapshot should succeed");
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {

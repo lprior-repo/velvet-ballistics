@@ -18,6 +18,7 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+use vb_runtime::RuntimeError;
 
 fn contract_required_capability(action: ActionId) -> Capability {
     Capability::new("__contract_required__".into(), action)
@@ -259,11 +260,11 @@ fn small_config() -> ShardConfig {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn submit_handler_persists_before_ack() {
+fn submit_handler_persists_before_ack() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
 
@@ -278,14 +279,15 @@ fn submit_handler_persists_before_ack() {
         has_run_submitted,
         "RunSubmitted must be persisted before ack"
     );
+    Ok(())
 }
 
 #[test]
-fn action_completed_persists_before_ack() {
+fn action_completed_persists_before_ack() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
 
@@ -331,14 +333,15 @@ fn action_completed_persists_before_ack() {
         has_action_completed_envelope,
         "ActionCompletedEnvelope must be persisted before ack"
     );
+    Ok(())
 }
 
 #[test]
-fn action_failed_persists_before_ack() {
+fn action_failed_persists_before_ack() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
 
@@ -379,14 +382,15 @@ fn action_failed_persists_before_ack() {
         has_action_failed,
         "ActionFailed must be persisted before ack"
     );
+    Ok(())
 }
 
 #[test]
-fn ask_answered_persists_before_ack() {
+fn ask_answered_persists_before_ack() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
 
@@ -426,14 +430,15 @@ fn ask_answered_persists_before_ack() {
         has_step_succeeded,
         "StepSucceeded must be persisted before ack"
     );
+    Ok(())
 }
 
 #[test]
-fn cancel_persists_before_ack() {
+fn cancel_persists_before_ack() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
 
@@ -455,14 +460,15 @@ fn cancel_persists_before_ack() {
         has_run_cancelled,
         "RunCancelled must be persisted before ack"
     );
+    Ok(())
 }
 
 #[test]
-fn timer_fired_persists_before_ack() {
+fn timer_fired_persists_before_ack() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut shard = Shard::new_with_journal(small_config(), journal.clone());
+    let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
 
@@ -496,6 +502,7 @@ fn timer_fired_persists_before_ack() {
         has_wait_resolved,
         "WaitResolved must be persisted before ack"
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

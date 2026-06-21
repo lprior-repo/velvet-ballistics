@@ -61,9 +61,7 @@
     #[test]
     fn shard_with_run_id_zero() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config())?;
-        let Some(wf) = finished_workflow() else {
-            return;
-        };
+        let wf = finished_workflow().ok_or(RuntimeError::QueueFull)?;
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(0),
@@ -80,9 +78,7 @@
     #[test]
     fn shard_with_max_run_id() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config())?;
-        let Some(wf) = finished_workflow() else {
-            return;
-        };
+        let wf = finished_workflow().ok_or(RuntimeError::QueueFull)?;
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(u64::MAX),

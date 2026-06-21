@@ -160,7 +160,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() -> Result<(), Runt
         1,
     ) {
         Ok(frame) => frame,
-        Err(_) => return,
+        Err(_) => return Ok(()),
     };
     let mut state = RunState {
         frame,

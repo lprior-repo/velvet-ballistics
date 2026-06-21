@@ -1,10 +1,8 @@
 
     #[test]
     fn cancel_clears_pending_timer() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = wait_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = wait_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(91);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -24,10 +22,8 @@
 
     #[test]
     fn inspect_active_run_returns_found() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = suspended_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(100);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -63,7 +59,7 @@
 
     #[test]
     fn inspect_unknown_run_returns_not_found() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config())?;
         assert_eq!(
             shard.enqueue(ShardCommand::Inspect {
                 run: RunId::new(9999),
@@ -84,10 +80,8 @@
 
     #[test]
     fn submit_produces_run_submitted_trace() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = suspended_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(110);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -109,10 +103,8 @@
 
     #[test]
     fn cancel_produces_run_cancelled_trace() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = suspended_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(111);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -135,11 +127,11 @@
     }
 
     #[test]
-    fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> -> Result<(), RuntimeError> {
+    fn cancel_emits_run_cancelled_journal_event() -> Result<(), RuntimeError> {
         let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
         let shared: SharedRuntimeJournal = journal.clone();
-        let mut shard = Shard::new_with_journal(small_config(), shared);
-        let wf = require_workflow("suspended", suspended_workflow())?;
+        let mut shard = Shard::new_with_journal(small_config(), shared)?;
+        let wf = require_workflow("suspended", suspended_workflow()).map_err(|_| RuntimeError::QueueFull)?;
         let run = RunId::new(112);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -152,19 +144,18 @@
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
-        let events = require_snapshot(&journal)?;
+        let events = require_snapshot(&journal).map_err(|_| RuntimeError::QueueFull)?;
         assert!(
             events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None}),
             "journal events should contain RunCancelled: {events:?}"
         );
         Ok(())
-        Ok(())
     }
 
     #[test]
-    fn finish_produces_run_finished_trace() -> Result<(), String> -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let wf = require_workflow("finished", finished_workflow())?;
+    fn finish_produces_run_finished_trace() -> Result<(), RuntimeError> {
+        let mut shard = Shard::new(small_config())?;
+        let wf = require_workflow("finished", finished_workflow()).map_err(|_| RuntimeError::QueueFull)?;
         let run = RunId::new(113);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -182,19 +173,18 @@
             .any(|e| *e == TraceEvent::RunFinished { run });
         assert_eq!(found, true);
         Ok(())
-        Ok(())
     }
 
     #[test]
-    fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(), String> -> Result<(), RuntimeError> {
+    fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(), RuntimeError> {
         let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
         let shared: SharedRuntimeJournal = journal.clone();
-        let mut shard = Shard::new_with_journal(small_config(), shared);
-        let wf = require_workflow("finished", finished_workflow())?;
+        let mut shard = Shard::new_with_journal(small_config(), shared)?;
+        let wf = require_workflow("finished", finished_workflow()).map_err(|_| RuntimeError::QueueFull)?;
         let run = RunId::new(1130);
         submit_run(&mut shard, run, wf);
 
-        let events = require_snapshot(&journal)?;
+        let events = require_snapshot(&journal).map_err(|_| RuntimeError::QueueFull)?;
         let slot_written_count = events
             .iter()
             .filter(|event| {
@@ -210,15 +200,12 @@
             .count();
         assert_eq!(slot_written_count, 1, "events: {events:?}");
         Ok(())
-        Ok(())
     }
 
     #[test]
     fn resubmit_after_cancel_succeeds() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = suspended_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(300);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -246,10 +233,8 @@
 
     #[test]
     fn timer_fire_after_cancel_returns_run_not_found() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = wait_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = wait_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(400);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {

@@ -28,8 +28,11 @@ pub(crate) fn build_status(options: StatusOptions) -> CliStatus {
 }
 
 fn build_status_transient(options: StatusOptions) -> CliStatus {
-    let shard = Shard::new(ShardConfig::default());
-    let status = shard.status();
+    let config = ShardConfig::default();
+    let status = match Shard::new(config) {
+        Ok(shard) => shard.status(),
+        Err(_) => synthetic_shard_status(config),
+    };
     from_shard_status(status, options, DbProbeStatus::NotRequested, String::new())
 }
 
@@ -59,8 +62,11 @@ fn build_status_with_journal(path: &std::path::Path) -> CliStatus {
                 }
                 Err(_) => (0, 0),
             };
-            let shard = Shard::new(ShardConfig::default());
-            let status = shard.status();
+            let config = ShardConfig::default();
+            let status = match Shard::new(config) {
+                Ok(shard) => shard.status(),
+                Err(_) => synthetic_shard_status(config),
+            };
             // Build a status that overlays the live counters on top of the
             // transient-shard defaults; the transient shard supplies the
             // capacity / runtime policy / trace numbers that are not journal
@@ -74,8 +80,11 @@ fn build_status_with_journal(path: &std::path::Path) -> CliStatus {
             from_shard_status(status, options, DbProbeStatus::Live, String::new())
         }
         Err(error) => {
-            let shard = Shard::new(ShardConfig::default());
-            let status = shard.status();
+            let config = ShardConfig::default();
+            let status = match Shard::new(config) {
+                Ok(shard) => shard.status(),
+                Err(_) => synthetic_shard_status(config),
+            };
             let reason = format!("journal open at {} failed: {error}", path.display());
             from_shard_status(
                 status,
@@ -84,6 +93,28 @@ fn build_status_with_journal(path: &std::path::Path) -> CliStatus {
                 reason,
             )
         }
+    }
+}
+
+/// Builds a synthetic `ShardStatus` that mirrors what a freshly-created
+/// shard with the same configuration would report, used as a fallback when
+/// `Shard::new` itself fails so the status command can still surface
+/// capacity / policy / trace numbers.
+#[must_use]
+fn synthetic_shard_status(config: ShardConfig) -> ShardStatus {
+    ShardStatus {
+        health: ShardHealth::Running,
+        running: true,
+        shutting_down: false,
+        command_queue_depth: 0,
+        command_queue_capacity: config.command_queue_capacity,
+        active_runs: 0,
+        max_active_runs: config.max_active_runs,
+        snapshot_interval_steps: config.snapshot_interval_steps,
+        trace_capacity: config.trace_capacity,
+        trace_dropped: 0,
+        step_budget_per_tick: config.step_budget_per_tick,
+        runtime_policy: config.policy,
     }
 }
 

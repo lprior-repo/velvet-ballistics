@@ -359,12 +359,12 @@ fn red_queen_remove_then_reinsert_frees_slot() {
     ring.insert(RunId::new(2), TimerTick::new(200)).expect("b");
     assert!(ring.contains(&RunId::new(1)));
 
-    ring.remove(&RunId::new(1));
+    let _ = ring.remove(&RunId::new(1));
     assert!(!ring.contains(&RunId::new(1)));
     assert_eq!(ring.len(), 1);
 
     // Removing a non-existent item is a no-op.
-    ring.remove(&RunId::new(99));
+    let _ = ring.remove(&RunId::new(99));
     assert_eq!(ring.len(), 1);
 
     // We can now insert a new item because the ring is under capacity.
@@ -382,7 +382,7 @@ fn red_queen_remove_all_entries_leaves_empty_ring() {
             .expect("fill");
     }
     for offset in 0..4u64 {
-        ring.remove(&RunId::new(offset + 1));
+        let _ = ring.remove(&RunId::new(offset + 1));
     }
     assert!(ring.is_empty());
     assert_eq!(ring.len(), 0);

@@ -148,6 +148,7 @@ use vb_runtime::primitives::collect::CollectStates;
 use vb_runtime::shard::{
     InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome,
 };
+use vb_runtime::RuntimeError;
 
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -506,7 +507,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let mut shard = Shard::new(config)?;
+    let mut shard = Shard::new(config).map_err(|e| format!("{e:?}"))?;
     let run = RunId::new(5810);
     let workflow = const_then_finish_workflow(ConstValue::I64(33))?;
 
@@ -536,7 +537,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
 }
 
 #[test]
-fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Result<(), String> -> Result<(), RuntimeError> {
+fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 8,
         trace_capacity: 8,
@@ -550,16 +551,18 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
     };
     let mut shard = Shard::new(config)?;
     let run = RunId::new(5811);
-    let workflow = const_then_finish_workflow(ConstValue::I64(34))?;
+    let workflow = match const_then_finish_workflow(ConstValue::I64(34)) {
+        Ok(w) => w,
+        Err(_) => return Err(RuntimeError::QueueFull),
+    };
 
     shard
         .enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .map_err(|error| error.to_string())?;
-    let keep_running = shard.tick().map_err(|error| error.to_string())?;
+        })?;
+    let keep_running = shard.tick()?;
     let snapshot = shard.snapshot_run(run, 45);
     let resume_result = shard.handle_resume(run);
 
@@ -577,7 +580,6 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         resume_result,
         Err(ResumeError::RunIdNotFound { run_id: run })
     );
-    Ok(())
     Ok(())
 }
 

@@ -190,7 +190,7 @@ fn run_state_equality() -> Result<(), RuntimeError> {
         1,
     ) {
         Ok(f) => f,
-        Err(_) => return,
+        Err(_) => return Ok(()),
     };
     let state = RunState {
         frame,
@@ -209,7 +209,7 @@ fn run_state_equality() -> Result<(), RuntimeError> {
         1,
     ) {
         Ok(f) => f,
-        Err(_) => return,
+        Err(_) => return Ok(()),
     };
     let state2 = RunState {
         frame: frame2,

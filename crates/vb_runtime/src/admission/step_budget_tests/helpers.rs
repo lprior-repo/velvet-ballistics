@@ -262,7 +262,7 @@ pub(crate) fn total_command_queue_depth(runtime: &Runtime) -> u32 {
 
 /// Builds a runtime configured for strict admission with an always-present
 /// artifact store so the step-budget gate is the only constraint that fires.
-pub(crate) fn runtime_with_policy(policy: RuntimePolicy) -> Runtime {
+pub(crate) fn runtime_with_policy(policy: RuntimePolicy) -> crate::RuntimeResult<Runtime> {
     let config = ShardConfig {
         policy,
         ..ShardConfig::default()

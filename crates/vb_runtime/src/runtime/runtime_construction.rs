@@ -82,7 +82,7 @@ impl Runtime {
                 config,
                 journal.clone(),
                 crate::admission::SharedAcceptedArtifactStore::clone(&artifact_store),
-            ));
+            )?);
             index = index.saturating_add(1);
         }
         Ok(Self {

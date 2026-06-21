@@ -268,10 +268,8 @@
 
     #[test]
     fn submit_finished_workflow_completes_immediately() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
-        let Some(wf) = finished_workflow() else {
-            return;
-        };
+        let mut shard = Shard::new(small_config())?;
+        let wf = finished_workflow().ok_or(RuntimeError::QueueFull)?;
         let run = RunId::new(1);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {

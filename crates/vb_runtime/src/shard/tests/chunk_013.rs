@@ -108,7 +108,6 @@ fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str>
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     Ok(())
-    Ok(())
 }
 
 #[test]
@@ -140,7 +139,6 @@ fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> 
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
-    Ok(())
     Ok(())
 }
 
@@ -187,7 +185,6 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static s
         shard.tick(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
     );
-    Ok(())
     Ok(())
 }
 
@@ -249,11 +246,12 @@ fn shard_submit_run_submitted_append_failure_maps_to_admission_header_persistenc
 ) -> Result<(), &'static str> {
     let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
     let journal = RejectAdmissionHeaderJournal::shared(true, false);
-    let mut shard = Shard::new_with_journal_and_artifact_store(
-        small_config(),
+    let mut shard = match Shard::new_with_journal_and_artifact_store(        small_config(),
         journal.clone(),
-        crate::admission::AlwaysPresentArtifactStore::shared(),
-    );
+        crate::admission::AlwaysPresentArtifactStore::shared(),) {
+        Ok(s) => s,
+        Err(_) => return Err("shard construction failed"),
+    };
     let run = super::RunId::new(712);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -277,11 +275,14 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
 ) -> Result<(), &'static str> {
     let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
     let journal = RejectAdmissionHeaderJournal::shared(false, true);
-    let mut shard = Shard::new_with_journal_and_artifact_store(
+    let mut shard = match Shard::new_with_journal_and_artifact_store(
         small_config(),
         journal.clone(),
         crate::admission::AlwaysPresentArtifactStore::shared(),
-    );
+    ) {
+        Ok(s) => s,
+        Err(_) => return Err("shard construction failed"),
+    };
     let run = super::RunId::new(713);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -354,7 +355,6 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<()
         }
         other => assert_eq!(other, None),
     }
-    Ok(())
     Ok(())
 }
 
