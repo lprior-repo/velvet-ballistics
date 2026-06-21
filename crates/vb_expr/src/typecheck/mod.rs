@@ -4,6 +4,7 @@
 use crate::parser::{ExprAst, ExprHelper, ExprLiteral};
 use crate::{ExprError, ExprResult};
 
+#[cfg(test)]
 pub mod tests;
 
 /// Inferred expression type.

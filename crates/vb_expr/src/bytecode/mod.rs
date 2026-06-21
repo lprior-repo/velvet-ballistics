@@ -7,6 +7,7 @@ use crate::{ExprError, ExprResult};
 use vb_core::{ConstIdx, ConstValue, CoreError, ExprOp, ExprProgram, SlotIdx};
 
 pub mod fold;
+#[cfg(test)]
 pub mod tests;
 
 // Verus proofs (compiled under verus toolchain only)

@@ -8,6 +8,7 @@ pub use types::{ExprAst, ExprHelper, ExprLiteral};
 
 #[cfg(any(test, miri))]
 pub(crate) mod miri_tests;
+#[cfg(test)]
 pub mod tests;
 pub mod types;
 

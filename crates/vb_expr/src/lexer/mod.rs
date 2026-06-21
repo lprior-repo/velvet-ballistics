@@ -12,6 +12,7 @@ pub use types::{BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp}
 
 #[cfg(any(test, miri))]
 pub(crate) mod miri_tests;
+#[cfg(test)]
 pub mod tests;
 pub mod types;
 
