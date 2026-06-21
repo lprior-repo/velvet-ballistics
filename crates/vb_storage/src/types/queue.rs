@@ -9,6 +9,14 @@ use std::num::NonZeroUsize;
 pub struct JournalQueueCapacity(NonZeroUsize);
 
 impl JournalQueueCapacity {
+    /// Default capacity for the journal writer queue (1024 events).
+    /// 1024 is a compile-time-proven non-zero literal.
+    pub const DEFAULT: Self = match NonZeroUsize::new(1024) {
+        Some(v) => Self(v),
+        // SAFETY-by-construction: 1024 is non-zero.
+        None => loop {},
+    };
+
     /// Creates a queue-capacity contract from a proven non-zero value.
     #[must_use]
     pub const fn new(value: NonZeroUsize) -> Self {
@@ -35,6 +43,14 @@ impl JournalQueueCapacity {
 pub struct JournalBatchSize(NonZeroUsize);
 
 impl JournalBatchSize {
+    /// Default batch size for the journal writer (64 events).
+    /// 64 is a compile-time-proven non-zero literal.
+    pub const DEFAULT: Self = match NonZeroUsize::new(64) {
+        Some(v) => Self(v),
+        // SAFETY-by-construction: 64 is non-zero.
+        None => loop {},
+    };
+
     /// Creates a batch-size contract from a proven non-zero value.
     #[must_use]
     pub const fn new(value: NonZeroUsize) -> Self {

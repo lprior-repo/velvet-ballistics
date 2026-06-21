@@ -30,14 +30,17 @@ pub(crate) fn cmd_ipc_serve(socket: &std::path::Path, db: &std::path::Path) -> E
     let mut resolver = StorageWorkflowResolver {
         journal: Arc::clone(&journal),
     };
-    let queue =
-        match vb_storage::JournalWriterQueue::new(1024, 64, vb_storage::StorageLimits::DEFAULT) {
-            Ok(q) => Arc::new(q),
-            Err(e) => {
-                crate::errln!("error creating journal queue: {e}");
-                return CliExitCode::IpcError.into();
-            }
-        };
+    let queue = match vb_storage::JournalWriterQueue::new(
+        vb_storage::JournalQueueCapacity::DEFAULT.get(),
+        vb_storage::JournalBatchSize::DEFAULT.get(),
+        vb_storage::StorageLimits::DEFAULT,
+    ) {
+        Ok(q) => Arc::new(q),
+        Err(e) => {
+            crate::errln!("error creating journal queue: {e}");
+            return CliExitCode::IpcError.into();
+        }
+    };
     let runtime_journal =
         vb_runtime::journal::RuntimeJournalConfig::new(vb_storage::DurabilityProfile::Journaled)
             .shared_journal(journal, queue);
