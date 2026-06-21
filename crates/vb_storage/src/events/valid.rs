@@ -71,8 +71,10 @@ impl JournalEvent {
             | Self::ActionFailedEvent { attempt, .. }
             | Self::SlotWrittenEvent { attempt, .. }
             | Self::WaitScheduledEvent { attempt, .. }
+            | Self::WaitCancelledEvent { attempt, .. }
             | Self::AskScheduledEvent { attempt, .. }
             | Self::AskAnsweredEvent { attempt, .. }
+            | Self::AskCancelledEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
             | Self::RunCancelled { attempt, .. }

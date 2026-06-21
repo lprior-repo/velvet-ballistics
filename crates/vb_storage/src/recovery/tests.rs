@@ -1136,7 +1136,9 @@ fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
                 | JournalEvent::RetryScheduledEvent { .. }
                 | JournalEvent::RunResumed { .. }
                 | JournalEvent::RunRetried { .. }
-                | JournalEvent::RunAnswered { .. } => {}
+                | JournalEvent::RunAnswered { .. }
+                | JournalEvent::WaitCancelledEvent { .. }
+                | JournalEvent::AskCancelledEvent { .. } => {}
             }
             summary
         })

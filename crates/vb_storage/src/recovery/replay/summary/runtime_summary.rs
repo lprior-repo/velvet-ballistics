@@ -45,7 +45,9 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
             summary.slots_written = summary.slots_written.saturating_add(1);
         }
         JournalEvent::WaitScheduledEvent { .. }
+        | JournalEvent::WaitCancelledEvent { .. }
         | JournalEvent::AskScheduledEvent { .. }
+        | JournalEvent::AskCancelledEvent { .. }
         | JournalEvent::RetryScheduledEvent { .. } => {
             summary.suspensions = summary.suspensions.saturating_add(1);
         }

@@ -161,3 +161,49 @@ For each round 2-40:
 
 **STATUS: REJECTED** — 24 CRITICAL blockers, 40 HIGH debt items. Workspace does not
 ship. File beads, dispatch fixes, re-review.
+
+## 8. Round 1 Fix Dispatch Status (added 2026-06-21)
+
+22 P1 fix-test beads dispatched to 4 slice subagents (S1/S2/S3/S4) in
+`/tmp/opencode/vb-testfix-r1-{s1,s2,s3,s4}/`. Evidence collected via
+`jj diff` / `jj status` against parent commit `eddbe9c4` (WIP: in-flight
+kani proof changes from femdation-tier-a). All 22 beads received
+`bd comment` evidence; orchestrator will close after `git push`.
+
+| Bead    | Slice | Fix landed? | Evidence |
+|---------|-------|-------------|----------|
+| vb-b9sab | S1    | YES         | action_tests.rs:267 — `assert_eq!(result, Err(...UnknownAction{action: ActionId::new(99)}))` |
+| vb-wuexb | S1    | YES         | action_tests.rs:289,296 — `matches!(result, Ok(c) if c.id == ActionId::new(0\|2) && c.id.get() == 0\|2)` |
+| vb-zc7vf | S1    | YES (pre-existing) | bounded_queue_tests.rs:105 — `assert_eq!(result, Ok(()))` was already in parent |
+| vb-tjo9t | S1    | NO          | lru_ring_red_queen_tests.rs:517 still `assert!(r.is_err(), ...)` — recovery_bdd_tests.rs and lru_ring_red_queen_tests.rs NOT touched by S1 subagent |
+| vb-hnn9u | S1    | NO          | recovery_bdd_tests.rs:2141 still `assert!(result.is_err(), ...)` |
+| vb-2x3qk | S1    | NO          | recovery_bdd_tests.rs:2843,2852 still `assert!(result.is_ok()/is_err(), ...)` |
+| vb-lynec | S1    | NO          | recovery_bdd_tests.rs:2728,2883 still `assert!(result.is_ok(), ...)` |
+| vb-w73yl | S2    | YES         | integration_compile_error_message_quality.rs:376,403,428 — 3x tautologies deleted, replaced with `matches!(result, Err(CompileErrors(ref errors)) if errors.iter().any(\|e\| matches!(e, CompileError::{DepthLimit\|SequenceLimit\|ScalarLimit} { actual, limit } if *actual > *limit && *limit == 1\|2\|5)))` |
+| vb-ahb69 | S2    | YES         | integration_runtime_storage_fault_tolerance.rs:215 — tautology deleted; new `matches!(result, Ok(ref frame) if frame.run_id() == run && frame.step_count() == 0 && frame.slot_count() == 0)` |
+| vb-6f2dj | S2    | YES (SECURITY) | process_lock_tests.rs:149-178 — 2x accept-all match blocks replaced with `assert!(matches!(result, Err(JournalError::ProcessLockHeld { .. })))` and `assert!(result.is_ok())` |
+| vb-2tugo | S2    | YES         | edge_case_tests.rs:547 — `encode_rejects_zero_length_payload_serialization` renamed to `encode_accepts_zero_length_payload_and_round_trips`; assertion strengthened with envelope non-empty + round-trip checks |
+| vb-ra0mp | S3    | NO          | S3 workspace has NO working-copy changes — `jj status` reports "The working copy has no changes"; vb_cli/src/args/tests/* untouched |
+| vb-2ehds | S3    | NO          | S3 empty; budget_analyzer.rs and red_queen_budget.rs untouched |
+| vb-a02hh | S3    | NO          | S3 empty; secret_finish_tests.rs untouched |
+| vb-kviy0 | S3    | NO          | S3 empty; together_*_tests.rs untouched |
+| vb-ladbb | S3    | NO          | S3 empty; proptest_save_canonical_name.rs untouched |
+| vb-x6t5e | S3    | NO          | S3 empty; do_choose_digest_unit_tests.rs untouched |
+| vb-5nljx | S3    | NO          | S3 empty; digest_ask_explicit_arm.rs untouched |
+| vb-0to5y | S4    | YES         | eval_tests.rs:669-757 — 8 new no-short-circuit tests for BinaryOp::And/Or added |
+| vb-2kw49 | S4    | YES         | density_tests.rs — local validate_count/validate_summary + 3 constants deleted; production `vb_core::workflow::compiled_slug::{validate_compiled_slug_count, validate_compiled_slug_summary, ...}` imported |
+| vb-8r7cp | S4    | YES         | vb_ipc/src/tests.rs:445 — crossbeam_channel replaced with `MemoryIngress::bounded(QueueCapacity::new(NonZeroUsize::MIN))` + `disconnect_sender()` |
+| vb-few2x | S4    | YES         | array_queue_tests.rs:730-749 — FIFO proptest now captures frames via `received.push(frame)` and asserts run_id order with `prop_assert_eq!` |
+
+### Summary
+
+- **Total reviewed:** 22 beads
+- **Fix landed (11):** b9sab, wuexb, zc7vf, w73yl, ahb69, 6f2dj, 2tugo, 0to5y, 2kw49, 8r7cp, few2x
+- **Pending retry (11):**
+  - S1 partial retry needed (4): tjo9t, hnn9u, 2x3qk, lynec — subagent
+    only touched action_tests.rs; must also fix lru_ring_red_queen_tests.rs
+    and recovery_bdd_tests.rs
+  - S3 full retry needed (7): ra0mp, 2ehds, a02hh, kviy0, ladbb, x6t5e,
+    5nljx — subagent returned empty working copy; no files modified
+- **Slice pass rates:** S1=3/7, S2=4/4, S3=0/7, S4=4/4
+- **Action required:** re-dispatch S1 partial (3 files) and S3 full (7+ files)

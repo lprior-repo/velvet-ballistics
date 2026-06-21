@@ -162,6 +162,20 @@ pub enum JournalEvent {
         #[serde(default)]
         deadline_ms: u64,
     },
+    /// Wait was cancelled before its deadline fired.
+    WaitCancelledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+        /// Optional cancellation reason.
+        #[serde(default)]
+        reason: Option<String>,
+    },
     /// Ask was scheduled.
     AskScheduledEvent {
         /// Run identifier.
@@ -176,30 +190,22 @@ pub enum JournalEvent {
         #[serde(default)]
         deadline_ms: u64,
     },
+    /// Ask was cancelled before it was answered or timed out.
+    AskCancelledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+        /// Optional cancellation reason.
+        #[serde(default)]
+        reason: Option<String>,
+    },
     /// Ask was answered.
     AskAnsweredEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Wait was cancelled before timer fired.
-    WaitCancelledEvent {
-        /// Run identifier.
-        run: RunId,
-        /// Per-run sequence.
-        seq: EventSeq,
-        /// Step index.
-        step: StepIdx,
-        /// Attempt number (1-based).
-        attempt: u16,
-    },
-    /// Ask was cancelled before timer fired.
-    AskCancelledEvent {
         /// Run identifier.
         run: RunId,
         /// Per-run sequence.

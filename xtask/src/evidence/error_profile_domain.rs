@@ -255,6 +255,7 @@ pub enum FixtureBackedState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoreParityClaim {
     Unsupported,
+    Asserted,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

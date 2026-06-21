@@ -60,12 +60,36 @@ impl Shard {
         let mut processed = 0usize;
         while processed < limit {
             if !self.tick()? {
-                self.pending_timers.clear();
+                self.cancel_pending_timers_for_shutdown()?;
                 return Ok(());
             }
             processed = processed.saturating_add(1);
         }
         Err(RuntimeError::ShutdownInProgress)
+    }
+
+    /// Journals a `WaitCancelled` or `AskCancelled` event for every pending
+    /// timer, then clears the timer map. Called once the `Shutdown` command
+    /// has been observed so the durable journal records the cancellation
+    /// before the runs are dropped from the in-memory state.
+    fn cancel_pending_timers_for_shutdown(&mut self) -> RuntimeResult<()> {
+        let pending: Vec<(RunId, StepIdx, PendingTimerKind)> = self
+            .pending_timers
+            .iter()
+            .map(|(run_id, timer)| (*run_id, timer.step, timer.kind))
+            .collect();
+        for (run, step, kind) in pending {
+            match kind {
+                PendingTimerKind::Wait => {
+                    self.append_journal_event(RuntimeJournalEvent::WaitCancelled { run, step })?;
+                }
+                PendingTimerKind::Ask => {
+                    self.append_journal_event(RuntimeJournalEvent::AskCancelled { run, step })?;
+                }
+            }
+        }
+        self.pending_timers.clear();
+        Ok(())
     }
 
     /// Drains currently queued commands, then marks the shard shut down.

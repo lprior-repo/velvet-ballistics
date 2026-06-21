@@ -1,0 +1,1 @@
+cargo:rerun-if-env-changed=FLUX_BUILD_SYSROOT

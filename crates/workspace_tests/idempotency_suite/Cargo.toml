@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballistics-idempotency-workspace-tests"
+name = "vb_idempotency_suite"
 edition.workspace = true
 license.workspace = true
 version.workspace = true

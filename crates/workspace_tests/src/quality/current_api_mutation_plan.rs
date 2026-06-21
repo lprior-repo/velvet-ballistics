@@ -95,7 +95,7 @@ pub const REQUIRED_SECTIONS: &[PlanSection] = &[
             "owner bead",
             "critical survivor",
             "release-risk acceptance",
-            "cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan",
+            "cargo mutants --package vb_workspace_tests --test vb_c3k9_current_api_mutation_plan",
             "90% mutation kill rate",
             "exclusion policy",
         ],

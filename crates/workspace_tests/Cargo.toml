@@ -1,5 +1,5 @@
 [package]
-name = "velvet-ballistics-workspace-tests"
+name = "vb_workspace_tests"
 edition.workspace = true
 license.workspace = true
 version.workspace = true

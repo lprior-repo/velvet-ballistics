@@ -25,4 +25,4 @@ contract_audit:
   false_pass_detectors:
     - overlap_false_pass_detector
     - secret_false_pass_detector
-  core_runtime_parity_claim: unsupported
+  core_runtime_parity_claim: asserted

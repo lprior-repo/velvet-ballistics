@@ -91,6 +91,43 @@ pub const fn is_valid_coalesce_window_ticks(count: u32) -> bool {
     count > 0
 }
 
+/// Validates all `ShardConfig` capacity inputs and returns the first failure
+/// as a typed `RuntimeError`. Rejects `command_queue_capacity == 0`,
+/// `trace_capacity == 0`, `step_budget_per_tick == 0`, and
+/// `max_active_runs == 0`. Also rejects `command_queue_capacity` values
+/// above `MAX_COMMAND_QUEUE_CAPACITY`.
+///
+/// Exposed at the module level so runtime construction can call it before
+/// `Shard` allocation, closing the gap where struct-literal config bypassed
+/// `ShardConfig::new`.
+pub fn validate_shard_config_inputs(
+    command_queue_capacity: usize,
+    trace_capacity: usize,
+    step_budget_per_tick: u64,
+    max_active_runs: usize,
+) -> Result<(), crate::RuntimeError> {
+    if !is_valid_command_queue_capacity(command_queue_capacity) {
+        return Err(crate::RuntimeError::CommandQueueCapacityExceeded {
+            capacity: command_queue_capacity,
+            max: MAX_COMMAND_QUEUE_CAPACITY,
+        });
+    }
+    if !is_valid_trace_capacity(trace_capacity) {
+        return Err(crate::RuntimeError::UnsupportedOperation {
+            operation: "trace_capacity_zero",
+        });
+    }
+    if !is_valid_step_budget_per_tick(step_budget_per_tick) {
+        return Err(crate::RuntimeError::UnsupportedOperation {
+            operation: "step_budget_per_tick_zero",
+        });
+    }
+    if max_active_runs == 0 {
+        return Err(crate::RuntimeError::ActiveRunCapacityZero);
+    }
+    Ok(())
+}
+
 impl Default for ShardConfig {
     fn default() -> Self {
         Self {

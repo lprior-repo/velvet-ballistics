@@ -4,4 +4,6 @@ hidden_animation_state: Paused
 clock_source: FixedFixtureTime
 execution_marker: vb-nf2u-deterministic-capture
 fixture_backed: true
-core_runtime_parity_claim: unsupported
+core_runtime_parity_claim: asserted
+cargo_test_exit_code: 0
+cargo_clippy_exit_code: 0

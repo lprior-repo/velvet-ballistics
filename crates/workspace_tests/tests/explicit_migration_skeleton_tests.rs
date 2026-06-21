@@ -25,7 +25,7 @@
 //! # Running
 //!
 //! ```bash
-//! cargo test -p velvet-ballistics-workspace-tests \
+//! cargo test -p vb_workspace_tests \
 //!   --test explicit_migration_skeleton_tests
 //! ```
 //!

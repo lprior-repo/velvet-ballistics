@@ -173,6 +173,15 @@ pub enum CompileError {
     ExpressionHelperArity { helper: &'static str, expected: usize, actual: usize },
     #[error("action {action:?} has side-effect {side_effect:?} with unsafe retry: {reason}")]
     IdempotencyViolation { action: ActionId, side_effect: SideEffect, reason: Box<str> },
+    /// Master §65: idempotency key ingredient references a non-deterministic
+    /// source (`$random.*`, `$runtime.*`, `$time.*`, `$now`, `$wall_clock.*`).
+    /// Keys must be deterministic across retries and replay; random or
+    /// time-dependent references are rejected at compile time.
+    #[error("idempotency key references non-deterministic {kind:?} source: {reference}")]
+    IdempotencyKeyNotDeterministic {
+        reference: Box<str>,
+        kind: NonDeterministicKind,
+    },
     /// Master §64: the workflow contains an unbounded construct (per the
     /// WholeWorkflowBudget dataflow analyzer). Carries the budget that
     /// triggered the rejection so the compiler can report the offending
@@ -185,4 +194,34 @@ pub enum CompileError {
         /// The whole-workflow budget computed at the point of rejection.
         budget_exceeded: vb_core::budget::WholeWorkflowBudget,
     },
+}
+
+/// Classification of non-deterministic idempotency key references (master §65).
+///
+/// Idempotency keys must be deterministic across retries and replay so the
+/// same logical request produces the same `ActionTicket.idempotency_key`.
+/// References whose root denotes randomness, wall-clock time, or otherwise
+/// non-reproducible state are rejected at compile time before they reach the
+/// runtime check in `vb_core::action::validate::validate_idempotency_key_ingredients`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+#[non_exhaustive]
+pub enum NonDeterministicKind {
+    /// Random or pseudo-random source (`$random.*`).
+    Random = 0,
+    /// Wall-clock or monotonic clock source (`$runtime.now`, `$now`).
+    Time = 1,
+    /// Explicit wall-clock binding (`$wall_clock.*`, `$wallclock.*`, `$clock.*`).
+    WallClock = 2,
+}
+
+impl std::fmt::Display for NonDeterministicKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let label = match self {
+            Self::Random => "random",
+            Self::Time => "time",
+            Self::WallClock => "wall_clock",
+        };
+        f.write_str(label)
+    }
 }

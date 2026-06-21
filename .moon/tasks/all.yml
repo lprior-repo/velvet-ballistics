@@ -351,10 +351,12 @@ tasks:
       - 'crates/*/benches/**/*.rs'
       - '.moon/tasks/all.yml'
     options:
-      # Currently 16 bench files lack a [[bench]] entry (1 in
-      # vb_validate, 15 in workspace_tests). Until those are wired
-      # under separate beads, the gate is allowed to fail with a
-      # diagnostic.
+      # Every `crates/<crate>/benches/*.rs` must be wired into its
+      # crate's Cargo.toml via a `[[bench]]` entry, otherwise the
+      # Criterion harness silently drops the file. The script is
+      # read-only and exits non-zero on any unregistered bench, so
+      # this gate is canonical and binary. Resolved by vb-8x5qk:
+      # all 24 bench files across 5 crates are now registered.
       runInCI: true
 
   primitive-durability-doc:
@@ -531,8 +533,11 @@ tasks:
       - '@globs(sources)'
       - '.moon/tasks/all.yml'
     options:
-      # Requires the xtask crate to be in the workspace; currently
-      # excluded. Keep runInCI off until xtask is re-admitted.
+      # xtask IS in workspace (Cargo.toml:21) but this gate runs the
+      # heavyweight `cargo build -p xtask` step on every source change.
+      # The same forbidden-token scan is duplicated inside lint-src via
+      # custom clippy lints, which already gates CI. Keep runInCI off
+      # to avoid the redundant ~minute build in the affected pipeline.
       runInCI: false
 
   fuzz-minimization:
@@ -1076,9 +1081,11 @@ tasks:
       - 'xtask/src/main.rs'
       - '.moon/tasks/all.yml'
     options:
-      # The xtask crate is presently outside the active Cargo workspace; keep
-      # this policy check explicit until the tooling crate is reactivated and
-      # source-linted under workspace CI.
+      # xtask IS in workspace (Cargo.toml:21). Kept off-CI because the
+      # policy check requires a populated evidence/benchmark-evidence.jsonl
+      # which is only produced by the human nightly benchmark run; an
+      # empty evidence file would yield a false-positive regression.
+      # Re-admit to CI once the evidence path is auto-populated.
       runInCI: false
 
   benchmark-proof:
@@ -1280,10 +1287,12 @@ tasks:
       - '.cargo/config.toml'
       - '.moon/tasks/all.yml'
     options:
-      # The xtask crate is currently outside the active Cargo workspace, so the
-      # cargo xtask alias resolves to a non-member package. Keep this manual
-      # until xtask is either re-admitted and re-linted or split into an
-      # independently buildable tool crate.
+      # xtask IS in workspace (Cargo.toml:21). Kept off-CI deliberately:
+      # contracts check is a developer-time artifact gate that emits
+      # warnings rather than binary failures; the canonical contracts
+      # enforcement lives in `contract-shape` (Cargo-level compile
+      # check) and `lint-src` (clippy on regenerated artifacts). Re-admit
+      # to CI only after contracts become a binary gate.
       runInCI: false
 
   quick:

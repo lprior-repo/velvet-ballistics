@@ -51,8 +51,10 @@ pub(super) fn replay_events_with_schedule_requirement(
             | JournalEvent::RunAdmission { .. }
             | JournalEvent::StepSucceeded { .. }
             | JournalEvent::WaitScheduledEvent { .. }
+            | JournalEvent::WaitCancelledEvent { .. }
             | JournalEvent::AskScheduledEvent { .. }
             | JournalEvent::AskAnsweredEvent { .. }
+            | JournalEvent::AskCancelledEvent { .. }
             | JournalEvent::RetryScheduledEvent { .. }
             | JournalEvent::RunCancelled { .. }
             | JournalEvent::RunKilled { .. }

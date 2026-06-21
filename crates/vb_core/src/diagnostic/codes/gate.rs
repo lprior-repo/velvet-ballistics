@@ -1,0 +1,117 @@
+// Code entries for the [`CodeCategory::Gate`] category (E05xx, 0x0501–0x0513).
+// // This file is a data file intended for inclusion via the `include!` macro.
+
+CodeEntry {
+    symbolic: "EXPRESSION_STACK_EXCEEDED",
+    numeric: 0x0501,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "EXPRESSION_STACK_MISMATCH",
+    numeric: 0x0502,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "ACCESSOR_SLOT_OUT_OF_RANGE",
+    numeric: 0x0503,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "ACCESSOR_PATH_INVALID",
+    numeric: 0x0504,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "SLOT_REFERENCE_OUT_OF_RANGE",
+    numeric: 0x0505,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "LOOP_BODY_STEP_OUT_OF_RANGE",
+    numeric: 0x0506,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "SLOT_DEPENDENCY_CYCLE",
+    numeric: 0x0507,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "NODE_KIND_CONSTRAINT_VIOLATION",
+    numeric: 0x0508,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "ACTION_CONTRACT_MISSING",
+    numeric: 0x0509,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "ACTION_CONTRACT_ORPHAN",
+    numeric: 0x050A,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "SLOT_TYPE_INCONSISTENCY",
+    numeric: 0x050B,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "NON_DETERMINISTIC_PATH",
+    numeric: 0x050C,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "CAPABILITY_NAME_EMPTY",
+    numeric: 0x050D,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "CAPABILITY_NAME_TOO_LONG",
+    numeric: 0x050E,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "CAPABILITY_NAME_INVALID",
+    numeric: 0x050F,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "CAPABILITY_ACTION_MISMATCH",
+    numeric: 0x0510,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "CAPABILITY_DUPLICATE",
+    numeric: 0x0511,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "ACCESSOR_PATH_TOO_DEEP",
+    numeric: 0x0512,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},
+CodeEntry {
+    symbolic: "ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
+    numeric: 0x0513,
+    category: CodeCategory::Gate,
+    deprecated: false,
+},

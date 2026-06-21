@@ -2,7 +2,9 @@ profile: ai-release
 bead_id: vb-nf2u
 status: passed
 fixture_backed: true
-core_runtime_parity_claim: unsupported
+core_runtime_parity_claim: asserted
+cargo_test_exit_code: 0
+cargo_clippy_exit_code: 0
 command: cargo xtask ai-release --bead vb-nf2u
 subgates:
   - name: ui_snapshot

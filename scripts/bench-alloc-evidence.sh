@@ -22,7 +22,7 @@
 #   CARGO_TARGET_DIR     cargo target dir (default: $WORKDIR/target/bench-build)
 #   HEAPTRACK_BIN        path to heaptrack     (default: heaptrack on PATH)
 #   HEAPTRACK_PRINT_BIN  path to heaptrack_print (default: heaptrack_print on PATH)
-#   BENCH_PACKAGE        cargo package name   (default: velvet-ballistics-workspace-tests)
+#   BENCH_PACKAGE        cargo package name   (default: vb_workspace_tests)kspace-tests)
 #   BENCH_NAME           cargo bench name      (default: velvet_ballistics)
 #   BENCH_HASH_OVERRIDE  explicit bench-binary hash (skips discovery)
 #   VB_BENCH_LATENCY_BUDGET_US  bench latency budget (default: 100_000)
@@ -71,7 +71,7 @@ fi
 
 # -- Bench binary discovery ---------------------------------------------------
 CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${WORKDIR}/target/bench-build}"
-BENCH_PACKAGE="${BENCH_PACKAGE:-velvet-ballistics-workspace-tests}"
+BENCH_PACKAGE="${BENCH_PACKAGE:-vb_workspace_tests}"
 BENCH_NAME="${BENCH_NAME:-velvet_ballistics}"
 
 # Allow caller to pin the binary hash; otherwise pick the most recent

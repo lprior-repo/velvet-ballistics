@@ -5,8 +5,11 @@
 //! `in_repeat_body = true` which lifts the `$attempt.*` scope guard).
 
 use super::tables::build_ref_tables;
-use super::validate::validate_compile_reference;
-use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, WorkflowAst};
+use super::validate::{
+    scan_idempotency_key_references, validate_compile_reference,
+    validate_idempotency_key_determinism,
+};
+use crate::ast::{AstExpression, AstMapEntry, AstValue, StepAst, TriggerAst, WorkflowAst};
 use crate::expression::ParsedExpression;
 use crate::{CompileError, CompileErrors};
 use vb_validate::references::RefTables;
@@ -22,10 +25,38 @@ pub(crate) fn validate_workflow_ast(ast: &WorkflowAst) -> Result<(), CompileErro
     collect_references_from_values(&ast.examples, &tables, &mut errors, None);
     // Steps have step context for prior-reference validation
     collect_references_from_steps(&ast.steps, &tables, &mut errors);
+    // Master §65: webhook trigger `unique` is the YAML idempotency-key
+    // surface. Reject non-deterministic references before any step sees
+    // the value, so a workflow with `$runtime.now` in `unique` never
+    // reaches runtime admission.
+    validate_idempotency_key_surface(&ast.trigger, &mut errors);
     if errors.is_empty() {
         Ok(())
     } else {
         Err(CompileErrors(errors))
+    }
+}
+
+/// Master §65 idempotency-key determinism gate for YAML trigger surfaces.
+///
+/// The webhook trigger carries an optional `unique` field whose value is
+/// the per-request idempotency key. References in that string are extracted
+/// and routed through `validate_idempotency_key_determinism`. Triggers
+/// without a `unique` field (manual / schedule / event) have no key surface
+/// here and pass through untouched; future per-action `idempotency.key`
+/// fields will be added at the same call site.
+fn validate_idempotency_key_surface(trigger: &TriggerAst, errors: &mut Vec<CompileError>) {
+    let TriggerAst::Webhook { unique, .. } = trigger else {
+        return;
+    };
+    let Some(unique_text) = unique.as_ref() else {
+        return;
+    };
+    let mut references: Vec<Box<str>> = Vec::new();
+    scan_idempotency_key_references(unique_text.as_ref(), &mut references);
+    let borrowed: Vec<&str> = references.iter().map(Box::as_ref).collect();
+    if let Err(error) = validate_idempotency_key_determinism(&borrowed) {
+        errors.push(error);
     }
 }
 

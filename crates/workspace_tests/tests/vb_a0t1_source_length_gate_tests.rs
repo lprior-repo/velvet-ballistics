@@ -678,7 +678,7 @@ fn test_out_of_scope_vb_cli_xtask_changes_are_routed_with_touched_package_eviden
     }
     assert!(
         implementation.contains(
-            "rtk cargo check -p velvet-ballistics -p xtask -p velvet-ballistics-workspace-tests --all-targets --all-features"
+            "rtk cargo check -p velvet-ballistics -p xtask -p vb_workspace_tests --all-targets --all-features"
         ) && implementation.contains("| PASS | `cargo build (0 crates compiled)`"),
         "out-of-scope vb_cli/xtask routing must include cargo check evidence"
     );

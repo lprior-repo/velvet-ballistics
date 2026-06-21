@@ -26,6 +26,10 @@ name = "aggregate_resource_budget"
 harness = false
 
 [[bench]]
+name = "eval_append_options_micro"
+harness = false
+
+[[bench]]
 name = "expr_eval_micro"
 harness = false
 

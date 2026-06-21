@@ -245,7 +245,7 @@ replay\n\
 owner bead\n\
 critical survivor\n\
 release-risk acceptance\n\
-cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan\n\
+cargo mutants --package vb_workspace_tests --test vb_c3k9_current_api_mutation_plan\n\
 90% mutation kill rate\n\
 exclusion policy",
         REMOVED_UI_MODEL,
@@ -312,7 +312,7 @@ replay\n\
 owner bead\n\
 critical survivor\n\
 release-risk acceptance\n\
-cargo mutants --package velvet-ballistics-workspace-tests --test vb_c3k9_current_api_mutation_plan\n\
+cargo mutants --package vb_workspace_tests --test vb_c3k9_current_api_mutation_plan\n\
 90% mutation kill rate\n\
 exclusion policy",
         REMOVED_UI_MODEL,
@@ -383,7 +383,7 @@ fn admission_branch_mutation_plan_rejects_unrelated_smoke_substitution() {
         PLAN.contains("Runtime admission branch")
             && PLAN.contains("test_mutation_gate_fails_when_admission_branch_removed")
             && PLAN.contains(
-                "cargo mutants --package velvet-ballistics-workspace-tests --test vb_njju_mutation_fuzz_property_closure"
+                "cargo mutants --package vb_workspace_tests --test vb_njju_mutation_fuzz_property_closure"
             ),
         "vb-njju admission-branch mutation plan must name exact scope, test, and scoped cargo-mutants command"
     );

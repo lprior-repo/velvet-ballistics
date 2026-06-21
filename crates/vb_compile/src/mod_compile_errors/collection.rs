@@ -84,7 +84,9 @@ impl CompileError {
             | Self::ExpressionUnknownIdentifier { .. }
             | Self::ExpressionLoweringUnsupported { .. }
             | Self::ExpressionHelperArity { .. } => "INVALID_EXPRESSION",
-            Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
+            Self::IdempotencyViolation { .. } | Self::IdempotencyKeyNotDeterministic { .. } => {
+                "IDEMPOTENCY_VIOLATION"
+            }
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
             Self::UnboundedWorkflow { .. } => "UNBOUNDED_WORKFLOW",

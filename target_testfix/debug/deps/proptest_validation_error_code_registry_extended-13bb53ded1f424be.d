@@ -1,0 +1,5 @@
+/home/lewis/src/velvet-ballistics/target_testfix/debug/deps/proptest_validation_error_code_registry_extended-13bb53ded1f424be.d: crates/vb_validate/tests/proptest_validation_error_code_registry_extended.rs
+
+/home/lewis/src/velvet-ballistics/target_testfix/debug/deps/proptest_validation_error_code_registry_extended-13bb53ded1f424be: crates/vb_validate/tests/proptest_validation_error_code_registry_extended.rs
+
+crates/vb_validate/tests/proptest_validation_error_code_registry_extended.rs:

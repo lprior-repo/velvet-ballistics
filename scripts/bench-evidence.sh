@@ -73,7 +73,7 @@ mkdir -p "${EVIDENCE_DIR}" "${LOGS_DIR}"
 ONLY="all"
 FORCE="0"
 DRY_RUN="0"
-BENCH_PACKAGE="${BENCH_PACKAGE:-velvet-ballistics-workspace-tests}"
+BENCH_PACKAGE="${BENCH_PACKAGE:-vb_workspace_tests}"
 BENCH_NAME="${BENCH_NAME:-velvet_ballistics}"
 
 usage() {

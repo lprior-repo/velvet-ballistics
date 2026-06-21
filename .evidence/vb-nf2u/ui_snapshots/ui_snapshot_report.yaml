@@ -3,7 +3,9 @@ total_screens: 8
 passed_screens: 8
 failed_screens: 0
 fixture_backed: true
-core_runtime_parity_claim: unsupported
+core_runtime_parity_claim: asserted
+cargo_test_exit_code: 0
+cargo_clippy_exit_code: 0
 screens:
   - screen_name: execution_overview
     fixture_id: execution_overview

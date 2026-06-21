@@ -23,8 +23,10 @@ impl JournalEvent {
             | Self::ActionFailedEvent { run, .. }
             | Self::SlotWrittenEvent { run, .. }
             | Self::WaitScheduledEvent { run, .. }
+            | Self::WaitCancelledEvent { run, .. }
             | Self::AskScheduledEvent { run, .. }
             | Self::AskAnsweredEvent { run, .. }
+            | Self::AskCancelledEvent { run, .. }
             | Self::RetryScheduledEvent { run, .. }
             | Self::RunCancelled { run, .. }
             | Self::RunKilled { run, .. }
@@ -54,8 +56,10 @@ impl JournalEvent {
             | Self::ActionFailedEvent { seq, .. }
             | Self::SlotWrittenEvent { seq, .. }
             | Self::WaitScheduledEvent { seq, .. }
+            | Self::WaitCancelledEvent { seq, .. }
             | Self::AskScheduledEvent { seq, .. }
             | Self::AskAnsweredEvent { seq, .. }
+            | Self::AskCancelledEvent { seq, .. }
             | Self::RetryScheduledEvent { seq, .. }
             | Self::RunCancelled { seq, .. }
             | Self::RunKilled { seq, .. }
@@ -84,8 +88,10 @@ impl JournalEvent {
             }
             Self::ActionFailedEvent { .. } => RecordKind::ActionFailed,
             Self::WaitScheduledEvent { .. } => RecordKind::WaitScheduled,
+            Self::WaitCancelledEvent { .. } => RecordKind::WaitCancelled,
             Self::AskScheduledEvent { .. } => RecordKind::AskScheduled,
             Self::AskAnsweredEvent { .. } => RecordKind::AskAnswered,
+            Self::AskCancelledEvent { .. } => RecordKind::AskCancelled,
             Self::RetryScheduledEvent { .. } => RecordKind::RetryScheduled,
             Self::RunCancelled { .. } => RecordKind::RunCancelled,
             Self::RunKilled { .. } => RecordKind::RunKilled,
@@ -126,8 +132,10 @@ impl JournalEvent {
             | Self::ActionFailedEvent { attempt, .. }
             | Self::SlotWrittenEvent { attempt, .. }
             | Self::WaitScheduledEvent { attempt, .. }
+            | Self::WaitCancelledEvent { attempt, .. }
             | Self::AskScheduledEvent { attempt, .. }
             | Self::AskAnsweredEvent { attempt, .. }
+            | Self::AskCancelledEvent { attempt, .. }
             | Self::RetryScheduledEvent { attempt, .. }
             | Self::StepStarted { attempt, .. }
             | Self::RunCancelled { attempt, .. }

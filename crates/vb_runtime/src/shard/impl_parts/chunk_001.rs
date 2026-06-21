@@ -4,7 +4,7 @@ use crate::AskAnswer;
 
 impl Shard {
     /// Creates a new shard with the given configuration.
-    pub fn new(config: ShardConfig) -> Self {
+    pub fn new(config: ShardConfig) -> RuntimeResult<Self> {
         Self::new_with_journal_and_artifact_store(
             config,
             VolatileRuntimeJournal::shared(),
@@ -17,8 +17,14 @@ impl Shard {
         config: ShardConfig,
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
-    ) -> Self {
-        Self {
+    ) -> RuntimeResult<Self> {
+        validate_shard_config_inputs(
+            config.command_queue_capacity,
+            config.trace_capacity,
+            config.step_budget_per_tick,
+            config.max_active_runs,
+        )?;
+        Ok(Self {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
@@ -44,7 +50,7 @@ impl Shard {
             coalesce_buffer: Vec::new(),
             #[cfg(feature = "test-util")]
             pending_workflows: IndexMap::new(),
-        }
+        })
     }
 
     /// Creates a new shard with the given configuration and journal sink.
@@ -55,7 +61,10 @@ impl Shard {
     /// `MissingAcceptedArtifactStore` is used so direct runtime construction without a
     /// storage-backed accepted-artifact source rejects admission instead of silently
     /// accepting unbacked artifacts.
-    pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
+    pub fn new_with_journal(
+        config: ShardConfig,
+        journal: SharedRuntimeJournal,
+    ) -> RuntimeResult<Self> {
         let artifact_store: crate::admission::SharedAcceptedArtifactStore = match config.policy {
             vb_core::policy::RuntimePolicy::Relaxed => {
                 crate::admission::AlwaysPresentArtifactStore::shared()
@@ -77,7 +86,13 @@ impl Shard {
     /// Enqueues a command. Returns `QueueFull` on overflow.
     /// For submit variants, validates journal health before enqueueing
     /// because handle_submit writes to journal before returning.
+    /// Returns `ShutdownInProgress` once the shard has begun shutting down,
+    /// except for the `Shutdown` sentinel which is always permitted so the
+    /// caller can drive the drain to completion.
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+        if self.shutting_down && !matches!(cmd, ShardCommand::Shutdown) {
+            return Err(RuntimeError::ShutdownInProgress);
+        }
         match &cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::SubmitPrePersisted { .. }

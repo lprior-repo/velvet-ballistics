@@ -162,11 +162,11 @@ const MEMBERS: [(&str, &str); 19] = [
     ("crates/vb_test_util", "vb_test_util"),
     (
         "crates/workspace_tests/idempotency_suite",
-        "velvet-ballistics-idempotency-workspace-tests",
+        "vb_idempotency_suite",
     ),
     (
         "crates/workspace_tests",
-        "velvet-ballistics-workspace-tests",
+        "vb_workspace_tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
     ("xtask", "xtask"),

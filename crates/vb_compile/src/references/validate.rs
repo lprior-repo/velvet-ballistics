@@ -8,8 +8,16 @@
 //! appear inside a `Repeat` body. The flag is propagated from
 //! `collect_references_from_repeat_body` and is `false` for top-level
 //! references (where `$attempt.*` is rejected with `InvalidVariableScope`).
+//!
+//! Master §65 idempotency-key determinism gate lives here: the function
+//! [`validate_idempotency_key_determinism`] rejects random / time / wall-clock
+//! references wherever a YAML idempotency-key surface is encountered. The
+//! webhook trigger `unique` field is the only current YAML surface that
+//! materialises an idempotency-key string; future per-action idempotency-key
+//! fields will route through the same function.
 
 use super::errors::map_validation_error;
+use crate::mod_compile_errors::kind::NonDeterministicKind;
 use crate::{CompileError, SourceMark};
 use vb_validate::references::{RefTables, validate_single_reference_with_context};
 
@@ -147,4 +155,178 @@ fn check_accessor_path(
         });
     }
     None
+}
+
+// ── Master §65 idempotency-key determinism gate ─────────────────────────
+
+/// Validates that a list of references feeding an idempotency key are
+/// deterministic (master plan §65).
+///
+/// Idempotency keys must be reproducible across retries and replay so that
+/// the same logical action request always produces the same
+/// `ActionTicket.idempotency_key`. References rooted at `random`,
+/// `time`, `now`, `runtime`, `wall_clock`, `wallclock`, or `clock` denote
+/// non-reproducible state and are rejected with
+/// [`CompileError::IdempotencyKeyNotDeterministic`].
+///
+/// This is the compile-time companion to the runtime check in
+/// `vb_core::action::validate::validate_idempotency_key_ingredients`. The
+/// runtime check inspects the actual `Taint` of slots feeding the key and
+/// cannot see whether a slot was sourced from a non-deterministic reference
+/// (deterministic taint is permitted for derived values). The compile-time
+/// check sits in front of the runtime and rejects the source reference before
+/// any slot is materialised.
+///
+/// # Signature
+///
+/// The function takes a borrowed slice of reference strings (typically
+/// `$root.path...`) extracted from the YAML idempotency-key surface. The
+/// first non-deterministic reference is reported and short-circuits the
+/// check; the remaining references are not inspected.
+pub(super) fn validate_idempotency_key_determinism(
+    references: &[&str],
+) -> Result<(), CompileError> {
+    let mut index = 0;
+    while index < references.len() {
+        let Some(reference) = references.get(index) else {
+            break;
+        };
+        reject_non_deterministic_reference(reference)?;
+        index = match index.checked_add(1) {
+            Some(next) => next,
+            None => break,
+        };
+    }
+    Ok(())
+}
+
+/// Scans a YAML idempotency-key surface string for `$...` references and
+/// rejects any reference rooted at a non-deterministic source.
+///
+/// Used to extract references from free-form key strings (the webhook
+/// trigger `unique` field today, and any future per-action
+/// `idempotency.key` field). The scanner is conservative: a `$` not
+/// followed by an ASCII identifier is left alone, so plain text like
+/// "USD" or "v2" is not misread as a reference.
+pub(super) fn scan_idempotency_key_references(text: &str, out: &mut Vec<Box<str>>) {
+    let bytes = text.as_bytes();
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let Some(dollar_offset) = find_dollar(bytes, cursor) else {
+            break;
+        };
+        let Some(reference_start) = dollar_offset.checked_add(1) else {
+            break;
+        };
+        let Some(first_byte) = bytes.get(reference_start).copied() else {
+            break;
+        };
+        if !is_reference_start(first_byte) {
+            cursor = reference_start;
+            continue;
+        }
+        let (reference_end, after_end) = scan_reference(bytes, reference_start);
+        let reference_text = match std::str::from_utf8(&bytes[reference_start..reference_end]) {
+            Ok(text) => text,
+            Err(_) => {
+                cursor = after_end;
+                continue;
+            }
+        };
+        let mut reference = String::with_capacity(reference_text.len().saturating_add(1));
+        reference.push('$');
+        reference.push_str(reference_text);
+        out.push(reference.into_boxed_str());
+        cursor = after_end;
+    }
+}
+
+fn reject_non_deterministic_reference(reference: &str) -> Result<(), CompileError> {
+    let Some(body) = reference.strip_prefix('$') else {
+        return Ok(());
+    };
+    let root = match body.split_once('.') {
+        Some((root, _)) => root,
+        None => body,
+    };
+    match root {
+        "random" => Err(CompileError::IdempotencyKeyNotDeterministic {
+            reference: Box::from(reference),
+            kind: NonDeterministicKind::Random,
+        }),
+        "time" | "now" => Err(CompileError::IdempotencyKeyNotDeterministic {
+            reference: Box::from(reference),
+            kind: NonDeterministicKind::Time,
+        }),
+        "runtime" => Err(CompileError::IdempotencyKeyNotDeterministic {
+            reference: Box::from(reference),
+            kind: NonDeterministicKind::Time,
+        }),
+        "wall_clock" | "wallclock" | "clock" => {
+            Err(CompileError::IdempotencyKeyNotDeterministic {
+                reference: Box::from(reference),
+                kind: NonDeterministicKind::WallClock,
+            })
+        }
+        _ => Ok(()),
+    }
+}
+
+fn find_dollar(bytes: &[u8], from: usize) -> Option<usize> {
+    let mut cursor = from;
+    while cursor < bytes.len() {
+        if bytes.get(cursor).copied()? == b'$' {
+            return Some(cursor);
+        }
+        cursor = cursor.checked_add(1)?;
+    }
+    None
+}
+
+fn is_reference_start(byte: u8) -> bool {
+    byte == b'_' || byte.is_ascii_alphabetic()
+}
+
+fn is_reference_continuation(byte: u8) -> bool {
+    byte == b'_' || byte.is_ascii_alphanumeric()
+}
+
+fn scan_reference(bytes: &[u8], start: usize) -> (usize, usize) {
+    let mut end = start;
+    while let Some(byte) = bytes.get(end).copied() {
+        if !is_reference_continuation(byte) {
+            break;
+        }
+        end = match end.checked_add(1) {
+            Some(next) => next,
+            None => break,
+        };
+    }
+    let mut path_end = end;
+    while let Some(byte) = bytes.get(path_end).copied() {
+        if byte == b'.' {
+            let segment_start = match path_end.checked_add(1) {
+                Some(next) => next,
+                None => break,
+            };
+            match bytes.get(segment_start).copied() {
+                Some(next_byte) if is_reference_continuation(next_byte) => {
+                    path_end = segment_start;
+                    while let Some(byte) = bytes.get(path_end).copied() {
+                        if !is_reference_continuation(byte) {
+                            break;
+                        }
+                        path_end = match path_end.checked_add(1) {
+                            Some(next) => next,
+                            None => break,
+                        };
+                    }
+                }
+                _ => break,
+            }
+        } else {
+            break;
+        }
+    }
+    (path_end, path_end)
 }

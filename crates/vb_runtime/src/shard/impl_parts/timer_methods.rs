@@ -138,9 +138,9 @@ mod timer_fired_command_tests {
     }
 
     #[test]
-    fn timer_fired_command_returns_none_when_no_pending_timer() {
+    fn timer_fired_command_returns_none_when_no_pending_timer() -> Result<(), RuntimeError> {
         // Given an empty shard with no pending timers.
-        let shard = Shard::new(small_config());
+        let shard = Shard::new(small_config())?;
         let run = RunId::new(42_001);
 
         // When timer_fired_command is called for a run with no pending timer.
@@ -148,12 +148,14 @@ mod timer_fired_command_tests {
 
         // Then it must return None rather than fabricating authority.
         assert!(result.is_none(), "no pending timer must yield None");
+        Ok(())
     }
 
     #[test]
-    fn timer_fired_command_returns_real_deadline_when_pending_timer_exists() {
+    fn timer_fired_command_returns_real_deadline_when_pending_timer_exists()
+    -> Result<(), RuntimeError> {
         // Given a shard with one real pending timer armed for a run.
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config())?;
         let run = RunId::new(42_002);
         let armed_deadline = Instant::now();
         let armed_timer = PendingTimer {
@@ -171,5 +173,6 @@ mod timer_fired_command_tests {
             kind: armed_timer.kind,
         });
         assert_eq!(shard.timer_fired_command(run), expected);
+        Ok(())
     }
 }
