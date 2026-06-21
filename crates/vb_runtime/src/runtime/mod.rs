@@ -1,17 +1,14 @@
 #![forbid(unsafe_code)]
 //! Multi-shard runtime facade routing public commands to owning shards.
 // canonical-path: crates/vb_runtime/src/runtime/mod.rs (submodules in
-// crates/vb_runtime/src/runtime/{admission,runtime_ask,runtime_control,runtime_construction,runtime_metrics,runtime_recovery,runtime_sharding}.rs)
-// crates/vb_runtime/src/runtime/admission/{admission_check,admission_policy,admission_result}.rs)
+// crates/vb_runtime/src/runtime/{admission,runtime_ask,runtime_control,runtime_metrics}.rs
+// and crates/vb_runtime/src/runtime/admission/{admission_check,admission_policy,admission_result}.rs)
 // Declared as `pub mod runtime;` in crates/vb_runtime/src/lib.rs.
 
 mod admission;
 mod runtime_ask;
-mod runtime_construction;
 mod runtime_control;
 mod runtime_metrics;
-mod runtime_recovery;
-mod runtime_sharding;
 
 pub use runtime_control::ActiveRunSummary;
 
