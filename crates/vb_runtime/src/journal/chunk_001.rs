@@ -272,9 +272,20 @@ pub trait RuntimeJournal: Send + Sync {
         // `RuntimeJournal` and matches the pre-P2-14a behavior for the
         // `QueuedStorageRuntimeJournal` (which uses an in-memory queue; the
         // queue's own flush batch provides cross-event atomicity downstream).
+        //
+        // RE-017: preflight every per-event sequence with `checked_add` and
+        // reject the entire batch on overflow BEFORE any append. Saturation
+        // would silently duplicate `EventSeq` across events, which violates
+        // the deterministic batch contract and corrupts journal state.
+        preflight_batch_sequences(events.len(), seq_start)?;
         for (offset, event) in events.iter().enumerate() {
             let offset_u64 = u64::try_from(offset).map_err(|_| RuntimeError::EncodeFailed)?;
-            let seq = EventSeq::new(seq_start.get().saturating_add(offset_u64));
+            let seq = EventSeq::new(
+                seq_start
+                    .get()
+                    .checked_add(offset_u64)
+                    .ok_or(sequence_overflow_runtime_error())?,
+            );
             self.append_sequenced(event.clone(), seq)?;
         }
         Ok(())
@@ -344,3 +355,38 @@ pub struct StorageRuntimeJournal {
 
 include!("chunk_001_noop.rs");
 include!("chunk_001_volatile.rs");
+
+/// Preflight a batch's per-event sequence range.
+///
+/// RE-017: checks that adding `count - 1` offsets to `seq_start` does not
+/// overflow `u64`. If any sequence in the range would saturate, returns a
+/// typed `RuntimeError::StorageJournalAppend { SequenceOverflow }` so the
+/// caller rejects the whole batch BEFORE appending or staging any event.
+///
+/// `count == 0` is permitted and returns `Ok(())` (no per-event sequence is
+/// generated).
+pub(crate) fn preflight_batch_sequences(
+    count: usize,
+    seq_start: EventSeq,
+) -> RuntimeResult<()> {
+    if count == 0 {
+        return Ok(());
+    }
+    let last_offset = count
+        .checked_sub(1)
+        .ok_or(sequence_overflow_runtime_error())?;
+    let last_offset_u64 = u64::try_from(last_offset).map_err(|_| RuntimeError::EncodeFailed)?;
+    seq_start
+        .get()
+        .checked_add(last_offset_u64)
+        .ok_or(sequence_overflow_runtime_error())?;
+    Ok(())
+}
+
+/// Builds the typed overflow error used by RE-017-correcting batch paths.
+pub(crate) fn sequence_overflow_runtime_error() -> RuntimeError {
+    use std::sync::Arc;
+    RuntimeError::StorageJournalAppend {
+        source: Arc::new(vb_storage::JournalError::SequenceOverflow),
+    }
+}

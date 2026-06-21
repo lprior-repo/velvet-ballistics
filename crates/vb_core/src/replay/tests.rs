@@ -1655,14 +1655,64 @@ fn collect_empty_source_frame(
 
 #[test]
 fn replay_collect_start_rejects_zero_page_size() -> Result<(), CoreError> {
-    match replay_collect_start_zero_page_size()? {
-        Err(ReplayError::Internal { reason }) => {
-            assert_eq!(reason, "collect page size was zero during replay");
-            Ok(())
-        }
-        Err(other) => Err(replay_err_to_core(other)),
-        Ok(()) => Err(CoreError::InternalInvariantViolation {
-            reason: "expected zero page size replay error",
+    // CW-009 closes the per-node resource contract hole: zero `page_size`
+    // is now rejected at compile time, so the plan cannot even be built.
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(0),
+                limit: 4,
+                page_size: 0,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            output: Some(SlotIdx::new(1)),
+            next: None,
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+            output: None,
+            next: Some(StepIdx::new(2)),
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+            output: None,
+            next: None,
+        },
+    ];
+    let parts = WorkflowParts {
+        name: "test_replay".into(),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        nodes: nodes.into(),
+        expressions: vec![].into(),
+        accessors: vec![].into(),
+        constants: vec![].into(),
+        slot_count: 8,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    match crate::workflow::CompiledWorkflow::try_from_parts(parts) {
+        Err(crate::workflow::WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(CoreError::InternalInvariantViolation {
+            reason: "expected max_collect_items rejection",
+        }),
+        Ok(_) => Err(CoreError::InternalInvariantViolation {
+            reason: "expected zero page size to fail validation",
         }),
     }
 }

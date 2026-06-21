@@ -8,9 +8,9 @@
 //! authoritative source of truth for crash recovery.
 
 #[cfg(kani)]
-use std::collections::{BTreeMap as Map, BTreeSet as Set};
+use std::collections::{BTreeMap as Map, BTreeSet as Set, VecDeque};
 #[cfg(not(kani))]
-use std::collections::{HashMap as Map, HashSet as Set};
+use std::collections::{HashMap as Map, HashSet as Set, VecDeque};
 
 use vb_core::action::{ActionError, ActionTicket, Idempotency};
 
@@ -35,11 +35,14 @@ pub struct IdempotencyTracker {
     /// Map from idempotency key to the completed ticket (for all classes).
     completed: Map<u128, ActionTicket>,
     /// Insertion order for FIFO eviction.
-    order: Vec<u128>,
+    ///
+    /// RS-003: this `VecDeque` stays bounded at `capacity` because eviction
+    /// `pop_front`s the candidate key and either evicts it (success) or
+    /// discards it (dead entry that was already removed from `completed`).
+    /// No dead keys accumulate in `order` between evictions.
+    order: VecDeque<u128>,
     /// Maximum number of entries before eviction.
     capacity: usize,
-    /// Position of the next slot to overwrite in `order` during eviction.
-    cursor: usize,
     /// Set of idempotency keys for `AtLeastOnceExternal` actions that have
     /// completed. Kept separate so policy decision can be made without
     /// consulting the full `completed` map.
@@ -70,9 +73,8 @@ impl IdempotencyTracker {
         let effective_capacity = capacity.max(1);
         Self {
             completed: Map::new(),
-            order: Vec::with_capacity(effective_capacity),
+            order: VecDeque::with_capacity(effective_capacity),
             capacity: effective_capacity,
-            cursor: 0,
             at_least_once_completed: Set::new(),
         }
     }
@@ -111,7 +113,7 @@ impl IdempotencyTracker {
         }
         self.evict_if_full();
         self.completed.insert(ticket.idempotency_key, *ticket);
-        self.order.push(ticket.idempotency_key);
+        self.order.push_back(ticket.idempotency_key);
         Ok(())
     }
 
@@ -204,27 +206,25 @@ impl IdempotencyTracker {
     }
 
     /// Evicts the oldest entry if the tracker is at or above capacity.
+    ///
+    /// RS-003: walks from the front of `order`, popping each candidate key
+    /// in O(1). A popped key that is still present in `completed` is
+    /// evicted and the walk terminates. A popped key that is no longer in
+    /// `completed` (already evicted earlier) is discarded, keeping `order`
+    /// bounded at `capacity` instead of accumulating dead entries.
     fn evict_if_full(&mut self) {
         if self.completed.len() < self.capacity {
             return;
         }
-        // Try to evict from the ring cursor position. We bound iterations
-        // to the order length to guarantee termination even if every key
-        // has already been removed from the HashMap.
-        let max_attempts = self.order.len();
-        let mut attempts = 0;
-        while attempts < max_attempts {
-            attempts = match attempts.checked_add(1) {
-                Some(n) => n,
-                None => break,
-            };
-            let Some(&key) = self.order.get(self.cursor) else {
+        // Bound iterations to the order length so an all-dead order still
+        // terminates with a stable state. After this loop, either one live
+        // entry was evicted (return) or every entry was dead (order empty).
+        let bound = self.order.len();
+        for _ in 0..bound {
+            let Some(key) = self.order.pop_front() else {
                 break;
             };
-            let removed = self.completed.remove(&key);
-            let next = self.cursor.saturating_add(1);
-            self.cursor = if next >= self.order.len() { 0 } else { next };
-            if removed.is_some() {
+            if self.completed.remove(&key).is_some() {
                 return;
             }
         }

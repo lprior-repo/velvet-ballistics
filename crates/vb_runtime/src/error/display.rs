@@ -46,6 +46,30 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionCapabilityDenied { .. } => {
             Some("admission rejected: capability denied")
         }
+        RuntimeError::AdmissionResourceCapacityExceeded { .. } => {
+            Some("admission rejected: resource capacity exceeded")
+        }
+        RuntimeError::AdmissionBudgetPolicyExceeded { .. } => {
+            Some("admission rejected: budget policy exceeded")
+        }
+        RuntimeError::AdmissionResourceBudgetOverflow { .. } => {
+            Some("admission rejected: resource budget overflow")
+        }
+        RuntimeError::AdmissionResourceBudgetUnderflow { .. } => {
+            Some("admission rejected: resource budget underflow")
+        }
+        RuntimeError::AdmissionResourceBudgetInvalidCapacity { .. } => {
+            Some("admission rejected: resource budget invalid capacity")
+        }
+        RuntimeError::AdmissionArtifactEnvelopeDecodeFailed => {
+            Some("admission rejected: artifact envelope decode failed")
+        }
+        RuntimeError::AdmissionArtifactInvalidGateCount { .. } => {
+            Some("admission rejected: artifact invalid gate count")
+        }
+        RuntimeError::AdmissionArtifactInvalidProofFlag { .. } => {
+            Some("admission rejected: artifact invalid proof flag")
+        }
         RuntimeError::AdmissionBudgetExceeded { .. } => {
             Some("admission rejected: workflow step count exceeds per-workflow ceiling")
         }

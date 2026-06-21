@@ -24,13 +24,15 @@ impl Shard {
         // Start a fresh coalesce window when the counter is at zero.
         // If a previous window failed to flush, the buffered events are
         // still present; we retry the flush here. A successful flush
-        // opens a new window, while a failed flush leaves the counter at
-        // zero so the next tick can retry (RQ-W0-19: failed flushes must
-        // not drop or rewrite events).
+        // opens a new window of `window` ticks; this matches
+        // `coalesce_window_ticks: N` semantics so that exactly N
+        // dispatches occur between flushes (RS-008 off-by-one fix).
+        // A failed flush leaves the counter at zero so the next tick
+        // can retry (RQ-W0-19: failed flushes must not drop or rewrite
+        // events).
         if self.current_coalesce_window_remaining == 0 {
             if self.flush_coalesce_buffer().is_ok() {
-                let window = self.coalesce_window_ticks;
-                self.current_coalesce_window_remaining = window.saturating_sub(1);
+                self.current_coalesce_window_remaining = self.coalesce_window_ticks;
             }
         }
 

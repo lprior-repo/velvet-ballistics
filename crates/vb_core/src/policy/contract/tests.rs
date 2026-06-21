@@ -176,3 +176,230 @@ fn test_new_validates_zero_retry_attempts() {
         "zero retry_attempts must surface ExceedsHardLimit with field=retry_attempts, value=0, got {result:?}"
     );
 }
+
+#[test]
+fn test_new_validates_zero_trace_ring_capacity() {
+    let mut config = strict_config();
+    config.trace_ring_capacity = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "trace_ring_capacity", value: 0, .. })
+        ),
+        "zero trace_ring_capacity must surface ExceedsHardLimit with field=trace_ring_capacity, value=0, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_trace_ring_capacity_exceeds_limit() {
+    let mut config = strict_config();
+    config.trace_ring_capacity = MAX_TRACE_RING_CAPACITY + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "trace_ring_capacity",
+                value: v,
+                limit: l,
+            }) if v > l
+        ),
+        "trace_ring_capacity > MAX_TRACE_RING_CAPACITY must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_zero_for_each_item_count() {
+    let mut config = strict_config();
+    config.for_each_item_count = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "for_each_item_count", value: 0, .. })
+        ),
+        "zero for_each_item_count must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_for_each_item_count_exceeds_limit() {
+    let mut config = strict_config();
+    config.for_each_item_count = MAX_FOR_EACH_ITEMS + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "for_each_item_count", .. })
+        ),
+        "for_each_item_count > MAX_FOR_EACH_ITEMS must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_zero_collect_pages() {
+    let mut config = strict_config();
+    config.collect_pages = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_pages", value: 0, .. })
+        ),
+        "zero collect_pages must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_collect_pages_exceeds_limit() {
+    let mut config = strict_config();
+    config.collect_pages = MAX_COLLECT_PAGES + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_pages", .. })
+        ),
+        "collect_pages > MAX_COLLECT_PAGES must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_zero_collect_time_seconds() {
+    let mut config = strict_config();
+    config.collect_time_seconds = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_time_seconds", value: 0, .. })
+        ),
+        "zero collect_time_seconds must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_collect_time_seconds_exceeds_limit() {
+    let mut config = strict_config();
+    config.collect_time_seconds = MAX_COLLECT_TIME_SECONDS + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_time_seconds", .. })
+        ),
+        "collect_time_seconds > MAX_COLLECT_TIME_SECONDS must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_zero_repeat_time_seconds() {
+    let mut config = strict_config();
+    config.repeat_time_seconds = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "repeat_time_seconds", value: 0, .. })
+        ),
+        "zero repeat_time_seconds must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_repeat_time_seconds_exceeds_limit() {
+    let mut config = strict_config();
+    config.repeat_time_seconds = MAX_REPEAT_TIME_SECONDS + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "repeat_time_seconds", .. })
+        ),
+        "repeat_time_seconds > MAX_REPEAT_TIME_SECONDS must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_zero_max_wait_duration_seconds() {
+    let mut config = strict_config();
+    config.max_wait_duration_seconds = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "max_wait_duration_seconds", value: 0, .. })
+        ),
+        "zero max_wait_duration_seconds must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_max_wait_duration_seconds_exceeds_limit() {
+    let mut config = strict_config();
+    config.max_wait_duration_seconds = MAX_WAIT_DURATION_SECONDS + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "max_wait_duration_seconds", .. })
+        ),
+        "max_wait_duration_seconds > MAX_WAIT_DURATION_SECONDS must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_zero_ask_timeout_seconds() {
+    let mut config = strict_config();
+    config.ask_timeout_seconds = 0;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "ask_timeout_seconds", value: 0, .. })
+        ),
+        "zero ask_timeout_seconds must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_ask_timeout_seconds_exceeds_limit() {
+    let mut config = strict_config();
+    config.ask_timeout_seconds = MAX_ASK_TIMEOUT_SECONDS + 1;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "ask_timeout_seconds", .. })
+        ),
+        "ask_timeout_seconds > MAX_ASK_TIMEOUT_SECONDS must surface ExceedsHardLimit, got {result:?}"
+    );
+}
+
+#[test]
+fn test_new_validates_max_trace_ring_capacity_boundary() {
+    let mut config = strict_config();
+    config.trace_ring_capacity = MAX_TRACE_RING_CAPACITY;
+    let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
+    assert!(
+        result.is_ok(),
+        "trace_ring_capacity == MAX_TRACE_RING_CAPACITY must be accepted, got {result:?}"
+    );
+}
+
+#[test]
+fn test_canonical_profiles_validate_against_hard_limits() {
+    assert!(
+        RuntimeLimitsProfile::strict().to_policy().absolute_max_trace_events
+            <= u64::try_from(MAX_TRACE_RING_CAPACITY).unwrap_or(u64::MAX)
+    );
+    assert!(
+        RuntimeLimitsProfile::journaled().to_policy().absolute_max_trace_events
+            <= u64::try_from(MAX_TRACE_RING_CAPACITY).unwrap_or(u64::MAX)
+    );
+    assert!(
+        RuntimeLimitsProfile::relaxed().to_policy().absolute_max_trace_events
+            <= u64::try_from(MAX_TRACE_RING_CAPACITY).unwrap_or(u64::MAX)
+    );
+}

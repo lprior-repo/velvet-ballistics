@@ -16,8 +16,18 @@ pub(crate) fn current_timestamp() -> u64 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ActionFailureOutcome {
+    /// Retry the failed action at its current step. The retry attempt counter
+    /// is incremented on commit.
     RetryNow,
-    DriveHandler,
+    /// Drive the run into the error-handler step and (optionally) write
+    /// the failure slot before the handler runs.
+    DriveHandler {
+        /// Handler step that will resume the run.
+        handler: vb_core::ids::StepIdx,
+        /// Optional slot index that receives the failed step id.
+        error_slot: Option<vb_core::ids::SlotIdx>,
+    },
+    /// Fail the run with no error handler to drive.
     FailRun,
 }
 
@@ -249,4 +259,59 @@ pub(crate) fn retry_is_available(
     }
     let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
     crate::shard::helpers::record_retry_attempt(state, ticket, policy)
+}
+
+/// Pure read-only check for retry availability without mutating attempt counters.
+///
+/// RS-105: used by `preflight_action_failure` so the durable failure record
+/// can be journaled BEFORE any retry attempt is consumed. The mutation
+/// (`record_retry_attempt`) runs only after the journal append succeeds.
+pub(crate) fn retry_is_available_check(
+    state: &RunState,
+    ticket: ActionTicket,
+    retry_policy: vb_core::action::RetryPolicy,
+) -> RuntimeResult<bool> {
+    if retry_policy != vb_core::action::RetryPolicy::Retryable
+        || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+    {
+        return Ok(false);
+    }
+    let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+    let slot = state
+        .action_attempts
+        .get(ticket.step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    let (_, can_retry) = crate::shard::helpers::retry::retry_attempt_after(
+        Some(slot),
+        ticket.attempt,
+        policy.max_attempts,
+    )
+    .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+    Ok(can_retry)
+}
+
+/// Pure preflight for an action failure.
+///
+/// RS-105: returns the [`ActionFailureOutcome`] without mutating the run
+/// state. The caller journals the `ActionFailed` event first, then applies
+/// the mutation implied by the outcome. If the journal append fails, no
+/// retry counter is consumed and no handler jump is scheduled.
+pub(crate) fn preflight_action_failure(
+    state: &RunState,
+    ticket: ActionTicket,
+    retry_policy: vb_core::action::RetryPolicy,
+) -> RuntimeResult<ActionFailureOutcome> {
+    crate::shard::helpers::validate_action_completion(state, ticket)?;
+    if retry_is_available_check(state, ticket, retry_policy)? {
+        return Ok(ActionFailureOutcome::RetryNow);
+    }
+    Ok(
+        match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
+            Some((handler, error_slot)) => {
+                ActionFailureOutcome::DriveHandler { handler, error_slot }
+            }
+            None => ActionFailureOutcome::FailRun,
+        },
+    )
 }

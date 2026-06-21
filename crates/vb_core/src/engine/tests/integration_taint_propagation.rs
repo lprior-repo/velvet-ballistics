@@ -1263,21 +1263,28 @@ fn derived_from_secret_not_promoted_to_secret_during_eval() -> Result<(), String
 // Error Handling Tests (B-200 to B-211)
 // =============================================================================
 
-// B-200: eval_expr_inner returns SlotOutOfBounds on invalid slot access
+// B-200: eval_expr_inner returns SlotOutOfBounds on invalid slot access.
+// CW-005 closes the gap where `LoadSlot` was not bounds-checked against
+// `slot_count`. The validator now refuses to admit a workflow with an
+// out-of-bounds `LoadSlot`, so the runtime error path is unreachable; we
+// confirm the validation-level rejection instead. The helper swallows the
+// detailed reason as "workflow parts", so we only assert that the helper
+// refused to build the workflow.
 #[test]
 fn eval_expr_returns_slot_out_of_bounds_for_invalid_slot() -> Result<(), String> {
     let ops = vec![ExprOp::LoadSlot(SlotIdx::new(99))].into_boxed_slice();
 
-    // slot_count is only 2 (indices 0 and 1), so 99 is OOB
     let slots = vec![
         (SlotValue::I64(1), Taint::Clean),
         (SlotValue::I64(2), Taint::Clean),
     ];
 
-    let result = eval_workflow_with_slots(ops, slots, vec![]);
-    match result {
-        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(99) => Ok(()),
-        other => Err(format!("expected SlotOutOfBounds, got: {other:?}")),
+    match eval_workflow_with_slots(ops, slots, vec![]) {
+        Err(EngineError::InvalidCompiledWorkflow { .. }) => Ok(()),
+        Err(other) => Err(format!("expected validation rejection, got: {other:?}")),
+        Ok(_) => Err(String::from(
+            "LoadSlot past slot_count must be rejected at validation time",
+        )),
     }
 }
 
@@ -1341,18 +1348,25 @@ fn eval_expr_returns_expr_out_of_bounds_for_invalid_index() -> Result<(), String
     }
 }
 
-// B-203: eval_expr_inner returns ConstOutOfBounds on invalid constant index
+// B-203: eval_expr_inner returns ConstOutOfBounds on invalid constant index.
+// CW-005 closes the gap where `LoadConst` was not bounds-checked against the
+// constant pool. The validator now refuses to admit a workflow with an
+// out-of-bounds `LoadConst`, so the runtime error path is unreachable; we
+// confirm the validation-level rejection instead. The helper swallows the
+// detailed reason as "workflow parts", so we only assert that the helper
+// refused to build the workflow.
 #[test]
 fn eval_expr_returns_const_out_of_bounds() -> Result<(), String> {
     let ops = vec![ExprOp::LoadConst(ConstIdx::new(99))].into_boxed_slice();
 
-    // Only constant at index 0 exists
     let slots: Vec<(SlotValue, Taint)> = vec![];
 
-    let result = eval_workflow_with_slots(ops, slots, vec![ConstValue::I64(1)]);
-    match result {
-        Err(EngineError::ConstOutOfBounds { index }) if index == ConstIdx::new(99) => Ok(()),
-        other => Err(format!("expected ConstOutOfBounds, got: {other:?}")),
+    match eval_workflow_with_slots(ops, slots, vec![ConstValue::I64(1)]) {
+        Err(EngineError::InvalidCompiledWorkflow { .. }) => Ok(()),
+        Err(other) => Err(format!("expected validation rejection, got: {other:?}")),
+        Ok(_) => Err(String::from(
+            "LoadConst past const_count must be rejected at validation time",
+        )),
     }
 }
 

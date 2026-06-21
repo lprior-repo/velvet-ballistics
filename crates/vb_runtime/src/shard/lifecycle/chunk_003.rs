@@ -33,7 +33,8 @@ mod chunk_003_kani;
 
 // Re-export for convenience
 pub(crate) use chunk_003_completion::{
-    ActionFailureOutcome, current_timestamp, preflight_action_completion, retry_is_available,
+    ActionFailureOutcome, current_timestamp, preflight_action_completion, preflight_action_failure,
+    retry_is_available,
 };
 #[cfg(test)]
 pub(crate) use chunk_003_completion::reject_taint_downgrade;

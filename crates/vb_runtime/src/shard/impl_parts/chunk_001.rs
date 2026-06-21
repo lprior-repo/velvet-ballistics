@@ -49,7 +49,7 @@ impl Shard {
             current_tick: TimerTick::new(0),
             journal,
             admission_lock: std::sync::Mutex::new(()),
-            current_coalesce_window_remaining: config.coalesce_window_ticks.saturating_sub(1),
+            current_coalesce_window_remaining: config.coalesce_window_ticks,
             coalesce_buffer: Vec::with_capacity(
                 usize::try_from(config.coalesce_window_ticks).unwrap_or(0_usize),
             ),

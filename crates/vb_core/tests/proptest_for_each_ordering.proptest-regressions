@@ -7,3 +7,6 @@
 cc d3f724864b720307bacf14e380875214bce9eb67b8ce16f236f4a0f85d65cf0a # shrinks to limit = 0
 cc a1b0fcd2775d28c2645dbf4f2f2a3c01511269ed59a87c280695d9497a9d03d3 # shrinks to slots = (0, 1, 2)
 cc a0cf793586abd2b34f39b24afec1c6f885a315f8f74b6a78b1feaa8860940ab7 # shrinks to limit = 0, slots = (0, 1, 2)
+cc e75609cdaafff983496d9d6a3b72fee7d0aa5df617d4ab591d8b19a9ae4c54d0 # shrinks to limit = 0, slots = (0, 1, 2)
+cc f7f4ab38f1528048baba5be2802e354c920d091c2df2650288dcc32520bcd8a3 # shrinks to limit = 0, slots = (1, 0, 2)
+cc 351c30807127024afcb68757745f79dc73e1b5c66e594c21a3a6cbff9baf3397 # shrinks to limit = 0, slots = (6, 0, 1)

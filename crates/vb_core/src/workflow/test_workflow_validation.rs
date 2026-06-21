@@ -2,7 +2,7 @@
 
 use super::super::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, CoreError, ExprBranch, ExprIdx, ExprOp,
-    ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowError,
+    ExprProgram, ResourceContract, SlotBranch, SlotIdx, StepIdx, WorkflowError, WorkflowParts,
 };
 use super::tests::{
     choose_expr_parts, choose_slot_parts, construction_parts, construction_parts_with_symbols,
@@ -482,4 +482,298 @@ fn workflow_parts_preserve_build_object_duplicate_field_order() -> Result<(), St
         }
         other => Err(format!("unexpected node kind: {other:?}")),
     }
+}
+
+// =========================================================================
+// CW-009 regression tests: ResourceContract enforcement on node-local fields
+// =========================================================================
+
+fn make_for_each_parts(
+    limit: u32,
+    max_collect_items: u32,
+    max_steps: u16,
+    max_slots: u16,
+) -> WorkflowParts {
+    let contract = ResourceContract {
+        max_collect_items,
+        ..resource_contract(max_steps, max_slots, 0, 0, 0)
+    };
+    WorkflowParts {
+        name: Box::<str>::from("cw009_for_each"),
+        digest: crate::ids::WorkflowDigest::from_bytes([0xEE; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ForEachStart {
+                    input: SlotIdx::new(0),
+                    item_slot: SlotIdx::new(1),
+                    limit,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: max_slots,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: contract,
+        step_names: Box::new([]),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_for_each_limit_over_max_collect_items() -> Result<(), String> {
+    // CW-009: ForEachStart.limit must not exceed max_collect_items.
+    let parts = make_for_each_parts(200, 100, 3, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("limit over max_collect_items must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_for_each_zero_limit() -> Result<(), String> {
+    // CW-009: zero limit means no items are ever processed; treat it as
+    // rejected at the contract boundary.
+    let parts = make_for_each_parts(0, 100, 3, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("zero ForEachStart limit must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_accept_for_each_limit_at_max_collect_items() -> Result<(), String> {
+    // CW-009: limit == max_collect_items is the exact-bounds accepted case.
+    let parts = make_for_each_parts(100, 100, 3, 2);
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+fn make_collect_start_parts(
+    limit: u32,
+    page_size: u32,
+    max_collect_items: u32,
+    max_steps: u16,
+    max_slots: u16,
+) -> WorkflowParts {
+    let contract = ResourceContract {
+        max_collect_items,
+        ..resource_contract(max_steps, max_slots, 0, 0, 0)
+    };
+    WorkflowParts {
+        name: Box::<str>::from("cw009_collect"),
+        digest: crate::ids::WorkflowDigest::from_bytes([0xEF; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(1)),
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::CollectStart {
+                    source: SlotIdx::new(0),
+                    limit,
+                    page_size,
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(1),
+                },
+            },
+        ]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: max_slots,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: contract,
+        step_names: Box::new([]),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_collect_start_limit_over_max_collect_items() -> Result<(), String> {
+    // CW-009: CollectStart.limit must not exceed max_collect_items.
+    let parts = make_collect_start_parts(2_000, 10, 1_000, 3, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("collect limit over max_collect_items must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_collect_start_zero_limit() -> Result<(), String> {
+    // CW-009: zero limit is not a valid collect cap.
+    let parts = make_collect_start_parts(0, 10, 1_000, 3, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("zero collect limit must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_collect_start_zero_page_size() -> Result<(), String> {
+    // CW-009: zero page_size means no items can ever be paged in.
+    let parts = make_collect_start_parts(100, 0, 1_000, 3, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("zero collect page_size must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_collect_start_page_size_over_max_collect_items() -> Result<(), String> {
+    // CW-009: page_size must also fit under max_collect_items.
+    let parts = make_collect_start_parts(2_000, 2_000, 1_000, 3, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("collect page_size over max_collect_items must be rejected")),
+    }
+}
+
+fn make_together_join_parts(
+    branch_count: u16,
+    max_fanout: u16,
+    max_steps: u16,
+    max_slots: u16,
+) -> WorkflowParts {
+    let contract = ResourceContract {
+        max_fanout,
+        ..resource_contract(max_steps, max_slots, 0, 0, 0)
+    };
+    WorkflowParts {
+        name: Box::<str>::from("cw009_together"),
+        digest: crate::ids::WorkflowDigest::from_bytes([0xF0; 32]),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::TogetherJoin {
+                    branch_count,
+                    accumulator: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: max_slots,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: contract,
+        step_names: Box::new([]),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_together_join_branch_count_over_max_fanout() -> Result<(), String> {
+    // CW-009: TogetherJoin.branch_count must not exceed max_fanout.
+    let parts = make_together_join_parts(65, 64, 2, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_fanout",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("branch_count over max_fanout must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_together_join_zero_branch_count() -> Result<(), String> {
+    // CW-009: zero branch_count is not a valid fanout.
+    let parts = make_together_join_parts(0, 64, 2, 2);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_fanout",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("zero branch_count must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_accept_together_join_branch_count_at_max_fanout() -> Result<(), String> {
+    // CW-009: branch_count == max_fanout is the exact-bounds accepted case.
+    let parts = make_together_join_parts(64, 64, 2, 2);
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
 }

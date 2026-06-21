@@ -69,6 +69,80 @@ fn idempotency_tracker_default_matches_new() {
 }
 
 #[test]
+fn idempotency_tracker_order_stays_bounded_at_capacity_under_churn() {
+    // RS-003 regression: with the buggy `Vec::push` + cursor walk, `order`
+    // would grow unboundedly while `completed` stayed at capacity. After
+    // the VecDeque fix, `order.len()` MUST stay at most `completed.len()`.
+    let mut tracker = IdempotencyTracker::with_capacity(2);
+    for key in 0u128..200u128 {
+        let ticket = make_ticket(key);
+        let result = tracker.mark_completed(&ticket);
+        assert_eq!(result, Ok(()), "mark_completed must succeed for key={key}");
+        assert!(
+            tracker.order.len() <= tracker.completed.len(),
+            "order.len()={} must never exceed completed.len()={} after key={key}",
+            tracker.order.len(),
+            tracker.completed.len(),
+        );
+        assert!(
+            tracker.order.len() <= tracker.capacity,
+            "order.len()={} must stay <= capacity={} after key={key}",
+            tracker.order.len(),
+            tracker.capacity,
+        );
+        assert!(
+            tracker.completed.len() <= tracker.capacity,
+            "completed.len()={} must stay <= capacity={} after key={key}",
+            tracker.completed.len(),
+            tracker.capacity,
+        );
+    }
+}
+
+#[test]
+fn idempotency_tracker_order_matches_completed_after_churn() {
+    // RS-003 follow-up: after sustained churn, every key still in `order`
+    // must also be present in `completed` (no dangling pointers after the
+    // eviction walk).
+    let mut tracker = IdempotencyTracker::with_capacity(3);
+    for key in 0u128..500u128 {
+        let ticket = make_ticket(key);
+        let _ = tracker.mark_completed(&ticket);
+    }
+    for &key in &tracker.order {
+        assert!(
+            tracker.completed.contains_key(&key),
+            "order entry {key} must be present in completed map",
+        );
+    }
+}
+
+#[test]
+fn idempotency_tracker_repeated_eviction_drops_oldest_keys() {
+    // Property: across repeated evictions, the live entries in `completed`
+    // are always the most-recently-inserted keys (FIFO eviction contract).
+    let mut tracker = IdempotencyTracker::with_capacity(3);
+    for key in 0u128..20u128 {
+        let _ = tracker.mark_completed(&make_ticket(key));
+    }
+    // Only keys 17, 18, 19 should remain in completed (the last 3 inserted).
+    for key in 0u128..17u128 {
+        let ticket = make_ticket(key);
+        assert!(
+            !tracker.is_completed(&ticket),
+            "key {key} should have been evicted by FIFO"
+        );
+    }
+    for key in 17u128..20u128 {
+        let ticket = make_ticket(key);
+        assert!(
+            tracker.is_completed(&ticket),
+            "key {key} should still be present in completed"
+        );
+    }
+}
+
+#[test]
 fn idempotency_tracker_mark_dispatched_new_is_true() {
     let tracker = IdempotencyTracker::with_default_capacity();
     let ticket = make_ticket(10);

@@ -23,7 +23,7 @@ pub(crate) fn apply_error_handler(
                 .frame
                 .set_pc(handler)
                 .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            Ok(ActionFailureOutcome::DriveHandler)
+            Ok(ActionFailureOutcome::DriveHandler { handler, error_slot })
         }
         None => Ok(ActionFailureOutcome::FailRun),
     }

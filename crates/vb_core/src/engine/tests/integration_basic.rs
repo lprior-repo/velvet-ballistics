@@ -171,6 +171,9 @@ fn build_list_copies_slot_values_in_exact_item_order() -> Result<(), String> {
 
 #[test]
 fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(), String> {
+    // CF-006: `build_object` now refuses duplicate keys so the stored slice
+    // and the secondary index agree. Build with three distinct keys and
+    // confirm insertion order and per-field resolution.
     let mut store = test_store();
     let mut run = crate::RunFrame::new(RunId::new(33), StepIdx::new(0), 1, 3)
         .map_err(|error| error.to_string())?;
@@ -180,15 +183,16 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
         .map_err(|error| error.to_string())?;
     run.write_slot(SlotIdx::new(2), SlotValue::Bool(false))
         .map_err(|error| error.to_string())?;
-    let duplicate_key = SymbolId::new(7);
+    let first_key = SymbolId::new(7);
+    let middle_key = SymbolId::new(8);
     let tail_key = SymbolId::new(9);
 
     let object = build_object_impl(
         &mut store,
         &run,
         &[
-            (duplicate_key, SlotIdx::new(0)),
-            (duplicate_key, SlotIdx::new(1)),
+            (first_key, SlotIdx::new(0)),
+            (middle_key, SlotIdx::new(1)),
             (tail_key, SlotIdx::new(2)),
         ],
     )
@@ -199,7 +203,7 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
     ensure_equal(
         fields.first().copied(),
         Some(ObjectField {
-            key: duplicate_key,
+            key: first_key,
             value: SlotValue::I64(100),
             taint: Taint::Clean,
         }),
@@ -207,7 +211,7 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
     ensure_equal(
         fields.get(1).copied(),
         Some(ObjectField {
-            key: duplicate_key,
+            key: middle_key,
             value: SlotValue::I64(200),
             taint: Taint::Clean,
         }),
@@ -222,9 +226,21 @@ fn build_object_preserves_field_order_and_first_duplicate_lookup() -> Result<(),
     )?;
     ensure_equal(
         store
-            .object_field(object, duplicate_key)
+            .object_field(object, first_key)
             .map_err(|error| error.to_string())?,
         SlotValue::I64(100),
+    )?;
+    ensure_equal(
+        store
+            .object_field(object, middle_key)
+            .map_err(|error| error.to_string())?,
+        SlotValue::I64(200),
+    )?;
+    ensure_equal(
+        store
+            .object_field(object, tail_key)
+            .map_err(|error| error.to_string())?,
+        SlotValue::Bool(false),
     )?;
     Ok(())
 }

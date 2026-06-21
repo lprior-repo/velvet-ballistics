@@ -240,6 +240,61 @@ impl RuntimeLimitsProfile {
                 limit: u64::from(MAX_RETRY_ATTEMPTS),
             });
         }
+        if config.trace_ring_capacity == 0 || config.trace_ring_capacity > MAX_TRACE_RING_CAPACITY {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "trace_ring_capacity",
+                value: usize_to_u64(config.trace_ring_capacity),
+                limit: usize_to_u64(MAX_TRACE_RING_CAPACITY),
+            });
+        }
+        if config.for_each_item_count == 0 || config.for_each_item_count > MAX_FOR_EACH_ITEMS {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "for_each_item_count",
+                value: u64::from(config.for_each_item_count),
+                limit: u64::from(MAX_FOR_EACH_ITEMS),
+            });
+        }
+        if config.collect_pages == 0 || config.collect_pages > MAX_COLLECT_PAGES {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_pages",
+                value: u64::from(config.collect_pages),
+                limit: u64::from(MAX_COLLECT_PAGES),
+            });
+        }
+        if config.collect_time_seconds == 0
+            || config.collect_time_seconds > MAX_COLLECT_TIME_SECONDS
+        {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_time_seconds",
+                value: config.collect_time_seconds,
+                limit: MAX_COLLECT_TIME_SECONDS,
+            });
+        }
+        if config.repeat_time_seconds == 0
+            || config.repeat_time_seconds > MAX_REPEAT_TIME_SECONDS
+        {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "repeat_time_seconds",
+                value: config.repeat_time_seconds,
+                limit: MAX_REPEAT_TIME_SECONDS,
+            });
+        }
+        if config.max_wait_duration_seconds == 0
+            || config.max_wait_duration_seconds > MAX_WAIT_DURATION_SECONDS
+        {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "max_wait_duration_seconds",
+                value: config.max_wait_duration_seconds,
+                limit: MAX_WAIT_DURATION_SECONDS,
+            });
+        }
+        if config.ask_timeout_seconds == 0 || config.ask_timeout_seconds > MAX_ASK_TIMEOUT_SECONDS {
+            return Err(ProfileValidationError::ExceedsHardLimit {
+                field: "ask_timeout_seconds",
+                value: config.ask_timeout_seconds,
+                limit: MAX_ASK_TIMEOUT_SECONDS,
+            });
+        }
 
         Ok(Self {
             name,

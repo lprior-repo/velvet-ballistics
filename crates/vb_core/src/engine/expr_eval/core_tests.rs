@@ -83,17 +83,24 @@ fn eval_load_const_returns_constant_value() -> Result<(), String> {
 
 #[test]
 fn eval_load_const_rejects_out_of_bounds() -> Result<(), String> {
-    let workflow = make_workflow(
+    // CW-005 closes the gap where `LoadConst` was not bounds-checked against
+    // the constant pool. The validator now refuses to admit a workflow with
+    // an out-of-bounds `LoadConst`, so the runtime error path is unreachable.
+    match make_workflow(
         vec![ExprOp::LoadConst(ConstIdx::new(5))],
         vec![ConstValue::I64(1)],
         1,
-    )?;
-    let run = make_run(1)?;
-    let mut store = ValueStore::new();
-    let result = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0));
-    match result {
-        Err(EngineError::ConstOutOfBounds { index }) if index == ConstIdx::new(5) => Ok(()),
-        other => Err(format!("unexpected result: {other:?}")),
+    ) {
+        Err(reason) => {
+            if reason.contains("expression LoadConst out of bounds") {
+                Ok(())
+            } else {
+                Err(format!("expected LoadConst bounds rejection, got: {reason}"))
+            }
+        }
+        Ok(_) => Err(String::from(
+            "LoadConst past const_count must be rejected at validation time",
+        )),
     }
 }
 
@@ -274,13 +281,20 @@ fn eval_multi_op_expression_produces_correct_result() -> Result<(), String> {
 
 #[test]
 fn eval_load_slot_rejects_out_of_bounds_slot() -> Result<(), String> {
-    let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(5))], vec![], 1)?;
-    let run = make_run(1)?;
-    let mut store = ValueStore::new();
-    let result = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0));
-    match result {
-        Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => Ok(()),
-        other => Err(format!("expected SlotOutOfBounds, got {other:?}")),
+    // CW-005 closes the gap where `LoadSlot` was not bounds-checked against
+    // `slot_count`. The validator now refuses to admit a workflow with an
+    // out-of-bounds `LoadSlot`, so the runtime error path is unreachable.
+    match make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(5))], vec![], 1) {
+        Err(reason) => {
+            if reason.contains("expression LoadSlot out of bounds") {
+                Ok(())
+            } else {
+                Err(format!("expected LoadSlot bounds rejection, got: {reason}"))
+            }
+        }
+        Ok(_) => Err(String::from(
+            "LoadSlot past slot_count must be rejected at validation time",
+        )),
     }
 }
 

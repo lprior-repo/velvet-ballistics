@@ -90,7 +90,19 @@ impl Shard {
         let run = ticket.run;
         let code = failure.code;
         let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
-        let outcome = self.apply_action_failure_to_state(ticket, failure)?;
+
+        // RS-105: pure preflight computes the outcome WITHOUT mutating any
+        // frame or retry counter. The durable `ActionFailed` record is then
+        // appended BEFORE any state mutation, so a journal failure cannot
+        // leave the run with consumed retry state or an unscheduled handler
+        // jump but no durable evidence.
+        let outcome = {
+            let state = self
+                .run_state_get(run)
+                .ok_or(RuntimeError::RunNotFound)?;
+            preflight_action_failure(state, ticket, failure.retry_policy)?
+        };
+
         self.trace_ring.push(TraceEvent::ActionFailed {
             run,
             step: ticket.step,
@@ -102,15 +114,17 @@ impl Shard {
             action: ticket.action,
             attempt: ticket.attempt,
         })?;
+
         match outcome {
-            ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
-                self.drive_run(run)
-            }
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
                 // apply() handles runtime_states mutation; fail_run_state handles cleanup only
                 let _ = self.apply(run, RuntimeEvent::Fail);
                 self.fail_run_state(run, state)
+            }
+            ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler { .. } => {
+                self.commit_action_failure(ticket, outcome)?;
+                self.drive_run(run)
             }
         }
     }
@@ -152,5 +166,62 @@ impl Shard {
             return Ok(ActionFailureOutcome::RetryNow);
         }
         apply_error_handler(state, ticket)
+    }
+
+    /// Applies a precomputed [`ActionFailureOutcome`] to the live run state.
+    ///
+    /// RS-105: this runs AFTER `append_journal_event(ActionFailed)`. It only
+    /// performs the state mutations implied by the outcome that was already
+    /// journaled; if this call fails, the journal record still describes
+    /// the failure correctly.
+    fn commit_action_failure(
+        &mut self,
+        ticket: ActionTicket,
+        outcome: ActionFailureOutcome,
+    ) -> RuntimeResult<()> {
+        match outcome {
+            ActionFailureOutcome::RetryNow => {
+                let state = self
+                    .run_state_get_mut(ticket.run)
+                    .ok_or(RuntimeError::InvalidActionCompletion)?;
+                crate::shard::helpers::validate_action_completion(state, ticket)?;
+                let policy =
+                    crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+                crate::shard::helpers::record_retry_attempt(state, ticket, policy)?;
+                state
+                    .frame
+                    .set_pc(ticket.step)
+                    .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                Ok(())
+            }
+            ActionFailureOutcome::DriveHandler {
+                handler,
+                error_slot,
+            } => {
+                let state = self
+                    .run_state_get_mut(ticket.run)
+                    .ok_or(RuntimeError::InvalidActionCompletion)?;
+                crate::shard::helpers::validate_action_completion(state, ticket)?;
+                state
+                    .frame
+                    .mark_failed(ticket.step)
+                    .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                if let Some(slot) = error_slot {
+                    state
+                        .frame
+                        .write_slot(
+                            slot,
+                            vb_core::value::SlotValue::I64(i64::from(ticket.step.get())),
+                        )
+                        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                }
+                state
+                    .frame
+                    .set_pc(handler)
+                    .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+                Ok(())
+            }
+            ActionFailureOutcome::FailRun => Ok(()),
+        }
     }
 }

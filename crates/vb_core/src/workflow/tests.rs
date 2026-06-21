@@ -498,6 +498,8 @@ fn budget_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
     ResourceContract {
         max_steps,
         max_slots,
+        max_fanout: u16::MAX,
+        max_collect_items: u32::MAX,
         ..ResourceContract::DEFAULT
     }
 }

@@ -154,6 +154,66 @@ fn insert_object_rejects_payload_over_hard_bound() -> Result<(), String> {
 }
 
 #[test]
+fn insert_object_rejects_duplicate_key() -> Result<(), String> {
+    // CF-006: the secondary `IndexMap` and the stored slice must agree, so a
+    // duplicate key cannot silently resolve to one value while the slice
+    // exposes another. The store rejects the second occurrence with a typed
+    // `duplicate_object_key` reason.
+    let mut store = ValueStore::new();
+    let shared_key = SymbolId::new(42);
+    let fields = vec![
+        ObjectField {
+            key: shared_key,
+            value: SlotValue::I64(1),
+            taint: Taint::Clean,
+        },
+        ObjectField {
+            key: shared_key,
+            value: SlotValue::I64(2),
+            taint: Taint::Secret,
+        },
+    ]
+    .into_boxed_slice();
+
+    match store.insert_object(fields) {
+        Err(CoreError::InvalidCompiledWorkflow {
+            reason: "duplicate_object_key",
+        }) => {
+            if store.object_count() != 0 {
+                return Err(String::from("rejected insert must not allocate an id"));
+            }
+            Ok(())
+        }
+        other => Err(format!("unexpected result: {other:?}")),
+    }
+}
+
+#[test]
+fn insert_object_accepts_distinct_keys_at_max_field_count() -> Result<(), String> {
+    // CF-006: a maximum-sized object with every key unique is accepted at
+    // the exact-bounds case.
+    let mut store = ValueStore::new();
+    let mut fields: Vec<ObjectField> = Vec::with_capacity(MAX_OBJECT_FIELDS_PER_VALUE);
+    let mut i: usize = 0;
+    while i < MAX_OBJECT_FIELDS_PER_VALUE {
+        let key_raw = u32::try_from(i)
+            .map_err(|_| String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32"))?;
+        fields.push(ObjectField {
+            key: SymbolId::new(key_raw),
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        });
+        i = i
+            .checked_add(1)
+            .ok_or_else(|| String::from("field index overflow"))?;
+    }
+    store
+        .insert_object(fields.into_boxed_slice())
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn insert_symbol_rejects_payload_over_hard_bound() -> Result<(), String> {
     let mut store = ValueStore::new();
     let value = "x".repeat(MAX_SYMBOL_BYTES_PER_VALUE.saturating_add(1));
@@ -475,34 +535,32 @@ fn value_store_object_field_missing_key_returns_not_found() -> Result<(), String
 
 #[test]
 fn value_store_object_field_returns_first_duplicate_key() -> Result<(), String> {
-    // If the same key appears twice, linear scan finds the FIRST one.
+    // CF-006: the secondary index and the stored slice must agree, so the
+    // store now rejects duplicate keys with `duplicate_object_key` rather than
+    // silently picking one. The new behavior is the contract; the old
+    // first-wins behavior is gone.
     let mut store = ValueStore::new();
     let dup_key = SymbolId::new(1);
-    let obj_id = store
-        .insert_object(
-            vec![
-                ObjectField {
-                    key: dup_key,
-                    value: SlotValue::I64(100),
-                    taint: Taint::Clean,
-                },
-                ObjectField {
-                    key: dup_key,
-                    value: SlotValue::I64(200),
-                    taint: Taint::Clean,
-                },
-            ]
-            .into_boxed_slice(),
-        )
-        .map_err(|e| e.to_string())?;
-    if store
-        .object_field(obj_id, dup_key)
-        .map_err(|e| e.to_string())?
-        != SlotValue::I64(100)
-    {
-        return Err(String::from("linear scan must return first match"));
+    let result = store.insert_object(
+        vec![
+            ObjectField {
+                key: dup_key,
+                value: SlotValue::I64(100),
+                taint: Taint::Clean,
+            },
+            ObjectField {
+                key: dup_key,
+                value: SlotValue::I64(200),
+                taint: Taint::Clean,
+            },
+        ]
+        .into_boxed_slice(),
+    );
+    match result {
+        Err(CoreError::InvalidCompiledWorkflow { reason: "duplicate_object_key" }) => Ok(()),
+        Err(other) => Err(format!("expected duplicate_object_key rejection, got: {other:?}")),
+        Ok(_) => Err(String::from("duplicate key must be rejected at insertion time")),
     }
-    Ok(())
 }
 
 #[test]
@@ -641,13 +699,22 @@ fn value_store_list_at_exact_max_length_is_accepted() -> Result<(), String> {
 #[test]
 #[cfg_attr(miri, ignore = "max-size object fixture is too slow under Miri")]
 fn value_store_object_at_exact_max_fields_is_accepted() -> Result<(), String> {
+    // CF-006: every key must be unique. Build a maximum-sized object with
+    // distinct keys so the cap is honored.
     let mut store = ValueStore::new();
-    let field = ObjectField {
-        key: SymbolId::new(0),
-        value: SlotValue::Null,
-        taint: Taint::Clean,
-    };
-    let fields = vec![field; MAX_OBJECT_FIELDS_PER_VALUE];
+    let mut fields: Vec<ObjectField> = Vec::with_capacity(MAX_OBJECT_FIELDS_PER_VALUE);
+    let mut i: usize = 0;
+    while i < MAX_OBJECT_FIELDS_PER_VALUE {
+        let key_raw = u32::try_from(i).map_err(|_| {
+            String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32")
+        })?;
+        fields.push(ObjectField {
+            key: SymbolId::new(key_raw),
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        });
+        i = i.checked_add(1).ok_or_else(|| String::from("field index overflow"))?;
+    }
     let id = store
         .insert_object(fields.into_boxed_slice())
         .map_err(|e| e.to_string())?;
@@ -769,26 +836,28 @@ fn value_store_list_with_mixed_slot_value_types() -> Result<(), String> {
 
 #[test]
 fn value_store_object_field_linear_scan_respects_insertion_order() -> Result<(), String> {
-    // Object with three fields; the second has the same key as the first.
-    // Linear scan must find the first occurrence.
+    // CF-006: with duplicate keys rejected, the only ordering concern is that
+    // distinct keys keep their original insertion order in the stored slice
+    // and the secondary index agrees.
     let mut store = ValueStore::new();
-    let shared_key = SymbolId::new(5);
-    let unique_key = SymbolId::new(10);
+    let first_key = SymbolId::new(5);
+    let middle_key = SymbolId::new(6);
+    let last_key = SymbolId::new(10);
     let obj_id = store
         .insert_object(
             vec![
                 ObjectField {
-                    key: shared_key,
+                    key: first_key,
                     value: SlotValue::I64(1),
                     taint: Taint::Clean,
                 },
                 ObjectField {
-                    key: shared_key,
+                    key: middle_key,
                     value: SlotValue::I64(2),
                     taint: Taint::Clean,
                 },
                 ObjectField {
-                    key: unique_key,
+                    key: last_key,
                     value: SlotValue::I64(3),
                     taint: Taint::Clean,
                 },
@@ -796,19 +865,48 @@ fn value_store_object_field_linear_scan_respects_insertion_order() -> Result<(),
             .into_boxed_slice(),
         )
         .map_err(|e| e.to_string())?;
+    let fields = store.object(obj_id).map_err(|e| e.to_string())?;
+    let mut pos = 0;
+    while pos < fields.len() {
+        let entry = fields
+            .get(pos)
+            .ok_or_else(|| String::from("object field position out of bounds"))?;
+        match entry.key {
+            k if k == first_key && entry.value != SlotValue::I64(1) => {
+                return Err(String::from("first_key must resolve to its value"));
+            }
+            k if k == middle_key && entry.value != SlotValue::I64(2) => {
+                return Err(String::from("middle_key must resolve to its value"));
+            }
+            k if k == last_key && entry.value != SlotValue::I64(3) => {
+                return Err(String::from("last_key must resolve to its value"));
+            }
+            _ => {}
+        }
+        pos = pos
+            .checked_add(1)
+            .ok_or_else(|| String::from("field position overflow"))?;
+    }
     if store
-        .object_field(obj_id, shared_key)
+        .object_field(obj_id, first_key)
         .map_err(|e| e.to_string())?
         != SlotValue::I64(1)
     {
-        return Err(String::from("shared_key must resolve to first occurrence"));
+        return Err(String::from("first_key must resolve via secondary index"));
     }
     if store
-        .object_field(obj_id, unique_key)
+        .object_field(obj_id, middle_key)
+        .map_err(|e| e.to_string())?
+        != SlotValue::I64(2)
+    {
+        return Err(String::from("middle_key must resolve via secondary index"));
+    }
+    if store
+        .object_field(obj_id, last_key)
         .map_err(|e| e.to_string())?
         != SlotValue::I64(3)
     {
-        return Err(String::from("unique_key must resolve"));
+        return Err(String::from("last_key must resolve via secondary index"));
     }
     Ok(())
 }
@@ -1024,27 +1122,25 @@ fn value_store_exact_max_list_accesses_edges_without_unchecked_indexing() -> Res
 
 #[test]
 #[cfg_attr(miri, ignore = "max-size object fixture is too slow under Miri")]
-fn value_store_exact_max_object_preserves_duplicate_first_wins_index() -> Result<(), String> {
+fn value_store_exact_max_object_preserves_distinct_keys() -> Result<(), String> {
+    // CF-006: a maximum-sized object must use distinct keys. Build one with
+    // every field unique and confirm the cap and ordering survive.
     let mut store = ValueStore::new();
-    let duplicate_key = SymbolId::new(77);
-    let unique_key = SymbolId::new(78);
-    let mut fields = vec![
-        ObjectField {
-            key: duplicate_key,
+    let max_fields = MAX_OBJECT_FIELDS_PER_VALUE;
+    let mut fields: Vec<ObjectField> = Vec::with_capacity(max_fields);
+    let mut i = 0;
+    while i < max_fields {
+        fields.push(ObjectField {
+            key: SymbolId::new(u32::try_from(i).map_err(|_| {
+                String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32")
+            })?),
             value: SlotValue::I64(1),
             taint: Taint::Clean,
-        };
-        MAX_OBJECT_FIELDS_PER_VALUE
-    ];
-    let last = fields
-        .last_mut()
-        .ok_or_else(|| String::from("max object fixture must contain fields"))?;
-    *last = ObjectField {
-        key: unique_key,
-        value: SlotValue::I64(2),
-        taint: Taint::Clean,
-    };
-
+        });
+        i = i
+            .checked_add(1)
+            .ok_or_else(|| String::from("field index overflow"))?;
+    }
     let id = store
         .insert_object(fields.into_boxed_slice())
         .map_err(|e| e.to_string())?;
@@ -1052,21 +1148,23 @@ fn value_store_exact_max_object_preserves_duplicate_first_wins_index() -> Result
     if store.object(id).map_err(|e| e.to_string())?.len() != MAX_OBJECT_FIELDS_PER_VALUE {
         return Err(String::from("max object field count mismatch"));
     }
+    let first_expected_key = SymbolId::new(0);
+    let last_expected_key = SymbolId::new(u32::try_from(max_fields.saturating_sub(1)).map_err(
+        |_| String::from("MAX_OBJECT_FIELDS_PER_VALUE - 1 must fit in u32"),
+    )?);
     if store
-        .object_field(id, duplicate_key)
+        .object_field(id, first_expected_key)
         .map_err(|e| e.to_string())?
         != SlotValue::I64(1)
     {
-        return Err(String::from(
-            "duplicate object key must resolve to first value",
-        ));
+        return Err(String::from("first field must resolve via secondary index"));
     }
     if store
-        .object_field(id, unique_key)
+        .object_field(id, last_expected_key)
         .map_err(|e| e.to_string())?
-        != SlotValue::I64(2)
+        != SlotValue::I64(1)
     {
-        return Err(String::from("unique field at max object edge must resolve"));
+        return Err(String::from("last field must resolve via secondary index"));
     }
     Ok(())
 }
@@ -1542,49 +1640,39 @@ fn security_empty_list_has_consistent_taint_array() -> Result<(), String> {
     Ok(())
 }
 
-// --- Attack: object with duplicate keys -- first-wins semantics for taint ---
+// --- Attack: object with duplicate keys -- rejected at insertion ---
 
 #[test]
 fn security_object_duplicate_key_first_wins_for_taint() -> Result<(), String> {
+    // CF-006: duplicate keys can no longer slip past the secondary index
+    // and silently downgrade taint. The store now refuses the second
+    // occurrence outright, so the taint-downgrade attack vector is closed.
     let mut store = ValueStore::new();
     let key = SymbolId::new(1);
 
-    let obj_id = store
-        .insert_object(
-            vec![
-                ObjectField {
-                    key,
-                    value: SlotValue::I64(100),
-                    taint: Taint::Secret,
-                },
-                ObjectField {
-                    key,
-                    value: SlotValue::I64(200),
-                    taint: Taint::Clean,
-                },
-            ]
-            .into_boxed_slice(),
-        )
-        .map_err(|e| e.to_string())?;
-
-    // object_field returns the first value
-    assert_eq!(
-        store.object_field(obj_id, key).map_err(|e| e.to_string())?,
-        SlotValue::I64(100)
+    let result = store.insert_object(
+        vec![
+            ObjectField {
+                key,
+                value: SlotValue::I64(100),
+                taint: Taint::Secret,
+            },
+            ObjectField {
+                key,
+                value: SlotValue::I64(200),
+                taint: Taint::Clean,
+            },
+        ]
+        .into_boxed_slice(),
     );
 
-    // object_field_with_taint must also return the first taint
-    let (value, taint) = store
-        .object_field_with_taint(obj_id, key)
-        .map_err(|e| e.to_string())?;
-    assert_eq!(value, SlotValue::I64(100));
-    assert_eq!(
-        taint,
-        Taint::Secret,
-        "first-wins must apply to taint index too"
-    );
-
-    Ok(())
+    match result {
+        Err(CoreError::InvalidCompiledWorkflow { reason: "duplicate_object_key" }) => Ok(()),
+        Err(other) => Err(format!("expected duplicate_object_key rejection, got: {other:?}")),
+        Ok(_) => Err(String::from(
+            "duplicate key insertion must be rejected to prevent taint downgrade",
+        )),
+    }
 }
 
 // --- Attack: value confusion between list_taints and lists arrays ---

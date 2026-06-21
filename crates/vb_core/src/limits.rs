@@ -136,6 +136,36 @@ pub const MAX_JOURNAL_BATCH_BYTES: u32 = 16_777_216;
 /// This is the upper bound for the `trace_ring_capacity` profile field.
 pub const MAX_TRACE_RING_CAPACITY: usize = 1_048_576;
 
+/// Maximum items per `for_each` loop (hard limit).
+///
+/// This is the upper bound for the `for_each_item_count` profile field.
+pub const MAX_FOR_EACH_ITEMS: u32 = 65_535;
+
+/// Maximum pages per `collect` loop (hard limit).
+///
+/// This is the upper bound for the `collect_pages` profile field.
+pub const MAX_COLLECT_PAGES: u32 = 65_535;
+
+/// Maximum collect duration in seconds (hard limit).
+///
+/// This is the upper bound for the `collect_time_seconds` profile field.
+pub const MAX_COLLECT_TIME_SECONDS: u64 = 86_400;
+
+/// Maximum repeat loop duration in seconds (hard limit).
+///
+/// This is the upper bound for the `repeat_time_seconds` profile field.
+pub const MAX_REPEAT_TIME_SECONDS: u64 = 86_400;
+
+/// Maximum wait duration in seconds (hard limit).
+///
+/// This is the upper bound for the `max_wait_duration_seconds` profile field.
+pub const MAX_WAIT_DURATION_SECONDS: u64 = 86_400;
+
+/// Maximum ask timeout in seconds (hard limit).
+///
+/// This is the upper bound for the `ask_timeout_seconds` profile field.
+pub const MAX_ASK_TIMEOUT_SECONDS: u64 = 86_400;
+
 #[cfg(test)]
 #[path = "limits/tests.rs"]
 mod tests;

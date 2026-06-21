@@ -145,6 +145,19 @@ impl Shard {
                 }
             };
             let deadline_ms = compute_deadline_ms_from_slot(&state, deadline_slot);
+            // RS-107: check deadline representability BEFORE the journal
+            // event append so that an unrepresentable deadline cannot
+            // leave a journal entry persisted with no matching timer
+            // registration. The pre-fix code appended the journal event
+            // unconditionally and then silently fell back to
+            // `Instant::now()` when `checked_add` overflowed, causing the
+            // timer to fire immediately and defeating the wait/ask
+            // contract.
+            let deadline = std::time::Instant::now()
+                .checked_add(std::time::Duration::from_millis(deadline_ms))
+                .ok_or(RuntimeError::UnsupportedOperation {
+                    operation: "timer_deadline_overflow",
+                })?;
             let append_result = match kind {
                 PendingTimerKind::Wait => {
                     self.append_journal_event(RuntimeJournalEvent::WaitScheduled {
@@ -165,9 +178,6 @@ impl Shard {
                 self.run_state_insert(run, state);
                 return Err(error);
             }
-            let deadline = std::time::Instant::now()
-                .checked_add(std::time::Duration::from_millis(deadline_ms))
-                .unwrap_or_else(std::time::Instant::now);
             self.pending_timer_insert(
                 run,
                 PendingTimer {

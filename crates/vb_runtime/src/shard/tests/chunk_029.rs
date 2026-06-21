@@ -266,6 +266,96 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() -> Result
     Ok(())
 }
 
+// RS-107 regression: an unrepresentable timer deadline (F64 value that
+// saturates `deadline_ms` to `u64::MAX`) must NOT silently fall back to
+// `Instant::now()` (the pre-fix bug), which would cause the timer to fire
+// immediately and defeat the wait/ask contract.
+//
+// The fix surfaces `UnsupportedOperation { operation: "timer_deadline_overflow" }`
+// when `Instant::checked_add` returns `None`. On platforms where Instant's
+// representable range is wide enough to hold `u64::MAX` milliseconds (e.g.
+// Linux's `CLOCK_MONOTONIC`), the checked_add succeeds and the timer is
+// armed far in the future instead — both outcomes are correct fixes for
+// the immediate-fire bug. This test asserts the immediate-fire outcome
+// does not occur by verifying the deadline is at least ~584 billion
+// years past `Instant::now()` (i.e. u64::MAX ms).
+#[test]
+fn shard_await_timer_does_not_fall_back_to_instant_now_on_overflow() -> Result<(), RuntimeError> {
+    let config = small_config();
+    let mut shard = Shard::new(config)?;
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        panic!("timed_wait_then_finish_workflow fixture must compile for deadline overflow test");
+    };
+    let run = super::RunId::new(7_213);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(initial_timer) = shard.pending_timer_get(run) else {
+        panic!("timed wait must register one pending timer before deadline overflow test");
+    };
+    let Some(mut state) = shard.run_state_get(run).cloned() else {
+        panic!("waiting run state must remain available for deadline overflow test");
+    };
+
+    // Overwrite the deadline slot with F64(f64::MAX), which `compute_deadline_ms_from_slot`
+    // saturates to u64::MAX (~584 billion years in milliseconds).
+    let huge = vb_core::value::FiniteF64::new(f64::MAX)
+        .map_err(|error| RuntimeError::UnsupportedOperation {
+            operation: "test_fixture_finite_f64_construction",
+        })?;
+    assert_eq!(
+        state.frame.write_slot(vb_core::ids::SlotIdx::ZERO, vb_core::value::SlotValue::F64(huge)),
+        Ok(())
+    );
+
+    let before = std::time::Instant::now();
+    let result = shard.await_timer(run, state, PendingTimerKind::Wait, vb_core::ids::SlotIdx::ZERO);
+
+    // Two valid outcomes:
+    //   1. Platform Instant range can hold u64::MAX ms — await_timer
+    //      succeeds and arms a timer far in the future.
+    //   2. Platform Instant range cannot hold u64::MAX ms — await_timer
+    //      returns the typed overflow error.
+    match result {
+        Ok(()) => {
+            // Outcome 1: timer must be armed far in the future, NOT at
+            // Instant::now() (the immediate-fire bug).
+            let new_timer = shard.pending_timer_get(run).unwrap_or(initial_timer);
+            assert_ne!(
+                new_timer.deadline, before,
+                "RS-107: huge deadline must not fall back to Instant::now()"
+            );
+            let minimum_future = before
+                .checked_add(std::time::Duration::from_secs(86_400 * 365 * 100))
+                .unwrap_or(before);
+            assert!(
+                new_timer.deadline > minimum_future,
+                "RS-107: deadline must be at least a century past Instant::now(), got {:?} vs now {:?}",
+                new_timer.deadline,
+                before
+            );
+        }
+        Err(RuntimeError::UnsupportedOperation { operation }) => {
+            // Outcome 2: the typed overflow error must carry the
+            // expected operation code.
+            assert_eq!(
+                operation, "timer_deadline_overflow",
+                "RS-107: overflow error must carry operation='timer_deadline_overflow', got '{operation}'"
+            );
+        }
+        Err(other) => {
+            panic!("RS-107: unexpected error variant: {other:?}");
+        }
+    }
+    Ok(())
+}
+
 struct RejectTimerScheduledJournal {
     rejected_kind: PendingTimerKind,
     events: std::sync::Mutex<Vec<RuntimeJournalEvent>>,

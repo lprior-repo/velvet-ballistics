@@ -647,9 +647,12 @@ mod tests {
 
     #[test]
     fn test_parse_schema_version_valid() {
-        assert!(parse_schema_version("1.0.0").is_ok());
-        assert!(parse_schema_version("0.1.0").is_ok());
-        assert!(parse_schema_version("999.999.999").is_ok());
+        assert_eq!(parse_schema_version("1.0.0"), Ok("1.0.0".to_string()));
+        assert_eq!(parse_schema_version("0.1.0"), Ok("0.1.0".to_string()));
+        assert_eq!(
+            parse_schema_version("999.999.999"),
+            Ok("999.999.999".to_string())
+        );
     }
 
     #[test]
@@ -690,8 +693,14 @@ mod tests {
 
     #[test]
     fn test_parse_contract_kind_invalid() {
-        assert!(ContractKind::parse("bogus").is_err());
-        assert!(ContractKind::parse("").is_err());
+        assert!(matches!(
+            ContractKind::parse("bogus"),
+            Err(ref s) if s == "bogus"
+        ));
+        assert!(matches!(
+            ContractKind::parse(""),
+            Err(ref s) if s.is_empty()
+        ));
     }
 
     #[test]
@@ -713,13 +722,19 @@ mod tests {
 
     #[test]
     fn test_parse_vet_exit_code_zero() {
-        assert!(parse_vet_exit_code(0).is_ok());
+        assert_eq!(parse_vet_exit_code(0), Ok(()));
     }
 
     #[test]
     fn test_parse_vet_exit_code_nonzero() {
-        assert!(parse_vet_exit_code(1).is_err());
-        assert!(parse_vet_exit_code(-1).is_err());
+        assert_eq!(
+            parse_vet_exit_code(1),
+            Err("cue vet exited with code 1".to_string())
+        );
+        assert_eq!(
+            parse_vet_exit_code(-1),
+            Err("cue vet exited with code -1".to_string())
+        );
     }
 
     #[test]
@@ -808,7 +823,10 @@ schema_version: "1.0.0""#;
     #[test]
     fn test_discover_nonexistent_dir() {
         let result = discover_contracts(Path::new("/tmp/does_not_exist_xyz"));
-        assert!(result.is_err());
+        assert!(matches!(
+            result,
+            Err(ref s) if s.starts_with("contracts directory does not exist:")
+        ));
     }
 
     #[test]

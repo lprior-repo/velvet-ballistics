@@ -31,7 +31,18 @@ pub fn together_start(
     }
     let current = run.parallel_in_flight();
     let max = run.max_parallel_in_flight();
-    if current.saturating_add(count) > max {
+    // RP-003: use `checked_add` so a `current + count` overflow cannot
+    // pass the guard as if the resulting sum fit within `max`. The
+    // pre-fix `saturating_add` clamped the sum to `u16::MAX`, which
+    // made the `> max` comparison trivially false when `max ==
+    // u16::MAX` and the caller then surfaced as
+    // `InternalInvariantViolation` from `add_parallel_in_flight`'s
+    // own `checked_add`. Treat arithmetic overflow as the same
+    // limit-exceeded failure mode as an over-limit increment.
+    let next = current.checked_add(count).ok_or(EngineError::ParallelLimitExceeded {
+        limit: max,
+    })?;
+    if next > max {
         return Err(EngineError::ParallelLimitExceeded { limit: max });
     }
     run.add_parallel_in_flight(count)?;

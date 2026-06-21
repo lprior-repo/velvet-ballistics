@@ -48,6 +48,25 @@ fn check_against_contract_retry(
     }
 }
 
+/// Checks that a node-local collect-page count does not exceed the declared
+/// contract.
+///
+/// A contract value of `0` is treated as opt-out (legacy callers may pass
+/// `0` to mean "no check"), preserving existing test fixtures that pair
+/// zeroed budget fields with otherwise-valid workflows.
+fn check_against_contract_collect(
+    actual: u32,
+    contract_max: u32,
+) -> Result<(), WorkflowError> {
+    if contract_max > 0 && actual > contract_max {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        })
+    } else {
+        Ok(())
+    }
+}
+
 /// Validates the four common fields shared by every node kind.
 ///
 /// - `output` — optional slot write target
@@ -96,16 +115,52 @@ pub(crate) fn validate_build_object(
 }
 
 /// Validates a ForEachStart node: input + item slots must be valid, and both
-/// body/done targets must be forward steps.
+/// body/done targets must be forward steps. The declared `limit` must be
+/// non-zero and bounded by the resource contract's `max_collect_items`.
 pub(crate) fn validate_for_each_start(
     input: SlotIdx,
     item_slot: SlotIdx,
+    limit: u32,
     body: StepIdx,
     done: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_slot(input, parts.slot_count)?;
     validate_slot(item_slot, parts.slot_count)?;
+    if limit == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        });
+    }
+    check_against_contract_collect(limit, parts.resource_contract.max_collect_items)?;
+    validate_two_steps(body, done, parts)
+}
+
+/// Validates a CollectStart node: the source slot and body/done steps must be
+/// valid. The declared `limit` and `page_size` must be non-zero and bounded
+/// by the resource contract's `max_collect_items`.
+pub(crate) fn validate_collect_start(
+    source: SlotIdx,
+    limit: u32,
+    page_size: u32,
+    body: StepIdx,
+    done: StepIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_slot(source, parts.slot_count)?;
+    if limit == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        });
+    }
+    if page_size == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_collect_items",
+        });
+    }
+    let contract_max = parts.resource_contract.max_collect_items;
+    check_against_contract_collect(limit, contract_max)?;
+    check_against_contract_collect(page_size, contract_max)?;
     validate_two_steps(body, done, parts)
 }
 
@@ -145,6 +200,19 @@ pub(crate) fn validate_together(
         validate_step(*branch, parts.nodes.len())?;
     }
     validate_step(join, parts.nodes.len())
+}
+
+/// Validates a TogetherJoin node: the `branch_count` must be non-zero and
+/// bounded by the declared resource contract's `max_fanout`, and the
+/// accumulator slot must be a valid frame slot.
+pub(crate) fn validate_together_join(
+    branch_count: u16,
+    accumulator: SlotIdx,
+    parts: &WorkflowParts,
+) -> Result<(), WorkflowError> {
+    validate_nonzero_u16(branch_count, "max_fanout")?;
+    check_against_contract_fanout(usize::from(branch_count), parts.resource_contract.max_fanout)?;
+    validate_slot(accumulator, parts.slot_count)
 }
 
 /// Validates a non-zero u16 used as a policy count (max_attempts, branch_count).

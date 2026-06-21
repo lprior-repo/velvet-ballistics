@@ -759,6 +759,64 @@ fn phase23_together_start_many_branches_within_u16_limit() {
     assert_eq!(run.pc(), first_branch);
 }
 
+// RP-003 regression: when `current + count` would overflow `u16`, the
+// guard must surface `ParallelLimitExceeded` rather than silently
+// passing through `saturating_add` and triggering
+// `InternalInvariantViolation` inside `add_parallel_in_flight`. The
+// pre-fix code wrote `current.saturating_add(count) > max`, which
+// clamped to `u16::MAX` when `current == u16::MAX && count >= 1`,
+// making the comparison trivially false.
+#[test]
+fn rp003_together_start_saturating_add_overflow_reports_parallel_limit_exceeded() {
+    // Given a frame whose parallel-in-flight counter is already at
+    // `u16::MAX` and whose ceiling is `u16::MAX`. Saturating-add guard
+    // would yield `u16::MAX + 1 → u16::MAX`, which is not strictly
+    // greater than `max = u16::MAX` and would let the overflow through.
+    let mut run = fresh_frame_with(u16::MAX, 4);
+    run.set_max_parallel_in_flight(u16::MAX);
+    run.add_parallel_in_flight(u16::MAX)
+        .ok()
+        .unwrap_or_else(|| panic!("prefill parallel_in_flight to u16::MAX"));
+    assert_eq!(
+        run.parallel_in_flight(),
+        u16::MAX,
+        "precondition: parallel_in_flight must equal u16::MAX"
+    );
+    assert_eq!(
+        run.max_parallel_in_flight(),
+        u16::MAX,
+        "precondition: max_parallel_in_flight must equal u16::MAX"
+    );
+
+    let mut store = ValueStore::new();
+    let output = SlotIdx::new(0);
+    let branches = [StepIdx::new(1)];
+
+    // When calling together_start with one extra branch (count = 1).
+    let result = together_start(&mut run, &mut store, &branches, StepIdx::new(2), Some(output));
+
+    // Then the guard must surface ParallelLimitExceeded instead of
+    // letting the addition overflow into InternalInvariantViolation.
+    match result {
+        Err(EngineError::ParallelLimitExceeded { limit }) => {
+            assert_eq!(
+                limit, u16::MAX,
+                "RP-003: limit must report the configured ceiling u16::MAX, got {limit}"
+            );
+        }
+        other => panic!(
+            "RP-003: together_start must surface ParallelLimitExceeded on u16 overflow, got {other:?}"
+        ),
+    }
+    // And parallel_in_flight must remain at the pre-call value (no
+    // partial mutation).
+    assert_eq!(
+        run.parallel_in_flight(),
+        u16::MAX,
+        "RP-003: parallel_in_flight must not be mutated on overflow rejection"
+    );
+}
+
 // -- 2. Branch state tracking: each branch has independent state --
 
 #[test]

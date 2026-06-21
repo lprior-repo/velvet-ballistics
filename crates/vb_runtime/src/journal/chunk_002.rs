@@ -338,10 +338,22 @@ impl RuntimeJournal for StorageRuntimeJournal {
             return Ok(());
         }
 
+        // RE-017: preflight the full sequence range BEFORE staging any event
+        // so that overflow cannot duplicate `EventSeq` inside the batch.
+        // Saturation here would violate the all-or-nothing contract because
+        // batched events already committed at the saturated seq could be
+        // shadowed by a later event with the same seq within the same batch.
+        preflight_batch_sequences(events.len(), seq_start)?;
+
         let mut batch = self.journal.batch();
         for (offset, event) in events.iter().enumerate() {
             let offset_u64 = u64::try_from(offset).map_err(|_| RuntimeError::EncodeFailed)?;
-            let seq = EventSeq::new(seq_start.get().saturating_add(offset_u64));
+            let seq = EventSeq::new(
+                seq_start
+                    .get()
+                    .checked_add(offset_u64)
+                    .ok_or_else(sequence_overflow_runtime_error)?,
+            );
             let storage_event = Self::storage_event(event.clone(), seq)?;
             batch.append_event(&storage_event)?;
             if let RuntimeJournalEvent::ActionScheduledTicket { ticket, .. } = event {

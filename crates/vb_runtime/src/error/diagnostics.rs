@@ -57,6 +57,22 @@ impl RuntimeError {
     pub const TERMINAL_RUNS_LRU_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2021);
     pub const LRU_RING_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2022);
     pub const NOT_RESUMABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x2023);
+    pub const ADMISSION_RESOURCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2024);
+    pub const ADMISSION_BUDGET_POLICY_EXCEEDED_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2025);
+    pub const ADMISSION_RESOURCE_BUDGET_OVERFLOW_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2026);
+    pub const ADMISSION_RESOURCE_BUDGET_UNDERFLOW_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2027);
+    pub const ADMISSION_RESOURCE_BUDGET_INVALID_CAPACITY_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2028);
+    pub const ADMISSION_ARTIFACT_ENVELOPE_DECODE_FAILED_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2029);
+    pub const ADMISSION_ARTIFACT_INVALID_GATE_COUNT_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x202A);
+    pub const ADMISSION_ARTIFACT_INVALID_PROOF_FLAG_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x202B);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -115,6 +131,30 @@ impl RuntimeError {
             Self::TogetherBranchFailed { .. } => Self::TOGETHER_BRANCH_FAILED_CODE,
             Self::ForEachItemFailed { .. } => Self::FOR_EACH_ITEM_FAILED_CODE,
             Self::AdmissionBudgetExceeded { .. } => Self::ADMISSION_BUDGET_EXCEEDED_CODE,
+            Self::AdmissionResourceCapacityExceeded { .. } => {
+                Self::ADMISSION_RESOURCE_CAPACITY_EXCEEDED_CODE
+            }
+            Self::AdmissionBudgetPolicyExceeded { .. } => {
+                Self::ADMISSION_BUDGET_POLICY_EXCEEDED_CODE
+            }
+            Self::AdmissionResourceBudgetOverflow { .. } => {
+                Self::ADMISSION_RESOURCE_BUDGET_OVERFLOW_CODE
+            }
+            Self::AdmissionResourceBudgetUnderflow { .. } => {
+                Self::ADMISSION_RESOURCE_BUDGET_UNDERFLOW_CODE
+            }
+            Self::AdmissionResourceBudgetInvalidCapacity { .. } => {
+                Self::ADMISSION_RESOURCE_BUDGET_INVALID_CAPACITY_CODE
+            }
+            Self::AdmissionArtifactEnvelopeDecodeFailed => {
+                Self::ADMISSION_ARTIFACT_ENVELOPE_DECODE_FAILED_CODE
+            }
+            Self::AdmissionArtifactInvalidGateCount { .. } => {
+                Self::ADMISSION_ARTIFACT_INVALID_GATE_COUNT_CODE
+            }
+            Self::AdmissionArtifactInvalidProofFlag { .. } => {
+                Self::ADMISSION_ARTIFACT_INVALID_PROOF_FLAG_CODE
+            }
             Self::TerminalRunsLruFull { .. } => Self::TERMINAL_RUNS_LRU_FULL_CODE,
             Self::LruRingCapacityZero => Self::LRU_RING_CAPACITY_ZERO_CODE,
             Self::NotResumable { .. } => Self::NOT_RESUMABLE_CODE,
@@ -136,6 +176,30 @@ impl RuntimeError {
                 Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
             }
             Self::AdmissionArtifactDigestMismatch { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionResourceCapacityExceeded { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionBudgetPolicyExceeded { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionResourceBudgetOverflow { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionResourceBudgetUnderflow { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionResourceBudgetInvalidCapacity { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionArtifactEnvelopeDecodeFailed => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionArtifactInvalidGateCount { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionArtifactInvalidProofFlag { .. } => {
                 Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
             }
             Self::AdmissionArtifactStale { .. } => {

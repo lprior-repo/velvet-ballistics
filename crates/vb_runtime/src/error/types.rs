@@ -113,6 +113,80 @@ pub enum RuntimeError {
         /// Digest of the stale artifact.
         digest: vb_core::ids::WorkflowDigest,
     },
+    /// Admission gate rejected because the requested resource exceeds
+    /// available aggregate capacity. Distinct from `AdmissionArtifactInvalid`:
+    /// the artifact is valid; the shard is full.
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`,
+    /// hiding the real cause from operators.
+    AdmissionResourceCapacityExceeded {
+        /// Resource dimension that failed comparison.
+        resource: &'static str,
+        /// Requested aggregate amount.
+        requested: u64,
+        /// Available aggregate amount.
+        available: u64,
+    },
+    /// Admission gate rejected because the requested aggregate budget
+    /// exceeds the declared policy ceiling.
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`.
+    AdmissionBudgetPolicyExceeded {
+        /// Resource dimension that failed comparison.
+        resource: &'static str,
+        /// Actual aggregate amount.
+        actual: u64,
+        /// Policy limit.
+        limit: u64,
+    },
+    /// Admission gate rejected because aggregate budget arithmetic
+    /// overflowed before admission could reserve capacity.
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`.
+    AdmissionResourceBudgetOverflow {
+        /// Resource dimension that overflowed.
+        resource: &'static str,
+    },
+    /// Admission gate rejected because aggregate budget arithmetic
+    /// underflowed before admission could release capacity.
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`.
+    AdmissionResourceBudgetUnderflow {
+        /// Resource dimension that underflowed.
+        resource: &'static str,
+    },
+    /// Admission gate rejected because aggregate budget capacity
+    /// configuration is invalid (e.g., zero).
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`.
+    AdmissionResourceBudgetInvalidCapacity {
+        /// Resource dimension with invalid capacity.
+        resource: &'static str,
+    },
+    /// Admission gate rejected because the artifact envelope failed to
+    /// decode as a valid accepted artifact.
+    ///
+    /// RA-001: previously this collapsed into the generic
+    /// `AdmissionArtifactInvalid`, hiding the specific decode failure.
+    AdmissionArtifactEnvelopeDecodeFailed,
+    /// Admission gate rejected because the artifact has an invalid gate
+    /// count for the current admission version.
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`.
+    AdmissionArtifactInvalidGateCount {
+        /// Found gate count.
+        found: u8,
+        /// Required gate count.
+        required: u8,
+    },
+    /// Admission gate rejected because the artifact has a proof flag set
+    /// to false.
+    ///
+    /// RA-001: previously this collapsed into `AdmissionArtifactInvalid`.
+    AdmissionArtifactInvalidProofFlag {
+        /// Name of the false flag.
+        flag: &'static str,
+    },
     /// Admission gate rejected the run because the artifact digest does not match.
     AdmissionDigestMismatch {
         /// Digest that was requested for admission.

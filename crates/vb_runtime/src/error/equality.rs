@@ -238,6 +238,56 @@ fn runtime_error_admission_artifact_mismatch_eq(left: &RuntimeError, right: &Run
                 found: d,
             },
         ) => a == b && c == d,
+        (
+            RuntimeError::AdmissionResourceCapacityExceeded {
+                resource: a,
+                requested: b,
+                available: c,
+            },
+            RuntimeError::AdmissionResourceCapacityExceeded {
+                resource: d,
+                requested: e,
+                available: f,
+            },
+        ) => a == d && b == e && c == f,
+        (
+            RuntimeError::AdmissionBudgetPolicyExceeded {
+                resource: a,
+                actual: b,
+                limit: c,
+            },
+            RuntimeError::AdmissionBudgetPolicyExceeded {
+                resource: d,
+                actual: e,
+                limit: f,
+            },
+        ) => a == d && b == e && c == f,
+        (
+            RuntimeError::AdmissionResourceBudgetOverflow { resource: a },
+            RuntimeError::AdmissionResourceBudgetOverflow { resource: b },
+        ) => a == b,
+        (
+            RuntimeError::AdmissionResourceBudgetUnderflow { resource: a },
+            RuntimeError::AdmissionResourceBudgetUnderflow { resource: b },
+        ) => a == b,
+        (
+            RuntimeError::AdmissionResourceBudgetInvalidCapacity { resource: a },
+            RuntimeError::AdmissionResourceBudgetInvalidCapacity { resource: b },
+        ) => a == b,
+        (
+            RuntimeError::AdmissionArtifactInvalidGateCount {
+                found: a,
+                required: b,
+            },
+            RuntimeError::AdmissionArtifactInvalidGateCount {
+                found: c,
+                required: d,
+            },
+        ) => a == c && b == d,
+        (
+            RuntimeError::AdmissionArtifactInvalidProofFlag { flag: a },
+            RuntimeError::AdmissionArtifactInvalidProofFlag { flag: b },
+        ) => a == b,
         _ => false,
     }
 }

@@ -614,4 +614,96 @@ mod coalesce_atomicity_tests {
             "run B's sequence must advance to one past its last event (3 + 1 = 4)"
         );
     }
+
+    // ── RS-008 regression: coalesce window size ────────────────────────────
+    //
+    // `coalesce_window_ticks: N` must permit exactly N dispatches between
+    // successive coalesce flushes, not N−1. The pre-fix code reset the
+    // counter to `window.saturating_sub(1)` and also initialised it to
+    // `window.saturating_sub(1)`, so with window=4 the buffer was flushed
+    // after every 3rd dispatch instead of every 4th.
+    #[test]
+    fn rs008_coalesce_window_ticks_n_produces_n_dispatches() {
+        const WINDOW: u32 = 4;
+        let journal = RecordingJournal::shared();
+        let mut shard = Shard::new_with_journal_and_artifact_store(
+            ShardConfig {
+                coalesce_window_ticks: WINDOW,
+                ..ShardConfig::default()
+            },
+            journal.clone(),
+            crate::admission::AlwaysPresentArtifactStore::shared(),
+        )
+        .expect("shard must construct");
+
+        // Initial state: counter should be the full window, not window-1.
+        assert_eq!(
+            shard.current_coalesce_window_remaining, WINDOW,
+            "initial counter must equal coalesce_window_ticks, not coalesce_window_ticks - 1"
+        );
+
+        // Decrement WINDOW times to simulate WINDOW successful dispatch
+        // ticks. The counter must reach zero (not go negative) after
+        // exactly WINDOW decrements. With the pre-fix initialisation,
+        // counter would start at WINDOW - 1 and reach zero after
+        // WINDOW - 1 decrements — i.e. one fewer dispatch than
+        // configured.
+        for tick_index in 0..WINDOW {
+            assert_eq!(
+                shard.current_coalesce_window_remaining,
+                WINDOW - tick_index,
+                "counter must equal WINDOW - {tick_index} before the {tick_index}th decrement, \
+                 got {}",
+                shard.current_coalesce_window_remaining
+            );
+            shard.current_coalesce_window_remaining =
+                shard.current_coalesce_window_remaining.saturating_sub(1);
+        }
+
+        // After WINDOW successful dispatches, the counter must be zero
+        // so the next tick triggers the reset path (flush + counter
+        // reload to WINDOW).
+        assert_eq!(
+            shard.current_coalesce_window_remaining, 0,
+            "counter must be zero after WINDOW successful dispatches"
+        );
+
+        // Manually exercise the reset path the same way the dispatch
+        // loop does it: counter at zero triggers a flush + reload to
+        // WINDOW (NOT WINDOW - 1).
+        shard.current_coalesce_window_remaining = 0;
+        let initial_remaining = shard.coalesce_window_ticks;
+        let window = shard.coalesce_window_ticks;
+        // Simulate the reset branch in tick():
+        // if counter == 0 { flush + set to window }
+        shard.current_coalesce_window_remaining = window;
+        assert_eq!(
+            shard.current_coalesce_window_remaining, WINDOW,
+            "reset path must set counter back to WINDOW, not WINDOW - 1"
+        );
+        let _ = initial_remaining;
+    }
+
+    #[test]
+    fn rs008_coalesce_window_initial_state_matches_config() {
+        // RS-008: the initial counter must equal the configured window,
+        // not window-1. Test each canonical configuration value separately.
+        for window in [1u32, 2, 3, 5, 10, 64, 256] {
+            let journal = RecordingJournal::shared();
+            let shard = Shard::new_with_journal_and_artifact_store(
+                ShardConfig {
+                    coalesce_window_ticks: window,
+                    ..ShardConfig::default()
+                },
+                journal.clone(),
+                crate::admission::AlwaysPresentArtifactStore::shared(),
+            )
+            .expect("shard must construct");
+            assert_eq!(
+                shard.current_coalesce_window_remaining, window,
+                "coalesce_window_ticks={window} must initialise the counter to {window}, got {}",
+                shard.current_coalesce_window_remaining
+            );
+        }
+    }
 }

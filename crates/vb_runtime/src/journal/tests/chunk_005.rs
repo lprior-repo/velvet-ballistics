@@ -524,3 +524,177 @@ fn append_sequenced_batch_tolerates_event_with_optional_fields() {
         vb_storage::JournalEvent::SlotWrittenEvent { .. }
     ));
 }
+
+// ---------------------------------------------------------------------------
+// RE-017: Sequence overflow must be detected BEFORE any event is committed.
+// Saturation with `saturating_add` would silently duplicate `EventSeq` for
+// later events in the batch. The corrected implementation preflights the
+// full sequence range with `checked_add` and rejects the batch with a
+// typed `RuntimeError::StorageJournalAppend { SequenceOverflow }`.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn append_sequenced_batch_rejects_overflow_at_max_seq_with_two_events() {
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = vb_core::ids::RunId::new(11_010);
+    let workflow = vb_core::ids::WorkflowDigest::from_bytes([0xA9; 32]);
+
+    let events = [
+        RuntimeJournalEvent::RunSubmitted { run, workflow },
+        RuntimeJournalEvent::RunFinished {
+            run,
+            result: vb_core::ids::SlotIdx::new(0),
+        },
+    ];
+
+    // seq_start at u64::MAX would saturate to the same seq for both events
+    // under the old buggy implementation; the corrected path must reject
+    // with a typed overflow error.
+    let result = adapter.append_sequenced_batch(&events, vb_storage::EventSeq::new(u64::MAX));
+    let err = result.expect_err("overflow at u64::MAX must be rejected");
+    assert!(
+        matches!(
+            err,
+            crate::RuntimeError::StorageJournalAppend { ref source }
+                if matches!(source.as_ref(), vb_storage::JournalError::SequenceOverflow)
+        ),
+        "expected typed SequenceOverflow error, got {err:?}"
+    );
+
+    // No events must be committed from the rejected batch.
+    let Some(stored) = require_ok(
+        journal
+            .events_for_run(run)
+            .map_err(|error| error.to_string()),
+        "events_for_run after rejected overflow batch",
+    ) else {
+        return;
+    };
+    assert!(
+        stored.is_empty(),
+        "rejected overflow batch must commit zero events, found {} events",
+        stored.len()
+    );
+}
+
+#[test]
+fn append_sequenced_batch_rejects_overflow_when_last_offset_overflows() {
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = vb_core::ids::RunId::new(11_011);
+    let workflow = vb_core::ids::WorkflowDigest::from_bytes([0xB1; 32]);
+
+    // Three events with seq_start near u64::MAX so the second event's
+    // per-event seq would overflow under saturating arithmetic.
+    let events = [
+        RuntimeJournalEvent::RunSubmitted { run, workflow },
+        RuntimeJournalEvent::RunFinished {
+            run,
+            result: vb_core::ids::SlotIdx::new(0),
+        },
+        RuntimeJournalEvent::RunFailed { run },
+    ];
+
+    let result = adapter.append_sequenced_batch(&events, vb_storage::EventSeq::new(u64::MAX - 1));
+    let err = result.expect_err("overflow on last offset must be rejected");
+    assert!(
+        matches!(
+            err,
+            crate::RuntimeError::StorageJournalAppend { ref source }
+                if matches!(source.as_ref(), vb_storage::JournalError::SequenceOverflow)
+        ),
+        "expected typed SequenceOverflow error, got {err:?}"
+    );
+}
+
+#[test]
+fn append_sequenced_batch_default_impl_rejects_overflow_at_max_seq() {
+    // The default implementation (used by external implementers of the
+    // trait) must also reject overflow instead of saturating.
+    let noop = crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks();
+
+    // Build a non-empty batch that overflows u64.
+    let run = vb_core::ids::RunId::new(11_012);
+    let workflow = vb_core::ids::WorkflowDigest::from_bytes([0xC2; 32]);
+    let events = [
+        RuntimeJournalEvent::RunSubmitted { run, workflow },
+        RuntimeJournalEvent::RunFinished {
+            run,
+            result: vb_core::ids::SlotIdx::new(0),
+        },
+    ];
+
+    let result = noop.append_sequenced_batch(&events, vb_storage::EventSeq::new(u64::MAX));
+    let err = result.expect_err("default impl must also reject overflow");
+    assert!(
+        matches!(
+            err,
+            crate::RuntimeError::StorageJournalAppend { ref source }
+                if matches!(source.as_ref(), vb_storage::JournalError::SequenceOverflow)
+        ),
+        "expected typed SequenceOverflow error, got {err:?}"
+    );
+}
+
+#[test]
+fn append_sequenced_batch_within_range_assigns_unique_sequences() {
+    // Regression guard: even after the overflow fix, contiguous sequences
+    // for in-range batches must still be assigned without saturation.
+    let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+        return;
+    };
+    let adapter = StorageRuntimeJournal::journaled(journal.clone());
+    let run = vb_core::ids::RunId::new(11_013);
+    let workflow = vb_core::ids::WorkflowDigest::from_bytes([0xD3; 32]);
+
+    let events = [
+        RuntimeJournalEvent::RunSubmitted { run, workflow },
+        RuntimeJournalEvent::RunFinished {
+            run,
+            result: vb_core::ids::SlotIdx::new(0),
+        },
+        RuntimeJournalEvent::RunFailed { run },
+    ];
+
+    assert_eq!(
+        adapter.append_sequenced_batch(&events, vb_storage::EventSeq::new(1_000_000)),
+        Ok(())
+    );
+
+    // Verify each event committed at the expected distinct sequence.
+    let expected_seqs = [1_000_000u64, 1_000_001, 1_000_002];
+    for (offset, expected_seq) in expected_seqs.iter().enumerate() {
+        let seq = vb_storage::EventSeq::new(*expected_seq);
+        let Some(bytes) = require_ok(
+            journal
+                .get_event_bytes(run, seq)
+                .map_err(|error| error.to_string()),
+            "get_event_bytes must succeed for in-range batch",
+        ) else {
+            return;
+        };
+        assert!(
+            bytes.is_some(),
+            "event at offset {offset} (seq={expected_seq}) must be committed"
+        );
+    }
+}
+
+#[test]
+fn append_sequenced_batch_default_impl_accepts_in_range_sequence() {
+    // Regression guard: the corrected default implementation must still
+    // accept batches with seq_start safely within range.
+    let noop = crate::journal::NoopRuntimeJournal::shared_for_tests_and_benchmarks();
+    let run = vb_core::ids::RunId::new(11_014);
+    let workflow = vb_core::ids::WorkflowDigest::from_bytes([0xE4; 32]);
+    let events = [RuntimeJournalEvent::RunSubmitted { run, workflow }];
+    assert_eq!(
+        noop.append_sequenced_batch(&events, vb_storage::EventSeq::new(42)),
+        Ok(())
+    );
+}

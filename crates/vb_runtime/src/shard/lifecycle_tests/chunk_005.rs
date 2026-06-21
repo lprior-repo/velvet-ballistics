@@ -508,3 +508,134 @@ fn handle_action_failure_rejects_when_step_out_of_bounds() -> Result<(), Runtime
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
     Ok(())
 }
+
+// =======================================================================
+// RS-105: ActionFailed journal record must precede state mutation.
+// =======================================================================
+
+#[test]
+fn rs105_retryable_failure_journals_action_failed_before_incrementing_attempts() {
+    // RS-105 regression: the durable ActionFailed record must appear in the
+    // journal BEFORE the retry attempt counter is incremented, so a journal
+    // failure cannot leave the run with consumed retry state but no durable
+    // failure evidence.
+    //
+    // We drive enough ticks to flush the coalesce buffer (small_config uses
+    // coalesce_window_ticks=1, so 2 ticks after enqueueing the failure
+    // guarantees the ActionFailed record is committed to the journal).
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)
+        .map_err(|e| format!("shard construction: {:?}", e))
+        .expect("shard construction");
+    submit_run(&mut shard, RunId::new(600), retry_workflow().expect("workflow"));
+    let run = RunId::new(600);
+    let step = StepIdx::new(1);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket: make_ticket(run, step, 1),
+            failure: retryable_failure(),
+        }),
+        Ok(())
+    );
+    // First tick processes the failure and buffers ActionFailed + StepStarted.
+    assert_eq!(shard.tick(), Ok(true));
+    // Second tick flushes the coalesce buffer to the journal.
+    assert_eq!(shard.tick(), Ok(true));
+
+    let state = shard
+        .run_state_get(run)
+        .expect("run still exists after retryable failure");
+    assert_eq!(
+        state.action_attempts.get(step.as_usize()).copied(),
+        Some(2),
+        "retry attempt must have advanced to 2 after journal succeeded"
+    );
+
+    let events = require_snapshot(&journal).expect("snapshot");
+    let expected_action_failed = RuntimeJournalEvent::ActionFailed {
+        run,
+        step,
+        action: ActionId::new(0),
+        attempt: 1,
+    };
+    assert!(
+        events.contains(&expected_action_failed),
+        "ActionFailed event with attempt=1 must be present in the journal, got {events:?}"
+    );
+    let action_failed_pos = events
+        .iter()
+        .position(|e| e == &expected_action_failed)
+        .expect("ActionFailed must be in events");
+    // After the journal entry, drive_run re-enters the Do step and appends
+    // a fresh StepStarted for the retry. That StepStarted must come AFTER
+    // ActionFailed. Use rposition to find the LAST StepStarted for this
+    // run+step (which corresponds to the retry's re-entry).
+    let expected_step_started = RuntimeJournalEvent::StepStarted { run, step };
+    let retry_step_started_pos = events
+        .iter()
+        .rposition(|e| e == &expected_step_started)
+        .expect("retry StepStarted must be in events");
+    assert!(
+        action_failed_pos < retry_step_started_pos,
+        "ActionFailed (pos={action_failed_pos}) must precede retry StepStarted (pos={retry_step_started_pos}); events={events:?}"
+    );
+}
+
+#[test]
+fn rs105_non_retryable_failure_with_handler_journals_action_failed_before_handler_step()
+-> Result<(), String> {
+    // RS-105 regression: with an error handler, the ActionFailed journal
+    // event must be present BEFORE the StepStarted for the handler step,
+    // proving that the durable record is established before the run jumps
+    // into the handler.
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)
+        .map_err(|e| format!("shard construction: {:?}", e))?;
+    let wf = require_workflow("error_handler", error_handler_workflow())?;
+    let run = RunId::new(601);
+    submit_run(&mut shard, run, wf);
+    let ticket = make_ticket(run, StepIdx::new(1), 1);
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed {
+            ticket,
+            failure: non_retryable_failure(),
+        }),
+        Ok(())
+    );
+    // First tick buffers ActionFailed + handler StepStarted + RunFinished.
+    assert_eq!(shard.tick(), Ok(true));
+    // Second tick flushes the coalesce buffer to the journal.
+    assert_eq!(shard.tick(), Ok(true));
+
+    let events = require_snapshot(&journal)?;
+    let expected_action_failed = RuntimeJournalEvent::ActionFailed {
+        run,
+        step: StepIdx::new(1),
+        action: ActionId::new(0),
+        attempt: 1,
+    };
+    let expected_handler_started = RuntimeJournalEvent::StepStarted {
+        run,
+        step: StepIdx::new(2),
+    };
+    assert!(
+        events.contains(&expected_action_failed),
+        "ActionFailed event must be present in journal"
+    );
+    let action_failed_pos = events
+        .iter()
+        .position(|e| e == &expected_action_failed)
+        .ok_or_else(|| format!("ActionFailed not found in events: {events:?}"))?;
+    let handler_started_pos = events
+        .iter()
+        .position(|e| e == &expected_handler_started)
+        .ok_or_else(|| format!("handler StepStarted not found in events: {events:?}"))?;
+    assert!(
+        action_failed_pos < handler_started_pos,
+        "ActionFailed (pos={action_failed_pos}) must precede handler StepStarted (pos={handler_started_pos}); events={events:?}"
+    );
+    Ok(())
+}
