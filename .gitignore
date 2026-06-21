@@ -112,3 +112,7 @@ rustc-ice-*.txt
 # standalone verification/*.rs files)
 verification/verus/*.rlib
 verification/verus/*.rmeta
+# Flux build artifacts (created when running rustc --crate-type=lib on
+# standalone verification/flux/*.rs files via scripts/flux-check-package.sh)
+verification/flux/*.rlib
+verification/flux/*.rmeta

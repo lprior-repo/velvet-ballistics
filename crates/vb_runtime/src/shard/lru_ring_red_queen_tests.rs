@@ -52,40 +52,69 @@ enum Op {
     ForceInsert(u64, u64), // (id, tick)
 }
 
-/// (Currently unused; kept for reference.)
-#[allow(dead_code)]
-fn _ttl_evict_unused() {}
-
-/// Run `ops` operations and verify LruRing invariants after every operation.
+/// Run `ops` operations and verify LruRing invariants against a ground-truth
+/// model after every operation.
 ///
-/// Invariants verified:
+/// Ground-truth model:
+/// - `truth` is the set of item ids we believe are in the ring.
+/// - `truth_ts` records the insertion tick for each truth item, so that
+///   after a sweep we can precisely drop items whose `ts + ttl <= now` from
+///   truth (they MUST have been evicted by the sweep).
+///
+/// Invariants verified after every op:
 /// - No panics or undefined behavior.
-/// - `len()` never exceeds `capacity` for `insert` (force_insert may grow).
-/// - `is_empty()` is consistent with `len() == 0`.
-/// - `contains()` returns true for items that were inserted and not removed
-///   before any sweep (we track this conservatively).
+/// - `is_empty() == (len() == 0)`.
+/// - `ring.len() <= truth.len()`: ring contents are a subset of ground truth
+///   (TTL sweeps may have evicted items without our tracking).
+/// - For every item in `truth` whose `ts + ttl > last_tick`, the ring
+///   MUST still contain that item. If it doesn't, the ring's TTL eviction
+///   is leaking or the insert/remove is corrupting state.
 fn run_with_invariants(seed: u64, ops: &[Op], capacity: usize, ttl: u64) {
     let mut ring: LruRing<RunId> = LruRing::new(capacity, ttl);
 
-    // Track items we KNOW are in the ring. We only add to this set when we
-    // observe a successful Insert or ForceInsert; we remove on explicit
-    // Remove or Clear. Items may be TTL-evicted by the ring without us
-    // knowing, so we conservatively check `contains` only for items we
-    // believe to still be present.
-    let mut known_present: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut truth: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut truth_ts: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();
+    let mut last_tick: u64 = 0;
 
     for (step, op) in ops.iter().enumerate() {
+        // Advance last_tick to the op's tick so post-sweep eviction
+        // accounting uses the most recent time observed.
+        let op_tick = match *op {
+            Op::Insert(_, t) | Op::ForceInsert(_, t) | Op::Sweep(t) => t,
+            Op::Remove(_) | Op::Clear => last_tick,
+        };
+        last_tick = last_tick.max(op_tick);
+
         match *op {
             Op::Insert(id_raw, tick_raw) => {
                 let id = RunId::new(id_raw);
                 let now = TimerTick::new(tick_raw);
+                // LruRing::insert early-returns Ok(()) without sweeping
+                // when the item is already in the ring. Detect that case
+                // to avoid a phantom sweep-eviction in the truth model.
+                let already_present = ring.contains(&id);
                 let result = ring.insert(id, now);
                 match result {
                     Ok(()) => {
-                        known_present.insert(id_raw);
+                        if !already_present {
+                            // ring.insert called sweep_expired(now) before
+                            // pushing the new item. Mirror that: drop every
+                            // truth item with ts + ttl <= tick_raw.
+                            truth_ts.retain(|_, ts| ts.saturating_add(ttl) > tick_raw);
+                            truth.retain(|id| truth_ts.contains_key(id));
+                        }
+                        truth.insert(id_raw);
+                        // LruRing insert is idempotent: a duplicate insert
+                        // does NOT update the existing node's tick. Mirror
+                        // that here so we correctly model the eviction tick.
+                        truth_ts.entry(id_raw).or_insert(tick_raw);
                     }
                     Err(crate::RuntimeError::TerminalRunsLruFull { .. }) => {
-                        // Capacity reached; nothing changed.
+                        // Ring was full and the item was not present; insert
+                        // swept first (which evicted any expired items) and
+                        // then hit the capacity guard. Mirror the sweep.
+                        truth_ts.retain(|_, ts| ts.saturating_add(ttl) > tick_raw);
+                        truth.retain(|id| truth_ts.contains_key(id));
                     }
                     Err(other) => panic!("step {step}: unexpected error {other:?}"),
                 }
@@ -93,44 +122,68 @@ fn run_with_invariants(seed: u64, ops: &[Op], capacity: usize, ttl: u64) {
             Op::Remove(id_raw) => {
                 let id = RunId::new(id_raw);
                 ring.remove(&id);
-                known_present.remove(&id_raw);
+                truth.remove(&id_raw);
+                truth_ts.remove(&id_raw);
             }
             Op::Sweep(tick_raw) => {
                 let now = TimerTick::new(tick_raw);
                 ring.sweep_expired(now);
-                // Items may have been evicted; we can't predict which ones,
-                // so we conservatively keep them in known_present. The
-                // contains check below will catch any inconsistencies.
+                // sweep_expired evicted every node with ts <= cutoff where
+                // cutoff = now - ttl. Items in truth with ts + ttl <= tick_raw
+                // satisfy ts <= tick_raw - ttl = cutoff and MUST have been
+                // evicted. Drop them from truth.
+                truth_ts.retain(|_, ts| ts.saturating_add(ttl) > tick_raw);
+                truth.retain(|id| truth_ts.contains_key(id));
             }
             Op::Clear => {
                 ring.clear();
-                known_present.clear();
+                truth.clear();
+                truth_ts.clear();
             }
             Op::ForceInsert(id_raw, tick_raw) => {
                 let id = RunId::new(id_raw);
                 let now = TimerTick::new(tick_raw);
+                // LruRing::force_insert also early-returns without
+                // sweeping when the item is already present.
+                let already_present = ring.contains(&id);
                 ring.force_insert(id, now);
-                known_present.insert(id_raw);
+                if !already_present {
+                    truth_ts.retain(|_, ts| ts.saturating_add(ttl) > tick_raw);
+                    truth.retain(|id| truth_ts.contains_key(id));
+                }
+                truth.insert(id_raw);
+                truth_ts.entry(id_raw).or_insert(tick_raw);
             }
         }
 
-        // Invariant: insert mode respects capacity.
-        // (force_insert may exceed capacity; we don't enforce this here.)
-        // is_empty <-> len == 0
+        // Invariant 1: is_empty <-> len == 0
         assert_eq!(
             ring.is_empty(),
             ring.len() == 0,
             "step {step}: is_empty mismatch (seed={seed})"
         );
 
-        // Invariant: items we believe are present MUST be present.
-        // (This is the conservative invariant: known_present may be a
-        // superset of the actual ring after sweeps, but a known item must
-        // still be in the ring unless removed/cleared.)
-        // We cannot check this strictly because TTL sweeps may have evicted
-        // items without our knowledge. Instead, verify the ring is
-        // internally consistent.
-        let _ = known_present; // suppressed; kept for documentation.
+        // Invariant 2: ring contents are a subset of ground truth.
+        // (Sweep may evict items from ring without us tracking which ones.)
+        assert!(
+            ring.len() <= truth.len(),
+            "step {step}: ring.len() ({}) > truth.len() ({}) seed={seed}",
+            ring.len(),
+            truth.len()
+        );
+
+        // Invariant 3: every live truth item (one whose TTL has not yet
+        // expired at last_tick) MUST still be in the ring. If it isn't,
+        // the ring's TTL eviction or insert/remove logic is corrupt.
+        for (id_raw, ts) in &truth_ts {
+            if ts.saturating_add(ttl) > last_tick {
+                let id = RunId::new(*id_raw);
+                assert!(
+                    ring.contains(&id),
+                    "step {step}: live item {id_raw} (ts={ts}, ttl={ttl}, last_tick={last_tick}) missing from ring (seed={seed})"
+                );
+            }
+        }
     }
 }
 
@@ -187,15 +240,16 @@ fn lru_ring_property_random_ops_capacity_3_ttl_long() {
 
 #[test]
 fn lru_ring_property_random_ops_consistency_check() {
-    // Property: across random operations, len() and contains() remain
-    // mutually consistent. Specifically:
-    // - len() == count of items for which contains() returns true.
-    //   We approximate this by checking a sample of probe ids.
+    // Property: across random operations, the ring state matches the
+    // ground-truth model maintained by the test:
+    // - ring.len() <= truth.len() (ring is a subset of ground truth).
+    // - Every "live" truth item (ts + ttl > current tick) is in the ring.
     for seed in 0u64..32 {
         let mut rng = Lcg::new(seed);
         let mut tick: u64 = 0;
         let mut ring: LruRing<RunId> = LruRing::new(8, 10);
-        let mut live_count: usize = 0;
+        let mut truth: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        let mut truth_ts: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();
 
         for _ in 0..200 {
             tick = tick.saturating_add(rng.next_u64() % 5);
@@ -207,33 +261,60 @@ fn lru_ring_property_random_ops_consistency_check() {
 
             match kind {
                 0 => {
-                    // Insert
-                    let _ = ring.insert(id, now);
-                    live_count += 1;
+                    // Insert — sweep happens inside LruRing only if item is new
+                    let already = ring.contains(&id);
+                    if ring.insert(id, now).is_ok() {
+                        if !already {
+                            truth_ts.retain(|_, ts| ts.saturating_add(10) > tick);
+                            truth.retain(|id| truth_ts.contains_key(id));
+                        }
+                        truth.insert(id_raw);
+                        truth_ts.entry(id_raw).or_insert(tick);
+                    }
                 }
                 1 => {
                     // Remove
                     ring.remove(&id);
-                    if ring.contains(&id) {
-                        // Was present, now gone.
-                        live_count = live_count.saturating_sub(1);
-                    }
+                    truth.remove(&id_raw);
+                    truth_ts.remove(&id_raw);
                 }
                 2 => {
                     // Sweep
                     ring.sweep_expired(now);
+                    truth_ts.retain(|_, ts| ts.saturating_add(10) > tick);
+                    truth.retain(|id| truth_ts.contains_key(id));
                 }
                 _ => {
-                    // ForceInsert (no-op if already present)
+                    // ForceInsert — sweep happens inside LruRing only if item is new
+                    let already = ring.contains(&id);
                     ring.force_insert(id, now);
+                    if !already {
+                        truth_ts.retain(|_, ts| ts.saturating_add(10) > tick);
+                        truth.retain(|id| truth_ts.contains_key(id));
+                    }
+                    truth.insert(id_raw);
+                    truth_ts.entry(id_raw).or_insert(tick);
                 }
             }
 
-            // Conservative invariant: ring.len() <= 100 (no overflow).
-            assert!(ring.len() < 1_000_000, "ring.len() exploded at seed={seed}");
+            // Invariant: ring contents are a subset of ground truth.
+            assert!(
+                ring.len() <= truth.len(),
+                "ring.len() ({}) > truth.len() ({}) at seed={seed}, tick={tick}",
+                ring.len(),
+                truth.len()
+            );
+            // Invariant: every live truth item is in the ring.
+            for (live_id_raw, ts) in &truth_ts {
+                if ts.saturating_add(10) > tick {
+                    let live_id = RunId::new(*live_id_raw);
+                    assert!(
+                        ring.contains(&live_id),
+                        "live item {live_id_raw} (ts={ts}, tick={tick}) missing from ring at seed={seed}"
+                    );
+                }
+            }
         }
-        // After all ops, ring is in some valid state.
-        let _ = live_count;
     }
 }
 
