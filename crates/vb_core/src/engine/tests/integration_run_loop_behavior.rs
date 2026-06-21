@@ -3,7 +3,7 @@
 //! signal propagation, state transitions, edge cases, and proptest invariants.
 
 use crate::frame::StepState;
-use crate::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use crate::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::value_store::ValueStore;
@@ -499,7 +499,14 @@ fn drive_deterministic_stops_on_do_node_with_awaiting_action_signal() -> Result<
         drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
     ensure_equal(run.executed(), 1)?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))
 }
@@ -545,7 +552,14 @@ fn run_until_blocked_stops_on_do_node_awaiting_action_preserves_pc() -> Result<(
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
     ensure_equal(run.pc(), StepIdx::new(0))
 }
 
@@ -587,7 +601,14 @@ fn drive_deterministic_do_then_finish_only_executes_do_not_advance_past_suspensi
         drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
     ensure_equal(run.executed(), 1)?;
     ensure_equal(run.pc(), StepIdx::new(0))
 }
@@ -790,7 +811,14 @@ fn step_once_do_node_returns_awaiting_action_and_preserves_pc() -> Result<(), St
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
     ensure_equal(run.pc(), StepIdx::new(0))
 }
 

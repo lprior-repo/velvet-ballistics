@@ -204,6 +204,7 @@ fn check_runkilled_fields_preserved() {
         run: vb_core::RunId::new(run_val),
         seq: crate::EventSeq::new(seq_val),
         attempt: attempt_val,
+        reason: None,
     };
 
     // Verify fields round-trip through accessors
@@ -237,6 +238,7 @@ fn check_runkilled_zero_run_invalid() {
         run: vb_core::RunId::new(0),
         seq: crate::EventSeq::new(1),
         attempt: 1,
+        reason: None,
     };
     kani::assert(!event.is_valid(), "RunKilled with RunId(0) must be invalid");
 }
@@ -248,6 +250,7 @@ fn check_runkilled_zero_attempt_invalid() {
         run: vb_core::RunId::new(1),
         seq: crate::EventSeq::new(1),
         attempt: 0,
+        reason: None,
     };
     kani::assert(
         !event.is_valid(),

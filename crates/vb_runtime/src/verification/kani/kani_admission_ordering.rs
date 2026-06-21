@@ -15,6 +15,7 @@
 
 #![forbid(unsafe_code)]
 #![cfg(kani)]
+#![cfg(feature = "kani-shard-lifecycle")]
 
 use std::sync::Arc;
 

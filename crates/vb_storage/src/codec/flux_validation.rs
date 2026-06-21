@@ -129,6 +129,7 @@ fn model_runkilled_field_preservation(run_val: u64, seq_val: u64, attempt_val: u
         run: vb_core::ids::RunId::new(run_val),
         seq: crate::EventSeq::new(seq_val),
         attempt: attempt_val,
+        reason: None,
     };
     event.run_id().get() == run_val
         && event.seq().get() == seq_val

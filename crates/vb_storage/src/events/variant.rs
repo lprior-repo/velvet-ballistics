@@ -187,6 +187,28 @@ pub enum JournalEvent {
         /// Attempt number (1-based).
         attempt: u16,
     },
+    /// Wait was cancelled before timer fired.
+    WaitCancelledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
+    /// Ask was cancelled before timer fired.
+    AskCancelledEvent {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Step index.
+        step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
+    },
     /// Retry was scheduled.
     RetryScheduledEvent {
         /// Run identifier.
@@ -217,6 +239,9 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Attempt number (1-based).
         attempt: u16,
+        /// Optional kill reason.
+        #[serde(default)]
+        reason: Option<String>,
     },
     /// Run completed.
     RunFinished {

@@ -76,10 +76,11 @@ impl StorageRuntimeJournal {
                 attempt: 1,
                 reason,
             }),
-            RuntimeJournalEvent::RunKilled { run } => Some(JournalEvent::RunKilled {
+            RuntimeJournalEvent::RunKilled { run, reason } => Some(JournalEvent::RunKilled {
                 run,
                 seq,
                 attempt: 1,
+                reason,
             }),
             RuntimeJournalEvent::StepStarted { run, step } => Some(JournalEvent::StepStarted {
                 run,
@@ -102,8 +103,10 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
+            | RuntimeJournalEvent::WaitCancelled { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
+            | RuntimeJournalEvent::AskCancelled { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::Resumed { .. } => None,
         }
@@ -178,8 +181,10 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::RunKilled { .. }
             | RuntimeJournalEvent::WaitScheduled { .. }
             | RuntimeJournalEvent::WaitResolved { .. }
+            | RuntimeJournalEvent::WaitCancelled { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
+            | RuntimeJournalEvent::AskCancelled { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
@@ -251,6 +256,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionScheduledTicket { .. }
             | RuntimeJournalEvent::ActionCompletedEnvelope { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
+            | RuntimeJournalEvent::WaitCancelled { .. }
+            | RuntimeJournalEvent::AskCancelled { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
             | RuntimeJournalEvent::Resumed { .. } => Ok(None),

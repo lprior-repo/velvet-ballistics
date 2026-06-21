@@ -10,7 +10,7 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::{RunFrame, StepState};
-use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledWorkflow, WorkflowParts};
@@ -23,7 +23,11 @@ impl kani::Arbitrary for EngineSignal {
             0 => EngineSignal::Continue,
             1 => EngineSignal::Finished(kani::any::<SlotValue>(), kani::any::<Taint>()),
             2 => EngineSignal::StepBudgetExhausted,
-            3 => EngineSignal::AwaitingAction,
+            3 => EngineSignal::AwaitingAction {
+                step: StepIdx::new(kani::any::<u16>()),
+                seq: SeqNo::new(kani::any::<u64>()),
+                action: ActionId::new(kani::any::<u32>()),
+            },
             4 => EngineSignal::AwaitingWait,
             _ => EngineSignal::AwaitingAsk,
         }
@@ -87,7 +91,7 @@ fn step_once_bounds_harness() {
             kani::cover!(matches!(signal, EngineSignal::Continue), "Continue reachable");
             kani::cover!(matches!(signal, EngineSignal::Finished(_, _)), "Finished reachable");
             kani::cover!(matches!(signal, EngineSignal::StepBudgetExhausted), "StepBudgetExhausted reachable");
-            kani::cover!(matches!(signal, EngineSignal::AwaitingAction), "AwaitingAction reachable");
+            kani::cover!(matches!(signal, EngineSignal::AwaitingAction { .. }), "AwaitingAction reachable");
             kani::cover!(matches!(signal, EngineSignal::AwaitingWait), "AwaitingWait reachable");
             kani::cover!(matches!(signal, EngineSignal::AwaitingAsk), "AwaitingAsk reachable");
         }

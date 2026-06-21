@@ -34,6 +34,10 @@ pub enum RecordKind {
     AskAnswered = 18,
     /// Retry scheduled event.
     RetryScheduled = 19,
+    /// Wait cancelled event.
+    WaitCancelled = 31,
+    /// Ask cancelled event.
+    AskCancelled = 32,
     /// Step failed event.
     StepFailed = 20,
     /// Run cancelled event.
@@ -75,36 +79,13 @@ pub enum RecordKind {
 
 impl RecordKind {
     /// Returns the wire identifier.
+    ///
+    /// The wire ID is the `#[repr(u16)]` discriminant declared above; this
+    /// method is the single source of truth for serializing a variant to its
+    /// on-disk `u16`. Adding a new variant requires picking the correct
+    /// discriminant literal — `id()` will follow automatically.
     #[must_use]
     pub const fn id(self) -> u16 {
-        match self {
-            Self::WorkflowSource => 1,
-            Self::CompiledIr => 2,
-            Self::RunHeader => 3,
-            Self::RunAccepted => 10,
-            Self::StepStarted => 11,
-            Self::SlotWritten => 12,
-            Self::StepSucceeded => 29,
-            Self::ActionScheduled => 13,
-            Self::ActionCompleted => 14,
-            Self::ActionFailed => 15,
-            Self::WaitScheduled => 16,
-            Self::AskScheduled => 17,
-            Self::AskAnswered => 18,
-            Self::RetryScheduled => 19,
-            Self::StepFailed => 20,
-            Self::RunCancelled => 21,
-            Self::RunKilled => 28,
-            Self::RunFinished => 22,
-            Self::RunFailed => 23,
-            Self::RunAdmission => 24,
-            Self::RunResumed => 25,
-            Self::RunRetried => 26,
-            Self::RunAnswered => 27,
-            Self::Snapshot => 30,
-            Self::Blob => 40,
-            Self::IndexUpdate => 50,
-            Self::RecoveryStamp => 7,
-        }
+        self as u16
     }
 }

@@ -45,6 +45,8 @@ pub enum RuntimeJournalEvent {
     RunKilled {
         /// Run identifier.
         run: RunId,
+        /// Optional kill reason.
+        reason: Option<String>,
     },
     /// Action was scheduled and handed to the external action boundary.
     ActionScheduled {
@@ -116,6 +118,13 @@ pub enum RuntimeJournalEvent {
         /// Step that resumed from waiting.
         step: StepIdx,
     },
+    /// Wait was cancelled before the timer fired (e.g. during shutdown).
+    WaitCancelled {
+        /// Run identifier.
+        run: RunId,
+        /// Step that was waiting.
+        step: StepIdx,
+    },
     /// Ask was scheduled and the run suspended.
     AskScheduled {
         /// Run identifier.
@@ -134,6 +143,13 @@ pub enum RuntimeJournalEvent {
         step: StepIdx,
         /// Slot that received the answer.
         slot: SlotIdx,
+    },
+    /// Ask was cancelled before the timer fired (e.g. during shutdown).
+    AskCancelled {
+        /// Run identifier.
+        run: RunId,
+        /// Step that was waiting for the answer.
+        step: StepIdx,
     },
     /// Slot was written by an external runtime boundary.
     SlotWritten {
@@ -190,8 +206,10 @@ impl RuntimeJournalEvent {
             | Self::ActionFailed { run, .. }
             | Self::WaitScheduled { run, .. }
             | Self::WaitResolved { run, .. }
+            | Self::WaitCancelled { run, .. }
             | Self::AskScheduled { run, .. }
             | Self::AskAnswered { run, .. }
+            | Self::AskCancelled { run, .. }
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }

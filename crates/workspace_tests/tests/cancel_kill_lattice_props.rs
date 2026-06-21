@@ -34,6 +34,7 @@ mod cancel_kill_lattice_props {
             run: RunId::new(42),
             seq: EventSeq::new(0),
             attempt: 1,
+            reason: None,
         };
         assert!(
             event.is_valid(),
@@ -58,6 +59,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
+                reason: None,
             };
             prop_assert!(event.is_valid());
             prop_assert_eq!(event.record_kind(), RecordKind::RunKilled);
@@ -73,6 +75,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(0),
                 seq: EventSeq::new(seq_val),
                 attempt: 1,
+                reason: None,
             };
             prop_assert!(!event.is_valid());
         }
@@ -84,6 +87,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(0),
                 attempt: 0,
+                reason: None,
             };
             prop_assert!(!event.is_valid());
         }
@@ -95,6 +99,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(u64::MAX),
                 attempt: 1,
+                reason: None,
             };
             prop_assert!(!event.is_valid());
         }
@@ -151,7 +156,10 @@ mod cancel_kill_lattice_props {
             let run = RunId::new(run_val);
             let seq = EventSeq::new(0);
 
-            let killed_id = JournalEvent::RunKilled { run, seq, attempt: 1 }.record_kind().id();
+            let killed_id =
+                JournalEvent::RunKilled { run, seq, attempt: 1, reason: None }
+                    .record_kind()
+                    .id();
             prop_assert_eq!(killed_id, 28);
             prop_assert!(killed_id >= 10);
         }
@@ -173,6 +181,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
+                reason: None,
             };
             prop_assert_eq!(event.attempt(), Some(attempt_val));
             prop_assert!(event.is_valid());
@@ -189,6 +198,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
+                reason: None,
             };
             prop_assert_eq!(event.record_kind(), RecordKind::RunKilled);
             prop_assert_eq!(event.record_kind().id(), 28);
@@ -205,6 +215,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
+                reason: None,
             };
             let cancelled = JournalEvent::RunCancelled {
                 run: RunId::new(run_val),
@@ -233,6 +244,7 @@ mod cancel_kill_lattice_props {
             run: RunId::new(42),
             seq: EventSeq::new(0),
             attempt: 1,
+            reason: None,
         };
         assert!(event.is_valid(), "RunKilled must be valid");
     }
@@ -247,6 +259,7 @@ mod cancel_kill_lattice_props {
                     run: RunId::new(1),
                     seq: EventSeq::new(0),
                     attempt: 1,
+                    reason: None,
                 };
                 assert!(event.is_valid());
                 assert_eq!(event.record_kind().id(), 28);
@@ -305,6 +318,7 @@ mod cancel_kill_lattice_props {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
+                reason: None,
             };
             prop_assert!(event.is_valid());
             prop_assert_eq!(event.run_id(), RunId::new(run_val));
@@ -325,6 +339,7 @@ mod cancel_kill_lattice_props {
             run: RunId::new(0),
             seq: EventSeq::new(0),
             attempt: 1,
+            reason: None,
         };
         assert!(!event.is_valid(), "RunKilled with zero run must be invalid");
     }
@@ -335,6 +350,7 @@ mod cancel_kill_lattice_props {
             run: RunId::new(1),
             seq: EventSeq::new(0),
             attempt: 0,
+            reason: None,
         };
         assert!(
             !event.is_valid(),
@@ -348,6 +364,7 @@ mod cancel_kill_lattice_props {
             run: RunId::new(1),
             seq: EventSeq::new(u64::MAX),
             attempt: 1,
+            reason: None,
         };
         assert!(!event.is_valid(), "RunKilled with max seq must be invalid");
     }
@@ -363,6 +380,7 @@ mod cancel_kill_lattice_props {
             run: RunId::new(77),
             seq: EventSeq::new(3),
             attempt: 2,
+            reason: None,
         };
         // RunCancelled has an extra `reason` field, so they're structurally different
         let cancelled = JournalEvent::RunCancelled {

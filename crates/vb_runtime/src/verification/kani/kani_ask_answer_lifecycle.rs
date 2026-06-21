@@ -24,6 +24,7 @@
 
 #![forbid(unsafe_code)]
 #![cfg(kani)]
+#![cfg(feature = "kani-shard-lifecycle")]
 
 use vb_core::ids::{EventSeq, RunId};
 use std::time::Instant;

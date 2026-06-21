@@ -197,6 +197,13 @@ mod tests {
         let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-        ensure_equal(result, EngineSignal::AwaitingAction)
+        ensure_equal(
+            result,
+            EngineSignal::AwaitingAction {
+                step: StepIdx::new(0),
+                seq: crate::ids::SeqNo::ZERO,
+                action: crate::ids::ActionId::new(1),
+            },
+        )
     }
 }

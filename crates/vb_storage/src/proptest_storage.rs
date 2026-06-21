@@ -427,6 +427,7 @@ mod storage_tests {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(seq_val),
                 attempt: attempt_val,
+                reason: None,
             };
 
             // Verify structural validity
@@ -469,6 +470,7 @@ mod storage_tests {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(0),
                 attempt: 1,
+                reason: None,
             };
             let result = encode_record(
                 MAGIC_SNAPSHOT,
@@ -491,6 +493,7 @@ mod storage_tests {
                 run: RunId::new(run_val),
                 seq: EventSeq::new(0),
                 attempt: 1,
+                reason: None,
             };
             let result = encode_record(
                 MAGIC_BLOB,
@@ -530,6 +533,7 @@ mod storage_tests {
                         run,
                         seq: EventSeq::new(seq),
                         attempt: 1,
+                        reason: None,
                     }
                 } else {
                     JournalEvent::StepStarted {
@@ -576,6 +580,7 @@ mod storage_tests {
                     run,
                     seq: EventSeq::new(2), // gap: seq 1 is missing
                     attempt: 1,
+                    reason: None,
                 },
             ];
 
@@ -611,6 +616,7 @@ mod storage_tests {
                     run,
                     seq: EventSeq::new(0), // duplicate seq
                     attempt: 1,
+                    reason: None,
                 },
             ];
 

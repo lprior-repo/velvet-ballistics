@@ -3,8 +3,8 @@
 //!
 //! Tracks input/action/result types through workflow steps, propagates secret
 //! taint facts, and validates resource contract bounds against protocol hard
-//! limits. `Finish` results carrying `Secret` or `DerivedFromSecret` taint
-//! produce `SECRET_RESULT_LEAK` when `allows_secret_results` is `false`.
+//! limits. Per Section 47, `Finish` results carrying `Secret` or
+//! `DerivedFromSecret` taint are tracked but never rejected.
 //!
 //! # Module Layout
 //!

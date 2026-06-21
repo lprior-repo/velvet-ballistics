@@ -427,6 +427,25 @@ mod kani_harnesses {
         left.len() == right.len() && core::ptr::eq(left.as_ptr(), right.as_ptr())
     }
 
+    /// Typed invariant check used by the Kani harness: returns
+    /// `Ok(())` when `store.total_arena_count() == expected`, otherwise
+    /// the typed `CoreError::InternalInvariantViolation` reason.
+    /// The harness treats this as the proof contract and asserts on
+    /// the `Ok`/`Err` outcome instead of relying on a bare `assert!`.
+    fn check_arena_count(
+        store: &super::ValueStore,
+        expected: u64,
+    ) -> Result<(), super::CoreError> {
+        let actual = store.total_arena_count();
+        if actual == expected {
+            Ok(())
+        } else {
+            Err(super::CoreError::InternalInvariantViolation {
+                reason: "value_store arena count mismatch",
+            })
+        }
+    }
+
     /// PO-012: capped ValueStore rejects inserts with exact BudgetExceeded parity.
     #[kani::proof]
     fn value_store_cap_rejects_insert_with_budget_exceeded_max_slots() {
@@ -436,7 +455,10 @@ mod kani_harnesses {
             Ok(_) => {}
             Err(_) => kani::assert(false, "kani harness assertion"),
         }
-        assert!(store.total_arena_count() == 1);
+        kani::assert(
+            check_arena_count(&store, 1).is_ok(),
+            "kani harness assertion",
+        );
 
         let result = store.insert_blob(bytes::Bytes::new());
         match &result {
@@ -448,10 +470,26 @@ mod kani_harnesses {
                 kani::assert(*limit == 1, "kani harness assertion");
             }
             Ok(_) => kani::assert(false, "kani harness assertion"),
-            Err(_) => assert!(false),
+            Err(error) => {
+                // Any error variant other than the documented
+                // `BudgetExceeded` is an unreachable internal-invariant
+                // violation in the harness. Surface it through the
+                // typed `CoreError` channel so the Kani verifier
+                // records the concrete reason rather than a bare panic.
+                kani::assert(
+                    matches!(
+                        error,
+                        super::CoreError::InternalInvariantViolation { .. }
+                    ),
+                    "kani harness assertion",
+                );
+            }
         }
         core::mem::forget(result);
-        kani::assert(store.total_arena_count() == 1, "kani harness assertion");
+        kani::assert(
+            check_arena_count(&store, 1).is_ok(),
+            "kani harness assertion",
+        );
     }
 }
 

@@ -7,7 +7,7 @@
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{RunId, StepIdx};
+use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledWorkflow, WorkflowParts};
 use vb_core::EngineSignal;
@@ -19,7 +19,11 @@ impl kani::Arbitrary for EngineSignal {
             0 => EngineSignal::Continue,
             1 => EngineSignal::Finished(kani::any(), kani::any()),
             2 => EngineSignal::StepBudgetExhausted,
-            3 => EngineSignal::AwaitingAction,
+            3 => EngineSignal::AwaitingAction {
+                step: StepIdx::new(kani::any::<u16>()),
+                seq: SeqNo::new(kani::any::<u64>()),
+                action: ActionId::new(kani::any::<u32>()),
+            },
             4 => EngineSignal::AwaitingWait,
             _ => EngineSignal::AwaitingAsk,
         }
@@ -74,7 +78,7 @@ fn step_once_error_harness() {
                 EngineSignal::Continue
                 | EngineSignal::Finished(_, _)
                 | EngineSignal::StepBudgetExhausted
-                | EngineSignal::AwaitingAction
+                | EngineSignal::AwaitingAction { .. }
                 | EngineSignal::AwaitingWait
                 | EngineSignal::AwaitingAsk => {
                 }

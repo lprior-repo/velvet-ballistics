@@ -5,7 +5,7 @@
 //! slot facts, and enforces type constraints (e.g. boolean choose conditions)
 //! and secret taint rules (no secret results unless allowed).
 
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationResult;
 
 use super::facts::Facts;
 use super::model::{StepKind, TypedValue, WorkflowTypes};
@@ -25,9 +25,9 @@ pub fn validate_types(workflow: &WorkflowTypes) -> ValidationResult<()> {
     validate_step_types(workflow, &facts, &mut slots)
 }
 
-/// Validates secret taint tracking; emits [`ValidationError::SecretResultLeak`] when a `Finish`
-/// step produces `Secret` or `DerivedFromSecret` taint and the resource
-/// contract does not allow secret results.
+/// Validates secret taint tracking. Per Section 47, Finish | Result taint is
+/// passed through without rejection: `Secret` and `DerivedFromSecret` results
+/// are accepted and only tracked.
 pub fn validate_taint(workflow: &WorkflowTypes) -> ValidationResult<()> {
     let facts = Facts::build(workflow);
     let mut slots = vec![None::<ValueFact>; workflow.steps.len()];
@@ -76,15 +76,10 @@ fn validate_step_taint(
                 // validate_step_types.
             }
             StepKind::Finish { result } => {
-                let fact = resolve_value(result, facts, slots);
-                match fact.taint {
-                    Taint::Secret | Taint::DerivedFromSecret
-                        if !workflow.resource_contract.allows_secret_results =>
-                    {
-                        return Err(ValidationError::SecretResultLeak);
-                    }
-                    _ => {}
-                }
+                // Section 47: Finish | Result taint passed through. No rejection
+                // of Secret or DerivedFromSecret results. Taint is tracked but
+                // does not cause rejection, mirroring vb_compile::validate_public_result.
+                let _fact = resolve_value(result, facts, slots);
             }
         }
     }

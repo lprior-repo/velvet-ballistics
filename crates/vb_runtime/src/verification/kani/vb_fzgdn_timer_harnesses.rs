@@ -7,6 +7,7 @@
 //! No local model copies. No simulated behavior. These test the real code.
 
 #![forbid(unsafe_code)]
+#![cfg(feature = "kani-fzgdn-timer-harnesses")]
 
 #[cfg(kani)]
 mod harnesses {

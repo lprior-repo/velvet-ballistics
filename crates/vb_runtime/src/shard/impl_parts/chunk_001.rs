@@ -243,8 +243,19 @@ impl Shard {
     }
 
     /// Removes a run from the terminal runs set.
-    pub fn terminal_runs_remove(&mut self, run_id: RunId) {
-        self.terminal_runs.remove(&run_id);
+    ///
+    /// Returns the typed `RuntimeError::Core { InternalInvariantViolation }`
+    /// if the underlying [`LruRing`] exposes an internal corruption
+    /// (e.g. a live slot is missing from the arena, or the doubly-linked
+    /// list pointers reference a free slot). Production callers MUST
+    /// propagate this error; the corruption cannot be repaired silently.
+    pub fn terminal_runs_remove(
+        &mut self,
+        run_id: RunId,
+    ) -> Result<(), crate::RuntimeError> {
+        self.terminal_runs
+            .remove(&run_id)
+            .map_err(crate::shard::lru_ring::LruRingError::into_runtime_error)
     }
 
     /// Returns a reference to the shard counters.

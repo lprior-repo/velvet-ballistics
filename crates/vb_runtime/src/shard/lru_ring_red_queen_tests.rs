@@ -121,13 +121,14 @@ fn run_with_invariants(seed: u64, ops: &[Op], capacity: usize, ttl: u64) {
             }
             Op::Remove(id_raw) => {
                 let id = RunId::new(id_raw);
-                ring.remove(&id);
+                ring.remove(&id).expect("red-queen remove must succeed");
                 truth.remove(&id_raw);
                 truth_ts.remove(&id_raw);
             }
             Op::Sweep(tick_raw) => {
                 let now = TimerTick::new(tick_raw);
-                ring.sweep_expired(now);
+                ring.sweep_expired(now)
+                    .expect("red-queen sweep_expired must succeed");
                 // sweep_expired evicted every node with ts <= cutoff where
                 // cutoff = now - ttl. Items in truth with ts + ttl <= tick_raw
                 // satisfy ts <= tick_raw - ttl = cutoff and MUST have been
@@ -274,13 +275,15 @@ fn lru_ring_property_random_ops_consistency_check() {
                 }
                 1 => {
                     // Remove
-                    ring.remove(&id);
+                    ring.remove(&id)
+                        .expect("consistency-check remove must succeed");
                     truth.remove(&id_raw);
                     truth_ts.remove(&id_raw);
                 }
                 2 => {
                     // Sweep
-                    ring.sweep_expired(now);
+                    ring.sweep_expired(now)
+                        .expect("consistency-check sweep must succeed");
                     truth_ts.retain(|_, ts| ts.saturating_add(10) > tick);
                     truth.retain(|id| truth_ts.contains_key(id));
                 }
@@ -327,12 +330,14 @@ fn lru_ring_property_sweep_expired_evicts_only_expired() {
         ring.insert(RunId::new(i), TimerTick::new(0))
             .expect("first wave");
     }
-    ring.sweep_expired(TimerTick::new(50));
+    ring.sweep_expired(TimerTick::new(50))
+        .expect("sweep before ttl must succeed");
     assert_eq!(ring.len(), 5, "no items expired at t=50 (ttl=100)");
     assert_eq!(ring.counters().expired_evictions, 0);
 
     // Now sweep at t=200. All 5 items should be evicted.
-    ring.sweep_expired(TimerTick::new(200));
+    ring.sweep_expired(TimerTick::new(200))
+        .expect("sweep past ttl must succeed");
     assert!(ring.is_empty(), "all items expired at t=200 (ttl=100)");
     assert_eq!(ring.counters().expired_evictions, 5);
 }
@@ -344,7 +349,7 @@ fn lru_ring_property_remove_only_drops_target() {
         ring.insert(RunId::new(i), TimerTick::new(0)).expect("fill");
     }
     let target = RunId::new(3);
-    ring.remove(&target);
+    ring.remove(&target).expect("remove target must succeed");
     assert_eq!(ring.len(), 7);
     for i in 0..8 {
         let r = RunId::new(i);
@@ -370,7 +375,7 @@ fn lru_ring_property_remove_reinsert_at_tail() {
     ring.insert(b, TimerTick::new(0)).unwrap();
     ring.insert(c, TimerTick::new(0)).unwrap();
 
-    ring.remove(&b);
+    ring.remove(&b).expect("remove b must succeed");
     assert!(!ring.contains(&b));
     assert!(ring.contains(&a));
     assert!(ring.contains(&c));
@@ -412,8 +417,10 @@ fn lru_ring_property_remove_uses_free_list_correctly() {
     for i in 0..4 {
         ring.insert(RunId::new(i), TimerTick::new(0)).expect("fill");
     }
-    ring.remove(&RunId::new(1));
-    ring.remove(&RunId::new(2));
+    ring.remove(&RunId::new(1))
+        .expect("remove first must succeed");
+    ring.remove(&RunId::new(2))
+        .expect("remove second must succeed");
     assert_eq!(ring.len(), 2);
     assert!(ring.contains(&RunId::new(0)));
     assert!(ring.contains(&RunId::new(3)));
@@ -460,7 +467,8 @@ fn lru_ring_property_push_tail_invariant_repeated_fill_drain_cycles() {
             // Drain it.
             for i in 0..capacity {
                 let id = RunId::new(((cycle * capacity + i) % pool) as u64 + 1);
-                ring.remove(&id);
+                ring.remove(&id)
+                    .expect("repeated fill/drain remove must succeed");
             }
             assert!(
                 ring.is_empty(),
@@ -479,10 +487,12 @@ fn lru_ring_property_remove_same_item_twice_is_safe() {
     let mut ring: LruRing<RunId> = LruRing::new(4, u64::MAX);
     ring.insert(RunId::new(1), TimerTick::new(0)).unwrap();
     ring.insert(RunId::new(2), TimerTick::new(0)).unwrap();
-    ring.remove(&RunId::new(1));
+    ring.remove(&RunId::new(1))
+        .expect("first remove must succeed");
     // Second remove of the same id: must be a no-op (item not in
     // position anymore).
-    ring.remove(&RunId::new(1));
+    ring.remove(&RunId::new(1))
+        .expect("second remove of absent id must succeed");
     assert_eq!(ring.len(), 1);
     // Reinsert 1 — slot 0 should be reused safely.
     ring.insert(RunId::new(1), TimerTick::new(10)).unwrap();
@@ -507,7 +517,8 @@ fn lru_ring_property_capacity_overflow_then_recover() {
     assert!(r.is_err(), "must fail when full");
     assert_eq!(ring.len(), 3);
     // Remove one and try again — must succeed.
-    ring.remove(&RunId::new(2));
+    ring.remove(&RunId::new(2))
+        .expect("recovery remove must succeed");
     ring.insert(RunId::new(5), TimerTick::new(0)).unwrap();
     assert_eq!(ring.len(), 3);
     assert!(ring.contains(&RunId::new(5)));
@@ -527,7 +538,8 @@ fn lru_ring_property_sweep_expired_then_insert_does_not_fire_invariant() {
         ring.insert(RunId::new(i + 1), TimerTick::new(i)).unwrap();
     }
     // Sweep at t=20 — all 8 items are expired (ts + 10 <= 20).
-    ring.sweep_expired(TimerTick::new(20));
+    ring.sweep_expired(TimerTick::new(20))
+        .expect("first sweep past ttl must succeed");
     assert!(ring.is_empty(), "all items should be expired");
     // Re-insert — all slots should be on the free list.
     for i in 0..8u64 {
@@ -536,6 +548,7 @@ fn lru_ring_property_sweep_expired_then_insert_does_not_fire_invariant() {
     }
     assert_eq!(ring.len(), 8);
     // Now sweep at t=200 — all expire again.
-    ring.sweep_expired(TimerTick::new(200));
+    ring.sweep_expired(TimerTick::new(200))
+        .expect("second sweep past ttl must succeed");
     assert!(ring.is_empty());
 }

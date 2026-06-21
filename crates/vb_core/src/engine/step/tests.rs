@@ -258,7 +258,14 @@ fn step_once_do_returns_awaiting_action() -> Result<(), String> {
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAction)
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(5),
+        },
+    )
 }
 
 // ===== WaitUntil dispatch =====
@@ -634,7 +641,14 @@ fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String
 
     // Execute the Do node to suspend
     let suspend = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-    ensure_equal(suspend, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        suspend,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
 
     let ticket = ActionTicket {
         run: RunId::new(1),
@@ -722,7 +736,14 @@ fn resume_action_failure_marks_step_failed() -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     // No error handler, so the signal should be AwaitingAction for external handling
-    ensure_equal(signal, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        signal,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))
 }
 
@@ -871,7 +892,14 @@ fn step_once_awaiting_action_preserves_pc() -> Result<(), String> {
     let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
     // Verify AwaitingAction is returned
-    ensure_equal(result, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(7),
+        },
+    )?;
     // PC must NOT advance for AwaitingAction
     ensure_equal(run.pc(), StepIdx::new(0))?;
     // Step should be in Running state (not Succeeded)
@@ -927,7 +955,14 @@ fn step_once_signal_maps_to_correct_state() -> Result<(), String> {
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-        ensure_equal(result, EngineSignal::AwaitingAction)?;
+        ensure_equal(
+            result,
+            EngineSignal::AwaitingAction {
+                step: StepIdx::new(0),
+                seq: SeqNo::ZERO,
+                action: ActionId::new(1),
+            },
+        )?;
         ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
     }
 

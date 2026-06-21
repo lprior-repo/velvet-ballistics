@@ -126,7 +126,7 @@ fn step_once_bounds_harness() {
                 "StepBudgetExhausted reachable"
             );
             kani::cover!(
-                matches!(signal, EngineSignal::AwaitingAction),
+                matches!(signal, EngineSignal::AwaitingAction { .. }),
                 "AwaitingAction reachable"
             );
             kani::cover!(
@@ -202,7 +202,7 @@ fn step_once_state_mapping_harness() {
         // values map to their contract state without binding unused values.
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
-            EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => StepState::Running,
+            EngineSignal::AwaitingAction { .. } | EngineSignal::StepBudgetExhausted => StepState::Running,
             EngineSignal::AwaitingWait { deadline_slot: _ } => StepState::Waiting,
             EngineSignal::AwaitingAsk { timeout_slot: _ } => StepState::Asking,
         };

@@ -14,6 +14,7 @@
 
 #![forbid(unsafe_code)]
 #![cfg(kani)]
+#![cfg(feature = "kani-shard-lifecycle")]
 
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, StepIdx};

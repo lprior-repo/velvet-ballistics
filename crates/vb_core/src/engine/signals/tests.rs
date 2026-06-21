@@ -113,7 +113,7 @@
 //! Unit tests for the signals module.
 
 use crate::engine::signals::{EngineSignal, StepBudget};
-use crate::ids::SlotIdx;
+use crate::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{SlotValue, Taint};
 
@@ -210,7 +210,11 @@ fn engine_signal_variants_are_distinct() -> Result<(), String> {
         EngineSignal::Continue,
         EngineSignal::Finished(SlotValue::Null, Taint::Clean),
         EngineSignal::StepBudgetExhausted,
-        EngineSignal::AwaitingAction,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(0),
+        },
         EngineSignal::AwaitingWait {
             deadline_slot: SlotIdx::new(0),
         },
@@ -230,7 +234,14 @@ fn engine_signal_variants_are_distinct() -> Result<(), String> {
 
 #[test]
 fn engine_signal_debug_format_contains_variant_name() -> Result<(), String> {
-    let debug_str = format!("{:?}", EngineSignal::AwaitingAction);
+    let debug_str = format!(
+        "{:?}",
+        EngineSignal::AwaitingAction {
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(0),
+        }
+    );
     ensure_equal(debug_str.contains("AwaitingAction"), true)?;
     let debug_str = format!("{:?}", EngineSignal::StepBudgetExhausted);
     ensure_equal(debug_str.contains("StepBudgetExhausted"), true)
@@ -347,7 +358,11 @@ fn engine_signal_clone_preserves_variant_and_data() -> Result<(), String> {
 
 #[test]
 fn engine_signal_all_suspension_variants_are_distinct() -> Result<(), String> {
-    let action = EngineSignal::AwaitingAction;
+    let action = EngineSignal::AwaitingAction {
+        step: StepIdx::ZERO,
+        seq: SeqNo::ZERO,
+        action: ActionId::new(0),
+    };
     let wait = EngineSignal::AwaitingWait {
         deadline_slot: SlotIdx::new(0),
     };
@@ -357,7 +372,14 @@ fn engine_signal_all_suspension_variants_are_distinct() -> Result<(), String> {
     ensure_equal(action != ask, true)?;
     ensure_equal(wait != ask, true)?;
 
-    ensure_equal(action.clone(), EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        action.clone(),
+        EngineSignal::AwaitingAction {
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(0),
+        },
+    )?;
     ensure_equal(
         wait.clone(),
         EngineSignal::AwaitingWait {
@@ -494,7 +516,15 @@ fn step_budget_debug_format() {
 fn engine_signal_debug_format_all_variants_exhaustive() {
     assert!(format!("{:?}", EngineSignal::Continue).contains("Continue"));
     assert!(format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"));
-    assert!(format!("{:?}", EngineSignal::AwaitingAction).contains("AwaitingAction"));
+    assert!(format!(
+        "{:?}",
+        EngineSignal::AwaitingAction {
+            step: StepIdx::ZERO,
+            seq: SeqNo::ZERO,
+            action: ActionId::new(0),
+        }
+    )
+    .contains("AwaitingAction"));
     assert!(
         format!(
             "{:?}",

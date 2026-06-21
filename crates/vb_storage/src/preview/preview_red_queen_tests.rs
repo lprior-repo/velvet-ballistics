@@ -29,7 +29,7 @@
     reason = "test-only lint overrides; production code in preview.rs is unaffected"
 )]
 
-use crate::preview::{preview_keyspace, DecodedPreview, PreviewPayload};
+use crate::preview::{DecodedPreview, PreviewPayload, preview_keyspace};
 use crate::types::{PreviewConfig, StorageKey};
 
 /// Build a valid 9-byte RunHeader key for the given run id (1..=u64::MAX).
@@ -99,8 +99,7 @@ fn property_max_bytes_zero_with_entries_yields_truncated_empty() {
             "seed={seed}: max_bytes=0 with non-empty entries must set truncated=true"
         );
         assert_eq!(
-            result.total_keyspace_records as usize,
-            entry_count,
+            result.total_keyspace_records as usize, entry_count,
             "seed={seed}: total_keyspace_records must equal input length"
         );
     }
@@ -197,10 +196,8 @@ fn property_payload_larger_than_max_bytes_hard_caps() {
 fn property_byte_cap_boundary_inclusive_exclusive() {
     for cap in [1u32, 7, 64, 1024, 4096] {
         let config_fit = PreviewConfig::new(2, cap).unwrap();
-        let entries_fit: Vec<(Vec<u8>, Vec<u8>)> = vec![(
-            make_valid_run_header_key(1),
-            vec![0u8; cap as usize],
-        )];
+        let entries_fit: Vec<(Vec<u8>, Vec<u8>)> =
+            vec![(make_valid_run_header_key(1), vec![0u8; cap as usize])];
         let result = preview_keyspace(config_fit, &entries_fit).unwrap();
         assert_eq!(
             result.entries.len(),
@@ -213,10 +210,8 @@ fn property_byte_cap_boundary_inclusive_exclusive() {
         );
 
         let config_over = PreviewConfig::new(2, cap).unwrap();
-        let entries_over: Vec<(Vec<u8>, Vec<u8>)> = vec![(
-            make_valid_run_header_key(1),
-            vec![0u8; (cap as usize) + 1],
-        )];
+        let entries_over: Vec<(Vec<u8>, Vec<u8>)> =
+            vec![(make_valid_run_header_key(1), vec![0u8; (cap as usize) + 1])];
         let result = preview_keyspace(config_over, &entries_over).unwrap();
         assert_eq!(
             result.entries.len(),
@@ -241,9 +236,9 @@ fn property_mixed_valid_invalid_keys_silently_skips_invalid() {
         let entries: Vec<(Vec<u8>, Vec<u8>)> = (0..8)
             .map(|idx| {
                 let key: Vec<u8> = match idx {
-                    0 => vec![], // EmptyKey
-                    1 => vec![0xFFu8], // UnknownPrefix
-                    2 => vec![0x10u8, 0, 0, 0, 0], // Wrong length for RunHeader
+                    0 => vec![],                               // EmptyKey
+                    1 => vec![0xFFu8],                         // UnknownPrefix
+                    2 => vec![0x10u8, 0, 0, 0, 0],             // Wrong length for RunHeader
                     3 => vec![0x10u8, 0, 0, 0, 0, 0, 0, 0, 0], // InvalidRunId (zero)
                     4 => make_valid_run_header_key(1),
                     5 => make_valid_run_header_key(2),
@@ -281,10 +276,8 @@ fn property_mixed_valid_invalid_keys_silently_skips_invalid() {
 #[test]
 fn property_single_valid_entry_admitted() {
     let config = PreviewConfig::new(10, 1024).unwrap();
-    let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![(
-        make_valid_run_header_key(42),
-        vec![0xDE, 0xAD, 0xBE, 0xEF],
-    )];
+    let entries: Vec<(Vec<u8>, Vec<u8>)> =
+        vec![(make_valid_run_header_key(42), vec![0xDE, 0xAD, 0xBE, 0xEF])];
     let result = preview_keyspace(config, &entries).unwrap();
     assert_eq!(result.entries.len(), 1);
     assert_eq!(result.total_keyspace_records, 1);
@@ -306,8 +299,7 @@ fn property_truncated_iff_a_cap_was_hit() {
 
     // Case 2: no cap hit (1 of 1 fits) → truncated=false
     let config = PreviewConfig::new(10, u32::MAX).unwrap();
-    let entries: Vec<(Vec<u8>, Vec<u8>)> =
-        vec![(make_valid_run_header_key(1), vec![0u8; 4])];
+    let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![(make_valid_run_header_key(1), vec![0u8; 4])];
     let result = preview_keyspace(config, &entries).unwrap();
     assert!(!result.truncated, "1 of 1 must not truncate");
     assert_eq!(result.entries.len(), 1);
@@ -342,7 +334,9 @@ fn property_truncated_iff_a_cap_was_hit() {
 fn property_single_invalid_key_skipped() {
     let config = PreviewConfig::new(10, 1024).unwrap();
     let entries: Vec<(Vec<u8>, Vec<u8>)> = vec![(
-        vec![0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8],
+        vec![
+            0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8,
+        ],
         vec![0u8; 8],
     )];
     let result = preview_keyspace(config, &entries).unwrap();

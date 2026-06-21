@@ -107,7 +107,14 @@ fn resume_action_failure_with_handler_routes_to_handler_and_returns_continue() -
 
     // Suspend at the Do node
     let suspend = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-    ensure_equal(suspend, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        suspend,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
 
     // Fail the action — should route to handler (step 2)
     let ticket = ActionTicket {

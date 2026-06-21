@@ -137,7 +137,7 @@ impl Shard {
         Ok(())
     }
 
-    pub(crate) fn handle_kill(&mut self, run: RunId, _reason: Option<String>) -> RuntimeResult<()> {
+    pub(crate) fn handle_kill(&mut self, run: RunId, reason: Option<String>) -> RuntimeResult<()> {
         // C2: Reject missing runs with a typed error.
         if !self.run_state_contains(run) && !self.terminal_runs_contains(run) {
             return Err(RuntimeError::RunNotFound);
@@ -149,7 +149,7 @@ impl Shard {
             self.terminal_outcome_record(run, TerminalOutcome::Killed);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
-            self.append_journal_event(RuntimeJournalEvent::RunKilled { run })?;
+            self.append_journal_event(RuntimeJournalEvent::RunKilled { run, reason })?;
         }
         self.discard_journal_sequence(run);
         Ok(())

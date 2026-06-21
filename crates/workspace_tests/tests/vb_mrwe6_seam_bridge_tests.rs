@@ -268,6 +268,7 @@ fn vb_mrwe6_bridge_duplicate_classifier_rejects_equal_unrelated_retry_for_marker
         run: run(),
         seq: EventSeq::new(14),
         attempt: 1,
+        reason: None,
     };
 
     assert_eq!(

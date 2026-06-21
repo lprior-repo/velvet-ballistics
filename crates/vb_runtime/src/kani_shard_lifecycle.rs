@@ -14,7 +14,7 @@
 //! behind the kani-shard-lifecycle feature.
 
 #![forbid(unsafe_code)]
-#![cfg(kani)]
+#![cfg(all(kani, feature = "kani-shard-lifecycle"))]
 
 // Existing harnesses (po-001 through po-011 from vb-8mdp.5, extended with RetryFSM)
 #[path = "verification/kani/kani_shard_lifecycle_harnesses.rs"]

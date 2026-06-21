@@ -25,6 +25,7 @@
 
 #![forbid(unsafe_code)]
 #![cfg(kani)]
+#![cfg(feature = "kani-ask-payload-bounds")]
 
 use vb_core::value::Taint;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};

@@ -11,7 +11,7 @@ use crate::action::{ActionFailureCode, ActionJournalEvent, ActionTicket, RetryPo
 use crate::errors::EngineError;
 use crate::frame::{RunFrame, StepState};
 use crate::ids::ActionId;
-use crate::ids::{ExprIdx, SlotIdx, StepIdx};
+use crate::ids::{ExprIdx, SeqNo, SlotIdx, StepIdx};
 use crate::value::SlotValue;
 use crate::value::Taint;
 use crate::value_store::ValueStore;
@@ -84,27 +84,39 @@ fn execute_node(
             branches,
             otherwise,
         } => choose::choose_expr_branch(plan, run, store, branches, *otherwise),
-        other => execute_boundary_node(run, other),
+        other => execute_boundary_node(run, node.id, other),
     }
 }
 
 #[inline]
 fn execute_boundary_node(
     run: &mut RunFrame,
+    step: StepIdx,
     kind: &CompiledNodeKind,
 ) -> Result<EngineSignal, EngineError> {
     match kind {
         CompiledNodeKind::Jump { target } => node_helpers::jump_to(run, *target),
         CompiledNodeKind::Finish { result } => node_helpers::finish_run(run, *result),
         CompiledNodeKind::ErrorHandler { body, .. } => node_helpers::jump_to(run, *body),
-        other => execute_suspension_node(other),
+        other => execute_suspension_node(step, other),
     }
 }
 
 #[inline]
-fn execute_suspension_node(kind: &CompiledNodeKind) -> Result<EngineSignal, EngineError> {
+fn execute_suspension_node(
+    step: StepIdx,
+    kind: &CompiledNodeKind,
+) -> Result<EngineSignal, EngineError> {
     match kind {
-        CompiledNodeKind::Do { .. } => Ok(EngineSignal::AwaitingAction),
+        CompiledNodeKind::Do { action, .. } => Ok(EngineSignal::AwaitingAction {
+            step,
+            // The IR interpreter does not track journal sequence numbers;
+            // it emits ZERO as a sentinel. The runtime resolves the real
+            // sequence number from its journal sequence tracker before
+            // constructing the live ActionTicket.
+            seq: SeqNo::ZERO,
+            action: *action,
+        }),
         CompiledNodeKind::WaitUntil { deadline_slot } => Ok(EngineSignal::AwaitingWait {
             deadline_slot: *deadline_slot,
         }),
@@ -226,7 +238,16 @@ pub fn resume_action_failure(
     };
     match route_error_handler(plan, run, step, &error)? {
         ErrorHandlerOutcome::Routed => Ok((EngineSignal::Continue, journal)),
-        ErrorHandlerOutcome::NoHandler => Ok((EngineSignal::AwaitingAction, journal)),
+        ErrorHandlerOutcome::NoHandler => Ok((
+            EngineSignal::AwaitingAction {
+                step: ticket.step,
+                // No journal sequence bump on handler routing failure;
+                // the runtime resolves seq from its tracker.
+                seq: SeqNo::ZERO,
+                action: ticket.action,
+            },
+            journal,
+        )),
     }
 }
 
@@ -238,7 +259,7 @@ fn mark_step_after_signal(
     match signal {
         EngineSignal::AwaitingWait { .. } => run.mark_waiting(step),
         EngineSignal::AwaitingAsk { .. } => run.mark_asking(step),
-        EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => Ok(()),
+        EngineSignal::AwaitingAction { .. } | EngineSignal::StepBudgetExhausted => Ok(()),
         EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step),
     }
 }

@@ -180,7 +180,8 @@ fn test_terminal_runs_lru_respects_ttl_seconds() {
     );
 
     // Explicit sweep after the TTL horizon clears every entry.
-    ring.sweep_expired(TimerTick::new(baseline.get() + ttl + 1));
+    ring.sweep_expired(TimerTick::new(baseline.get() + ttl + 1))
+        .expect("sweep past ttl must succeed");
     assert_eq!(
         ring.counters().expired_evictions,
         capacity as u64,
@@ -215,7 +216,7 @@ fn test_remove_present_item_drops_it() {
 
     let target = RunId::new(3);
     let before_counters = ring.counters();
-    ring.remove(&target);
+    ring.remove(&target).expect("remove of present item must succeed");
 
     assert!(!ring.contains(&target), "removed item must not be present");
     assert_eq!(ring.len(), capacity - 1, "len must drop by exactly one");
@@ -249,7 +250,7 @@ fn test_remove_absent_item_is_no_op() {
     assert!(!ring.contains(&absent), "absent item must not be present");
 
     let before_counters = ring.counters();
-    ring.remove(&absent);
+    ring.remove(&absent).expect("remove of absent item must succeed");
 
     assert!(!ring.contains(&absent));
     assert_eq!(
@@ -270,7 +271,8 @@ fn test_remove_on_empty_ring_is_no_op() {
     assert!(ring.is_empty());
     let before_counters = ring.counters();
 
-    ring.remove(&RunId::new(1));
+    ring.remove(&RunId::new(1))
+        .expect("remove on empty ring must succeed");
 
     assert!(ring.is_empty(), "empty ring must remain empty after remove");
     assert_eq!(
@@ -300,7 +302,8 @@ fn test_remove_after_sweep_expired_of_same_item_is_no_op() {
     // Sweep at a tick well past the TTL horizon; every entry is evicted
     // by sweep_expired (the linked-list head walks forward until the
     // first non-expired node, which there is none of here).
-    ring.sweep_expired(TimerTick::new(baseline.get() + ttl + 1));
+    ring.sweep_expired(TimerTick::new(baseline.get() + ttl + 1))
+        .expect("sweep past ttl must succeed");
     assert_eq!(
         ring.counters().expired_evictions,
         before_sweep_evictions + capacity as u64,
@@ -311,7 +314,8 @@ fn test_remove_after_sweep_expired_of_same_item_is_no_op() {
     let before_counters = ring.counters();
     // Removing an item that sweep_expired already evicted must be a no-op:
     // the position map no longer has the entry, so remove short-circuits.
-    ring.remove(&RunId::new(2));
+    ring.remove(&RunId::new(2))
+        .expect("remove of already-evicted item must succeed");
 
     assert!(ring.is_empty(), "ring must still be empty");
     assert_eq!(
@@ -338,9 +342,12 @@ fn test_remove_preserves_membership_and_order_invariants() {
     // Remove the second-oldest, the middle, and the newest — three
     // different positions in the linked list — and re-insert each so
     // the free list is exercised across both reused and fresh slots.
-    ring.remove(&RunId::new(2));
-    ring.remove(&RunId::new(4));
-    ring.remove(&RunId::new(6));
+    ring.remove(&RunId::new(2))
+        .expect("remove second-oldest must succeed");
+    ring.remove(&RunId::new(4))
+        .expect("remove middle must succeed");
+    ring.remove(&RunId::new(6))
+        .expect("remove newest must succeed");
 
     let survivors = [RunId::new(1), RunId::new(3), RunId::new(5)];
     for run in survivors {
@@ -364,7 +371,8 @@ fn test_remove_preserves_membership_and_order_invariants() {
 
     // Sweep everything (all entries are at ts <= 700 with ttl = 1000,
     // sweep at ts = 2000 evicts all).
-    ring.sweep_expired(TimerTick::new(2_000));
+    ring.sweep_expired(TimerTick::new(2_000))
+        .expect("sweep past ttl must succeed");
     assert!(
         ring.is_empty(),
         "sweep at ts=2000 must evict every entry (ttl=1000)"

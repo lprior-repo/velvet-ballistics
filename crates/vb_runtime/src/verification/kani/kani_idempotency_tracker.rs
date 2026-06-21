@@ -7,6 +7,8 @@
 //! bounded generators via kani::any() with kani::assume() guards.
 
 #![forbid(unsafe_code)]
+#![cfg(kani)]
+#![cfg(feature = "kani-idempotency-tracker")]
 
 use crate::action::{ActionError, ActionTicket, Idempotency};
 use crate::ids::{ActionId, RunId, SeqNo, StepIdx};

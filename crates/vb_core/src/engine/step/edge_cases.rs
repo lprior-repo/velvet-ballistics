@@ -87,7 +87,14 @@ fn resume_action_completion_missing_next_step_returns_error() -> Result<(), Stri
 
     // Suspend the Do node.
     let suspend = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
-    ensure_equal(suspend, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        suspend,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        },
+    )?;
 
     let ticket = ActionTicket {
         run: RunId::new(1),

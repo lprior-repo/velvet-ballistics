@@ -24,6 +24,7 @@
 
 #![forbid(unsafe_code)]
 #![cfg(kani)]
+#![cfg(feature = "kani-submit-frame-release")]
 
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};

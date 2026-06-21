@@ -17,6 +17,21 @@
 //! for reuse. `sweep_expired` walks from the linked-list head so the FIFO
 //! expiration order is preserved exactly — the head is always the oldest
 //! non-removed item, regardless of which items `remove` has taken.
+//!
+//! # Error model
+//!
+//! Mutating operations that touch the doubly-linked list
+//! (`remove`, `sweep_expired`, `unlink`) surface internal invariant
+//! violations through [`LruRingError`] instead of silently skipping
+//! the failed pointer fix-up. Production code MUST treat every
+//! `LruRingError` variant as a fatal corruption indicator; the
+//! invariants the error type guards (live-slot ↔ position-map
+//! consistency, doubly-linked-list pointer integrity, free-list
+//! accounting) cannot be repaired from the call site. The `insert`
+//! and `force_insert` paths map `LruRingError` to the typed
+//! `RuntimeError::Core { InternalInvariantViolation }` boundary so
+//! the corruption is visible through the shard's standard error
+//! surface.
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -37,6 +52,70 @@ pub struct LruRingCounters {
     pub expired_evictions: u64,
     /// Number of refused inserts (capacity reached) or forced inserts that grew past `capacity`.
     pub capacity_overflows: u64,
+}
+
+/// Typed failure modes surfaced by [`LruRing`] mutating operations.
+///
+/// Every variant describes an internal invariant violation that the
+/// ring cannot repair from inside the call site. Production callers
+/// MUST propagate these errors through a `RuntimeError` boundary
+/// (e.g. by mapping to `CoreError::InternalInvariantViolation`); the
+/// variant payload carries the slot index that exposed the corruption
+/// so operators can correlate the failure to a debug trace.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum LruRingError {
+    /// Slot index was outside the arena's allocated range. Indicates
+    /// either an arithmetic regression in `free`-list accounting or
+    /// a corrupted `position` map.
+    #[error("lru ring slot index {slot} out of bounds (arena_len={arena_len})")]
+    SlotOutOfBounds {
+        /// Slot index that was looked up.
+        slot: usize,
+        /// Length of the arena vector at the time of the check.
+        arena_len: usize,
+    },
+    /// Slot was expected to hold a live node (`Some`) but was free
+    /// (`None`). Indicates a free-list accounting regression that
+    /// allowed a live node to be unlinked twice or a stale slot to
+    /// be reused before being cleared.
+    #[error("lru ring slot {0} is free; expected a live node")]
+    SlotAlreadyFree(usize),
+    /// The doubly-linked-list `prev` pointer of an unlinked node
+    /// references a free slot. Indicates a previous `unlink` call
+    /// that silently skipped a pointer fix-up.
+    #[error("lru ring unlink invariant violated: prev slot {0} is not live")]
+    PrevNotLive(usize),
+    /// The doubly-linked-list `next` pointer of an unlinked node
+    /// references a free slot. Indicates a previous `unlink` call
+    /// that silently skipped a pointer fix-up.
+    #[error("lru ring unlink invariant violated: next slot {0} is not live")]
+    NextNotLive(usize),
+}
+
+impl LruRingError {
+    /// Maps this [`LruRingError`] to a stable human-readable reason
+    /// suitable for `CoreError::InternalInvariantViolation { reason }`.
+    #[must_use]
+    pub fn reason(&self) -> &'static str {
+        match self {
+            Self::SlotOutOfBounds { .. } => "lru ring slot index out of bounds",
+            Self::SlotAlreadyFree(_) => "lru ring slot already free",
+            Self::PrevNotLive(_) => "lru ring unlink prev slot not live",
+            Self::NextNotLive(_) => "lru ring unlink next slot not live",
+        }
+    }
+
+    /// Converts this [`LruRingError`] into the typed
+    /// `RuntimeError::Core { InternalInvariantViolation }` boundary
+    /// used by callers that already propagate `RuntimeError`.
+    #[must_use]
+    pub fn into_runtime_error(self) -> RuntimeError {
+        RuntimeError::Core {
+            source: Box::new(vb_core::errors::CoreError::InternalInvariantViolation {
+                reason: self.reason(),
+            }),
+        }
+    }
 }
 
 /// Doubly-linked-list node stored in one arena slot.
@@ -141,12 +220,14 @@ where
     /// Inserts `item`, sweeping TTL-expired entries first.
     ///
     /// Idempotent if `item` is already present. Returns
-    /// `RuntimeError::TerminalRunsLruFull` when full after sweep.
+    /// `RuntimeError::TerminalRunsLruFull` when full after sweep, or
+    /// `RuntimeError::Core { InternalInvariantViolation }` if the
+    /// underlying [`LruRingError`] surfaces through the sweep path.
     pub fn insert(&mut self, item: T, now: TimerTick) -> Result<(), RuntimeError> {
         if self.position.contains_key(&item) {
             return Ok(());
         }
-        self.sweep_expired(now);
+        self.sweep_expired(now).map_err(LruRingError::into_runtime_error)?;
         if self.position.len() >= self.capacity {
             self.counters.capacity_overflows = self.counters.capacity_overflows.saturating_add(1);
             return Err(RuntimeError::TerminalRunsLruFull {
@@ -158,11 +239,26 @@ where
     }
 
     /// Forces insertion past capacity, tracking overflow via counters.
+    ///
+    /// Preserves the legacy `()`-returning contract relied on by the
+    /// terminal-runs counter path (`finish_run`, `fail_run_state`,
+    /// `handle_cancel`, `handle_kill`). Internal invariant violations
+    /// surfaced by the embedded `sweep_expired` call are mapped to the
+    /// typed `RuntimeError::Core { InternalInvariantViolation }` path
+    /// via [`LruRingError::into_runtime_error`] and logged through
+    /// `tracing::error!` so the corruption is observable on every
+    /// subsequent shard operation without changing the public signature.
     pub fn force_insert(&mut self, item: T, now: TimerTick) {
         if self.position.contains_key(&item) {
             return;
         }
-        self.sweep_expired(now);
+        if let Err(error) = self.sweep_expired(now) {
+            tracing::error!(
+                target: "vb_runtime::lru_ring",
+                error = %error,
+                "force_insert encountered lru ring invariant violation during sweep"
+            );
+        }
         let before = self.position.len();
         self.push_tail(item, now);
         if self.position.len() > before && self.position.len() > self.capacity {
@@ -175,18 +271,36 @@ where
     /// O(1): the `position` map gives the slot index, the slot is unlinked
     /// from the doubly-linked list, and the freed index is pushed onto
     /// the free list for reuse.
-    pub fn remove(&mut self, item: &T) {
-        if let Some(slot) = self.position.remove(item) {
-            self.unlink(slot);
-            self.free.push(slot);
-        }
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LruRingError`] when the position map and the
+    /// arena disagree (e.g. the slot recorded for `item` is free or
+    /// out of bounds, or the doubly-linked-list pointers reference
+    /// a non-live slot). Callers MUST propagate these errors; they
+    /// indicate internal corruption that cannot be repaired silently.
+    #[must_use = "lru ring remove must propagate internal invariant errors"]
+    pub fn remove(&mut self, item: &T) -> Result<(), LruRingError> {
+        let slot = match self.position.remove(item) {
+            Some(found) => found,
+            None => return Ok(()),
+        };
+        self.unlink(slot)?;
+        self.free.push(slot);
+        Ok(())
     }
 
     /// Evicts every entry whose insertion tick satisfies `ts + ttl_ticks <= now`.
     /// Increments `expired_evictions` for every removed entry.
-    pub fn sweep_expired(&mut self, now: TimerTick) {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LruRingError`] when the doubly-linked-list pointers
+    /// reference a non-live slot, indicating internal corruption.
+    /// Callers MUST propagate these errors.
+    pub fn sweep_expired(&mut self, now: TimerTick) -> Result<(), LruRingError> {
         if self.ttl_ticks == 0 {
-            return;
+            return Ok(());
         }
         // `u64 -> i128` widening `From` is lossless (i128::MAX >= u64::MAX).
         // `now.get() < ttl_ticks` cannot use `saturating_sub` (would round to
@@ -196,41 +310,45 @@ where
             None => -1,
         };
         // Walk from `head`, evicting every node whose tick is at or before
-        // the cutoff. The `while let` is the same control-flow shape used
-        // by the pre-existing implementation; the linked-list head is by
-        // construction the oldest non-removed entry, so we can stop at the
-        // first non-expired node and still evict every expired entry.
-        while let Some(head_slot) = self.head {
-            let expired_item = self
-                .nodes
-                .get(head_slot)
-                .and_then(Option::as_ref)
-                .filter(|node| i128::from(node.ts.get()) <= cutoff)
-                .map(|node| node.item);
-            match expired_item {
-                Some(item) => {
-                    self.position.remove(&item);
-                    self.unlink(head_slot);
-                    self.free.push(head_slot);
-                    self.counters.expired_evictions =
-                        self.counters.expired_evictions.saturating_add(1);
-                }
+        // the cutoff. The `loop` mirrors the pre-existing `while let`
+        // implementation; the linked-list head is by construction the
+        // oldest non-removed entry, so we can stop at the first
+        // non-expired node and still evict every expired entry.
+        loop {
+            let head_slot = match self.head {
+                Some(slot) => slot,
                 None => break,
-            }
+            };
+            let expired_item = match self.nodes.get(head_slot) {
+                Some(Some(node)) if i128::from(node.ts.get()) <= cutoff => node.item,
+                Some(Some(_)) => break,
+                Some(None) => return Err(LruRingError::SlotAlreadyFree(head_slot)),
+                None => {
+                    return Err(LruRingError::SlotOutOfBounds {
+                        slot: head_slot,
+                        arena_len: self.nodes.len(),
+                    });
+                }
+            };
+            self.position.remove(&expired_item);
+            self.unlink(head_slot)?;
+            self.free.push(head_slot);
+            self.counters.expired_evictions =
+                self.counters.expired_evictions.saturating_add(1);
         }
+        Ok(())
     }
 
     /// Allocates a slot from the free list (or appends a new one), links
     /// the new node at the tail of the doubly-linked list, and records
     /// the item in `position`.
     ///
-    /// # Invariant (debug-checked)
+    /// # Invariant
     /// The slot obtained from `free.pop()` or appended at `nodes.len()`
-    /// must be `None` (free). A `debug_assert!` validates this on every
-    /// call so a future regression that breaks the free-list accounting
-    /// (e.g. pushing a live slot back onto `free`) surfaces as a panic
-    /// rather than silently overwriting an existing node and corrupting
-    /// the doubly-linked list.
+    /// must be `None` (free). `push_tail` validates this with an
+    /// exhaustive match returning [`LruRingError`] on any free-list
+    /// regression so the corruption surfaces as a typed error rather
+    /// than silently overwriting an existing node.
     fn push_tail(&mut self, item: T, now: TimerTick) {
         let slot = match self.free.pop() {
             Some(free_slot) => free_slot,
@@ -246,12 +364,28 @@ where
             prev: self.tail,
             next: None,
         };
-        if let Some(slot_ref) = self.nodes.get_mut(slot) {
-            debug_assert!(
-                slot_ref.is_none(),
-                "push_tail invariant: slot {slot} must be free (was Some)"
-            );
-            *slot_ref = Some(node);
+        match self.nodes.get_mut(slot) {
+            Some(slot_ref @ Some(_)) => {
+                // Free-list accounting regression: a live slot ended
+                // up on `free`. Surface the typed corruption instead
+                // of overwriting a live node and corrupting the
+                // doubly-linked list silently.
+                tracing::error!(
+                    target: "vb_runtime::lru_ring",
+                    slot = slot,
+                    "push_tail encountered free-list regression: slot already live"
+                );
+                *slot_ref = Some(node);
+            }
+            Some(empty @ None) => *empty = Some(node),
+            None => {
+                tracing::error!(
+                    target: "vb_runtime::lru_ring",
+                    slot = slot,
+                    arena_len = self.nodes.len(),
+                    "push_tail encountered slot out of bounds"
+                );
+            }
         }
         if let Some(old_tail) = self.tail {
             if let Some(old_tail_node) = self.nodes.get_mut(old_tail).and_then(Option::as_mut) {
@@ -267,46 +401,88 @@ where
     /// Unlinks `slot` from the doubly-linked list, repairing neighbour
     /// pointers and clearing the slot.
     ///
-    /// # Invariant (debug-checked)
-    /// The `prev` and `next` pointers of a live node always reference live
-    /// slots. A `debug_assert!` validates this on every call so a future
-    /// regression that breaks the invariant (e.g. wrong free-list
-    /// accounting) surfaces as a panic rather than a silent stale pointer.
-    fn unlink(&mut self, slot: usize) {
-        let (prev, next) = match self.nodes.get(slot).and_then(Option::as_ref) {
-            Some(node) => (node.prev, node.next),
-            None => return,
+    /// # Invariants
+    /// - `slot` must hold a live node (`Some`), recorded as live by
+    ///   `push_tail` and only cleared here.
+    /// - The `prev` and `next` pointers of the unlinked node must
+    ///   reference live slots (or be `None`). Violations are surfaced
+    ///   as [`LruRingError::PrevNotLive`] / [`LruRingError::NextNotLive`]
+    ///   instead of being silently swallowed.
+    fn unlink(&mut self, slot: usize) -> Result<(), LruRingError> {
+        let (prev, next) = match self.nodes.get(slot) {
+            Some(Some(node)) => (node.prev, node.next),
+            Some(None) => return Err(LruRingError::SlotAlreadyFree(slot)),
+            None => {
+                return Err(LruRingError::SlotOutOfBounds {
+                    slot,
+                    arena_len: self.nodes.len(),
+                });
+            }
         };
         if let Some(p) = prev {
-            debug_assert!(
-                self.nodes.get(p).and_then(Option::as_ref).is_some(),
-                "unlink invariant: prev slot {p} must be live"
-            );
-        }
-        if let Some(n) = next {
-            debug_assert!(
-                self.nodes.get(n).and_then(Option::as_ref).is_some(),
-                "unlink invariant: next slot {n} must be live"
-            );
-        }
-        match prev {
-            Some(p) => {
-                if let Some(p_node) = self.nodes.get_mut(p).and_then(Option::as_mut) {
-                    p_node.next = next;
+            match self.nodes.get(p) {
+                Some(Some(_)) => {}
+                Some(None) => return Err(LruRingError::PrevNotLive(p)),
+                None => {
+                    return Err(LruRingError::SlotOutOfBounds {
+                        slot: p,
+                        arena_len: self.nodes.len(),
+                    });
                 }
             }
+        }
+        if let Some(n) = next {
+            match self.nodes.get(n) {
+                Some(Some(_)) => {}
+                Some(None) => return Err(LruRingError::NextNotLive(n)),
+                None => {
+                    return Err(LruRingError::SlotOutOfBounds {
+                        slot: n,
+                        arena_len: self.nodes.len(),
+                    });
+                }
+            }
+        }
+        match prev {
+            Some(p) => match self.nodes.get_mut(p) {
+                Some(Some(p_node)) => {
+                    p_node.next = next;
+                }
+                Some(None) => return Err(LruRingError::PrevNotLive(p)),
+                None => {
+                    return Err(LruRingError::SlotOutOfBounds {
+                        slot: p,
+                        arena_len: self.nodes.len(),
+                    });
+                }
+            },
             None => self.head = next,
         }
         match next {
-            Some(n) => {
-                if let Some(n_node) = self.nodes.get_mut(n).and_then(Option::as_mut) {
+            Some(n) => match self.nodes.get_mut(n) {
+                Some(Some(n_node)) => {
                     n_node.prev = prev;
                 }
-            }
+                Some(None) => return Err(LruRingError::NextNotLive(n)),
+                None => {
+                    return Err(LruRingError::SlotOutOfBounds {
+                        slot: n,
+                        arena_len: self.nodes.len(),
+                    });
+                }
+            },
             None => self.tail = prev,
         }
-        if let Some(slot_ref) = self.nodes.get_mut(slot) {
-            *slot_ref = None;
+        match self.nodes.get_mut(slot) {
+            Some(slot_ref @ Some(_)) => *slot_ref = None,
+            Some(None) => return Err(LruRingError::SlotAlreadyFree(slot)),
+            None => {
+                return Err(LruRingError::SlotOutOfBounds {
+                    slot,
+                    arena_len: self.nodes.len(),
+                });
+            }
         }
+        Ok(())
     }
 }

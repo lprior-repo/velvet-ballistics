@@ -30,6 +30,7 @@ pub use completion_watermark::{CompletionDrain, CompletionWatermark, CompletionW
 pub use directive::ShardDirective;
 pub use lru_ring::{
     DEFAULT_MAX_TERMINAL_RUNS, DEFAULT_TERMINAL_RUNS_TTL_TICKS, LruRing, LruRingCounters,
+    LruRingError,
 };
 pub use types::{
     AskAnswer, AskTicket, InspectHandle, InspectResponse, InspectSnapshot,

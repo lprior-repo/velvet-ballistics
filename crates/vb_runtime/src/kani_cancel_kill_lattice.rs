@@ -39,6 +39,7 @@ fn kani_cancel_kill_lattice() {
         run: RunId::new(run_val),
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: attempt_val,
+        reason: None,
     };
     kani::assert(valid_event.is_valid(), "valid RunKilled event must be valid");
 
@@ -47,6 +48,7 @@ fn kani_cancel_kill_lattice() {
         run: RunId::new(0),
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
+        reason: None,
     };
     kani::assert(!zero_run_event.is_valid(), "RunKilled with RunId(0) must be invalid");
 
@@ -55,6 +57,7 @@ fn kani_cancel_kill_lattice() {
         run: RunId::new(run_val),
         seq: vb_storage::EventSeq::new(u64::MAX),
         attempt: 1,
+        reason: None,
     };
     kani::assert(!overflow_seq_event.is_valid(), "RunKilled with seq=u64::MAX must be invalid");
 
@@ -63,6 +66,7 @@ fn kani_cancel_kill_lattice() {
         run: RunId::new(run_val),
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: 0,
+        reason: None,
     };
     kani::assert(!zero_attempt_event.is_valid(), "RunKilled with attempt=0 must be invalid");
 
@@ -144,6 +148,7 @@ fn check_terminal_events_are_terminal() {
         run,
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
+        reason: None,
     };
     kani::assert(killed.is_terminal_for_run(run),
         "RunKilled must be terminal for its own run",

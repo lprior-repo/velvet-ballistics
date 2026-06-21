@@ -3,7 +3,7 @@
 
 use crate::errors::EngineError;
 use crate::frame::StepState;
-use crate::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use crate::ids::{ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{
@@ -257,7 +257,14 @@ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
 
     let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store);
 
-    ensure_equal(result, Ok(EngineSignal::AwaitingAction))?;
+    ensure_equal(
+        result,
+        Ok(EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(1),
+        }),
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
     Ok(())
 }

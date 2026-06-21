@@ -122,6 +122,7 @@ pub(super) fn run_killed() -> JournalEvent {
         run: RunId::new(1),
         seq: EventSeq::new(10),
         attempt: 1,
+        reason: None,
     }
 }
 

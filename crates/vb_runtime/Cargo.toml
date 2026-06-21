@@ -52,6 +52,13 @@ kani-trace-ring = []
 kani-vt2f-runtime-facade = []
 kani-vt2f-shard-lower-semantics = []
 kani-yaml-e2e-admission-matrix = []
+# ARCH-W0-02: isolate orphan Kani harness groups behind package features.
+kani-shard-lifecycle = []
+kani-ask-payload-bounds = []
+kani-cancel-kill-lattice = []
+kani-idempotency-tracker = []
+kani-submit-frame-release = []
+kani-fzgdn-timer-harnesses = []
 # HVR-PO-RUNTIME-001/HVR-PO-RUNTIME-002/HVR-PO-RUNTIME-006: isolate vb-god2f action-completion Kani harnesses.
 vb-god2f-action-completion = []
 vb-y9d3v-attempt-fence = []

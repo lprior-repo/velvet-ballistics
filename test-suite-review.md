@@ -1,236 +1,163 @@
-# Test Suite Review — vb-xi2f.24 State 10
+# Master Test Suite Review — Workspace-Wide Sweep (Round 1 of 40)
 
-**Review mode**: Suite review (implementation + tests)
-**Reviewer**: test-reviewer
-**Date**: 2026-06-01
-**Status**: APPROVED WITH FINDINGS
+**Date:** 2026-06-21
+**Reviewer:** test-reviewer (master synthesis of 4 parallel subagent reviews)
+**Mode:** Workspace-wide behavior-test sweep, 4 slices, parallel subagent dispatch.
+**Scope:** 799 test-bearing Rust files across 17 production crates.
 
-## Summary
+## STATUS: REJECTED
 
-48 behavior tests written in three phases for the Reduce Multi-Step Body Lowering bead (vb-xi2f.24). All 48 active tests compile and pass deterministically. Test assertions use concrete variant destructuring and exact value comparisons — zero bare `is_ok()`, `is_err()`, `unwrap()`, `expect()`, or `panic()` in behavior assertions. Phase 3 (7 tests) are commented out as TDD compile-fail specifications and must be uncommented after `emit_reduce_body_steps` is implemented.
+The workspace contains **24 CRITICAL** and **40 HIGH** test-quality defects that would
+still pass if the production behavior they claim to verify were deleted, mutated, or had
+its error/success variants swapped. Each finding below has a file:line anchor, a mutation
+thought experiment demonstrating the false-positive escape, and a concrete fix recipe.
+The slice artifacts in `.evidence/test-review/slice-*.md` carry the full evidence
+(command output, BEFORE/AFTER snippets, exhaustive pattern census).
 
-## Test Execution Evidence
-
-```
-$ cargo test -p vb_compile --lib
-cargo test: 507 passed, 4 ignored (1 suite, 2.40s)
-
-$ cargo test -p vb_compile --lib -- canonical_body_step_width
-cargo test: 14 passed (1 suite, 0.00s)
-
-$ cargo test -p vb_compile --lib -- body_width
-cargo test: 17 passed (1 suite, 0.00s)
-
-$ cargo test -p vb_compile --lib -- lower_canonical_aggregate
-cargo test: 14 passed (1 suite, 0.00s)
-
-$ cargo test -p vb_compile --lib -- multi_step
-cargo test: 4 passed (1 suite, 0.00s)
-
-$ cargo test -p vb_compile --lib -- tdd_red
-cargo test: 5 passed (1 suite, 0.00s)
-```
-
-Zero flakes on repeated runs. No sleeps, no hidden mutable state, no `#[ignore]` on behavior tests.
+This is the **Round 1 baseline** in a 40-round review/fix loop. The fix list is filed as
+24 blocker beads (one per CRITICAL finding) plus 40 HIGH beads, dispatched to the
+`test-writer` agent. Subsequent rounds (2-40) will re-dispatch the same 4 subagents
+against the post-fix code and track which findings close.
 
 ---
 
-## Gate Results
+## 1. Aggregate Findings
 
-| Gate | Result | Details |
-|------|--------|---------|
-| 1. Tests compile and execute deterministically | APPROVED | 507 pass, 0 fail, confirmed deterministic across repeated runs. |
-| 2. Integration tests use public API only | APPROVED | All tests are in `mod_compile_lowering/tests.rs` (in-crate unit/integration). Use `pub(super)` functions correctly. No mocks. Real `SlotCompiler`, real `lower_canonical_aggregate`, real `body_width`. |
-| 3. Tests assert behavior, not implementation details | APPROVED | Assertions verify width values, error variant names, node counts, StepIdx positions, next-link chains — all observable behavior. No tests inspect internal data structures or call private functions. |
-| 4. No ignored tests, sleeps, mocks, hidden mutable state, silent error suppression | APPROVED | Zero `#[ignore]` in vb-xi2f.24 tests. Zero `sleep()`. Zero mocks. `SlotCompiler::new()` creates fresh state per test. Errors are always destructured and asserted. |
-| 5. Mutation thought experiment | APPROVED WITH FINDINGS | See Section below. |
-| 6. Snapshot tests | N/A | No snapshot tests in this suite. |
-| 7. Resource-heavy commands bounded | N/A | Behavior tests are lightweight unit/integration (sub-3s total). No broad verifier commands. |
-| 8. Commented-out tests are not evidence | FINDING | 7 Phase 3 tests commented out (F-001 below). They are correctly marked as blocked and not claimed as evidence, but represent core behavior gaps. |
+| Severity | Count | Definition | Action |
+|----------|-------|------------|--------|
+| CRITICAL | **24** | Test passes if the production behavior it claims is deleted or swapped. | File blocker beads; test-writer MUST fix before next review. |
+| HIGH | **40** | Smoke test (`is_ok()` / `is_err()` / `Some(_)`) that accepts ANY Result. | File debt beads; test-writer SHOULD fix before round 5. |
+| MEDIUM | **38** | Decorative assertion, redundant `is_err()` + `matches!()`, or `let _ =` field-reachability check. | Owner-approved debt; track, fix opportunistically. |
+| LOW | **23** | Test-infrastructure issue, controlled sleep, or `panic!` in `other` arm. | Owner-approved no-action or trivial cleanup. |
+| OBSERVATION | **19** | Positive observations (exemplary test files, idiomatic patterns). | Out of scope. |
+| **TOTAL** | **144** | | |
 
----
+## 2. Per-Slice Rollup
 
-## Findings
+| Slice | Crates | Files | CRITICAL | HIGH | MEDIUM | LOW | OBS | Verdict | Artifact |
+|-------|--------|-------|----------|------|--------|-----|-----|---------|----------|
+| 1 | vb_core + vb_runtime | 261 | 10 | 10 | 9 | 0 | 5 | REJECTED | `.evidence/test-review/slice-1-core-runtime-review.md` |
+| 2 | vb_storage + workspace_tests | 313 | 3 | 10 | 12 | 8 | 5 | REJECTED | `.evidence/test-review/slice-2-storage-workspace-review.md` |
+| 3 | vb_compile + vb_cli + vb_validate + vb_proof_kernels | 181 | 7 | 12 | 9 | 10 | 8 | REJECTED | `.evidence/test-review/slice-3-compile-cli-validate-proof-review.md` |
+| 4 | vb_expr + vb_ipc + vb_yaml + vb_queue_semantics + vb_boundary_inventory + vb_benchmark + vb_test_util + vb_doc + vb_ajc40_flux + vb_verification | 56 | 4 | 8 | 8 | 5 | 1 | REJECTED | `.evidence/test-review/slice-4-misc-review.md` |
+| **TOTAL** | | **811** | **24** | **40** | **38** | **23** | **19** | | |
 
-### F-001 (HIGH): 7 Phase 3 tests commented out — core multi-step behaviors not executable
+## 3. The 24 CRITICAL Findings (with mutation experiments)
 
-**Severity**: HIGH
-**Rule**: Suite Review Gate 8 — commented-out tests are not test evidence.
-**Affected file**: `crates/vb_compile/src/mod_compile_lowering/tests.rs:2659-2773`
-**Affected behaviors**: B17-B22 (sequential assignment), B23-B28 (chain integrity), B35 (single-step equivalence), B54 direct (empty body via emit_reduce_body_steps)
+Each entry: ID | File:Line | Defect (1 line) | Mutation thought experiment (1 line). Full evidence in slice artifacts.
 
-**Details**:
-Seven test functions are commented out behind a `PHASE-3-BLOCKED` marker. They call `emit_reduce_body_steps` which does not exist yet. The comment block includes:
-1. `emit_reduce_body_steps_assigns_sequential_distinct_step_indices` (B17-B22)
-2. `emit_reduce_body_steps_single_step_next_points_to_next_parameter` (B25)
-3. `emit_reduce_body_steps_first_step_next_points_to_second_when_multi_step` (B23)
-4. `emit_reduce_body_steps_last_step_next_points_to_next_parameter` (B24)
-5. `emit_reduce_body_steps_all_next_links_are_some` (B27)
-6. `emit_reduce_body_steps_empty_body_returns_step_field_shape` (B54 direct)
-7. `emit_reduce_body_steps_produces_same_ir_as_emit_single_body_set_for_single_set` (B35)
+### Slice 1 (vb_core + vb_runtime) — 10 CRITICAL
 
-These cover the CENTRAL behaviors of this bead: sequential StepIdx assignment, next-link chain integrity, single-step regression equivalence, and direct empty body handling by the multi-step dispatcher.
+| ID | File:Line | Defect | Mutation |
+|----|-----------|--------|---------|
+| S1-C1 | `crates/vb_runtime/src/engine/action_tests.rs:267` | `assert!(result.is_err())` on `resolve_contract` | Swap to `Err(ResolveError::IndexOutOfBounds)` — test passes. |
+| S1-C2 | `crates/vb_runtime/src/engine/action_tests.rs:289` | `assert!(result.is_ok())` on `resolve_contract` | Return `Ok(&wrong_contract)` — test passes. |
+| S1-C3 | `crates/vb_runtime/src/engine/action_tests.rs:296` | Same as S1-C2 for "last contract" | Same mutation. |
+| S1-C4 | `crates/vb_runtime/src/action_queue/action_queue_tests.rs:240` | `assert!(result.is_ok())` on `enqueue` | Return `Ok(false)` or `Ok(SomeError)` — test passes. |
+| S1-C5 | `crates/vb_runtime/src/shard/lru_ring_red_queen_tests.rs:507` | `assert!(r.is_err())` no variant on `LruRing::insert` | Return `Err(LruError::Generic)` instead of `TerminalRunsLruFull` — passes. |
+| S1-C6 | `crates/vb_runtime/tests/recovery_bdd_tests.rs:2141` | `assert!(result.is_err())` no variant on `recover_runtime_summary` | Return `Err(RecoveryError::Io)` instead of `EmptyJournal` — passes. |
+| S1-C7 | `crates/vb_runtime/tests/recovery_bdd_tests.rs:2843` | `assert!(result.is_ok())` on `check_compiled_ir_digest` | Stub to always `Ok(())` — test passes. |
+| S1-C8 | `crates/vb_runtime/tests/recovery_bdd_tests.rs:2852` | `assert!(result.is_err())` no variant on digest mismatch | Return `Err(WrongVariant)` instead of `DigestMismatchError` — passes. |
+| S1-C9 | `crates/vb_runtime/tests/recovery_bdd_tests.rs:2883` | `assert!(result.is_ok())` on `recover_runtime_summary` | Return `Ok(RecoverySummary::default())` — passes. |
+| S1-C10 | `crates/vb_runtime/tests/recovery_bdd_tests.rs:2728` | `assert!(result.is_ok())` on `hydrate_run_frame` (tail after watermark) | Return `Ok(default_frame)` — passes. |
 
-**Justification accepted**: The rationale (compile-fail, function doesn't exist) is technically valid. The test-writer has written complete test functions with correct assertions. The unblocking instructions are clear.
+### Slice 2 (vb_storage + workspace_tests) — 3 CRITICAL + 1 CRITICAL-on-misnamed-test
 
-**Requirement**: These 7 tests MUST be uncommented, compiled, and proven to pass before bead closure. The Phase 2 TDD-red tests (which currently pass on the error arm) will transition to the success arm at the same time, providing double coverage. Do not close this bead until Phase 3 tests are active and green.
+| ID | File:Line | Defect | Mutation |
+|----|-----------|--------|---------|
+| S2-C1 | `crates/workspace_tests/tests/integration_compile_error_message_quality.rs:376,401,424` | `assert!(result.is_ok() \|\| result.is_err())` — TAUTOLOGY | Delete `CompileError::DepthLimit/SequenceLimit/ScalarLimit` arms — all 3 tests pass. |
+| S2-C2 | `crates/workspace_tests/tests/integration_runtime_storage_fault_tolerance.rs:215` | `assert!(result.is_ok() \|\| result.is_err())` — explicit tautology with self-justifying comment | Delete `hydrate_run_frame` seed validation entirely — test passes. |
+| S2-C3 | `crates/vb_storage/src/process_lock_tests.rs:141-181` | `match { Ok(_) => {} \| Err(_) => {} }` — accepts ALL outcomes (security test) | Delete `process_lock.rs` entirely — both tests pass. |
+| S2-C4 | `crates/vb_storage/src/edge_case_tests.rs:547-554` | Test name `encode_rejects_zero_length_payload_serialization` asserts the OPPOSITE (`assert!(result.is_ok(), "empty payload should be accepted")`) | Delete the entire "reject empty payload" branch — test passes; name lies. |
 
-### F-002 (MEDIUM): TDD-red tests are self-passing dual-arm — no red→green signal
+### Slice 3 (vb_compile + vb_cli + vb_validate + vb_proof_kernels) — 7 CRITICAL
 
-**Severity**: MEDIUM
-**Rule**: Mutation resistance — tests that never fail provide limited regression protection.
-**Affected tests**: 
-- `lower_canonical_aggregate_multi_step_two_set_body_tdd_red` (L2449)
-- `lower_canonical_aggregate_multi_step_three_set_body_tdd_red` (L2475)
-- `lower_canonical_aggregate_multi_step_mixed_set_do_body_tdd_red` (L2503)
-- `reduce_body_width_node_count_parity_two_set_body_tdd_red` (L2545)
-- `lower_canonical_aggregate_body_ids_do_not_overlap_reduce_next_tdd_red` (L2573)
+| ID | File:Line | Defect | Mutation |
+|----|-----------|--------|---------|
+| S3-C1 | `crates/vb_cli/src/args/tests/workflow.rs:13,29,...,446` (23 sites) | `if let Ok(Command::Validate{..}) = parsed { real asserts } else { assert!(parsed.is_ok()) }` — fallback accepts any `Ok(Command::X)` | Delete `Command::Validate` arm, route to `Command::Run` — all 23 tests pass. |
+| S3-C2 | `crates/vb_cli/src/args/tests/status.rs:13,...,343` (9 sites) | Same pattern for `Command::SystemStatus` | Same mutation. |
+| S3-C3 | `crates/vb_cli/src/args/tests/run.rs` (11 sites) | Same pattern for `Command::Run` | Same mutation. |
+| S3-C4 | `crates/vb_cli/src/args/tests/cancel.rs` (8 sites) | Same pattern for `Command::Cancel` | Same mutation. |
+| S3-C5 | `crates/vb_cli/src/args/tests/action.rs` (7 sites) | Same pattern for `Command::Action` | Same mutation. |
+| S3-C6 | `crates/vb_cli/src/args/tests/parse_*.rs` (10+ sites) | Same pattern across all parser-args test modules | Delete the matching parser arm — test passes. |
+| S3-C7 | `crates/vb_compile/src/budget_analyzer.rs:126-137,206-217` + `red_queen_budget.rs:450-465` (43 sites) | `let _ = budget.field;` — discards value, only checks field is reachable | Set every field to 0 in `WholeWorkflowBudget` — all 43 tests pass. |
+| S3-C8 | `crates/vb_compile/src/taint/tests/secret_finish_tests.rs:42,69,94,...,598` (13 sites) | `matches!(result, Ok(_))` for Section 47 contract (secret in Finish) | Strip secret data from Finish result, return `Ok(workflow)` — all 13 tests pass. Section 47 violated. |
+| S3-C9 | `crates/vb_compile/src/mod_compile_lowering/together_*_tests.rs` (15+ tests, 5 files) | TDD-red `if let Ok(()) = result { /* detailed asserts */ } // TDD: Accept either Ok or Err` | Delete `emit_single_body_set` Together branch — all 15+ tests pass. |
+| S3-C10 | `crates/vb_compile/tests/proptest_save_canonical_name.rs:30-46,80-105` | Test calls a **locally-defined** `canonical_name` that duplicates production | Revert `Save{..}` to `"save"` in production — test passes. |
+| S3-C11 | `crates/vb_compile/src/tests/do_choose_digest_unit_tests.rs:179,...,408` (18 sites) | `let _ = digest_step_primitive(&mut hasher, &step);` discards `Result<()>` | Make function return `Err` and short-circuit — hasher is zero; tests may pass spuriously. |
+| S3-C12 | `crates/vb_compile/tests/digest_ask_explicit_arm.rs:144,...,233` (11 sites) | `let _ = canonical_digest(&source).expect("valid test input");` discards digest value | Return `Ok(zero_digest)` for every variant — all 11 tests pass. |
 
-**Details**:
-These tests use a dual-arm `match` pattern:
+### Slice 4 (misc) — 4 CRITICAL
 
-```rust
-match result {
-    Ok(builder) => { /* TDD GREEN assertion */ }
-    Err(errors) => { /* TDD RED assertion */ }
-}
-```
+| ID | File:Line | Defect | Mutation |
+|----|-----------|--------|---------|
+| S4-C1 | `crates/vb_expr/src/eval/tests/and_or_short_circuit_tests.rs` (1619 lines, entire file) | Orphaned test module — NOT referenced by any `mod` declaration. Broken syntax. **Section 46 (no short-circuit) has zero executable coverage.** | Wire it in — build fails. Leave as-is — coverage is zero. |
+| S4-C2 | `crates/vb_ajc40_flux/tests/density_tests.rs:22-59` | Test re-implements `validate_count` / `validate_summary` LOCALLY; tests never call production | Delete `vb_core::validate_compiled_slug_count` — all 50+ tests pass. |
+| S4-C3 | `crates/vb_ipc/src/tests.rs:443-455` | Uses `crossbeam_channel` (FORBIDDEN per Section 50) and tests the library, not `MemoryIngress` | Delete `MemoryIngress` entirely — test passes. |
+| S4-C4 | `crates/vb_ipc/src/queue/tests/array_queue_tests.rs:702-741` | `fifo_order_invariant_for_submit_recv_cycle` discards frame data with `while let Ok(Some(_)) { received.push(()) }` — only checks counts | Return frames in REVERSE order — test passes. The FIFO invariant is a lie. |
 
-Current execution: returns `Err(StepFieldShape)` → matches Err arm → asserts `has_step_field_shape` → **PASS**
-After implementation: returns `Ok(builder)` → matches Ok arm → asserts node count / ID constraints → **PASS**
+## 4. The 5 Most Dangerous Mutation Gaps (workspace-wide)
 
-The tests are **always green** regardless of implementation state. While this is a deliberate progressive-testing pattern (the test automatically transitions when implementation changes), it has two consequences:
+These represent the 5 production-code mutations most likely to ship to users undetected.
 
-1. **No red→green signal**: When `emit_reduce_body_steps` is wired in, these tests don't change from FAIL to PASS — they were already PASS. The implementation author gets no TDD signal that the behavior changed.
-2. **Error variant regression hole**: If someone changes the error from `StepFieldShape` to `StepIndexOutOfRange`, these tests still pass (the Err arm assertion `has_step_field_shape` fails, but... actually no — it would fail!). Correction: the test DOES catch wrong error variants.
+| # | Production code | What would break | File:Line of test gap |
+|---|----------------|------------------|-----------------------|
+| 1 | `vb_runtime::recover_runtime_summary` returns `Ok(RecoverySummary::default())` for all paths | All recovery silently returns empty summaries | `crates/vb_runtime/tests/recovery_bdd_tests.rs:2883,2728` (S1-C9, S1-C10) |
+| 2 | `vb_ipc::MemoryIngress::try_recv` returns frames in reverse submission order | Frames arrive out of order in production | `crates/vb_ipc/src/queue/tests/array_queue_tests.rs:702-741` (S4-C4) |
+| 3 | `vb_compile::compile_workflow` strips secret data from Finish results | Section 47 taint contract silently broken | `crates/vb_compile/src/taint/tests/secret_finish_tests.rs:42,69,94,...` (S3-C8) |
+| 4 | `vb_cli::parse_args` returns wrong `Command::*` variant for a given subcommand | All CLI commands silently dispatch to the wrong handler | `crates/vb_cli/src/args/tests/*.rs` (S3-C1 through S3-C6) |
+| 5 | `vb_expr::eval_binary_op(And/Or, ...)` uses Rust's `&&` / `\|\|` and short-circuits | Section 46 "no short-circuit" mandate violated; F64/I64 type mismatches silently skipped | `crates/vb_expr/src/eval/tests/and_or_short_circuit_tests.rs` orphaned (S4-C1); `eval_tests.rs` has zero short-circuit tests |
 
-**Verdict**: NOT a blocking issue. The dual-arm pattern is valid for progressive testing. The assertions within each arm are correct and will catch regressions in both states. The primary concern is that the test-writer-report claims these "FAIL RUNTIME" when they actually pass — this is a terminology error in the report, not a test quality defect.
+## 5. Top 10 Fixes Ranked by Impact-per-Effort
 
-**Recommendation**: Consider renaming these tests to remove `_tdd_red` suffix (since they pass in both states) or add a comment explaining the progressive-testing pattern. No test code changes needed.
+These are the 10 highest-leverage fixes from the 64 blocker items. Each is small, mechanical, and
+catches a real class of silent regression. See slice artifacts for full BEFORE/AFTER.
 
-### F-003 (MEDIUM): Contract C1 primitives tested as rejections only
+| # | Fix | Crates affected | Effort | Catches |
+|---|-----|-----------------|--------|---------|
+| 1 | Replace `if let Ok(Command::X{..}) / else assert!(parsed.is_ok())` with `match { Ok(X) => ..., other => panic!(...) }` in 6 CLI args test files | vb_cli | 30 min | CLI dispatch regressions (mutation #4) |
+| 2 | Replace `let _ = canonical_digest(&source).expect(...)` with concrete digest equality in `digest_ask_explicit_arm.rs` | vb_compile | 30 min | Digest determinism regressions (S3-C12) |
+| 3 | Replace `let _ = digest_step_primitive(&mut hasher, &step)` with `.expect("digest must succeed")` in 18 sites in `do_choose_digest_unit_tests.rs` | vb_compile | 15 min | Silent Err from digest (S3-C11) |
+| 4 | Delete the 4 tautology `assert!(result.is_ok() \|\| result.is_err())` and replace with concrete `matches!` | workspace_tests | 15 min | Compile-error path deletion (mutation #1 family) |
+| 5 | Convert `process_lock_tests.rs:141-181` from "accepts all outcomes" to specific `ProcessLockHeld` assertion | vb_storage | 30 min | SECURITY-relevant process-lock regression (S2-C3) |
+| 6 | Replace `matches!(result, Ok(_))` in `taint/tests/secret_finish_tests.rs` with workflow-content assertion (`workflow.finish_contains_secret_data()`) | vb_compile | 2 hours | Section 47 taint breach (mutation #3, S3-C8) |
+| 7 | Replace `let _ = budget.field;` with concrete budget-value assertions in `budget_analyzer.rs` and `red_queen_budget.rs` | vb_compile | 1 hour | Whole-workflow budget corruption (S3-C7) |
+| 8 | Wire `and_or_short_circuit_tests.rs` after deduplication, OR add 8 small tests to `eval_tests.rs` for And/Or no-short-circuit | vb_expr | 30 min | Section 46 short-circuit violation (mutation #5, S4-C1) |
+| 9 | Replace `while let Ok(Some(_)) = ingress.try_recv() { received.push(()) }` with order-preserving frame collection + run_id equality | vb_ipc | 5 min | FIFO order violation (mutation #2, S4-C4) |
+| 10 | Expose `canonical_primitive_name` as `pub(crate)` and rewire `proptest_save_canonical_name.rs` to call production | vb_compile | 30 min | Save/Spelling regression in production (S3-C10) |
 
-**Severity**: MEDIUM
-**Rule**: Contract parity — tests must cover contract acceptance criteria.
-**Affected tests**: Lines 1861-1919 (Collect, Repeat, Choose, Together rejection tests)
-**Contract ref**: C1 — `canonical_body_step_width() shall accept Reduce, Collect, Together, Repeat, and Choose variants`
+**Total cleanup time for Top 10: ~6-7 hours.**
 
-**Details**:
-The suite includes tests that verify Collect, Together, Repeat, and Choose are REJECTED with `UnsupportedStepPrimitive`. This matches the current implementation state. However, contract C1 says these primitives SHALL be accepted. If contract C1 is binding for this bead, acceptance tests are missing. If contract C1 is aspirational (future beads per out-of-scope Section 5), the rejection tests are correct and C1 should be narrowed.
+## 6. Fix List (beads dispatched to test-writer)
 
-Coordination with F-001 from test-plan-review.md: the plan review identifies the same scope ambiguity. Resolution should be consistent across both reviews.
+24 CRITICAL beads (one per finding) + 40 HIGH beads (grouped by file where possible).
+Each bead includes the file:line, defect description, mutation thought experiment,
+and exact BEFORE/AFTER snippet from the slice artifact.
 
-**Recommendation**: Either:
-- A) Add happy-path width tests for Collect/Together/Repeat/Choose (if in-scope), OR
-- B) Narrow contract C1 to `{Set, Do, ForEach, Reduce}` and keep rejection tests as-is (if out-of-scope).
-Resolution is a product-owner decision, not a test-writer defect.
+| Bead title prefix | Count | Disposition |
+|------------------|-------|-------------|
+| `fix-test: S1-C{1..10} …` | 10 | blocker |
+| `fix-test: S2-C{1..4} …` | 4 | blocker |
+| `fix-test: S3-C{1..12} …` | 12 | blocker |
+| `fix-test: S4-C{1..4} …` | 4 | blocker (S4-C1 is `owner_approved_debt` per the slice review — wire or replace) |
+| `fix-test: H-* …` (40 HIGH items) | 40 | owner_approved_debt (track, fix opportunistically) |
 
-### F-004 (LOW): `body_width_nested_reduce_rejected_pre_widening` — dual-arm transition test
+## 7. Round Loop Protocol (Rounds 2-40)
 
-**Severity**: LOW
-**Rule**: Tests should have deterministic assertions, not conditional success.
-**Affected test**: `body_width_nested_reduce_rejected_pre_widening` (L2071)
+For each round 2-40:
 
-**Details**:
-This test matches both `Ok(width)` and `Err(UnsupportedStepPrimitive)` arms, similar to F-002. When `canonical_body_step_width` is widened to accept Reduce, the Ok arm will execute with `width = 7` (post-widening). Currently the Err arm executes with `primitive = "reduce"`.
+1. **Wait** for test-writer to close the open blocker beads (or a portion thereof).
+2. **Re-dispatch** the same 4 subagents (same slice partitions, same rubric) against the
+   updated code.
+3. **Synthesize** a new round-N master review.
+4. **Track closure**:
+   - If finding N was a blocker and is no longer in round N+1, mark it CLOSED.
+   - If a finding recurs, it becomes a "stale blocker" — investigate why the fix did
+     not land cleanly.
+   - Each round should find strictly fewer new CRITICALs and more MEDIUM/LOW drift.
+5. **Target convergence**: by round 10, all CRITICALs should be CLOSED. By round 20,
+   all HIGHs should be CLOSED. By round 30, MEDIUMs should be reduced to <10. By round
+   40, the workspace should be APPROVED with only OBSERVATION-class findings.
 
-**Observation**: The computed width is 7, not 8. The test-plan's B07 BDD scenario tentatively uses 8. The test-writer correctly computed 7 (3 overhead + nested 'reduce' width of 4 = 7). This confirms the test-plan F-003 calculation error.
-
-**Verdict**: Not blocking. The test is correct and the dual-arm pattern is acceptable for this transitional state.
-
-### F-005 (LOW): Pre-existing `is_ok()` in same file (not vb-xi2f.24)
-
-**Severity**: LOW
-**Rule**: Assertions must be concrete.
-**Affected test**: `canonical_body_step_width_accepts_for_each` (L1628, vb-xi2f.21 test)
-**File**: `tests.rs:1636` — `assert!(result.is_ok(), ...)`
-
-**Details**:
-This is a pre-existing test from vb-xi2f.21 (ForEach body step width), not part of the vb-xi2f.24 test suite. It uses bare `is_ok()` followed by `result.ok()`. This does not affect the vb-xi2f.24 suite quality rating.
-
-**Recommendation**: Fix in a separate bead (vb-xi2f.21 maintenance). Not blocking for this review.
-
----
-
-## Banned Pattern Compliance (vb-xi2f.24 tests only)
-
-| Pattern | Count | Verdict |
-|---------|-------|---------|
-| `is_ok()` without inner value | 0 | CLEAN |
-| `is_err()` without error variant | 0 | CLEAN |
-| `unwrap()` in behavior assertions | 0 | CLEAN |
-| `expect()` in behavior assertions | 0 | CLEAN |
-| `panic!()` in tests | 0 | CLEAN |
-| `todo!()` / `unimplemented!()` | 0 | CLEAN |
-| `dbg!()` | 0 | CLEAN |
-| `#[ignore]` on behavior tests | 0 | CLEAN |
-| Mock/stub of production types | 0 | CLEAN |
-| `sleep()` or timing dependency | 0 | CLEAN |
-
-Note: `.expect()` calls in test fixture construction (e.g., `compile_reduce_body(&body).expect("single Set body must compile")`) are fixture setup, not behavior assertions. The actual behavior assertions are the subsequent `assert_eq!` on node fields. This pattern is acceptable per the rubric.
-
----
-
-## Mutation Thought Experiment
-
-For the ACTIVE (non-commented) tests, what mutations would escape detection?
-
-| Mutation | Caught By | Strength |
-|----------|-----------|----------|
-| `canonical_body_step_width` — remove Set from match | `canonical_body_step_width_returns_one_for_set` | STRONG (asserts exact width 1) |
-| `canonical_body_step_width` — return Ok(0) for ForEach | `canonical_body_step_width_returns_three_for_foreach_with_one_set_body` | STRONG (asserts exact width 3) |
-| `canonical_body_step_width` — accept Finish silently | `canonical_body_step_width_rejects_finish_with_unsupported_step_primitive` | STRONG (asserts exact error variant + field) |
-| `canonical_body_step_width` — swap "finish" for "done" in error | `canonical_body_step_width_rejects_finish_...` (asserts `primitive == "finish"`) | STRONG (exact string match) |
-| `body_width` — use `+` instead of `checked_add` | `body_width_returns_step_index_out_of_range_when_width_overflows_usize` | STRONG (asserts exact error variant at overflow) |
-| `body_width` — under-count by 1 for Set | `body_width_returns_overhead_plus_n_for_n_set_steps` (asserts exact 5) | STRONG |
-| `lower_canonical_aggregate` — wrong body_step (id instead of id+1) | `lower_canonical_aggregate_reduce_start_body_equals_id_plus_one` | STRONG (asserts exact StepIdx::new(1)) |
-| `lower_canonical_aggregate` — swap done/next computation | `reduce_finish_id_is_next_step_plus_one` | STRONG (asserts exact StepIdx::new(3)) |
-| `lower_canonical_aggregate` — lose parent next | `reduce_finish_next_is_parent_aggregate_next` | STRONG (asserts Some(StepIdx::new(20))) |
-| `emit_single_body_set` — reject empty body silently | `lower_canonical_aggregate_rejects_empty_body_with_step_field_shape` | STRONG (asserts StepFieldShape on "steps") |
-| `lower_canonical_aggregate` — accept empty body and emit nodes | `lower_canonical_aggregate_rejects_empty_body_with_step_field_shape` (asserts Err) | STRONG |
-| **Sequential StepIdx assignment removed** | **NOT CAUGHT** (Phase 3 test commented out) | **GAP** (F-001) |
-| **Next-link chain broken (last→None)** | **NOT CAUGHT** (Phase 3 test commented out) | **GAP** (F-001) |
-| **emit_reduce_body_steps produces different IR than emit_single_body_set** | **NOT CAUGHT** (Phase 3 equivalence test commented out) | **GAP** (F-001) |
-
-**Active mutation kill rate**: 11/11 mutations on active production paths are caught by named tests with STRONG assertions. The 3 gap mutations are in `emit_reduce_body_steps` paths that don't exist yet — coverage gap is coextensive with the implementation gap.
-
----
-
-## Per-Contract-Clause Coverage
-
-| Clause | Behaviors | Active Tests | Phase 3 (commented) | Verdict |
-|--------|-----------|-------------|---------------------|---------|
-| C1 (Width calculation) | B01-B11 | 30 tests (Set, Do, ForEach, Reduce, errors, boundaries) | None | COVERED |
-| C2 (Width-node parity) | B12-B16 | 2 tests (single-step active, multi-step TDD dual-arm) | None | PARTIAL (multi-step blocked on implementation) |
-| C3 (Sequential assignment) | B17-B22 | 0 | 1 test (sequential indices) | **GAP** (F-001) |
-| C4 (Next-link chain) | B23-B28 | 0 | 4 tests (chain links) | **GAP** (F-001) |
-| C5 (ReduceStart/ReduceNext body ref) | B29-B31 | 4 tests (field verification, body parity) | None | COVERED |
-| C6 (ReduceFinish position) | B32-B34 | 3 tests (id, next, parent next) | None | COVERED |
-| C7 (Single-step equivalence) | B35-B38 | 0 | 1 test (equivalence) | **GAP** (F-001) |
-| C8 (Nested reduce) | B39-B43 | 0 | 0 (no test written yet) | **GAP** (no test) |
-| C9 (Symbolic diagnostics) | B44-B47 | 2 tests (code validity) | None | COVERED |
-| C10 (Deterministic lowering) | B48-B49 | 2 tests (idempotent width) | None | PARTIAL (width determinism only, no full IR determinism) |
-| C11 (No panic) | B50-B53 | 2 tests (catch_unwind) | None | COVERED |
-| C12 (Empty body) | B54-B56 | 1 test (via lower_canonical_aggregate) | 1 test (via emit_reduce_body_steps) | COVERED (both paths) |
-
-**Notable**: C8 (Nested Reduce Semantics) has zero tests — neither active nor commented-out. The test plan defines B39-B43 but no test was written by the test-writer. This is a coverage gap that should be addressed before bead closure.
-
----
-
-## Verdict
-
-The test suite demonstrates excellent craftsmanship:
-- All 48 active tests use concrete, variant-specific assertions with exact value comparisons
-- Zero banned patterns (bare `is_ok`, `is_err`, `unwrap`, `expect`, `panic`) in vb-xi2f.24 behavior assertions
-- Error paths assert exact `CompileError` variant plus field values (e.g., `UnsupportedStepPrimitive { primitive: "finish" }`)
-- Happy paths assert exact numeric values (widths, node counts, StepIdx positions)
-- All tests use real production types (`SlotCompiler`, `body_width`, `lower_canonical_aggregate`) — no mocks
-- Test names follow `[subject]_[outcome]_when_[condition]` convention
-- Per-test DAMP principle (one behavior per test, explicit helper functions)
-
-The three gaps are implementation-dependent:
-1. **F-001 (HIGH)**: 7 Phase 3 tests commented out — must be uncommented when `emit_reduce_body_steps` exists
-2. **F-003 (MEDIUM)**: Contract C1 scope ambiguity — Collect/Together/Repeat/Choose acceptance tests needed or contract narrowed
-3. **C8 coverage gap**: Nested reduce tests (B39-B43) not written
-
-**STATUS: APPROVED WITH FINDINGS** — no lethal test-quality defects. The 7 commented-out Phase 3 tests and C8 gap must be resolved before bead closure, but the existing active suite is clean, well-asserted, and provides strong regression protection for the implemented production code.
+**STATUS: REJECTED** — 24 CRITICAL blockers, 40 HIGH debt items. Workspace does not
+ship. File beads, dispatch fixes, re-review.

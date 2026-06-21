@@ -578,7 +578,14 @@ fn do_node_returns_awaiting_action_and_does_not_advance_pc() -> Result<(), Strin
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
-    ensure_equal(result, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(3),
+        },
+    )?;
     ensure_equal(run.pc(), StepIdx::new(0))?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
     Ok(())
@@ -1174,7 +1181,14 @@ fn resume_action_completion_writes_output_and_advances_pc() -> Result<(), String
     let mut store = test_store();
 
     let suspend = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
-    ensure_equal(suspend, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        suspend,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(7),
+        },
+    )?;
 
     let ticket = make_ticket(RunId::new(240), StepIdx::new(0), 1, ActionId::new(7), 1);
     let (signal, _journal) = resume_action_completion(
@@ -1303,7 +1317,14 @@ fn resume_action_failure_marks_step_failed_without_error_handler() -> Result<(),
     )
     .map_err(|error| error.to_string())?;
 
-    ensure_equal(signal, EngineSignal::AwaitingAction)?;
+    ensure_equal(
+        signal,
+        EngineSignal::AwaitingAction {
+            step: StepIdx::new(0),
+            seq: SeqNo::ZERO,
+            action: ActionId::new(8),
+        },
+    )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Failed))?;
     Ok(())
 }

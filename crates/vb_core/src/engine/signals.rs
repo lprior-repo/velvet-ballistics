@@ -2,7 +2,7 @@
 //! Engine signal types and step budget.
 
 use crate::errors::EngineError;
-use crate::ids::SlotIdx;
+use crate::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
 use crate::limits::MAX_STEP_BUDGET;
 use crate::value::{SlotValue, Taint};
 
@@ -106,7 +106,23 @@ pub enum EngineSignal {
     /// The caller's execution slice ended before completion.
     StepBudgetExhausted,
     /// The run suspended on an action.
-    AwaitingAction,
+    ///
+    /// Carries the identifying fields from the IR interpreter so the runtime
+    /// can construct a live [`crate::action::ActionTicket`] without fabricating
+    /// zero-valued fields. The `seq` field is a journal-level sequence number;
+    /// the IR interpreter does not track journal sequences, so it emits
+    /// [`SeqNo::ZERO`] as a sentinel that the runtime is expected to overwrite
+    /// using its own per-run sequence counter before publishing the ticket.
+    AwaitingAction {
+        /// Step that issued the action (the program counter at suspension).
+        step: StepIdx,
+        /// Monotonic journal sequence number. The IR interpreter sets this to
+        /// [`SeqNo::ZERO`]; the runtime resolves the real sequence number from
+        /// its journal sequence tracker before constructing the live ticket.
+        seq: SeqNo,
+        /// Action being invoked (from the `Do` node's compiled action id).
+        action: ActionId,
+    },
     /// The run suspended on wait. Carries the slot the wait primitive
     /// read its deadline from so the host runtime can compute the
     /// concrete `Instant` deadline for the pending timer.

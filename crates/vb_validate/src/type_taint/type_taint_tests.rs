@@ -125,7 +125,7 @@ fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         secrets: vec![],
         steps,
         resource_contract: ResourceLimits {
-            allows_secret_results: true,
+            allows_secret_results: false,
             ..ResourceLimits::default()
         },
     }

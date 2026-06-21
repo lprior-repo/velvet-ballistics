@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 
 use vb_core::frame::{RunFrame, StepState};
-use vb_core::ids::{RunId, SlotIdx, StepIdx};
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{CompiledWorkflow, WorkflowParts};
@@ -21,7 +21,11 @@ impl kani::Arbitrary for EngineSignal {
             0 => EngineSignal::Continue,
             1 => EngineSignal::Finished(kani::any::<SlotValue>(), kani::any::<Taint>()),
             2 => EngineSignal::StepBudgetExhausted,
-            3 => EngineSignal::AwaitingAction,
+            3 => EngineSignal::AwaitingAction {
+                step: StepIdx::new(kani::any::<u16>()),
+                seq: SeqNo::new(kani::any::<u64>()),
+                action: ActionId::new(kani::any::<u32>()),
+            },
             4 => EngineSignal::AwaitingWait,
             _ => EngineSignal::AwaitingAsk,
         }
@@ -74,7 +78,7 @@ fn step_once_state_mapping_harness() {
 
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
-            EngineSignal::AwaitingAction | EngineSignal::StepBudgetExhausted => StepState::Running,
+            EngineSignal::AwaitingAction { .. } | EngineSignal::StepBudgetExhausted => StepState::Running,
             EngineSignal::AwaitingWait => StepState::Waiting,
             EngineSignal::AwaitingAsk => StepState::Asking,
         };

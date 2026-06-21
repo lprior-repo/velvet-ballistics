@@ -114,6 +114,7 @@ fn encode_record_runkilled_produces_valid_bytes() {
         run: RunId::new(42),
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
     let result = encode_record(
         MAGIC_JOURNAL_EVENT,
@@ -139,6 +140,7 @@ fn decode_record_runkilled_roundtrip() {
         run: RunId::new(99),
         seq: EventSeq::new(5),
         attempt: 3,
+        reason: None,
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,
@@ -172,6 +174,7 @@ fn decode_journal_event_runkilled_passes_validation() {
         run: RunId::new(10),
         seq: EventSeq::new(1),
         attempt: 2,
+        reason: None,
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,
@@ -200,6 +203,7 @@ fn decode_journal_event_runkilled_zero_run_rejected() {
         run: RunId::new(0),
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
     // RunId(0) is valid for serialization, but is_valid() returns false
     let bytes = encode_record(
@@ -229,6 +233,7 @@ fn decode_journal_event_runkilled_zero_attempt_rejected() {
         run: RunId::new(1),
         seq: EventSeq::new(0),
         attempt: 0,
+        reason: None,
     };
     let bytes = encode_record(
         MAGIC_JOURNAL_EVENT,

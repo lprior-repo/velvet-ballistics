@@ -191,7 +191,7 @@ impl Shard {
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
             last_snapshot_executed: 0,
         };
-        self.terminal_runs_remove(run);
+        self.terminal_runs_remove(run)?;
         self.terminal_outcomes_remove(run);
         self.run_state_insert(run, state);
         self.apply(run, RuntimeEvent::Submit);

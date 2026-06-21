@@ -26,6 +26,8 @@
 //! Shard::handle_kill rely on.
 
 #![forbid(unsafe_code)]
+#![cfg(kani)]
+#![cfg(feature = "kani-cancel-kill-lattice")]
 
 // ============================================================================
 // PO-KANI-001: Live-Only Cancel/Kill — production type verification
@@ -49,6 +51,7 @@ fn check_runkilled_construction_preserves_fields() {
         run: vb_core::ids::RunId::new(run_val),
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: attempt_val,
+        reason: None,
     };
 
     // Verify field preservation through accessors
@@ -83,6 +86,7 @@ fn check_runkilled_zero_run_invalid() {
         run: vb_core::ids::RunId::new(run_val),
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: attempt_val,
+        reason: None,
     };
     kani::assert(!event.is_valid(),
         "RunKilled with RunId(0) must be rejected as invalid");
@@ -98,6 +102,7 @@ fn check_runkilled_overflow_seq_invalid() {
         run: vb_core::ids::RunId::new(run_val),
         seq: vb_storage::EventSeq::new(u64::MAX),
         attempt: 1,
+        reason: None,
     };
     kani::assert(!event.is_valid(),
         "RunKilled with EventSeq(u64::MAX) must be rejected as invalid");
@@ -114,6 +119,7 @@ fn check_runkilled_zero_attempt_invalid() {
         run: vb_core::ids::RunId::new(run_val),
         seq: vb_storage::EventSeq::new(seq_val),
         attempt: 0,
+        reason: None,
     };
     kani::assert(!event.is_valid(),
         "RunKilled with attempt(0) must be rejected as invalid");
@@ -492,6 +498,7 @@ fn check_cancel_safe_for_boundary_run_ids() {
         run: vb_core::ids::RunId::new(run_key),
         seq: vb_storage::EventSeq::new(1),
         attempt: 1,
+        reason: None,
     };
 
     // The run_id is preserved regardless of value (even 0 or u64::MAX)

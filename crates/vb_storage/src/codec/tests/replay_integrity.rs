@@ -33,6 +33,7 @@ fn validate_replayed_event_match_returns_ok() {
         run,
         seq,
         attempt: 1,
+        reason: None,
     };
 
     let result = validate_replayed_event(run, seq, &event);
@@ -54,6 +55,7 @@ fn validate_replayed_event_seq_mismatch_returns_gap() {
         run,
         seq: EventSeq::new(5),
         attempt: 1,
+        reason: None,
     };
 
     let result = validate_replayed_event(run, EventSeq::new(3), &event);
@@ -80,6 +82,7 @@ fn validate_replayed_event_run_mismatch_returns_wrong_run() {
         run: actual_run,
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
 
     let result = validate_replayed_event(expected_run, EventSeq::new(0), &event);
@@ -106,6 +109,7 @@ fn validate_replayed_event_preserves_runkilled_seq() {
         run,
         seq,
         attempt: 1,
+        reason: None,
     };
 
     // Verify the event correctly reports its seq
@@ -126,6 +130,7 @@ fn validate_replayed_event_with_runkilled_at_boundary_seq_zero() {
         run,
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
     let result = validate_replayed_event(run, EventSeq::new(0), &event);
     assert!(
@@ -142,6 +147,7 @@ fn validate_replayed_event_with_runkilled_at_boundary_run_max() {
         run,
         seq: EventSeq::new(5),
         attempt: 1,
+        reason: None,
     };
     let result = validate_replayed_event(run, EventSeq::new(5), &event);
     assert!(
@@ -238,6 +244,7 @@ fn runkilled_with_valid_fields_is_valid() {
         run: RunId::new(42),
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
     assert!(event.is_valid());
 }
@@ -248,6 +255,7 @@ fn runkilled_with_zero_run_is_invalid() {
         run: RunId::new(0),
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
     assert!(!event.is_valid(), "RunKilled with RunId(0) must be invalid");
 }
@@ -258,6 +266,7 @@ fn runkilled_with_zero_attempt_is_invalid() {
         run: RunId::new(1),
         seq: EventSeq::new(0),
         attempt: 0,
+        reason: None,
     };
     assert!(
         !event.is_valid(),
@@ -271,6 +280,7 @@ fn runkilled_with_overflow_seq_is_invalid() {
         run: RunId::new(1),
         seq: EventSeq::new(u64::MAX),
         attempt: 1,
+        reason: None,
     };
     assert!(!event.is_valid(), "RunKilled with seq=MAX must be invalid");
 }
@@ -285,6 +295,7 @@ fn runkilled_record_kind_returns_run_killed() {
         run: RunId::new(5),
         seq: EventSeq::new(3),
         attempt: 2,
+        reason: None,
     };
     assert_eq!(event.record_kind(), RecordKind::RunKilled);
 }
@@ -295,6 +306,7 @@ fn runkilled_run_id_returns_correct_value() {
         run: RunId::new(77),
         seq: EventSeq::new(1),
         attempt: 1,
+        reason: None,
     };
     assert_eq!(event.run_id(), RunId::new(77));
 }
@@ -305,6 +317,7 @@ fn runkilled_attempt_returns_some_attempt() {
         run: RunId::new(1),
         seq: EventSeq::new(0),
         attempt: 7,
+        reason: None,
     };
     assert_eq!(event.attempt(), Some(7));
 }
@@ -322,6 +335,7 @@ fn runkilled_distinct_from_runcancelled_in_replay_validation() {
         run,
         seq,
         attempt: 1,
+        reason: None,
     };
     let cancelled = JournalEvent::RunCancelled {
         run,

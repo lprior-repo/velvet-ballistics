@@ -1,139 +1,38 @@
-// Kani proof harness for batch byte limit (PS-006, C1).
-//
+// RETIRED: non_applicable — vacuum Kani proof.
 // Obligation ID: POB-vb-vzcuf-022
 // Verifier: kani
-// Command: cargo kani --harness check_byte_limit_invariants -p vb_storage
+// Proof seed: vb-vzcuf-PS-006
+// Contract clause: contract.md:C1
 //
-// Domain claim: Every open JournalWriteBatch has a non-zero byte limit
-// and cannot be constructed unbounded.
+// === RETIRED IN BH-W0-S04 / FINDING-B-01 EXTENSION ===
+// The Kani harnesses in this file modeled a `byte_limit` value object
+// on `JournalWriteBatch` that does not exist in production. The PRODUCTION
+// BINDING header claimed "byte_limit field will be added per contract C1"
+// — but the field was never added, and the production struct in
+// crates/vb_storage/src/batch/write.rs has no `byte_limit` field.
 //
-// PRODUCTION BINDING:
-//   Tests that MAX_JOURNAL_EVENT_PAYLOAD_BYTES (a production constant from
-//   crates/vb_storage/src/constants.rs:78) is non-zero and fits in u64.
-//   The JournalWriteBatch constructor produces an empty batch; the byte_limit
-//   field will be added per contract C1.
+// The harnesses instead bound symbolic witnesses to production constants
+// (MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN, MAX_BATCH_COUNT)
+// and asserted "non-zero" — which is a constant-evaluation, not a
+// behavior-affecting proof of the `append_event` byte-accounting policy.
 //
-//   Tests u64::checked_add behavior with limit comparisons, which is
-//   the Rust primitive the production code will use.
+// Per AGENTS.md GOD RULE 2 (No Vacuum Kani Proofs), Kani harnesses MUST
+// mathematically bind to live production code. These harnesses bound to
+// constants, not behavior; they prove nothing about the actual
+// `JournalWriteBatch::append_event` byte-limit guard in
+// crates/vb_storage/src/batch/write_event.rs:37-53.
+//
+// === STATUS: non_applicable / retired ===
+// No `#[kani::proof]` functions remain in this file. The Kani lane
+// decision (LD-vb-vzcuf-022-kani) is registered as retired in
+// .beads/vb-vzcuf/verifier-lane-decisions.jsonl.
+//
+// The domain claim (C1 — every open JournalWriteBatch has a non-zero
+// byte limit and cannot be constructed unbounded) is now covered by:
+//   - crates/vb_storage/src/batch/types.rs (BatchByteLimit type)
+//   - crates/vb_storage/src/batch/write.rs (DEFAULT_JOURNAL_BATCH_BYTE_LIMIT
+//     + BatchByteLimit::bounded default in `new`)
+//   - crates/vb_storage/src/batch/byte_accounting_tests.rs
+//     (Rust behavior tests, red-queen v2)
 //
 // Source: .beads/vb-vzcuf/proof-obligations.planned.jsonl POB-vb-vzcuf-022
-
-#[cfg(kani)]
-mod kani_byte_limit_ps006 {
-    use vb_storage::constants::{MAX_BATCH_COUNT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_LEN};
-
-    /// C1: MAX_JOURNAL_EVENT_PAYLOAD_BYTES is non-zero.
-    ///
-    /// Symbolic witness: `payload` is bound to the production value
-    /// `MAX_JOURNAL_EVENT_PAYLOAD_BYTES` so the harness exercises
-    /// the precise non-zero boundary for the production constant.
-    #[kani::proof]
-    fn check_max_payload_nonzero() {
-        let payload: usize = kani::any();
-        kani::assume(payload == MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
-        assert!(payload > 0,
-            "max payload must be non-zero");
-    }
-
-    /// C1: RECORD_HEADER_LEN is non-zero.
-    ///
-    /// Symbolic witness: `header_len` is bound to the production
-    /// value `RECORD_HEADER_LEN` so the harness exercises the
-    /// precise non-zero boundary for the production constant.
-    #[kani::proof]
-    fn check_header_len_nonzero() {
-        let header_len: usize = kani::any();
-        kani::assume(header_len == RECORD_HEADER_LEN);
-        assert!(header_len > 0,
-            "record header length must be non-zero");
-    }
-
-    /// C1: MAX_BATCH_COUNT is non-zero.
-    ///
-    /// Symbolic witness: `batch_count` is bound to the production
-    /// value `MAX_BATCH_COUNT` so the harness exercises the
-    /// precise non-zero boundary for the production constant.
-    #[kani::proof]
-    fn check_max_batch_nonzero() {
-        let batch_count: usize = kani::any();
-        kani::assume(batch_count == MAX_BATCH_COUNT);
-        assert!(batch_count > 0,
-            "max batch count must be non-zero");
-    }
-
-    /// C1: Byte limit arithmetic — checked_add is safe with limits.
-    #[kani::proof]
-    fn check_byte_limit_arithmetic_safe() {
-        let staged: u64 = kani::any();
-        let candidate: u64 = kani::any();
-        let limit: u64 = kani::any();
-        kani::assume(limit > 0);
-        kani::assume(limit <= 1_048_576); // production default
-
-        match staged.checked_add(candidate) {
-            Some(total) => {
-                // Within limit: accept
-                if total <= limit {
-                    assert!(total >= staged);
-                }
-                // Over limit: typed rejection (no panic)
-            }
-            None => {
-                // Overflow: typed rejection (no panic)
-                // Verify that overflow detection works correctly
-                assert!(staged as u128 + candidate as u128 > u64::MAX as u128,
-                    "overflow must occur when sum exceeds u64::MAX");
-            }
-        }
-    }
-
-    /// C1: The maximum single-event encoded size fits in the default limit.
-    ///
-    /// Symbolic witness: `default_limit` is bound to the production
-    /// value (1_048_576) so the harness exercises the precise
-    /// encoded-size-fits-limit boundary for the production
-    /// constants.
-    #[kani::proof]
-    fn check_single_event_fits_default_limit() {
-        let default_limit: u64 = kani::any();
-        kani::assume(default_limit == 1_048_576);
-        let max_encoded =
-            RECORD_HEADER_LEN as u64 + MAX_JOURNAL_EVENT_PAYLOAD_BYTES as u64;
-        // 60 + 1_048_576 = 1_048_636
-        assert!(max_encoded <= default_limit,
-            "max single-event encoded ({max_encoded}) must fit in default limit ({default_limit})");
-    }
-
-    /// C1: Multiple events within limit.
-    ///
-    /// Symbolic witness: `default_limit` and `small_event_bytes`
-    /// are bound to the production values (1_048_576 / 100) so the
-    /// harness exercises the precise many-events-fit boundary for
-    /// the production byte-accounting policy.
-    #[kani::proof]
-    fn check_multiple_events_within_limit() {
-        let default_limit: u64 = kani::any();
-        let small_event_bytes: u64 = kani::any();
-        kani::assume(default_limit == 1_048_576 && small_event_bytes == 100);
-        let max_count = default_limit / small_event_bytes;
-        // Should fit >10,000 small events comfortably
-        assert!(max_count > 100,
-            "default limit should accommodate many small events, got {max_count}");
-    }
-
-    /// C1: Non-zero limit is required for any valid admission.
-    #[kani::proof]
-    fn check_zero_limit_rejects_all() {
-        let zero_limit: u64 = 0;
-        let staged: u64 = kani::any();
-
-        // With limit 0, only staged=0 could theoretically fit,
-        // but even then no progress can be made.
-        match staged.checked_add(1u64) {
-            Some(total) => {
-                assert!(total > zero_limit, "any addition exceeds zero limit");
-            }
-            None => {} // overflow also fine
-        }
-    }
-}

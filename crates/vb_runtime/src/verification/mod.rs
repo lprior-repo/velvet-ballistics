@@ -68,6 +68,7 @@ pub mod verus {
 
 // Kani harnesses (compiled with cargo kani)
 // HVR-PO-RUNTIME-001/HVR-PO-RUNTIME-002/HVR-PO-RUNTIME-006: feature-isolated vb-god2f harness group.
+// ARCH-W0-02: feature-isolated orphan Kani harness groups.
 #[cfg(kani)]
 pub(crate) mod kani {
     #[cfg(feature = "vb-y9d3v-attempt-fence")]
@@ -75,6 +76,21 @@ pub(crate) mod kani {
 
     #[cfg(feature = "vb-god2f-action-completion")]
     pub(crate) mod kani_vb_god2f_action_completion;
+
+    #[cfg(feature = "kani-ask-payload-bounds")]
+    pub(crate) mod kani_ask_payload_bounds;
+
+    #[cfg(feature = "kani-cancel-kill-lattice")]
+    pub(crate) mod kani_cancel_kill_lattice;
+
+    #[cfg(feature = "kani-idempotency-tracker")]
+    pub(crate) mod kani_idempotency_tracker;
+
+    #[cfg(feature = "kani-submit-frame-release")]
+    pub(crate) mod kani_submit_frame_release;
+
+    #[cfg(feature = "kani-fzgdn-timer-harnesses")]
+    pub(crate) mod vb_fzgdn_timer_harnesses;
 }
 
 // Flux refinement modules for vb-rxru0 (action enum invariants & dispatch_generic)
