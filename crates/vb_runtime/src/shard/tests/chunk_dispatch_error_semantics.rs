@@ -132,7 +132,7 @@ fn resume_active_run_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(500);
 
@@ -191,7 +191,7 @@ fn timer_fire_without_pending_timer_returns_error() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(520);
 
@@ -225,7 +225,7 @@ fn timer_fire_with_wrong_generation_returns_error() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = wait_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(521);
 
@@ -263,7 +263,7 @@ fn timer_fire_with_wrong_kind_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = wait_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(522);
 
@@ -300,7 +300,7 @@ fn valid_wait_timer_fire_advances_state() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = wait_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(523);
 
@@ -341,7 +341,7 @@ fn valid_ask_timer_fire_clears_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow_for_error_tests() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(524);
 
@@ -385,7 +385,7 @@ fn ask_answer_with_wrong_step_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow_for_error_tests() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(530);
 
@@ -432,7 +432,7 @@ fn inspect_preserves_correlation_id() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(540);
     let correlation = 42u64;

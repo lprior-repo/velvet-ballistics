@@ -4,7 +4,7 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = action_with_error_handler_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(743);
     assert_eq!(
@@ -46,7 +46,7 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() -> Resu
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -78,7 +78,7 @@ fn shard_ask_answer_completes_ask_workflow() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(750);
     assert_eq!(
@@ -121,7 +121,7 @@ fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), RuntimeErr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(751);
     assert_eq!(
@@ -165,7 +165,7 @@ fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() -> Result<(), Run
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(752);
     assert_eq!(
@@ -206,7 +206,7 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() -> Result<(), Runt
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(config, shared)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(760);
     assert_eq!(
@@ -236,7 +236,7 @@ fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(761);
     assert_eq!(
@@ -266,7 +266,7 @@ fn shard_cancel_removes_pending_ask_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(770);
     assert_eq!(

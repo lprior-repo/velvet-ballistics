@@ -7,7 +7,7 @@
 #[test]
 fn shard_command_submit_inequality_different_run_id() -> Result<(), RuntimeError> {
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let a = ShardCommand::Submit {
         run: super::RunId::new(10),
@@ -26,7 +26,7 @@ fn shard_command_submit_inequality_different_run_id() -> Result<(), RuntimeError
 #[test]
 fn shard_command_submit_with_inputs_equality() -> Result<(), RuntimeError> {
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let inputs: Box<[(SlotIdx, vb_core::value::SlotValue)]> =
         Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(7))]);
@@ -49,7 +49,7 @@ fn shard_command_submit_with_inputs_equality() -> Result<(), RuntimeError> {
 #[test]
 fn shard_command_submit_with_inputs_inequality_different_inputs() -> Result<(), RuntimeError> {
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let a = ShardCommand::SubmitWithInputs {
         run: super::RunId::new(5),
@@ -290,7 +290,7 @@ fn shard_submit_with_run_id_zero_accepted() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(0);
     assert_eq!(

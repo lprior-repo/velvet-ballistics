@@ -4,7 +4,7 @@ fn shard_submit_with_run_id_one_accepted() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(1);
     assert_eq!(
@@ -200,7 +200,7 @@ fn shard_submit_with_inputs_completes_finished_workflow() -> Result<(), RuntimeE
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(99))]);
     assert_eq!(
@@ -223,7 +223,7 @@ fn shard_multiple_submits_complete() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -235,7 +235,7 @@ fn shard_multiple_submits_complete() -> Result<(), RuntimeError> {
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -247,7 +247,7 @@ fn shard_multiple_submits_complete() -> Result<(), RuntimeError> {
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {

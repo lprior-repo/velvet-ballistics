@@ -6,7 +6,7 @@ fn shard_submit_finish_then_inspect_counters() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1030);
 

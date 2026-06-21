@@ -16,7 +16,7 @@ fn shard_step_budget_one_processes_one_command_per_tick() -> Result<(), RuntimeE
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     // When submitting a 2-step finished workflow
     assert_eq!(
@@ -40,10 +40,10 @@ fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() -> R
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf2) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(42);
     assert_eq!(
@@ -107,7 +107,7 @@ fn shard_run_id_max_u64_accepted_as_valid_identifier() -> Result<(), RuntimeErro
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(u64::MAX);
     // When submitting a run with RunId::MAX
@@ -173,10 +173,10 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() -> Result<(), RuntimeError>
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf2) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(55);
     assert_eq!(
@@ -212,7 +212,7 @@ fn shard_trace_ring_records_submit_and_finish_events_in_order() -> Result<(), Ru
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(77);
     // When submitting a run that finishes immediately
@@ -253,7 +253,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), Runti
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     // When submitting a run
     assert_eq!(

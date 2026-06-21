@@ -151,7 +151,7 @@ fn timeout_failure() -> vb_core::action::ActionFailure {
 #[test]
 fn retry_attempt_counter_increments_until_policy_exhaustion() -> Result<(), RuntimeError> {
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let frame = match vb_core::frame::RunFrame::new(
         RunId::new(9),
@@ -204,7 +204,7 @@ fn action_failed_routes_to_nearby_error_handler() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = action_with_error_handler_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(301);
 
@@ -236,7 +236,7 @@ fn action_failed_without_error_handler_fails_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(302);
 
@@ -267,7 +267,7 @@ fn submit_rejects_duplicate_run_id() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(451);
 

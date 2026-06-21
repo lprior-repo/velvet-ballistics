@@ -25,7 +25,7 @@ fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() -> Result<(), Runt
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -87,7 +87,7 @@ fn vb1u88_cancel_emits_run_cancelled_journal_event() -> Result<(), RuntimeError>
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(1001);
     assert_eq!(
@@ -114,7 +114,7 @@ fn vb1u88_cancel_emits_run_cancelled_trace_event() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(1002);
     assert_eq!(
@@ -170,7 +170,7 @@ fn vb1u88_cancel_removes_run_and_releases_frame() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(1003);
     assert_eq!(
@@ -202,7 +202,7 @@ fn vb1u88_cancel_removes_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(1004);
     assert_eq!(

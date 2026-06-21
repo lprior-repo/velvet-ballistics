@@ -3,7 +3,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() -> Result<()
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
+        return Ok(());
     };
     let run = RunId::new(40_001);
     assert_eq!(
@@ -17,7 +17,7 @@ fn future_attempt_completion_rejected_when_current_attempt_exists() -> Result<()
     assert_eq!(shard.tick(), Ok(true));
     let Some(state) = shard.run_state_get_mut(run) else {
         assert_eq!(None::<()>, Some(()), "run should remain active");
-        return;
+        return Ok(());
     };
     assert_eq!(state.action_attempts.get(0).copied(), Some(1));
     let output = ActionOutputReady {
@@ -46,7 +46,7 @@ fn future_attempt_completion_beyond_max_is_action_failed_code() -> Result<(), Ru
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
+        return Ok(());
     };
     let run = RunId::new(40_002);
     assert_eq!(
@@ -87,7 +87,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() ->
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow() else {
         assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
-        return;
+        return Ok(());
     };
     let run = RunId::new(41);
     assert_eq!(
@@ -101,7 +101,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() ->
     assert_eq!(shard.tick(), Ok(true));
     let Some(state) = shard.run_state_get_mut(run) else {
         assert_eq!(None::<()>, Some(()), "run should remain active");
-        return;
+        return Ok(());
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 3;
@@ -143,7 +143,7 @@ fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() ->
             Some(()),
             "run should remain active after rejection"
         );
-        return;
+        return Ok(());
     };
     assert_eq!(state_after.frame.pc(), frame_before.pc());
     assert_eq!(
@@ -172,7 +172,7 @@ fn scheduling_propagates_zero_retry_policy_error() -> Result<(), RuntimeError> {
             Some(()),
             "missing zero retry policy workflow fixture"
         );
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -195,7 +195,7 @@ fn scheduling_propagates_zero_retry_policy_error() -> Result<(), RuntimeError> {
 fn legacy_action_completed_on_suspended_run_succeeds() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(50);
     assert_eq!(
@@ -270,7 +270,7 @@ fn future_attempt_completion_does_not_mutate_state() -> Result<(), RuntimeError>
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(410);
     assert_eq!(
@@ -283,7 +283,7 @@ fn future_attempt_completion_does_not_mutate_state() -> Result<(), RuntimeError>
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(state) = shard.run_state_get_mut(run) else {
-        return;
+        return Ok(());
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 1;
@@ -351,7 +351,7 @@ fn noncanonical_key_completion_does_not_mutate_state() -> Result<(), RuntimeErro
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(411);
     assert_eq!(
@@ -364,7 +364,7 @@ fn noncanonical_key_completion_does_not_mutate_state() -> Result<(), RuntimeErro
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(state) = shard.run_state_get_mut(run) else {
-        return;
+        return Ok(());
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 1;
@@ -404,7 +404,7 @@ fn wrong_step_state_completion_does_not_mutate_state() -> Result<(), RuntimeErro
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(412);
     assert_eq!(
@@ -418,7 +418,7 @@ fn wrong_step_state_completion_does_not_mutate_state() -> Result<(), RuntimeErro
     assert_eq!(shard.tick(), Ok(true));
     // Step is in Running state after scheduling. Mark it succeeded to make it invalid.
     let Some(state) = shard.run_state_get_mut(run) else {
-        return;
+        return Ok(());
     };
     assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
     if let Some(attempt) = state.action_attempts.get_mut(0) {
@@ -500,7 +500,7 @@ fn handle_action_completion_returns_run_not_found_when_run_missing() -> Result<(
 fn handle_action_completion_returns_run_not_found_when_run_cancelled() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(421);
     submit_run(&mut shard, run, wf);
@@ -532,7 +532,7 @@ fn handle_action_completion_returns_run_not_found_when_run_cancelled() -> Result
 fn handle_action_completion_returns_run_not_found_when_run_finished() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(422);
     assert_eq!(
@@ -584,13 +584,13 @@ fn handle_action_failure_returns_run_not_found_when_run_missing() -> Result<(), 
 fn handle_action_failure_returns_stale_attempt_when_attempt_mismatch() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(431);
     submit_run(&mut shard, run, wf);
     // Set current attempt to 3
     let Some(state) = shard.run_state_get_mut(run) else {
-        return;
+        return Ok(());
     };
     if let Some(attempt) = state.action_attempts.get_mut(0) {
         *attempt = 3;

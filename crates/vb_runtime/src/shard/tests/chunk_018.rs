@@ -41,7 +41,7 @@ fn bh_shd_11_zero_step_budget_never_executes() -> Result<(), RuntimeError> {
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(811);
     assert_eq!(
@@ -70,7 +70,7 @@ fn bh_shd_12_legacy_completion_on_finished_run_errors() -> Result<(), RuntimeErr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(812);
     assert_eq!(
@@ -100,7 +100,7 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() -> Result<(), Runti
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(813);
     assert_eq!(
@@ -127,7 +127,7 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_terminal() -> Result<(),
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(814);
     assert_eq!(
@@ -188,10 +188,10 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() -> Result<(), RuntimeError> {
 };
     let mut shard = Shard::new(config)?;
     let Some(wf_suspend) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf_finish) = finished_workflow() else {
-        return;
+        return Ok(());
     };
 
     // Submit a finishing run (completes immediately)
@@ -256,7 +256,7 @@ fn shard_submit_with_empty_inputs_matches_submit() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(910);
 

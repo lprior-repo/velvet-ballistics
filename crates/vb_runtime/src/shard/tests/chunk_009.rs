@@ -5,7 +5,7 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() -> Result<()
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(301);
     assert_eq!(
@@ -43,7 +43,7 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() -> R
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(302);
     assert_eq!(
@@ -87,7 +87,7 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() -> Result<(),
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(303);
     assert_eq!(
@@ -119,7 +119,7 @@ fn shard_snapshot_run_after_cancel_returns_terminal_cancelled() -> Result<(), Ru
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(304);
     assert_eq!(
@@ -153,7 +153,7 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() -> Result<(), RuntimeEr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(305);
     assert_eq!(
@@ -180,7 +180,7 @@ fn shard_resume_for_cancelled_run_returns_run_not_found() -> Result<(), RuntimeE
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(306);
     assert_eq!(
@@ -219,7 +219,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() -> Result<(), RuntimeErro
     let mut shard = Shard::new(config)?;
     // When submitting and completing multiple runs (producing >2 trace events)
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -231,7 +231,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() -> Result<(), RuntimeErro
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -243,7 +243,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() -> Result<(), RuntimeErro
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -255,7 +255,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() -> Result<(), RuntimeErro
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {

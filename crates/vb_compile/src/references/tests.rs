@@ -1232,3 +1232,266 @@ steps:
         "nested save mapping should validate var references",
     )
 }
+
+// ── Master §65 idempotency-key determinism gate (bead vb-768ke) ─────────
+
+/// Compile-time gate must reject `$runtime.now` inside the webhook trigger
+/// `unique` field with the dedicated `IdempotencyKeyNotDeterministic`
+/// error variant.
+#[test]
+fn parse_ast_rejects_runtime_now_in_webhook_unique() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: runtime_unique
+when:
+  webhook:
+    path: /hook
+    method: POST
+    unique: $runtime.now
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    let error = parse_error(source)?;
+
+    match error {
+        CompileError::IdempotencyKeyNotDeterministic { reference, kind } => {
+            ensure(
+                reference.as_ref() == "$runtime.now",
+                "expected reference to be `$runtime.now`, got `{reference}`",
+            )?;
+            ensure(
+                matches!(kind, crate::errors::NonDeterministicKind::Time),
+                "expected kind=Time, got {kind:?}",
+            )
+        }
+        other => Err(format!(
+            "expected IdempotencyKeyNotDeterministic for $runtime.now in webhook.unique, got: {other:?}"
+        )),
+    }
+}
+
+/// Compile-time gate must reject bare `$random` reference inside the webhook
+/// trigger `unique` field (master §65 random-or-time rejection).
+#[test]
+fn parse_ast_rejects_random_in_webhook_unique() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: random_unique
+when:
+  webhook:
+    path: /hook
+    method: POST
+    unique: "$random.uuid"
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    let error = parse_error(source)?;
+
+    match error {
+        CompileError::IdempotencyKeyNotDeterministic { reference, kind } => {
+            ensure(
+                reference.as_ref() == "$random.uuid",
+                "expected reference to be `$random.uuid`, got `{reference}`",
+            )?;
+            ensure(
+                matches!(kind, crate::errors::NonDeterministicKind::Random),
+                "expected kind=Random, got {kind:?}",
+            )
+        }
+        other => Err(format!(
+            "expected IdempotencyKeyNotDeterministic for $random.uuid in webhook.unique, got: {other:?}"
+        )),
+    }
+}
+
+/// Compile-time gate must reject `$time.*` references inside the webhook
+/// trigger `unique` field.
+#[test]
+fn parse_ast_rejects_time_reference_in_webhook_unique() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: time_unique
+when:
+  webhook:
+    path: /hook
+    method: POST
+    unique: "$time.now_ms"
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    let error = parse_error(source)?;
+
+    match error {
+        CompileError::IdempotencyKeyNotDeterministic { reference, kind } => {
+            ensure(
+                reference.as_ref() == "$time.now_ms",
+                "expected reference to be `$time.now_ms`, got `{reference}`",
+            )?;
+            ensure(
+                matches!(kind, crate::errors::NonDeterministicKind::Time),
+                "expected kind=Time, got {kind:?}",
+            )
+        }
+        other => Err(format!(
+            "expected IdempotencyKeyNotDeterministic for $time.now_ms in webhook.unique, got: {other:?}"
+        )),
+    }
+}
+
+/// Compile-time gate must reject `$wall_clock.*` references inside the
+/// webhook trigger `unique` field (master §65 random-or-time rejection).
+#[test]
+fn parse_ast_rejects_wall_clock_in_webhook_unique() -> Result<(), String> {
+    let source = br#"version: velvet-ballistics/v1
+name: wallclock_unique
+when:
+  webhook:
+    path: /hook
+    method: POST
+    unique: "$wall_clock.ns"
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    let error = parse_error(source)?;
+
+    match error {
+        CompileError::IdempotencyKeyNotDeterministic { reference, kind } => {
+            ensure(
+                reference.as_ref() == "$wall_clock.ns",
+                "expected reference to be `$wall_clock.ns`, got `{reference}`",
+            )?;
+            ensure(
+                matches!(kind, crate::errors::NonDeterministicKind::WallClock),
+                "expected kind=WallClock, got {kind:?}",
+            )
+        }
+        other => Err(format!(
+            "expected IdempotencyKeyNotDeterministic for $wall_clock.ns in webhook.unique, got: {other:?}"
+        )),
+    }
+}
+
+/// Compile-time gate accepts deterministic webhook `unique` fields
+/// (no `$` references at all).
+#[test]
+fn parse_ast_accepts_plain_unique_string() -> Result<(), String> {
+    parse_ok(
+        br#"version: velvet-ballistics/v1
+name: plain_unique
+when:
+  webhook:
+    path: /hook
+    method: POST
+    unique: "header:order_id"
+inputs:
+  user: text
+steps:
+  - id: done
+    finish:
+      result: "$input.user"
+"#,
+    )
+}
+
+/// Compile-time gate accepts webhook `unique` fields composed of declared
+/// `$input.*` references (deterministic against the workflow definition).
+#[test]
+fn parse_ast_accepts_input_references_in_webhook_unique() -> Result<(), String> {
+    parse_ok(
+        br#"version: velvet-ballistics/v1
+name: input_unique
+when:
+  webhook:
+    path: /hook
+    method: POST
+    unique: "$input.org:$input.event_id"
+inputs:
+  org: text
+  event_id: text
+steps:
+  - id: done
+    finish:
+      result: "$input.org"
+"#,
+    )
+}
+
+/// Unit test for the standalone `validate_idempotency_key_determinism`
+/// function: rejects Random / Time / WallClock kinds, accepts deterministic
+/// references.
+#[test]
+fn validate_idempotency_key_determinism_unit_rejects_each_kind() {
+    use super::validate::validate_idempotency_key_determinism;
+
+    // Random is rejected.
+    let err = validate_idempotency_key_determinism(&["$random.uuid"]).unwrap_err();
+    match err {
+        CompileError::IdempotencyKeyNotDeterministic { kind, .. } => {
+            assert!(matches!(kind, crate::errors::NonDeterministicKind::Random));
+        }
+        other => panic!("expected Random kind, got: {other:?}"),
+    }
+
+    // Time is rejected (covers both `$time.*` and `$now`).
+    let err = validate_idempotency_key_determinism(&["$time.ns"]).unwrap_err();
+    match err {
+        CompileError::IdempotencyKeyNotDeterministic { kind, .. } => {
+            assert!(matches!(kind, crate::errors::NonDeterministicKind::Time));
+        }
+        other => panic!("expected Time kind for $time.ns, got: {other:?}"),
+    }
+
+    let err = validate_idempotency_key_determinism(&["$now"]).unwrap_err();
+    match err {
+        CompileError::IdempotencyKeyNotDeterministic { kind, .. } => {
+            assert!(matches!(kind, crate::errors::NonDeterministicKind::Time));
+        }
+        other => panic!("expected Time kind for $now, got: {other:?}"),
+    }
+
+    // WallClock is rejected (covers `$wall_clock.*`, `$wallclock.*`, `$clock.*`).
+    let err = validate_idempotency_key_determinism(&["$clock.ms"]).unwrap_err();
+    match err {
+        CompileError::IdempotencyKeyNotDeterministic { kind, .. } => {
+            assert!(matches!(kind, crate::errors::NonDeterministicKind::WallClock));
+        }
+        other => panic!("expected WallClock kind for $clock.ms, got: {other:?}"),
+    }
+
+    // Deterministic references pass.
+    validate_idempotency_key_determinism(&["$input.org", "$input.event_id"])
+        .expect("declared input references must be accepted");
+    validate_idempotency_key_determinism(&["$step.1.id", "$run.id"])
+        .expect("declared step / runtime-bound references must be accepted");
+}
+
+/// Unit test for the `scan_idempotency_key_references` helper. The scanner
+/// must extract every `$root.path...` reference from a free-form string
+/// without misreading plain text like `USD` or `v2` as a reference.
+#[test]
+fn scan_idempotency_key_references_extracts_only_dollar_refs() {
+    use super::validate::scan_idempotency_key_references;
+
+    let mut out: Vec<Box<str>> = Vec::new();
+    scan_idempotency_key_references("USD$v2$x.y_42 $now $runtime.now", &mut out);
+    let collected: Vec<String> = out.iter().map(|s| s.to_string()).collect();
+    assert_eq!(
+        collected,
+        vec![
+            "$v2".to_owned(),
+            "$x.y_42".to_owned(),
+            "$now".to_owned(),
+            "$runtime.now".to_owned(),
+        ],
+        "scanner must extract only `$`-prefixed references and ignore plain text",
+    );
+}

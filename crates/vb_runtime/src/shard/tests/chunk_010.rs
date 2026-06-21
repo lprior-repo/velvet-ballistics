@@ -5,7 +5,7 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() -> Result<(), Ru
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -19,7 +19,7 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() -> Result<(), Ru
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     // When submitting a new run with the same workflow dimensions
     let Some(workflow2) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -57,7 +57,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() -> Result<(
     let mut shard = Shard::new(config)?;
     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -69,7 +69,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() -> Result<(
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -81,7 +81,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() -> Result<(
     );
     assert_eq!(shard.tick(), Ok(true));
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -96,7 +96,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() -> Result<(
     assert_eq!(shard.counters().snapshot().runs_submitted, 3);
     // And submitting a 4th returns ActiveRunCapacityExceeded
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -119,10 +119,10 @@ fn shard_inspect_preserves_latest_response_overwriting_previous() -> Result<(), 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf2) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run1 = super::RunId::new(600);
     let run2 = super::RunId::new(601);
@@ -223,13 +223,13 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() -> Resul
 };
     let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf2) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf3) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
 
     // When submitting 2 runs (both suspend on Do, so stay active)
@@ -273,7 +273,7 @@ fn shard_action_completed_for_wrong_run_returns_run_not_found() -> Result<(), Ru
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {

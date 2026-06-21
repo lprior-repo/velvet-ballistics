@@ -5,7 +5,7 @@ fn shard_inspect_captures_executed_count() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(81);
     assert_eq!(
@@ -28,10 +28,10 @@ fn shard_tick_processes_commands_in_fifo_order() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf1) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(wf2) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     // When submitting two runs
     assert_eq!(
@@ -66,7 +66,7 @@ fn shard_resume_continues_suspended_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(90);
     assert_eq!(
@@ -103,7 +103,7 @@ fn shard_take_inspect_response_clears_after_take() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(95);
     assert_eq!(
@@ -200,7 +200,7 @@ fn shard_config_clone_preserves_values() -> Result<(), RuntimeError> {
 fn shard_command_equality_submit() -> Result<(), RuntimeError> {
     // Given two identical Submit commands
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let a = ShardCommand::Submit {
         run: super::RunId::new(1),

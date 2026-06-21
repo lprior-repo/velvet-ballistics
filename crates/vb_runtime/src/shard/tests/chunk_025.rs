@@ -141,7 +141,7 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() -> Result<(), RuntimeError> {
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     for i in 0..5 {
         assert_eq!(
@@ -205,7 +205,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() -> Result<(), RuntimeErr
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     for i in 0..4 {
         assert_eq!(
@@ -231,7 +231,7 @@ fn vb1u88_run_id_zero_handled_correctly() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -251,7 +251,7 @@ fn vb1u88_max_run_id_handled_correctly() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -271,7 +271,7 @@ fn vb1u88_multiple_sequential_finished_runs_no_leakage() -> Result<(), RuntimeEr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     for i in 0..10 {
         let run_id = super::RunId::new(i);

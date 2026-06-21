@@ -15,7 +15,7 @@ fn shard_rejects_active_run_capacity_overflow() -> Result<(), RuntimeError> {
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
 
     let first = shard.enqueue(ShardCommand::Submit {
@@ -55,7 +55,7 @@ fn inspect_command_stores_retrievable_snapshot() -> Result<(), RuntimeError> {
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(7);
 
@@ -143,7 +143,7 @@ fn counters_reflect_submitted_after_submit_tick() -> Result<(), RuntimeError> {
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1);
     assert_eq!(

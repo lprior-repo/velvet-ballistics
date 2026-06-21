@@ -5,7 +5,7 @@ fn shard_duplicate_submit_after_cancel_succeeds() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(201);
     assert_eq!(
@@ -39,7 +39,7 @@ fn shard_snapshot_run_for_active_run_returns_found() -> Result<(), RuntimeError>
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(202);
     assert_eq!(
@@ -146,7 +146,7 @@ fn shard_submit_two_runs_same_id_second_fails() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(203);
     assert_eq!(
@@ -189,7 +189,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() -> Result<(), Runti
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(204);
     // When submitting a run with zero budget
@@ -230,7 +230,7 @@ fn shard_multiple_cancels_idempotent_for_same_run() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(205);
     assert_eq!(
@@ -264,7 +264,7 @@ fn shard_submit_after_shutdown_is_enqueued_but_never_processed() -> Result<(), R
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     // When submitting a run after shutdown was processed
     assert_eq!(

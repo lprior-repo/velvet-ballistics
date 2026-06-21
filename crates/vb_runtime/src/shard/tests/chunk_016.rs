@@ -8,7 +8,7 @@ fn shard_submit_trace_event_contains_submitted_run_id() -> Result<(), RuntimeErr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(780);
     assert_eq!(
@@ -38,7 +38,7 @@ fn shard_action_failure_with_wrong_step_returns_invalid_completion() -> Result<(
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(790);
     assert_eq!(
@@ -71,7 +71,7 @@ fn shard_legacy_action_completed_with_wrong_step_returns_error() -> Result<(), R
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(791);
     assert_eq!(
@@ -105,7 +105,7 @@ fn shard_ask_answer_after_cancel_returns_run_not_found() -> Result<(), RuntimeEr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(792);
     assert_eq!(
@@ -145,7 +145,7 @@ fn shard_action_failure_after_cancel_returns_run_not_found() -> Result<(), Runti
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(793);
     assert_eq!(
@@ -179,7 +179,7 @@ fn shard_resume_after_cancel_returns_run_not_found() -> Result<(), RuntimeError>
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(794);
     assert_eq!(
@@ -232,7 +232,7 @@ fn bh_shd_01_shard_drive_state_uses_empty_contracts() -> Result<(), RuntimeError
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(801);
     assert_eq!(

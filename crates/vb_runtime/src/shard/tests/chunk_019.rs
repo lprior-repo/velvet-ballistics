@@ -8,7 +8,7 @@ fn shard_active_run_count_across_lifecycle() -> Result<(), RuntimeError> {
 
     // Submit a suspended run -> count = 1
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run_a = super::RunId::new(920);
     assert_eq!(
@@ -24,7 +24,7 @@ fn shard_active_run_count_across_lifecycle() -> Result<(), RuntimeError> {
 
     // Submit another suspended run -> count = 2
     let Some(wf2) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run_b = super::RunId::new(921);
     assert_eq!(
@@ -69,7 +69,7 @@ fn shard_submit_after_full_cancel_resets_capacity() -> Result<(), RuntimeError> 
 
     // Fill to capacity
     let Some(wf1) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run1 = super::RunId::new(930);
     assert_eq!(
@@ -84,7 +84,7 @@ fn shard_submit_after_full_cancel_resets_capacity() -> Result<(), RuntimeError> 
 
     // Over capacity should fail
     let Some(wf2) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -104,7 +104,7 @@ fn shard_submit_after_full_cancel_resets_capacity() -> Result<(), RuntimeError> 
     assert_eq!(shard.tick(), Ok(true));
 
     let Some(wf3) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -126,7 +126,7 @@ fn shard_inspect_active_run_returns_correct_state() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(940);
 
@@ -169,7 +169,7 @@ fn shard_submit_with_inputs_after_cancel() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(950);
 
@@ -208,7 +208,7 @@ fn shard_repeated_inspect_same_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(960);
 
@@ -259,7 +259,7 @@ fn shard_commands_for_pending_but_unprocessed_run() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(970);
 

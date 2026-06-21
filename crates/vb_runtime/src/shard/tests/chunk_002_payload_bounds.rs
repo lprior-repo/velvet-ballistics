@@ -202,7 +202,7 @@ fn ask_answer_payload_at_max_boundary_is_accepted() -> Result<(), RuntimeError> 
 
     // Create workflow with max_ipc_payload_bytes = 100
     let Some(workflow) = ask_wait_with_max_payload(100) else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(200);
 
@@ -251,7 +251,7 @@ fn ask_answer_payload_of_zero_is_accepted() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(201);
 
@@ -296,7 +296,7 @@ fn ask_answer_payload_exceeding_max_by_one_is_rejected() -> Result<(), RuntimeEr
 
     // Create workflow with max_ipc_payload_bytes = 100
     let Some(workflow) = ask_wait_with_max_payload(100) else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(202);
 
@@ -349,7 +349,7 @@ fn ask_answer_payload_significantly_over_max_is_rejected() -> Result<(), Runtime
 
     // Create workflow with max_ipc_payload_bytes = 100
     let Some(workflow) = ask_wait_with_max_payload(100) else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(203);
 
@@ -399,7 +399,7 @@ fn ask_answer_secret_taint_rejected_when_not_allowed() -> Result<(), RuntimeErro
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(204);
 
@@ -447,7 +447,7 @@ fn ask_answer_secret_taint_accepted_when_explicitly_allowed() -> Result<(), Runt
     // Create workflow with allows_secret_results = true
     let custom_workflow = ask_wait_with_secret_results_workflow();
     let Some(workflow) = custom_workflow else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(205);
 

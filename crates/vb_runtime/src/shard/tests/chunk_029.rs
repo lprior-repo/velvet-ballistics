@@ -58,7 +58,7 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
 fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() -> Result<(), RuntimeError> {
     // Given a public Runtime has a live wait timer with capturable authority.
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
-        return;
+        return Ok(());
     };
     let mut runtime = crate::runtime::Runtime::new(shard_count, small_config());
     let Some(workflow) = timed_wait_then_finish_workflow() else {

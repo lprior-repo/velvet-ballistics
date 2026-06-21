@@ -56,7 +56,7 @@ fn shard_finished_workflow_sets_completed_counter() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(50);
     assert_eq!(
@@ -80,7 +80,7 @@ fn shard_finished_workflow_produces_run_finished_trace() -> Result<(), RuntimeEr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(51);
     assert_eq!(
@@ -181,7 +181,7 @@ fn inspect_response_not_found_equality() -> Result<(), RuntimeError> {
 fn run_state_equality() -> Result<(), RuntimeError> {
     // Given a suspended workflow and run frame
     let Some(wf) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let frame = match vb_core::frame::RunFrame::new(
         RunId::new(1),
@@ -235,7 +235,7 @@ fn shard_cancel_then_inspect_returns_terminal_cancelled() -> Result<(), RuntimeE
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(200);
     assert_eq!(
@@ -279,7 +279,7 @@ fn snapshot_run_returns_cancelled_status_for_terminal_cancelled_run() -> Result<
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(201);
     assert_eq!(
@@ -328,7 +328,7 @@ fn snapshot_run_returns_killed_status_for_terminal_killed_run() -> Result<(), Ru
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(202);
     assert_eq!(
@@ -378,7 +378,7 @@ fn snapshot_run_still_returns_found_for_active_run() -> Result<(), RuntimeError>
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(203);
     assert_eq!(

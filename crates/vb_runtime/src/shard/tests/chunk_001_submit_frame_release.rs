@@ -68,7 +68,7 @@ fn submit_suspended_workflow_and_tick() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(100);
 
@@ -96,7 +96,7 @@ fn submit_workflow_with_sufficient_budget_completes() -> Result<(), RuntimeError
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = exhausted_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(101);
 

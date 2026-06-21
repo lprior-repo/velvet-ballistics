@@ -89,7 +89,7 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
 
     assert_eq!(
@@ -112,7 +112,7 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(11);
 
@@ -144,7 +144,7 @@ fn cancel_cleans_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(12);
 
@@ -170,7 +170,7 @@ fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(13);
 
@@ -197,7 +197,7 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), Ru
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(14);
 
@@ -263,7 +263,7 @@ fn submit_returns_run_already_exists_for_duplicate() -> Result<(), RuntimeError>
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(42);
     assert_eq!(

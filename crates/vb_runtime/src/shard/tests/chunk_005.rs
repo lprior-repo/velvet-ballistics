@@ -5,7 +5,7 @@ fn shard_timer_rejects_run_without_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(60);
     assert_eq!(
@@ -29,7 +29,7 @@ fn shard_wait_suspension_registers_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(61);
 
@@ -56,7 +56,7 @@ fn shard_timer_fired_advances_timed_wait_to_finish() -> Result<(), RuntimeError>
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(62);
 
@@ -98,7 +98,7 @@ fn shard_cancel_removes_run_from_runs_map() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(70);
     assert_eq!(
@@ -139,7 +139,7 @@ fn shard_cancel_records_run_cancelled_trace_event() -> Result<(), RuntimeError> 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(71);
     assert_eq!(
@@ -171,7 +171,7 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() -> Res
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(config, shared)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(73);
     assert_eq!(
@@ -210,7 +210,7 @@ fn shard_cancel_increments_failed_counter() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(72);
     assert_eq!(
@@ -236,7 +236,7 @@ fn shard_inspect_captures_current_pc() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(80);
     assert_eq!(

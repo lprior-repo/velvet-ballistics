@@ -1,10 +1,10 @@
 #[test]
 fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
+        return Ok(());
     };
     let Some(queue) = require_ok(journal_queue(8, 2), "journal queue opens") else {
-        return;
+        return Ok(());
     };
     let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
     let run = RunId::new(48);
@@ -48,10 +48,10 @@ fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() -> Result<
 #[test]
 fn queued_storage_runtime_journal_rejects_unsequenced_append() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
+        return Ok(());
     };
     let Some(queue) = require_ok(journal_queue(4, 2), "journal queue opens") else {
-        return;
+        return Ok(());
     };
     let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue.clone());
     let run = RunId::new(50);
@@ -72,10 +72,10 @@ fn queued_storage_runtime_journal_rejects_unsequenced_append() -> Result<(), Run
 #[test]
 fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
+        return Ok(());
     };
     let Some(queue) = require_ok(journal_queue(4, 1), "journal queue opens") else {
-        return;
+        return Ok(());
     };
     let runtime_journal = Arc::new(QueuedStorageRuntimeJournal::journaled(
         journal.clone(),
@@ -85,7 +85,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), Runtime
     let workflow = WorkflowDigest::from_bytes([12; 32]);
     let Some(shard_count) = NonZeroUsize::new(1) else {
         assert!(false, "invalid shard count");
-        return;
+        return Ok(());
     };
     let mut config = ShardConfig {
         // Pin to 1 so coalesce-window default flip does not buffer events
@@ -98,7 +98,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), Runtime
     let runtime = Runtime::new_with_journal(shard_count, config, runtime_journal)?;
 
     let Some(compiled) = require_ok(single_finish_workflow(workflow), "workflow compiles") else {
-        return;
+        return Ok(());
     };
     assert_eq!(runtime.submit_direct(run, compiled), Ok(()));
     assert!(matches!(
@@ -127,10 +127,10 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), Runtime
 #[test]
 fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
-        return;
+        return Ok(());
     };
     let Some(queue) = require_ok(journal_queue(1, 1), "journal queue opens") else {
-        return;
+        return Ok(());
     };
     let adapter = QueuedStorageRuntimeJournal::journaled(journal.clone(), queue);
     let run = RunId::new(46);
@@ -167,7 +167,7 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(
             .map_err(|error| error.to_string()),
         "queue-full events read",
     ) else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         events,
@@ -192,7 +192,7 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(
 fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(2) else {
         assert!(false, "test capacity must be non-zero");
-        return;
+        return Ok(());
     };
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(51);
@@ -214,7 +214,7 @@ fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Resul
 fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(1) else {
         assert!(false, "test capacity must be non-zero");
-        return;
+        return Ok(());
     };
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(52);
@@ -236,7 +236,7 @@ fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capa
 fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(2) else {
         assert!(false, "test capacity must be non-zero");
-        return;
+        return Ok(());
     };
     let journal = VolatileRuntimeJournal::with_capacity(capacity);
     let run = RunId::new(53);

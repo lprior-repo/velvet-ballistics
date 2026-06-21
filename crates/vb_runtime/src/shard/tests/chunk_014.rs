@@ -8,7 +8,7 @@ fn shard_action_completed_full_writes_slot_and_advances() -> Result<(), RuntimeE
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(730);
     assert_eq!(
@@ -59,7 +59,7 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() -> R
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(731);
     assert_eq!(
@@ -106,7 +106,7 @@ fn shard_action_failure_retryable_with_retry_check_retries_action() -> Result<()
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = do_with_retry_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(740);
     assert_eq!(
@@ -165,7 +165,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() -> Result<(), RuntimeEr
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = do_with_retry_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(741);
     assert_eq!(
@@ -216,7 +216,7 @@ fn shard_action_failure_non_retryable_without_handler_fails_run() -> Result<(), 
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(742);
     assert_eq!(

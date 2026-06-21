@@ -12,7 +12,7 @@ fn cancel_idempotent_on_active_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(300);
 
@@ -53,7 +53,7 @@ fn kill_idempotent_on_active_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(301);
 
@@ -93,7 +93,7 @@ fn cancel_twice_after_first_cancel_moves_to_terminal() -> Result<(), RuntimeErro
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(302);
 
@@ -134,7 +134,7 @@ fn kill_twice_after_first_kill_moves_to_terminal() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(303);
 
@@ -210,7 +210,7 @@ fn cancel_removes_from_runs_inserts_terminal() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(304);
 
@@ -246,7 +246,7 @@ fn kill_removes_from_runs_inserts_terminal() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(305);
 
@@ -282,7 +282,7 @@ fn cancel_releases_frame_to_pool() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(306);
 
@@ -322,7 +322,7 @@ fn kill_releases_frame_to_pool() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(307);
 

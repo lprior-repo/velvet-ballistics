@@ -12,7 +12,7 @@ fn shard_frame_pool_metrics_after_submit_and_finish() -> Result<(), RuntimeError
 
     // Submit a finished workflow -> pool created and frame returned
     let Some(wf) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -44,7 +44,7 @@ fn shard_snapshot_after_error_handler_finish() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(wf) = action_with_error_handler_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(990);
 
@@ -106,7 +106,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() -> Result<(), RuntimeError
 
     // Submit + tick -> suspended
     let Some(wf1) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run1 = RunId::new(1000);
     assert_eq!(
@@ -125,7 +125,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() -> Result<(), RuntimeError
 
     // New submit should succeed (capacity freed)
     let Some(wf2) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     let run2 = RunId::new(1001);
     assert_eq!(
@@ -149,7 +149,7 @@ fn shard_pending_timer_fields_are_correct() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1010);
 
@@ -180,7 +180,7 @@ fn shard_ask_answered_with_i64_value() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(1020);
 

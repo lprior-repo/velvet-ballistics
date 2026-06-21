@@ -17,7 +17,7 @@
 //! fields will route through the same function.
 
 use super::errors::map_validation_error;
-use crate::mod_compile_errors::kind::NonDeterministicKind;
+use crate::errors::NonDeterministicKind;
 use crate::{CompileError, SourceMark};
 use vb_validate::references::{RefTables, validate_single_reference_with_context};
 

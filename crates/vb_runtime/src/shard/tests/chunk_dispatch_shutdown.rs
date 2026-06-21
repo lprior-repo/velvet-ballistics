@@ -106,7 +106,7 @@ fn shutdown_clears_pending_timers() -> Result<(), RuntimeError> {
 
     // Create a workflow with a pending timer
     let Some(workflow) = timed_wait_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(400);
 
@@ -140,7 +140,7 @@ fn shutdown_drains_pending_commands_before_setting_flag() -> Result<(), RuntimeE
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(401);
 
@@ -178,7 +178,7 @@ fn shutdown_processes_multiple_commands_in_order() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
 
     // Enqueue multiple submits
@@ -218,7 +218,7 @@ fn shutdown_with_pending_inspect_command() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(420);
 
@@ -259,7 +259,7 @@ fn shutdown_prevents_new_commands_after_flag_set() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
 
     // Enqueue shutdown first

@@ -28,7 +28,7 @@ fn vb1u88_action_ticket_step_idx_boundary() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(9001);
     assert_eq!(
@@ -67,7 +67,7 @@ fn vb1u88_bdd_clean_shutdown_sequence() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
-        return;
+        return Ok(());
     };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -121,7 +121,7 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() -> Result<(), RuntimeE
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(5001);
     assert_eq!(
@@ -157,7 +157,7 @@ fn test_drain_for_shutdown_removes_all_pending_timers_and_returns_them() -> Resu
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(9001);
     assert_eq!(
@@ -187,7 +187,7 @@ fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() -> Re
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = super::RunId::new(9002);
     assert_eq!(

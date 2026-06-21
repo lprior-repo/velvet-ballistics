@@ -6,10 +6,10 @@ fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() -> Result<(), Runt
     let mut shard = Shard::new(config)?;
 
     let Some(wait_workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let Some(ask_workflow) = timed_ask_without_answer_workflow() else {
-        return;
+        return Ok(());
     };
 
     let run_wait = super::RunId::new(9004);

@@ -7,7 +7,7 @@ fn bh_shd_02_run_removed_from_map_during_drive() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(802);
     assert_eq!(
@@ -33,7 +33,7 @@ fn bh_shd_03_action_failure_trace_events_count() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(803);
     assert_eq!(
@@ -173,7 +173,7 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() -> Result<(), R
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(806);
     assert_eq!(
@@ -230,7 +230,7 @@ fn bh_shd_08_pending_timers_last_wins_per_run() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
-        return;
+        return Ok(());
     };
     let run = RunId::new(808);
     assert_eq!(
