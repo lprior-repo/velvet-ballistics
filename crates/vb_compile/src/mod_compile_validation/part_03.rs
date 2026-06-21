@@ -11,22 +11,7 @@ use vb_core::{ConstValue, SlotIdx, StepIdx};
 
 impl StepPrimitive {
     pub(crate) fn from_field(field: &str) -> Option<Self> {
-        match field {
-            "set" => Some(Self::Set),
-            "run" => Some(Self::Run),
-            "do" => Some(Self::Do),
-            "save" => Some(Self::Save),
-            "choose" => Some(Self::Choose),
-            "for_each" => Some(Self::ForEach),
-            "together" => Some(Self::Together),
-            "collect" => Some(Self::Collect),
-            "reduce" => Some(Self::Reduce),
-            "repeat" => Some(Self::Repeat),
-            "wait" => Some(Self::Wait),
-            "ask" => Some(Self::Ask),
-            "finish" => Some(Self::Finish),
-            _ => None,
-        }
+        field.parse().ok()
     }
 
     pub(crate) const fn as_str(self) -> &'static str {
@@ -44,6 +29,29 @@ impl StepPrimitive {
             Self::Wait => "wait",
             Self::Ask => "ask",
             Self::Finish => "finish",
+        }
+    }
+}
+
+impl std::str::FromStr for StepPrimitive {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "set" => Ok(Self::Set),
+            "run" => Ok(Self::Run),
+            "do" => Ok(Self::Do),
+            "save" => Ok(Self::Save),
+            "choose" => Ok(Self::Choose),
+            "for_each" => Ok(Self::ForEach),
+            "together" => Ok(Self::Together),
+            "collect" => Ok(Self::Collect),
+            "reduce" => Ok(Self::Reduce),
+            "repeat" => Ok(Self::Repeat),
+            "wait" => Ok(Self::Wait),
+            "ask" => Ok(Self::Ask),
+            "finish" => Ok(Self::Finish),
+            _ => Err(()),
         }
     }
 }
