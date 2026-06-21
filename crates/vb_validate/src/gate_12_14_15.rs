@@ -4,6 +4,8 @@
 #![allow(unreachable_pub)]
 #![allow(clippy::collapsible_if)]
 
+use std::collections::HashSet;
+
 use crate::{ValidationError, ValidationResult};
 use vb_core::action::ActionContract;
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
@@ -12,38 +14,25 @@ pub fn validate_gate_12_action_contract_completeness(
     parts: &WorkflowParts,
     action_contracts: &[ActionContract],
 ) -> ValidationResult<()> {
-    let mut do_action_ids: Vec<u16> = Vec::new();
+    let mut do_action_ids: HashSet<u16> = HashSet::new();
     for (node_index, node) in parts.nodes.iter().enumerate() {
         if let CompiledNodeKind::Do { action, .. } = &node.kind {
             let action_val = action.get();
-            let mut found = false;
-            for contract in action_contracts {
-                if contract.id.get() == action_val {
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
+            let has_contract = action_contracts
+                .iter()
+                .any(|contract| contract.id.get() == action_val);
+            if !has_contract {
                 return Err(ValidationError::ActionContractMissing {
                     action_id: usize::from(action_val),
                     node_index,
                 });
             }
-            if !do_action_ids.contains(&action_val) {
-                do_action_ids.push(action_val);
-            }
+            do_action_ids.insert(action_val);
         }
     }
     for contract in action_contracts {
         let cid = contract.id.get();
-        let mut found = false;
-        for do_id in &do_action_ids {
-            if *do_id == cid {
-                found = true;
-                break;
-            }
-        }
-        if !found {
+        if !do_action_ids.contains(&cid) {
             return Err(ValidationError::ActionContractOrphan {
                 action_id: usize::from(cid),
             });
