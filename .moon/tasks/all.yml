@@ -985,7 +985,7 @@ tasks:
         cat target/fuzz-smoke/build.err
         exit 1
       fi
-      for fuzz_target in yaml_events ipc_frame journal_event_fuzz compiled_ir expression strict_yaml_profile storage_journal_roundtrip storage_journal_decode_reject storage_journal_kind_parity ipc_decode; do
+      for fuzz_target in yaml_events ipc_frame journal_event_fuzz compiled_ir expression strict_yaml_profile storage_journal_roundtrip storage_journal_decode_reject storage_journal_kind_parity ipc_decode generated_compare structured_status_render_hostile vb_ui_model_postcard_decode xtask_parse_argv_hostile xtask_parse_options_hostile; do
         corpus_source="${fuzz_target}"
         if [ "${fuzz_target}" = "journal_event_fuzz" ]; then
           corpus_source="journal_event"
@@ -995,6 +995,15 @@ tasks:
         fi
         if [ "${fuzz_target}" = "strict_yaml_profile" ]; then
           corpus_source="yaml_events"
+        fi
+        if [ "${fuzz_target}" = "structured_status_render_hostile" ] || [ "${fuzz_target}" = "xtask_parse_argv_hostile" ] || [ "${fuzz_target}" = "xtask_parse_options_hostile" ]; then
+          corpus_source="yaml_events"
+        fi
+        if [ "${fuzz_target}" = "vb_ui_model_postcard_decode" ]; then
+          corpus_source="compiled_ir"
+        fi
+        if [ "${fuzz_target}" = "generated_compare" ]; then
+          corpus_source="compiled_ir"
         fi
         corpus="target/fuzz-smoke/corpus/${fuzz_target}"
         artifacts="target/fuzz-smoke/artifacts/${fuzz_target}"

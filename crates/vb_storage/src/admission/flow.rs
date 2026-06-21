@@ -9,7 +9,7 @@ use super::bytes::validate_workflow_artifact_bytes;
 use super::contracts::{AdmissionInputs, IdempotencyEvidence};
 use super::persistence::{persist_accepted_artifact_ir, verify_persisted_artifact_present};
 use super::policy::ADMISSION_GATE_COUNT;
-use super::types::{AcceptedArtifact, VerificationProof};
+use super::types::{AcceptedArtifact, Durability, VerificationProof};
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
@@ -77,7 +77,7 @@ fn submit_relaxed_artifact_with_evidence(
     idempotency_evidence: &IdempotencyEvidence,
 ) -> Result<AcceptedArtifact, JournalError> {
     let ir_bytes = validate_workflow_artifact_bytes(workflow)?;
-    let mut proof = VerificationProof::new(workflow.digest(), 0, false);
+    let mut proof = VerificationProof::new_volatile(workflow.digest(), 0);
     proof.idempotency_keyed = idempotency_evidence.keyed.clone();
     proof.idempotency_attested = idempotency_evidence.attested.clone();
     let artifact = accepted_artifact(workflow, ir_bytes, proof, required_capabilities)?;
@@ -94,7 +94,8 @@ fn submit_checked_artifact_with_evidence(
 ) -> Result<AcceptedArtifact, JournalError> {
     let ir_bytes = validate_workflow_artifact_bytes(workflow)?;
     let durable = policy == vb_core::RuntimePolicy::Strict;
-    let mut proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+    let durability = Durability::from(durable);
+    let mut proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durability);
     proof.idempotency_keyed = idempotency_evidence.keyed;
     proof.idempotency_attested = idempotency_evidence.attested;
     let artifact = accepted_artifact(workflow, ir_bytes, proof, required_capabilities)?;

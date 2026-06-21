@@ -35,7 +35,7 @@ pub(crate) use validation::{add_dim, sub_dim};
 
 // HVR-PO-CORE-004: exclude legacy budget Kani modules from vb-god2f resource lane discovery.
 #[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
-mod tests_and_verification;
+mod kani_proofs;
 
 #[cfg(test)]
 mod tests;

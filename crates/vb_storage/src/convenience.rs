@@ -144,7 +144,7 @@ pub(crate) fn try_accepted_compiled_ir_record_for_test(
         policy_digest: crate::admission::compute_policy_digest(&workflow)
             .map_err(|e| format!("policy digest compute failed: {e}"))?,
         ir: artifact_ir,
-        verification: VerificationProof::new(digest, 15, true),
+        verification: VerificationProof::new_durable(digest, 15),
         accepted_at_seq: EventSeq::new(0),
         required_capabilities: Box::new([]),
     };

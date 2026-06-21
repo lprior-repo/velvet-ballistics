@@ -230,13 +230,12 @@ pub fn admit_run_with_budget_policy(
 /// This is the master contract value: `velvet-ballistics-MASTER.md` §13
 /// "Steps | 1000" enforced at the admission gate.
 #[must_use]
-pub const fn per_workflow_step_ceiling() -> u32 {
-    // The master contract ceiling lives in `vb_core::limits::MAX_STEPS_PER_WORKFLOW`
-    // and is bounded by `usize::from(u16::MAX)` per the limits test suite, so
-    // the `u32` cast is a widening conversion that cannot lose data.
-    #[allow(clippy::cast_possible_truncation, clippy::as_conversions)]
-    let ceiling = vb_core::limits::MAX_STEPS_PER_WORKFLOW as u32;
-    ceiling
+pub fn per_workflow_step_ceiling() -> u32 {
+    // `MAX_STEPS_PER_WORKFLOW` is the master contract ceiling and is bounded
+    // by `u16::MAX` per the limits test suite. The conversion is therefore
+    // infallible in practice; we use `try_from` and saturate defensively
+    // rather than `as` to honor the no-`as`-cast rule.
+    u32::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW).unwrap_or(u32::MAX)
 }
 
 /// Preflight gate that enforces the master contract per-workflow step ceiling

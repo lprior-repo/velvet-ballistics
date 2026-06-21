@@ -13,7 +13,95 @@ use crate::output_utils::*;
 use std::process::ExitCode;
 
 /// Explain a [`vb_validate::ValidationError`] in human-readable form.
+///
+/// The match is split into per-code-family helpers matching Section 16:
+/// [`explain_validation_schema`] (E01xx), [`explain_validation_reference`]
+/// (E02xx), [`explain_validation_control_flow`] (E03xx),
+/// [`explain_validation_type_taint_resource`] (E04xx),
+/// [`explain_validation_gate`] (E05xx), [`explain_validation_contract`] (E06xx).
+/// Each helper is bounded by the variant count of one code family so that
+/// adding a new variant requires editing exactly one local helper.
 pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
+        ValidationError::DuplicateKey
+        | ValidationError::ForbiddenYamlFeature
+        | ValidationError::UnknownTopLevelField
+        | ValidationError::UnknownStepField
+        | ValidationError::MissingRequiredField { .. }
+        | ValidationError::InvalidVersion { .. }
+        | ValidationError::InvalidId { .. }
+        | ValidationError::ReservedId { .. }
+        | ValidationError::DuplicateId { .. }
+        | ValidationError::MultipleStepPrimitives
+        | ValidationError::MissingStepPrimitive => explain_validation_schema(err),
+        ValidationError::UnknownReference { .. }
+        | ValidationError::FutureReference { .. }
+        | ValidationError::SecretNotDeclared { .. }
+        | ValidationError::DirectRuntimeReference
+        | ValidationError::ScopeGuardViolation { .. }
+        | ValidationError::DirectLoopReference { .. }
+        | ValidationError::DirectStepReference { .. }
+        | ValidationError::StepSkippedReference { .. }
+        | ValidationError::ResultReferenceMissing { .. }
+        | ValidationError::UnsupportedStepField { .. } => explain_validation_reference(err),
+        ValidationError::InvalidThenTarget
+        | ValidationError::ControlFlowCycle
+        | ValidationError::UnreachableStep { .. }
+        | ValidationError::InvalidChoose
+        | ValidationError::InvalidForEach
+        | ValidationError::InvalidTogether
+        | ValidationError::InvalidCollect
+        | ValidationError::InvalidReduce
+        | ValidationError::InvalidRepeat
+        | ValidationError::InvalidWait
+        | ValidationError::InvalidAsk
+        | ValidationError::InvalidFinish
+        | ValidationError::InvalidRetry
+        | ValidationError::InvalidOnError => explain_validation_control_flow(err),
+        ValidationError::SecretResultLeak
+        | ValidationError::TypeMismatch { .. }
+        | ValidationError::PayloadTooLarge
+        | ValidationError::LimitRequired { .. }
+        | ValidationError::LimitExceeded { .. }
+        | ValidationError::UnsupportedTrigger { .. }
+        | ValidationError::HttpTriggerOutOfCore
+        | ValidationError::ExpressionStackExceeded { .. }
+        | ValidationError::ExpressionStackMismatch { .. }
+        | ValidationError::AccessorSlotOutOfRange { .. }
+        | ValidationError::AccessorPathInvalid { .. }
+        | ValidationError::AccessorPathTooDeep { .. }
+        | ValidationError::AccessorSymbolOutOfBounds { .. }
+        | ValidationError::SlotReferenceOutOfRange { .. }
+        | ValidationError::SlotDependencyCycle { .. }
+        | ValidationError::SlotTypeInconsistency { .. }
+        | ValidationError::NonDeterministicPath { .. } => {
+            explain_validation_type_taint_resource(err)
+        }
+        ValidationError::LoopBodyStepOutOfRange { .. }
+        | ValidationError::NodeKindConstraintViolation { .. } => explain_validation_gate(err),
+        ValidationError::ActionContractMissing { .. }
+        | ValidationError::ActionContractOrphan { .. }
+        | ValidationError::CapabilityNameEmpty { .. }
+        | ValidationError::CapabilityNameTooLong { .. }
+        | ValidationError::CapabilityNameInvalid { .. }
+        | ValidationError::CapabilityActionMismatch { .. }
+        | ValidationError::CapabilityDuplicate { .. }
+        | ValidationError::MissingSchemaVersion
+        | ValidationError::CueVetFailed { .. }
+        | ValidationError::VersionMonotonicityBreach { .. } => explain_validation_contract(err),
+        _ => {
+            crate::outln!("Unknown Validation Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// E01xx — Schema validation errors
+// =========================================================================
+
+fn explain_validation_schema(err: &vb_validate::ValidationError) {
     use vb_validate::ValidationError;
     match err {
         ValidationError::DuplicateKey => {
@@ -139,6 +227,20 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
+        _ => {
+            crate::outln!("Schema Validation Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// E02xx — Reference validation errors
+// =========================================================================
+
+fn explain_validation_reference(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
         ValidationError::UnknownReference { reference } => {
             crate::outln!("Unknown Reference");
             crate::outln!("  Reference '{reference}' is not declared in the workflow.");
@@ -187,6 +289,91 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
+        ValidationError::ScopeGuardViolation {
+            reference,
+            required_scope,
+        } => {
+            crate::outln!("Scope Guard Violation");
+            crate::outln!(
+                "  Reference '{reference}' is used outside its required scope '{required_scope}'."
+            );
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Move the reference inside the scope where it is allowed",
+                    "Check the Velvet v1 schema for scope rules",
+                ],
+            );
+        }
+        ValidationError::DirectLoopReference { variable } => {
+            crate::outln!("Direct Loop Reference");
+            crate::outln!("  Loop variable '{variable}' must use the `$loop.<var>` prefix.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Prefix the loop variable with `$loop.`",
+                    "Bare `$<var>` references are not allowed inside loops",
+                ],
+            );
+        }
+        ValidationError::DirectStepReference { step } => {
+            crate::outln!("Direct Step Reference");
+            crate::outln!("  Step reference '{step}' must use the `$steps.X` prefix.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Use the `$steps.<id>` namespace for step outputs",
+                    "Check the Velvet v1 schema for step reference rules",
+                ],
+            );
+        }
+        ValidationError::StepSkippedReference { step, reference } => {
+            crate::outln!("Step Skipped Reference");
+            crate::outln!("  Step {step} skipped due to unresolved reference '{reference}'.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Declare the reference before the step that uses it",
+                    "Remove the step if it cannot be made reachable",
+                ],
+            );
+        }
+        ValidationError::ResultReferenceMissing { .. } => {
+            crate::outln!("Result Reference Missing");
+            crate::outln!("  {err}");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Reference a step that produces an output slot",
+                    "Use `$steps.X.output` or `$steps.X.result` only",
+                ],
+            );
+        }
+        ValidationError::UnsupportedStepField { step, field } => {
+            crate::outln!("Unsupported Step Field");
+            crate::outln!("  Step '{step}' does not expose field '{field}'.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Use `output` or `result` after `$steps.<id>`",
+                    "Check the Velvet v1 schema for allowed step fields",
+                ],
+            );
+        }
+        _ => {
+            crate::outln!("Reference Validation Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// E03xx — Control-flow errors
+// =========================================================================
+
+fn explain_validation_control_flow(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
         ValidationError::InvalidThenTarget => {
             crate::outln!("Invalid Branch Target");
             crate::outln!("  A 'then' branch targets an invalid step.");
@@ -342,6 +529,20 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
+        _ => {
+            crate::outln!("Control-Flow Validation Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// E04xx — Type / taint / resource errors
+// =========================================================================
+
+fn explain_validation_type_taint_resource(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
         ValidationError::SecretResultLeak => {
             crate::outln!("Secret Result Leak");
             crate::outln!("  A secret value may be exposed in the workflow result.");
@@ -481,114 +682,6 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
                 ],
             );
         }
-        ValidationError::SlotReferenceOutOfRange {
-            slot,
-            slot_count,
-            context,
-        } => {
-            crate::outln!("Slot Reference Out of Range");
-            crate::outln!(
-                "  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}."
-            );
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Fix the slot reference to be within the valid range",
-                    "Ensure the slot exists in the workflow's slot schema",
-                ],
-            );
-        }
-        ValidationError::LoopBodyStepOutOfRange {
-            step,
-            node_count,
-            source_node,
-            label: _,
-        } => {
-            crate::outln!("Loop Body Step Out of Range");
-            crate::outln!(
-                "  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node})."
-            );
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Fix loop body step references to be within node_count",
-                    "Ensure loop body steps exist in the workflow",
-                ],
-            );
-        }
-        ValidationError::SlotDependencyCycle { slot, chain } => {
-            crate::outln!("Slot Dependency Cycle");
-            crate::outln!("  Slot {slot} has a dependency cycle: {chain}.");
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Break the slot dependency cycle",
-                    "Remove circular dependencies between slots",
-                ],
-            );
-        }
-        ValidationError::NodeKindConstraintViolation { node_index, detail } => {
-            crate::outln!("Node Kind Constraint Violation");
-            crate::outln!("  Node {node_index}: {detail}.");
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Fix the node to comply with its kind constraints",
-                    "Check the Velvet v1 schema for node kind rules",
-                ],
-            );
-        }
-        ValidationError::ActionContractMissing {
-            action_id,
-            node_index,
-        } => {
-            crate::outln!("Action Contract Missing");
-            crate::outln!(
-                "  Do node {node_index} references action_id {action_id}, which has no contract."
-            );
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Register an action contract for action_id {action_id}",
-                    "All Do nodes must reference registered action contracts",
-                ],
-            );
-        }
-        ValidationError::ActionContractOrphan { action_id } => {
-            crate::outln!("Action Contract Orphan");
-            crate::outln!("  Action contract {action_id} has no corresponding Do node.");
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Remove the orphan action contract",
-                    "Or add a Do node that uses this action_id",
-                ],
-            );
-        }
-        ValidationError::SlotTypeInconsistency { slot } => {
-            crate::outln!("Slot Type Inconsistency");
-            crate::outln!("  Slot {slot} has writers with incompatible type kinds.");
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Ensure all writers to this slot produce the same type",
-                    "Fix type mismatches between step outputs",
-                ],
-            );
-        }
-        ValidationError::NonDeterministicPath { from_node, to_node } => {
-            crate::outln!("Non-Deterministic Path");
-            crate::outln!(
-                "  Path from node {from_node} to {to_node} contains no suspension point."
-            );
-            explain_repair_hint(
-                "validation",
-                &[
-                    "Add a suspension point (ask, wait, or retry) to the path",
-                    "Non-deterministic paths without suspension points cause replay issues",
-                ],
-            );
-        }
         ValidationError::AccessorPathTooDeep {
             accessor_index,
             depth,
@@ -621,6 +714,142 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
                 &[
                     "Fix the symbol index to be within symbols_count",
                     "Symbol indices are zero-based",
+                ],
+            );
+        }
+        ValidationError::SlotReferenceOutOfRange {
+            slot,
+            slot_count,
+            context,
+        } => {
+            crate::outln!("Slot Reference Out of Range");
+            crate::outln!(
+                "  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}."
+            );
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Fix the slot reference to be within the valid range",
+                    "Ensure the slot exists in the workflow's slot schema",
+                ],
+            );
+        }
+        ValidationError::SlotDependencyCycle { slot, chain } => {
+            crate::outln!("Slot Dependency Cycle");
+            crate::outln!("  Slot {slot} has a dependency cycle: {chain}.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Break the slot dependency cycle",
+                    "Remove circular dependencies between slots",
+                ],
+            );
+        }
+        ValidationError::SlotTypeInconsistency { slot } => {
+            crate::outln!("Slot Type Inconsistency");
+            crate::outln!("  Slot {slot} has writers with incompatible type kinds.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Ensure all writers to this slot produce the same type",
+                    "Fix type mismatches between step outputs",
+                ],
+            );
+        }
+        ValidationError::NonDeterministicPath { from_node, to_node } => {
+            crate::outln!("Non-Deterministic Path");
+            crate::outln!(
+                "  Path from node {from_node} to {to_node} contains no suspension point."
+            );
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Add a suspension point (ask, wait, or retry) to the path",
+                    "Non-deterministic paths without suspension points cause replay issues",
+                ],
+            );
+        }
+        _ => {
+            crate::outln!("Type / Taint / Resource Validation Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// E05xx — Gate verifier errors
+// =========================================================================
+
+fn explain_validation_gate(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
+        ValidationError::LoopBodyStepOutOfRange {
+            step,
+            node_count,
+            source_node,
+            label: _,
+        } => {
+            crate::outln!("Loop Body Step Out of Range");
+            crate::outln!(
+                "  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node})."
+            );
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Fix loop body step references to be within node_count",
+                    "Ensure loop body steps exist in the workflow",
+                ],
+            );
+        }
+        ValidationError::NodeKindConstraintViolation { node_index, detail } => {
+            crate::outln!("Node Kind Constraint Violation");
+            crate::outln!("  Node {node_index}: {detail}.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Fix the node to comply with its kind constraints",
+                    "Check the Velvet v1 schema for node kind rules",
+                ],
+            );
+        }
+        _ => {
+            crate::outln!("Gate Validation Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// E06xx — Contract-discovery errors
+// =========================================================================
+
+fn explain_validation_contract(err: &vb_validate::ValidationError) {
+    use vb_validate::ValidationError;
+    match err {
+        ValidationError::ActionContractMissing {
+            action_id,
+            node_index,
+        } => {
+            crate::outln!("Action Contract Missing");
+            crate::outln!(
+                "  Do node {node_index} references action_id {action_id}, which has no contract."
+            );
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Register an action contract for action_id {action_id}",
+                    "All Do nodes must reference registered action contracts",
+                ],
+            );
+        }
+        ValidationError::ActionContractOrphan { action_id } => {
+            crate::outln!("Action Contract Orphan");
+            crate::outln!("  Action contract {action_id} has no corresponding Do node.");
+            explain_repair_hint(
+                "validation",
+                &[
+                    "Remove the orphan action contract",
+                    "Or add a Do node that uses this action_id",
                 ],
             );
         }
@@ -746,7 +975,7 @@ pub(crate) fn explain_validation_error(err: &vb_validate::ValidationError) {
             );
         }
         _ => {
-            crate::outln!("Unknown Validation Error");
+            crate::outln!("Contract Discovery Error");
             crate::outln!("  {err}");
         }
     }

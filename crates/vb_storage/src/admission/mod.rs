@@ -29,7 +29,7 @@ pub(crate) mod record;
 // Public API re-exports (crate::admission::* surface)
 // =========================================================================
 
-pub use types::{AcceptedArtifact, ProofFlag, VerificationProof, VerificationWarning};
+pub use types::{AcceptedArtifact, Durability, ProofFlag, VerificationProof, VerificationWarning};
 
 pub use bytes::reject_oversized_compiled_ir_value;
 pub use flow::{submit_artifact, submit_artifact_with_contracts};

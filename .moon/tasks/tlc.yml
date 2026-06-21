@@ -70,7 +70,8 @@ tasks:
         echo "Missing TLC runner: install a tlc wrapper or set TLA2TOOLS_JAR to an existing tla2tools.jar" >&2
         exit 127
       fi
-      # Model check the core workflow specification
+      # Model check the core workflow specification.
+      # Subsumed by verify-tlc in CI; kept for local deep-dive runs only.
       meta_dir="$PWD/target/tlc-tmp/verify-tlc-workflow-$$"
       rm -rf "$meta_dir"
       mkdir -p "$meta_dir"
@@ -83,7 +84,7 @@ tasks:
       - 'verification/tla/WorkflowBoundedAdmission.tla'
       - 'verification/tla/WorkflowBoundedAdmission.cfg'
     options:
-      runInCI: true
+      runInCI: false
       cache: false
 
   verify-tlc-idempotency:
@@ -99,7 +100,8 @@ tasks:
         echo "Missing TLC runner: install a tlc wrapper or set TLA2TOOLS_JAR to an existing tla2tools.jar" >&2
         exit 127
       fi
-      # Model check the idempotency safety specification
+      # Model check the idempotency safety specification.
+      # Subsumed by verify-tlc in CI; kept for local deep-dive runs only.
       meta_dir="$PWD/target/tlc-tmp/verify-tlc-idempotency-$$"
       rm -rf "$meta_dir"
       mkdir -p "$meta_dir"
@@ -112,5 +114,5 @@ tasks:
       - 'verification/tla/IdempotencySafety.tla'
       - 'verification/tla/IdempotencySafety.cfg'
     options:
-      runInCI: true
+      runInCI: false
       cache: false

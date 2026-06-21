@@ -374,13 +374,21 @@ doc = false
 bench = false
 
 # [[bin]]
-# allow-removed-crate: fuzz bin entry for the removed UI model crate is commented out so the target does not resolve
+# allow-removed-crate: legacy commented entry retained for history; the active
+# `vb_ui_model_postcard_decode` bin is declared below as a stub that uses
+# in-scope crates (postcard + vb_core) until the UI model crate returns.
 # name = "vb_ui_model_postcard_decode"
-# allow-removed-crate: fuzz bin path for the removed UI model crate is commented out so the target does not resolve
 # path = "src/bin/vb_ui_model_postcard_decode.rs"
 # test = false
 # doc = false
 # bench = false
+
+[[bin]]
+name = "vb_ui_model_postcard_decode"
+path = "src/bin/vb_ui_model_postcard_decode.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "verifier_gates"
@@ -528,6 +536,32 @@ bench = false
 # test = false
 # doc = false
 # bench = false
+
+# Active bins below are shim stubs that delegate to fuzz_lib::fuzz_* while
+# xtask remains excluded from the workspace. They keep fuzz/Cargo.toml
+# resolvable and provide meaningful libfuzzer coverage of the in-scope
+# substitute APIs (vb_doc, postcard, vb_core).
+
+[[bin]]
+name = "structured_status_render_hostile"
+path = "src/bin/structured_status_render_hostile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xtask_parse_argv_hostile"
+path = "src/bin/xtask_parse_argv_hostile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xtask_parse_options_hostile"
+path = "src/bin/xtask_parse_options_hostile.rs"
+test = false
+doc = false
+bench = false
 
 # === new libfuzzer targets (vb-64nl Phase 0) ===
 

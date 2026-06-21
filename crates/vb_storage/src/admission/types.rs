@@ -80,6 +80,48 @@ impl ProofFlag {
 }
 
 // =========================================================================
+// Durability
+// =========================================================================
+
+/// Persistence posture of a verification proof.
+///
+/// `Durable` proofs were flushed via `SyncAll` before this record was
+/// constructed; `Volatile` proofs live only in memory and have not been
+/// flushed. The enum replaces the legacy `durable: bool` parameter so the
+/// call site reads as a self-documenting domain term.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum Durability {
+    /// Proof metadata is in memory only; not flushed via `SyncAll`.
+    Volatile,
+    /// Proof metadata was durably flushed via `SyncAll` before construction.
+    Durable,
+}
+
+impl Durability {
+    /// Returns `true` for [`Durability::Durable`] and `false` for [`Durability::Volatile`].
+    #[must_use]
+    pub fn is_durable(&self) -> bool {
+        matches!(self, Self::Durable)
+    }
+}
+
+impl From<bool> for Durability {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Durable
+        } else {
+            Self::Volatile
+        }
+    }
+}
+
+impl From<Durability> for bool {
+    fn from(value: Durability) -> Self {
+        value.is_durable()
+    }
+}
+
+// =========================================================================
 // VerificationProof
 // =========================================================================
 
@@ -162,8 +204,12 @@ impl VerificationProof {
     /// Journaled/strict admission (`gate_count == 15`) records the accepted
     /// gate claims that were established before the artifact was persisted.
     #[must_use]
-    pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
-        let core = verification_proof_core(digest, gate_count, durable);
+    pub fn new(
+        digest: vb_core::WorkflowDigest,
+        gate_count: u8,
+        durability: Durability,
+    ) -> Self {
+        let core = verification_proof_core(digest, gate_count, durability.is_durable());
         Self {
             digest: core.digest,
             gate_count: core.gate_count,
@@ -177,6 +223,24 @@ impl VerificationProof {
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),
         }
+    }
+
+    /// Creates a new volatile (non-persisted) verification proof.
+    ///
+    /// Volatile proofs indicate the proof metadata is in memory only and was
+    /// not durably flushed via `SyncAll`.
+    #[must_use]
+    pub fn new_volatile(digest: vb_core::WorkflowDigest, gate_count: u8) -> Self {
+        Self::new(digest, gate_count, Durability::Volatile)
+    }
+
+    /// Creates a new durable (persisted) verification proof.
+    ///
+    /// Durable proofs indicate the proof metadata was durably flushed via
+    /// `SyncAll` before this record was constructed.
+    #[must_use]
+    pub fn new_durable(digest: vb_core::WorkflowDigest, gate_count: u8) -> Self {
+        Self::new(digest, gate_count, Durability::Durable)
     }
 }
 

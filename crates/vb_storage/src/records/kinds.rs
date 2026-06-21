@@ -94,6 +94,13 @@ impl RecordKind {
     /// discriminant literal — `id()` will follow automatically.
     #[must_use]
     pub const fn id(self) -> u16 {
-        self as u16
+        // The enum is `#[repr(u16)]` with explicit discriminants in the
+        // range 0..=60; the cast is therefore provably lossless. `try_from`
+        // is not available in `const fn`, so we keep the `as` here with
+        // explicit documentation and a tightly-scoped lint allow.
+        #[allow(clippy::as_conversions)]
+        {
+            self as u16
+        }
     }
 }

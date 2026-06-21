@@ -36,4 +36,4 @@ pub mod verus_proofs;
 
 // HVR-PO-CORE-003: exclude legacy frame Kani modules from vb-god2f step-state lane discovery.
 #[cfg(all(kani, not(feature = "kani-vb-god2f-proof-kernels")))]
-mod tests_and_verification;
+mod tests;

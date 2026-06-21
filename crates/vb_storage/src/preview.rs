@@ -74,7 +74,7 @@ fn process_entry(
     };
     let payload_len =
         u32::try_from(value_bytes.len()).map_err(|_| JournalError::PayloadLenOverflow {
-            len: value_bytes.len() as u64,
+            len: u64::try_from(value_bytes.len()).unwrap_or(u64::MAX),
         })?;
     if state.records_yielded >= state.max_records_val {
         state.truncated = true;
@@ -125,7 +125,12 @@ pub fn preview_keyspace(
     entries: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<DecodedPreview, JournalError> {
     let total_entries = u64::try_from(entries.len())
-        .map_err(|_| JournalError::PayloadLenOverflow { len: entries.len() as u64 })?;
+        .map_err(|_| JournalError::PayloadLenOverflow {
+            len: match u64::try_from(entries.len()) {
+                Ok(value) => value,
+                Err(_) => u64::MAX,
+            },
+        })?;
     let mut result: Vec<(StorageKey, Vec<u8>, PreviewPayload)> = Vec::new();
     let mut state = PreviewState::new(config.max_records().get(), config.max_bytes());
     for (k, v) in entries {

@@ -13,7 +13,7 @@
 
 use proptest::prelude::*;
 use vb_core::WorkflowDigest;
-use vb_storage::admission::{VerificationProof, VerificationWarning};
+use vb_storage::admission::{Durability, VerificationProof, VerificationWarning};
 
 proptest! {
     /// PS-008a: VerificationProof::new always produces correct gate_count and flags.
@@ -24,7 +24,8 @@ proptest! {
     ) {
         let gate_count = if gate_choice == 0 { 0u8 } else { 15u8 };
         let digest = WorkflowDigest::from_bytes([0u8; 32]);
-        let proof = VerificationProof::new(digest, gate_count, durable);
+        let durability = Durability::from(durable);
+        let proof = VerificationProof::new(digest, gate_count, durability);
 
         prop_assert_eq!(proof.gate_count, gate_count);
         prop_assert_eq!(proof.durable, durable);
@@ -40,7 +41,7 @@ proptest! {
     #[test]
     fn ps_008_relaxed_proof_has_gate_count_zero(_dummy in proptest::bool::ANY) {
         let digest = WorkflowDigest::from_bytes([0u8; 32]);
-        let proof = VerificationProof::new(digest, 0, false);
+        let proof = VerificationProof::new_volatile(digest, 0);
         prop_assert_eq!(proof.gate_count, 0);
         prop_assert!(!proof.durable);
         prop_assert!(!proof.bounded_claimed);
@@ -54,7 +55,7 @@ proptest! {
     #[test]
     fn ps_008_checked_proof_has_all_flags(_dummy in proptest::bool::ANY) {
         let digest = WorkflowDigest::from_bytes([0u8; 32]);
-        let proof = VerificationProof::new(digest, 15, true);
+        let proof = VerificationProof::new_durable(digest, 15);
         prop_assert_eq!(proof.gate_count, 15);
         prop_assert!(proof.durable);
         prop_assert!(proof.bounded_claimed);

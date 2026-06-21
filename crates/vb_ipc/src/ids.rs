@@ -36,8 +36,11 @@ impl AskTicketId {
 
     /// Extracts the step index from the lower 16 bits of the wire encoding.
     #[must_use]
-    pub const fn step_idx(self) -> u16 {
-        (self.0 & 0xFFFF) as u16
+    pub fn step_idx(self) -> u16 {
+        // Mask keeps the lower 16 bits; try_from is infallible here because
+        // the masked value is bounded by [0, u16::MAX]. The 0 fallback is
+        // unreachable on every supported target.
+        u16::try_from(self.0 & 0xFFFF).unwrap_or(0)
     }
 }
 
@@ -70,8 +73,11 @@ impl ActionTicketId {
 
     /// Extracts the step index from the lower 16 bits of the wire encoding.
     #[must_use]
-    pub const fn step_idx(self) -> u16 {
-        (self.0 & 0xFFFF) as u16
+    pub fn step_idx(self) -> u16 {
+        // Mask keeps the lower 16 bits; try_from is infallible here because
+        // the masked value is bounded by [0, u16::MAX]. The 0 fallback is
+        // unreachable on every supported target.
+        u16::try_from(self.0 & 0xFFFF).unwrap_or(0)
     }
 }
 

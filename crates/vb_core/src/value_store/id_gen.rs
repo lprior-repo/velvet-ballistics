@@ -3,10 +3,11 @@
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
 
-#[allow(clippy::as_conversions)]
 pub(super) fn checked_len_to_u64(len: usize) -> u64 {
-    // Lossless on all Rust targets: usize is 32-bit or 64-bit.
-    len as u64
+    // Lossless on all Rust targets: usize is 32-bit or 64-bit; both fit in u64.
+    // The `try_from` Err branch is unreachable on every supported target;
+    // saturate to `u64::MAX` to honor the no-unwrap policy.
+    u64::try_from(len).unwrap_or(u64::MAX)
 }
 
 pub(super) fn next_symbol_id(len: usize) -> CoreResult<SymbolId> {

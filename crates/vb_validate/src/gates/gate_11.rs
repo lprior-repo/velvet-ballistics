@@ -178,7 +178,7 @@ fn require_matching_body_start(
 ) -> ValidationResult<()> {
     let has_match = step_in_loop_body(index, body, done)
         && has_prior_matching_start(parts, index, |kind| start_matches(kind, body, done));
-    require_pairing(has_match, index, format!("{label} has no matching start"))
+    require_pairing_match(has_match, index, format!("{label} has no matching start"))
 }
 
 fn require_matching_done_start(
@@ -188,7 +188,7 @@ fn require_matching_done_start(
     start_done_matches: fn(&CompiledNodeKind, usize) -> bool,
 ) -> ValidationResult<()> {
     let has_match = has_prior_matching_start(parts, index, |kind| start_done_matches(kind, index));
-    require_pairing(has_match, index, format!("{label} has no matching start"))
+    require_pairing_match(has_match, index, format!("{label} has no matching start"))
 }
 
 fn require_matching_repeat_check(
@@ -204,7 +204,7 @@ fn require_matching_repeat_check(
         } => *start_done == done && step_in_loop_body(index, *body, *start_done),
         _ => false,
     });
-    require_pairing(has_match, index, "RepeatCheck has no matching RepeatStart")
+    require_pairing_match(has_match, index, "RepeatCheck has no matching RepeatStart")
 }
 
 fn require_matching_together_branch(
@@ -225,7 +225,7 @@ fn require_matching_together_branch(
         }
         _ => false,
     });
-    require_pairing(
+    require_pairing_match(
         has_match,
         index,
         "TogetherBranch has no matching TogetherStart branch target",
@@ -243,7 +243,7 @@ fn require_matching_together_join(
         }
         _ => false,
     });
-    require_pairing(
+    require_pairing_match(
         has_match,
         index,
         "TogetherJoin has no matching TogetherStart branch count",
@@ -268,8 +268,18 @@ fn step_in_loop_body(index: usize, body: StepIdx, done: StepIdx) -> bool {
     index >= body_index && index < done_index
 }
 
-fn require_pairing(matches: bool, index: usize, detail: impl Into<String>) -> ValidationResult<()> {
-    if matches {
+/// Assert that a pairing relation held; emit `NodeKindConstraintViolation` when it did not.
+///
+/// The boolean parameter is required because the result of structural pairing
+/// checks (e.g. "did a `ForEachNext` find its matching `ForEachStart`?") is a
+/// `bool` from `has_prior_matching_start`. This helper carries the
+/// `ValidationError` construction so call sites stay readable.
+fn require_pairing_match(
+    matched: bool,
+    index: usize,
+    detail: impl Into<String>,
+) -> ValidationResult<()> {
+    if matched {
         return Ok(());
     }
     Err(ValidationError::NodeKindConstraintViolation {

@@ -329,11 +329,12 @@ impl ValueStore {
     }
 }
 
-#[allow(clippy::as_conversions)]
 fn checked_len_to_u64(len: usize) -> u64 {
     // Lossless on all Rust targets: usize is either 32-bit or 64-bit.
-    // Both fit in u64, so this cast never overflows or truncates.
-    len as u64
+    // Both fit in u64, so this widening never overflows. The `try_from`
+    // Err branch is unreachable on every supported target; we saturate to
+    // `u64::MAX` rather than unwrap to honor the no-unwrap policy.
+    u64::try_from(len).unwrap_or(u64::MAX)
 }
 
 fn next_symbol_id(len: usize) -> CoreResult<SymbolId> {
@@ -494,7 +495,7 @@ mod kani_harnesses {
 }
 
 #[cfg(all(test, feature = "legacy-tests", kani))]
-#[path = "value_store/legacy_tests/extended_tests.rs"]
+#[path = "value_store/legacy_tests/tests.rs"]
 mod extended_tests;
 
 #[cfg(test)]

@@ -190,7 +190,7 @@ fn verification_warning_inequality_different_gate() {
 #[test]
 fn verification_proof_new_initializes_empty_warnings() {
     let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let proof = VerificationProof::new(digest, 2, true);
+    let proof = VerificationProof::new_durable(digest, 2);
     assert!(proof.warnings.is_empty());
     assert_eq!(proof.gate_count, 2);
     assert!(proof.durable);
@@ -199,7 +199,7 @@ fn verification_proof_new_initializes_empty_warnings() {
 #[test]
 fn verification_proof_warnings_can_be_populated() {
     let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let mut proof = VerificationProof::new(digest, 5, false);
+    let mut proof = VerificationProof::new_volatile(digest, 5);
     proof.warnings.push(VerificationWarning {
         code: 100,
         message: Box::from("soft check advisory"),
@@ -663,7 +663,7 @@ fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
 #[test]
 fn verification_proof_serde_roundtrip() -> Result<(), String> {
     let digest = vb_core::WorkflowDigest::from_bytes([0xAA_u8; 32]);
-    let mut proof = VerificationProof::new(digest, 3, true);
+    let mut proof = VerificationProof::new_durable(digest, 3);
     proof.warnings.push(VerificationWarning {
         code: 7,
         message: Box::from("test warning"),
@@ -823,7 +823,7 @@ fn verification_warning_serde_roundtrip() -> Result<(), String> {
 #[test]
 fn relaxed_proof_records_no_passed_gate_claims() -> Result<(), String> {
     let digest = vb_core::WorkflowDigest::from_bytes([0xAB_u8; 32]);
-    let proof_zero = VerificationProof::new(digest, 0, false);
+    let proof_zero = VerificationProof::new_volatile(digest, 0);
 
     assert!(!proof_zero.bounded_claimed);
     assert!(!proof_zero.taint_safe_claimed);
@@ -838,7 +838,7 @@ fn relaxed_proof_records_no_passed_gate_claims() -> Result<(), String> {
 fn checked_proof_records_passed_gate_claims() -> Result<(), String> {
     let digest = vb_core::WorkflowDigest::from_bytes([0xAB_u8; 32]);
 
-    let proof_fifteen = VerificationProof::new(digest, 15, true);
+    let proof_fifteen = VerificationProof::new_durable(digest, 15);
     assert!(proof_fifteen.bounded_claimed);
     assert!(proof_fifteen.taint_safe_claimed);
     assert!(proof_fifteen.retry_safe_claimed);
@@ -851,7 +851,7 @@ fn checked_proof_records_passed_gate_claims() -> Result<(), String> {
 #[test]
 fn proof_flags_depend_on_gate_count_not_digest_value() -> Result<(), String> {
     let zero_digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
-    let proof_zero = VerificationProof::new(zero_digest, 0, false);
+    let proof_zero = VerificationProof::new_volatile(zero_digest, 0);
     assert!(!proof_zero.bounded_claimed);
     assert!(!proof_zero.taint_safe_claimed);
     assert!(!proof_zero.retry_safe_claimed);
@@ -859,7 +859,7 @@ fn proof_flags_depend_on_gate_count_not_digest_value() -> Result<(), String> {
     assert!(!proof_zero.replayable_claimed);
 
     let max_digest = vb_core::WorkflowDigest::from_bytes([0xFFu8; 32]);
-    let proof_max = VerificationProof::new(max_digest, 15, true);
+    let proof_max = VerificationProof::new_durable(max_digest, 15);
     assert!(
         proof_max.bounded_claimed
             && proof_max.taint_safe_claimed
@@ -874,7 +874,7 @@ fn proof_flags_depend_on_gate_count_not_digest_value() -> Result<(), String> {
         0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
         0x66, 0x77, 0x88,
     ]);
-    let proof_arb = VerificationProof::new(arbitrary_digest, 0, false);
+    let proof_arb = VerificationProof::new_volatile(arbitrary_digest, 0);
     assert!(!proof_arb.bounded_claimed);
     assert!(!proof_arb.taint_safe_claimed);
     assert!(!proof_arb.retry_safe_claimed);

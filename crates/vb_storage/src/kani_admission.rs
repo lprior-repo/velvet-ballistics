@@ -7,7 +7,7 @@
 
 #![forbid(unsafe_code)]
 
-use crate::admission::{VerificationProof, admit_compiled_artifact, submit_artifact};
+use crate::admission::{Durability, VerificationProof, admit_compiled_artifact, submit_artifact};
 use vb_core::workflow::{ResourceContract, WorkflowParts};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, RuntimePolicy, SlotIdx, StepIdx,
@@ -117,9 +117,9 @@ fn admit_compiled_artifact_kani() {
 fn verification_proof_digest_binding() {
     let digest: WorkflowDigest = kani::any();
     let gate_count: u8 = kani::any();
-    let durable: bool = kani::any();
+    let durability: Durability = kani::any();
 
-    let proof = VerificationProof::new(digest, gate_count, durable);
+    let proof = VerificationProof::new(digest, gate_count, durability);
 
     kani::assert(
         proof.digest == digest,
@@ -131,7 +131,7 @@ fn verification_proof_digest_binding() {
 #[kani::unwind(40)]
 fn verification_proof_digest_binding_relaxed() {
     let digest: WorkflowDigest = kani::any();
-    let proof = VerificationProof::new(digest, 0, false);
+    let proof = VerificationProof::new_volatile(digest, 0);
 
     kani::assert(
         proof.digest == digest,
@@ -144,9 +144,9 @@ fn verification_proof_digest_binding_relaxed() {
 fn verification_proof_claim_flags_follow_gate_count() {
     let digest: WorkflowDigest = kani::any();
     let gate_count: u8 = kani::any();
-    let durable: bool = kani::any();
+    let durability: Durability = kani::any();
 
-    let proof = VerificationProof::new(digest, gate_count, durable);
+    let proof = VerificationProof::new(digest, gate_count, durability);
     let gates_passed = gate_count == 15;
 
     kani::assert(

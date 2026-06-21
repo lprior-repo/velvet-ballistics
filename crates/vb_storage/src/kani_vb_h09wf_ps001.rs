@@ -28,7 +28,7 @@ fn arbitrary_artifact() -> AcceptedArtifact {
         source_digest: digest,
         policy_digest,
         ir: bounded_ir(),
-        verification: VerificationProof::new(digest, 15, true),
+        verification: VerificationProof::new_durable(digest, 15),
         accepted_at_seq: crate::types::EventSeq::new(0),
         required_capabilities: Box::new([]),
     }

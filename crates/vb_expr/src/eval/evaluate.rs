@@ -106,8 +106,8 @@ fn eval_expr_op_with_store(
         ExprOp::LoadAccessor(idx) => {
             super::accessors::eval_load_accessor(stack, slots, accessors, store, idx)
         }
-        ExprOp::Eq => eval_eq(stack, true),
-        ExprOp::NotEq => eval_eq(stack, false),
+        ExprOp::Eq => eval_eq(stack),
+        ExprOp::NotEq => eval_ne(stack),
         ExprOp::Not => eval_unary_stack(stack, UnaryOp::Not),
         _ => eval_non_load_op_with_store(op, stack, store),
     }
@@ -161,10 +161,16 @@ fn eval_load_const(
 
 fn eval_eq(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-    positive: bool,
 ) -> ExprResult<()> {
     let (left, right) = pop_pair(stack)?;
-    push_value(stack, SlotValue::Bool((left == right) == positive))
+    push_value(stack, SlotValue::Bool(left == right))
+}
+
+fn eval_ne(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+) -> ExprResult<()> {
+    let (left, right) = pop_pair(stack)?;
+    push_value(stack, SlotValue::Bool(left != right))
 }
 
 fn eval_binary_stack(

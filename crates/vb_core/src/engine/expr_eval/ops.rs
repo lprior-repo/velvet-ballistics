@@ -14,9 +14,14 @@ use super::stack::{
     ExprStack, expect_bool, expect_i64, expect_object, pop_i64_pair, pop_pair, push_value,
 };
 
-fn eval_eq(stack: &mut ExprStack, positive: bool) -> Result<(), EngineError> {
+fn eval_eq(stack: &mut ExprStack) -> Result<(), EngineError> {
     let (left, right) = pop_pair(stack)?;
-    push_value(stack, SlotValue::Bool((left == right) == positive))
+    push_value(stack, SlotValue::Bool(left == right))
+}
+
+fn eval_ne(stack: &mut ExprStack) -> Result<(), EngineError> {
+    let (left, right) = pop_pair(stack)?;
+    push_value(stack, SlotValue::Bool(left != right))
 }
 
 fn eval_not(stack: &mut ExprStack) -> Result<(), EngineError> {
@@ -235,8 +240,8 @@ pub(crate) fn eval_expr_operator(
     store: &mut ValueStore,
 ) -> Result<(), EngineError> {
     match op {
-        ExprOp::Eq => eval_eq(stack, true),
-        ExprOp::NotEq => eval_eq(stack, false),
+        ExprOp::Eq => eval_eq(stack),
+        ExprOp::NotEq => eval_ne(stack),
         ExprOp::And => eval_bool_pair(stack, |left, right| left && right),
         ExprOp::Or => eval_bool_pair(stack, |left, right| left || right),
         ExprOp::Not => eval_not(stack),

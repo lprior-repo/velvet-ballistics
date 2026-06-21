@@ -11,8 +11,93 @@ use crate::explain_validation::validation::explain_validation_error;
 
 /// Explain a [`vb_compile::CompileError`] in human-readable form.
 ///
-/// This is the canonical error formatter for the compile phase.
+/// This is the canonical error formatter for the compile phase. The match is
+/// split into per-domain helpers:
+/// - [`explain_source_error`] — YAML source / parse / forbidden-feature / shape
+/// - [`explain_schema_error`] — workflow schema, trigger, step field shape
+/// - [`explain_index_error`] — u16 index / branch-target range checks
+/// - [`explain_lowering_error`] — primitive lowering, last-step, constant value
+/// - [`explain_reference_error`] — reference and step-target errors
+/// - [`explain_type_or_composite_error`] — type mismatch, workflow / validation
+///
+/// Each helper is bounded by the variant count of one domain area and the
+/// dispatcher stays under 100 lines.
 pub(crate) fn explain_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
+        CompileError::SourceTooLarge { .. }
+        | CompileError::EmptySource
+        | CompileError::Parse(_)
+        | CompileError::DocumentCount { .. }
+        | CompileError::TopLevelNotMapping
+        | CompileError::NonStringKey { .. }
+        | CompileError::DuplicateKey { .. }
+        | CompileError::AliasForbidden { .. }
+        | CompileError::AnchorForbidden { .. }
+        | CompileError::MergeKeyForbidden { .. }
+        | CompileError::TagForbidden { .. }
+        | CompileError::BadValue
+        | CompileError::FloatForbidden
+        | CompileError::DepthLimit { .. }
+        | CompileError::NodeLimit { .. }
+        | CompileError::SequenceLimit { .. }
+        | CompileError::MappingLimit { .. }
+        | CompileError::ScalarLimit { .. } => explain_source_error(err),
+        CompileError::MissingField { .. }
+        | CompileError::UnknownTopLevelField { .. }
+        | CompileError::InvalidVersion { .. }
+        | CompileError::InvalidTriggerCount { .. }
+        | CompileError::UnknownTriggerKind { .. }
+        | CompileError::TriggerShape { .. }
+        | CompileError::UnknownTriggerField { .. }
+        | CompileError::MissingTriggerField { .. }
+        | CompileError::InvalidTriggerField { .. }
+        | CompileError::FieldShape { .. }
+        | CompileError::UnknownInputSchemaField { .. }
+        | CompileError::InvalidInputSchema { .. }
+        | CompileError::UnsupportedTopLevelResult
+        | CompileError::EmptySteps
+        | CompileError::InvalidName { .. }
+        | CompileError::MissingStepId { .. }
+        | CompileError::DuplicateStepId { .. }
+        | CompileError::StepShape { .. }
+        | CompileError::UnknownStepField { .. }
+        | CompileError::UnknownStepPrimitiveField { .. }
+        | CompileError::MissingStepPrimitive { .. }
+        | CompileError::MultipleStepPrimitives { .. }
+        | CompileError::UnsupportedStepPrimitive { .. }
+        | CompileError::UnsupportedStepControlField { .. }
+        | CompileError::MissingStepField { .. }
+        | CompileError::StepFieldShape { .. } => explain_schema_error(err),
+        CompileError::StepIndexOutOfRange { .. }
+        | CompileError::SlotIndexOutOfRange { .. }
+        | CompileError::BranchTargetOutOfRange { .. }
+        | CompileError::BackwardBranchTarget { .. } => explain_index_error(err),
+        CompileError::PrimitiveLoweringLimitExceeded { .. }
+        | CompileError::LastStepMustFinish
+        | CompileError::UnsupportedConstantValue { .. } => explain_lowering_error(err),
+        CompileError::UnknownReferenceRoot { .. }
+        | CompileError::IllegalReference { .. }
+        | CompileError::UnknownReferenceName { .. }
+        | CompileError::UnsupportedAccessorReference { .. }
+        | CompileError::UnknownStepTarget { .. }
+        | CompileError::UnreachableStep { .. } => explain_reference_error(err),
+        CompileError::TypeMismatch { .. }
+        | CompileError::Workflow(_)
+        | CompileError::Validation(_) => explain_type_or_composite_error(err),
+        _ => {
+            crate::outln!("Compilation Error");
+            crate::outln!("  {err}");
+        }
+    }
+    explain_compile_repair_hint(err);
+}
+
+// =========================================================================
+// Source / parse / forbidden-feature / shape helpers
+// =========================================================================
+
+fn explain_source_error(err: &vb_compile::CompileError) {
     use vb_compile::CompileError;
     match err {
         CompileError::SourceTooLarge { actual, limit } => {
@@ -89,6 +174,20 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
             crate::outln!("Scalar Too Long");
             crate::outln!("  A scalar is {actual} chars, exceeding limit of {limit}.");
         }
+        _ => {
+            crate::outln!("Source Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// Workflow / trigger / step field-shape helpers
+// =========================================================================
+
+fn explain_schema_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
         CompileError::MissingField { field } => {
             crate::outln!("Missing Required Field");
             crate::outln!("  Required workflow field '{field}' is missing.");
@@ -210,6 +309,20 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
             crate::outln!("Invalid Step Field Shape");
             crate::outln!("  Step {step} field '{field}' has wrong structure.");
         }
+        _ => {
+            crate::outln!("Schema Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// u16 index / branch-target range helpers
+// =========================================================================
+
+fn explain_index_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
         CompileError::StepIndexOutOfRange { value } => {
             crate::outln!("Step Index Out of Range");
             crate::outln!("  Step index {value} exceeds the u16 representation limit.");
@@ -226,6 +339,20 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
             crate::outln!("Backward Branch Target");
             crate::outln!("  Step {step} branches to {target}, but forward branches are required.");
         }
+        _ => {
+            crate::outln!("Index Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// Primitive lowering / last-step / constant value helpers
+// =========================================================================
+
+fn explain_lowering_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
         CompileError::PrimitiveLoweringLimitExceeded {
             primitive,
             field,
@@ -245,6 +372,20 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
             crate::outln!("Unsupported Constant Value");
             crate::outln!("  Step {step} constant value must be a scalar YAML value.");
         }
+        _ => {
+            crate::outln!("Lowering Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// Reference and step-target helpers
+// =========================================================================
+
+fn explain_reference_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
         CompileError::UnknownReferenceRoot { reference, root } => {
             crate::outln!("Unknown Reference Root");
             crate::outln!("  Reference '{reference}' uses unknown root '{root}'.");
@@ -279,6 +420,20 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
             crate::outln!("Unreachable Step");
             crate::outln!("  Step {step} cannot be reached from the workflow entry point.");
         }
+        _ => {
+            crate::outln!("Reference Error");
+            crate::outln!("  {err}");
+        }
+    }
+}
+
+// =========================================================================
+// Type mismatch / workflow / validation composite helpers
+// =========================================================================
+
+fn explain_type_or_composite_error(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    match err {
         CompileError::TypeMismatch {
             field,
             expected,
@@ -299,5 +454,4 @@ pub(crate) fn explain_error(err: &vb_compile::CompileError) {
             crate::outln!("  {err}");
         }
     }
-    explain_compile_repair_hint(err);
 }

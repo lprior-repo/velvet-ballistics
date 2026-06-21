@@ -103,10 +103,9 @@ fn accepted_artifact_from_workflow(
         policy_digest: vb_storage::admission::compute_policy_digest(workflow)
             .map_err(|error| format!("policy digest failed: {error}"))?,
         ir: canonical_workflow_ir(workflow)?,
-        verification: vb_storage::VerificationProof::new(
+        verification: vb_storage::VerificationProof::new_volatile(
             workflow.digest(),
             ADMISSION_GATE_COUNT,
-            false,
         ),
         accepted_at_seq: vb_storage::EventSeq::new(0),
         required_capabilities: Box::new([]),

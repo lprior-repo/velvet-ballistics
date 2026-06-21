@@ -1,3 +1,26 @@
+/// Whether the `RunSubmitted` journal header should be appended by the
+/// submit flow itself or has already been persisted by the caller.
+///
+/// Replaces the legacy `persist_header: bool` parameter on
+/// `handle_submit_with_inputs_contracts_and_header_mode` so call sites read
+/// as a self-documenting domain term instead of a positional boolean.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HeaderPersistence {
+    /// Caller wants the submit flow to append the `RunSubmitted` header.
+    Persist,
+    /// Caller has already persisted the `RunSubmitted` header; the submit
+    /// flow must not append it again.
+    PrePersisted,
+}
+
+impl HeaderPersistence {
+    /// Returns `true` for [`HeaderPersistence::Persist`].
+    #[must_use]
+    pub(crate) fn should_persist(&self) -> bool {
+        matches!(self, Self::Persist)
+    }
+}
+
 impl Shard {
     // =============================================================================
     // Submit lifecycle methods
@@ -16,7 +39,7 @@ impl Shard {
             &[],
             caps,
             &[],
-            true,
+            HeaderPersistence::Persist,
         )
     }
 
@@ -34,14 +57,19 @@ impl Shard {
                 &[],
                 caps,
                 &[],
-                true,
+                HeaderPersistence::Persist,
             );
         };
         let inputs = [(SlotIdx::new(0), SlotValue::I64(0))];
         let test_caps = test_contract_grants(action);
         let contracts = test_contracts_through(action);
         self.handle_submit_with_inputs_contracts_and_header_mode(
-            run, workflow, &inputs, test_caps, &contracts, true,
+            run,
+            workflow,
+            &inputs,
+            test_caps,
+            &contracts,
+            HeaderPersistence::Persist,
         )
     }
 
@@ -57,7 +85,7 @@ impl Shard {
             &[],
             caps,
             &[],
-            false,
+            HeaderPersistence::PrePersisted,
         )
     }
 
@@ -75,7 +103,7 @@ impl Shard {
             inputs,
             caps,
             &[],
-            true,
+            HeaderPersistence::Persist,
         )
     }
 
@@ -94,13 +122,18 @@ impl Shard {
                 inputs,
                 caps,
                 &[],
-                true,
+                HeaderPersistence::Persist,
             );
         };
         let test_caps = test_contract_grants(action);
         let contracts = test_contracts_through(action);
         self.handle_submit_with_inputs_contracts_and_header_mode(
-            run, workflow, inputs, test_caps, &contracts, true,
+            run,
+            workflow,
+            inputs,
+            test_caps,
+            &contracts,
+            HeaderPersistence::Persist,
         )
     }
 
@@ -117,7 +150,7 @@ impl Shard {
             &[],
             caps,
             action_contracts,
-            true,
+            HeaderPersistence::Persist,
         )
     }
 
@@ -135,7 +168,7 @@ impl Shard {
             inputs,
             caps,
             action_contracts,
-            true,
+            HeaderPersistence::Persist,
         )
     }
 
@@ -146,7 +179,7 @@ impl Shard {
         inputs: &[(SlotIdx, SlotValue)],
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
-        persist_header: bool,
+        header: HeaderPersistence,
     ) -> RuntimeResult<()> {
         if self.run_state_contains(run) {
             return Err(RuntimeError::RunAlreadyExists);
@@ -161,7 +194,7 @@ impl Shard {
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
-        if persist_header {
+        if header.should_persist() {
             self.append_admission_header_journal_event(
                 run,
                 RuntimeJournalEvent::RunSubmitted {
