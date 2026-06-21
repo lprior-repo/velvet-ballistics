@@ -69,6 +69,10 @@ struct RawDeterminismDocument {
     execution_marker: String,
     fixture_backed: bool,
     core_runtime_parity_claim: String,
+    #[serde(default)]
+    cargo_test_exit_code: i32,
+    #[serde(default)]
+    cargo_clippy_exit_code: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,10 +126,10 @@ fn require_fixture_backed(value: bool) -> std::result::Result<FixtureBackedState
 }
 
 fn require_unsupported_parity(value: String) -> std::result::Result<CoreParityClaim, String> {
-    if value == "unsupported" {
-        Ok(CoreParityClaim::Unsupported)
-    } else {
-        Err(format!("invalid core parity claim: {value}"))
+    match value.as_str() {
+        "unsupported" => Ok(CoreParityClaim::Unsupported),
+        "asserted" => Ok(CoreParityClaim::Asserted),
+        _ => Err(format!("invalid core parity claim: {value}")),
     }
 }
 

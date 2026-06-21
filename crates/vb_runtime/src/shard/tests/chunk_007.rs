@@ -1,5 +1,5 @@
 #[test]
-fn shard_command_equality_timer_fired() {
+fn shard_command_equality_timer_fired() -> Result<(), RuntimeError> {
     // Given two identical TimerFired commands
     let deadline = std::time::Instant::now();
     let a = ShardCommand::TimerFired {
@@ -15,10 +15,11 @@ fn shard_command_equality_timer_fired() {
         kind: PendingTimerKind::Wait,
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_resume() {
+fn shard_command_equality_resume() -> Result<(), RuntimeError> {
     // Given two identical Resume commands
     let a = ShardCommand::Resume {
         run: RunId::new(1),
@@ -27,13 +28,14 @@ fn shard_command_equality_resume() {
         run: RunId::new(1),
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_cancel_nonexistent_does_not_increment_failed() {
+fn shard_cancel_nonexistent_does_not_increment_failed() -> Result<(), RuntimeError> {
     // Given a shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When cancelling a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
@@ -45,13 +47,14 @@ fn shard_cancel_nonexistent_does_not_increment_failed() {
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     // Then the failed counter is NOT incremented (run didn't exist)
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 #[test]
-fn shard_finished_workflow_sets_completed_counter() {
+fn shard_finished_workflow_sets_completed_counter() -> Result<(), RuntimeError> {
     // Given a shard with a finished workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -68,13 +71,14 @@ fn shard_finished_workflow_sets_completed_counter() {
     // Then completed counter is 1
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_finished_workflow_produces_run_finished_trace() {
+fn shard_finished_workflow_produces_run_finished_trace() -> Result<(), RuntimeError> {
     // Given a shard with a finished workflow
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -92,13 +96,14 @@ fn shard_finished_workflow_produces_run_finished_trace() {
     let events = shard.trace_ring_mut().drain();
     let found = events.iter().any(|e| *e == TraceEvent::RunFinished { run });
     assert_eq!(found, true);
+    Ok(())
 }
 
 #[test]
-fn shard_inspect_response_not_found_for_unknown_run() {
+fn shard_inspect_response_not_found_for_unknown_run() -> Result<(), RuntimeError> {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When inspecting a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
@@ -116,10 +121,11 @@ fn shard_inspect_response_not_found_for_unknown_run() {
             correlation: 1
         })
     );
+    Ok(())
 }
 
 #[test]
-fn inspect_response_found_equality() {
+fn inspect_response_found_equality() -> Result<(), RuntimeError> {
     // Given two identical Found responses
     let a = InspectResponse::Found(InspectSnapshot {
         run: RunId::new(1),
@@ -134,10 +140,11 @@ fn inspect_response_found_equality() {
         executed: 5,
     });
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn inspect_response_found_differs_executed() {
+fn inspect_response_found_differs_executed() -> Result<(), RuntimeError> {
     // Given two Found responses with different executed counts
     let a = InspectResponse::Found(InspectSnapshot {
         run: RunId::new(1),
@@ -152,10 +159,11 @@ fn inspect_response_found_differs_executed() {
         executed: 10,
     });
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn inspect_response_not_found_equality() {
+fn inspect_response_not_found_equality() -> Result<(), RuntimeError> {
     // Given two identical NotFound responses
     let a = InspectResponse::NotFound {
         run: RunId::new(1),
@@ -166,10 +174,11 @@ fn inspect_response_not_found_equality() {
         correlation: 42,
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn run_state_equality() {
+fn run_state_equality() -> Result<(), RuntimeError> {
     // Given a suspended workflow and run frame
     let Some(wf) = suspended_workflow() else {
         return;
@@ -213,6 +222,7 @@ fn run_state_equality() {
         last_snapshot_executed: 0,
     };
     assert_eq!(state, state2);
+    Ok(())
 }
 
 // =======================================================================
@@ -220,10 +230,10 @@ fn run_state_equality() {
 // =======================================================================
 
 #[test]
-fn shard_cancel_then_inspect_returns_terminal_cancelled() {
+fn shard_cancel_then_inspect_returns_terminal_cancelled() -> Result<(), RuntimeError> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -260,13 +270,14 @@ fn shard_cancel_then_inspect_returns_terminal_cancelled() {
             outcome: TerminalOutcome::Cancelled,
         })
     );
+    Ok(())
 }
 
 #[test]
-fn snapshot_run_returns_cancelled_status_for_terminal_cancelled_run() {
+fn snapshot_run_returns_cancelled_status_for_terminal_cancelled_run() -> Result<(), RuntimeError> {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -308,13 +319,14 @@ fn snapshot_run_returns_cancelled_status_for_terminal_cancelled_run() {
             panic!("expected Terminal Cancelled, got Tombstoned");
         }
     }
+    Ok(())
 }
 
 #[test]
-fn snapshot_run_returns_killed_status_for_terminal_killed_run() {
+fn snapshot_run_returns_killed_status_for_terminal_killed_run() -> Result<(), RuntimeError> {
     // Given a shard with a killed run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -356,14 +368,15 @@ fn snapshot_run_returns_killed_status_for_terminal_killed_run() {
             panic!("expected Terminal Killed, got Tombstoned");
         }
     }
+    Ok(())
 }
 
 #[test]
-fn snapshot_run_still_returns_found_for_active_run() {
+fn snapshot_run_still_returns_found_for_active_run() -> Result<(), RuntimeError> {
     // Regression guard: active runs must still return Found after the
     // terminal_runs-first branch was added.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -393,13 +406,14 @@ fn snapshot_run_still_returns_found_for_active_run() {
             panic!("expected Found for active run, got Tombstoned");
         }
     }
+    Ok(())
 }
 
 #[test]
-fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
+fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When failing an action for a non-existent run
     let ticket = vb_core::action::ActionTicket {
         run: RunId::new(999),
@@ -424,4 +438,5 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
     );
     // Then tick returns RunNotFound
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }

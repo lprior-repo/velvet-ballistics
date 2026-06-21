@@ -1,9 +1,9 @@
 
 /// Frame pool metrics reflect submissions and completions.
 #[test]
-fn shard_frame_pool_metrics_after_submit_and_finish() {
+fn shard_frame_pool_metrics_after_submit_and_finish() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Initially no pools
     let (free, total) = shard.frame_pool_metrics();
@@ -34,14 +34,15 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
         total_after >= 1,
         "expected at least 1 total capacity, got {total_after}"
     );
+    Ok(())
 }
 
 /// Verify that snapshot_run returns Terminal { Completed } after a run finishes
 /// via error handler routing.
 #[test]
-fn shard_snapshot_after_error_handler_finish() {
+fn shard_snapshot_after_error_handler_finish() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf) = action_with_error_handler_workflow() else {
         return;
     };
@@ -83,11 +84,12 @@ fn shard_snapshot_after_error_handler_finish() {
             outcome: TerminalOutcome::Completed,
         }
     );
+    Ok(())
 }
 
 /// Capacity boundary: submit, cancel, then new submit in same tick sequence.
 #[test]
-fn shard_capacity_one_submit_cancel_submit_sequence() {
+fn shard_capacity_one_submit_cancel_submit_sequence() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -100,7 +102,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Submit + tick -> suspended
     let Some(wf1) = suspended_workflow() else {
@@ -138,13 +140,14 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+    Ok(())
 }
 
 /// Verify that PendingTimer fields are correct after timed wait submission.
 #[test]
-fn shard_pending_timer_fields_are_correct() {
+fn shard_pending_timer_fields_are_correct() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -168,13 +171,14 @@ fn shard_pending_timer_fields_are_correct() {
         }
         None => assert!(false, "expected pending timer"),
     }
+    Ok(())
 }
 
 /// AskAnswer with I64 value completes the ask workflow correctly.
 #[test]
-fn shard_ask_answered_with_i64_value() {
+fn shard_ask_answered_with_i64_value() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };
@@ -208,11 +212,12 @@ fn shard_ask_answered_with_i64_value() {
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
     assert_eq!(shard.pending_timers.len(), 0);
+    Ok(())
 }
 
 /// ShardConfig::new at the max command queue capacity boundary succeeds.
 #[test]
-fn shard_config_new_at_max_capacity_boundary() {
+fn shard_config_new_at_max_capacity_boundary() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(
         MAX_COMMAND_QUEUE_CAPACITY,
         16,
@@ -239,11 +244,12 @@ fn shard_config_new_at_max_capacity_boundary() {
         result.map(|config| config.command_queue_capacity),
         Ok(MAX_COMMAND_QUEUE_CAPACITY)
     );
+    Ok(())
 }
 
 /// ShardConfig::new at the minimum valid capacity (1) succeeds.
 #[test]
-fn shard_config_new_at_minimum_capacity() {
+fn shard_config_new_at_minimum_capacity() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
@@ -260,4 +266,5 @@ fn shard_config_new_at_minimum_capacity() {
         
 })
     );
+    Ok(())
 }

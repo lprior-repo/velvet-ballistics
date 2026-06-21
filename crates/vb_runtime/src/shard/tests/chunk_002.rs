@@ -1,6 +1,6 @@
 
 #[test]
-fn shard_rejects_active_run_capacity_overflow() {
+fn shard_rejects_active_run_capacity_overflow() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 4,
         trace_capacity: 4,
@@ -13,7 +13,7 @@ fn shard_rejects_active_run_capacity_overflow() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -36,10 +36,11 @@ fn shard_rejects_active_run_capacity_overflow() {
         shard.tick(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
     );
+    Ok(())
 }
 
 #[test]
-fn inspect_command_stores_retrievable_snapshot() {
+fn inspect_command_stores_retrievable_snapshot() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 4,
         trace_capacity: 4,
@@ -52,7 +53,7 @@ fn inspect_command_stores_retrievable_snapshot() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -79,10 +80,11 @@ fn inspect_command_stores_retrievable_snapshot() {
         }
         other => assert_eq!(other, None),
     }
+    Ok(())
 }
 
 #[test]
-fn enqueue_shutdown_sets_shutting_down_flag() {
+fn enqueue_shutdown_sets_shutting_down_flag() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 4,
         trace_capacity: 4,
@@ -95,24 +97,26 @@ fn enqueue_shutdown_sets_shutting_down_flag() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.is_shutting_down(), false);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 #[test]
-fn tick_returns_true_when_queue_is_empty() {
+fn tick_returns_true_when_queue_is_empty() -> Result<(), RuntimeError> {
     let config = ShardConfig::default();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 #[test]
-fn cancel_nonexistent_run_returns_run_not_found() {
+fn cancel_nonexistent_run_returns_run_not_found() -> Result<(), RuntimeError> {
     let config = ShardConfig::default();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: RunId::new(999),
@@ -120,10 +124,11 @@ fn cancel_nonexistent_run_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn counters_reflect_submitted_after_submit_tick() {
+fn counters_reflect_submitted_after_submit_tick() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 4,
         trace_capacity: 4,
@@ -136,7 +141,7 @@ fn counters_reflect_submitted_after_submit_tick() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -151,10 +156,11 @@ fn counters_reflect_submitted_after_submit_tick() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    Ok(())
 }
 
 #[test]
-fn inspect_nonexistent_run_returns_not_found() {
+fn inspect_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 4,
         trace_capacity: 4,
@@ -167,7 +173,7 @@ fn inspect_nonexistent_run_returns_not_found() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
             run: RunId::new(999),
@@ -183,6 +189,7 @@ fn inspect_nonexistent_run_returns_not_found() {
             correlation: 42,
         })
     );
+    Ok(())
 }
 
 // Helper: workflow that finishes immediately (SetConst -> Finish).

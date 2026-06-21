@@ -1,12 +1,13 @@
-// Code entries for the [`CodeCategory::Accessor`] category (E13xx, 0x1301–0x1315).
-// // This file is a data file intended for inclusion via the `include!` macro.
+//! Code entries for the [`CodeCategory::Accessor`] category (E13xx, 0x1301–0x1315).
 
-CodeEntry {
-    symbolic: "ACCESSOR_CONST_OUT_OF_BOUNDS",
-    numeric: 0x1315,
-    category: CodeCategory::Accessor,
-    deprecated: false,
-},
+/// Per-category `CodeEntry` slice for [`CodeCategory::Accessor`].
+pub(super) const ENTRIES: &[super::CodeEntry] = &[
+    super::CodeEntry {
+        symbolic: "ACCESSOR_CONST_OUT_OF_BOUNDS",
+        numeric: 0x1315,
+        category: super::CodeCategory::Accessor,
+        deprecated: false,
+    },
 CodeEntry {
     symbolic: "CORE_QUEUE_FULL",
     numeric: 0x1301,

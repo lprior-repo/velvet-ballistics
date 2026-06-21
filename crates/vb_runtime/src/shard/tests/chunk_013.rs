@@ -86,9 +86,9 @@ fn retryable_failure() -> vb_core::action::ActionFailure {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str> {
+fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str> -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     let run = super::RunId::new(700);
     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(true))]);
@@ -105,12 +105,13 @@ fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str>
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> {
+fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
     let run = super::RunId::new(701);
     assert_eq!(
@@ -134,10 +135,11 @@ fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> 
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static str> {
+fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static str> -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -150,7 +152,7 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static s
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let wf1 = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
     let wf2 = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     assert_eq!(
@@ -176,6 +178,7 @@ fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static s
         shard.tick(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
     );
+    Ok(())
     Ok(())
 }
 
@@ -302,10 +305,10 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<(), &'static str> {
+fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<(), &'static str> -> Result<(), RuntimeError> {
     // Submit a timed wait workflow, which enters a wait-suspended state with a pending timer.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let workflow =
         timed_wait_then_finish_workflow().ok_or("timed wait workflow fixture construction failed")?;
     let run = super::RunId::new(710);
@@ -340,6 +343,7 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<()
         other => assert_eq!(other, None),
     }
     Ok(())
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -350,7 +354,7 @@ fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<()
 fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment(
 ) -> Result<(), &'static str> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
     let run = super::RunId::new(720);
     assert_eq!(

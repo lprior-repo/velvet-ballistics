@@ -2,9 +2,9 @@
 /// Submit a finished workflow, then inspect it -- counters correct and
 /// inspect returns Terminal { Completed }.
 #[test]
-fn shard_submit_finish_then_inspect_counters() {
+fn shard_submit_finish_then_inspect_counters() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -38,6 +38,7 @@ fn shard_submit_finish_then_inspect_counters() {
             outcome: TerminalOutcome::Completed,
         })
     );
+    Ok(())
 }
 
 // =======================================================================
@@ -46,13 +47,14 @@ fn shard_submit_finish_then_inspect_counters() {
 // =======================================================================
 
 #[test]
-fn shard_config_default_uses_strict_policy() {
+fn shard_config_default_uses_strict_policy() -> Result<(), RuntimeError> {
     let config = ShardConfig::default();
     assert_eq!(config.policy, vb_core::policy::RuntimePolicy::Strict);
+    Ok(())
 }
 
 #[test]
-fn shard_config_copy_preserves_independent_snapshot() {
+fn shard_config_copy_preserves_independent_snapshot() -> Result<(), RuntimeError> {
     let original = ShardConfig::default();
     let copy = original;
     // Mutating a derived config must not affect the original;
@@ -62,10 +64,11 @@ fn shard_config_copy_preserves_independent_snapshot() {
     assert_eq!(copy.step_budget_per_tick, original.step_budget_per_tick);
     assert_eq!(copy.max_active_runs, original.max_active_runs);
     assert_eq!(copy.policy, original.policy);
+    Ok(())
 }
 
 #[test]
-fn shard_config_debug_format_contains_field_names() {
+fn shard_config_debug_format_contains_field_names() -> Result<(), RuntimeError> {
     let config = ShardConfig::default();
     let debug_str = format!("{config:?}");
     // Debug output should contain the struct name and field identifiers.
@@ -89,10 +92,11 @@ fn shard_config_debug_format_contains_field_names() {
         debug_str.contains("max_active_runs"),
         "Debug output should contain max_active_runs: {debug_str}"
     );
+    Ok(())
 }
 
 #[test]
-fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() {
+fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(1, 0, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
@@ -100,10 +104,11 @@ fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() {
             operation: "trace_capacity_zero"
         })
     );
+    Ok(())
 }
 
 #[test]
-fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() {
+fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(1, 1, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
@@ -111,10 +116,11 @@ fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() {
             operation: "step_budget_per_tick_zero"
         })
     );
+    Ok(())
 }
 
 #[test]
-fn shard_config_new_accepts_max_step_budget() {
+fn shard_config_new_accepts_max_step_budget() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(1, 1, u64::MAX, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
@@ -131,10 +137,11 @@ fn shard_config_new_accepts_max_step_budget() {
         
 })
     );
+    Ok(())
 }
 
 #[test]
-fn pending_timer_kind_equality_and_inequality() {
+fn pending_timer_kind_equality_and_inequality() -> Result<(), RuntimeError> {
     assert_eq!(
         crate::shard::types::PendingTimerKind::Wait,
         crate::shard::types::PendingTimerKind::Wait
@@ -147,10 +154,11 @@ fn pending_timer_kind_equality_and_inequality() {
         crate::shard::types::PendingTimerKind::Wait,
         crate::shard::types::PendingTimerKind::Ask
     );
+    Ok(())
 }
 
 #[test]
-fn pending_timer_kind_debug_format() {
+fn pending_timer_kind_debug_format() -> Result<(), RuntimeError> {
     let wait = crate::shard::types::PendingTimerKind::Wait;
     let ask = crate::shard::types::PendingTimerKind::Ask;
     let wait_debug = format!("{wait:?}");
@@ -163,10 +171,11 @@ fn pending_timer_kind_debug_format() {
         ask_debug.contains("Ask"),
         "Ask debug should contain 'Ask': {ask_debug}"
     );
+    Ok(())
 }
 
 #[test]
-fn pending_timer_equality_same_fields() {
+fn pending_timer_equality_same_fields() -> Result<(), RuntimeError> {
     let deadline = std::time::Instant::now();
     let a = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
@@ -181,10 +190,11 @@ fn pending_timer_equality_same_fields() {
         deadline,
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn pending_timer_inequality_different_step() {
+fn pending_timer_inequality_different_step() -> Result<(), RuntimeError> {
     let a = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(1),
         kind: crate::shard::types::PendingTimerKind::Ask,
@@ -198,10 +208,11 @@ fn pending_timer_inequality_different_step() {
         deadline: a.deadline,
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn pending_timer_inequality_different_kind() {
+fn pending_timer_inequality_different_kind() -> Result<(), RuntimeError> {
     let a = crate::shard::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(5),
         kind: crate::shard::types::PendingTimerKind::Wait,
@@ -215,10 +226,11 @@ fn pending_timer_inequality_different_kind() {
         deadline: a.deadline,
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn ask_ticket_equality_and_inequality() {
+fn ask_ticket_equality_and_inequality() -> Result<(), RuntimeError> {
     let a = AskTicket {
         run: RunId::new(10),
         ask_step: vb_core::ids::StepIdx::new(1),
@@ -254,10 +266,11 @@ fn ask_ticket_equality_and_inequality() {
         resume_step: vb_core::ids::StepIdx::new(99),
     };
     assert_ne!(a, e);
+    Ok(())
 }
 
 #[test]
-fn inspect_snapshot_equality_and_debug() {
+fn inspect_snapshot_equality_and_debug() -> Result<(), RuntimeError> {
     let snap = InspectSnapshot {
         run: RunId::new(42),
         correlation: 7,
@@ -277,9 +290,11 @@ fn inspect_snapshot_equality_and_debug() {
         debug_str.contains("InspectSnapshot"),
         "Debug should contain InspectSnapshot: {debug_str}"
     );
+    Ok(())
 }
 
 #[test]
-fn max_command_queue_capacity_is_65536() {
+fn max_command_queue_capacity_is_65536() -> Result<(), RuntimeError> {
     assert_eq!(MAX_COMMAND_QUEUE_CAPACITY, 65_536);
+    Ok(())
 }

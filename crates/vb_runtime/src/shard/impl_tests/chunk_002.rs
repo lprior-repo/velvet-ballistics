@@ -4,7 +4,7 @@
     // =======================================================================
 
     #[test]
-    fn snapshot_run_returns_not_found_for_missing_run() {
+    fn snapshot_run_returns_not_found_for_missing_run() -> Result<(), RuntimeError> {
         let shard = Shard::new(small_config());
         let response = shard.snapshot_run(RunId::new(999), 42);
         match response {
@@ -22,6 +22,7 @@
                 );
             }
         }
+        Ok(())
     }
 
     fn submit_finished_run(shard: &mut Shard, run: RunId) {
@@ -45,11 +46,12 @@
     // =======================================================================
 
     #[test]
-    fn frame_pool_metrics_zero_initially() {
+    fn frame_pool_metrics_zero_initially() -> Result<(), RuntimeError> {
         let shard = Shard::new(small_config());
         let (free, total) = shard.frame_pool_metrics();
         assert_eq!(free, 0);
         assert_eq!(total, 0);
+        Ok(())
     }
 
     // =======================================================================
@@ -57,7 +59,7 @@
     // =======================================================================
 
     #[test]
-    fn shard_with_run_id_zero() {
+    fn shard_with_run_id_zero() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = finished_workflow() else {
             return;
@@ -72,10 +74,11 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        Ok(())
     }
 
     #[test]
-    fn shard_with_max_run_id() {
+    fn shard_with_max_run_id() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = finished_workflow() else {
             return;
@@ -90,10 +93,11 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        Ok(())
     }
 
     #[test]
-    fn shard_handles_multiple_sequential_finished_runs() {
+    fn shard_handles_multiple_sequential_finished_runs() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         submit_finished_run(&mut shard, RunId::new(0));
         submit_finished_run(&mut shard, RunId::new(1));
@@ -101,16 +105,18 @@
         submit_finished_run(&mut shard, RunId::new(3));
         assert_eq!(shard.counters().snapshot().runs_completed, 4);
         assert_eq!(shard.counters().snapshot().runs_submitted, 4);
+        Ok(())
     }
 
     #[test]
-    fn take_inspect_response_returns_none_when_none_pending() {
+    fn take_inspect_response_returns_none_when_none_pending() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.take_inspect_response(), None);
+        Ok(())
     }
 
     #[test]
-    fn status_reports_shard_health_and_capacity_without_mutation() {
+    fn status_reports_shard_health_and_capacity_without_mutation() -> Result<(), RuntimeError> {
         let shard = Shard::new(small_config());
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         let before_len = shard.command_queue_len();
@@ -132,10 +138,11 @@
             vb_core::policy::RuntimePolicy::Relaxed
         );
         assert_eq!(shard.command_queue_len(), before_len);
+        Ok(())
     }
 
     #[test]
-    fn status_reports_shutting_down_after_shutdown_tick() {
+    fn status_reports_shutting_down_after_shutdown_tick() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.tick(), Ok(false));
@@ -145,4 +152,5 @@
         assert_eq!(status.health, ShardHealth::ShuttingDown);
         assert_eq!(status.running, false);
         assert_eq!(status.shutting_down, true);
+        Ok(())
     }

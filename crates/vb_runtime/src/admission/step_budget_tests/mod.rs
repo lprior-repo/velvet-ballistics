@@ -32,7 +32,7 @@ use self::helpers::{
 mod helpers;
 
 #[test]
-fn preflight_step_budget_rejects_oversized_workflow() {
+fn preflight_step_budget_rejects_oversized_workflow() -> Result<(), RuntimeError> {
     let workflow = workflow_with_max_steps(
         u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW + 1).expect("within u16"),
     );
@@ -43,43 +43,48 @@ fn preflight_step_budget_rejects_oversized_workflow() {
             if actual == u32::from(vb_core::limits::MAX_STEPS_PER_WORKFLOW as u16 + 1)
                 && limit == crate::admission::per_workflow_step_ceiling()
     ));
+    Ok(())
 }
 
 #[test]
-fn preflight_step_budget_accepts_at_boundary() {
+fn preflight_step_budget_accepts_at_boundary() -> Result<(), RuntimeError> {
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
         .expect("MAX_STEPS_PER_WORKFLOW fits in u16");
     let workflow = workflow_with_max_steps(max_steps);
     let result = preflight_step_budget(&workflow, RuntimePolicy::Strict);
     assert_eq!(result, Ok(()));
+    Ok(())
 }
 
 #[test]
-fn preflight_step_budget_accepts_one_step() {
+fn preflight_step_budget_accepts_one_step() -> Result<(), RuntimeError> {
     let workflow = workflow_with_max_steps(1);
     let result = preflight_step_budget(&workflow, RuntimePolicy::Strict);
     assert_eq!(result, Ok(()));
+    Ok(())
 }
 
 #[test]
-fn preflight_step_budget_is_noop_for_relaxed_policy() {
+fn preflight_step_budget_is_noop_for_relaxed_policy() -> Result<(), RuntimeError> {
     let workflow = workflow_with_max_steps(u16::MAX);
     let result = preflight_step_budget(&workflow, RuntimePolicy::Relaxed);
     assert_eq!(result, Ok(()));
+    Ok(())
 }
 
 #[test]
-fn preflight_step_budget_rejects_fifty_thousand_step_workflow() {
+fn preflight_step_budget_rejects_fifty_thousand_step_workflow() -> Result<(), RuntimeError> {
     let workflow = workflow_with_max_steps(50_000_u16);
     let result = preflight_step_budget(&workflow, RuntimePolicy::Strict);
     assert!(matches!(
         result,
         Err(crate::admission::AdmissionError::BudgetExceeded { actual: 50_000, .. })
     ));
+    Ok(())
 }
 
 #[test]
-fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit() {
+fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit() -> Result<(), RuntimeError> {
     let workflow = linear_workflow_with_declared_steps(
         first_step_count_over_master_limit(),
         master_step_limit_u16(),
@@ -90,10 +95,11 @@ fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit() {
         Err(crate::admission::AdmissionError::BudgetExceeded { actual: 1_001, limit })
             if limit == crate::admission::per_workflow_step_ceiling()
     ));
+    Ok(())
 }
 
 #[test]
-fn submit_50k_step_workflow_rejected() -> Result<(), RuntimeError> {
+fn submit_50k_step_workflow_rejected() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(1);
     let workflow = workflow_with_max_steps(50_000_u16);
@@ -102,6 +108,7 @@ fn submit_50k_step_workflow_rejected() -> Result<(), RuntimeError> {
         result,
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
+    Ok(())
     Ok(())
 }
 
@@ -127,7 +134,7 @@ fn submit_declared_limit_but_actual_ir_over_limit_rejected_before_enqueue()
 }
 
 #[test]
-fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> {
+fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(2);
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
@@ -136,10 +143,11 @@ fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> {
     let result = runtime.submit_direct(run, workflow);
     assert!(result.is_ok(), "submit_direct should accept 1000-step workflow");
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn submit_compiled_with_inputs_also_enforces_step_budget() -> Result<(), RuntimeError> {
+fn submit_compiled_with_inputs_also_enforces_step_budget() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(3);
     let workflow = workflow_with_max_steps(50_000_u16);
@@ -149,6 +157,7 @@ fn submit_compiled_with_inputs_also_enforces_step_budget() -> Result<(), Runtime
         result,
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
+    Ok(())
     Ok(())
 }
 
@@ -179,7 +188,7 @@ fn submit_direct_with_inputs_grants_and_contracts_also_enforces_step_budget()
 /// All three production submit entry points must reject a 50,000-step
 /// workflow with the typed `AdmissionBudgetExceeded` error.
 #[test]
-fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), RuntimeError> {
+fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
     let max_steps = 50_000_u16;
 
     // Entry point 1: `submit_direct`
@@ -219,6 +228,7 @@ fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), Runtim
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
     Ok(())
+    Ok(())
 }
 
 /// Regression test for risk R2: admission atomicity under a single-threaded
@@ -228,7 +238,7 @@ fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), Runtim
 /// budget are each evaluated and either both accepted or one rejected
 /// cleanly — never an inconsistent state.
 #[test]
-fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> {
+fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
         .ok_or(RuntimeError::QueueFull)?;
@@ -244,5 +254,6 @@ fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> {
             "unexpected submit result"
         );
     }
+    Ok(())
     Ok(())
 }

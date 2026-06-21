@@ -4,9 +4,9 @@
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_action_completed_full_writes_slot_and_advances() {
+fn shard_action_completed_full_writes_slot_and_advances() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -51,12 +51,13 @@ fn shard_action_completed_full_writes_slot_and_advances() {
     });
     assert_eq!(found_action, true);
     assert_eq!(found_slot, true);
+    Ok(())
 }
 
 #[test]
-fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
+fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -93,6 +94,7 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -100,9 +102,9 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_action_failure_retryable_with_retry_check_retries_action() {
+fn shard_action_failure_retryable_with_retry_check_retries_action() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = do_with_retry_workflow() else {
         return;
     };
@@ -155,12 +157,13 @@ fn shard_action_failure_retryable_with_retry_check_retries_action() {
         }
         other => assert_eq!(other, None),
     }
+    Ok(())
 }
 
 #[test]
-fn shard_action_failure_retryable_exhaustion_fails_run() {
+fn shard_action_failure_retryable_exhaustion_fails_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = do_with_retry_workflow() else {
         return;
     };
@@ -205,12 +208,13 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
     // With no error handler, the run should fail.
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }
 
 #[test]
-fn shard_action_failure_non_retryable_without_handler_fails_run() {
+fn shard_action_failure_non_retryable_without_handler_fails_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -239,4 +243,5 @@ fn shard_action_failure_non_retryable_without_handler_fails_run() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }

@@ -1,8 +1,8 @@
 #[test]
-fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_arrives() {
+fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_arrives() -> Result<(), RuntimeError> {
     // Given a timed wait has captured a TimerFired authority token.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for stale replacement test");
     };
@@ -51,10 +51,11 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_old_replaced_timer_event_
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     assert_eq!(shard.pending_timers, after_replacement_pending);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }
 
 #[test]
-fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
+fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() -> Result<(), RuntimeError> {
     // Given a public Runtime has a live wait timer with capturable authority.
     let Some(shard_count) = std::num::NonZeroUsize::new(1) else {
         return;
@@ -78,13 +79,14 @@ fn runtime_run_only_timer_fired_fails_closed_without_consuming_live_timer() {
     assert_eq!(runtime.timer_entry_fired(captured), Ok(()));
     assert_eq!(runtime.tick_all(), Ok(true));
     assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arrives() {
+fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arrives() -> Result<(), RuntimeError> {
     // Given a timed wait has a captured TimerFired authority token.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for stale cancel test");
     };
@@ -121,13 +123,14 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_cancelled_timer_event_arr
     assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(active_timer.kind, PendingTimerKind::Wait);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }
 
 #[test]
-fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arrives() {
+fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arrives() -> Result<(), RuntimeError> {
     // Given a timed wait run has already reached a terminal completed state.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for terminal stale test");
     };
@@ -166,10 +169,11 @@ fn runtime_timer_fired_returns_invalid_timer_fire_when_terminal_timer_event_arri
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn timer_fired_command_exposes_generation_deadline_and_kind_authority_metadata() {
+fn timer_fired_command_exposes_generation_deadline_and_kind_authority_metadata() -> Result<(), RuntimeError> {
     // Given the public shard command that represents timer delivery.
     let run = super::RunId::new(7_109);
     let generation = 1_u64;
@@ -197,10 +201,11 @@ fn timer_fired_command_exposes_generation_deadline_and_kind_authority_metadata()
         }
         _ => panic!("TimerFired command must remain pattern-matchable"),
     }
+    Ok(())
 }
 
 #[test]
-fn timer_wheel_fired_entry_carries_freshness_metadata_for_runtime_validation() {
+fn timer_wheel_fired_entry_carries_freshness_metadata_for_runtime_validation() -> Result<(), RuntimeError> {
     // Given a wheel emits a due timer.
     let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
     let deadline = std::time::Instant::now();
@@ -219,13 +224,14 @@ fn timer_wheel_fired_entry_carries_freshness_metadata_for_runtime_validation() {
     assert_eq!(entry.generation, 1_u64);
     assert_eq!(entry.deadline, deadline);
     assert_eq!(entry.kind, PendingTimerKind::Wait);
+    Ok(())
 }
 
 #[test]
-fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
+fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() -> Result<(), RuntimeError> {
     // Given a run is waiting and its live timer has reached the maximum generation.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for overflow test");
     };
@@ -257,6 +263,7 @@ fn shard_pending_timer_generation_overflow_fails_closed_without_wrap() {
     // Then the existing max-generation timer and run state remain intact.
     assert_eq!(shard.pending_timer_get(run), Some(timer));
     assert_eq!(shard.run_state_contains(run), true);
+    Ok(())
 }
 
 struct RejectTimerScheduledJournal {
@@ -353,7 +360,7 @@ fn ask_timeout_only_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 }
 
 #[test]
-fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
+fn runtime_ask_timer_append_failure_does_not_register_pending_timer() -> Result<(), RuntimeError> {
     let journal = RejectTimerScheduledJournal::shared(PendingTimerKind::Ask);
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -399,13 +406,14 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() {
         }
         Err(error) => panic!("journal snapshot failed: {error:?}"),
     }
+    Ok(())
 }
 
 #[test]
-fn runtime_timer_fired_rejects_wrong_generation_authority() {
+fn runtime_timer_fired_rejects_wrong_generation_authority() -> Result<(), RuntimeError> {
     // Given a run with a live wait timer.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for generation mismatch test");
     };
@@ -439,13 +447,14 @@ fn runtime_timer_fired_rejects_wrong_generation_authority() {
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     assert_eq!(shard.pending_timers, pending_before);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }
 
 #[test]
-fn runtime_timer_fired_rejects_wrong_deadline_authority() {
+fn runtime_timer_fired_rejects_wrong_deadline_authority() -> Result<(), RuntimeError> {
     // Given a run with a live wait timer.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for deadline mismatch test");
     };
@@ -480,13 +489,14 @@ fn runtime_timer_fired_rejects_wrong_deadline_authority() {
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     assert_eq!(shard.pending_timers, pending_before);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }
 
 #[test]
-fn runtime_timer_fired_rejects_wrong_kind_authority() {
+fn runtime_timer_fired_rejects_wrong_kind_authority() -> Result<(), RuntimeError> {
     // Given a run with a live wait timer.
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         panic!("timed_wait_then_finish_workflow fixture must compile for kind mismatch test");
     };
@@ -520,4 +530,5 @@ fn runtime_timer_fired_rejects_wrong_kind_authority() {
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     assert_eq!(shard.pending_timers, pending_before);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }

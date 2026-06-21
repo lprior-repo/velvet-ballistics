@@ -3,9 +3,9 @@
 // If an error occurs between take and apply_drive_result, the run is lost.
 // Severity: Low. Current code structure is safe but fragile.
 #[test]
-fn bh_shd_02_run_removed_from_map_during_drive() {
+fn bh_shd_02_run_removed_from_map_during_drive() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -24,13 +24,14 @@ fn bh_shd_02_run_removed_from_map_during_drive() {
     assert_eq!(shard.tick(), Ok(true));
     // Run was removed and re-inserted by keep_run (Do node suspends again).
     assert_eq!(shard.active_run_count(), 1);
+    Ok(())
 }
 
 // BH-SHD-03: Verify exactly one ActionFailed trace event for non-retryable.
 #[test]
-fn bh_shd_03_action_failure_trace_events_count() {
+fn bh_shd_03_action_failure_trace_events_count() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -61,12 +62,13 @@ fn bh_shd_03_action_failure_trace_events_count() {
         action_failed_count, 1,
         "BH-SHD-03: expected exactly 1 ActionFailed trace event, got {action_failed_count}"
     );
+    Ok(())
 }
 
 // BH-SHD-04: find_error_handler_for_failure linear scan on large workflows.
 // Severity: Low. Performance concern only.
 #[test]
-fn bh_shd_04_find_error_handler_linear_scan_fallback() {
+fn bh_shd_04_find_error_handler_linear_scan_fallback() -> Result<(), RuntimeError> {
     let handler_idx = 20u16;
     let first_node = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
@@ -137,11 +139,12 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
             panic!("BH-SHD-04: expected to find error handler via linear scan");
         }
     }
+    Ok(())
 }
 
 // BH-SHD-05: drain_for_shutdown processes all queued commands.
 #[test]
-fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
+fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 8,
         trace_capacity: 8,
@@ -154,20 +157,21 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let result = shard.drain_for_shutdown();
     assert_eq!(result, Ok(()));
     assert!(shard.is_shutting_down());
+    Ok(())
 }
 
 // BH-SHD-06: SubmitWithInputs allows arbitrary slot writes before validation.
 // Severity: Medium. Within-range writes of unexpected types could cause issues.
 #[test]
-fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
+fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -197,12 +201,13 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
             panic!("{msg}");
         }
     }
+    Ok(())
 }
 
 // BH-SHD-07: Frame pool allocates beyond pool capacity.
 // Severity: Low. Mitigated by max_active_runs.
 #[test]
-fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
+fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() -> Result<(), RuntimeError> {
     let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
         .ok()
         .unwrap_or_else(|| panic!("FramePool::new failed"));
@@ -215,14 +220,15 @@ fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
         f3.is_ok(),
         "BH-SHD-07: f3 should succeed beyond pool capacity"
     );
+    Ok(())
 }
 
 // BH-SHD-08: pending_timers allows only one timer per run (last wins).
 // Severity: Low. Invariant maintained by workflow structure.
 #[test]
-fn bh_shd_08_pending_timers_last_wins_per_run() {
+fn bh_shd_08_pending_timers_last_wins_per_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -254,13 +260,14 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
         Some(vb_core::ids::StepIdx::new(99)),
         "BH-SHD-08: replacement timer has different step"
     );
+    Ok(())
 }
 
 // BH-SHD-09: AskAnswer for non-existent run errors correctly.
 #[test]
-fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
+fn bh_shd_09_ask_answer_for_nonexistent_run_errors() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let run = RunId::new(809);
     let answer = AskAnswer {
         ticket: AskTicket {
@@ -275,4 +282,5 @@ fn bh_shd_09_ask_answer_for_nonexistent_run_errors() {
     };
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }

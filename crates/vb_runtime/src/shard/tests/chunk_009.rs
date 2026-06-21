@@ -1,9 +1,9 @@
 
 #[test]
-fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
+fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() -> Result<(), RuntimeError> {
     // Given a shard with a cancelled run that is then re-submitted
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -34,13 +34,14 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
     // Then failed counter is 2 (both cancellations counted)
     assert_eq!(shard.counters().snapshot().runs_failed, 2);
     assert_eq!(shard.counters().snapshot().runs_submitted, 2);
+    Ok(())
 }
 
 #[test]
-fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
+fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() -> Result<(), RuntimeError> {
     // Given a shard with a suspended run on ActionId(0)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -77,13 +78,14 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
     );
     // Then tick returns InvalidActionCompletion
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
 }
 
 #[test]
-fn shard_action_completed_for_finished_run_returns_run_not_found() {
+fn shard_action_completed_for_finished_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard where a run has already finished
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -108,13 +110,14 @@ fn shard_action_completed_for_finished_run_returns_run_not_found() {
     );
     // Then tick returns RunNotFound (run was removed after finishing)
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn shard_snapshot_run_after_cancel_returns_terminal_cancelled() {
+fn shard_snapshot_run_after_cancel_returns_terminal_cancelled() -> Result<(), RuntimeError> {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -141,13 +144,14 @@ fn shard_snapshot_run_after_cancel_returns_terminal_cancelled() {
             outcome: TerminalOutcome::Cancelled,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn shard_timer_for_cancelled_run_returns_run_not_found() {
+fn shard_timer_for_cancelled_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -167,13 +171,14 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
     assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
     // Then tick rejects stale timer authority.
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 #[test]
-fn shard_resume_for_cancelled_run_returns_run_not_found() {
+fn shard_resume_for_cancelled_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -193,10 +198,11 @@ fn shard_resume_for_cancelled_run_returns_run_not_found() {
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
     // Then tick returns RunNotFound
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn shard_trace_ring_overflow_drops_events_gracefully() {
+fn shard_trace_ring_overflow_drops_events_gracefully() -> Result<(), RuntimeError> {
     // Given a shard with trace capacity of 2
     let config = ShardConfig {
         command_queue_capacity: 16,
@@ -210,7 +216,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When submitting and completing multiple runs (producing >2 trace events)
     let Some(workflow) = finished_workflow() else {
         return;
@@ -264,4 +270,5 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     let events = shard.trace_ring_mut().drain();
     assert_eq!(events.len() <= 2, true);
     assert_eq!(shard.trace_ring().dropped() > 0, true);
+    Ok(())
 }

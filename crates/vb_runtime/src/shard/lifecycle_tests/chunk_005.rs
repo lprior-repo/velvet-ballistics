@@ -1,6 +1,6 @@
 
 #[test]
-fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Result<(), String> {
+fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Result<(), String> -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -29,10 +29,11 @@ fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Res
         RuntimeJournalEvent::RunFailed { run },
     );
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn action_failure_routes_to_error_handler() -> Result<(), String> {
+fn action_failure_routes_to_error_handler() -> Result<(), String> -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let wf = require_workflow("error_handler", error_handler_workflow())?;
     let run = RunId::new(61);
@@ -56,6 +57,7 @@ fn action_failure_routes_to_error_handler() -> Result<(), String> {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
     Ok(())
 }
 
@@ -96,7 +98,7 @@ fn action_failure_routed_to_handler_emits_action_failed_before_handler_step() ->
 }
 
 #[test]
-fn action_failure_unknown_run_returns_run_not_found() {
+fn action_failure_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let ticket = make_ticket(RunId::new(9999), StepIdx::ZERO, 1);
     assert_eq!(
@@ -107,10 +109,11 @@ fn action_failure_unknown_run_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> {
+fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -121,10 +124,11 @@ fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> {
     let events = require_snapshot(&journal)?;
     assert_retry_exhaustion_journal(&events, run);
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn ask_answer_completes_ask_workflow() {
+fn ask_answer_completes_ask_workflow() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = ask_workflow() else {
         return;
@@ -154,10 +158,11 @@ fn ask_answer_completes_ask_workflow() {
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn ask_answer_unknown_run_returns_run_not_found() {
+fn ask_answer_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let answer = AskAnswer {
         ticket: AskTicket {
@@ -172,10 +177,11 @@ fn ask_answer_unknown_run_returns_run_not_found() {
     };
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn timer_fire_advances_wait_to_completion() {
+fn timer_fire_advances_wait_to_completion() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = wait_workflow() else {
         return;
@@ -195,10 +201,11 @@ fn timer_fire_advances_wait_to_completion() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.pending_timer_count(), 0);
+    Ok(())
 }
 
 #[test]
-fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() {
+fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         return;
@@ -215,20 +222,22 @@ fn timer_fire_for_non_timer_run_returns_invalid_timer_fire() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 #[test]
-fn timer_fire_unknown_run_returns_run_not_found() {
+fn timer_fire_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     assert_eq!(
         shard.enqueue(invalid_timer_command(RunId::new(9999))),
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 #[test]
-fn cancel_removes_active_run_and_increments_failed() {
+fn cancel_removes_active_run_and_increments_failed() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         return;
@@ -251,10 +260,11 @@ fn cancel_removes_active_run_and_increments_failed() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
-fn cancel_nonexistent_run_succeeds_without_counter_change() {
+fn cancel_nonexistent_run_succeeds_without_counter_change() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
@@ -265,6 +275,7 @@ fn cancel_nonexistent_run_succeeds_without_counter_change() {
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 // =======================================================================
@@ -272,7 +283,7 @@ fn cancel_nonexistent_run_succeeds_without_counter_change() {
 // =======================================================================
 
 #[test]
-fn finish_run_appends_run_finished_event_and_inserts_terminal_run() -> Result<(), String> {
+fn finish_run_appends_run_finished_event_and_inserts_terminal_run() -> Result<(), String> -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -301,6 +312,7 @@ fn finish_run_appends_run_finished_event_and_inserts_terminal_run() -> Result<()
         "RunFinished event not found in journal: {events:?}"
     );
     Ok(())
+    Ok(())
 }
 
 // =======================================================================
@@ -308,7 +320,7 @@ fn finish_run_appends_run_finished_event_and_inserts_terminal_run() -> Result<()
 // =======================================================================
 
 #[test]
-fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> {
+fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -335,10 +347,11 @@ fn retry_remaining_advances_attempt_and_resumes_drive() -> Result<(), String> {
     // Run is still active
     assert_eq!(shard.active_run_count(), 1);
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> {
+fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let run = RunId::new(502);
     submit_run(&mut shard, run, retry_workflow()?);
@@ -365,10 +378,11 @@ fn retry_exhausted_fails_run_when_no_more_attempts() -> Result<(), String> {
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn non_retryable_failure_fails_run_immediately() -> Result<(), String> {
+fn non_retryable_failure_fails_run_immediately() -> Result<(), String> -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let run = RunId::new(503);
     submit_run(&mut shard, run, retry_workflow()?);
@@ -385,10 +399,11 @@ fn non_retryable_failure_fails_run_immediately() -> Result<(), String> {
     assert_eq!(shard.active_run_count(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn action_failure_drives_error_handler_when_no_retry_metadata() -> Result<(), String> {
+fn action_failure_drives_error_handler_when_no_retry_metadata() -> Result<(), String> -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let wf = require_workflow("error_handler", error_handler_workflow())?;
     let run = RunId::new(504);
@@ -415,10 +430,11 @@ fn action_failure_drives_error_handler_when_no_retry_metadata() -> Result<(), St
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn handle_action_failure_rejects_when_step_out_of_bounds() {
+fn handle_action_failure_rejects_when_step_out_of_bounds() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         return;
@@ -435,4 +451,5 @@ fn handle_action_failure_rejects_when_step_out_of_bounds() {
     );
     // validate_action_completion catches the out-of-bounds step
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
 }

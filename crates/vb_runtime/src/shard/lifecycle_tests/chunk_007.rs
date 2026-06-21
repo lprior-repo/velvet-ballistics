@@ -1,6 +1,6 @@
 
     #[test]
-    fn ask_timer_fire_fails_run_when_no_answer() {
+    fn ask_timer_fire_fails_run_when_no_answer() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = ask_workflow() else {
             return;
@@ -20,10 +20,11 @@
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_failed, 1);
         assert_eq!(shard.pending_timer_count(), 0);
+        Ok(())
     }
 
     #[test]
-    fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
+    fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 16,
             trace_capacity: 16,
@@ -36,7 +37,7 @@
         terminal_runs_ttl_ticks: 86_400,
         
 };
-        let mut shard = Shard::new(config);
+        let mut shard = Shard::new(config)?;
         submit_run(
             &mut shard,
             RunId::new(0),
@@ -62,10 +63,11 @@
             Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
         );
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn red_ask_answer_secret_redaction() -> Result<(), String> {
+    fn red_ask_answer_secret_redaction() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("ask", ask_workflow())?;
         let run = RunId::new(2);
@@ -92,10 +94,11 @@
         assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
         assert_eq!(shard.tick(), Err(RuntimeError::SecretResultNotAllowed));
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn red_ask_answer_payload_size_one_byte_over() -> Result<(), String> {
+    fn red_ask_answer_payload_size_one_byte_over() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("ask", ask_workflow())?;
         let max_size = wf.resource_contract().max_ipc_payload_bytes;
@@ -131,5 +134,6 @@
                 max: max_size,
             })
         );
+        Ok(())
         Ok(())
     }

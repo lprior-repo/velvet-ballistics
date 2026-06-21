@@ -1,6 +1,6 @@
 
     #[test]
-    fn submit_suspended_workflow_suspends_on_action() -> Result<(), String> {
+    fn submit_suspended_workflow_suspends_on_action() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(2);
@@ -16,10 +16,11 @@
         assert_eq!(shard.active_run_count(), 1);
         assert_eq!(shard.counters().snapshot().runs_submitted, 1);
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn submit_duplicate_run_returns_run_already_exists() -> Result<(), String> {
+    fn submit_duplicate_run_returns_run_already_exists() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(10);
@@ -42,15 +43,17 @@
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn submit_rejects_duplicate_run_id() -> Result<(), String> {
+    fn submit_rejects_duplicate_run_id() -> Result<(), String> -> Result<(), RuntimeError> {
         submit_duplicate_run_returns_run_already_exists()
+        Ok(())
     }
 
     #[test]
-    fn admission_rejection_does_not_insert_run_state() -> Result<(), String> {
+    fn admission_rejection_does_not_insert_run_state() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let workflow = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(53);
@@ -68,10 +71,11 @@
         assert_eq!(shard.active_run_count(), 1);
         assert_eq!(shard.counters().snapshot().runs_submitted, 1);
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn submit_at_capacity_returns_active_run_capacity_exceeded() {
+    fn submit_at_capacity_returns_active_run_capacity_exceeded() -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 16,
             trace_capacity: 16,
@@ -84,7 +88,7 @@
         terminal_runs_ttl_ticks: 86_400,
         
 };
-        let mut shard = Shard::new(config);
+        let mut shard = Shard::new(config)?;
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -112,10 +116,11 @@
             shard.tick(),
             Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 1 })
         );
+        Ok(())
     }
 
     #[test]
-    fn submit_with_inputs_seeds_slots_before_driving() -> Result<(), String> {
+    fn submit_with_inputs_seeds_slots_before_driving() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(20);
@@ -131,10 +136,11 @@
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 1);
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn submit_with_inputs_rejects_duplicate() -> Result<(), String> {
+    fn submit_with_inputs_rejects_duplicate() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(21);
@@ -158,10 +164,11 @@
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn resume_on_suspended_run_re_drives() {
+    fn resume_on_suspended_run_re_drives() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = suspended_workflow() else {
             return;
@@ -179,10 +186,11 @@
         assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 1);
+        Ok(())
     }
 
     #[test]
-    fn resume_unknown_run_returns_run_not_found() {
+    fn resume_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(
             shard.enqueue(ShardCommand::Resume {
@@ -191,10 +199,11 @@
             Ok(())
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+        Ok(())
     }
 
     #[test]
-    fn action_completed_typed_writes_slot_and_advances() {
+    fn action_completed_typed_writes_slot_and_advances() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = suspended_workflow() else {
             return;
@@ -229,10 +238,11 @@
             }
         });
         assert_eq!(found, true);
+        Ok(())
     }
 
     #[test]
-    fn action_completed_unknown_run_returns_run_not_found() {
+    fn action_completed_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let ticket = make_ticket(RunId::new(9999), StepIdx::ZERO, 1);
         let output = ActionOutputReady {
@@ -246,4 +256,5 @@
             Ok(())
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+        Ok(())
     }

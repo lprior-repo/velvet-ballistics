@@ -138,7 +138,7 @@ mod timer_fired_command_tests {
     }
 
     #[test]
-    fn timer_fired_command_returns_none_when_no_pending_timer() -> Result<(), RuntimeError> {
+    fn timer_fired_command_returns_none_when_no_pending_timer() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
         // Given an empty shard with no pending timers.
         let shard = Shard::new(small_config())?;
         let run = RunId::new(42_001);
@@ -148,6 +148,7 @@ mod timer_fired_command_tests {
 
         // Then it must return None rather than fabricating authority.
         assert!(result.is_none(), "no pending timer must yield None");
+        Ok(())
         Ok(())
     }
 

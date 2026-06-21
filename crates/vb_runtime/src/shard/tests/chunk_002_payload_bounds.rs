@@ -196,9 +196,9 @@ fn ask_wait_with_secret_results_workflow() -> Option<vb_core::workflow::Compiled
 
 /// Test ask_answer_boundary_max_payload: encoded_len == max_ipc_payload_bytes → Ok.
 #[test]
-fn ask_answer_payload_at_max_boundary_is_accepted() {
+fn ask_answer_payload_at_max_boundary_is_accepted() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Create workflow with max_ipc_payload_bytes = 100
     let Some(workflow) = ask_wait_with_max_payload(100) else {
@@ -242,13 +242,14 @@ fn ask_answer_payload_at_max_boundary_is_accepted() {
 
     // Tick should process successfully
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 /// Test ask_answer_boundary_zero_payload: encoded_len == 0 → Ok.
 #[test]
-fn ask_answer_payload_of_zero_is_accepted() {
+fn ask_answer_payload_of_zero_is_accepted() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow() else {
         return;
     };
@@ -284,13 +285,14 @@ fn ask_answer_payload_of_zero_is_accepted() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 /// Test ask_answer_boundary_max_plus_one: encoded_len == max + 1 → Err(IpcPayloadSizeExceeded).
 #[test]
-fn ask_answer_payload_exceeding_max_by_one_is_rejected() {
+fn ask_answer_payload_exceeding_max_by_one_is_rejected() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Create workflow with max_ipc_payload_bytes = 100
     let Some(workflow) = ask_wait_with_max_payload(100) else {
@@ -336,13 +338,14 @@ fn ask_answer_payload_exceeding_max_by_one_is_rejected() {
             max: 100
         })
     );
+    Ok(())
 }
 
 /// Test ask_answer_payload_size_exceeded_error: encoded_len > max_ipc_payload_bytes → Err.
 #[test]
-fn ask_answer_payload_significantly_over_max_is_rejected() {
+fn ask_answer_payload_significantly_over_max_is_rejected() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Create workflow with max_ipc_payload_bytes = 100
     let Some(workflow) = ask_wait_with_max_payload(100) else {
@@ -387,13 +390,14 @@ fn ask_answer_payload_significantly_over_max_is_rejected() {
             max: 100
         })
     );
+    Ok(())
 }
 
 /// Test that secret taint is rejected when allows_secret_results is false.
 #[test]
-fn ask_answer_secret_taint_rejected_when_not_allowed() {
+fn ask_answer_secret_taint_rejected_when_not_allowed() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow() else {
         return;
     };
@@ -431,13 +435,14 @@ fn ask_answer_secret_taint_rejected_when_not_allowed() {
 
     // Should be rejected because allows_secret_results = false by default
     assert_eq!(shard.tick(), Err(RuntimeError::SecretResultNotAllowed));
+    Ok(())
 }
 
 /// Test that secret taint is accepted when allows_secret_results is true.
 #[test]
-fn ask_answer_secret_taint_accepted_when_explicitly_allowed() {
+fn ask_answer_secret_taint_accepted_when_explicitly_allowed() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Create workflow with allows_secret_results = true
     let custom_workflow = ask_wait_with_secret_results_workflow();
@@ -478,13 +483,14 @@ fn ask_answer_secret_taint_accepted_when_explicitly_allowed() {
 
     // Should be accepted because allows_secret_results = true
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 /// Test ask_answer_run_not_found_error: Answer for vanished run → Err(RunNotFound).
 #[test]
-fn ask_answer_for_nonexistent_run_returns_not_found() {
+fn ask_answer_for_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     let answer = AskAnswer::with_encoded_len(
         AskTicket {
@@ -503,4 +509,5 @@ fn ask_answer_for_nonexistent_run_returns_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }

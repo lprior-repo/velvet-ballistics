@@ -506,7 +506,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let run = RunId::new(5810);
     let workflow = const_then_finish_workflow(ConstValue::I64(33))?;
 
@@ -536,7 +536,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
 }
 
 #[test]
-fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Result<(), String> {
+fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Result<(), String> -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 8,
         trace_capacity: 8,
@@ -548,7 +548,7 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let run = RunId::new(5811);
     let workflow = const_then_finish_workflow(ConstValue::I64(34))?;
 
@@ -578,6 +578,7 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         Err(ResumeError::RunIdNotFound { run_id: run })
     );
     Ok(())
+    Ok(())
 }
 
 // =========================================================================
@@ -589,10 +590,11 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
 /// fn is a TDD target State 11 will add — on 3-variant code this test
 /// fails to compile (preserves the failing-first signal).
 #[test]
-fn step_budget_suspension_idempotent_retry_safety_recognized() {
+fn step_budget_suspension_idempotent_retry_safety_recognized() -> Result<(), RuntimeError> {
     use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"
     );
+    Ok(())
 }

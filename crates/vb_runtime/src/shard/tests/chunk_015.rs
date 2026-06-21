@@ -1,8 +1,8 @@
 
 #[test]
-fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
+fn shard_action_failure_non_retryable_with_handler_routes_to_handler() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = action_with_error_handler_workflow() else {
         return;
     };
@@ -34,6 +34,7 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
     // The error handler at step 2 runs and the workflow finishes successfully
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -41,9 +42,9 @@ fn shard_action_failure_non_retryable_with_handler_routes_to_handler() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
+fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -65,6 +66,7 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -72,9 +74,9 @@ fn shard_action_failure_with_wrong_run_in_ticket_returns_run_not_found() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_ask_answer_completes_ask_workflow() {
+fn shard_ask_answer_completes_ask_workflow() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };
@@ -111,12 +113,13 @@ fn shard_ask_answer_completes_ask_workflow() {
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
     // Pending timer was cleaned up by the answer
     assert_eq!(shard.pending_timers.len(), 0);
+    Ok(())
 }
 
 #[test]
-fn shard_ask_answer_produces_ask_answered_trace_event() {
+fn shard_ask_answer_produces_ask_answered_trace_event() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };
@@ -154,12 +157,13 @@ fn shard_ask_answer_produces_ask_answered_trace_event() {
         }
     });
     assert_eq!(found_ask_answered, true);
+    Ok(())
 }
 
 #[test]
-fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
+fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_then_finish_workflow() else {
         return;
     };
@@ -188,6 +192,7 @@ fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
     };
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -195,11 +200,11 @@ fn shard_ask_answer_for_wrong_ask_step_returns_run_not_found() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
+fn shard_timer_fire_for_wait_produces_wait_resolved_journal() -> Result<(), RuntimeError> {
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared);
+    let mut shard = Shard::new_with_journal(config, shared)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -223,12 +228,13 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
     assert!(
         matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::WaitResolved { run, step: vb_core::ids::StepIdx::new(1) }))
     );
+    Ok(())
 }
 
 #[test]
-fn shard_timer_fire_for_ask_timeout_fails_run() {
+fn shard_timer_fire_for_ask_timeout_fails_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
         return;
     };
@@ -248,6 +254,7 @@ fn shard_timer_fire_for_ask_timeout_fails_run() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -255,9 +262,9 @@ fn shard_timer_fire_for_ask_timeout_fails_run() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_cancel_removes_pending_ask_timer() {
+fn shard_cancel_removes_pending_ask_timer() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
         return;
     };
@@ -277,4 +284,5 @@ fn shard_cancel_removes_pending_ask_timer() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }

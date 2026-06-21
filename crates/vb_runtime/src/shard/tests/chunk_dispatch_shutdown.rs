@@ -58,9 +58,9 @@ fn timed_wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 
 /// Test tick_returns_false_after_shutdown_command: Enqueue Shutdown, tick → Ok(false).
 #[test]
-fn tick_returns_false_after_shutdown_command() {
+fn tick_returns_false_after_shutdown_command() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Before shutdown
     assert_eq!(shard.is_shutting_down(), false);
@@ -73,13 +73,14 @@ fn tick_returns_false_after_shutdown_command() {
 
     // Shutting down flag should be set
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 /// Test tick_returns_false_when_already_shutting_down: tick when shutting_down=true → Ok(false).
 #[test]
-fn tick_returns_false_when_already_shutting_down() {
+fn tick_returns_false_when_already_shutting_down() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Enqueue shutdown command
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -92,15 +93,16 @@ fn tick_returns_false_when_already_shutting_down() {
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
+    Ok(())
 }
 
 /// Test dispatch_shutdown_clears_pending_timers.
 /// NOTE: The current implementation does NOT clear pending timers on shutdown.
 /// This test reflects the actual behavior - pending timers remain after shutdown.
 #[test]
-fn shutdown_clears_pending_timers() {
+fn shutdown_clears_pending_timers() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Create a workflow with a pending timer
     let Some(workflow) = timed_wait_workflow() else {
@@ -129,13 +131,14 @@ fn shutdown_clears_pending_timers() {
     // This is a known gap (PO-vb-pymh-012) that would need implementation changes
     // For now, we just verify the shutdown flag is set
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 /// Test command_queue_drained_before_shutdown: Shutdown drains pending commands before setting flag.
 #[test]
-fn shutdown_drains_pending_commands_before_setting_flag() {
+fn shutdown_drains_pending_commands_before_setting_flag() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -166,13 +169,14 @@ fn shutdown_drains_pending_commands_before_setting_flag() {
 
     // Now shutting_down is set
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 /// Test shutdown processes multiple commands in order.
 #[test]
-fn shutdown_processes_multiple_commands_in_order() {
+fn shutdown_processes_multiple_commands_in_order() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -205,13 +209,14 @@ fn shutdown_processes_multiple_commands_in_order() {
 
     // Verify shutting_down is set after processing all submits and shutdown
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 /// Test shutdown with inspect command queued.
 #[test]
-fn shutdown_with_pending_inspect_command() {
+fn shutdown_with_pending_inspect_command() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -245,13 +250,14 @@ fn shutdown_with_pending_inspect_command() {
     assert_eq!(shard.tick(), Ok(false)); // Process shutdown
 
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 /// Test shutdown prevents new commands from being processed.
 #[test]
-fn shutdown_prevents_new_commands_after_flag_set() {
+fn shutdown_prevents_new_commands_after_flag_set() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -276,13 +282,14 @@ fn shutdown_prevents_new_commands_after_flag_set() {
 
     // The submit was not processed
     assert_eq!(shard.run_state_contains(run), false);
+    Ok(())
 }
 
 /// Test shutdown flag persists across multiple ticks.
 #[test]
-fn shutdown_flag_persists_across_ticks() {
+fn shutdown_flag_persists_across_ticks() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Trigger shutdown
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -295,4 +302,5 @@ fn shutdown_flag_persists_across_ticks() {
     for _ in 0..5 {
         assert_eq!(shard.tick(), Ok(false));
     }
+    Ok(())
 }

@@ -1,9 +1,9 @@
 
 /// Verify that active_run_count tracks correctly across submit, cancel, and finish.
 #[test]
-fn shard_active_run_count_across_lifecycle() {
+fn shard_active_run_count_across_lifecycle() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.active_run_count(), 0);
 
     // Submit a suspended run -> count = 1
@@ -47,11 +47,12 @@ fn shard_active_run_count_across_lifecycle() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run_b, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 0);
+    Ok(())
 }
 
 /// After cancelling all runs, new submissions are accepted even at capacity boundary.
 #[test]
-fn shard_submit_after_full_cancel_resets_capacity() {
+fn shard_submit_after_full_cancel_resets_capacity() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -64,7 +65,7 @@ fn shard_submit_after_full_cancel_resets_capacity() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     // Fill to capacity
     let Some(wf1) = suspended_workflow() else {
@@ -115,14 +116,15 @@ fn shard_submit_after_full_cancel_resets_capacity() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 /// Verify that inspect for a currently active suspended run returns the
 /// correct pc and correlation.
 #[test]
-fn shard_inspect_active_run_returns_correct_state() {
+fn shard_inspect_active_run_returns_correct_state() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -158,13 +160,14 @@ fn shard_inspect_active_run_returns_correct_state() {
         }
         other => assert_eq!(other, None),
     }
+    Ok(())
 }
 
 /// Resubmitting with SubmitWithInputs after cancel works.
 #[test]
-fn shard_submit_with_inputs_after_cancel() {
+fn shard_submit_with_inputs_after_cancel() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -195,14 +198,15 @@ fn shard_submit_with_inputs_after_cancel() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_submitted, 2);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 /// Multiple inspections of the same active run without taking intermediate
 /// responses all succeed.
 #[test]
-fn shard_repeated_inspect_same_run() {
+fn shard_repeated_inspect_same_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -246,13 +250,14 @@ fn shard_repeated_inspect_same_run() {
         }
         other => assert_eq!(other, None),
     }
+    Ok(())
 }
 
 /// Submit + Resume enqueued before tick processes both in sequence.
 #[test]
-fn shard_commands_for_pending_but_unprocessed_run() {
+fn shard_commands_for_pending_but_unprocessed_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -274,4 +279,5 @@ fn shard_commands_for_pending_but_unprocessed_run() {
     // Second tick processes Resume -> run re-drives and re-suspends on Do
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 1);
+    Ok(())
 }

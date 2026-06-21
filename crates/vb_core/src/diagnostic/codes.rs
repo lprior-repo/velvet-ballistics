@@ -6,11 +6,12 @@
 //! dependencies on types.rs or helpers.rs.
 //!
 //! The actual code entries are organised by [`CodeCategory`] into
-//! per-category data files under `./codes/`. Each data file contains a
-//! flat sequence of `CodeEntry { ... }` literals and is inlined into the
-//! [`CODE_REGISTRY`] constant via the `include!` macro. This preserves the
-//! public `pub const CODE_REGISTRY: &[CodeEntry]` surface while keeping
-//! each per-category file under the 300-line file cap.
+//! per-category submodules under `./codes/`. Each submodule exposes a
+//! `pub(super) const ENTRIES: &[CodeEntry]` slice. The [`CODE_REGISTRY`]
+//! constant in this file is built by a `const fn` that concatenates all
+//! per-category slices at compile time, preserving the public
+//! `pub const CODE_REGISTRY: &[CodeEntry]` surface while keeping each
+//! per-category file under the 300-line cap.
 
 // ---------------------------------------------------------------------------
 // CodeCategory — high-level code grouping
@@ -103,6 +104,49 @@ pub struct CodeEntry {
     pub deprecated: bool,
 }
 
+mod accessor;
+mod compilation;
+mod contract_discovery;
+mod control_flow;
+mod expression;
+mod gate;
+mod internal;
+mod ipc;
+mod lifecycle;
+mod lowering;
+mod reference;
+mod runtime;
+mod runtime_boundary;
+mod runtime_boundary_failure;
+mod runtime_boundary_kani;
+mod schema;
+mod storage;
+mod storage_infra;
+mod type_taint;
+mod workflow_ir;
+
+/// Total number of entries across all per-category `ENTRIES` slices.
+const TOTAL_LEN: usize = accessor::ENTRIES.len()
+    + compilation::ENTRIES.len()
+    + contract_discovery::ENTRIES.len()
+    + control_flow::ENTRIES.len()
+    + expression::ENTRIES.len()
+    + gate::ENTRIES.len()
+    + internal::ENTRIES.len()
+    + ipc::ENTRIES.len()
+    + lifecycle::ENTRIES.len()
+    + lowering::ENTRIES.len()
+    + reference::ENTRIES.len()
+    + runtime::ENTRIES.len()
+    + runtime_boundary::ENTRIES.len()
+    + runtime_boundary_failure::ENTRIES.len()
+    + runtime_boundary_kani::ENTRIES.len()
+    + schema::ENTRIES.len()
+    + storage::ENTRIES.len()
+    + storage_infra::ENTRIES.len()
+    + type_taint::ENTRIES.len()
+    + workflow_ir::ENTRIES.len();
+
 /// Canonical code registry. All diagnostic codes used anywhere in the
 /// workspace MUST appear here. The registry is a bijection: no duplicate
 /// symbolic names, no duplicate numeric codes.
@@ -114,27 +158,48 @@ pub struct CodeEntry {
 /// - All numeric codes are non-zero.
 /// - Category consistency: `(numeric >> 8) & 0xFF` matches the category range.
 ///
-/// Entries are organised by [`CodeCategory`] and sourced from sibling
-/// data files under `./codes/` via the `include!` macro.
-pub const CODE_REGISTRY: &[CodeEntry] = &[
-    include!("codes/schema.rs"),
-    include!("codes/reference.rs"),
-    include!("codes/control_flow.rs"),
-    include!("codes/type_taint.rs"),
-    include!("codes/gate.rs"),
-    include!("codes/contract_discovery.rs"),
-    include!("codes/compilation.rs"),
-    include!("codes/workflow_ir.rs"),
-    include!("codes/expression.rs"),
-    include!("codes/accessor.rs"),
-    include!("codes/lowering.rs"),
-    include!("codes/storage.rs"),
-    include!("codes/storage_infra.rs"),
-    include!("codes/runtime.rs"),
-    include!("codes/ipc.rs"),
-    include!("codes/lifecycle.rs"),
-    include!("codes/runtime_boundary.rs"),
-    include!("codes/runtime_boundary_kani.rs"),
-    include!("codes/runtime_boundary_failure.rs"),
-    include!("codes/internal.rs"),
-];
+/// Entries are organised by [`CodeCategory`] and combined from sibling
+/// per-category `ENTRIES` slices via a `const fn` assembly.
+pub const CODE_REGISTRY: &[CodeEntry] = &build_registry();
+
+const EMPTY_ENTRY: CodeEntry = CodeEntry {
+    symbolic: "",
+    numeric: 0,
+    category: CodeCategory::Internal,
+    deprecated: true,
+};
+
+const fn build_registry() -> [CodeEntry; TOTAL_LEN] {
+    let mut arr: [CodeEntry; TOTAL_LEN] = [EMPTY_ENTRY; TOTAL_LEN];
+    let mut i: usize = 0;
+    copy_slice(accessor::ENTRIES, &mut arr, &mut i);
+    copy_slice(compilation::ENTRIES, &mut arr, &mut i);
+    copy_slice(contract_discovery::ENTRIES, &mut arr, &mut i);
+    copy_slice(control_flow::ENTRIES, &mut arr, &mut i);
+    copy_slice(expression::ENTRIES, &mut arr, &mut i);
+    copy_slice(gate::ENTRIES, &mut arr, &mut i);
+    copy_slice(internal::ENTRIES, &mut arr, &mut i);
+    copy_slice(ipc::ENTRIES, &mut arr, &mut i);
+    copy_slice(lifecycle::ENTRIES, &mut arr, &mut i);
+    copy_slice(lowering::ENTRIES, &mut arr, &mut i);
+    copy_slice(reference::ENTRIES, &mut arr, &mut i);
+    copy_slice(runtime::ENTRIES, &mut arr, &mut i);
+    copy_slice(runtime_boundary::ENTRIES, &mut arr, &mut i);
+    copy_slice(runtime_boundary_failure::ENTRIES, &mut arr, &mut i);
+    copy_slice(runtime_boundary_kani::ENTRIES, &mut arr, &mut i);
+    copy_slice(schema::ENTRIES, &mut arr, &mut i);
+    copy_slice(storage::ENTRIES, &mut arr, &mut i);
+    copy_slice(storage_infra::ENTRIES, &mut arr, &mut i);
+    copy_slice(type_taint::ENTRIES, &mut arr, &mut i);
+    copy_slice(workflow_ir::ENTRIES, &mut arr, &mut i);
+    arr
+}
+
+const fn copy_slice(src: &[CodeEntry], dst: &mut [CodeEntry; TOTAL_LEN], i: &mut usize) {
+    let mut j: usize = 0;
+    while j < src.len() {
+        dst[*i] = src[j];
+        *i += 1;
+        j += 1;
+    }
+}

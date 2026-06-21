@@ -9,20 +9,21 @@
 // ---------------------------------------------------------------------------
 
 #[test]
-fn vb1u88_tick_multiple_times_after_shutdown_all_false() {
+fn vb1u88_tick_multiple_times_after_shutdown_all_false() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() {
+fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -38,25 +39,28 @@ fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() {
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
     assert_eq!(shard.is_shutting_down(), true);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_drain_for_shutdown_on_already_shutting_down() {
+fn vb1u88_drain_for_shutdown_on_already_shutting_down() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.drain_for_shutdown(), Ok(()));
+    Ok(())
 }
 
 #[test]
-fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
+fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(
         shard.drain_for_shutdown(),
         Err(RuntimeError::ShutdownInProgress)
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -64,9 +68,9 @@ fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn vb1u88_cancel_unknown_run_returns_ok() {
+fn vb1u88_cancel_unknown_run_returns_ok() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(9999),
@@ -74,10 +78,11 @@ fn vb1u88_cancel_unknown_run_returns_ok() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn vb1u88_cancel_emits_run_cancelled_journal_event() {
+fn vb1u88_cancel_emits_run_cancelled_journal_event() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -101,12 +106,13 @@ fn vb1u88_cancel_emits_run_cancelled_journal_event() {
         events.contains(&RuntimeJournalEvent::RunCancelled { run, reason: None}),
         "journal should contain RunCancelled event"
     );
+    Ok(())
 }
 
 #[test]
-fn vb1u88_cancel_emits_run_cancelled_trace_event() {
+fn vb1u88_cancel_emits_run_cancelled_trace_event() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -127,10 +133,11 @@ fn vb1u88_cancel_emits_run_cancelled_trace_event() {
         events.contains(&TraceEvent::RunCancelled { run }),
         "trace should contain RunCancelled event"
     );
+    Ok(())
 }
 
 #[test]
-fn vb1u88_cancel_unknown_run_does_not_emit_events() {
+fn vb1u88_cancel_unknown_run_does_not_emit_events() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -155,12 +162,13 @@ fn vb1u88_cancel_unknown_run_does_not_emit_events() {
             .any(|e| matches!(e, TraceEvent::RunCancelled { run } if *run == unknown_run)),
         "no trace RunCancelled event for unknown run"
     );
+    Ok(())
 }
 
 #[test]
-fn vb1u88_cancel_removes_run_and_releases_frame() {
+fn vb1u88_cancel_removes_run_and_releases_frame() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -186,12 +194,13 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
         Some(1)
     );
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_cancel_removes_pending_timer() {
+fn vb1u88_cancel_removes_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -209,6 +218,7 @@ fn vb1u88_cancel_removes_pending_timer() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 0);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -216,61 +226,67 @@ fn vb1u88_cancel_removes_pending_timer() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn vb1u88_status_running_when_not_shutting_down() {
+fn vb1u88_status_running_when_not_shutting_down() -> Result<(), RuntimeError> {
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     let status = shard.status();
     assert_eq!(status.health, super::ShardHealth::Running);
     assert_eq!(status.running, true);
     assert_eq!(status.shutting_down, false);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_status_shutting_down_after_shutdown_tick() {
+fn vb1u88_status_shutting_down_after_shutdown_tick() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let status = shard.status();
     assert_eq!(status.health, super::ShardHealth::ShuttingDown);
     assert_eq!(status.running, false);
     assert_eq!(status.shutting_down, true);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_status_command_queue_depth_correct() {
+fn vb1u88_status_command_queue_depth_correct() -> Result<(), RuntimeError> {
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let status = shard.status();
     assert_eq!(status.command_queue_depth, 2);
     assert_eq!(status.command_queue_capacity, 16);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_status_immutable_during_shutdown() {
+fn vb1u88_status_immutable_during_shutdown() -> Result<(), RuntimeError> {
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let status1 = shard.status();
     let status2 = shard.status();
     assert_eq!(status1.command_queue_depth, status2.command_queue_depth);
     assert_eq!(status1.active_runs, status2.active_runs);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_is_shutting_down_false_on_new_shard() {
+fn vb1u88_is_shutting_down_false_on_new_shard() -> Result<(), RuntimeError> {
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.is_shutting_down(), false);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_is_shutting_down_true_after_shutdown() {
+fn vb1u88_is_shutting_down_true_after_shutdown() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }

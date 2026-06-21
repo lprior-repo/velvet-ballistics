@@ -493,7 +493,8 @@ mod kani_harnesses {
     }
 }
 
-#[cfg(all(test, kani))]
+#[cfg(all(test, feature = "legacy-tests", kani))]
+#[path = "value_store/legacy_tests/extended_tests.rs"]
 mod extended_tests;
 
 #[cfg(test)]

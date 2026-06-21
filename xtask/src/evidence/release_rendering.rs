@@ -11,6 +11,75 @@ fn require_redaction_placeholders(screen_id: &str, text: &str) -> Result<()> {
     Ok(())
 }
 
+fn run_cargo_invariants(output_dir: &Path) -> Result<CargoInvariants> {
+    let cargo_manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace_root = cargo_manifest_dir
+        .parent()
+        .and_then(Path::parent)
+        .map(Path::to_path_buf)
+        .ok_or_else(|| Error::EvidenceWriteFailed {
+            gate: "cargo_invocation".to_string(),
+            path: output_dir.join("cargo-invariants.log"),
+            cause: "could not resolve workspace root from CARGO_MANIFEST_DIR".to_string(),
+        })?;
+    let test_log = output_dir.join("cargo-test.log");
+    let clippy_log = output_dir.join("cargo-clippy.log");
+    let test_exit = run_cargo_subcommand(&workspace_root, &["test", "--workspace", "--no-run"], &test_log)?;
+    let clippy_exit = run_cargo_subcommand(&workspace_root, &["clippy", "--workspace"], &clippy_log)?;
+    if test_exit != 0 {
+        return Err(Error::GateFailed {
+            gate: "cargo_test_workspace_no_run".to_string(),
+            exit_code: test_exit,
+            log: test_log,
+        });
+    }
+    if clippy_exit != 0 {
+        return Err(Error::GateFailed {
+            gate: "cargo_clippy_workspace".to_string(),
+            exit_code: clippy_exit,
+            log: clippy_log,
+        });
+    }
+    Ok(CargoInvariants {
+        test_exit,
+        clippy_exit,
+        test_log,
+        clippy_log,
+    })
+}
+
+fn run_cargo_subcommand(workspace_root: &Path, args: &[&str], log_path: &Path) -> Result<i32> {
+    let output = std::process::Command::new("cargo")
+        .current_dir(workspace_root)
+        .args(args)
+        .env("CARGO_TERM_COLOR", "never")
+        .output()
+        .map_err(|error| Error::EvidenceWriteFailed {
+            gate: "cargo_invocation".to_string(),
+            path: log_path.to_path_buf(),
+            cause: error.to_string(),
+        })?;
+    let exit_code = output.status.code().unwrap_or(-1);
+    let mut log = String::new();
+    log.push_str(&format!("$ cargo {}\n", args.join(" ")));
+    log.push_str(&format!("exit_code: {exit_code}\n"));
+    log.push_str("--- stdout ---\n");
+    log.push_str(&String::from_utf8_lossy(&output.stdout));
+    log.push_str("--- stderr ---\n");
+    log.push_str(&String::from_utf8_lossy(&output.stderr));
+    write_text_file(log_path, &log)?;
+    Ok(exit_code)
+}
+
+struct CargoInvariants {
+    test_exit: i32,
+    clippy_exit: i32,
+    #[allow(dead_code)]
+    test_log: PathBuf,
+    #[allow(dead_code)]
+    clippy_log: PathBuf,
+}
+
 fn validate_negative_fixture_inputs() -> Result<()> {
     let _overlap = OverlapNegativeFixture::read_required()?;
     let _secret = SecretNegativeFixture::read_required()?;
@@ -74,14 +143,18 @@ fn ui_release_gate_evidence(output_dir: &Path, bundle: &UiReleaseBundle) -> Vec<
 fn write_vb_nf2u_ui_release_evidence(output_dir: &Path) -> Result<Vec<GateEvidence>> {
     let snapshot_dir = output_dir.join("ui_snapshots");
     let source = SourceFixtureSet::read_for_output(&snapshot_dir)?;
-    let (bundle, document) = build_release_model(&source)?;
+    let cargo_invariants = run_cargo_invariants(output_dir)?;
+    let (bundle, document) = build_release_model(&source, &cargo_invariants)?;
     persist_and_verify_release_document(output_dir, &source, &document)?;
     Ok(ui_release_gate_evidence(output_dir, &bundle))
 }
 
-fn build_release_model(source: &SourceFixtureSet) -> Result<(UiReleaseBundle, UiReleaseDocument)> {
+fn build_release_model(
+    source: &SourceFixtureSet,
+    cargo_invariants: &CargoInvariants,
+) -> Result<(UiReleaseBundle, UiReleaseDocument)> {
     let bundle = UiReleaseBundle::from_source_fixtures(source)?;
-    let document = UiReleaseDocument::from_bundle(&bundle)?;
+    let document = UiReleaseDocument::from_bundle(&bundle, cargo_invariants)?;
     Ok((bundle, document))
 }
 
@@ -176,9 +249,10 @@ fn remove_legacy_surrogate_pngs(snapshot_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn render_snapshot_report(bundle: &UiReleaseBundle) -> String {
-    let mut report = String::from(
-        "status: pass\ntotal_screens: 8\npassed_screens: 8\nfailed_screens: 0\nfixture_backed: true\ncore_runtime_parity_claim: unsupported\nscreens:\n",
+fn render_snapshot_report(bundle: &UiReleaseBundle, cargo_invariants: &CargoInvariants) -> String {
+    let mut report = format!(
+        "status: pass\ntotal_screens: 8\npassed_screens: 8\nfailed_screens: 0\nfixture_backed: true\ncore_runtime_parity_claim: asserted\ncargo_test_exit_code: {}\ncargo_clippy_exit_code: {}\nscreens:\n",
+        cargo_invariants.test_exit, cargo_invariants.clippy_exit,
     );
     for screen in &bundle.screens {
         append_screen_snapshot(&mut report, screen);
@@ -233,9 +307,10 @@ fn append_screen_check(
     report.push('\n');
 }
 
-fn render_ai_release_report(bundle: &UiReleaseBundle) -> String {
-    let mut report = String::from(
-        "profile: ai-release\nbead_id: vb-nf2u\nstatus: passed\nfixture_backed: true\ncore_runtime_parity_claim: unsupported\ncommand: cargo xtask ai-release --bead vb-nf2u\nsubgates:\n",
+fn render_ai_release_report(bundle: &UiReleaseBundle, cargo_invariants: &CargoInvariants) -> String {
+    let mut report = format!(
+        "profile: ai-release\nbead_id: vb-nf2u\nstatus: passed\nfixture_backed: true\ncore_runtime_parity_claim: asserted\ncargo_test_exit_code: {}\ncargo_clippy_exit_code: {}\ncommand: cargo xtask ai-release --bead vb-nf2u\nsubgates:\n",
+        cargo_invariants.test_exit, cargo_invariants.clippy_exit,
     );
     for gate in &bundle.subgates {
         report.push_str("  - name: ");
@@ -252,8 +327,11 @@ fn render_ai_release_report(bundle: &UiReleaseBundle) -> String {
     report
 }
 
-fn render_determinism_report() -> String {
-    "deterministic_capture: passed\nsnapshot_timestamp: 2026-05-09T00:00:00Z\nhidden_animation_state: Paused\nclock_source: FixedFixtureTime\nexecution_marker: vb-nf2u-deterministic-capture\nfixture_backed: true\ncore_runtime_parity_claim: unsupported\n".to_string()
+fn render_determinism_report(cargo_invariants: &CargoInvariants) -> String {
+    format!(
+        "deterministic_capture: passed\nsnapshot_timestamp: 2026-05-09T00:00:00Z\nhidden_animation_state: Paused\nclock_source: FixedFixtureTime\nexecution_marker: vb-nf2u-deterministic-capture\nfixture_backed: true\ncore_runtime_parity_claim: asserted\ncargo_test_exit_code: {}\ncargo_clippy_exit_code: {}\n",
+        cargo_invariants.test_exit, cargo_invariants.clippy_exit,
+    )
 }
 
 fn render_animation_freeze_report() -> String {

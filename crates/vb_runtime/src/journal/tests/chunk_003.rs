@@ -1,5 +1,5 @@
 #[test]
-fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() {
+fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
     };
@@ -42,10 +42,11 @@ fn queued_storage_runtime_journal_drain_all_flushes_past_batch_size() {
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
     ));
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() == 3));
+    Ok(())
 }
 
 #[test]
-fn queued_storage_runtime_journal_rejects_unsequenced_append() {
+fn queued_storage_runtime_journal_rejects_unsequenced_append() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
     };
@@ -65,10 +66,11 @@ fn queued_storage_runtime_journal_rejects_unsequenced_append() {
         queue.pending_profile_counts(),
         Ok(counts) if counts.journaled == 0 && counts.strict == 0
     ));
+    Ok(())
 }
 
 #[test]
-fn runtime_shutdown_graceful_drains_owned_queued_journal() {
+fn runtime_shutdown_graceful_drains_owned_queued_journal() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
     };
@@ -93,7 +95,7 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() {
         ..ShardConfig::default()
     };
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    let runtime = Runtime::new_with_journal(shard_count, config, runtime_journal);
+    let runtime = Runtime::new_with_journal(shard_count, config, runtime_journal)?;
 
     let Some(compiled) = require_ok(single_finish_workflow(workflow), "workflow compiles") else {
         return;
@@ -119,10 +121,11 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() {
     ));
     // At minimum RunSubmitted + RunAdmission + StepSucceeded + RunFinished are stored.
     assert!(matches!(journal.events_for_run(run), Ok(events) if events.len() >= 4));
+    Ok(())
 }
 
 #[test]
-fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
+fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() -> Result<(), RuntimeError> {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
     };
@@ -182,10 +185,11 @@ fn queued_storage_runtime_journal_maps_queue_full_to_runtime_error() {
             },
         ]
     );
+    Ok(())
 }
 
 #[test]
-fn volatile_runtime_journal_accepts_appends_until_configured_capacity() {
+fn volatile_runtime_journal_accepts_appends_until_configured_capacity() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(2) else {
         assert!(false, "test capacity must be non-zero");
         return;
@@ -203,10 +207,11 @@ fn volatile_runtime_journal_accepts_appends_until_configured_capacity() {
     assert_eq!(journal.append(second.clone()), Ok(()));
 
     assert_eq!(journal.snapshot(), Ok(vec![first, second]));
+    Ok(())
 }
 
 #[test]
-fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached() {
+fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capacity_is_reached() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(1) else {
         assert!(false, "test capacity must be non-zero");
         return;
@@ -224,10 +229,11 @@ fn volatile_runtime_journal_returns_journal_full_and_preserves_entries_when_capa
     );
 
     assert_eq!(journal.snapshot(), Ok(vec![kept]));
+    Ok(())
 }
 
 #[test]
-fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection() {
+fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection() -> Result<(), RuntimeError> {
     let Some(capacity) = NonZeroUsize::new(2) else {
         assert!(false, "test capacity must be non-zero");
         return;
@@ -252,4 +258,5 @@ fn volatile_runtime_journal_snapshots_remain_stable_after_full_append_rejection(
     let expected = Ok(vec![first, second]);
     assert_eq!(journal.snapshot(), expected.clone());
     assert_eq!(journal.snapshot(), expected);
+    Ok(())
 }

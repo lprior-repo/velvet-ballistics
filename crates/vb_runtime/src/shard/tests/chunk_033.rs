@@ -120,7 +120,7 @@ fn cleanup_temp_fjall(path: &std::path::Path) {
 // =======================================================================
 
 #[test]
-fn test_snapshot_interval_zero_no_snapshots() {
+fn test_snapshot_interval_zero_no_snapshots() -> Result<(), RuntimeError> {
     let journal: SharedRuntimeJournal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(config_interval_zero(), journal);
 
@@ -129,6 +129,7 @@ fn test_snapshot_interval_zero_no_snapshots() {
 
     let outcome = shard.write_snapshot_for_run(run, &state, 0, 100, 0);
     assert_eq!(outcome, SnapshotWriteOutcome::SkippedDisabled);
+    Ok(())
 }
 
 // =======================================================================
@@ -136,7 +137,7 @@ fn test_snapshot_interval_zero_no_snapshots() {
 // =======================================================================
 
 #[test]
-fn test_snapshot_interval_zero_no_snapshots_fjall() {
+fn test_snapshot_interval_zero_no_snapshots_fjall() -> Result<(), RuntimeError> {
     let Some((path, fjall)) = open_temp_fjall() else {
         return;
     };
@@ -149,6 +150,7 @@ fn test_snapshot_interval_zero_no_snapshots_fjall() {
     let outcome = shard.write_snapshot_for_run(run, &state, 0, 100, 0);
     assert_eq!(outcome, SnapshotWriteOutcome::SkippedDisabled);
     cleanup_temp_fjall(&path);
+    Ok(())
 }
 
 // =======================================================================
@@ -156,7 +158,7 @@ fn test_snapshot_interval_zero_no_snapshots_fjall() {
 // =======================================================================
 
 #[test]
-fn test_snapshot_positive_interval_volatile_skips_no_storage() {
+fn test_snapshot_positive_interval_volatile_skips_no_storage() -> Result<(), RuntimeError> {
     let journal: SharedRuntimeJournal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(config_interval_n(10), journal);
 
@@ -165,6 +167,7 @@ fn test_snapshot_positive_interval_volatile_skips_no_storage() {
 
     let outcome = shard.write_snapshot_for_run(run, &state, 10, 50, 0);
     assert_eq!(outcome, SnapshotWriteOutcome::SkippedNoStorage);
+    Ok(())
 }
 
 // =======================================================================
@@ -172,7 +175,7 @@ fn test_snapshot_positive_interval_volatile_skips_no_storage() {
 // =======================================================================
 
 #[test]
-fn test_snapshot_interval_positive_writes_midrun_snapshots() {
+fn test_snapshot_interval_positive_writes_midrun_snapshots() -> Result<(), RuntimeError> {
     let Some((path, fjall)) = open_temp_fjall() else {
         return;
     };
@@ -206,6 +209,7 @@ fn test_snapshot_interval_positive_writes_midrun_snapshots() {
     assert_eq!(shard.write_snapshot_for_run(run, &s30, 10, 30, 20), SnapshotWriteOutcome::Written);
 
     cleanup_temp_fjall(&path);
+    Ok(())
 }
 
 // =======================================================================
@@ -213,7 +217,7 @@ fn test_snapshot_interval_positive_writes_midrun_snapshots() {
 // =======================================================================
 
 #[test]
-fn test_snapshot_interval_one_fires_every_step() {
+fn test_snapshot_interval_one_fires_every_step() -> Result<(), RuntimeError> {
     let Some((path, fjall)) = open_temp_fjall() else {
         return;
     };
@@ -232,6 +236,7 @@ fn test_snapshot_interval_one_fires_every_step() {
     }
 
     cleanup_temp_fjall(&path);
+    Ok(())
 }
 
 // =======================================================================
@@ -239,7 +244,7 @@ fn test_snapshot_interval_one_fires_every_step() {
 // =======================================================================
 
 #[test]
-fn test_snapshot_at_exact_boundary() {
+fn test_snapshot_at_exact_boundary() -> Result<(), RuntimeError> {
     let Some((path, fjall)) = open_temp_fjall() else {
         return;
     };
@@ -257,4 +262,5 @@ fn test_snapshot_at_exact_boundary() {
     assert_eq!(shard.write_snapshot_for_run(run, &s5, 5, 5, 0), SnapshotWriteOutcome::Written);
 
     cleanup_temp_fjall(&path);
+    Ok(())
 }

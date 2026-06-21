@@ -210,6 +210,10 @@ struct RawSnapshotDocument {
     failed_screens: usize,
     fixture_backed: bool,
     core_runtime_parity_claim: String,
+    #[serde(default)]
+    cargo_test_exit_code: i32,
+    #[serde(default)]
+    cargo_clippy_exit_code: i32,
     screens: Vec<RawScreenDocument>,
 }
 
@@ -244,6 +248,10 @@ struct RawAiReleaseDocument {
     status: String,
     fixture_backed: bool,
     core_runtime_parity_claim: String,
+    #[serde(default)]
+    cargo_test_exit_code: i32,
+    #[serde(default)]
+    cargo_clippy_exit_code: i32,
     command: String,
     subgates: Vec<RawSubgateDocument>,
     redaction: RawRedactionDocument,

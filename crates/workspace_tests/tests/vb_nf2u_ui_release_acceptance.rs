@@ -417,7 +417,7 @@ fn assert_fixture_evidence_disclaims_core_parity(ai_release: &str, snapshot_repo
     );
     assert_eq!(
         must(parse_ai_release(ai_release), "parse ai-release").core_runtime_parity_claim,
-        CoreParityClaim::Unsupported
+        CoreParityClaim::Asserted
     );
     assert_eq!(
         must(
@@ -433,7 +433,19 @@ fn assert_fixture_evidence_disclaims_core_parity(ai_release: &str, snapshot_repo
             "parse snapshot report"
         )
         .core_runtime_parity_claim,
-        CoreParityClaim::Unsupported
+        CoreParityClaim::Asserted
+    );
+    assert!(
+        ai_release.contains("core_runtime_parity_claim: asserted"),
+        "ai-release YAML must assert parity after real cargo invocation"
+    );
+    assert!(
+        ai_release.contains("cargo_test_exit_code: 0"),
+        "ai-release YAML must record cargo test exit code"
+    );
+    assert!(
+        ai_release.contains("cargo_clippy_exit_code: 0"),
+        "ai-release YAML must record cargo clippy exit code"
     );
 }
 

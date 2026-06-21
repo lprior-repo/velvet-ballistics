@@ -5,7 +5,7 @@
 // =========================================================================
 
 #[test]
-fn shard_command_submit_inequality_different_run_id() {
+fn shard_command_submit_inequality_different_run_id() -> Result<(), RuntimeError> {
     let Some(wf) = suspended_workflow() else {
         return;
     };
@@ -20,10 +20,11 @@ fn shard_command_submit_inequality_different_run_id() {
         caps: vb_core::capability::CapabilitySet::empty(),
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_submit_with_inputs_equality() {
+fn shard_command_submit_with_inputs_equality() -> Result<(), RuntimeError> {
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -42,10 +43,11 @@ fn shard_command_submit_with_inputs_equality() {
         caps: vb_core::capability::CapabilitySet::empty(),
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_submit_with_inputs_inequality_different_inputs() {
+fn shard_command_submit_with_inputs_inequality_different_inputs() -> Result<(), RuntimeError> {
     let Some(wf) = finished_workflow() else {
         return;
     };
@@ -62,10 +64,11 @@ fn shard_command_submit_with_inputs_inequality_different_inputs() {
         caps: vb_core::capability::CapabilitySet::empty(),
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_action_failed_equality() {
+fn shard_command_action_failed_equality() -> Result<(), RuntimeError> {
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(3),
         step: vb_core::ids::StepIdx::new(1),
@@ -89,10 +92,11 @@ fn shard_command_action_failed_equality() {
     };
     let b = ShardCommand::ActionFailed { ticket, failure };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_ask_answered_equality() {
+fn shard_command_ask_answered_equality() -> Result<(), RuntimeError> {
     let answer = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(4),
@@ -118,20 +122,22 @@ fn shard_command_ask_answered_equality() {
     };
     let b = ShardCommand::AskAnswered { answer: answer2 };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_config_debug_format_contains_policy_field() {
+fn shard_config_debug_format_contains_policy_field() -> Result<(), RuntimeError> {
     let config = ShardConfig::default();
     let debug_str = format!("{config:?}");
     assert!(
         debug_str.contains("policy"),
         "Debug output should contain policy: {debug_str}"
     );
+    Ok(())
 }
 
 #[test]
-fn pending_timer_copy_trait_produces_independent_value() {
+fn pending_timer_copy_trait_produces_independent_value() -> Result<(), RuntimeError> {
     let original = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(7),
         kind: super::types::PendingTimerKind::Ask,
@@ -142,10 +148,11 @@ fn pending_timer_copy_trait_produces_independent_value() {
     assert_eq!(copy, original);
     assert_eq!(copy.step, vb_core::ids::StepIdx::new(7));
     assert_eq!(copy.kind, super::types::PendingTimerKind::Ask);
+    Ok(())
 }
 
 #[test]
-fn pending_timer_debug_format() {
+fn pending_timer_debug_format() -> Result<(), RuntimeError> {
     let timer = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(4),
         kind: super::types::PendingTimerKind::Wait,
@@ -157,10 +164,11 @@ fn pending_timer_debug_format() {
         debug_str.contains("PendingTimer"),
         "Debug should contain PendingTimer: {debug_str}"
     );
+    Ok(())
 }
 
 #[test]
-fn pending_timer_with_zero_step_index() {
+fn pending_timer_with_zero_step_index() -> Result<(), RuntimeError> {
     let timer = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::ZERO,
         kind: super::types::PendingTimerKind::Wait,
@@ -169,10 +177,11 @@ fn pending_timer_with_zero_step_index() {
     };
     assert_eq!(timer.step, vb_core::ids::StepIdx::ZERO);
     assert_eq!(timer.kind, super::types::PendingTimerKind::Wait);
+    Ok(())
 }
 
 #[test]
-fn ask_answer_equality_same_fields() {
+fn ask_answer_equality_same_fields() -> Result<(), RuntimeError> {
     let a = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(8),
@@ -196,10 +205,11 @@ fn ask_answer_equality_same_fields() {
         encoded_len: 0,
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn ask_answer_inequality_different_taint() {
+fn ask_answer_inequality_different_taint() -> Result<(), RuntimeError> {
     let a = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(8),
@@ -223,10 +233,11 @@ fn ask_answer_inequality_different_taint() {
         encoded_len: 0,
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn ask_answer_inequality_different_value() {
+fn ask_answer_inequality_different_value() -> Result<(), RuntimeError> {
     let a = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(8),
@@ -250,10 +261,11 @@ fn ask_answer_inequality_different_value() {
         encoded_len: 0,
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn ask_answer_debug_format() {
+fn ask_answer_debug_format() -> Result<(), RuntimeError> {
     let answer = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(9),
@@ -270,12 +282,13 @@ fn ask_answer_debug_format() {
         debug_str.contains("AskAnswer"),
         "Debug should contain AskAnswer: {debug_str}"
     );
+    Ok(())
 }
 
 #[test]
-fn shard_submit_with_run_id_zero_accepted() {
+fn shard_submit_with_run_id_zero_accepted() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -291,4 +304,5 @@ fn shard_submit_with_run_id_zero_accepted() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }

@@ -1,11 +1,11 @@
 
 // BH-SHD-10: Cancel non-existent run produces no journal event.
 #[test]
-fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
+fn bh_shd_10_cancel_nonexistent_run_no_journal_event() -> Result<(), RuntimeError> {
     let config = small_config();
     let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
-    let mut shard = Shard::new_with_journal(config, shared);
+    let mut shard = Shard::new_with_journal(config, shared)?;
     let run = super::RunId::new(810);
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
@@ -19,13 +19,14 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
         "BH-SHD-10: no RunCancelled journal event for non-existent run"
     );
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 // BH-SHD-11: step_budget_per_tick=0 creates permanent DoS.
 // Runs are accepted but never execute any steps.
 // Severity: Medium. Config should reject step_budget_per_tick=0.
 #[test]
-fn bh_shd_11_zero_step_budget_never_executes() {
+fn bh_shd_11_zero_step_budget_never_executes() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -38,7 +39,7 @@ fn bh_shd_11_zero_step_budget_never_executes() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -60,13 +61,14 @@ fn bh_shd_11_zero_step_budget_never_executes() {
     assert_eq!(shard.active_run_count(), 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);
     // BH-SHD-11: Run is stuck forever with zero budget
+    Ok(())
 }
 
 // BH-SHD-12: Legacy completion on finished run errors correctly.
 #[test]
-fn bh_shd_12_legacy_completion_on_finished_run_errors() {
+fn bh_shd_12_legacy_completion_on_finished_run_errors() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -89,13 +91,14 @@ fn bh_shd_12_legacy_completion_on_finished_run_errors() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 // BH-SHD-13: TimerFire after cancel returns RunNotFound.
 #[test]
-fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
+fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
         return;
     };
@@ -115,13 +118,14 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 // BH-SHD-14: Inspect after immediate completion returns Terminal { Completed }.
 #[test]
-fn bh_shd_14_inspect_after_immediate_completion_returns_terminal() {
+fn bh_shd_14_inspect_after_immediate_completion_returns_terminal() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -159,6 +163,7 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_terminal() {
             panic!("{msg}");
         }
     }
+    Ok(())
 }
 
 // =========================================================================
@@ -168,7 +173,7 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_terminal() {
 
 /// Submit multiple runs, cancel some, inspect the remainder -- verify counters.
 #[test]
-fn shard_submit_cancel_inspect_mixed_lifecycle() {
+fn shard_submit_cancel_inspect_mixed_lifecycle() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -181,7 +186,7 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf_suspend) = suspended_workflow() else {
         return;
     };
@@ -242,13 +247,14 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
     assert_eq!(shard.counters().snapshot().runs_submitted, 2);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 /// SubmitWithInputs with empty inputs behaves identically to Submit.
 #[test]
-fn shard_submit_with_empty_inputs_matches_submit() {
+fn shard_submit_with_empty_inputs_matches_submit() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -266,4 +272,5 @@ fn shard_submit_with_empty_inputs_matches_submit() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }

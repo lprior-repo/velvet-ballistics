@@ -64,9 +64,9 @@ fn exhausted_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 
 /// Test that a suspended workflow can be submitted and tick processes it.
 #[test]
-fn submit_suspended_workflow_and_tick() {
+fn submit_suspended_workflow_and_tick() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -87,13 +87,14 @@ fn submit_suspended_workflow_and_tick() {
 
     // Run should be in active runs (suspended waiting for action)
     assert!(shard.run_state_contains(run));
+    Ok(())
 }
 
 /// Test that a workflow with high step budget completes successfully.
 #[test]
-fn submit_workflow_with_sufficient_budget_completes() {
+fn submit_workflow_with_sufficient_budget_completes() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = exhausted_workflow() else {
         return;
     };
@@ -117,4 +118,5 @@ fn submit_workflow_with_sufficient_budget_completes() {
     // Run should still be active (suspended waiting for action)
     // because step budget was exhausted
     assert!(shard.run_state_contains(run));
+    Ok(())
 }

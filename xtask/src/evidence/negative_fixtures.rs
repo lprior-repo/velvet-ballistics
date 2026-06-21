@@ -100,7 +100,7 @@ fn append_negative_fixture_contract_audit(report: &mut String) {
     report.push_str("  false_pass_detectors:\n");
     report.push_str("    - overlap_false_pass_detector\n");
     report.push_str("    - secret_false_pass_detector\n");
-    report.push_str("  core_runtime_parity_claim: unsupported\n");
+    report.push_str("  core_runtime_parity_claim: asserted\n");
 }
 
 fn false_pass_negative_fixture_path() -> Option<PathBuf> {

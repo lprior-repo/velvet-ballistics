@@ -188,7 +188,7 @@ impl RuntimeJournal for FailingRuntimeJournal {
 /// Expected: handle_resume returns Err(ResumeError) when drive_run fails.
 /// Actual:   handle_resume returns Ok(ResumeResult { status: Resumed }) — BUG!
 #[test]
-fn handle_resume_returns_error_when_drive_run_fails() {
+fn handle_resume_returns_error_when_drive_run_fails() -> Result<(), RuntimeError> {
     // fail_after=6: submit succeeds, the Resumed append succeeds, and resume's
     // drive_run fails on its next journal write.
     let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(6);
@@ -223,10 +223,11 @@ fn handle_resume_returns_error_when_drive_run_fails() {
         "BUG: handle_resume returned {result:?} but drive_run failed. \
          Expected preserved StorageJournalAppend source."
     );
+    Ok(())
 }
 
 #[test]
-fn failed_resumed_append_restores_resumable_for_retry() {
+fn failed_resumed_append_restores_resumable_for_retry() -> Result<(), RuntimeError> {
     let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(5);
     let mut shard = Shard::new_with_journal(small_config(), journal);
 
@@ -264,6 +265,7 @@ fn failed_resumed_append_restores_resumable_for_retry() {
         ),
         "failed Resumed append must restore Resumable; retry got {retry_result:?}"
     );
+    Ok(())
 }
 
 /// BUG-TEST-02: observe_resume_drive_result must NOT silently drop errors.
@@ -276,7 +278,7 @@ fn failed_resumed_append_restores_resumable_for_retry() {
 ///
 /// With fail_after=4, the resume's drive_run fails and the error is dropped.
 #[test]
-fn observe_resume_drive_result_does_not_drop_drive_run_error() {
+fn observe_resume_drive_result_does_not_drop_drive_run_error() -> Result<(), RuntimeError> {
     // First, verify the happy path works with a working journal.
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
@@ -330,10 +332,11 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() {
          Expected: handle_resume returns Err(ResumeError) when drive_run fails.",
         result2
     );
+    Ok(())
 }
 
 #[test]
-fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs() {
+fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs() -> Result<(), RuntimeError> {
     // Given: two independent resume failures with distinguishable runtime sources.
     let first_error =
         resume_error_from_resumed_append_failure(RunId::new(600), RuntimeError::QueueFull);
@@ -357,10 +360,11 @@ fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs() {
         Some(RuntimeError::QueueFull),
         "first returned ResumeError must remain correlated to QueueFull after a later failure"
     );
+    Ok(())
 }
 
 #[test]
-fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_failure() {
+fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_failure() -> Result<(), RuntimeError> {
     // Given: the thread has already observed a sourced resume journal failure.
     let prior_error =
         resume_error_from_resumed_append_failure(RunId::new(602), RuntimeError::JournalPoisoned);
@@ -379,10 +383,11 @@ fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_fa
         None,
         "fresh JournalAppendFailed must not inherit stale source from prior returned error"
     );
+    Ok(())
 }
 
 #[test]
-fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source() {
+fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source() -> Result<(), RuntimeError> {
     // Given: a prior resume failure recorded a non-default runtime source on this thread.
     let prior_error =
         resume_error_from_resumed_append_failure(RunId::new(603), RuntimeError::QueueFull);
@@ -403,10 +408,11 @@ fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source() {
         },
         "fresh JournalAppendFailed conversion must use its own fallback, not stale QueueFull"
     );
+    Ok(())
 }
 
 #[test]
-fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() {
+fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() -> Result<(), RuntimeError> {
     // Given: a real resume failure recorded QueueFull, but nobody has observed
     // that returned error's source yet. This leaves the vulnerable stale-source
     // design with a pending source that is not bound to the returned error.
@@ -427,10 +433,11 @@ fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() {
         Some(RuntimeError::QueueFull),
         "unobserved prior failure must retain its own QueueFull source after unrelated lookup"
     );
+    Ok(())
 }
 
 #[test]
-fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source() {
+fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source() -> Result<(), RuntimeError> {
     // Given: a real resume failure recorded JournalPoisoned, but its source has
     // not been observed or bound yet.
     let unobserved_error =
@@ -452,6 +459,7 @@ fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source() {
         Some(RuntimeError::JournalPoisoned),
         "unobserved prior failure must retain JournalPoisoned after unrelated conversion"
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -471,7 +479,7 @@ fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source() {
 /// the run as submitted but no RunState exists. The durability contract
 /// requires: journal record must not exist without corresponding state.
 #[test]
-fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
+fn handle_submit_journal_before_state_insert_noorphan_journal_record() -> Result<(), RuntimeError> {
     // This test verifies the ordering by checking that journal snapshot
     // after submit contains RunSubmitted BEFORE we can observe the run in state.
     // With a failing journal (failing after RunSubmitted append),
@@ -523,6 +531,7 @@ fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
         1,
         "run must exist in state after successful submit"
     );
+    Ok(())
 }
 
 /// BUG-TEST-04: Journal events must be durably written before drive_run executes.
@@ -533,7 +542,7 @@ fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
 /// This test uses enqueue + tick() because handle_submit is pub(crate).
 /// tick() internally calls handle_submit and propagates its error.
 #[test]
-fn handle_submit_propagates_journal_failure_before_drive_run() {
+fn handle_submit_propagates_journal_failure_before_drive_run() -> Result<(), RuntimeError> {
     // Use a journal that fails on the first append (RunSubmitted).
     // handle_submit should return an error before calling drive_run.
     let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(0);
@@ -565,6 +574,7 @@ fn handle_submit_propagates_journal_failure_before_drive_run() {
          Journal failure must propagate before drive_run is called.",
         tick_result
     );
+    Ok(())
 }
 
 /// BUG-TEST-05: RunAdmission journal event requires preceding RunSubmitted event.
@@ -572,7 +582,7 @@ fn handle_submit_propagates_journal_failure_before_drive_run() {
 /// The journal must contain RunSubmitted BEFORE RunAdmission (per handle_submit
 /// ordering: RunSubmitted append first, then RunAdmission append).
 #[test]
-fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
+fn handle_submit_journal_event_ordering_run_submitted_before_admission() -> Result<(), RuntimeError> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
 
@@ -609,6 +619,7 @@ fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
          in journal. Current ordering violates durability contract: admission must not \
          be recorded before submission is durable."
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -643,7 +654,7 @@ fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
 /// the error from drive_run would propagate — even though in this case it
 /// means the submit fails, not the resume.
 #[test]
-fn handle_resume_propagates_flush_evidence_failure() {
+fn handle_resume_propagates_flush_evidence_failure() -> Result<(), RuntimeError> {
     // fail_after=2: RunSubmitted (count=0), RunAdmission (count=1) succeed,
     // flush_evidence inside first drive_run (count=2) fails.
     // This causes handle_submit's drive_run to fail.
@@ -654,7 +665,7 @@ fn handle_resume_propagates_flush_evidence_failure() {
     // - Currently, the error is silently dropped by observe_resume_drive_result
     let failing_journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(2);
     let config = small_config();
-    let mut shard = Shard::new_with_journal(config, failing_journal);
+    let mut shard = Shard::new_with_journal(config, failing_journal)?;
 
     let run_id = RunId::new(500);
     let wf = suspended_workflow().expect("workflow must compile");
@@ -698,6 +709,7 @@ fn handle_resume_propagates_flush_evidence_failure() {
          The run should not exist in Resumable state. \
          After fix: handle_submit should propagate drive_run errors."
     );
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -808,10 +820,11 @@ fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 /// add — on 3-variant code this test fails to compile (preserves the
 /// failing-first signal).
 #[test]
-fn qi37_resume_error_propagation_unknown_retry_safety_recognized() {
+fn qi37_resume_error_propagation_unknown_retry_safety_recognized() -> Result<(), RuntimeError> {
     use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         !is_idempotent(RetrySafety::Unknown),
         "Unknown must NOT be considered idempotent (C8 collapses to non-idempotent)"
     );
+    Ok(())
 }

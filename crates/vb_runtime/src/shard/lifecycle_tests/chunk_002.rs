@@ -267,7 +267,7 @@
     }
 
     #[test]
-    fn submit_finished_workflow_completes_immediately() {
+    fn submit_finished_workflow_completes_immediately() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = finished_workflow() else {
             return;
@@ -285,4 +285,5 @@
         assert_eq!(shard.counters().snapshot().runs_submitted, 1);
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
         assert_eq!(shard.active_run_count(), 0);
+        Ok(())
     }

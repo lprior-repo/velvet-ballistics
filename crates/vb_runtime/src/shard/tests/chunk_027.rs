@@ -1,9 +1,9 @@
 
 #[test]
-fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
+fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() -> Result<(), RuntimeError> {
     // Given: a shard with runs suspended on both Wait and Ask timers
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     let Some(wait_workflow) = timed_wait_then_finish_workflow() else {
         return;
@@ -46,4 +46,5 @@ fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
     // Then: all pending timers are cleared regardless of kind
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
 }

@@ -21,7 +21,7 @@ use vb_runtime::shard::ShardConfig;
 use vb_runtime::{Runtime, RuntimeError};
 
 #[test]
-fn submit_artifact_rejects_non_empty_input_for_valid_artifact() -> Result<(), String> {
+fn submit_artifact_rejects_non_empty_input_for_valid_artifact() -> Result<(), String> -> Result<(), RuntimeError> {
     let temp_dir = tempfile::tempdir().map_err(|error| error.to_string())?;
     let storage = Arc::new(
         vb_storage::FjallJournal::open(temp_dir.path(), None).map_err(|error| error.to_string())?,
@@ -47,6 +47,7 @@ fn submit_artifact_rejects_non_empty_input_for_valid_artifact() -> Result<(), St
         Err(RuntimeError::UnsupportedOperation { operation })
             if operation == "submit_artifact_input_decode"
     ));
+    Ok(())
     Ok(())
 }
 

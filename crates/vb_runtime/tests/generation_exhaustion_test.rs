@@ -27,31 +27,35 @@ fn run(id: u64) -> RunId {
 // ---------- Behavior D2: next_generation returns Some(1) for new run ----------
 
 #[test]
-fn next_pending_timer_generation_returns_one_for_new_run() {
+fn next_pending_timer_generation_returns_one_for_new_run() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
+    Ok(())
 }
 
 #[test]
-fn next_pending_timer_generation_returns_one_for_different_new_runs() {
+fn next_pending_timer_generation_returns_one_for_different_new_runs() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.next_pending_timer_generation(run(42)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(99)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(7)), Some(1));
+    Ok(())
 }
 
 #[test]
-fn next_pending_timer_generation_always_starts_at_one_for_new_runs() {
+fn next_pending_timer_generation_always_starts_at_one_for_new_runs() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     // Multiple queries on a new run all return Some(1)
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
+    Ok(())
 }
 
 #[test]
-fn next_pending_timer_generation_returns_one_for_run_zero() {
+fn next_pending_timer_generation_returns_one_for_run_zero() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.next_pending_timer_generation(run(0)), Some(1));
+    Ok(())
 }
 
 // ---------- Behavior D1: next_generation increments for existing timer ----------
@@ -60,13 +64,14 @@ fn next_pending_timer_generation_returns_one_for_run_zero() {
 // The full insertion + increment test is in the crate-level unit tests.
 
 #[test]
-fn next_pending_timer_generation_is_pure_query_no_mutation() {
+fn next_pending_timer_generation_is_pure_query_no_mutation() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     // Querying does not create a pending timer
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
     // pending_timer_count should still be 0
     assert_eq!(shard.pending_timer_count(), 0);
+    Ok(())
 }
 
 // ---------- Behavior D3: Generation exhaustion at u64::MAX ----------
@@ -76,31 +81,34 @@ fn next_pending_timer_generation_is_pure_query_no_mutation() {
 // ---------- Cross-run independence ----------
 
 #[test]
-fn next_pending_timer_generation_is_independent_of_other_runs() {
+fn next_pending_timer_generation_is_independent_of_other_runs() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     // All fresh runs start at 1
     for i in 0..100u64 {
         assert_eq!(shard.next_pending_timer_generation(run(i)), Some(1));
     }
+    Ok(())
 }
 
 #[test]
-fn next_pending_timer_generation_handles_max_run_id() {
+fn next_pending_timer_generation_handles_max_run_id() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.next_pending_timer_generation(run(u64::MAX)), Some(1));
+    Ok(())
 }
 
 // ---------- Shard creation preserves generation baseline ----------
 
 #[test]
-fn shard_new_has_no_pending_timers_and_returns_generation_one() {
+fn shard_new_has_no_pending_timers_and_returns_generation_one() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
+    Ok(())
 }
 
 #[test]
-fn shard_new_with_custom_config_returns_generation_one() {
+fn shard_new_with_custom_config_returns_generation_one() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 64,
         trace_capacity: 128,
@@ -112,6 +120,7 @@ fn shard_new_with_custom_config_returns_generation_one() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.next_pending_timer_generation(run(1)), Some(1));
+    Ok(())
 }

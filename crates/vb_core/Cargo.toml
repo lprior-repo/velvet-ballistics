@@ -36,6 +36,10 @@ harness = false
 [features]
 bench = []
 default = []
+# ARCH-W0-09: opt-in to compile archived value_store tests.
+# The legacy tests in `value_store/legacy_tests/` duplicate coverage of
+# `value_store/tests.rs`; enable this only when investigating that overlap.
+legacy-tests = []
 kani-diagnostic-codes = []
 kani-resource-contract-boundaries = []
 kani-vb-5iebh-check-scope = []

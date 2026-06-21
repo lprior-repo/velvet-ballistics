@@ -1,6 +1,6 @@
 
     #[test]
-    fn cancel_clears_pending_timer() {
+    fn cancel_clears_pending_timer() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = wait_workflow() else {
             return;
@@ -19,10 +19,11 @@
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.pending_timer_count(), 0);
+        Ok(())
     }
 
     #[test]
-    fn inspect_active_run_returns_found() {
+    fn inspect_active_run_returns_found() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = suspended_workflow() else {
             return;
@@ -57,10 +58,11 @@
                 );
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn inspect_unknown_run_returns_not_found() {
+    fn inspect_unknown_run_returns_not_found() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(
             shard.enqueue(ShardCommand::Inspect {
@@ -77,10 +79,11 @@
                 correlation: 1,
             })
         );
+        Ok(())
     }
 
     #[test]
-    fn submit_produces_run_submitted_trace() {
+    fn submit_produces_run_submitted_trace() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = suspended_workflow() else {
             return;
@@ -101,10 +104,11 @@
             .iter()
             .any(|e| *e == TraceEvent::RunSubmitted { run });
         assert_eq!(found, true);
+        Ok(())
     }
 
     #[test]
-    fn cancel_produces_run_cancelled_trace() {
+    fn cancel_produces_run_cancelled_trace() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = suspended_workflow() else {
             return;
@@ -127,10 +131,11 @@
             .iter()
             .any(|e| *e == TraceEvent::RunCancelled { run });
         assert_eq!(found, true);
+        Ok(())
     }
 
     #[test]
-    fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> {
+    fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> -> Result<(), RuntimeError> {
         let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
         let shared: SharedRuntimeJournal = journal.clone();
         let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -153,10 +158,11 @@
             "journal events should contain RunCancelled: {events:?}"
         );
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn finish_produces_run_finished_trace() -> Result<(), String> {
+    fn finish_produces_run_finished_trace() -> Result<(), String> -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let wf = require_workflow("finished", finished_workflow())?;
         let run = RunId::new(113);
@@ -176,10 +182,11 @@
             .any(|e| *e == TraceEvent::RunFinished { run });
         assert_eq!(found, true);
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(), String> {
+    fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(), String> -> Result<(), RuntimeError> {
         let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
         let shared: SharedRuntimeJournal = journal.clone();
         let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -203,10 +210,11 @@
             .count();
         assert_eq!(slot_written_count, 1, "events: {events:?}");
         Ok(())
+        Ok(())
     }
 
     #[test]
-    fn resubmit_after_cancel_succeeds() {
+    fn resubmit_after_cancel_succeeds() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = suspended_workflow() else {
             return;
@@ -233,10 +241,11 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 1);
+        Ok(())
     }
 
     #[test]
-    fn timer_fire_after_cancel_returns_run_not_found() {
+    fn timer_fire_after_cancel_returns_run_not_found() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         let Some(wf) = wait_workflow() else {
             return;
@@ -256,4 +265,5 @@
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
         assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+        Ok(())
     }

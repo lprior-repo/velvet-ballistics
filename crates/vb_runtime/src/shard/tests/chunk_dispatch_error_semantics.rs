@@ -112,9 +112,9 @@ fn wait_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
 
 /// Test resume_run_not_found_error: Resume non-existent run → Err(RunNotFound).
 #[test]
-fn resume_nonexistent_run_returns_not_found() {
+fn resume_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     assert_eq!(
         shard.enqueue(ShardCommand::Resume {
@@ -123,13 +123,14 @@ fn resume_nonexistent_run_returns_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 /// Test resume_not_resumable_error: Resume run in non-Resumable state.
 #[test]
-fn resume_active_run_returns_error() {
+fn resume_active_run_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -156,6 +157,7 @@ fn resume_active_run_returns_error() {
     let result = shard.tick();
     // Result should be an error since run is not in a resumable state
     assert!(result.is_err() || shard.run_state_contains(run));
+    Ok(())
 }
 
 // ============================================================================
@@ -164,9 +166,9 @@ fn resume_active_run_returns_error() {
 
 /// Test action_completion_run_not_found_error: Completion for vanished run → Err(RunNotFound).
 #[test]
-fn action_completion_for_nonexistent_run_returns_not_found() {
+fn action_completion_for_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
 
     assert_eq!(
         shard.enqueue(ShardCommand::ActionCompletedLegacy {
@@ -176,6 +178,7 @@ fn action_completion_for_nonexistent_run_returns_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 // ============================================================================
@@ -184,9 +187,9 @@ fn action_completion_for_nonexistent_run_returns_not_found() {
 
 /// Test timer_no_pending_timer_error: No pending timer for run → Err(InvalidTimerFire).
 #[test]
-fn timer_fire_without_pending_timer_returns_error() {
+fn timer_fire_without_pending_timer_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -213,13 +216,14 @@ fn timer_fire_without_pending_timer_returns_error() {
 
     assert_eq!(shard.enqueue(command), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 /// Test timer_generation_mismatch_error: Wrong generation → Err(InvalidTimerFire).
 #[test]
-fn timer_fire_with_wrong_generation_returns_error() {
+fn timer_fire_with_wrong_generation_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = wait_workflow() else {
         return;
     };
@@ -250,13 +254,14 @@ fn timer_fire_with_wrong_generation_returns_error() {
 
     assert_eq!(shard.enqueue(command), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 /// Test timer_kind_mismatch_error: Wait vs Ask kind mismatch → Err(InvalidTimerFire).
 #[test]
-fn timer_fire_with_wrong_kind_returns_error() {
+fn timer_fire_with_wrong_kind_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = wait_workflow() else {
         return;
     };
@@ -286,13 +291,14 @@ fn timer_fire_with_wrong_kind_returns_error() {
 
     assert_eq!(shard.enqueue(command), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 /// Test timer_wait_kind_resolves_wait: Valid Wait timer advances state.
 #[test]
-fn valid_wait_timer_fire_advances_state() {
+fn valid_wait_timer_fire_advances_state() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = wait_workflow() else {
         return;
     };
@@ -326,13 +332,14 @@ fn valid_wait_timer_fire_advances_state() {
     // Timer should be cleared and run should complete
     assert!(shard.pending_timer_get(run).is_none());
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 /// Test timer_ask_kind_clears_pending_timer: Valid Ask timer removes pending timer.
 #[test]
-fn valid_ask_timer_fire_clears_pending_timer() {
+fn valid_ask_timer_fire_clears_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow_for_error_tests() else {
         return;
     };
@@ -365,6 +372,7 @@ fn valid_ask_timer_fire_clears_pending_timer() {
 
     // Timer should be cleared
     assert!(shard.pending_timer_get(run).is_none());
+    Ok(())
 }
 
 // ============================================================================
@@ -373,9 +381,9 @@ fn valid_ask_timer_fire_clears_pending_timer() {
 
 /// Test ask_answer_timer_authority_mismatch_error: Step/kind mismatch → Err(InvalidActionCompletion).
 #[test]
-fn ask_answer_with_wrong_step_returns_error() {
+fn ask_answer_with_wrong_step_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = ask_workflow_for_error_tests() else {
         return;
     };
@@ -411,6 +419,7 @@ fn ask_answer_with_wrong_step_returns_error() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
 }
 
 // ============================================================================
@@ -419,9 +428,9 @@ fn ask_answer_with_wrong_step_returns_error() {
 
 /// Test inspect_correlation_preserved: Correlation ID passed through to response.
 #[test]
-fn inspect_preserves_correlation_id() {
+fn inspect_preserves_correlation_id() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -450,4 +459,5 @@ fn inspect_preserves_correlation_id() {
         }
         other => assert_eq!(other.is_some(), true),
     }
+    Ok(())
 }

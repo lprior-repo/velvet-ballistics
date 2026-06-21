@@ -1,8 +1,8 @@
 
 #[test]
-fn vb1u88_shutdown_is_permanent_no_unshutdown() {
+fn vb1u88_shutdown_is_permanent_no_unshutdown() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     for _ in 0..10 {
@@ -11,6 +11,7 @@ fn vb1u88_shutdown_is_permanent_no_unshutdown() {
     assert_eq!(shard.is_shutting_down(), true);
     let status = shard.status();
     assert_eq!(status.health, super::ShardHealth::ShuttingDown);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -18,9 +19,9 @@ fn vb1u88_shutdown_is_permanent_no_unshutdown() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn vb1u88_action_completion_unknown_run_not_found() {
+fn vb1u88_action_completion_unknown_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9999),
         step: vb_core::ids::StepIdx::ZERO,
@@ -42,12 +43,13 @@ fn vb1u88_action_completion_unknown_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn vb1u88_action_failure_unknown_run_not_found() {
+fn vb1u88_action_failure_unknown_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(9999),
         step: vb_core::ids::StepIdx::ZERO,
@@ -70,12 +72,13 @@ fn vb1u88_action_failure_unknown_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn vb1u88_resume_unknown_run_not_found() {
+fn vb1u88_resume_unknown_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(
         shard.enqueue(ShardCommand::Resume {
             run: super::RunId::new(9999)
@@ -83,23 +86,25 @@ fn vb1u88_resume_unknown_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn vb1u88_timer_fire_unknown_run_not_found() {
+fn vb1u88_timer_fire_unknown_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(
         shard.enqueue(invalid_timer_command(super::RunId::new(9999))),
         Ok(())
     );
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
+    Ok(())
 }
 
 #[test]
-fn vb1u88_ask_answer_unknown_run_not_found() {
+fn vb1u88_ask_answer_unknown_run_not_found() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let answer = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(9999),
@@ -113,6 +118,7 @@ fn vb1u88_ask_answer_unknown_run_not_found() {
     };
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +126,7 @@ fn vb1u88_ask_answer_unknown_run_not_found() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn vb1u88_invariant_runs_len_never_exceeds_max() {
+fn vb1u88_invariant_runs_len_never_exceeds_max() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -133,7 +139,7 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -154,10 +160,11 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
             config.max_active_runs
         );
     }
+    Ok(())
 }
 
 #[test]
-fn vb1u88_invariant_queue_len_never_exceeds_capacity() {
+fn vb1u88_invariant_queue_len_never_exceeds_capacity() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 3,
         trace_capacity: 16,
@@ -170,7 +177,7 @@ fn vb1u88_invariant_queue_len_never_exceeds_capacity() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     for _ in 0..3 {
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     }
@@ -179,10 +186,11 @@ fn vb1u88_invariant_queue_len_never_exceeds_capacity() {
         Err(RuntimeError::QueueFull)
     );
     assert!(shard.command_queue.len() <= shard.command_queue.capacity());
+    Ok(())
 }
 
 #[test]
-fn vb1u88_invariant_no_trace_dropped_during_operation() {
+fn vb1u88_invariant_no_trace_dropped_during_operation() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 32,
@@ -195,7 +203,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -211,6 +219,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
         assert_eq!(shard.tick(), Ok(true));
     }
     assert_eq!(shard.trace_ring().dropped(), 0);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -218,9 +227,9 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn vb1u88_run_id_zero_handled_correctly() {
+fn vb1u88_run_id_zero_handled_correctly() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -234,12 +243,13 @@ fn vb1u88_run_id_zero_handled_correctly() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_max_run_id_handled_correctly() {
+fn vb1u88_max_run_id_handled_correctly() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -253,12 +263,13 @@ fn vb1u88_max_run_id_handled_correctly() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
+fn vb1u88_multiple_sequential_finished_runs_no_leakage() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -277,4 +288,5 @@ fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
     }
     assert_eq!(shard.counters().snapshot().runs_completed, 10);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }

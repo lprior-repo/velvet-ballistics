@@ -1,9 +1,9 @@
 
 #[test]
-fn shard_duplicate_submit_after_cancel_succeeds() {
+fn shard_duplicate_submit_after_cancel_succeeds() -> Result<(), RuntimeError> {
     // Given a shard with a cancelled run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -30,13 +30,14 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
     );
     // Then it succeeds (run was removed by cancel)
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 #[test]
-fn shard_snapshot_run_for_active_run_returns_found() {
+fn shard_snapshot_run_for_active_run_returns_found() -> Result<(), RuntimeError> {
     // Given a shard with an active suspended run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -68,13 +69,14 @@ fn shard_snapshot_run_for_active_run_returns_found() {
             );
         }
     }
+    Ok(())
 }
 
 #[test]
-fn shard_snapshot_run_for_unknown_returns_not_found() {
+fn shard_snapshot_run_for_unknown_returns_not_found() -> Result<(), RuntimeError> {
     // Given a shard with no runs
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     // When snapshotting a non-existent run
     let response = shard.snapshot_run(super::RunId::new(9999), 7);
     // Then it returns NotFound
@@ -85,10 +87,11 @@ fn shard_snapshot_run_for_unknown_returns_not_found() {
             correlation: 7,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn shard_fill_queue_to_capacity_returns_queue_full() {
+fn shard_fill_queue_to_capacity_returns_queue_full() -> Result<(), RuntimeError> {
     // Given a shard with capacity 2
     let config = ShardConfig {
         command_queue_capacity: 2,
@@ -102,7 +105,7 @@ fn shard_fill_queue_to_capacity_returns_queue_full() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     // When filling the queue exactly
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -111,13 +114,14 @@ fn shard_fill_queue_to_capacity_returns_queue_full() {
         shard.enqueue(ShardCommand::Shutdown),
         Err(RuntimeError::QueueFull)
     );
+    Ok(())
 }
 
 #[test]
-fn adversarial_shard_ask_answered_for_unknown_run_returns_run_not_found() {
+fn adversarial_shard_ask_answered_for_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with no runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When answering an ask for a non-existent run
     let answer = AskAnswer {
         ticket: AskTicket {
@@ -133,13 +137,14 @@ fn adversarial_shard_ask_answered_for_unknown_run_returns_run_not_found() {
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     // Then tick returns RunNotFound
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn shard_submit_two_runs_same_id_second_fails() {
+fn shard_submit_two_runs_same_id_second_fails() -> Result<(), RuntimeError> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -164,10 +169,11 @@ fn shard_submit_two_runs_same_id_second_fails() {
     );
     // Then tick returns RunAlreadyExists
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
 }
 
 #[test]
-fn shard_step_budget_zero_still_submits_but_does_not_drive() {
+fn shard_step_budget_zero_still_submits_but_does_not_drive() -> Result<(), RuntimeError> {
     // Given a shard with zero step budget
     let config = ShardConfig {
         command_queue_capacity: 4,
@@ -181,7 +187,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -215,13 +221,14 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() {
             assert_eq!(other, None);
         }
     }
+    Ok(())
 }
 
 #[test]
-fn shard_multiple_cancels_idempotent_for_same_run() {
+fn shard_multiple_cancels_idempotent_for_same_run() -> Result<(), RuntimeError> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -242,6 +249,7 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
     assert_eq!(shard.tick(), Ok(true));
     // Then failed counter is 1 (not 2)
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 // =======================================================================
@@ -249,10 +257,10 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
 // =======================================================================
 
 #[test]
-fn shard_submit_after_shutdown_is_enqueued_but_never_processed() {
+fn shard_submit_after_shutdown_is_enqueued_but_never_processed() -> Result<(), RuntimeError> {
     // Given a shard that has received shutdown
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
     let Some(workflow) = suspended_workflow() else {
@@ -271,4 +279,5 @@ fn shard_submit_after_shutdown_is_enqueued_but_never_processed() {
     assert_eq!(shard.tick(), Ok(false));
     // And no runs were submitted
     assert_eq!(shard.counters().snapshot().runs_submitted, 0);
+    Ok(())
 }

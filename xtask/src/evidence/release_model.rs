@@ -1,19 +1,45 @@
 
-fn validate_ai_release_bead(bead_id: Option<&str>) -> Result<()> {
+fn validate_ai_release_bead(bead_id: Option<&str>, output_dir: &Path) -> Result<()> {
     match bead_id {
-        Some(VB_NF2U) => Ok(()),
-        Some(other) => Err(Error::GateFailed {
-            gate: format!("unknown ai-release bead id: {other}"),
-            exit_code: 2,
-            log: PathBuf::from(".evidence")
-                .join(other)
-                .join("ai-release.log"),
-        }),
-        None => Err(Error::GateFailed {
-            gate: "missing ai-release bead id".to_string(),
-            exit_code: 2,
-            log: PathBuf::from(".evidence/default/ai-release.log"),
-        }),
+        Some(VB_NF2U) => {}
+        Some(other) => {
+            return Err(Error::GateFailed {
+                gate: format!("unknown ai-release bead id: {other}"),
+                exit_code: 2,
+                log: PathBuf::from(".evidence")
+                    .join(other)
+                    .join("ai-release.log"),
+            });
+        }
+        None => {
+            return Err(Error::GateFailed {
+                gate: "missing ai-release bead id".to_string(),
+                exit_code: 2,
+                log: PathBuf::from(".evidence/default/ai-release.log"),
+            });
+        }
+    }
+    let ai_release_yaml = output_dir.join("ai-release.yaml");
+    let text = fs::read_to_string(&ai_release_yaml).map_err(|error| Error::EvidenceWriteFailed {
+        gate: "validate_ai_release_bead".to_string(),
+        path: ai_release_yaml.clone(),
+        cause: error.to_string(),
+    })?;
+    require_ai_release_new_field(&text, "core_runtime_parity_claim: asserted")?;
+    require_ai_release_new_field(&text, "cargo_test_exit_code: 0")?;
+    require_ai_release_new_field(&text, "cargo_clippy_exit_code: 0")?;
+    Ok(())
+}
+
+fn require_ai_release_new_field(text: &str, field: &str) -> Result<()> {
+    if text.contains(field) {
+        Ok(())
+    } else {
+        Err(Error::GateFailed {
+            gate: format!("ai-release missing required field: {field}"),
+            exit_code: 1,
+            log: PathBuf::from(".evidence/vb-nf2u/ai-release.yaml"),
+        })
     }
 }
 
@@ -178,12 +204,12 @@ struct UiReleaseDocument {
 }
 
 impl UiReleaseDocument {
-    fn from_bundle(bundle: &UiReleaseBundle) -> Result<Self> {
+    fn from_bundle(bundle: &UiReleaseBundle, cargo_invariants: &CargoInvariants) -> Result<Self> {
         let document = Self {
-            snapshot_report: render_snapshot_report(bundle),
-            ai_release_report: render_ai_release_report(bundle),
+            snapshot_report: render_snapshot_report(bundle, cargo_invariants),
+            ai_release_report: render_ai_release_report(bundle, cargo_invariants),
             negative_fixtures: negative_fixture_report()?,
-            determinism: render_determinism_report(),
+            determinism: render_determinism_report(cargo_invariants),
             animation_freeze: render_animation_freeze_report(),
         };
         document.validate()?;

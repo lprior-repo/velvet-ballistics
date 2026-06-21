@@ -232,8 +232,8 @@ pub fn run_profile(
 }
 
 fn run_ai_release_profile(bead_id: Option<&str>, output_dir: &Path) -> Result<ProfileEvidence> {
-    validate_ai_release_bead(bead_id)?;
     let gates = write_vb_nf2u_ui_release_evidence(output_dir)?;
+    validate_ai_release_bead(bead_id, output_dir)?;
     reject_false_pass_negative_fixtures(output_dir)?;
     Ok(ProfileEvidence {
         profile: "ai-release".to_string(),

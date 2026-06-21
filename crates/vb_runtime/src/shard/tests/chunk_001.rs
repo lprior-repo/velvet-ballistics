@@ -149,7 +149,7 @@ fn timeout_failure() -> vb_core::action::ActionFailure {
 }
 
 #[test]
-fn retry_attempt_counter_increments_until_policy_exhaustion() {
+fn retry_attempt_counter_increments_until_policy_exhaustion() -> Result<(), RuntimeError> {
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -196,12 +196,13 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         record_retry_attempt(&mut state, ticket, policy),
         Ok(false)
     );
+    Ok(())
 }
 
 #[test]
-fn action_failed_routes_to_nearby_error_handler() {
+fn action_failed_routes_to_nearby_error_handler() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = action_with_error_handler_workflow() else {
         return;
     };
@@ -227,12 +228,13 @@ fn action_failed_routes_to_nearby_error_handler() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
+    Ok(())
 }
 
 #[test]
-fn action_failed_without_error_handler_fails_run() {
+fn action_failed_without_error_handler_fails_run() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -257,12 +259,13 @@ fn action_failed_without_error_handler_fails_run() {
 
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
-fn submit_rejects_duplicate_run_id() {
+fn submit_rejects_duplicate_run_id() -> Result<(), RuntimeError> {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -288,4 +291,5 @@ fn submit_rejects_duplicate_run_id() {
 
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
     assert_eq!(shard.active_run_count(), 1);
+    Ok(())
 }

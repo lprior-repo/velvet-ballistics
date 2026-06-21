@@ -499,7 +499,7 @@ fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
 // Actual: No public interface to test this behavior - function is private
 // This test FAILS (exits nonzero) to prove the RED phase contract gap exists.
 #[test]
-fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() {
+fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -520,13 +520,14 @@ fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() {
         expanded.capacity, 2,
         "POST-005: capacity must expand to max(original=1, policy.max_attempts=2)"
     );
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 2: POST-005 - ticket unchanged when no retry metadata =====
 // RED: This test FAILS because ticket_with_retry_capacity is private
 // This test FAILS (exits nonzero) to prove the RED phase contract gap exists.
 #[test]
-fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() {
+fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -545,6 +546,7 @@ fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() {
         unchanged.capacity, 5,
         "POST-005: ticket must be returned unchanged when retry_metadata_exists is false"
     );
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 3: INV-003 - Journal replay idempotency =====
@@ -554,7 +556,7 @@ fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() {
 // True journal replay (simulating restart + replay) is not possible without
 // a journal_replay(ticket, events) function.
 #[test]
-fn journal_replay_idempotent_action_failed() {
+fn journal_replay_idempotent_action_failed() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -616,6 +618,7 @@ fn journal_replay_idempotent_action_failed() {
     // 2. Or a test mode where FailRun doesn't remove the run
     // Without this, we cannot verify that duplicate ActionFailed appends to journal
     // in a true replay scenario.
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 4: INV-004 - Slot preservation on action failure =====
@@ -623,7 +626,7 @@ fn journal_replay_idempotent_action_failed() {
 // The slot preservation invariant (INV-004) cannot be verified from integration tests.
 // This test documents the gap: no InspectSlot command exists.
 #[test]
-fn action_failure_preserves_action_completed_slots_integration_gap() {
+fn action_failure_preserves_action_completed_slots_integration_gap() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -657,6 +660,7 @@ fn action_failure_preserves_action_completed_slots_integration_gap() {
         run_exists || failed_count > 0,
         "run should either exist (retry) or be failed"
     );
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 5: INV-5 - PC reset semantics on retry =====
@@ -664,7 +668,7 @@ fn action_failure_preserves_action_completed_slots_integration_gap() {
 // This test uses Inspect command to verify PC, but Inspect only returns current PC,
 // not the PC after a specific command. The gap is in PC tracking after failure.
 #[test]
-fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() {
+fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -731,13 +735,14 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() {
             "INV-5: PC must reset to failed step on retry, not advanced"
         );
     }
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 6: POST-002 - Error handler writes correct slot value =====
 // RED: No public interface to read slot values after error handler runs.
 // This test documents the gap: no InspectSlot command exists to verify error_slot content.
 #[test]
-fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() {
+fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -786,13 +791,14 @@ fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() {
     // - No ReadSlot command exists
     // POST-002 requires error_slot contains I64(failed_step), but this cannot
     // be verified from integration tests without a slot inspection interface.
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 7: PRE-004 - retry_is_available requires Retryable policy =====
 // This test PASSES - proves indirect coverage of NonRetryable behavior.
 // RED gap: retry_is_available is private, but behavior is testable indirectly.
 #[test]
-fn retry_is_available_returns_false_for_nonretryable_policy() {
+fn retry_is_available_returns_false_for_nonretryable_policy() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -821,12 +827,13 @@ fn retry_is_available_returns_false_for_nonretryable_policy() {
         "NonRetryable without handler should fail the run"
     );
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 8: PRE-004 - retry_is_available returns false when no retry metadata =====
 // This test PASSES - proves indirect coverage of missing retry metadata.
 #[test]
-fn retry_is_available_returns_false_when_no_retry_metadata() {
+fn retry_is_available_returns_false_when_no_retry_metadata() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -856,6 +863,7 @@ fn retry_is_available_returns_false_when_no_retry_metadata() {
         "Retryable without retry_metadata should fail the run"
     );
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 // ===== RED-PHASE TEST 9: POST-006 - record_retry_attempt boundary =====
@@ -863,12 +871,13 @@ fn retry_is_available_returns_false_when_no_retry_metadata() {
 // record_retry_attempt is pub fn but requires RunState which has private fields.
 // This test documents the integration test gap for boundary testing.
 #[test]
-fn record_retry_attempt_integration_gap() {
+fn record_retry_attempt_integration_gap() -> Result<(), RuntimeError> {
     // RED gap: record_retry_attempt(state, ticket, policy) is public in helpers,
     // but RunState has private fields (action_attempts, frame, workflow, store).
     // Integration tests cannot construct RunState to test record_retry_attempt boundary.
     // Unit tests in helpers.rs (#[cfg(test)]) cover this, but not from integration path.
     // POST-006 boundary (max_attempts) is tested in unit tests only.
+    Ok(())
 }
 
 // =========================================================================
@@ -880,10 +889,11 @@ fn record_retry_attempt_integration_gap() {
 /// fn is a TDD target State 11 will add — on 3-variant code this test
 /// fails to compile (preserves the failing-first signal).
 #[test]
-fn durable_retry_idempotent_retry_safety_recognized() {
+fn durable_retry_idempotent_retry_safety_recognized() -> Result<(), RuntimeError> {
     use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"
     );
+    Ok(())
 }

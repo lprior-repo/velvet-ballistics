@@ -418,7 +418,7 @@ fn non_retryable_failure() -> ActionFailure {
 
 /// B17: handle_submit_with_inputs records first scheduled action attempts
 #[test]
-fn handle_submit_with_inputs_records_first_action_attempts() {
+fn handle_submit_with_inputs_records_first_action_attempts() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow_2step() else {
         panic!("missing workflow fixture");
@@ -448,11 +448,12 @@ fn handle_submit_with_inputs_records_first_action_attempts() {
         Some(0),
         "step 1 attempt counter remains 0 before scheduling"
     );
+    Ok(())
 }
 
 /// B17 variant: single step workflow records first scheduled action attempt
 #[test]
-fn handle_submit_records_first_action_attempt_single_step() {
+fn handle_submit_records_first_action_attempt_single_step() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -471,6 +472,7 @@ fn handle_submit_records_first_action_attempt_single_step() {
         Some(1),
         "step 0 attempt counter is 1 after first scheduling"
     );
+    Ok(())
 }
 
 // =============================================================================
@@ -479,7 +481,7 @@ fn handle_submit_records_first_action_attempt_single_step() {
 
 /// B30: RuntimeJournalEvent::StepSucceeded carries attempt field
 #[test]
-fn step_succeeded_carries_attempt_field() {
+fn step_succeeded_carries_attempt_field() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -529,11 +531,12 @@ fn step_succeeded_carries_attempt_field() {
         completion_attempts[0], 1,
         "ActionCompletedEnvelope ticket should carry attempt=1"
     );
+    Ok(())
 }
 
 /// B31: RuntimeJournalEvent::ActionFailed carries attempt field
 #[test]
-fn action_failed_carries_attempt_field() {
+fn action_failed_carries_attempt_field() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -581,11 +584,12 @@ fn action_failed_carries_attempt_field() {
         action_failed_events[0], 1,
         "ActionFailed should carry attempt=1 from ticket"
     );
+    Ok(())
 }
 
 /// Verify StepSucceeded with higher attempt number is persisted correctly
 #[test]
-fn step_succeeded_carries_retry_attempt_number() {
+fn step_succeeded_carries_retry_attempt_number() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -632,6 +636,7 @@ fn step_succeeded_carries_retry_attempt_number() {
         completion_with_attempt_1,
         "ActionCompletedEnvelope ticket should carry attempt=1"
     );
+    Ok(())
 }
 
 // =============================================================================
@@ -640,7 +645,7 @@ fn step_succeeded_carries_retry_attempt_number() {
 
 /// B21: handle_action_completion rejects stale attempt BEFORE journal write
 #[test]
-fn stale_attempt_completion_rejected_before_journal_write() {
+fn stale_attempt_completion_rejected_before_journal_write() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -708,11 +713,12 @@ fn stale_attempt_completion_rejected_before_journal_write() {
         counters_before.runs_failed, counters_after.runs_failed,
         "runs_failed counter must not change on stale rejection"
     );
+    Ok(())
 }
 
 /// B28: handle_action_failure rejects stale attempt BEFORE journal write
 #[test]
-fn stale_attempt_failure_rejected_before_journal_write() {
+fn stale_attempt_failure_rejected_before_journal_write() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -770,6 +776,7 @@ fn stale_attempt_failure_rejected_before_journal_write() {
         action_failed_count_before, action_failed_count_after,
         "No ActionFailed event should be written when stale attempt is rejected"
     );
+    Ok(())
 }
 
 // =============================================================================
@@ -778,7 +785,7 @@ fn stale_attempt_failure_rejected_before_journal_write() {
 
 /// Verify action_attempts advances when action is scheduled (via drive_run)
 #[test]
-fn action_attempts_advances_after_scheduling() {
+fn action_attempts_advances_after_scheduling() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -795,11 +802,12 @@ fn action_attempts_advances_after_scheduling() {
         Some(1),
         "action_attempts[0] should be 1 after first action scheduling (drive_run calls record_scheduled_attempt)"
     );
+    Ok(())
 }
 
 /// Verify action_attempts monotonically advances on retry scheduling
 #[test]
-fn action_attempts_monotonically_advances_on_retry() {
+fn action_attempts_monotonically_advances_on_retry() -> Result<(), RuntimeError> {
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared);
@@ -866,6 +874,7 @@ fn action_attempts_monotonically_advances_on_retry() {
             "action_attempts[1] should be 3 after second retry scheduling"
         );
     }
+    Ok(())
 }
 
 // =============================================================================
@@ -874,7 +883,7 @@ fn action_attempts_monotonically_advances_on_retry() {
 
 /// Verify action_attempts for a step never decreases over multiple operations
 #[test]
-fn action_attempts_never_decreases_across_operations() {
+fn action_attempts_never_decreases_across_operations() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -904,6 +913,7 @@ fn action_attempts_never_decreases_across_operations() {
         final_attempt >= initial_attempt,
         "action_attempts[0] should never decrease below initial value"
     );
+    Ok(())
 }
 
 // =============================================================================
@@ -912,7 +922,7 @@ fn action_attempts_never_decreases_across_operations() {
 
 /// EncodeFailed: completion returns error and leaves state unchanged
 #[test]
-fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
+fn encode_failed_completion_returns_error_and_leaves_state_unchanged() -> Result<(), RuntimeError> {
     // This test would require forcing postcard serialization to fail.
     // We test the error path exists and state is unchanged on error.
     // Note: Actual EncodeFailed forcing would require a custom encoder or oversized value.
@@ -949,6 +959,7 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
     );
     // The tick processes the completion - we just verify it doesn't panic
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 // =============================================================================
@@ -957,7 +968,7 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
 
 /// B7: validate_ticket_attempt accepts valid ticket (current=1, attempt=2)
 #[test]
-fn validate_ticket_attempt_accepts_valid_ticket() {
+fn validate_ticket_attempt_accepts_valid_ticket() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -990,6 +1001,7 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true), "valid ticket should be accepted");
+    Ok(())
 }
 
 // =============================================================================
@@ -998,7 +1010,7 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
 
 /// Equal attempt (current=1, incoming=1) is NOT stale
 #[test]
-fn equal_attempt_is_not_stale() {
+fn equal_attempt_is_not_stale() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -1027,6 +1039,7 @@ fn equal_attempt_is_not_stale() {
         !matches!(result, Err(RuntimeError::StaleAttempt { .. })),
         "Equal attempt should not be rejected as stale"
     );
+    Ok(())
 }
 
 // =============================================================================
@@ -1035,7 +1048,7 @@ fn equal_attempt_is_not_stale() {
 
 /// Future attempt within ticket capacity is rejected.
 #[test]
-fn future_attempt_within_capacity_is_rejected() {
+fn future_attempt_within_capacity_is_rejected() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow() else {
         panic!("missing workflow fixture");
@@ -1064,6 +1077,7 @@ fn future_attempt_within_capacity_is_rejected() {
         Err(RuntimeError::InvalidActionCompletion),
         "future attempt within capacity must be rejected"
     );
+    Ok(())
 }
 
 // =============================================================================
@@ -1072,7 +1086,7 @@ fn future_attempt_within_capacity_is_rejected() {
 
 /// Verify each step has independent attempt counter
 #[test]
-fn each_step_has_independent_attempt_counter() {
+fn each_step_has_independent_attempt_counter() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config());
     let Some(wf) = suspended_workflow_2step() else {
         panic!("missing 2-step workflow fixture");
@@ -1095,6 +1109,7 @@ fn each_step_has_independent_attempt_counter() {
         Some(0),
         "step 1 attempt should be 0 (not yet reached)"
     );
+    Ok(())
 }
 
 // =========================================================================
@@ -1106,10 +1121,11 @@ fn each_step_has_independent_attempt_counter() {
 /// fn is a TDD target State 11 will add — on 3-variant code this test
 /// fails to compile (preserves the failing-first signal).
 #[test]
-fn jggy_lifecycle_idempotent_retry_safety_recognized() {
+fn jggy_lifecycle_idempotent_retry_safety_recognized() -> Result<(), RuntimeError> {
     use vb_core::action::{RetrySafety, is_idempotent};
     assert!(
         is_idempotent(RetrySafety::Idempotent),
         "Idempotent must be considered idempotent (C6)"
     );
+    Ok(())
 }

@@ -1,6 +1,6 @@
 
 #[test]
-fn shard_step_budget_one_processes_one_command_per_tick() {
+fn shard_step_budget_one_processes_one_command_per_tick() -> Result<(), RuntimeError> {
     // Given a shard with step_budget_per_tick = 1
     let config = ShardConfig {
         command_queue_capacity: 16,
@@ -14,7 +14,7 @@ fn shard_step_budget_one_processes_one_command_per_tick() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -31,13 +31,14 @@ fn shard_step_budget_one_processes_one_command_per_tick() {
     // Then with budget 1, the first step executes but second does not
     // (budget exhausted after 1 transition; second tick needed)
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() {
+fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() -> Result<(), RuntimeError> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -65,13 +66,14 @@ fn shard_duplicate_run_id_returns_run_already_exists_after_first_accepted() {
     );
     // Then tick returns RunAlreadyExists (cannot replace workflow)
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+    Ok(())
 }
 
 #[test]
-fn shard_action_failed_for_unknown_run_returns_run_not_found() {
+fn shard_action_failed_for_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with no active runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let ticket = vb_core::action::ActionTicket {
         run: super::RunId::new(999),
         step: vb_core::ids::StepIdx::new(0),
@@ -96,13 +98,14 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
     );
     // Then tick returns RunNotFound
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn shard_run_id_max_u64_accepted_as_valid_identifier() {
+fn shard_run_id_max_u64_accepted_as_valid_identifier() -> Result<(), RuntimeError> {
     // Given a shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -120,13 +123,14 @@ fn shard_run_id_max_u64_accepted_as_valid_identifier() {
     // Then the run is accepted and completes
     assert_eq!(shard.counters().snapshot().runs_submitted, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_ask_answered_for_unknown_run_returns_run_not_found() {
+fn shard_ask_answered_for_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with no active runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let answer = AskAnswer {
         ticket: AskTicket {
             run: super::RunId::new(999),
@@ -142,13 +146,14 @@ fn shard_ask_answered_for_unknown_run_returns_run_not_found() {
     assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
     // Then tick returns RunNotFound
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }
 
 #[test]
-fn shard_snapshot_for_nonexistent_run_returns_not_found() {
+fn shard_snapshot_for_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
     // Given a shard with no runs
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     // When snapshotting a non-existent run
     let response = shard.snapshot_run(super::RunId::new(999), 42);
     // Then NotFound is returned
@@ -159,13 +164,14 @@ fn shard_snapshot_for_nonexistent_run_returns_not_found() {
             correlation: 42,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn shard_cancel_then_resubmit_same_run_id_succeeds() {
+fn shard_cancel_then_resubmit_same_run_id_succeeds() -> Result<(), RuntimeError> {
     // Given a shard with an active run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -197,13 +203,14 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() {
     // Then the re-submitted run completes
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_trace_ring_records_submit_and_finish_events_in_order() {
+fn shard_trace_ring_records_submit_and_finish_events_in_order() -> Result<(), RuntimeError> {
     // Given a shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -226,10 +233,11 @@ fn shard_trace_ring_records_submit_and_finish_events_in_order() {
     let found_finish = events.iter().any(|e| *e == TraceEvent::RunFinished { run });
     assert_eq!(found_submit, true);
     assert_eq!(found_finish, true);
+    Ok(())
 }
 
 #[test]
-fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
+fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), RuntimeError> {
     // Given a shard with trace_capacity = 0
     let config = ShardConfig {
         command_queue_capacity: 4,
@@ -243,7 +251,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -259,19 +267,21 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() {
     // Then tick succeeds (trace drops are non-fatal)
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_command_queue_len_starts_at_zero() {
+fn shard_command_queue_len_starts_at_zero() -> Result<(), RuntimeError> {
     // Given a fresh shard
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     // Then queue length is 0
     assert_eq!(shard.command_queue_len(), 0);
+    Ok(())
 }
 
 #[test]
-fn shard_command_queue_len_increments_on_enqueue() {
+fn shard_command_queue_len_increments_on_enqueue() -> Result<(), RuntimeError> {
     // Given a shard with capacity 4
     let config = ShardConfig {
         command_queue_capacity: 4,
@@ -285,11 +295,12 @@ fn shard_command_queue_len_increments_on_enqueue() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.command_queue_len(), 0);
     // When enqueuing commands
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.command_queue_len(), 1);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.command_queue_len(), 2);
+    Ok(())
 }

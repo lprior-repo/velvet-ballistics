@@ -1,9 +1,9 @@
 
 #[test]
-fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
+fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() -> Result<(), RuntimeError> {
     // Given a shard where a run finished and returned its frame to the pool
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -36,10 +36,11 @@ fn shard_submit_run_reuses_frame_from_pool_after_prior_finish() {
         shard.frame_pools.get(&(2, 1)).map(FramePool::available),
         Some(1)
     );
+    Ok(())
 }
 
 #[test]
-fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
+fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() -> Result<(), RuntimeError> {
     // Given a shard with max_active_runs = 3
     let config = ShardConfig {
         command_queue_capacity: 16,
@@ -53,7 +54,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
     let Some(workflow) = suspended_workflow() else {
         return;
@@ -109,13 +110,14 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
         shard.tick(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 3 })
     );
+    Ok(())
 }
 
 #[test]
-fn shard_inspect_preserves_latest_response_overwriting_previous() {
+fn shard_inspect_preserves_latest_response_overwriting_previous() -> Result<(), RuntimeError> {
     // Given a shard with two active runs
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -170,6 +172,7 @@ fn shard_inspect_preserves_latest_response_overwriting_previous() {
             assert_eq!(other, None);
         }
     }
+    Ok(())
 }
 
 // =========================================================================
@@ -177,7 +180,7 @@ fn shard_inspect_preserves_latest_response_overwriting_previous() {
 // =========================================================================
 
 #[test]
-fn shard_queue_full_prevents_further_command_submission() {
+fn shard_queue_full_prevents_further_command_submission() -> Result<(), RuntimeError> {
     // Given a shard with command queue capacity of 2
     let config = ShardConfig {
         command_queue_capacity: 2,
@@ -191,7 +194,7 @@ fn shard_queue_full_prevents_further_command_submission() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     // When filling the queue with 2 commands
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -200,10 +203,11 @@ fn shard_queue_full_prevents_further_command_submission() {
         shard.enqueue(ShardCommand::Shutdown),
         Err(RuntimeError::QueueFull)
     );
+    Ok(())
 }
 
 #[test]
-fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
+fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() -> Result<(), RuntimeError> {
     // Given a shard with max_active_runs = 2
     let config = ShardConfig {
         command_queue_capacity: 16,
@@ -217,7 +221,7 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
         terminal_runs_ttl_ticks: 86_400,
     
 };
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
         return;
     };
@@ -260,13 +264,14 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() {
         shard.tick(),
         Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
     );
+    Ok(())
 }
 
 #[test]
-fn shard_action_completed_for_wrong_run_returns_run_not_found() {
+fn shard_action_completed_for_wrong_run_returns_run_not_found() -> Result<(), RuntimeError> {
     // Given a shard with an active suspended run
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -289,4 +294,5 @@ fn shard_action_completed_for_wrong_run_returns_run_not_found() {
     );
     // Then tick returns RunNotFound
     assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    Ok(())
 }

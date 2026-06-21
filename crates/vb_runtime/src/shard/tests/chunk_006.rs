@@ -1,9 +1,9 @@
 
 #[test]
-fn shard_inspect_captures_executed_count() {
+fn shard_inspect_captures_executed_count() -> Result<(), RuntimeError> {
     // Given a shard with a finished workflow (executes 2 steps: SetConst + Finish)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
         return;
     };
@@ -19,13 +19,14 @@ fn shard_inspect_captures_executed_count() {
     assert_eq!(shard.tick(), Ok(true));
     // Then the steps_executed counter reflects execution
     assert_eq!(shard.counters().snapshot().steps_executed, 2);
+    Ok(())
 }
 
 #[test]
-fn shard_tick_processes_commands_in_fifo_order() {
+fn shard_tick_processes_commands_in_fifo_order() -> Result<(), RuntimeError> {
     // Given a shard with two submits enqueued
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(wf1) = finished_workflow() else {
         return;
     };
@@ -56,13 +57,14 @@ fn shard_tick_processes_commands_in_fifo_order() {
     assert_eq!(shard.counters().snapshot().runs_submitted, 2);
     // And the first run (finished workflow) is completed
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
+    Ok(())
 }
 
 #[test]
-fn shard_resume_continues_suspended_run() {
+fn shard_resume_continues_suspended_run() -> Result<(), RuntimeError> {
     // Given a shard with a suspended run (Do node at step 0)
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -80,24 +82,26 @@ fn shard_resume_continues_suspended_run() {
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
     // Then tick succeeds (run re-enters drive, suspends again on Do)
     assert_eq!(shard.tick(), Ok(true));
+    Ok(())
 }
 
 #[test]
-fn shard_take_inspect_response_returns_none_initially() {
+fn shard_take_inspect_response_returns_none_initially() -> Result<(), RuntimeError> {
     // Given a fresh shard
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     // When taking inspect response without any inspect command
     let response = shard.take_inspect_response();
     // Then response is None
     assert_eq!(response, None);
+    Ok(())
 }
 
 #[test]
-fn shard_take_inspect_response_clears_after_take() {
+fn shard_take_inspect_response_clears_after_take() -> Result<(), RuntimeError> {
     // Given a shard with an inspect response available
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
         return;
     };
@@ -125,19 +129,21 @@ fn shard_take_inspect_response_clears_after_take() {
     // Then a second take returns None
     let second = shard.take_inspect_response();
     assert_eq!(second, None);
+    Ok(())
 }
 
 #[test]
-fn shard_is_shutting_down_defaults_to_false() {
+fn shard_is_shutting_down_defaults_to_false() -> Result<(), RuntimeError> {
     // Given a fresh shard
     let config = small_config();
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     // Then is_shutting_down is false
     assert_eq!(shard.is_shutting_down(), false);
+    Ok(())
 }
 
 #[test]
-fn shard_config_default_values() {
+fn shard_config_default_values() -> Result<(), RuntimeError> {
     // Given a default ShardConfig
     let config = ShardConfig::default();
     // Then it has reasonable defaults
@@ -145,19 +151,21 @@ fn shard_config_default_values() {
     assert_eq!(config.trace_capacity, 4096);
     assert_eq!(config.step_budget_per_tick, 1000);
     assert_eq!(config.max_active_runs, 1024);
+    Ok(())
 }
 
 #[test]
-fn shard_config_equality_same_values() {
+fn shard_config_equality_same_values() -> Result<(), RuntimeError> {
     // Given two identical configs
     let a = ShardConfig::default();
     let b = ShardConfig::default();
     // Then they are equal
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_config_equality_differs() {
+fn shard_config_equality_differs() -> Result<(), RuntimeError> {
     // Given two different configs
     let a = ShardConfig::default();
     let b = ShardConfig {
@@ -174,20 +182,22 @@ fn shard_config_equality_differs() {
 };
     // Then they are not equal
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_config_clone_preserves_values() {
+fn shard_config_clone_preserves_values() -> Result<(), RuntimeError> {
     // Given a config
     let original = small_config();
     // When cloning
     let cloned = original.clone();
     // Then clone matches original
     assert_eq!(cloned, original);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_submit() {
+fn shard_command_equality_submit() -> Result<(), RuntimeError> {
     // Given two identical Submit commands
     let Some(wf) = suspended_workflow() else {
         return;
@@ -203,10 +213,11 @@ fn shard_command_equality_submit() {
         caps: vb_core::capability::CapabilitySet::empty(),
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_cancel() {
+fn shard_command_equality_cancel() -> Result<(), RuntimeError> {
     // Given two identical Cancel commands
     let a = ShardCommand::Cancel {
         run: super::RunId::new(1),
@@ -215,10 +226,11 @@ fn shard_command_equality_cancel() {
         run: super::RunId::new(1),
     reason: None};
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_differs_run_id() {
+fn shard_command_equality_differs_run_id() -> Result<(), RuntimeError> {
     // Given two Cancel commands with different run IDs
     let a = ShardCommand::Cancel {
         run: super::RunId::new(1),
@@ -227,18 +239,20 @@ fn shard_command_equality_differs_run_id() {
         run: super::RunId::new(2),
     reason: None};
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_shutdown() {
+fn shard_command_equality_shutdown() -> Result<(), RuntimeError> {
     // Given two Shutdown commands
     let a = ShardCommand::Shutdown;
     let b = ShardCommand::Shutdown;
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_inspect() {
+fn shard_command_equality_inspect() -> Result<(), RuntimeError> {
     // Given two identical Inspect commands
     let a = ShardCommand::Inspect {
         run: super::RunId::new(1),
@@ -249,10 +263,11 @@ fn shard_command_equality_inspect() {
         correlation: 42,
     };
     assert_eq!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_inspect_differs_correlation() {
+fn shard_command_equality_inspect_differs_correlation() -> Result<(), RuntimeError> {
     // Given two Inspect commands with different correlation
     let a = ShardCommand::Inspect {
         run: super::RunId::new(1),
@@ -263,10 +278,11 @@ fn shard_command_equality_inspect_differs_correlation() {
         correlation: 2,
     };
     assert_ne!(a, b);
+    Ok(())
 }
 
 #[test]
-fn shard_command_equality_action_completed() {
+fn shard_command_equality_action_completed() -> Result<(), RuntimeError> {
     // Given two identical ActionCompleted commands
     let a = ShardCommand::ActionCompletedLegacy {
         run: super::RunId::new(1),
@@ -277,4 +293,5 @@ fn shard_command_equality_action_completed() {
         step: vb_core::ids::StepIdx::new(0),
     };
     assert_eq!(a, b);
+    Ok(())
 }

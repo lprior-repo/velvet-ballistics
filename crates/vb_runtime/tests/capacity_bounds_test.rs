@@ -139,7 +139,7 @@ use vb_runtime::shard::types::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardConfig};
 // ---------- Command queue capacity bounds ----------
 
 #[test]
-fn queue_capacity_one_succeeds() {
+fn queue_capacity_one_succeeds() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 1,
         trace_capacity: 64,
@@ -151,12 +151,13 @@ fn queue_capacity_one_succeeds() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.command_queue_capacity(), 1);
+    Ok(())
 }
 
 #[test]
-fn queue_capacity_max_succeeds() {
+fn queue_capacity_max_succeeds() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: MAX_COMMAND_QUEUE_CAPACITY,
         trace_capacity: 64,
@@ -168,12 +169,13 @@ fn queue_capacity_max_succeeds() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert_eq!(shard.command_queue_capacity(), MAX_COMMAND_QUEUE_CAPACITY);
+    Ok(())
 }
 
 #[test]
-fn queue_capacity_at_limit_accepts_enqueue() {
+fn queue_capacity_at_limit_accepts_enqueue() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 1,
         trace_capacity: 64,
@@ -185,54 +187,60 @@ fn queue_capacity_at_limit_accepts_enqueue() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     assert!(shard.is_queue_full() == false);
     assert_eq!(shard.remaining_capacity(), 1);
+    Ok(())
 }
 
 // ---------- Default capacity preserves existing behavior ----------
 
 #[test]
-fn default_config_has_expected_capacity() {
+fn default_config_has_expected_capacity() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.command_queue_capacity(), 1024);
+    Ok(())
 }
 
 #[test]
-fn default_config_shard_is_not_full_initially() {
+fn default_config_shard_is_not_full_initially() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert!(!shard.is_queue_full());
     assert_eq!(shard.command_queue_len(), 0);
+    Ok(())
 }
 
 // ---------- Pending timer count starts at zero ----------
 
 #[test]
-fn shard_pending_timer_count_starts_at_zero() {
+fn shard_pending_timer_count_starts_at_zero() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.pending_timer_count(), 0);
+    Ok(())
 }
 
 // ---------- Active run count starts at zero ----------
 
 #[test]
-fn shard_active_run_count_starts_at_zero() {
+fn shard_active_run_count_starts_at_zero() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.active_run_count(), 0);
+    Ok(())
 }
 
 // ---------- Shard shutdown state ----------
 
 #[test]
-fn shard_not_shutting_down_on_creation() {
+fn shard_not_shutting_down_on_creation() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert!(!shard.is_shutting_down());
+    Ok(())
 }
 
 // ---------- Shard status reports capacity ----------
 
 #[test]
-fn shard_status_reports_command_queue_capacity() {
+fn shard_status_reports_command_queue_capacity() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 512,
         trace_capacity: 256,
@@ -244,16 +252,17 @@ fn shard_status_reports_command_queue_capacity() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     let status = shard.status();
     assert_eq!(status.command_queue_capacity, 512);
     assert_eq!(status.command_queue_depth, 0);
     assert_eq!(status.active_runs, 0);
     assert_eq!(status.max_active_runs, 32);
+    Ok(())
 }
 
 #[test]
-fn shard_status_reports_step_budget() {
+fn shard_status_reports_step_budget() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 256,
         trace_capacity: 128,
@@ -265,7 +274,8 @@ fn shard_status_reports_step_budget() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let shard = Shard::new(config);
+    let shard = Shard::new(config)?;
     let status = shard.status();
     assert_eq!(status.step_budget_per_tick, 200);
+    Ok(())
 }

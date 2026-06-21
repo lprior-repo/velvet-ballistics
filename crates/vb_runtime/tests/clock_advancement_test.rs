@@ -139,27 +139,29 @@ use vb_runtime::shard::types::{Shard, ShardConfig, TimerTick};
 // ---------- Behavior G1: Backward clock advance rejected ----------
 
 #[test]
-fn advance_clock_to_rejects_backward_tick_returns_error() {
+fn advance_clock_to_rejects_backward_tick_returns_error() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     let result = shard.advance_clock_to(TimerTick::new(50));
     assert_eq!(result, Err(vb_runtime::RuntimeError::InvalidTimerFire));
     // Current tick must be preserved after rejection
     assert_eq!(shard.current_tick(), TimerTick::new(100));
+    Ok(())
 }
 
 #[test]
-fn advance_clock_to_backward_tick_preserves_current_tick() {
+fn advance_clock_to_backward_tick_preserves_current_tick() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(1000)), Ok(()));
     // Attempt to go backward
     let _ = shard.advance_clock_to(TimerTick::new(500));
     // Tick must remain 1000
     assert_eq!(shard.current_tick(), TimerTick::new(1000));
+    Ok(())
 }
 
 #[test]
-fn advance_clock_to_rejects_single_tick_backward() {
+fn advance_clock_to_rejects_single_tick_backward() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(10)), Ok(()));
     assert_eq!(
@@ -167,39 +169,43 @@ fn advance_clock_to_rejects_single_tick_backward() {
         Err(vb_runtime::RuntimeError::InvalidTimerFire)
     );
     assert_eq!(shard.current_tick(), TimerTick::new(10));
+    Ok(())
 }
 
 // ---------- Behavior G2: Equal tick advance is a no-op ----------
 
 #[test]
-fn advance_clock_to_same_tick_is_noop() {
+fn advance_clock_to_same_tick_is_noop() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(42)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(42));
+    Ok(())
 }
 
 #[test]
-fn advance_clock_to_same_zero_tick_is_noop() {
+fn advance_clock_to_same_zero_tick_is_noop() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.current_tick(), TimerTick::new(0));
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(0));
+    Ok(())
 }
 
 // ---------- Behavior G3: Forward advance fires due timers ----------
 
 #[test]
-fn advance_clock_to_forward_increments_current_tick() {
+fn advance_clock_to_forward_increments_current_tick() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(50)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(50));
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(100));
+    Ok(())
 }
 
 #[test]
-fn advance_clock_to_multiple_forward_steps_are_monotonic() {
+fn advance_clock_to_multiple_forward_steps_are_monotonic() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     let ticks = [1u64, 5, 10, 50, 100, 500, 1000];
     for (i, &tick) in ticks.iter().enumerate() {
@@ -210,27 +216,30 @@ fn advance_clock_to_multiple_forward_steps_are_monotonic() {
             assert!(tick >= ticks[i - 1]);
         }
     }
+    Ok(())
 }
 
 #[test]
-fn advance_clock_to_large_jump_succeeds() {
+fn advance_clock_to_large_jump_succeeds() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(0)), Ok(()));
     assert_eq!(shard.advance_clock_to(TimerTick::new(1_000_000)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(1_000_000));
+    Ok(())
 }
 
 // ---------- Behavior G5: Maximum tick boundary ----------
 
 #[test]
-fn advance_clock_to_accepts_max_u64_tick() {
+fn advance_clock_to_accepts_max_u64_tick() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     assert_eq!(shard.current_tick(), TimerTick::new(u64::MAX));
+    Ok(())
 }
 
 #[test]
-fn advance_clock_to_max_tick_then_reject_any_subsequent() {
+fn advance_clock_to_max_tick_then_reject_any_subsequent() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
     // Any tick < u64::MAX is now backward
@@ -240,33 +249,37 @@ fn advance_clock_to_max_tick_then_reject_any_subsequent() {
     );
     // Equal tick is still OK (no-op)
     assert_eq!(shard.advance_clock_to(TimerTick::new(u64::MAX)), Ok(()));
+    Ok(())
 }
 
 // ---------- current_tick availability ----------
 
 #[test]
-fn current_tick_starts_at_zero_for_new_shard() {
+fn current_tick_starts_at_zero_for_new_shard() -> Result<(), RuntimeError> {
     let shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.current_tick(), TimerTick::new(0));
+    Ok(())
 }
 
 #[test]
-fn current_tick_returns_consistent_value() {
+fn current_tick_returns_consistent_value() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(77)), Ok(()));
     // Multiple reads all return the same value
     for _ in 0..10 {
         assert_eq!(shard.current_tick(), TimerTick::new(77));
     }
+    Ok(())
 }
 
 // ---------- Shard status includes tick state ----------
 
 #[test]
-fn shard_status_available_after_clock_advance() {
+fn shard_status_available_after_clock_advance() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(ShardConfig::default());
     assert_eq!(shard.advance_clock_to(TimerTick::new(100)), Ok(()));
     let status = shard.status();
     // Status is available; tick does not corrupt shard state
     assert!(status.running);
+    Ok(())
 }

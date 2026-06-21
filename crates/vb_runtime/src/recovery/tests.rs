@@ -10,7 +10,7 @@ use vb_storage::recovery::{
 };
 
 #[test]
-fn summary_recovery_boundary_exposes_summary() {
+fn summary_recovery_boundary_exposes_summary() -> Result<(), RuntimeError> {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(15),
         first_seq: EventSeq::new(0),
@@ -29,10 +29,11 @@ fn summary_recovery_boundary_exposes_summary() {
     let boundary = SummaryRecoveryBoundary::from_summary(summary);
 
     assert_eq!(boundary.summary(), summary);
+    Ok(())
 }
 
 #[test]
-fn summary_recovery_boundary_rejects_full_frame_hydration() {
+fn summary_recovery_boundary_rejects_full_frame_hydration() -> Result<(), RuntimeError> {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(16),
         first_seq: EventSeq::new(0),
@@ -52,10 +53,11 @@ fn summary_recovery_boundary_rejects_full_frame_hydration() {
         boundary.hydrate_run_frame(),
         Err(RuntimeError::UnsupportedFullRecoveryHydration)
     );
+    Ok(())
 }
 
 #[test]
-fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() {
+fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() -> Result<(), RuntimeError> {
     let run = RunId::new(17);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -117,10 +119,11 @@ fn durable_frame_recovery_boundary_hydrates_minimal_frame_state() {
             action_payloads: false,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn durable_frame_recovery_boundary_rejects_inconsistent_seed() {
+fn durable_frame_recovery_boundary_rejects_inconsistent_seed() -> Result<(), RuntimeError> {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(18),
         first_seq: EventSeq::new(0),
@@ -158,10 +161,11 @@ fn durable_frame_recovery_boundary_rejects_inconsistent_seed() {
         boundary.hydrate_run_frame(),
         Err(RuntimeError::InvalidRecoveryHydration)
     );
+    Ok(())
 }
 
 #[test]
-fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
+fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() -> Result<(), RuntimeError> {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(23),
         first_seq: EventSeq::new(0),
@@ -199,10 +203,11 @@ fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
         boundary.hydrate_run_frame(),
         Err(RuntimeError::InvalidRecoveryHydration)
     );
+    Ok(())
 }
 
 #[test]
-fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), String> {
+fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), String> -> Result<(), RuntimeError> {
     let run = RunId::new(22);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -246,10 +251,11 @@ fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Resu
     assert_eq!(frame.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(86)));
     assert_eq!(frame.read_taint(SlotIdx::new(1)), Ok(Taint::Secret));
     Ok(())
+    Ok(())
 }
 
 #[test]
-fn recovery_boundary_factory_selects_summary_for_summary_variant() {
+fn recovery_boundary_factory_selects_summary_for_summary_variant() -> Result<(), RuntimeError> {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(19),
         first_seq: EventSeq::new(0),
@@ -271,10 +277,11 @@ fn recovery_boundary_factory_selects_summary_for_summary_variant() {
         boundary.hydrate_run_frame(),
         Err(RuntimeError::UnsupportedFullRecoveryHydration)
     );
+    Ok(())
 }
 
 #[test]
-fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
+fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() -> Result<(), RuntimeError> {
     let run = RunId::new(20);
     let summary = RecoveryRuntimeSummary {
         run,
@@ -327,10 +334,11 @@ fn recovery_boundary_factory_selects_frame_for_frame_seed_variant() {
     assert_eq!(frame.slot_count(), 4);
     assert_eq!(frame.step_state(StepIdx::ZERO), Ok(StepState::Succeeded));
     assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Running));
+    Ok(())
 }
 
 #[test]
-fn recovery_boundary_factory_frame_seed_round_trips_summary() {
+fn recovery_boundary_factory_frame_seed_round_trips_summary() -> Result<(), RuntimeError> {
     let summary = RecoveryRuntimeSummary {
         run: RunId::new(21),
         first_seq: EventSeq::new(0),
@@ -382,12 +390,13 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() {
     assert_eq!(recovered_summary.steps_started, summary.steps_started);
     assert_eq!(recovered_summary.steps_succeeded, summary.steps_succeeded);
     assert_eq!(recovered_summary.terminal, summary.terminal);
+    Ok(())
 }
 
 /// Verifies that a hydrated run frame from a frame-seed hydration product
 /// can be inserted into a shard with a pending timer entry.
 #[test]
-fn recover_hydrates_pending_timers() -> Result<(), String> {
+fn recover_hydrates_pending_timers() -> Result<(), String> -> Result<(), RuntimeError> {
     use crate::shard::PendingTimer;
     use crate::shard::config::ShardConfig;
     use crate::shard::timer::PendingTimerKind;
@@ -521,5 +530,6 @@ fn recover_hydrates_pending_timers() -> Result<(), String> {
         return Err(format!("expected next generation 2, got {next_gen}"));
     }
 
+    Ok(())
     Ok(())
 }

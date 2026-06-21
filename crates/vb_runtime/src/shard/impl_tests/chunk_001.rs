@@ -66,7 +66,7 @@
     // =======================================================================
 
     #[test]
-    fn config_new_accepts_min_valid_capacity() {
+    fn config_new_accepts_min_valid_capacity() -> Result<(), RuntimeError> {
         let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
         let expected = ShardConfig {
             command_queue_capacity: 1,
@@ -80,10 +80,11 @@
             terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
         };
         assert_eq!(result, Ok(expected));
+        Ok(())
     }
 
     #[test]
-    fn config_new_rejects_zero_capacity() {
+    fn config_new_rejects_zero_capacity() -> Result<(), RuntimeError> {
         let result = ShardConfig::new(0, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
             result,
@@ -92,10 +93,11 @@
                 max: MAX_COMMAND_QUEUE_CAPACITY,
             })
         );
+        Ok(())
     }
 
     #[test]
-    fn config_new_rejects_capacity_exceeding_max() {
+    fn config_new_rejects_capacity_exceeding_max() -> Result<(), RuntimeError> {
         let too_large = MAX_COMMAND_QUEUE_CAPACITY.saturating_add(1);
         let result = ShardConfig::new(too_large, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
@@ -105,16 +107,18 @@
                 max: MAX_COMMAND_QUEUE_CAPACITY,
             })
         );
+        Ok(())
     }
 
     #[test]
-    fn config_new_rejects_zero_max_active_runs() {
+    fn config_new_rejects_zero_max_active_runs() -> Result<(), RuntimeError> {
         let result = ShardConfig::new(1, 1, 1, 0, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
+        Ok(())
     }
 
     #[test]
-    fn config_new_accepts_max_command_queue_capacity() {
+    fn config_new_accepts_max_command_queue_capacity() -> Result<(), RuntimeError> {
         let result = ShardConfig::new(
             MAX_COMMAND_QUEUE_CAPACITY,
             1,
@@ -134,10 +138,11 @@
             terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
         };
         assert_eq!(result, Ok(expected));
+        Ok(())
     }
 
     #[test]
-    fn config_new_preserves_all_fields() {
+    fn config_new_preserves_all_fields() -> Result<(), RuntimeError> {
         let config = ShardConfig::new(64, 128, 256, 32, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
             config,
@@ -153,6 +158,7 @@
                 terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
             })
         );
+        Ok(())
     }
 
     // =======================================================================
@@ -160,12 +166,13 @@
     // =======================================================================
 
     #[test]
-    fn shard_new_creates_empty_shard() {
+    fn shard_new_creates_empty_shard() -> Result<(), RuntimeError> {
         let shard = Shard::new(small_config());
         assert_eq!(shard.active_run_count(), 0);
         assert_eq!(shard.pending_timer_count(), 0);
         assert_eq!(shard.command_queue_len(), 0);
         assert_eq!(shard.is_shutting_down(), false);
+        Ok(())
     }
 
     // =======================================================================
@@ -173,29 +180,30 @@
     // =======================================================================
 
     #[test]
-    fn enqueue_and_capacity_tracking() {
+    fn enqueue_and_capacity_tracking() -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 4,
             trace_capacity: 4,
             ..small_config()
         };
-        let shard = Shard::new(config);
+        let shard = Shard::new(config)?;
         assert_eq!(shard.command_queue_capacity(), 4);
         assert_eq!(shard.remaining_capacity(), 4);
         assert_eq!(shard.is_queue_full(), false);
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.command_queue_len(), 1);
         assert_eq!(shard.remaining_capacity(), 3);
+        Ok(())
     }
 
     #[test]
-    fn queue_full_at_capacity_boundary() {
+    fn queue_full_at_capacity_boundary() -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 2,
             trace_capacity: 4,
             ..small_config()
         };
-        let shard = Shard::new(config);
+        let shard = Shard::new(config)?;
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.is_queue_full(), true);
@@ -204,6 +212,7 @@
             shard.enqueue(ShardCommand::Shutdown),
             Err(RuntimeError::QueueFull)
         );
+        Ok(())
     }
 
     // =======================================================================
@@ -211,25 +220,28 @@
     // =======================================================================
 
     #[test]
-    fn tick_on_empty_queue_returns_true() {
+    fn tick_on_empty_queue_returns_true() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.tick(), Ok(true));
+        Ok(())
     }
 
     #[test]
-    fn tick_processes_shutdown_returns_false() {
+    fn tick_processes_shutdown_returns_false() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.tick(), Ok(false));
         assert_eq!(shard.is_shutting_down(), true);
+        Ok(())
     }
 
     #[test]
-    fn tick_after_shutdown_always_returns_false() {
+    fn tick_after_shutdown_always_returns_false() -> Result<(), RuntimeError> {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.tick(), Ok(false));
         assert_eq!(shard.tick(), Ok(false));
+        Ok(())
     }
 
     // =======================================================================
@@ -237,13 +249,13 @@
     // =======================================================================
 
     #[test]
-    fn drain_for_shutdown_processes_pending_commands() {
+    fn drain_for_shutdown_processes_pending_commands() -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 4,
             trace_capacity: 4,
             ..small_config()
         };
-        let mut shard = Shard::new(config);
+        let mut shard = Shard::new(config)?;
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -259,18 +271,20 @@
         assert_eq!(shard.drain_for_shutdown(), Ok(()));
         assert_eq!(shard.is_shutting_down(), true);
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        Ok(())
     }
 
     #[test]
-    fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() {
+    fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() -> Result<(), RuntimeError> {
         let config = ShardConfig {
             command_queue_capacity: 2,
             trace_capacity: 4,
             ..small_config()
         };
-        let mut shard = Shard::new(config);
+        let mut shard = Shard::new(config)?;
         assert_eq!(
             shard.drain_for_shutdown(),
             Err(RuntimeError::ShutdownInProgress)
         );
+        Ok(())
     }
