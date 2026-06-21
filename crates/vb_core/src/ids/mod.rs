@@ -16,6 +16,7 @@
 pub mod digest;
 pub mod domain_values;
 pub mod index_ids;
+pub(crate) mod macros;
 pub mod storage_ids;
 pub mod symbol_ids;
 pub mod workflow_ids;
