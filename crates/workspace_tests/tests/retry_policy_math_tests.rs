@@ -88,7 +88,7 @@ proptest! {
         let start = policy.initial_cursor();
         let fast = policy.fast_forward_cursor(max_interval_ms, start, count);
         let repeated = (0..count).try_fold(start, |cursor, _| {
-            if cursor.exhausted {
+            if cursor.is_exhausted() {
                 Ok(cursor)
             } else {
                 policy.next_cursor(max_interval_ms, cursor)

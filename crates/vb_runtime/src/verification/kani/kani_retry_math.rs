@@ -5,7 +5,7 @@
 //!
 //! PO-KANI-001: Proves cursor.attempt ≤ policy.max_attempts,
 //! cursor.delay_ms ≤ max_interval_ms, and
-//! cursor.exhausted ⟺ cursor.remaining == 0.
+//! cursor.is_exhausted() ⟺ cursor.remaining == 0.
 
 use crate::engine::retry_math::{RetryCursor, RetryPolicyLimits};
 use crate::engine::types::RetryPolicy;
@@ -90,7 +90,7 @@ fn kani_retry_cursor_bounds() {
 //!
 //! PO-KANI-001: Proves cursor.attempt ≤ policy.max_attempts,
 //! cursor.delay_ms ≤ max_interval_ms, and
-//! cursor.exhausted ⟺ cursor.remaining == 0.
+//! cursor.is_exhausted() ⟺ cursor.remaining == 0.
 
 use crate::engine::retry_math::{RetryCursor, RetryPolicyLimits};
 use crate::engine::types::RetryPolicy;

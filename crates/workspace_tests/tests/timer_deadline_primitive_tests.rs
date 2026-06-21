@@ -590,7 +590,7 @@ mod fast_forward_cursor_bounds {
         let count: u16 = 5;
         let fast = p.fast_forward_cursor(MAX_INTERVAL, start, count);
         let repeated = (0..count).try_fold(start, |cursor, _| {
-            if cursor.exhausted {
+            if cursor.is_exhausted() {
                 Ok(cursor)
             } else {
                 p.next_cursor(MAX_INTERVAL, cursor)
@@ -608,7 +608,7 @@ mod fast_forward_cursor_bounds {
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 5);
         match result {
             Ok(cursor) => {
-                assert!(cursor.exhausted);
+                assert!(cursor.is_exhausted());
                 assert_eq!(cursor.remaining, 0);
             }
             Err(e) => {
@@ -663,7 +663,7 @@ mod fast_forward_cursor_bounds {
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, u16::MAX);
         match result {
             Ok(cursor) => {
-                assert!(cursor.exhausted);
+                assert!(cursor.is_exhausted());
                 assert!(cursor.attempt <= p.max_attempts);
             }
             Err(e) => {
@@ -700,7 +700,7 @@ mod fast_forward_cursor_bounds {
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 10);
         match result {
             Ok(cursor) => {
-                assert!(cursor.exhausted);
+                assert!(cursor.is_exhausted());
             }
             Err(e) => {
                 let msg = format!("unexpected error: {e:?}");
@@ -735,7 +735,7 @@ mod fast_forward_cursor_bounds {
         let result = p.fast_forward_cursor(MAX_INTERVAL, start, 3);
         match result {
             Ok(cursor) => {
-                assert!(!cursor.exhausted);
+                assert!(!cursor.is_exhausted());
                 assert_eq!(cursor.attempt, 4);
                 assert_eq!(cursor.remaining, 1);
             }
@@ -748,7 +748,7 @@ mod fast_forward_cursor_bounds {
         let result2 = p.fast_forward_cursor(MAX_INTERVAL, start, 4);
         match result2 {
             Ok(cursor) => {
-                assert!(cursor.exhausted);
+                assert!(cursor.is_exhausted());
             }
             Err(e) => {
                 let msg = format!("unexpected error: {e:?}");
@@ -1878,7 +1878,7 @@ mod retry_policy_limits_validation {
         assert_eq!(cursor.attempt, 1);
         assert_eq!(cursor.remaining, 7);
         assert_eq!(cursor.delay_ms, 0);
-        assert!(!cursor.exhausted);
+        assert!(!cursor.is_exhausted());
     }
 
     #[test]
@@ -1886,7 +1886,7 @@ mod retry_policy_limits_validation {
         let cursor = EngineRetryPolicy::NEVER.initial_cursor();
         assert_eq!(cursor.attempt, 1);
         assert_eq!(cursor.remaining, 1);
-        assert!(!cursor.exhausted);
+        assert!(!cursor.is_exhausted());
     }
 
     #[test]

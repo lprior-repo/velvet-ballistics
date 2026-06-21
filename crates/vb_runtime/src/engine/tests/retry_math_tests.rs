@@ -37,7 +37,7 @@ fn initial_cursor_max_attempts_zero_is_exhausted() {
     );
     assert_eq!(cursor.delay_ms, 0, "initial delay should be 0");
     assert!(
-        cursor.exhausted,
+        cursor.is_exhausted(),
         "cursor should be exhausted when max_attempts=0"
     );
 }

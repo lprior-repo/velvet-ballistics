@@ -22,8 +22,15 @@ pub struct RetryCursor {
     pub remaining: u16,
     /// Delay that precedes the current retry attempt.
     pub delay_ms: u64,
+}
+
+impl RetryCursor {
     /// True once no further attempts can be scheduled.
-    pub exhausted: bool,
+    /// Derived from [`Self::remaining`] so it cannot drift from the source of truth.
+    #[must_use]
+    pub const fn is_exhausted(self) -> bool {
+        self.remaining == 0
+    }
 }
 
 /// Rejected retry policy or cursor inputs.
@@ -87,7 +94,6 @@ impl RetryPolicy {
             attempt: 1,
             remaining: self.max_attempts,
             delay_ms: 0,
-            exhausted: self.max_attempts == 0,
         }
     }
 
@@ -98,11 +104,11 @@ impl RetryPolicy {
         cursor: RetryCursor,
     ) -> Result<RetryCursor, RetryPolicyMathError> {
         self.validate_cursor(max_interval_ms, cursor)?;
-        if cursor.exhausted || cursor.remaining <= 1 {
+        if cursor.is_exhausted() || cursor.remaining <= 1 {
             return Ok(RetryCursor {
+                attempt: cursor.attempt,
                 remaining: 0,
-                exhausted: true,
-                ..cursor
+                delay_ms: cursor.delay_ms,
             });
         }
         let next_attempt = cursor.attempt.saturating_add(1);
@@ -111,7 +117,6 @@ impl RetryPolicy {
             attempt: next_attempt,
             remaining: cursor.remaining.saturating_sub(1),
             delay_ms: self.delay_after_valid_attempt(max_interval_ms, cursor.attempt),
-            exhausted: false,
         })
     }
 
@@ -123,7 +128,7 @@ impl RetryPolicy {
         count: u16,
     ) -> Result<RetryCursor, RetryPolicyMathError> {
         (0..count).try_fold(cursor, |current, _| {
-            if current.exhausted {
+            if current.is_exhausted() {
                 Ok(current)
             } else {
                 self.next_cursor(max_interval_ms, current)
@@ -152,7 +157,7 @@ impl RetryPolicy {
         if cursor.remaining > self.max_attempts {
             return Err(RetryPolicyMathError::RemainingExceeded);
         }
-        if cursor.exhausted {
+        if cursor.is_exhausted() {
             return Ok(cursor);
         }
         match self.validate_attempt(cursor.attempt) {
