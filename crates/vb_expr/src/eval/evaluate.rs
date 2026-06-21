@@ -68,7 +68,15 @@ pub fn eval_expr_program_with_context(
             .as_ref()
             .get(index)
             .ok_or(ExprError::UnexpectedEof)?;
-        eval_expr_op_with_store(op, &mut stack, slots, constants, accessors, store)?;
+        eval_expr_op_with_store(
+            op,
+            &mut stack,
+            slots,
+            constants,
+            accessors,
+            store,
+            &program.constants,
+        )?;
         index = next_index(index)?;
     }
     finish_stack(&mut stack)
@@ -99,10 +107,11 @@ fn eval_expr_op_with_store(
     constants: &[ConstValue],
     accessors: AccessorContext<'_>,
     store: &mut ValueStore,
+    program_constants: &[ConstValue],
 ) -> ExprResult<()> {
     match op {
         ExprOp::LoadSlot(idx) => eval_load_slot(stack, slots, idx),
-        ExprOp::LoadConst(idx) => eval_load_const(stack, constants, idx),
+        ExprOp::LoadConst(idx) => eval_load_const(stack, constants, program_constants, idx),
         ExprOp::LoadAccessor(idx) => {
             super::accessors::eval_load_accessor(stack, slots, accessors, store, idx)
         }
@@ -148,10 +157,12 @@ fn eval_load_slot(
 fn eval_load_const(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     constants: &[ConstValue],
+    program_constants: &[ConstValue],
     idx: vb_core::ConstIdx,
 ) -> ExprResult<()> {
     let constant = constants
         .get(idx.as_usize())
+        .or_else(|| program_constants.get(idx.as_usize()))
         .ok_or(ExprError::UnexpectedEof)?;
     let value = constant
         .to_slot_value()

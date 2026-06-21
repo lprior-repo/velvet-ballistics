@@ -18,6 +18,9 @@ mod runtime;
 mod state;
 mod transitions;
 
+#[cfg(test)]
+mod tests;
+
 // ---- Capacity boundary re-exports ----
 
 pub use capacity::{

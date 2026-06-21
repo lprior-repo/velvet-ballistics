@@ -155,8 +155,16 @@ fn resume_active_run_returns_error() -> Result<(), RuntimeError> {
     );
     // Either it returns RunNotFound (if removed) or some resumable error
     let result = shard.tick();
-    // Result should be an error since run is not in a resumable state
-    assert!(result.is_err() || shard.run_state_contains(run));
+    // Result must surface NotResumable for the Running run
+    assert!(
+        matches!(result, Err(RuntimeError::NotResumable { .. })),
+        "resume of Running run must surface NotResumable, got {result:?}"
+    );
+    // And the run must remain present in the shard's runtime state map
+    assert!(
+        shard.run_state_contains(run),
+        "run must still exist in shard state after failed resume"
+    );
     Ok(())
 }
 

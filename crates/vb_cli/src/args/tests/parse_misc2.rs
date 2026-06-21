@@ -499,11 +499,9 @@ fn positional_str_beyond_bounds_returns_missing_argument() {
 
 #[test]
 fn positional_str_exact_last_index_succeeds() {
-    let result = positional_str(&args(&["one", "two"]), 1, "arg");
-    assert!(result.is_ok());
-    if let Ok(val) = result {
-        assert_eq!(val, "two");
-    }
+    let val = positional_str(&args(&["one", "two"]), 1, "arg")
+        .expect("positional_str on 'one two' at last index must succeed");
+    assert_eq!(val, "two");
 }
 
 #[test]

@@ -703,7 +703,13 @@ fn rejected_artifacts_produce_no_admission_record() {
         EventSeq::ZERO,
     );
 
-    assert!(result.is_err());
+    assert!(
+        matches!(
+            result,
+            Err(AdmissionError::ArtifactNotFound { digest: found }) if found == digest
+        ),
+        "missing artifact must surface ArtifactNotFound with the queried digest, got {result:?}"
+    );
     // Err means no RunAdmission was produced — the admission gate blocked it.
     // This verifies the spec's invariant: rejected → !admitted, !acknowledged, !run_state_inserted.
 }

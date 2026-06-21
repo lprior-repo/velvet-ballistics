@@ -172,7 +172,10 @@ fn lru_ring_property_capacity_overflow_then_recover() {
     ring.insert(RunId::new(3), TimerTick::new(0)).unwrap();
     // At capacity.
     let r = ring.insert(RunId::new(4), TimerTick::new(0));
-    assert!(r.is_err(), "must fail when full");
+    assert!(
+        matches!(r, Err(crate::RuntimeError::TerminalRunsLruFull { .. })),
+        "capacity overflow must surface TerminalRunsLruFull, got {r:?}"
+    );
     assert_eq!(ring.len(), 3);
     // Remove one and try again — must succeed.
     ring.remove(&RunId::new(2))

@@ -615,10 +615,19 @@ fn readonly_journal_is_debug() {
 }
 
 #[test]
-fn readonly_journal_declared_keyspaces_returns_ten() {
+fn readonly_journal_declared_keyspaces_returns_eleven() {
     // Static method — proves the type is accessible.
     let spaces = ReadOnlyJournal::declared_keyspaces();
-    assert_eq!(spaces.len(), 10);
+    assert_eq!(
+        spaces.len(),
+        11,
+        "declared_keyspaces must return exactly 11 entries (10 historical + run_seq_gap from wave-5/6)"
+    );
+    let names: Vec<&str> = spaces.to_vec();
+    assert!(
+        names.contains(&"run_seq_gap"),
+        "declared_keyspaces must include wave-5/6 run_seq_gap keyspace"
+    );
     // Verify all keyspace names are non-empty (cold path — no JSON/YAML).
     for &name in &spaces {
         assert!(!name.is_empty(), "keyspace name must not be empty");

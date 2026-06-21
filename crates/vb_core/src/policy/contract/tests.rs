@@ -1,4 +1,5 @@
 use super::*;
+use crate::policy::profile_validation_error::ProfileValidationError;
 
 fn strict_config() -> RuntimeLimitsConfig {
     RuntimeLimitsConfig {
@@ -153,7 +154,13 @@ fn test_new_validates_zero_active_runs() {
     let mut config = strict_config();
     config.active_runs = 0;
     let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
-    assert!(result.is_err());
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "active_runs", value: 0, .. })
+        ),
+        "zero active_runs must surface ExceedsHardLimit with field=active_runs, value=0, got {result:?}"
+    );
 }
 
 #[test]
@@ -161,5 +168,11 @@ fn test_new_validates_zero_retry_attempts() {
     let mut config = strict_config();
     config.retry_attempts = 0;
     let result = RuntimeLimitsProfile::new(ProfileName::Strict, config);
-    assert!(result.is_err());
+    assert!(
+        matches!(
+            result,
+            Err(ProfileValidationError::ExceedsHardLimit { field: "retry_attempts", value: 0, .. })
+        ),
+        "zero retry_attempts must surface ExceedsHardLimit with field=retry_attempts, value=0, got {result:?}"
+    );
 }

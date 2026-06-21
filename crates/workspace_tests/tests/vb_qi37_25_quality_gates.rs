@@ -247,7 +247,7 @@ fn stderr(output: &Output) -> String {
 // not provide matching vb_core manifests, so the assertion for the
 // vb_cli package name error is drowned out by unrelated drift errors.
 #[test]
-#[ignore]
+#[ignore = "BLOCKED: check-workspace-assertions reports vb_core drift errors in addition to the vb_cli package-name error; test assertion needs to filter or setup needs to provide matching vb_core manifests"]
 fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     let dir = workspace()?;
     write_manifest(dir.path(), "crates/vb_cli", "velvet-ballistics")?;

@@ -502,6 +502,49 @@ fn submit_artifact_journaled_artifact_is_readable_in_place() -> Result<(), Strin
 }
 
 // =========================================================================
+// vb-1rqz7.36 / SA-008 — canonical ResourceContract fits the policy buffer
+// =========================================================================
+
+#[test]
+fn policy_buffer_fits_canonical_resource_contract() {
+    use vb_core::workflow::ResourceContract;
+
+    // A fully-populated ResourceContract: every numeric field at the
+    // upper bound (the contract itself enforces these), bool at true.
+    let contract = ResourceContract {
+        max_steps: u16::MAX,
+        max_slots: u16::MAX,
+        max_constants: u16::MAX,
+        max_accessors: u16::MAX,
+        max_expressions: u16::MAX,
+        max_expr_stack: u8::MAX,
+        max_step_budget_per_tick: u64::MAX,
+        max_transitions_per_tick: u64::MAX,
+        max_input_bytes: u32::MAX,
+        max_output_bytes: u32::MAX,
+        max_blob_bytes: u64::MAX,
+        max_ipc_payload_bytes: u32::MAX,
+        max_retry_attempts: u16::MAX,
+        max_fanout: u16::MAX,
+        max_collect_items: u32::MAX,
+        max_queue_depth: u32::MAX,
+        max_journal_batch_bytes: u32::MAX,
+        allows_secret_results: true,
+    };
+
+    let bound = super::policy::resource_contract_policy_bytes_bound();
+    let serialized =
+        postcard::to_allocvec(&contract).expect("postcard encode must succeed for canonical contract");
+
+    assert!(
+        serialized.len() <= bound,
+        "vb-1rqz7.36: serialized ResourceContract ({} bytes) must fit in policy buffer ({} bytes)",
+        serialized.len(),
+        bound
+    );
+}
+
+// =========================================================================
 // verify_persisted_artifact_present: typed absent-key (vb-1rqz7.24 / SA-015)
 // =========================================================================
 

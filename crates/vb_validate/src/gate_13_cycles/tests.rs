@@ -201,6 +201,7 @@ fn accepts_linear_chain_through_eval_expr() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(
         crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
@@ -312,6 +313,7 @@ fn rejects_cycle_through_eval_expr() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),
@@ -359,6 +361,7 @@ fn rejects_three_slot_cycle_through_eval_expr() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(2))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         crate::gate_13_cycles::validate_gate_13_no_slot_cycles(&parts),

@@ -342,6 +342,7 @@ proptest! {
             .map(|_| ExprProgram {
                 ops: vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
                 max_stack: 1,
+                constants: Box::default(),
             })
             .collect();
         let mut parts = nop_parts(
@@ -358,6 +359,7 @@ proptest! {
             .map(|_| ExprProgram {
                 ops: vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
                 max_stack: 1,
+                constants: Box::default(),
             })
             .collect();
         let mut parts_over = nop_parts(

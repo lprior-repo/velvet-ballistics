@@ -528,6 +528,7 @@ fn eval_production_bytecode(
     let owned_program = ExprProgram {
         ops: program_boxed,
         max_stack: program.max_stack,
+        constants: Box::new([]),
     };
     let constants_owned: Box<[ConstValue]> = constants.to_vec().into_boxed_slice();
     let parts = WorkflowParts {

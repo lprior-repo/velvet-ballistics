@@ -93,6 +93,7 @@ fn gate_10_accepts_valid_choose() {
     parts.expressions = Box::new([vb_core::workflow::ExprProgram {
         ops: Box::new([vb_core::workflow::ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::new([]),
     }]);
     parts.nodes = Box::new([
         CompiledNode {
@@ -241,6 +242,7 @@ fn gate_10_accepts_valid_eval_expr() {
     parts.expressions = Box::new([vb_core::workflow::ExprProgram {
         ops: Box::new([vb_core::workflow::ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::new([]),
     }]);
     parts.nodes = Box::new([CompiledNode {
         id: StepIdx::new(0),

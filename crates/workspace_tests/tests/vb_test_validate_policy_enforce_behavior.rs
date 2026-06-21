@@ -650,6 +650,7 @@ fn gate_10_policy_rule_rejects_choose_expr_out_of_range() {
         vec![ExprProgram {
             ops: Box::new([]),
             max_stack: 0,
+            constants: Box::default(),
         }],
         Vec::new(),
         Vec::new(),
@@ -1034,6 +1035,7 @@ fn gate_13_policy_rule_accepts_self_read_via_expression() {
         vec![ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::ZERO)]),
             max_stack: 1,
+            constants: Box::default(),
         }],
         Vec::new(),
         Vec::new(),
@@ -1502,6 +1504,7 @@ fn bypass_attempt_rejects_cycle_through_expression() {
         vec![ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
             max_stack: 1,
+            constants: Box::default(),
         }],
         Vec::new(),
         Vec::new(),

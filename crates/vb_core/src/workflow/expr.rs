@@ -4,6 +4,7 @@
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{AccessorIdx, ConstIdx, SlotIdx};
 use crate::limits::{MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK};
+use crate::value::ConstValue;
 use serde::{Deserialize, Serialize};
 
 /// Bounded postfix expression bytecode program.
@@ -13,25 +14,53 @@ pub struct ExprProgram {
     pub ops: Box<[ExprOp]>,
     /// Maximum stack entries required by this program.
     pub max_stack: u8,
+    /// Inline constant pool attached to this program.
+    ///
+    /// `LoadConst(idx)` resolves `idx` against this pool first, falling
+    /// back to the runtime-supplied `constants` slice in `eval_*`.
+    /// Embedding the pool here lets the program be evaluated without
+    /// an external constants vector when the caller does not provide one.
+    #[serde(default)]
+    pub constants: Box<[ConstValue]>,
 }
 
 impl ExprProgram {
     /// Builds a program and computes the exact required stack depth.
     pub fn try_from_ops(ops: Box<[ExprOp]>) -> CoreResult<Self> {
         let max_stack = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK)?;
-        Ok(Self { ops, max_stack })
+        Ok(Self {
+            ops,
+            max_stack,
+            constants: Box::default(),
+        })
     }
 
     /// Builds a program from untrusted parts and rejects stale stack metadata.
     pub fn try_from_parts(ops: Box<[ExprOp]>, max_stack: u8) -> CoreResult<Self> {
         let computed = check_expr_stack_bound(&ops, max_stack)?;
         if computed == max_stack {
-            Ok(Self { ops, max_stack })
+            Ok(Self {
+                ops,
+                max_stack,
+                constants: Box::default(),
+            })
         } else {
             Err(CoreError::InvalidCompiledWorkflow {
                 reason: "expression max_stack mismatch",
             })
         }
+    }
+
+    /// Builds a program with an attached inline constant pool.
+    pub fn try_from_parts_with_constants(
+        ops: Box<[ExprOp]>,
+        max_stack: u8,
+        constants: Box<[ConstValue]>,
+    ) -> CoreResult<Self> {
+        Self::try_from_parts(ops, max_stack).map(|mut program| {
+            program.constants = constants;
+            program
+        })
     }
 }
 

@@ -30,22 +30,15 @@ fn any_wire_command() -> impl Strategy<Value = IpcCommand> {
     })
 }
 
-/// Restrict generated flags to those the production decoder will accept.
-///
-/// GAP-5: `IpcFrameHeader::decode` now rejects flag words outside the
-/// command-specific valid mask or with reserved global bits set. The
-/// proptest strat must constrain `flags` accordingly. Returns true iff
-/// `raw` would pass the production `CommandFlags::validate` check for
-/// the given command.
-fn flags_valid_for_command(command: IpcCommand, raw: u16) -> bool {
-    let mask = vb_ipc::CommandFlags::valid_mask(command);
-    (raw & vb_ipc::RESERVED_GLOBAL_MASK) == 0 && (raw & !mask) == 0
-}
-
 /// Joint strategy: produces a command and a flag word valid for that
 /// command. Used in proptest patterns where `flags` must depend on
 /// the preceding `command` strategy value (which the `proptest!` macro
 /// does not allow referencing inside a per-argument strategy).
+///
+/// GAP-5: `IpcFrameHeader::decode` now rejects flag words outside the
+/// command-specific valid mask or with reserved global bits set. The
+/// proptest strat constrains `flags` to the command's valid mask only
+/// so the production decoder accepts the generated header.
 fn any_command_and_valid_flags() -> impl Strategy<Value = (IpcCommand, u16)> {
     any_wire_command().prop_flat_map(|command| {
         let mask = vb_ipc::CommandFlags::valid_mask(command);

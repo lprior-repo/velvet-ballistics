@@ -83,6 +83,7 @@ fn accepts_choose_with_valid_branches() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
 }
@@ -149,6 +150,7 @@ fn accepts_eval_expr_with_valid_index() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
 }
@@ -236,6 +238,7 @@ fn rejects_choose_target_out_of_range() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_10_node_kind_specific(&parts),
@@ -268,6 +271,7 @@ fn rejects_choose_otherwise_out_of_range() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_10_node_kind_specific(&parts),

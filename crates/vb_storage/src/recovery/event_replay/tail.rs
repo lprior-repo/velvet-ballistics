@@ -19,6 +19,19 @@ fn decode_action_envelope_slot(
     })
 }
 
+/// Decrements `parallel_in_flight` for a tail-event completion.
+///
+/// vb-1rqz7.34 / SR-009: snapshot-plus-tail hydration starts from a
+/// snapshot whose `parallel_in_flight` baseline is not persisted, so the
+/// counter may legitimately reach zero before every scheduled action has
+/// produced a completion event (e.g. actions scheduled before the
+/// snapshot whose completions arrived after the snapshot). Rather than
+/// failing closed on an underflow that would surface as a divergence
+/// error in well-formed input, we make the lenient policy explicit: a
+/// zero counter is treated as a no-op, while a *negative* result from
+/// `sub_parallel_in_flight` (which is impossible without a logic bug,
+/// since `parallel_in_flight() == 0` short-circuits) is still rejected
+/// as `ReplayDivergence`.
 fn sub_tail_parallel_in_flight(frame: &mut RunFrame, step: StepIdx) -> RecoveryResult<()> {
     if frame.parallel_in_flight() == 0 {
         return Ok(());

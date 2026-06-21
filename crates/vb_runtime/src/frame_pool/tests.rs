@@ -144,7 +144,7 @@ fn frame_pool_release_returns_frame_to_pool() {
     assert_eq!(pool.available(), 1);
     // Then it can be re-acquired
     let reused = pool.take(RunId::new(2), StepIdx::new(0));
-    assert_eq!(reused.is_ok(), true);
+    assert!(matches!(reused, Ok(f) if f.run_id() == RunId::new(2)));
 }
 
 #[test]
@@ -241,7 +241,7 @@ fn frame_pool_multiple_release_and_take_cycle() {
     assert_eq!(pool.available(), 2);
     let recycled = pool.take(RunId::new(3), StepIdx::new(0));
     // Then the recycled frame is available
-    assert_eq!(recycled.is_ok(), true);
+    assert!(matches!(recycled, Ok(f) if f.run_id() == RunId::new(3)));
     assert_eq!(pool.available(), 1);
 }
 
@@ -256,9 +256,9 @@ fn frame_pool_new_with_different_step_counts() {
     let r10 = pool_10.take(RunId::new(2), StepIdx::new(0));
     let r100 = pool_100.take(RunId::new(3), StepIdx::new(0));
     // Then all succeed
-    assert_eq!(r1.is_ok(), true);
-    assert_eq!(r10.is_ok(), true);
-    assert_eq!(r100.is_ok(), true);
+    assert!(matches!(r1, Ok(f) if f.run_id() == RunId::new(1)));
+    assert!(matches!(r10, Ok(f) if f.run_id() == RunId::new(2)));
+    assert!(matches!(r100, Ok(f) if f.run_id() == RunId::new(3)));
 }
 
 #[test]
@@ -270,8 +270,8 @@ fn frame_pool_new_with_different_slot_counts() {
     let r1 = pool_1.take(RunId::new(1), StepIdx::new(0));
     let r8 = pool_8.take(RunId::new(2), StepIdx::new(0));
     // Then all succeed
-    assert_eq!(r1.is_ok(), true);
-    assert_eq!(r8.is_ok(), true);
+    assert!(matches!(r1, Ok(f) if f.run_id() == RunId::new(1)));
+    assert!(matches!(r8, Ok(f) if f.run_id() == RunId::new(2)));
 }
 
 #[test]
@@ -348,7 +348,7 @@ fn frame_pool_capacity_one_works() {
     assert_eq!(pool.is_empty(), false);
     // And taking again succeeds
     let again = pool.take(RunId::new(2), StepIdx::new(0));
-    assert_eq!(again.is_ok(), true);
+    assert!(matches!(again, Ok(f) if f.run_id() == RunId::new(2)));
     assert_eq!(pool.available(), 0);
 }
 

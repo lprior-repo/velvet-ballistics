@@ -22,13 +22,20 @@ pub fn eval_load_slot(
 }
 
 /// Loads a constant value onto the evaluation stack.
+///
+/// Resolves `idx` against the caller-supplied `constants` slice first,
+/// then falls back to the program-attached `program_constants` pool so
+/// `ExprProgram`s produced by `compile_expr_to_bytecode` evaluate
+/// without requiring an external constants vector.
 pub fn eval_load_const(
     stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
     constants: &[ConstValue],
+    program_constants: &[ConstValue],
     idx: ConstIdx,
 ) -> ExprResult<()> {
     let constant = constants
         .get(idx.as_usize())
+        .or_else(|| program_constants.get(idx.as_usize()))
         .ok_or(ExprError::UnexpectedEof)?;
     let value = constant
         .to_slot_value()

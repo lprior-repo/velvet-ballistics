@@ -214,12 +214,9 @@ fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() -> Result<(), RuntimeEr
     let f1 = pool.take(RunId::new(1), vb_core::ids::StepIdx::ZERO);
     let f2 = pool.take(RunId::new(2), vb_core::ids::StepIdx::ZERO);
     let f3 = pool.take(RunId::new(3), vb_core::ids::StepIdx::ZERO);
-    assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed");
-    assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed");
-    assert!(
-        f3.is_ok(),
-        "BH-SHD-07: f3 should succeed beyond pool capacity"
-    );
+    assert!(matches!(f1, Ok(f) if f.run_id() == RunId::new(1)));
+    assert!(matches!(f2, Ok(f) if f.run_id() == RunId::new(2)));
+    assert!(matches!(f3, Ok(f) if f.run_id() == RunId::new(3)));
     Ok(())
 }
 

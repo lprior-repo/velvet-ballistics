@@ -515,6 +515,7 @@ fn bdd_g07_accepts_stack_depth_64() {
     parts.expressions = Box::new([ExprProgram {
         ops: ops.into_boxed_slice(),
         max_stack: 64,
+        constants: Box::default(),
     }]);
     // When: validate_gate_07_expression_stack_depth is called
     let result = vb_validate::gates::validate_gate_07_expression_stack_depth(&parts);
@@ -530,6 +531,7 @@ fn bdd_g07_rejects_stack_depth_65() {
     parts.expressions = Box::new([ExprProgram {
         ops: ops.into_boxed_slice(),
         max_stack: 65,
+        constants: Box::default(),
     }]);
     // When: validate_gate_07_expression_stack_depth is called
     let result = vb_validate::gates::validate_gate_07_expression_stack_depth(&parts);
@@ -547,6 +549,7 @@ fn bdd_g07_computes_stack_depth_without_overflow() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     // When: stack depth computation runs
     let result = vb_validate::gates::validate_gate_07_expression_stack_depth(&parts);

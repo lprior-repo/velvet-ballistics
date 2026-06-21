@@ -590,7 +590,7 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
 // InvalidActionCompletion during handle_action_completion because the
 // preflight validation rejects a valid ticket.
 #[test]
-#[ignore]
+#[ignore = "BLOCKED: action completion preflight rejects valid ticket with InvalidActionCompletion; pre-existing vb_runtime bug"]
 fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal).expect("runtime config is valid");

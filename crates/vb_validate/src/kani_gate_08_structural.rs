@@ -142,6 +142,7 @@ fn bounded_structural_expressions() -> Box<[ExprProgram]> {
         Box::new([ExprProgram {
             ops: Box::new([]),
             max_stack: kani::any(),
+            constants: Box::default(),
         }])
     } else {
         Box::new([])
@@ -427,6 +428,7 @@ fn kani_gate_08_expressions_with_accessor_refs() {
                 vb_core::workflow::ExprOp::Eq,
             ]),
             max_stack: 1,
+            constants: Box::default(),
         }]),
         accessors: Box::new([
             AccessorProgram {

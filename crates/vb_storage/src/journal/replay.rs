@@ -1,9 +1,11 @@
 use crate::{
-    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
+    constants::{
+        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_SNAPSHOT_BYTES,
+    },
     error::JournalError,
     events::JournalEvent,
     journal::{EventReplayLimit, FjallJournal},
-    keys::{run_event_key, run_prefix_key},
+    keys::{run_event_key, run_prefix_key, run_snapshot_key},
     types::EventSeq,
 };
 use fjall::Readable;
@@ -105,6 +107,18 @@ impl FjallJournal {
     ) -> Result<Vec<JournalEvent>, JournalError> {
         let (start_seq, first_event) = match self.latest_durable_snapshot_seq(run)? {
             Some(seq) => {
+                // vb-XXX / SR-013: validate the latest snapshot's value before
+                // trusting its seq for the tail-replay boundary. A corrupt
+                // snapshot (bad magic, payload digest mismatch, or postcard
+                // decode failure) must fail closed instead of silently
+                // skipping pre-snapshot events and replaying from a stale seq.
+                let key = run_snapshot_key(run, seq)?;
+                let _: Option<crate::recovery::RunSnapshot> = self.decode_optional(
+                    &self.run_snapshot,
+                    key.as_slice(),
+                    MAGIC_SNAPSHOT,
+                    MAX_SNAPSHOT_BYTES,
+                )?;
                 let tail_start = crate::codec::next_seq(seq)?;
                 (tail_start, tail_start)
             }

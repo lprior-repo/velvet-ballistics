@@ -2138,7 +2138,10 @@ fn recover_runtime_summary_handles_empty_journal() {
 
     let journal = open_journal(&dir);
     let result = recover_runtime_summary(&journal, run);
-    assert!(result.is_err(), "empty journal should return error");
+    assert!(
+        matches!(result, Err(RecoveryError::NoRecoveryData { run: found }) if found == run),
+        "empty journal must yield NoRecoveryData for run {run:?}, got {result:?}"
+    );
 }
 
 #[test]
@@ -2725,7 +2728,9 @@ fn watermark_preserves_snapshot_data_beyond_tail() {
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(result.is_ok(), "tail after watermark should succeed");
+    let frame = result.expect("tail after watermark must hydrate");
+    assert_eq!(frame.pc(), StepIdx::ZERO, "pc must equal first_step (StepIdx::ZERO)");
+    assert_eq!(frame.run_id(), run, "frame.run_id must round-trip");
 }
 
 #[test]
@@ -2840,7 +2845,14 @@ fn check_compiled_ir_digest_accepts_matching_digest() {
 
     let digest = test_digest(0xD1);
     let result = check_compiled_ir_digest(digest, digest);
-    assert!(result.is_ok(), "matching digests should succeed");
+    assert!(matches!(result, Ok(())), "matching digests must yield Ok(()), got {result:?}");
+
+    let divergent = test_digest(0xD2);
+    let divergent_result = check_compiled_ir_digest(digest, divergent);
+    assert!(
+        divergent_result.is_err(),
+        "divergent-input sub-assertion: mismatched digests must surface Err, got {divergent_result:?}"
+    );
 }
 
 #[test]
@@ -2849,7 +2861,11 @@ fn check_compiled_ir_digest_rejects_mismatch() {
     let found = test_digest(0xE2);
 
     let result = check_compiled_ir_digest(expected, found);
-    assert!(result.is_err(), "mismatched digests should be rejected");
+    assert!(
+        matches!(result, Err(RecoveryError::CompiledIrDigestMismatch { expected: exp, found: got })
+            if exp == expected && got == found),
+        "mismatch must surface CompiledIrDigestMismatch with both fields, got {result:?}"
+    );
 }
 
 #[test]
@@ -2880,7 +2896,15 @@ fn recover_runtime_summary_returns_recovery_hydration() {
 
     let journal = open_journal(&dir);
     let result = recover_runtime_summary(&journal, run);
-    assert!(result.is_ok(), "should return RecoveryHydration");
+    let hydration = result.expect("recovery must succeed");
+    assert!(
+        matches!(hydration, RecoveryHydration::Summary(_)),
+        "expected Summary hydration, got {hydration:?}"
+    );
+    let RecoveryHydration::Summary(summary) = hydration else {
+        unreachable!("matches! above already gated this branch");
+    };
+    assert_eq!(summary.run, run, "summary.run must round-trip");
 }
 
 #[test]

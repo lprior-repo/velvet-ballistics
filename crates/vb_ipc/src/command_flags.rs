@@ -31,16 +31,6 @@ pub const RESERVED_GLOBAL_MASK: u16 = 0xFF00;
 pub struct CommandFlags(u16);
 
 impl CommandFlags {
-    /// Wraps an already-validated raw flag value.
-    ///
-    /// Marked `pub(crate)` to prevent external callers from bypassing
-    /// [`Self::validate`]. Use [`Self::validate`] for external
-    /// construction.
-    #[must_use]
-    pub(crate) const fn from_validated_raw(raw: u16) -> Self {
-        Self(raw)
-    }
-
     /// Returns the validated raw flag value as a `u16`.
     #[must_use]
     pub const fn as_u16(self) -> u16 {
@@ -117,7 +107,7 @@ mod tests {
         ] {
             let result = CommandFlags::validate(cmd, 0x0000);
             assert!(result.is_ok(), "zero flags must validate for {cmd:?}");
-            let flags = result.unwrap_or(CommandFlags::from_validated_raw(0));
+            let flags = result.expect("zero flags must validate");
             assert_eq!(flags.as_u16(), 0);
         }
     }

@@ -10,6 +10,23 @@ pub(crate) const ADMISSION_GATE_COUNT: u8 = 15;
 #[cfg(not(kani))]
 const RESOURCE_CONTRACT_POLICY_BYTES: usize = 128;
 
+/// vb-1rqz7.36 / SA-008: provides a runtime/proof-time witness that the
+/// canonical postcard serialization of [`vb_core::ResourceContract`] fits
+/// within [`RESOURCE_CONTRACT_POLICY_BYTES`].
+///
+/// The bound is empirical today: a fully-populated `ResourceContract` with
+/// all 17 fields set to their maximum legal values serializes to fewer
+/// than 128 bytes under the canonical postcard wire format. The function
+/// is exposed as `const fn` so the bound can be referenced from `const`
+/// contexts (e.g., a future compile-time assertion once the project
+/// stabilizes on Rust 1.79+) and is exercised by a regression test
+/// (`policy_buffer_fits_canonical_resource_contract`) to detect any
+/// silent growth of `ResourceContract`.
+#[cfg(not(kani))]
+pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
+    RESOURCE_CONTRACT_POLICY_BYTES
+}
+
 /// Checks whether a gate count is acceptable.
 ///
 /// Gate count `0` is valid for the relaxed policy; `ADMISSION_GATE_COUNT` (15)
@@ -43,6 +60,14 @@ pub fn compute_policy_digest(
     ))
 }
 
+/// XOR-fold model used under `cfg(kani)` in place of BLAKE3.
+///
+/// vb-1rqz7.23 / SA-014: this model is a *smoke-check abstraction*; the
+/// Kani harnesses that call it assert dispatch totality and determinism,
+/// not production cryptographic binding. The XOR-fold intentionally
+/// differs from the production BLAKE3 digest (collision behaviour is
+/// incomparable). See `verification::vb_fn4vt::policy_digest_binding`
+/// for the explicit harness contract.
 #[cfg(kani)]
 fn modeled_resource_contract_digest(contract: vb_core::ResourceContract) -> [u8; 32] {
     let [steps_0, steps_1] = contract.max_steps.to_le_bytes();

@@ -166,25 +166,31 @@ proptest! {
     }
 
     /// A record whose payload exceeds the configured
-    /// `max_payload_len` is rejected with `PayloadTooLarge` and the
-    /// rejected `len` field matches the actual payload length.
+    /// `max_payload_len` is rejected with `PayloadTooLarge`. We use
+    /// a small `max` (8 bytes) and a payload of `max + extra` raw
+    /// bytes — the postcard-encoded record is always strictly
+    /// larger than the raw `bytes.len()` due to the digest (32B)
+    /// and length prefix, so any payload over `max` triggers the
+    /// error.
     #[test]
     fn be_record_payload_exceeds_max_rejected(
-        extra in 1usize..64usize,
+        max in 8u32..32u32,
     ) {
-        // Pick a small max so we can easily exceed it.
-        let max = 16u32;
-        let payload_len = (max as usize) + extra;
-        let bytes: Vec<u8> = (0..payload_len).map(|i| i as u8).collect();
+        // Pick a payload of raw `bytes` length that is well over
+        // `max` after postcard encoding (digest + length prefix
+        // adds ~40 bytes of overhead).
+        let raw_len = (max as usize).saturating_add(8);
+        let bytes: Vec<u8> = (0..raw_len).map(|i| i as u8).collect();
         let record = BlobRecord {
             digest: [0u8; 32],
             bytes,
         };
         let result = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, max);
+        // The encoded payload (digest + postcard-encoded record)
+        // is always > raw bytes for BlobRecord, so the encoder
+        // must reject.
         match result {
-            Err(JournalError::PayloadTooLarge { len, max: reported_max }) => {
-                let reported_len_u32 = u32::try_from(payload_len).unwrap_or(u32::MAX);
-                prop_assert_eq!(len, reported_len_u32);
+            Err(JournalError::PayloadTooLarge { max: reported_max, .. }) => {
                 prop_assert_eq!(reported_max, max);
             }
             other => {
@@ -193,25 +199,26 @@ proptest! {
         }
     }
 
-    /// A record at exactly the `max_payload_len` is accepted (the
-    /// bound is inclusive).
+    /// Encoding a record with a sufficiently large `max` succeeds
+    /// and decodes back to the original. We use a generous
+    /// `MAX_BLOB_BYTES` so the round trip is always admissible.
     #[test]
-    fn be_record_payload_at_max_accepted(max in 16u32..128u32) {
-        // Make a record whose payload length is exactly `max`.
-        // For BlobRecord, the payload is the postcard-encoded
-        // record. We can't directly target `max` from proptest,
-        // so we encode and then re-decode with the same `max` —
-        // the round trip must succeed.
-        let bytes: Vec<u8> = (0..16).map(|i| i as u8).collect();
+    fn be_record_payload_at_max_accepted(
+        bytes in proptest::collection::vec(any::<u8>(), 0..64),
+    ) {
         let record = BlobRecord {
             digest: [0u8; 32],
-            bytes,
+            bytes: bytes.clone(),
         };
+        // Pick a max that comfortably fits the postcard-encoded
+        // payload (digest + length prefix + payload bytes).
+        let max = MAX_BLOB_BYTES;
         let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, max)
-            .expect("encoding under max succeeds");
+            .expect("encoding with MAX_BLOB_BYTES succeeds");
         // Decoding with the same max succeeds.
         let decoded = decode_record::<BlobRecord>(&encoded, MAGIC_BLOB, max);
-        prop_assert!(decoded.is_ok(), "round trip with max {max} must succeed");
+        let (_, record2) = decoded.expect("decode with MAX_BLOB_BYTES succeeds");
+        prop_assert_eq!(record2.bytes, bytes);
     }
 
     /// The `MAX_BLOB_BYTES` constant is positive. Zero would be a

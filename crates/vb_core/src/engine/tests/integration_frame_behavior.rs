@@ -31,7 +31,12 @@ fn make_frame_with(slots: u16) -> crate::errors::CoreResult<RunFrame> {
 #[test]
 fn frame_creation_valid_config_returns_ok() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(
+        frame,
+        Ok(ref f) if f.run_id() == RunId::new(1)
+            && f.step_count() == 3
+            && f.slot_count() == 2
+    ));
 }
 
 #[test]
@@ -80,7 +85,12 @@ fn frame_creation_first_step_at_exact_step_count_returns_invalid_program_counter
 #[test]
 fn frame_creation_slot_count_zero_is_valid() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 0);
-    assert!(frame.is_ok());
+    assert!(matches!(
+        frame,
+        Ok(ref f) if f.run_id() == RunId::new(1)
+            && f.step_count() == 2
+            && f.slot_count() == 0
+    ));
     let frame = frame.unwrap_or_else(|e| panic!("expected ok: {e:?}"));
     assert_eq!(frame.slot_count(), 0);
 }
@@ -683,7 +693,12 @@ fn increment_executed_many_times_is_monotonic() {
 #[test]
 fn extreme_values_max_slots() {
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, u16::MAX);
-    assert!(frame.is_ok());
+    assert!(matches!(
+        frame,
+        Ok(ref f) if f.run_id() == RunId::new(1)
+            && f.step_count() == 2
+            && f.slot_count() == u16::MAX
+    ));
     let frame = frame.unwrap_or_else(|e| panic!("frame: {e:?}"));
     assert_eq!(frame.slot_count(), u16::MAX);
 }
@@ -692,7 +707,12 @@ fn extreme_values_max_slots() {
 fn extreme_values_many_steps() {
     let steps: u16 = 10_000;
     let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, steps, 2);
-    assert!(frame.is_ok());
+    assert!(matches!(
+        frame,
+        Ok(ref f) if f.run_id() == RunId::new(1)
+            && f.step_count() == steps
+            && f.slot_count() == 2
+    ));
     let frame = frame.unwrap_or_else(|e| panic!("frame: {e:?}"));
     assert_eq!(frame.step_count(), steps);
 }
@@ -702,7 +722,12 @@ fn extreme_values_write_read_last_slot() {
     let slot_count: u16 = u16::MAX;
     let frame =
         RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
-    assert!(frame.is_ok());
+    assert!(matches!(
+        frame,
+        Ok(ref f) if f.run_id() == RunId::new(1)
+            && f.step_count() == 2
+            && f.slot_count() == slot_count
+    ));
     let mut frame = frame.unwrap_or_else(|e| panic!("frame: {e:?}"));
     let last_slot = SlotIdx::new(slot_count - 1);
     frame

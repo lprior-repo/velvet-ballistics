@@ -22,27 +22,34 @@ use crate::{
 use crate::journal::FjallJournal;
 
 impl FjallJournal {
-    /// Persists a recovery-stamp record for the given `(run, seq)` pair.
-    ///
-    /// The encoded envelope uses `MAGIC_RECOVERY_STAMP` and the dedicated
-    /// `recovery_stamp` keyspace; the key format is `[0x40][run_id][seq]`.
-    pub fn put_recovery_stamp(
-        &self,
-        run: vb_core::RunId,
-        seq: EventSeq,
-        stamp: RecoveryStampRecord,
-    ) -> Result<(), JournalError> {
-        let key = recovery_stamp_key(run, seq)?;
-        let value = encode_record(
-            MAGIC_RECOVERY_STAMP,
-            crate::records::RecordKind::RecoveryStamp,
-            seq.get(),
-            &stamp,
-            MAX_RECOVERY_STAMP_BYTES,
-        )?;
-        self.recovery_stamp.insert(key.to_vec(), value)?;
-        Ok(())
-    }
+/// Persists a recovery-stamp record for the given `(run, seq)` pair.
+///
+/// The encoded envelope uses `MAGIC_RECOVERY_STAMP` and the dedicated
+/// `recovery_stamp` keyspace; the key format is `[0x40][run_id][seq]`.
+///
+/// vb-1rqz7.33 / SR-014: the persisted-stamp contract from
+/// `recover_full_journal` requires that a stamp written after successful
+/// replay survives a crash. We therefore force a strict durability
+/// barrier (`PersistMode::SyncAll`) before returning so the stamp is
+/// observably durable for any subsequent process.
+pub fn put_recovery_stamp(
+    &self,
+    run: vb_core::RunId,
+    seq: EventSeq,
+    stamp: RecoveryStampRecord,
+) -> Result<(), JournalError> {
+    let key = recovery_stamp_key(run, seq)?;
+    let value = encode_record(
+        MAGIC_RECOVERY_STAMP,
+        crate::records::RecordKind::RecoveryStamp,
+        seq.get(),
+        &stamp,
+        MAX_RECOVERY_STAMP_BYTES,
+    )?;
+    self.recovery_stamp.insert(key.to_vec(), value)?;
+    self.persist_strict()?;
+    Ok(())
+}
 
     /// Loads a previously persisted recovery-stamp record for `(run, seq)`.
     ///

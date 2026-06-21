@@ -89,6 +89,7 @@ fn gate_07_accepts_valid_expression() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
 }
@@ -99,6 +100,7 @@ fn gate_07_rejects_stack_mismatch() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 2, // Wrong: actual is 1
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -116,6 +118,7 @@ fn gate_07_rejects_stack_exceeding_contract() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 3, // Exceeds contract of 2
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -129,6 +132,7 @@ fn gate_07_rejects_underflow_binary_op() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::Eq]), // Binary op on empty stack
         max_stack: 0,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -277,6 +281,7 @@ fn gate_10_accepts_expression_const_and_accessor_references_in_range() {
             ExprOp::LoadAccessor(AccessorIdx::new(0)),
         ]),
         max_stack: 2,
+        constants: Box::default(),
     }]);
 
     assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
@@ -288,6 +293,7 @@ fn gate_10_rejects_expression_const_reference_out_of_range() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
 
     assert!(matches!(
@@ -303,6 +309,7 @@ fn gate_10_rejects_expression_accessor_reference_out_of_range() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadAccessor(AccessorIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
 
     assert!(matches!(

@@ -124,6 +124,7 @@ fn accepts_expr_with_valid_slot_ref() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
 }
@@ -195,6 +196,7 @@ fn rejects_expr_load_slot_out_of_range() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(99))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),

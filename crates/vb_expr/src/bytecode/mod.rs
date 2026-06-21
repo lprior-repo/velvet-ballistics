@@ -26,13 +26,15 @@ pub fn compile_expr_to_bytecode(ast: &ExprAst) -> ExprResult<ExprProgram> {
     lower_expr(ast, &mut constants, &mut ops, &resolver)?;
     let op_count = ops.len();
     validate_op_count(&ops)?;
-    ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::BytecodeTooLong {
-        len: op_count,
-        max: MAX_OPS,
-    })
+    finalize_program(ops, op_count, constants)
 }
 
 /// Compiles an expression AST into bytecode using an external constant pool.
+///
+/// The compiled program also stores its inline `constants` pool so it can
+/// be evaluated without an external constants slice when the caller does
+/// not provide one. The caller-supplied `constants` vec still receives
+/// every literal that the lowering pass produces.
 pub fn compile_expr_with_pool(
     ast: &ExprAst,
     constants: &mut Vec<ConstValue>,
@@ -42,9 +44,24 @@ pub fn compile_expr_with_pool(
     lower_expr(ast, constants, &mut ops, &resolver)?;
     let op_count = ops.len();
     validate_op_count(&ops)?;
-    ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::BytecodeTooLong {
-        len: op_count,
-        max: MAX_OPS,
+    finalize_program(ops, op_count, constants.clone())
+}
+
+fn finalize_program(
+    ops: Vec<ExprOp>,
+    op_count: usize,
+    constants: Vec<ConstValue>,
+) -> ExprResult<ExprProgram> {
+    let ops: Box<[ExprOp]> = ops.into_boxed_slice();
+    let max_stack = vb_core::check_expr_stack_bound(&ops, vb_core::limits::MAX_EXPRESSION_STACK)
+        .map_err(|_| ExprError::BytecodeTooLong {
+            len: op_count,
+            max: MAX_OPS,
+        })?;
+    Ok(ExprProgram {
+        ops,
+        max_stack,
+        constants: constants.into_boxed_slice(),
     })
 }
 

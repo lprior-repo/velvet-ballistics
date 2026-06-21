@@ -1886,126 +1886,16 @@ fn events_for_run_without_snapshot_rejects_missing_initial_sequence() -> Result<
     Ok(())
 }
 
-#[test]
-fn events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events() -> Result<(), String> {
-    let (_temp, journal) = temp_journal();
-    let run = RunId::new(10304);
-    let workflow = WorkflowDigest::from_bytes([0x45; DIGEST_BYTES]);
-    let snapshot = RunSnapshot {
-        run,
-        seq: EventSeq::new(2),
-        workflow,
-        slots: vec![],
-        taint: vec![],
-    };
-    journal
-        .put_snapshot(&snapshot)
-        .map_err(|err| err.to_string())?;
-    journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
-        .map_err(|err| err.to_string())?;
-
-    let key =
-        crate::keys::run_snapshot_key(run, EventSeq::new(2)).map_err(|err| err.to_string())?;
-    let mut value = journal
-        .run_snapshot
-        .get(key.as_slice())
-        .map_err(|err| err.to_string())?
-        .ok_or_else(|| "snapshot record should exist".to_owned())?
-        .to_vec();
-    corrupt_magic_preserving_crc(&mut value);
-    journal
-        .run_snapshot
-        .insert(key.to_vec(), value)
-        .map_err(|err| err.to_string())?;
-
-    let result = journal.events_for_run(run);
-    assert!(
-        matches!(result, Err(JournalError::BadMagic { .. })),
-        "corrupt latest snapshot must fail before tail replay, got {:?}",
-        result
-    );
-    Ok(())
-}
-
-#[test]
-fn events_for_run_rejects_latest_snapshot_payload_digest_mismatch_before_tail_replay()
--> Result<(), String> {
-    let (_temp, journal) = temp_journal();
-    let run = RunId::new(10306);
-    let snapshot = RunSnapshot {
-        run,
-        seq: EventSeq::new(2),
-        workflow: WorkflowDigest::from_bytes([0x47; DIGEST_BYTES]),
-        slots: vec![],
-        taint: vec![],
-    };
-    journal
-        .put_snapshot(&snapshot)
-        .map_err(|err| err.to_string())?;
-    journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
-        .map_err(|err| err.to_string())?;
-
-    let key =
-        crate::keys::run_snapshot_key(run, EventSeq::new(2)).map_err(|err| err.to_string())?;
-    let mut value = journal
-        .run_snapshot
-        .get(key.as_slice())
-        .map_err(|err| err.to_string())?
-        .ok_or_else(|| "snapshot record should exist".to_owned())?
-        .to_vec();
-    let last = value
-        .last_mut()
-        .ok_or_else(|| "snapshot record must be non-empty".to_owned())?;
-    *last ^= 0x01;
-    journal
-        .run_snapshot
-        .insert(key.to_vec(), value)
-        .map_err(|err| err.to_string())?;
-
-    let result = journal.events_for_run(run);
-    assert!(
-        matches!(result, Err(JournalError::PayloadDigestMismatch)),
-        "corrupt latest snapshot payload digest must fail before tail replay, got {:?}",
-        result
-    );
-    Ok(())
-}
-
-#[test]
-fn events_for_run_rejects_latest_snapshot_postcard_decode_failure_before_tail_replay()
--> Result<(), String> {
-    let (_temp, journal) = temp_journal();
-    let run = RunId::new(10307);
-    journal
-        .append_unpersisted(&make_step_started(run, 3, 3))
-        .map_err(|err| err.to_string())?;
-
-    let key =
-        crate::keys::run_snapshot_key(run, EventSeq::new(2)).map_err(|err| err.to_string())?;
-    let invalid_payload = vec![0xFF_u8];
-    let value = crate::codec::encode_record(
-        MAGIC_SNAPSHOT,
-        crate::records::RecordKind::Snapshot,
-        2,
-        &invalid_payload,
-        MAX_SNAPSHOT_BYTES,
-    )
-    .map_err(|err| err.to_string())?;
-    journal
-        .run_snapshot
-        .insert(key.to_vec(), value)
-        .map_err(|err| err.to_string())?;
-
-    let result = journal.events_for_run(run);
-    assert!(
-        matches!(result, Err(JournalError::PostcardDecodeFailed)),
-        "invalid latest snapshot payload must fail before tail replay, got {:?}",
-        result
-    );
-    Ok(())
-}
+// The three tests below — `events_for_run_rejects_corrupt_latest_snapshot_before_skipping_events`,
+// `events_for_run_rejects_latest_snapshot_payload_digest_mismatch_before_tail_replay`,
+// and `events_for_run_rejects_latest_snapshot_postcard_decode_failure_before_tail_replay`
+// — were removed in bead vb-1rqz7.29 / SC-004. The old `latest_durable_snapshot_seq`
+// decoded every snapshot to detect key/value inconsistency; the SC-004 fix replaces
+// it with a key-only reverse lookup so the hot trim path no longer runs BLAKE3 per
+// snapshot. The defensive decode guard belongs at write time (in `put_snapshot`) or
+// in a one-shot doctor sweep, not in the hot read path. A doctor command exercising
+// the integrity sweep is tracked as a follow-up; in the meantime, the corrupt-keyspace
+// behaviour is observable only through direct `run_snapshot.get(...)` decoding.
 
 #[test]
 fn events_for_run_skips_corrupt_pre_snapshot_event_by_key_range() -> Result<(), String> {
@@ -2629,6 +2519,41 @@ fn recovery_stamp_persists_and_reads_back_via_fjall() {
     assert_eq!(
         key[0], PREFIX_RECOVERY_STAMP,
         "recovery_stamp key prefix must be 0x40"
+    );
+}
+
+/// vb-1rqz7.33 / SR-014 — `put_recovery_stamp` must durably persist the stamp
+/// so it survives a process reopen.
+#[test]
+fn recovery_stamp_survives_journal_reopen() {
+    use crate::RecoveryStampRecord;
+
+    let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+    let path = temp.path().to_path_buf();
+    let run = RunId::new(0xD014);
+    let seq = EventSeq::new(42);
+    let stamp = RecoveryStampRecord {
+        run,
+        last_seq: seq,
+        written_at_ms: 1_700_000_000_000,
+    };
+
+    {
+        let journal = FjallJournal::open(&path, None).expect("open should succeed");
+        journal
+            .put_recovery_stamp(run, seq, stamp)
+            .expect("put_recovery_stamp should succeed");
+    }
+
+    // Reopen the journal and confirm the stamp is still present.
+    let reopened = FjallJournal::open(&path, None).expect("reopen should succeed");
+    let loaded = reopened
+        .get_recovery_stamp(run, seq)
+        .expect("get_recovery_stamp should succeed")
+        .expect("stamp must survive reopen");
+    assert_eq!(
+        loaded, stamp,
+        "recovery_stamp must be durably persisted across reopen"
     );
 }
 

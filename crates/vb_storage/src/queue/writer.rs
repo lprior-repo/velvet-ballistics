@@ -111,96 +111,119 @@ impl JournalWriterQueue {
     }
 
     /// Flushes at most one configured batch to the journal.
+///
+/// vb-1rqz7.31 / SA-005: this function holds the queue mutex only across
+/// the queue bookkeeping (take + pop) and the post-IO requeue. The slow
+/// journal writes and `persist_strict` fsync now run without holding the
+/// mutex, so concurrent `enqueue_*` calls and other producers do not block
+/// behind the IO.
     pub fn flush_batch(
         &self,
         journal: &FjallJournal,
     ) -> Result<JournalWriterFlushReport, JournalError> {
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
-        let mut batch_len = 0usize;
-        let mut has_strict = false;
+        // 1) Under the mutex: compute batch_len / has_strict and move the
+        //    batch out of the pending deque. Release the mutex before doing
+        //    any journal IO so concurrent enqueues are not serialized
+        //    behind the slow fsync.
+        let mut batch: Vec<QueuedJournalEvent> = {
+            let mut state = self
+                .state
+                .lock()
+                .map_err(|_| JournalError::WriteLockPoisoned)?;
+            let mut batch_len = 0usize;
+            let mut has_strict = false;
 
-        while batch_len < self.batch_size {
-            let Some(item) = state.pending.get(batch_len) else {
-                break;
-            };
-            if item.profile == DurabilityProfile::Strict {
-                has_strict = true;
+            while batch_len < self.batch_size {
+                let Some(item) = state.pending.get(batch_len) else {
+                    break;
+                };
+                if item.profile == DurabilityProfile::Strict {
+                    has_strict = true;
+                }
+                batch_len = batch_len.saturating_add(1);
             }
-            batch_len = batch_len.saturating_add(1);
-        }
 
-        if batch_len == 0 {
-            return Ok(JournalWriterFlushReport {
-                drained: 0,
-                written: 0,
-                pending_after: state.pending.len(),
-            });
-        }
+            if batch_len == 0 {
+                return Ok(JournalWriterFlushReport {
+                    drained: 0,
+                    written: 0,
+                    pending_after: state.pending.len(),
+                });
+            }
 
-        if has_strict {
+            let mut taken = Vec::with_capacity(batch_len);
+            for _ in 0..batch_len {
+                let Some(item) = state.pending.pop_front() else {
+                    // LOGIC INVARIANT: `batch_len` was bounded above by
+                    // `state.pending.len()`, so pop_front cannot return None
+                    // here without an upstream bug. Using WriteLockPoisoned
+                    // is intentional because no dedicated invariant-error
+                    // variant exists.
+                    return Err(JournalError::WriteLockPoisoned);
+                };
+                taken.push(item);
+            }
+            taken
+        }; // lock released here
+
+        let batch_len = batch.len();
+        let has_strict = batch.iter().any(|item| item.profile == DurabilityProfile::Strict);
+
+        // 2) Outside the mutex: write the batch to the journal.
+        let write_result: Result<usize, JournalError> = (|| {
             let mut written = 0usize;
             while written < batch_len {
-                let Some(item) = state.pending.get(written) else {
+                let Some(item) = batch.get(written) else {
                     break;
                 };
                 journal.append_queued_indexed_unpersisted(&item.event)?;
                 written = written.saturating_add(1);
             }
-            journal.persist_strict()?;
-            let mut drained = 0usize;
-            while drained < written {
-                match state.pending.pop_front() {
-                    Some(_) => {
-                        drained = drained.saturating_add(1);
-                    }
-                    // LOGIC INVARIANT: `written` counts items we just indexed via
-                    // `get(index)` on the same deque, so `pop_front` cannot return
-                    // None here unless an upstream bug corrupts the counts.  We
-                    // use WriteLockPoisoned only because no dedicated
-                    // queue-drain-inconsistent variant exists.
-                    None => return Err(JournalError::WriteLockPoisoned),
-                }
+            if has_strict {
+                journal.persist_strict()?;
             }
-            return Ok(JournalWriterFlushReport {
-                drained,
-                written,
-                pending_after: state.pending.len(),
-            });
-        }
+            Ok(written)
+        })();
 
-        let mut written = 0usize;
-        while written < batch_len {
-            let Some(item) = state.pending.get(written) else {
-                break;
-            };
-            journal.append_queued_indexed_unpersisted(&item.event)?;
-            written = written.saturating_add(1);
-        }
-
-        // Non-strict batch: skip persist_strict so journaled items are
-        // flushed lazily by the storage engine rather than forcing fsync.
-        let mut drained = 0usize;
-        while drained < written {
-            match state.pending.pop_front() {
-                Some(_) => {
-                    drained = drained.saturating_add(1);
-                }
-                // LOGIC INVARIANT: `written` counts items we just indexed via
-                // `get(index)` on the same deque, so `pop_front` cannot return
-                // None here unless an upstream bug corrupts the counts.  We
-                // use WriteLockPoisoned only because no dedicated
-                // queue-drain-inconsistent variant exists.
-                None => return Err(JournalError::WriteLockPoisoned),
+        let written = match write_result {
+            Ok(n) => n,
+            Err(e) => {
+                // 3) On failure: re-queue the unwritten items at the front
+                //    of the deque so the next flush_batch attempt sees them
+                //    again. Hold the mutex only long enough to splice.
+                let mut state = self
+                    .state
+                    .lock()
+                    .map_err(|_| JournalError::WriteLockPoisoned)?;
+                let to_requeue: Vec<QueuedJournalEvent> = batch.drain(..).collect();
+                let mut requeued_front: VecDeque<QueuedJournalEvent> =
+                    to_requeue.into_iter().collect();
+                requeued_front.append(&mut state.pending);
+                state.pending = requeued_front;
+                let pending_after = state.pending.len();
+                drop(state);
+                let _ = pending_after;
+                return Err(e);
             }
-        }
+        };
+
+        // 4) Non-strict batches skip persist_strict (already done above)
+        //    and rely on Fjall's normal durability path.
+        let _ = written; // already encoded into Ok arm above
+
+        // 5) Compute pending_after under the mutex for the report.
+        let pending_after = {
+            let state = self
+                .state
+                .lock()
+                .map_err(|_| JournalError::WriteLockPoisoned)?;
+            state.pending.len()
+        };
 
         Ok(JournalWriterFlushReport {
-            drained,
+            drained: written,
             written,
-            pending_after: state.pending.len(),
+            pending_after,
         })
     }
 

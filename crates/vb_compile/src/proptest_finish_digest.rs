@@ -186,6 +186,11 @@ fn set_step_yaml_strategy() -> impl Strategy<Value = String> {
 // (also covers PO-PROPTEST-FINISH-004 / C9 — IR layout independence)
 // ─────────────────────────────────────────────────────────────────
 
+/// Slot indices accepted by the production compiler's resource contract.
+/// Kept as a private helper so the proptest property holds without
+/// relying on a specific `ResourceContract::DEFAULT` constant.
+const VALID_SLOT_RANGE: std::ops::RangeInclusive<u16> = 0..=1023;
+
 proptest! {
     /// Prove that the compiled digest is deterministic:
     /// compiling the same source twice returns the same digest.
@@ -197,9 +202,8 @@ proptest! {
     ///        depend on IR layout)
     /// Proof seeds: PS-FINISH-DIGEST-003, PS-FINISH-DIGEST-007.
     #[test]
-    #[ignore = "proptest: run with --ignored or proptest runner"]
     fn canonical_digest_is_deterministic(
-        slot in any::<u16>(),
+        slot in VALID_SLOT_RANGE,
         id in step_id_strategy(),
     ) {
         let yaml = yaml_with_steps(&format!(
@@ -225,11 +229,10 @@ proptest! {
     /// Contract clause: C1 — Finish Result Value Sensitivity.
     /// Proof seed: PS-FINISH-DIGEST-001.
     #[test]
-    #[ignore = "proptest: run with --ignored or proptest runner"]
     fn finish_result_change_changes_digest_integer(
         id in step_id_strategy(),
-        slot_a in any::<u16>(),
-        slot_b in any::<u16>(),
+        slot_a in VALID_SLOT_RANGE,
+        slot_b in VALID_SLOT_RANGE,
     ) {
         proptest::prop_assume!(slot_a  != slot_b );
 
@@ -249,7 +252,6 @@ proptest! {
 
     /// Prove that changing the Finish result output name changes the digest.
     #[test]
-    #[ignore = "proptest: run with --ignored or proptest runner"]
     fn finish_result_change_changes_digest_string(
         id in step_id_strategy(),
         out_a in step_id_strategy(),
@@ -290,11 +292,10 @@ proptest! {
     /// Contract clause: C3 — Finish Step Position Sensitivity.
     /// Proof seed: PS-FINISH-DIGEST-010.
     #[test]
-    #[ignore = "proptest: run with --ignored or proptest runner"]
     fn finish_position_change_changes_digest(
         id1 in step_id_strategy(),
         id2 in step_id_strategy(),
-        slot in any::<u16>(),
+        slot in VALID_SLOT_RANGE,
     ) {
         proptest::prop_assume!(id1  != id2 );
 

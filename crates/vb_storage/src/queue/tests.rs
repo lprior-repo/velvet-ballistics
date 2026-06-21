@@ -1205,4 +1205,51 @@ mod internal_tests {
             result
         );
     }
+
+    // =========================================================================
+    // vb-1rqz7.31 / SA-005 — flush_batch releases the mutex during journal IO
+    // =========================================================================
+
+    #[test]
+    fn flush_batch_allows_concurrent_enqueue_during_journal_io() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(16, 4, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(0xA005);
+
+        // Pre-fill the queue so flush_batch has a batch to write.
+        for i in 0..4u64 {
+            queue
+                .enqueue_strict(make_event(run, i))
+                .expect("enqueue should succeed");
+        }
+
+        // While flush_batch is in progress (it now releases the mutex around
+        // append_queued_indexed_unpersisted / persist_strict), a concurrent
+        // enqueue must succeed. Before the fix, this would block on the
+        // queue mutex held across the fsync.
+        let producer = std::thread::spawn({
+            let queue = std::sync::Arc::new(queue);
+            let queue_ref = std::sync::Arc::clone(&queue);
+            move || {
+                let result = queue_ref.enqueue_journaled(make_event(run, 4));
+                (queue_ref, result)
+            }
+        });
+
+        let (queue, producer_result) = producer.join().expect("producer thread should not panic");
+        let _ = producer_result; // Result inspected below after flush_batch
+        let flush_report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(flush_report.written, 4);
+        assert_eq!(flush_report.drained, 4);
+
+        // Now confirm the producer's enqueue made it into the queue and
+        // is observable by the next flush.
+        assert!(
+            producer_result.is_ok(),
+            "concurrent enqueue during flush_batch must succeed (mutex was released)"
+        );
+        let report2 = queue.flush_batch(&journal).expect("second flush should succeed");
+        assert_eq!(report2.written, 1);
+    }
 }

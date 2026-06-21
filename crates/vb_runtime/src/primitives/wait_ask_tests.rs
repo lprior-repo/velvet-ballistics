@@ -112,7 +112,10 @@ fn wait_until_returns_error_when_slot_uninitialized() {
     // When calling wait_until
     let result = wait_until(&mut run, deadline);
     // Then it returns an error (slot not initialized)
-    assert_eq!(result.is_err(), true);
+    assert!(matches!(
+        result,
+        Err(vb_core::errors::EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+    ));
 }
 
 #[test]
@@ -123,7 +126,10 @@ fn wait_event_returns_error_when_event_slot_uninitialized() {
     // When calling wait_event
     let result = wait_event(&mut run, event, None);
     // Then it returns an error
-    assert_eq!(result.is_err(), true);
+    assert!(matches!(
+        result,
+        Err(vb_core::errors::EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+    ));
 }
 
 #[test]
@@ -153,7 +159,10 @@ fn ask_returns_error_when_prompt_uninitialized() {
     // When calling ask
     let result = ask(&mut run, prompt, None);
     // Then it returns an error
-    assert_eq!(result.is_err(), true);
+    assert!(matches!(
+        result,
+        Err(vb_core::errors::EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+    ));
 }
 
 #[test]
@@ -187,7 +196,10 @@ fn ask_resume_returns_error_when_answer_uninitialized() {
         StepIdx::ZERO,
     );
     // Then it returns an error
-    assert_eq!(result.is_err(), true);
+    assert!(matches!(
+        result,
+        Err(vb_core::errors::EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0)
+    ));
 }
 
 #[test]
@@ -369,7 +381,10 @@ fn wait_event_returns_error_when_timeout_slot_uninitialized() {
     // When calling wait_event with uninitialized timeout
     let result = wait_event(&mut run, event, Some(timeout));
     // Then it returns an error
-    assert_eq!(result.is_err(), true);
+    assert!(matches!(
+        result,
+        Err(vb_core::errors::EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(1)
+    ));
 }
 
 #[test]
@@ -384,7 +399,10 @@ fn ask_returns_error_when_timeout_slot_uninitialized() {
     // When calling ask with uninitialized timeout
     let result = ask(&mut run, prompt, Some(timeout));
     // Then it returns an error
-    assert_eq!(result.is_err(), true);
+    assert!(matches!(
+        result,
+        Err(vb_core::errors::EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(1)
+    ));
 }
 
 #[test]

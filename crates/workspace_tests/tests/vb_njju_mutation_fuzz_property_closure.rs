@@ -221,7 +221,7 @@ fn test_mutation_gate_fails_when_admission_branch_removed() {
 // directly. Re-ignore until the assertion is updated to match the
 // actual moon task implementation.
 #[test]
-#[ignore]
+#[ignore = "BLOCKED: assert_fuzz_smoke_task_runs_required_targets expects 'cargo fuzz run' substring but the moon fuzz-smoke task uses a for-loop over target binaries; assertion must be updated to match the actual task shape"]
 fn test_fuzz_smoke_runs_yaml_ipc_journal_compiled_ir_targets() -> io::Result<()> {
     let root = workspace_root()?;
     let moon_tasks = fs::read_to_string(root.join(".moon/tasks/all.yml"))?;

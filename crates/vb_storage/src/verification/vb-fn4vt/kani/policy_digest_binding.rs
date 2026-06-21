@@ -4,6 +4,15 @@
 //!
 //! Production binding: calls `admission::compute_policy_digest`, which hashes
 //! the canonical serialization of `CompiledWorkflow::resource_contract()`.
+//!
+//! vb-1rqz7.23 / SA-014: under `cfg(kani)` the production BLAKE3 path is
+//! replaced with an XOR-fold model in `admission::policy::compute_policy_digest`
+//! so Kani can reason without the full hash. The harnesses below exercise
+//! the *production dispatch* path (which itself dispatches to the model under
+//! `cfg(kani)`) and assert deterministic, panic-free behaviour for symbolic
+//! contracts. They MUST NOT be cited as cryptographic-binding proofs; the
+//! proof obligation is "the dispatch is total and deterministic", not "the
+//! production digest is collision-resistant under Kani's model".
 
 use crate::admission::compute_policy_digest;
 use core::mem::ManuallyDrop;

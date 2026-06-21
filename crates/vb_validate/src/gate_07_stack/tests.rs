@@ -45,6 +45,7 @@ fn accepts_valid_single_load_expression() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
 }
@@ -59,6 +60,7 @@ fn accepts_valid_load_and_binary_op() {
             ExprOp::Eq,
         ]),
         max_stack: 2,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
 }
@@ -70,10 +72,12 @@ fn accepts_multiple_expressions() {
         ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
             max_stack: 1,
+            constants: Box::default(),
         },
         ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
             max_stack: 1,
+            constants: Box::default(),
         },
     ]);
     assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
@@ -85,6 +89,7 @@ fn accepts_unary_op_after_load() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Not]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
 }
@@ -97,6 +102,7 @@ fn rejects_stack_mismatch_declared_too_high() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 2,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -110,6 +116,7 @@ fn rejects_stack_mismatch_declared_too_low() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 0,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -130,6 +137,7 @@ fn rejects_expression_exceeding_contract() {
             ExprOp::LoadSlot(SlotIdx::new(0)),
         ]),
         max_stack: 2,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -156,6 +164,7 @@ fn rejects_underflow_binary_op_on_empty_stack() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::Eq]),
         max_stack: 0,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -169,6 +178,7 @@ fn rejects_underflow_unary_op_on_empty_stack() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::Not]),
         max_stack: 0,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),

@@ -186,6 +186,7 @@ fn gate_07_accepts_valid_expression() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
 }
@@ -196,6 +197,7 @@ fn gate_07_rejects_stack_mismatch() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 2, // wrong: actual max is 1
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -213,6 +215,7 @@ fn gate_07_rejects_stack_exceeding_contract() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 3, // exceeds contract of 2
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_07_expression_stack_depth(&parts),
@@ -336,6 +339,7 @@ fn gate_09_rejects_expr_load_slot_out_of_range() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(99))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
@@ -645,6 +649,7 @@ fn gate13_accepts_direct_self_dependency() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     let node = CompiledNode {
         id: StepIdx::new(0),
@@ -805,6 +810,7 @@ fn gate_13_rejects_cycle_through_eval_expr() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(
         matches!(
@@ -846,6 +852,7 @@ fn gate_13_accepts_linear_chain_through_eval_expr() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
 }
@@ -891,6 +898,7 @@ fn gate_13_rejects_three_slot_cycle_through_eval_expr() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(2))]),
         max_stack: 1,
+        constants: Box::default(),
     }]);
     assert!(
         matches!(
@@ -909,6 +917,7 @@ fn gate_07_rejects_underflow_binary_op_on_empty_stack() {
     parts.expressions = Box::new([ExprProgram {
         ops: Box::new([ExprOp::Eq]), // pops 2 from empty stack => underflow
         max_stack: 0,
+        constants: Box::default(),
     }]);
     assert!(
         matches!(

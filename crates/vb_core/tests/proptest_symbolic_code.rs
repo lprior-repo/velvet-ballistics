@@ -12,7 +12,7 @@
 #![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
-use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode, numeric_to_symbolic, symbolic_to_numeric};
+use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode, SymbolicCodeParseError, numeric_to_symbolic, symbolic_to_numeric};
 
 // ---------------------------------------------------------------------------
 // Strategies
@@ -49,21 +49,24 @@ proptest! {
     #[test]
     fn from_str_rejects_unregistered(s in arb_unregistered_ascii()) {
         let parsed: Result<SymbolicCode, _> = s.as_str().parse();
-        prop_assert!(parsed.is_err());
+        let matched = matches!(parsed, Err(SymbolicCodeParseError { .. }));
+        prop_assert!(matched);
     }
 
     #[test]
     fn from_str_rejects_whitespace_wrapped_registered(s in arb_registered_str()) {
         let wrapped = format!(" {s} ");
         let parsed: Result<SymbolicCode, _> = wrapped.as_str().parse();
-        prop_assert!(parsed.is_err());
+        let matched = matches!(parsed, Err(SymbolicCodeParseError { .. }));
+        prop_assert!(matched);
     }
 
     #[test]
     fn from_str_rejects_lowercase_registered(s in arb_registered_str()) {
         let lower: String = s.to_lowercase();
         let parsed: Result<SymbolicCode, _> = lower.as_str().parse();
-        prop_assert!(parsed.is_err());
+        let matched = matches!(parsed, Err(SymbolicCodeParseError { .. }));
+        prop_assert!(matched);
     }
 
     #[test]
@@ -143,7 +146,7 @@ fn from_static_returns_none_for_empty_string() {
 #[test]
 fn from_str_rejects_empty() {
     let parsed: Result<SymbolicCode, _> = "".parse();
-    assert!(parsed.is_err());
+    assert!(matches!(parsed, Err(SymbolicCodeParseError { .. })));
 }
 
 #[test]

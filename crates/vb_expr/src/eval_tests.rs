@@ -813,6 +813,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::Add].into_boxed_slice(),
             max_stack: 0,
+            constants: Box::default(),
         };
         let result = eval_expr_program(&program, &[], &[]);
         let Err(ExprError::StackUnderflow) = result else {
@@ -1051,6 +1052,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::LoadConst(ConstIdx::new(99))].into_boxed_slice(),
             max_stack: 1,
+            constants: Box::default(),
         };
         let result = eval_expr_program(&program, &[], &[]);
         assert!(
@@ -1065,6 +1067,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(99))].into_boxed_slice(),
             max_stack: 1,
+            constants: Box::default(),
         };
         let slots: Vec<Option<SlotValue>> = vec![];
         let result = eval_expr_program(&program, &slots, &[]);
@@ -1135,6 +1138,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             max_stack: 2,
+            constants: Box::default(),
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
@@ -1160,6 +1164,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             max_stack: 2,
+            constants: Box::default(),
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
@@ -1185,6 +1190,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             max_stack: 2,
+            constants: Box::default(),
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
@@ -1209,6 +1215,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             max_stack: 2,
+            constants: Box::default(),
         };
         let constants = vec![ConstValue::I64(1), ConstValue::I64(2)];
         let result = eval_expr_program(&program, &[], &constants);
@@ -1256,6 +1263,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             max_stack: 2,
+            constants: Box::default(),
         };
         let constants = vec![ConstValue::I64(i64::MIN), ConstValue::I64(-1)];
         let result = eval_expr_program(&program, &[], &constants);
@@ -1761,6 +1769,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Empty].into_boxed_slice(),
             max_stack: 1,
+            constants: Box::default(),
         };
         let slots = vec![Some(SlotValue::List(list))];
         let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
@@ -1779,6 +1788,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Unique].into_boxed_slice(),
             max_stack: 1,
+            constants: Box::default(),
         };
         let slots = vec![Some(SlotValue::List(list))];
         let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
@@ -1805,6 +1815,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Length].into_boxed_slice(),
             max_stack: 1,
+            constants: Box::default(),
         };
         let slots = vec![Some(SlotValue::List(list))];
         let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;
@@ -1823,6 +1834,7 @@ mod tests {
         let program = ExprProgram {
             ops: vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum].into_boxed_slice(),
             max_stack: 1,
+            constants: Box::default(),
         };
         let slots = vec![Some(SlotValue::List(list))];
         let result = eval_expr_program_with_store(&program, &slots, &[], &mut store)?;

@@ -193,6 +193,51 @@ fn trim_given_run_already_trimmed_is_noop() {
     assert_eq!(result2.status, TrimStatus::NoOp);
 }
 
+// =========================================================================
+// vb-1rqz7.27 / SC-007 — zero-delete trim returns NoOp regardless of policy
+// =========================================================================
+
+#[test]
+fn trim_zero_deletes_returns_noop_when_skip_noop_disabled() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x7B01);
+    let digest = WorkflowDigest::from_bytes([0x80; DIGEST_BYTES]);
+    write_header(&journal, run, digest);
+
+    // Snapshot at the same seq as the existing event so nothing is trimmable.
+    journal
+        .append_journaled(&make_event(run, 0))
+        .expect("append should succeed");
+
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(0),
+        workflow: digest,
+        slots: vec![0u8],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&snapshot)
+        .expect("snapshot should succeed");
+
+    let policy = TrimPolicy {
+        skip_noop_runs: false,
+        ..TrimPolicy::default()
+    };
+    let result = journal
+        .trim_events_for_run(run, policy)
+        .expect("trim should succeed");
+    assert_eq!(
+        result.deleted_count, 0,
+        "no events should be deleted when snapshot is ahead"
+    );
+    assert_eq!(
+        result.status,
+        TrimStatus::NoOp,
+        "vb-1rqz7.27: zero-delete trim must report NoOp regardless of skip_noop_runs"
+    );
+}
+
 #[test]
 fn trim_given_run_with_no_snapshot_returns_error() {
     let (_temp, journal) = temp_journal();
@@ -371,68 +416,125 @@ fn latest_durable_snapshot_seq_returns_none_for_no_snapshots() {
     assert_eq!(latest, None);
 }
 
+// =========================================================================
+// vb-1rqz7.29 / SC-004 — latest_durable_snapshot_seq uses key-based lookup
+// =========================================================================
+
 #[test]
-fn latest_durable_snapshot_seq_rejects_payload_run_mismatch() {
+fn latest_durable_snapshot_seq_reads_max_key_without_decoding_value() {
     let (_temp, journal) = temp_journal();
-    let run = RunId::new(801);
-    let actual = RunId::new(802);
-    let key_seq = EventSeq::new(7);
-    let payload = RunSnapshot {
-        run: actual,
-        seq: key_seq,
-        workflow: WorkflowDigest::from_bytes([0x51; DIGEST_BYTES]),
-        slots: vec![],
-        taint: vec![],
-    };
-    insert_snapshot_payload_under_key(&journal, run, key_seq, &payload);
+    let run = RunId::new(0x901);
+    let digest = WorkflowDigest::from_bytes([0x91; DIGEST_BYTES]);
 
-    let err = journal
-        .latest_durable_snapshot_seq(run)
-        .expect_err("payload run mismatch must fail closed");
-
-    match err {
-        TrimError::Journal(JournalError::WrongRun { expected, actual }) => {
-            assert_eq!(expected, run);
-            assert_eq!(actual, RunId::new(802));
-            assert_eq!(
-                JournalError::WrongRun { expected, actual }.diagnostic_code(),
-                JournalError::WRONG_RUN_CODE
-            );
-        }
-        other => panic!("expected WrongRun, got {other:?}"),
+    // Multiple snapshots; the key-based lookup must return the highest seq
+    // even when only the last-inserted key sorts highest.
+    for seq in [3u64, 9, 5, 1, 7] {
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(seq),
+            workflow: digest,
+            slots: vec![],
+            taint: vec![],
+        };
+        journal
+            .put_snapshot(&snapshot)
+            .expect("put_snapshot should succeed");
     }
+
+    let latest = journal
+        .latest_durable_snapshot_seq(run)
+        .expect("latest seq lookup must succeed");
+    assert_eq!(
+        latest,
+        Some(EventSeq::new(9)),
+        "key-based lookup must return the highest seq from the snapshot prefix"
+    );
 }
 
 #[test]
-fn latest_durable_snapshot_seq_rejects_payload_seq_mismatch() {
+fn latest_durable_snapshot_seq_returns_none_when_no_snapshots() {
     let (_temp, journal) = temp_journal();
-    let run = RunId::new(803);
-    let key_seq = EventSeq::new(7);
-    let payload_seq = EventSeq::new(8);
-    let payload = RunSnapshot {
-        run,
-        seq: payload_seq,
-        workflow: WorkflowDigest::from_bytes([0x52; DIGEST_BYTES]),
-        slots: vec![],
-        taint: vec![],
-    };
-    insert_snapshot_payload_under_key(&journal, run, key_seq, &payload);
+    let run = RunId::new(0x902);
 
-    let err = journal
+    let latest = journal
         .latest_durable_snapshot_seq(run)
-        .expect_err("payload seq mismatch must fail closed");
+        .expect("empty lookup must succeed");
+    assert!(
+        latest.is_none(),
+        "no snapshots must yield None without scanning any value"
+    );
+}
 
-    match err {
-        TrimError::Journal(JournalError::SequenceGap { expected, actual }) => {
-            assert_eq!(expected, key_seq);
-            assert_eq!(actual, payload_seq);
-            assert_eq!(
-                JournalError::SequenceGap { expected, actual }.diagnostic_code(),
-                JournalError::SEQUENCE_GAP_CODE
-            );
-        }
-        other => panic!("expected SequenceGap, got {other:?}"),
+// =========================================================================
+// vb-1rqz7.30 / SC-005 — batch trim computes retention in a single pass
+// =========================================================================
+
+#[test]
+fn compute_retained_terminal_runs_matches_per_run_check() {
+    use vb_core::WorkflowId;
+
+    let (_temp, journal) = temp_journal();
+    let workflow_a = WorkflowId::new(0xA1);
+    let workflow_b = WorkflowId::new(0xB1);
+
+    // Workflow A: three terminal runs (retain 2 → expect runs 2 and 3 to be retained).
+    let headers_a = [
+        (RunId::new(0xA001), 100u64),
+        (RunId::new(0xA002), 200),
+        (RunId::new(0xA003), 300),
+    ];
+    // Workflow B: one terminal run (retain 2 → expect run to be retained).
+    let headers_b = [(RunId::new(0xB001), 400u64)];
+
+    let placeholder = WorkflowDigest::from_bytes([0u8; DIGEST_BYTES]);
+    for (run, ts) in headers_a.iter().chain(headers_b.iter()) {
+        write_header_with_workflow(&journal, *run, workflow_a, placeholder, *ts);
+        journal
+            .append_journaled(&make_run_finished(*run, 0))
+            .expect("terminal event append");
     }
+    // Overwrite B's header workflow_id so it sorts to workflow B.
+    for (run, ts) in headers_b.iter() {
+        write_header_with_workflow(&journal, *run, workflow_b, placeholder, *ts);
+        journal
+            .append_journaled(&make_run_finished(*run, 1))
+            .expect("terminal event append");
+    }
+
+    let policy = TrimPolicy {
+        retain_last_n_terminal: 2,
+        ..TrimPolicy::default()
+    };
+    let retained = journal
+        .compute_retained_terminal_runs(&policy)
+        .expect("retained set should compute");
+
+    // Workflow A: top-2 by accepted_at_ms (run 2 @ 200, run 3 @ 300).
+    assert!(retained.contains(&RunId::new(0xA002)));
+    assert!(retained.contains(&RunId::new(0xA003)));
+    assert!(
+        !retained.contains(&RunId::new(0xA001)),
+        "oldest workflow-A run must not be retained"
+    );
+    // Workflow B: only one terminal run, retained.
+    assert!(retained.contains(&RunId::new(0xB001)));
+}
+
+#[test]
+fn compute_retained_terminal_runs_empty_when_retention_zero() {
+    let (_temp, journal) = temp_journal();
+
+    let policy = TrimPolicy {
+        retain_last_n_terminal: 0,
+        ..TrimPolicy::default()
+    };
+    let retained = journal
+        .compute_retained_terminal_runs(&policy)
+        .expect("empty retention policy must succeed");
+    assert!(
+        retained.is_empty(),
+        "zero retention policy must yield empty set without scanning"
+    );
 }
 
 // =========================================================================
@@ -441,13 +543,11 @@ fn latest_durable_snapshot_seq_rejects_payload_seq_mismatch() {
 
 #[test]
 fn trim_events_for_run_fails_closed_on_malformed_event_key() {
-    use crate::constants::{MAGIC_JOURNAL_EVENT, PREFIX_RUN_EVENT};
-    use crate::records::RecordKind;
+    use crate::constants::PREFIX_RUN_EVENT;
 
     let (_temp, journal) = temp_journal();
     let run = RunId::new(0x7A01);
 
-    // Plant a header + a real snapshot so trim has a valid cutoff.
     let digest = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
     write_header(&journal, run, digest);
     let snapshot = RunSnapshot {
@@ -459,28 +559,31 @@ fn trim_events_for_run_fails_closed_on_malformed_event_key() {
     };
     journal.put_snapshot(&snapshot).expect("snapshot put");
 
-    // Plant a real 17-byte event so trim has at least one valid row.
+    // Plant a real 17-byte event so the run is recognized as terminal-free.
     let event = make_event(run, 0);
     journal
         .append_journaled(&event)
         .expect("append real event should succeed");
 
-    // Plant a corrupted key (shorter than the 17-byte run-event contract)
-    // directly under the same run-event prefix so the scan encounters it.
+// Plant a corrupted key (shorter than the 17-byte run-event contract)
+    // directly under the same run-event prefix so the trim scan encounters it.
+    // Use a properly-encoded event value so the value-decoding scan stays
+    // green and the short-key contract violation is the only thing the trim
+    // loop sees.
     let mut short_key = [0u8; 9];
     short_key[0] = PREFIX_RUN_EVENT;
     short_key[1..9].copy_from_slice(&run.get().to_be_bytes());
-    let value = crate::codec::encode_record(
-        MAGIC_JOURNAL_EVENT,
-        RecordKind::StepStarted,
+    let real_value = crate::codec::encode_record(
+        crate::constants::MAGIC_JOURNAL_EVENT,
+        crate::records::RecordKind::RunAccepted,
         0,
-        &[0u8, 1, 2, 3],
+        &make_event(run, 0),
         crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )
     .expect("event record encode");
     journal
         .events
-        .insert(short_key.to_vec(), value)
+        .insert(short_key.to_vec(), real_value)
         .expect("malformed short key insert");
 
     let policy = TrimPolicy::default();
@@ -499,8 +602,7 @@ fn trim_events_for_run_fails_closed_on_malformed_event_key() {
 
 #[test]
 fn trim_eligibility_diagnostic_fails_closed_on_malformed_event_key() {
-    use crate::constants::{MAGIC_JOURNAL_EVENT, PREFIX_RUN_EVENT};
-    use crate::records::RecordKind;
+    use crate::constants::PREFIX_RUN_EVENT;
 
     let (_temp, journal) = temp_journal();
     let run = RunId::new(0x7A02);
@@ -522,17 +624,17 @@ fn trim_eligibility_diagnostic_fails_closed_on_malformed_event_key() {
     let mut short_key = [0u8; 9];
     short_key[0] = PREFIX_RUN_EVENT;
     short_key[1..9].copy_from_slice(&run.get().to_be_bytes());
-    let value = crate::codec::encode_record(
-        MAGIC_JOURNAL_EVENT,
-        RecordKind::StepStarted,
+    let real_value = crate::codec::encode_record(
+        crate::constants::MAGIC_JOURNAL_EVENT,
+        crate::records::RecordKind::RunAccepted,
         0,
-        &[0u8, 1, 2, 3],
+        &make_event(run, 0),
         crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )
     .expect("event record encode");
     journal
         .events
-        .insert(short_key.to_vec(), value)
+        .insert(short_key.to_vec(), real_value)
         .expect("malformed short key insert");
 
     let policy = TrimPolicy::default();

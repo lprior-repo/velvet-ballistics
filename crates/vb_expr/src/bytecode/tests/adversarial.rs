@@ -424,6 +424,7 @@ fn blackhat_ev_001b_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
         ]
         .into_boxed_slice(),
         max_stack: 2,
+        constants: Box::default(),
     };
     let constants = vec![ConstValue::I64(i64::MIN), ConstValue::I64(-1)];
     let result = eval_expr_program(&program, &[], &constants);
@@ -549,6 +550,7 @@ fn blackhat_ev_008_stack_underflow_no_panic() -> crate::ExprResult<()> {
     let program = ExprProgram {
         ops: vec![ExprOp::Add].into_boxed_slice(),
         max_stack: 0,
+        constants: Box::default(),
     };
     let r = eval_expr_program(&program, &[], &[]);
     let Err(ExprError::StackUnderflow) = r else {
@@ -568,6 +570,7 @@ fn blackhat_ev_009_oob_access_no_panic() -> crate::ExprResult<()> {
     let program = ExprProgram {
         ops: vec![ExprOp::LoadSlot(SlotIdx::new(255))].into_boxed_slice(),
         max_stack: 1,
+        constants: Box::default(),
     };
     let r = eval_expr_program(&program, &[], &[]);
     assert!(
@@ -577,6 +580,7 @@ fn blackhat_ev_009_oob_access_no_panic() -> crate::ExprResult<()> {
     let program = ExprProgram {
         ops: vec![ExprOp::LoadConst(ConstIdx::new(255))].into_boxed_slice(),
         max_stack: 1,
+        constants: Box::default(),
     };
     let r = eval_expr_program(&program, &[], &[]);
     assert!(

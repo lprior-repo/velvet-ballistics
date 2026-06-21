@@ -274,27 +274,30 @@ proptest! {
     }
 
     /// Iterating events in their key-encoded order is equivalent to
-    /// iterating them in sequence order. We assert this for an
-    /// arbitrary shuffled input.
+    /// iterating them in sequence order. We dedupe sequence numbers
+    /// first because the key encoding is injective (distinct seqs
+    /// produce distinct keys) — a duplicate seq would be its own
+    /// key, but the canonical seq order is a set, not a multiset.
     #[test]
     fn fe_key_order_equals_seq_order(
         run_val in 1u64..100000u64,
         seqs in proptest::collection::vec(0u64..1000u64, 1..16),
     ) {
         let run = RunId::new(run_val);
+        // Dedupe sequences first.
+        let mut unique: Vec<u64> = seqs.clone();
+        unique.sort_unstable();
+        unique.dedup();
+
         // Sort by key.
-        let mut by_key: Vec<_> = seqs
+        let mut by_key: Vec<_> = unique
             .iter()
             .map(|s| (run_event_key(run, EventSeq::new(*s)).expect("encodes"), *s))
             .collect();
         by_key.sort_by_key(|(k, _)| *k);
         let by_key_seqs: Vec<u64> = by_key.iter().map(|(_, s)| *s).collect();
 
-        // Sort by sequence.
-        let mut by_seq: Vec<u64> = seqs.clone();
-        by_seq.sort_unstable();
-        by_seq.dedup();
-
-        prop_assert_eq!(by_key_seqs, by_seq);
+        // Sort by sequence (already sorted and deduped).
+        prop_assert_eq!(by_key_seqs, unique);
     }
 }

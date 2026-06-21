@@ -311,8 +311,8 @@ fn declared_keyspaces_count() {
     let keyspaces = FjallJournal::declared_keyspaces();
     assert_eq!(
         keyspaces.len(),
-        10,
-        "declared_keyspaces must return exactly 10 entries"
+        11,
+        "declared_keyspaces must return exactly 11 entries (10 historical + run_seq_gap from wave-5/6)"
     );
 }
 
@@ -330,6 +330,7 @@ fn declared_keyspaces_contains_required_names() {
         "index_workflow",
         "index_action",
         "recovery_stamp",
+        "run_seq_gap",
     ];
 
     for name in required {

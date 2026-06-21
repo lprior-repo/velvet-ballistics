@@ -237,7 +237,9 @@ mod action_queue_tests {
         let queue = BoundedActionCompletionQueue::new(3).unwrap();
         let ticket = make_ticket(0);
         let result = queue.enqueue(ticket);
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(()));
+        assert_eq!(queue.len(), 1, "len must increment to 1 after enqueue");
+        assert_eq!(queue.remaining_capacity(), 2, "remaining must decrement");
     }
 
     #[test]

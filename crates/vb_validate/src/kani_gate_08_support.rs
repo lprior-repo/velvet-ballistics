@@ -63,6 +63,7 @@ fn bounded_expressions() -> Box<[ExprProgram]> {
         Box::new([ExprProgram {
             ops: bounded_expr_ops(),
             max_stack: kani::any(),
+            constants: Box::default(),
         }])
     } else {
         Box::new([])

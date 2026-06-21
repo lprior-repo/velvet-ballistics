@@ -64,11 +64,8 @@ fn parse_ai_context_requires_db() {
 
 #[test]
 fn ai_context_redacts_secret_snapshot_slot_value() {
-    let encoded = postcard::to_allocvec(&vb_core::SlotValue::I64(99));
-    assert!(encoded.is_ok(), "slot value should encode: {encoded:?}");
-    let Ok(encoded) = encoded else {
-        return;
-    };
+    let encoded = postcard::to_allocvec(&vb_core::SlotValue::I64(99))
+        .expect("slot value must encode");
     let snapshot = vb_storage::RunSnapshot {
         run: vb_core::RunId::new(1),
         seq: EventSeq::new(1),
@@ -470,12 +467,9 @@ fn registered_cli_action_inspect_detail_contains_contract_and_rules() {
         Ok(registry) => registry,
         Err(_) => return,
     };
-    let contract = registry.resolve_compile_time(vb_core::ActionId::new(2));
-    assert!(contract.is_ok(), "action 2 should resolve: {contract:?}");
-    let contract = match contract {
-        Ok(contract) => contract,
-        Err(_) => return,
-    };
+    let contract = registry
+        .resolve_compile_time(vb_core::ActionId::new(2))
+        .expect("action 2 must resolve");
     let detail = action_contract_detail(contract);
 
     assert_eq!(detail.id, 2);
@@ -574,10 +568,9 @@ fn map_runtime_inputs_rejects_excess_slots_with_exact_variant() {
 fn journaled_run_writes_storage_events() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
-    let dir = main_test_tempdir();
-    assert!(dir.is_ok(), "test directory should be available: {dir:?}");
+    let dir = main_test_tempdir().expect("test directory must be available");
 
-    if let (Some(compiled), Ok(dir)) = (compiled, dir) {
+    if let Some(compiled) = compiled {
         let code = run_compiled_workflow(
             vb_core::RunId::new(1),
             compiled.clone(),
@@ -588,28 +581,27 @@ fn journaled_run_writes_storage_events() {
         );
         assert_eq!(code, std::process::ExitCode::SUCCESS);
 
-        let journal = vb_storage::FjallJournal::open(dir.path(), None);
-        assert!(journal.is_ok(), "journal should reopen");
-        if let Ok(journal) = journal {
-            let run = vb_core::RunId::new(1);
-            let events = journal.events_for_run(run);
-            assert!(events.is_ok(), "events should be readable: {events:?}");
+        let journal = vb_storage::FjallJournal::open(dir.path(), None)
+            .expect("journal must reopen for valid dir");
+        let run = vb_core::RunId::new(1);
+        let events = journal
+            .events_for_run(run)
+            .expect("events for run must be readable");
 
-            if let Ok(events) = events {
-                assert!(events.contains(&JournalEvent::RunAccepted {
-                    run,
-                    seq: EventSeq::new(0),
-                    workflow: WorkflowDigest::from_bytes([9; 32]),
-                }));
-                assert!(events.iter().any(|e| matches!(
-                    e,
-                    JournalEvent::RunFinished {
-                        run: r,
-                        result: SlotIdx::ZERO,
-                        ..
-                    } if *r == run
-                )));
-            }
+        {
+            assert!(events.contains(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: WorkflowDigest::from_bytes([9; 32]),
+            }));
+            assert!(events.iter().any(|e| matches!(
+                e,
+                JournalEvent::RunFinished {
+                    run: r,
+                    result: SlotIdx::ZERO,
+                    ..
+                } if *r == run
+            )));
         }
     }
 }
@@ -618,21 +610,13 @@ fn journaled_run_writes_storage_events() {
 fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
-    let dir = main_test_tempdir();
-    assert!(dir.is_ok(), "test directory should be available: {dir:?}");
+    let dir = main_test_tempdir().expect("test directory must be available");
 
-    if let (Some(compiled), Ok(dir)) = (compiled, dir) {
-        let journal = vb_storage::FjallJournal::open(dir.path(), None);
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
+    if let Some(compiled) = compiled {
+        let journal = vb_storage::FjallJournal::open(dir.path(), None)
+            .expect("journal must open");
         let parts = compiled.to_parts();
-        let ir = postcard::to_allocvec(&parts);
-        assert!(ir.is_ok(), "workflow parts should encode: {ir:?}");
-        let Ok(ir) = ir else {
-            return;
-        };
+        let ir = postcard::to_allocvec(&parts).expect("workflow parts must encode");
         let record = CompiledIrRecord {
             digest: compiled.digest(),
             ir,
@@ -645,44 +629,37 @@ fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
             journal: Arc::new(journal),
         };
 
-        let resolved =
-            vb_ipc::server::WorkflowResolver::resolve_workflow(&mut resolver, compiled.digest());
+        let resolved = vb_ipc::server::WorkflowResolver::resolve_workflow(
+            &mut resolver,
+            compiled.digest(),
+        )
+        .expect("resolver must load compiled IR");
 
-        assert!(resolved.is_ok(), "resolver should load compiled IR");
-        let Ok(resolved) = resolved else {
-            return;
-        };
         assert_eq!(resolved.digest(), compiled.digest());
     }
 }
 
 #[test]
 fn ipc_storage_resolver_returns_not_found_for_missing_digest() {
-    let dir = main_test_tempdir();
-    assert!(dir.is_ok(), "test directory should be available: {dir:?}");
-    if let Ok(dir) = dir {
-        let journal = vb_storage::FjallJournal::open(dir.path(), None);
-        assert!(journal.is_ok(), "journal should open");
-        let Ok(journal) = journal else {
-            return;
-        };
-        let mut resolver = StorageWorkflowResolver {
-            journal: Arc::new(journal),
-        };
+    let dir = main_test_tempdir().expect("test directory must be available");
+    let journal = vb_storage::FjallJournal::open(dir.path(), None)
+        .expect("journal must open");
+    let mut resolver = StorageWorkflowResolver {
+        journal: Arc::new(journal),
+    };
 
-        let result = vb_ipc::server::WorkflowResolver::resolve_workflow(
-            &mut resolver,
-            WorkflowDigest::from_bytes([5; 32]),
-        );
+    let result = vb_ipc::server::WorkflowResolver::resolve_workflow(
+        &mut resolver,
+        WorkflowDigest::from_bytes([5; 32]),
+    );
 
-        assert!(
-            matches!(
-                result,
-                Err(vb_ipc::server::WorkflowResolutionError::NotFound)
-            ),
-            "missing digest should return NotFound"
-        );
-    }
+    assert!(
+        matches!(
+            result,
+            Err(vb_ipc::server::WorkflowResolutionError::NotFound)
+        ),
+        "missing digest should return NotFound"
+    );
 }
 
 #[test]
@@ -781,11 +758,8 @@ fn write_step_inputs_populates_frame_slots() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
-        let frame = build_step_frame(&compiled, StepIdx::ZERO);
-        assert!(frame.is_ok(), "frame should build: {frame:?}");
-        let Ok(mut frame) = frame else {
-            return;
-        };
+        let mut frame = build_step_frame(&compiled, StepIdx::ZERO)
+            .expect("frame must build for valid step");
         let inputs: Box<[vb_core::SlotValue]> = Box::from([vb_core::SlotValue::I64(42)]);
         assert_eq!(write_step_inputs(&mut frame, &inputs), Ok(()));
         assert_eq!(
@@ -886,18 +860,15 @@ fn input_mapping_error_exact_variant_coverage() {
             vb_core::SlotValue::Bool(true),
             vb_core::SlotValue::Bool(false),
         ]);
-        let encoded = postcard::to_allocvec(&too_many_values);
-        if let Ok(encoded) = encoded {
-            let slot_count = compiled.slot_count();
-            assert_eq!(
-                map_runtime_inputs(&compiled, &encoded),
-                Err(InputMappingError::TypeMismatch {
-                    expected: slot_count
-                })
-            );
-        } else {
-            assert!(encoded.is_ok(), "test payload should encode: {encoded:?}");
-        }
+        let encoded = postcard::to_allocvec(&too_many_values)
+            .expect("test payload must encode for valid SlotValue vec");
+        let slot_count = compiled.slot_count();
+        assert_eq!(
+            map_runtime_inputs(&compiled, &encoded),
+            Err(InputMappingError::TypeMismatch {
+                expected: slot_count
+            })
+        );
     }
 
     assert_eq!(

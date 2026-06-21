@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc fcf13f5a0d9170e405449b1df53b7a42ef54842e21c5139d4020cc261f02e8f5 # shrinks to val = false
 cc d1debd47b7ca14c69ad8d4bae43a0fedbe304ffb5f3f01b7aa45232501cce14e # shrinks to ast = Unary { op: Neg, expr: Literal(I64(0)) }
+cc 7f178831f223d33d9e66d1a675882372c82921d91bfb8548f16836939bc45bbc # shrinks to name = 2
