@@ -17,7 +17,9 @@ pub(crate) mod types;
 pub(crate) mod advisory;
 pub(crate) mod pipeline;
 
+#[cfg(test)]
 mod tests_gate_mapping;
+#[cfg(test)]
 mod tests_pipeline;
 
 // Re-export the public domain API at the module root for convenient import.
