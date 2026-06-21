@@ -1,9 +1,11 @@
 mod allowlist;
 mod classify;
 mod config_build;
+#[cfg(test)]
 mod config_build_tests;
 mod config_types;
 mod config_validate;
+#[cfg(test)]
 mod config_validate_tests;
 mod discovery;
 mod legacy;
