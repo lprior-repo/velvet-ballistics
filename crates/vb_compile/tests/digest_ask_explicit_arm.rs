@@ -141,20 +141,23 @@ fn digest_step_primitive_uses_distinct_sentinel_for_none_timeout() {
 fn digest_step_primitive_does_not_panic_for_ask_normal_variant() {
     let source = ask_source("hello", Some("30s"));
     // Must not panic
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_ask_empty_prompt_none_timeout() {
     let source = ask_source("", None);
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_ask_large_prompt() {
     let large_prompt = "a".repeat(10240);
     let source = ask_source(&large_prompt, None);
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
@@ -164,31 +167,36 @@ fn digest_step_primitive_does_not_panic_for_ask_prompt_with_all_visible_controls
         .map(|c| char::from_u32(c.into()).expect("0u8..=127 are valid Unicode scalar values"))
         .collect();
     let source = ask_source(&prompt, None);
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_set_primitive() {
     let source = set_source("x", "1");
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_finish_string_primitive() {
     let source = finish_source_string("done");
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_finish_integer_primitive() {
     let source = finish_source_integer(42);
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn digest_step_primitive_does_not_panic_for_empty_source() {
     let source = empty_source();
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
@@ -218,17 +226,20 @@ fn digest_step_primitive_does_not_panic_for_do_primitive_catch_all() {
         result: None,
         examples: vec![],
     });
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn canonical_digest_does_not_panic_for_ask_with_empty_timeout() {
     let source = ask_source("hello", Some(""));
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }
 
 #[test]
 fn canonical_digest_does_not_panic_for_set_finish_source() {
     let source = set_finish_source();
-    let _ = canonical_digest(&source).expect("valid test input");
+    let digest = canonical_digest(&source).expect("valid test input");
+    assert_ne!(digest.as_bytes(), [0u8; 32], "digest must be non-trivial (not all zeros)");
 }

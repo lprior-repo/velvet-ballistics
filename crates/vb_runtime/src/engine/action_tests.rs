@@ -264,7 +264,15 @@ fn resolve_contract_rejects_id_mismatch() {
     // Contract at index 0 has id=0, but we request id=99 at index 99
     let contracts = vec![make_contract(0)];
     let result = resolve_contract(ActionId::new(99), &contracts);
-    assert!(result.is_err());
+    assert_eq!(
+        result,
+        Err(RuntimeEngineError::Action(
+            vb_core::action::ActionError::UnknownAction {
+                action: ActionId::new(99),
+            }
+        )),
+        "id-mismatch must surface the requested ActionId(99) inside UnknownAction"
+    );
 }
 
 #[test]
@@ -276,24 +284,39 @@ fn resolve_contract_rejects_when_index_matches_but_id_differs() {
     let contracts = vec![c];
     // ActionId::new(0) -> index 0, but contract there has id=5, mismatch
     let result = resolve_contract(ActionId::new(0), &contracts);
-    assert!(
-        result.is_err(),
-        "expected error when id at index does not match requested action"
+    assert_eq!(
+        result,
+        Err(RuntimeEngineError::Action(
+            vb_core::action::ActionError::UnknownAction {
+                action: ActionId::new(0),
+            }
+        )),
+        "expected UnknownAction(action=0) when id at index does not match requested action"
     );
 }
 
 #[test]
 fn resolve_contract_returns_first_contract() {
-    let contracts = vec![make_contract(0)];
+    let contracts = vec![make_contract(0), make_contract(1), make_contract(2)];
     let result = resolve_contract(ActionId::new(0), &contracts);
-    assert!(result.is_ok());
+    assert!(matches!(result, Ok(c) if c.id == ActionId::new(0) && c.id.get() == 0));
+    assert_eq!(
+        result.map(|c| c.id),
+        Ok(ActionId::new(0)),
+        "first contract lookup must return the contract with id 0"
+    );
 }
 
 #[test]
 fn resolve_contract_returns_last_contract() {
     let contracts = vec![make_contract(0), make_contract(1), make_contract(2)];
     let result = resolve_contract(ActionId::new(2), &contracts);
-    assert!(result.is_ok());
+    assert!(matches!(result, Ok(c) if c.id == ActionId::new(2) && c.id.get() == 2));
+    assert_eq!(
+        result.map(|c| c.id),
+        Ok(ActionId::new(2)),
+        "last contract lookup must return the contract with id 2"
+    );
 }
 
 // =====================================================================

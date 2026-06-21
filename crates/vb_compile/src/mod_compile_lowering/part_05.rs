@@ -95,7 +95,7 @@ pub(super) fn canonical_finish_slot(
     }
 }
 
-pub(crate) fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+pub fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
     match primitive {
         vb_yaml::ast::StepPrimitive::Set { .. } => "set",
         vb_yaml::ast::StepPrimitive::Save { .. } => "set",

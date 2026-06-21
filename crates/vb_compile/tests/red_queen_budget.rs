@@ -445,24 +445,57 @@ fn red_queen_budget_has_all_documented_fields() {
     let yaml = linear_workflow(10);
     let workflow = compile_workflow(yaml.as_bytes()).expect("compile");
     let budget = compute_whole_workflow_budget(&workflow).expect("analyze");
-    // Every documented §64 field must be readable. We don't assert
-    // specific values because they depend on the underlying traversal.
-    let _ = budget.max_total_steps;
-    let _ = budget.max_total_slots;
-    let _ = budget.max_fanout;
-    let _ = budget.max_nesting_depth;
-    let _ = budget.max_steps_executable;
-    let _ = budget.max_action_tickets;
-    let _ = budget.max_parallel_in_flight;
-    let _ = budget.max_retries_per_action;
-    let _ = budget.max_gather_pages;
-    let _ = budget.max_gather_items;
-    let _ = budget.max_for_each_iterations;
-    let _ = budget.max_together_branches;
-    let _ = budget.max_repeat_attempts;
-    let _ = budget.max_run_time_seconds;
-    let _ = budget.max_result_bytes;
-    let _ = budget.max_total_slots_written;
+    // Every documented §64 field must hold a concrete value for a
+    // 10-set + 1-finish linear workflow. Linear means: no Do, no
+    // Collect, no ForEach, no Together, no Repeat. Expected:
+    // max_total_steps = 11, max_steps_executable = 11.
+    assert_eq!(budget.max_total_steps, 11, "10 sets + 1 finish = 11 steps");
+    assert_eq!(
+        budget.max_steps_executable, 11,
+        "all 11 steps are executable in a linear workflow"
+    );
+    assert!(
+        budget.max_total_slots > 0,
+        "max_total_slots must reflect contract (got 0)"
+    );
+    assert_eq!(budget.max_fanout, 0, "no fanout in linear workflow");
+    assert_eq!(budget.max_nesting_depth, 0, "no nesting in linear workflow");
+    assert_eq!(budget.max_action_tickets, 0, "no Do nodes in linear workflow");
+    assert_eq!(
+        budget.max_parallel_in_flight, 0,
+        "no parallel in-flight in linear workflow"
+    );
+    assert_eq!(
+        budget.max_retries_per_action,
+        u16::from(workflow.resource_contract().max_retry_attempts),
+        "max_retries_per_action tracks contract.max_retry_attempts"
+    );
+    assert_eq!(budget.max_gather_pages, 0, "no Collect in linear workflow");
+    assert_eq!(budget.max_gather_items, 0, "no Collect in linear workflow");
+    assert_eq!(
+        budget.max_for_each_iterations, 0,
+        "no ForEach in linear workflow"
+    );
+    assert_eq!(
+        budget.max_together_branches, 0,
+        "no Together in linear workflow"
+    );
+    assert_eq!(
+        budget.max_repeat_attempts, 0,
+        "no Repeat in linear workflow"
+    );
+    assert_eq!(
+        budget.max_run_time_seconds, 11,
+        "max_run_time_seconds tracks max_total_steps at 1 step/second"
+    );
+    assert!(
+        budget.max_result_bytes <= u32::MAX,
+        "max_result_bytes reachable"
+    );
+    assert!(
+        budget.max_total_slots_written <= u32::MAX,
+        "max_total_slots_written reachable"
+    );
 }
 
 // ---------------------------------------------------------------------------

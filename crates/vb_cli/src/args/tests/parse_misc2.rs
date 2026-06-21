@@ -64,21 +64,21 @@ fn unknown_command_error_enumerates_valid_commands() {
 #[test]
 fn parse_verify_defaults_to_standard_profile() {
     let parsed = parse_args(&args(&["velvet-ballistics", "verify", "workflow.yaml"]));
-    assert!(
-        matches!(parsed, Ok(Command::Verify { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Verify {
+    match parsed {
+        Ok(Command::Verify {
         workflow,
         profile,
         output,
         legacy_json,
-    }) = parsed
-    {
-        assert_eq!(workflow, PathBuf::from("workflow.yaml"));
-        assert_eq!(profile, VerifyProfile::Standard);
-        assert_eq!(output, OutputFormat::Text);
-        assert_eq!(legacy_json, LegacyJsonOutput::Disabled);
+    }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(profile, VerifyProfile::Standard);
+            assert_eq!(output, OutputFormat::Text);
+            assert_eq!(legacy_json, LegacyJsonOutput::Disabled);
+
+        }
+        other => panic!("expected Command::Verify, got {other:?}"),
     }
 }
 
@@ -91,12 +91,13 @@ fn parse_verify_accepts_quick_profile() {
         "--profile",
         "quick",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Verify { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Verify { profile, .. }) = parsed {
-        assert_eq!(profile, VerifyProfile::Quick);
+    match parsed {
+        Ok(Command::Verify { profile, .. }) => {
+
+            assert_eq!(profile, VerifyProfile::Quick);
+
+        }
+        other => panic!("expected Command::Verify, got {other:?}"),
     }
 }
 
@@ -111,16 +112,16 @@ fn parse_verify_accepts_full_profile_with_yaml() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Verify { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Verify {
+    match parsed {
+        Ok(Command::Verify {
         profile, output, ..
-    }) = parsed
-    {
-        assert_eq!(profile, VerifyProfile::Full);
-        assert_eq!(output, OutputFormat::Yaml);
+    }) => {
+
+            assert_eq!(profile, VerifyProfile::Full);
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Verify, got {other:?}"),
     }
 }
 
@@ -132,15 +133,18 @@ fn parse_verify_legacy_json_flag_requests_machine_json() {
         "workflow.yaml",
         "--json",
     ]));
-    assert!(matches!(parsed, Ok(Command::Verify { .. })));
-    if let Ok(Command::Verify {
+    match parsed {
+        Ok(Command::Verify {
         output,
         legacy_json,
         ..
-    }) = parsed
-    {
-        assert_eq!(output, OutputFormat::Text);
-        assert_eq!(legacy_json, LegacyJsonOutput::Json);
+    }) => {
+
+            assert_eq!(output, OutputFormat::Text);
+            assert_eq!(legacy_json, LegacyJsonOutput::Json);
+
+        }
+        other => panic!("expected Command::Verify, got {other:?}"),
     }
 }
 
@@ -152,15 +156,18 @@ fn parse_verify_legacy_jsonl_flag_requests_machine_jsonl() {
         "workflow.yaml",
         "--jsonl",
     ]));
-    assert!(matches!(parsed, Ok(Command::Verify { .. })));
-    if let Ok(Command::Verify {
+    match parsed {
+        Ok(Command::Verify {
         output,
         legacy_json,
         ..
-    }) = parsed
-    {
-        assert_eq!(output, OutputFormat::Text);
-        assert_eq!(legacy_json, LegacyJsonOutput::Jsonl);
+    }) => {
+
+            assert_eq!(output, OutputFormat::Text);
+            assert_eq!(legacy_json, LegacyJsonOutput::Jsonl);
+
+        }
+        other => panic!("expected Command::Verify, got {other:?}"),
     }
 }
 
@@ -182,13 +189,14 @@ fn parse_verify_rejects_unknown_profile() {
 #[test]
 fn parse_graph_defaults_to_text_output() {
     let parsed = parse_args(&args(&["velvet-ballistics", "graph", "workflow.yaml"]));
-    assert!(
-        matches!(parsed, Ok(Command::Graph { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Graph { workflow, output }) = parsed {
-        assert_eq!(workflow, PathBuf::from("workflow.yaml"));
-        assert_eq!(output, OutputFormat::Text);
+    match parsed {
+        Ok(Command::Graph { workflow, output }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Graph, got {other:?}"),
     }
 }
 
@@ -201,25 +209,27 @@ fn parse_graph_accepts_yaml_emit() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Graph { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Graph { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
+    match parsed {
+        Ok(Command::Graph { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Graph, got {other:?}"),
     }
 }
 
 #[test]
 fn parse_simulate_defaults_to_text_output() {
     let parsed = parse_args(&args(&["velvet-ballistics", "simulate", "workflow.yaml"]));
-    assert!(
-        matches!(parsed, Ok(Command::Simulate { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Simulate { workflow, output }) = parsed {
-        assert_eq!(workflow, PathBuf::from("workflow.yaml"));
-        assert_eq!(output, OutputFormat::Text);
+    match parsed {
+        Ok(Command::Simulate { workflow, output }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Simulate, got {other:?}"),
     }
 }
 
@@ -232,12 +242,13 @@ fn parse_simulate_accepts_yaml_emit() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Simulate { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Simulate { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
+    match parsed {
+        Ok(Command::Simulate { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Simulate, got {other:?}"),
     }
 }
 
@@ -250,12 +261,13 @@ fn parse_simulate_accepts_postcard_emit() {
         "--emit",
         "postcard",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Simulate { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Simulate { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Postcard);
+    match parsed {
+        Ok(Command::Simulate { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Postcard);
+
+        }
+        other => panic!("expected Command::Simulate, got {other:?}"),
     }
 }
 
@@ -268,13 +280,14 @@ fn parse_action_list_accepts_yaml_output() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::ActionList { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
-        assert_eq!(registry, ActionRegistryMode::Registered);
+    match parsed {
+        Ok(Command::ActionList { output, registry }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+            assert_eq!(registry, ActionRegistryMode::Registered);
+
+        }
+        other => panic!("expected Command::ActionList, got {other:?}"),
     }
 }
 
@@ -289,21 +302,21 @@ fn parse_cancel_accepts_run_id_and_db() {
         "--db",
         "journal-db",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Cancel { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Cancel {
+    match parsed {
+        Ok(Command::Cancel {
         run_id,
         db,
         reason,
         output,
-    }) = parsed
-    {
-        assert_eq!(run_id, "42");
-        assert_eq!(db, PathBuf::from("journal-db"));
-        assert_eq!(reason, None);
-        assert_eq!(output, OutputFormat::Text);
+    }) => {
+
+            assert_eq!(run_id, "42");
+            assert_eq!(db, PathBuf::from("journal-db"));
+            assert_eq!(reason, None);
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -318,12 +331,13 @@ fn parse_cancel_accepts_reason() {
         "--reason",
         "user request",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Cancel { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Cancel { reason, .. }) = parsed {
-        assert_eq!(reason, Some("user request".to_string()));
+    match parsed {
+        Ok(Command::Cancel { reason, .. }) => {
+
+            assert_eq!(reason, Some("user request".to_string()));
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -338,10 +352,13 @@ fn parse_cancel_accepts_yaml_output() {
         "--emit",
         "yaml",
     ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 

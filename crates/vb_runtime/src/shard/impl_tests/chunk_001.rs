@@ -167,7 +167,7 @@
 
     #[test]
     fn shard_new_creates_empty_shard() -> Result<(), RuntimeError> {
-        let shard = Shard::new(small_config());
+        let shard = Shard::new(small_config())?;
         assert_eq!(shard.active_run_count(), 0);
         assert_eq!(shard.pending_timer_count(), 0);
         assert_eq!(shard.command_queue_len(), 0);
@@ -221,14 +221,14 @@
 
     #[test]
     fn tick_on_empty_queue_returns_true() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config())?;
         assert_eq!(shard.tick(), Ok(true));
         Ok(())
     }
 
     #[test]
     fn tick_processes_shutdown_returns_false() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config())?;
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.tick(), Ok(false));
         assert_eq!(shard.is_shutting_down(), true);
@@ -237,7 +237,7 @@
 
     #[test]
     fn tick_after_shutdown_always_returns_false() -> Result<(), RuntimeError> {
-        let mut shard = Shard::new(small_config());
+        let mut shard = Shard::new(small_config())?;
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.tick(), Ok(false));
         assert_eq!(shard.tick(), Ok(false));
@@ -256,9 +256,7 @@
             ..small_config()
         };
         let mut shard = Shard::new(config)?;
-        let Some(wf) = finished_workflow() else {
-            return;
-        };
+        let wf = finished_workflow().ok_or(RuntimeError::QueueFull)?;
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(1),

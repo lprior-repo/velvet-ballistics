@@ -14,22 +14,22 @@ fn parse_run_accepts_db_for_journaled_mode() {
         "journal-db",
     ]));
 
-    assert!(
-        matches!(parsed, Ok(Command::Run { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Run {
+    match parsed {
+        Ok(Command::Run {
         workflow,
         input_bin,
         durability,
         db,
         ..
-    }) = parsed
-    {
-        assert_eq!(workflow, PathBuf::from("workflow.yaml"));
-        assert_eq!(input_bin, PathBuf::from("input.bin"));
-        assert_eq!(durability, DurabilityMode::Journaled);
-        assert_eq!(db, Some(PathBuf::from("journal-db")));
+    }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(input_bin, PathBuf::from("input.bin"));
+            assert_eq!(durability, DurabilityMode::Journaled);
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -63,13 +63,14 @@ fn parse_run_none_mode_keeps_db_optional() {
         "none",
     ]));
 
-    assert!(
-        matches!(parsed, Ok(Command::Run { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Run { durability, db, .. }) = parsed {
-        assert_eq!(durability, DurabilityMode::None);
-        assert_eq!(db, None);
+    match parsed {
+        Ok(Command::Run { durability, db, .. }) => {
+
+            assert_eq!(durability, DurabilityMode::None);
+            assert_eq!(db, None);
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -84,12 +85,13 @@ fn parse_run_without_step_flags_produces_none_step() {
         "--durability",
         "none",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Run { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Run { step, .. }) = parsed {
-        assert!(step.is_none());
+    match parsed {
+        Ok(Command::Run { step, .. }) => {
+
+            assert!(step.is_none());
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -127,16 +129,16 @@ fn parse_run_with_step_flags() {
         "--step-input",
         "step-data.bin",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Run { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Run {
+    match parsed {
+        Ok(Command::Run {
         step: Some(target), ..
-    }) = parsed
-    {
-        assert_eq!(target.step_id, 3);
-        assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
+    }) => {
+
+            assert_eq!(target.step_id, 3);
+            assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 

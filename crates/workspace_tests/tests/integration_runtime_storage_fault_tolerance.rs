@@ -211,8 +211,14 @@ fn recovery_from_corrupt_snapshot_sequence_is_detected() {
     // Hydration should succeed because the seed itself is valid (corrupt snapshot
     // is a storage-layer concern; the boundary only validates the seed shape).
     let result = boundary.hydrate_run_frame();
-    // A seed with step_count=0 and no workflow may still be a valid empty-run seed.
-    assert!(result.is_ok() || result.is_err()); // boundary is permissive on empty seed
+    // Contract: an empty seed with step_count=0 and slot_count=0 must hydrate to a
+    // valid empty RunFrame carrying the seed's run id and zero step/slot counts.
+    assert!(
+        matches!(result, Ok(ref frame) if frame.run_id() == run
+            && frame.step_count() == 0
+            && frame.slot_count() == 0),
+        "empty seed must hydrate to a valid empty run frame, got {result:?}"
+    );
 }
 
 /// UnsupportedRecoveryState union of two unsupported flags.

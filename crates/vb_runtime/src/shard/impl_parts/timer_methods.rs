@@ -120,6 +120,7 @@ mod timer_fired_command_tests {
     use vb_core::ids::StepIdx;
     use vb_core::policy::RuntimePolicy;
 
+    use crate::RuntimeError;
     use crate::shard::types::{PendingTimer, PendingTimerKind};
     use crate::shard::{RunId, Shard, ShardCommand, ShardConfig};
 

@@ -6,11 +6,14 @@ use crate::args::{
 #[test]
 fn parse_action_list_defaults_to_text_and_registered() {
     let parsed = parse_args(&args(&["velvet-ballistics", "action", "list"]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Text);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::ActionList { output, registry }) => {
+
+            assert_eq!(output, OutputFormat::Text);
+            assert_eq!(registry, ActionRegistryMode::Registered);
+
+        }
+        other => panic!("expected Command::ActionList, got {other:?}"),
     }
 }
 
@@ -35,11 +38,14 @@ fn parse_action_list_accepts_emit_yaml() {
         "--emit",
         "yaml",
     ]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::ActionList { output, registry }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+            assert_eq!(registry, ActionRegistryMode::Registered);
+
+        }
+        other => panic!("expected Command::ActionList, got {other:?}"),
     }
 }
 
@@ -52,11 +58,14 @@ fn parse_action_list_accepts_emit_postcard() {
         "--emit",
         "postcard",
     ]));
-    if let Ok(Command::ActionList { output, registry }) = parsed {
-        assert_eq!(output, OutputFormat::Postcard);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::ActionList { output, registry }) => {
+
+            assert_eq!(output, OutputFormat::Postcard);
+            assert_eq!(registry, ActionRegistryMode::Registered);
+
+        }
+        other => panic!("expected Command::ActionList, got {other:?}"),
     }
 }
 
@@ -69,10 +78,13 @@ fn parse_action_list_accepts_registry_empty() {
         "--registry",
         "empty",
     ]));
-    if let Ok(Command::ActionList { registry, .. }) = parsed {
-        assert_eq!(registry, ActionRegistryMode::Empty);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::ActionList { registry, .. }) => {
+
+            assert_eq!(registry, ActionRegistryMode::Empty);
+
+        }
+        other => panic!("expected Command::ActionList, got {other:?}"),
     }
 }
 
@@ -85,10 +97,13 @@ fn parse_action_list_accepts_registry_uninitialized() {
         "--registry",
         "uninitialized",
     ]));
-    if let Ok(Command::ActionList { registry, .. }) = parsed {
-        assert_eq!(registry, ActionRegistryMode::Uninitialized);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::ActionList { registry, .. }) => {
+
+            assert_eq!(registry, ActionRegistryMode::Uninitialized);
+
+        }
+        other => panic!("expected Command::ActionList, got {other:?}"),
     }
 }
 
@@ -147,17 +162,19 @@ fn parse_action_inspect_accepts_valid_name_and_defaults() {
         "inspect",
         "send_email",
     ]));
-    if let Ok(Command::ActionInspect {
+    match parsed {
+        Ok(Command::ActionInspect {
         action_name,
         output,
         registry,
-    }) = parsed
-    {
-        assert_eq!(action_name.as_str(), "send_email");
-        assert_eq!(output, OutputFormat::Text);
-        assert_eq!(registry, ActionRegistryMode::Registered);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(action_name.as_str(), "send_email");
+            assert_eq!(output, OutputFormat::Text);
+            assert_eq!(registry, ActionRegistryMode::Registered);
+
+        }
+        other => panic!("expected Command::ActionInspect, got {other:?}"),
     }
 }
 
@@ -173,17 +190,19 @@ fn parse_action_inspect_accepts_registry_and_emit_postcard() {
         "--emit",
         "postcard",
     ]));
-    if let Ok(Command::ActionInspect {
+    match parsed {
+        Ok(Command::ActionInspect {
         action_name,
         output,
         registry,
-    }) = parsed
-    {
-        assert_eq!(action_name.as_str(), "send_email");
-        assert_eq!(output, OutputFormat::Postcard);
-        assert_eq!(registry, ActionRegistryMode::Empty);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(action_name.as_str(), "send_email");
+            assert_eq!(output, OutputFormat::Postcard);
+            assert_eq!(registry, ActionRegistryMode::Empty);
+
+        }
+        other => panic!("expected Command::ActionInspect, got {other:?}"),
     }
 }
 

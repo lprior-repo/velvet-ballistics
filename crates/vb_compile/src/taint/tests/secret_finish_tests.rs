@@ -38,11 +38,11 @@ steps:
     finish:
       result: $secrets.token
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("Section 47: secret in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "Section 47: secret in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -65,11 +65,11 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("Section 47: secret via slot relay in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "Section 47: secret via slot relay in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -90,11 +90,11 @@ steps:
       result:
         key: $secrets.password
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("Section 47: composite with secret in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "Section 47: composite with secret in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -116,11 +116,11 @@ steps:
         - $secrets.item
         - clean_value
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("Section 47: list with secret in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "Section 47: list with secret in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -140,11 +140,11 @@ steps:
     finish:
       result: $input.user
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("clean Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "clean Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -162,11 +162,11 @@ steps:
     finish:
       result: 42
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("literal Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "literal Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -186,11 +186,11 @@ steps:
     finish:
       result: $vars.label
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("var Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "var Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -225,11 +225,11 @@ steps:
     finish:
       result: 4
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("Section 47: deep slot chain ending in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "Section 47: deep slot chain ending in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -259,7 +259,6 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
@@ -288,7 +287,6 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: secret-typed input in Save must be rejected, got {:?}",
@@ -316,7 +314,6 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: composite with secret in Save must be rejected, got {:?}",
@@ -346,7 +343,6 @@ steps:
     finish:
       result: 1
 "#;
-    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: two-hop secret relay must be rejected, got {:?}",
@@ -374,7 +370,6 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: nested secret in Save must be rejected, got {:?}",
@@ -396,11 +391,11 @@ steps:
     finish:
       result: $unknown_root.field
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("unknown reference root in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "unknown reference root in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -418,11 +413,11 @@ steps:
     finish:
       result: not_a_reference
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("non-dollar reference in Finish must compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "non-dollar reference in Finish must compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -447,7 +442,6 @@ steps:
     finish:
       result: $secrets.api_key
 "#;
-    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "finish.result" }))),
         "BUG: currently rejects secret Finish (Section 47 violation)"
@@ -481,11 +475,11 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compile_workflow(source);
+    let workflow = compile_workflow(source)
+        .expect("clean input in Save should compile, got ");
     assert!(
-        matches!(result, Ok(_)),
-        "clean input in Save should compile, got {:?}",
-        result
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
     );
 }
 
@@ -575,7 +569,11 @@ steps:
 
         let result = compile_workflow(source.as_bytes());
 
-        prop_assert!(matches!(result, Ok(_)), "clean input in Finish must compile, got {:?}", result);
+        let workflow = result.expect("clean input in Finish must compile, got ");
+    prop_assert!(
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
+    );
     }
 }
 
@@ -595,6 +593,10 @@ steps:
 
         let result = compile_workflow(source.as_bytes());
 
-        prop_assert!(matches!(result, Ok(_)), "literal in Finish must compile, got {:?}", result);
+        let workflow = result.expect("literal in Finish must compile, got ");
+    prop_assert!(
+        workflow.finish_contains_secret_data(),
+        "Finish result must preserve secret data per Section 47"
+    );
     }
 }

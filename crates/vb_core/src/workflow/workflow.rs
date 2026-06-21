@@ -137,6 +137,39 @@ impl CompiledWorkflow {
         self.resource_contract
     }
 
+    /// Returns the `SlotIdx` referenced by the workflow's `Finish` node, if any.
+    ///
+    /// Per Section 47, the Finish result slot must preserve the secret
+    /// reference rather than being stripped at compile time. A `Some(_)`
+    /// return means the compiled IR contains a `Finish` node that
+    /// references a populated slot. A `None` return means the workflow
+    /// has no Finish node (truncated/empty workflow) and the secret
+    /// data flow has been broken.
+    #[must_use]
+    pub fn finish_result_slot(&self) -> Option<crate::ids::SlotIdx> {
+        for node in self.nodes.iter() {
+            if let super::node::CompiledNodeKind::Finish { result } = node.kind {
+                return Some(result);
+            }
+        }
+        None
+    }
+
+    /// Returns `true` if the workflow's `Finish` node references a
+    /// non-trivial slot (any slot index `> 0`), which is a proxy for
+    /// "Finish preserves the secret/Finish data flow per Section 47."
+    ///
+    /// This catches regressions where the compiler strips Finish
+    /// expressions down to the default slot 0. Use [`Self::finish_result_slot`]
+    /// for the exact slot index.
+    #[must_use]
+    pub fn finish_contains_secret_data(&self) -> bool {
+        match self.finish_result_slot() {
+            Some(slot) => slot.get() > 0,
+            None => false,
+        }
+    }
+
     /// Converts back to the serializable parts representation for artifact emission.
     #[must_use]
     pub fn to_parts(&self) -> WorkflowParts {

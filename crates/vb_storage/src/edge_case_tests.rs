@@ -544,13 +544,25 @@ mod edge_case_tests {
     }
 
     #[test]
-    fn encode_rejects_zero_length_payload_serialization() {
+    fn encode_accepts_zero_length_payload_and_round_trips() {
+        // `encode_record` does not reject empty `bytes`; the encoded envelope
+        // still carries the BlobRecord's 32-byte digest header so the on-wire
+        // record is non-empty. Verify the round trip preserves the empty payload.
         let record = BlobRecord {
             digest: [0u8; 32],
             bytes: vec![],
         };
-        let result = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, 1024);
-        assert!(result.is_ok(), "empty payload should be accepted");
+        let encoded = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, &record, 1024)
+            .expect("empty payload must encode successfully");
+        assert!(
+            !encoded.is_empty(),
+            "envelope must carry the 32-byte digest header even when bytes is empty"
+        );
+        let (envelope, decoded): (crate::RecordEnvelope, BlobRecord) =
+            decode_record(&encoded, MAGIC_BLOB, 1024).expect("round trip decode must succeed");
+        assert_eq!(decoded.bytes, vec![], "empty payload must round-trip as empty");
+        assert_eq!(decoded.digest, [0u8; 32], "digest must round-trip unchanged");
+        assert_eq!(envelope.kind, RecordKind::Blob);
     }
 
     // =========================================================================

@@ -4,13 +4,16 @@ use crate::args::{Command, DurabilityMode, OutputFormat, ParseError, VerifyProfi
 #[test]
 fn parse_system_status_defaults_to_standard_none_text() {
     let parsed = parse_args(&args(&["velvet-ballistics", "system", "status"]));
-    if let Ok(Command::SystemStatus { options, output }) = parsed {
-        assert_eq!(options.profile, VerifyProfile::Standard);
-        assert_eq!(options.server, DurabilityMode::None);
-        assert!(!options.emit_yaml);
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::SystemStatus { options, output }) => {
+
+            assert_eq!(options.profile, VerifyProfile::Standard);
+            assert_eq!(options.server, DurabilityMode::None);
+            assert!(!options.emit_yaml);
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::SystemStatus, got {other:?}"),
     }
 }
 
@@ -27,13 +30,16 @@ fn parse_system_status_accepts_full_profile_server_none_and_emit_yaml() {
         "--emit",
         "yaml",
     ]));
-    if let Ok(Command::SystemStatus { options, output }) = parsed {
-        assert_eq!(options.profile, VerifyProfile::Full);
-        assert_eq!(options.server, DurabilityMode::None);
-        assert!(options.emit_yaml);
-        assert_eq!(output, OutputFormat::Yaml);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::SystemStatus { options, output }) => {
+
+            assert_eq!(options.profile, VerifyProfile::Full);
+            assert_eq!(options.server, DurabilityMode::None);
+            assert!(options.emit_yaml);
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::SystemStatus, got {other:?}"),
     }
 }
 
@@ -134,13 +140,16 @@ fn parse_system_rejects_missing_subcommand() {
 #[test]
 fn parse_status_accepts_no_runtime_defaults() {
     let parsed = parse_args(&args(&["velvet-ballistics", "status", "--emit", "yaml"]));
-    if let Ok(Command::Status { options, output }) = parsed {
-        assert_eq!(options.active_runs, None);
-        assert_eq!(options.queue_depth, None);
-        assert_eq!(options.trace_dropped, None);
-        assert_eq!(output, OutputFormat::Yaml);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Status { options, output }) => {
+
+            assert_eq!(options.active_runs, None);
+            assert_eq!(options.queue_depth, None);
+            assert_eq!(options.trace_dropped, None);
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Status, got {other:?}"),
     }
 }
 
@@ -156,13 +165,16 @@ fn parse_status_accepts_diagnostic_counters() {
         "--trace-dropped",
         "0",
     ]));
-    if let Ok(Command::Status { options, output }) = parsed {
-        assert_eq!(options.active_runs, Some(5));
-        assert_eq!(options.queue_depth, Some(3));
-        assert_eq!(options.trace_dropped, Some(0));
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Status { options, output }) => {
+
+            assert_eq!(options.active_runs, Some(5));
+            assert_eq!(options.queue_depth, Some(3));
+            assert_eq!(options.trace_dropped, Some(0));
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Status, got {other:?}"),
     }
 }
 
@@ -296,10 +308,13 @@ fn parse_status_accepts_queue_depth_at_maximum() {
         "--queue-depth",
         "1024",
     ]));
-    if let Ok(Command::Status { options, .. }) = parsed {
-        assert_eq!(options.queue_depth, Some(1024));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Status { options, .. }) => {
+
+            assert_eq!(options.queue_depth, Some(1024));
+
+        }
+        other => panic!("expected Command::Status, got {other:?}"),
     }
 }
 
@@ -311,10 +326,13 @@ fn parse_status_accepts_active_runs_at_maximum() {
         "--active-runs",
         "1024",
     ]));
-    if let Ok(Command::Status { options, .. }) = parsed {
-        assert_eq!(options.active_runs, Some(1024));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Status { options, .. }) => {
+
+            assert_eq!(options.active_runs, Some(1024));
+
+        }
+        other => panic!("expected Command::Status, got {other:?}"),
     }
 }
 
@@ -326,10 +344,13 @@ fn parse_status_accepts_active_runs_at_maximum() {
             "--trace-dropped",
             "18446744073709551615",
         ]));
-        if let Ok(Command::Status { options, .. }) = parsed {
-            assert_eq!(options.trace_dropped, Some(18446744073709551615));
-        } else {
-            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+        match parsed {
+            Ok(Command::Status { options, .. }) => {
+
+                assert_eq!(options.trace_dropped, Some(18446744073709551615));
+
+            }
+            other => panic!("expected Command::Status, got {other:?}"),
         }
     }
 
@@ -341,13 +362,16 @@ fn parse_status_accepts_active_runs_at_maximum() {
             "--db",
             "/var/lib/velvet/journal",
         ]));
-        if let Ok(Command::Status { options, .. }) = parsed {
-            assert_eq!(
+        match parsed {
+            Ok(Command::Status { options, .. }) => {
+
+                assert_eq!(
                 options.db,
                 Some(std::path::PathBuf::from("/var/lib/velvet/journal"))
-            );
-        } else {
-            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+                );
+
+            }
+            other => panic!("expected Command::Status, got {other:?}"),
         }
     }
 
@@ -366,13 +390,16 @@ fn parse_status_accepts_active_runs_at_maximum() {
             "--db",
             "/var/lib/velvet/journal",
         ]));
-        if let Ok(Command::SystemStatus { options, .. }) = parsed {
-            assert_eq!(
+        match parsed {
+            Ok(Command::SystemStatus { options, .. }) => {
+
+                assert_eq!(
                 options.db,
                 Some(std::path::PathBuf::from("/var/lib/velvet/journal"))
-            );
-        } else {
-            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+                );
+
+            }
+            other => panic!("expected Command::SystemStatus, got {other:?}"),
         }
     }
 

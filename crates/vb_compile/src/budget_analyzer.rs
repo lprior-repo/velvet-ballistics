@@ -120,21 +120,55 @@ mod tests {
         let workflow = compile_minimal_workflow();
         let budget = compute_whole_workflow_budget(&workflow)
             .expect("bounded workflow must return Ok from the analyzer");
-        // The 12 master §64 fields must all be reachable on the returned
-        // budget. We do not assert specific values because those depend on
-        // the underlying traversal; we only assert that the analyzer ran.
-        let _ = budget.max_steps_executable;
-        let _ = budget.max_action_tickets;
-        let _ = budget.max_parallel_in_flight;
-        let _ = budget.max_retries_per_action;
-        let _ = budget.max_gather_pages;
-        let _ = budget.max_gather_items;
-        let _ = budget.max_for_each_iterations;
-        let _ = budget.max_together_branches;
-        let _ = budget.max_repeat_attempts;
-        let _ = budget.max_run_time_seconds;
-        let _ = budget.max_result_bytes;
-        let _ = budget.max_total_slots_written;
+        // The 12 master §64 fields must hold concrete values for a
+        // minimal set + finish linear workflow. Linear means:
+        // no Do, no Collect, no ForEach, no Together, no Repeat.
+        // Expected: 1 set step + 1 finish step = 2 total steps.
+        assert_eq!(
+            budget.max_total_steps, 2,
+            "1 set step + 1 finish = 2 total reachable steps"
+        );
+        assert_eq!(
+            budget.max_steps_executable, 2,
+            "both steps are executable in a linear workflow"
+        );
+        assert_eq!(
+            budget.max_action_tickets, 0,
+            "linear workflow has no Do nodes"
+        );
+        assert_eq!(
+            budget.max_parallel_in_flight, 0,
+            "linear workflow has no Do nodes"
+        );
+        assert_eq!(
+            budget.max_retries_per_action, 3,
+            "linear workflow tracks contract.max_retry_attempts (default 3)"
+        );
+        assert_eq!(budget.max_gather_pages, 0, "linear workflow has no Collect");
+        assert_eq!(budget.max_gather_items, 0, "linear workflow has no Collect");
+        assert_eq!(
+            budget.max_for_each_iterations, 0,
+            "linear workflow has no ForEach"
+        );
+        assert_eq!(
+            budget.max_together_branches, 0,
+            "linear workflow has no Together"
+        );
+        assert_eq!(budget.max_repeat_attempts, 0, "linear workflow has no Repeat");
+        assert_eq!(
+            budget.max_run_time_seconds, 2,
+            "max_run_time_seconds tracks max_total_steps at 1 step/second"
+        );
+        let max_result_bytes_value = budget.max_result_bytes;
+        assert!(
+            max_result_bytes_value <= u32::MAX,
+            "max_result_bytes must be reachable (got {max_result_bytes_value})"
+        );
+        let max_total_slots_written_value = budget.max_total_slots_written;
+        assert!(
+            max_total_slots_written_value <= u32::MAX,
+            "max_total_slots_written must be reachable (got {max_total_slots_written_value})"
+        );
     }
 
     #[test]
@@ -203,18 +237,25 @@ mod tests {
             .expect("bounded workflow must return Ok from the analyzer");
         // Twelve fields, enumerated in the order documented in the
         // budget_analyzer.rs module docstring (master §64 #1..#12).
-        let _ = budget.max_steps_executable; // #1
-        let _ = budget.max_action_tickets; // #2
-        let _ = budget.max_parallel_in_flight; // #3
-        let _ = budget.max_retries_per_action; // #4
-        let _ = budget.max_gather_pages; // #5
-        let _ = budget.max_gather_items; // #6
-        let _ = budget.max_for_each_iterations; // #7
-        let _ = budget.max_together_branches; // #8
-        let _ = budget.max_repeat_attempts; // #9
-        let _ = budget.max_run_time_seconds; // #10
-        let _ = budget.max_result_bytes; // #11
-        let _ = budget.max_total_slots_written; // #12
+        // For a 1-set + 1-finish linear workflow, expected values are:
+        //   #1 max_steps_executable == 2 (both steps executable)
+        //   #2..#10 == 0 (no Do / no Collect / no ForEach / no Together / no Repeat)
+        //   #11..#12 from ResourceContract (upper bound check)
+        assert_eq!(budget.max_steps_executable, 2, "master §64 field #1");
+        assert_eq!(budget.max_action_tickets, 0, "master §64 field #2");
+        assert_eq!(budget.max_parallel_in_flight, 0, "master §64 field #3");
+        assert_eq!(budget.max_retries_per_action, 3, "master §64 field #4");
+        assert_eq!(budget.max_gather_pages, 0, "master §64 field #5");
+        assert_eq!(budget.max_gather_items, 0, "master §64 field #6");
+        assert_eq!(budget.max_for_each_iterations, 0, "master §64 field #7");
+        assert_eq!(budget.max_together_branches, 0, "master §64 field #8");
+        assert_eq!(budget.max_repeat_attempts, 0, "master §64 field #9");
+        assert_eq!(budget.max_run_time_seconds, 2, "master §64 field #10");
+        assert!(budget.max_result_bytes <= u32::MAX, "master §64 field #11");
+        assert!(
+            budget.max_total_slots_written <= u32::MAX,
+            "master §64 field #12"
+        );
     }
 
     /// Edge case: a single-node workflow (set + finish) is the smallest

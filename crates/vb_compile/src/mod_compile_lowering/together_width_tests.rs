@@ -196,19 +196,15 @@ fn compute_width(primitive: &StepPrimitive) -> Result<usize, crate::CompileError
     super::part_01::canonical_body_step_width(primitive)
 }
 
-/// TDD-tolerant assertion: Together width test accepts either Ok(expected)
-/// (post-implementation) or Err(UnsupportedStepPrimitive) (pre-implementation).
-/// When the implementation is complete, the Err branch will never be taken.
+/// Hard assertion: Together width must match the expected value. The Together
+/// lowering implementation is in place, so the function must return `Ok` with
+/// the expected width.
 fn assert_width_or_unsupported(result: &Result<usize, crate::CompileError>, expected: usize) {
     match result {
         Ok(w) => assert_eq!(*w, expected, "width must match expected value"),
         Err(e) => {
-            // Pre-implementation: accept UnsupportedStepPrimitive for "together"
-            assert!(
-                matches!(e, crate::CompileError::UnsupportedStepPrimitive { primitive, .. } if *primitive == "together"),
-                "expected Ok({}) or Err(UnsupportedStepPrimitive {{ primitive: \"together\" }}), got {:?}",
-                expected,
-                e
+            panic!(
+                "Together width computation must succeed; got Err({e:?}) but expected Ok({expected})"
             );
         }
     }

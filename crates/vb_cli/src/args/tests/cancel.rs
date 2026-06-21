@@ -13,19 +13,21 @@ fn parse_cancel_accepts_run_id_and_db() {
         "--db",
         "journal-db",
     ]));
-    if let Ok(Command::Cancel {
+    match parsed {
+        Ok(Command::Cancel {
         run_id,
         db,
         reason,
         output,
-    }) = parsed
-    {
-        assert_eq!(run_id, "42");
-        assert_eq!(db, PathBuf::from("journal-db"));
-        assert_eq!(reason, None);
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(run_id, "42");
+            assert_eq!(db, PathBuf::from("journal-db"));
+            assert_eq!(reason, None);
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -40,10 +42,13 @@ fn parse_cancel_accepts_reason() {
         "--reason",
         "user request",
     ]));
-    if let Ok(Command::Cancel { reason, .. }) = parsed {
-        assert_eq!(reason, Some("user request".to_string()));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { reason, .. }) => {
+
+            assert_eq!(reason, Some("user request".to_string()));
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -57,10 +62,13 @@ fn parse_cancel_legacy_json_flag_keeps_text_output() {
         "journal-db",
         "--json",
     ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -74,10 +82,13 @@ fn parse_cancel_legacy_jsonl_flag_keeps_text_output() {
         "journal-db",
         "--jsonl",
     ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -92,10 +103,13 @@ fn parse_cancel_accepts_emit_yaml() {
         "--emit",
         "yaml",
     ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -110,10 +124,13 @@ fn parse_cancel_accepts_emit_postcard() {
         "--emit",
         "postcard",
     ]));
-    if let Ok(Command::Cancel { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Postcard);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Postcard);
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -181,9 +198,12 @@ fn parse_cancel_accepts_reason_exactly_256_chars() {
         "--reason",
         &reason,
     ]));
-    if let Ok(Command::Cancel { .. }) = parsed {
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { .. }) => {
+
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 
@@ -199,10 +219,13 @@ fn parse_cancel_accepts_multibyte_reason_at_char_limit() {
         "--reason",
         &reason,
     ]));
-    if let Ok(Command::Cancel { reason: parsed_reason, .. }) = parsed {
-        assert_eq!(parsed_reason, Some(reason));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Cancel { reason: parsed_reason, .. }) => {
+
+            assert_eq!(parsed_reason, Some(reason));
+
+        }
+        other => panic!("expected Command::Cancel, got {other:?}"),
     }
 }
 

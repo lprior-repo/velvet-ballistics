@@ -269,47 +269,48 @@ fn nested_together_inner_nodes_at_correct_offsets() {
         false,
     );
 
-    if let Ok(()) = emit_result {
-        let parts = builder.build_parts("test", dummy_digest()).unwrap();
-        let nodes = &*parts.nodes;
+        let () = emit_result.expect("Together lowering must succeed per spec");
 
-        // Find all TogetherStart and TogetherJoin nodes
-        let starts: Vec<_> = nodes
-            .iter()
-            .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }))
-            .collect();
-        let joins: Vec<_> = nodes
-            .iter()
-            .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }))
-            .collect();
+    let parts = builder.build_parts("test", dummy_digest()).unwrap();
+    let nodes = &*parts.nodes;
 
-        // Should have 2 starts and 2 joins (one inner, one outer)
+    // Find all TogetherStart and TogetherJoin nodes
+    let starts: Vec<_> = nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }))
+        .collect();
+    let joins: Vec<_> = nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }))
+        .collect();
+
+    // Should have 2 starts and 2 joins (one inner, one outer)
+    assert!(
+        starts.len() >= 2,
+        "Expected at least 2 TogetherStart nodes (outer + inner), got {}",
+        starts.len()
+    );
+    assert!(
+        joins.len() >= 2,
+        "Expected at least 2 TogetherJoin nodes (outer + inner), got {}",
+        joins.len()
+    );
+
+    // Outer TogetherStart must be first
+    assert_eq!(starts[0].id, StepIdx::new(0));
+
+    // Inner TogetherJoin must appear before outer TogetherJoin
+    if joins.len() >= 2 {
+        let inner_join_idx = joins[0].id.as_usize();
+        let outer_join_idx = joins[1].id.as_usize();
         assert!(
-            starts.len() >= 2,
-            "Expected at least 2 TogetherStart nodes (outer + inner), got {}",
-            starts.len()
+            inner_join_idx < outer_join_idx,
+            "Inner TogetherJoin ({}) should come before outer TogetherJoin ({})",
+            inner_join_idx,
+            outer_join_idx
         );
-        assert!(
-            joins.len() >= 2,
-            "Expected at least 2 TogetherJoin nodes (outer + inner), got {}",
-            joins.len()
-        );
-
-        // Outer TogetherStart must be first
-        assert_eq!(starts[0].id, StepIdx::new(0));
-
-        // Inner TogetherJoin must appear before outer TogetherJoin
-        if joins.len() >= 2 {
-            let inner_join_idx = joins[0].id.as_usize();
-            let outer_join_idx = joins[1].id.as_usize();
-            assert!(
-                inner_join_idx < outer_join_idx,
-                "Inner TogetherJoin ({}) should come before outer TogetherJoin ({})",
-                inner_join_idx,
-                outer_join_idx
-            );
-        }
     }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -358,26 +359,21 @@ steps:
     let result = crate::compile_workflow(yaml_source);
 
     // TDD: will succeed after implementation
-    match result {
-        Ok(workflow) => {
-            let parts = workflow.to_parts();
-            let nodes = &*parts.nodes;
-            let starts: Vec<_> = nodes
-                .iter()
-                .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }))
-                .collect();
-            let joins: Vec<_> = nodes
-                .iter()
-                .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }))
-                .collect();
-            assert!(starts.len() >= 2, "Expected inner + outer TogetherStart");
-            assert!(joins.len() >= 2, "Expected inner + outer TogetherJoin");
-        }
-        Err(_) => {
-            // TDD: currently rejected as UnsupportedStepPrimitive
-            // Accept this as valid test evidence
-        }
-    }
+        let workflow = result.expect("Together lowering must succeed per spec");
+
+    let parts = workflow.to_parts();
+    let nodes = &*parts.nodes;
+    let starts: Vec<_> = nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }))
+        .collect();
+    let joins: Vec<_> = nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }))
+        .collect();
+    assert!(starts.len() >= 2, "Expected inner + outer TogetherStart");
+    assert!(joins.len() >= 2, "Expected inner + outer TogetherJoin");
+
 }
 
 // ---------------------------------------------------------------------------

@@ -728,15 +728,24 @@ proptest! {
 
         // Recv all submitted frames
         let mut received = Vec::with_capacity(submitted.len());
-        while let Ok(Some(_)) = ingress.try_recv() {
-            received.push(());
+        while let Ok(Some(frame)) = ingress.try_recv() {
+            received.push(frame);
         }
 
-        // Invariant: submit count equals receive count (no frames lost)
+        // Invariant 1: submit count equals receive count (no frames lost).
         prop_assert_eq!(
             submitted.len(),
             received.len(),
             "all successfully submitted frames must be received (no loss)"
+        );
+
+        // Invariant 2: received run_ids must match submitted run_ids in order
+        // (FIFO order preserved). A regression in `try_recv` that returns
+        // frames out of submission order would surface here.
+        prop_assert_eq!(
+            received.iter().map(|f| f.run_id().as_u64()).collect::<Vec<_>>(),
+            submitted.iter().map(|i| u64::try_from(*i).unwrap()).collect::<Vec<_>>(),
+            "received run_ids must match submitted run_ids in submission order (FIFO)"
         );
     }
 

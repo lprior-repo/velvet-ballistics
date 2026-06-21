@@ -167,17 +167,17 @@ fn parse_inspect_includes_output_format() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Inspect { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Inspect {
+    match parsed {
+        Ok(Command::Inspect {
         run_id, db, output, ..
-    }) = parsed
-    {
-        assert_eq!(run_id, "42");
-        assert_eq!(db, PathBuf::from("test-db"));
-        assert_eq!(output, OutputFormat::Yaml);
+    }) => {
+
+            assert_eq!(run_id, "42");
+            assert_eq!(db, PathBuf::from("test-db"));
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Inspect, got {other:?}"),
     }
 }
 
@@ -254,19 +254,19 @@ fn parse_diff_requires_both_run_ids_and_db() {
         "--db",
         "test-db",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Diff { .. })),
-        "unexpected: {parsed:?}"
-    );
-    if let Ok(Command::Diff {
+    match parsed {
+        Ok(Command::Diff {
         diff_mode: DiffMode::RunAgainst { run_a, run_b, db },
         output,
-    }) = parsed
-    {
-        assert_eq!(run_a, "1".to_string());
-        assert_eq!(run_b, "2".to_string());
-        assert_eq!(db, PathBuf::from("test-db"));
-        assert_eq!(output, OutputFormat::Text);
+    }) => {
+
+            assert_eq!(run_a, "1".to_string());
+            assert_eq!(run_b, "2".to_string());
+            assert_eq!(db, PathBuf::from("test-db"));
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Diff, got {other:?}"),
     }
 }
 
@@ -282,12 +282,13 @@ fn parse_diff_accepts_json_flag() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Diff { .. })),
-        "unexpected: {parsed:?}"
-    );
-    if let Ok(Command::Diff { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
+    match parsed {
+        Ok(Command::Diff { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Diff, got {other:?}"),
     }
 }
 
@@ -342,13 +343,14 @@ fn parse_diff_rejects_workflow_against_with_db_hidden_mode() {
 #[test]
 fn parse_doctor_without_db_is_stateless_text_mode() {
     let parsed = parse_args(&args(&["velvet-ballistics", "doctor"]));
-    assert!(
-        matches!(parsed, Ok(Command::Doctor { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Doctor { db, output }) = parsed {
-        assert_eq!(db, None);
-        assert_eq!(output, OutputFormat::Text);
+    match parsed {
+        Ok(Command::Doctor { db, output }) => {
+
+            assert_eq!(db, None);
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Doctor, got {other:?}"),
     }
 }
 
@@ -362,12 +364,13 @@ fn parse_doctor_accepts_optional_db_and_yaml_output() {
         "--emit",
         "yaml",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Doctor { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
-    if let Ok(Command::Doctor { db, output }) = parsed {
-        assert_eq!(db, Some(PathBuf::from("journal-db")));
-        assert_eq!(output, OutputFormat::Yaml);
+    match parsed {
+        Ok(Command::Doctor { db, output }) => {
+
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Doctor, got {other:?}"),
     }
 }

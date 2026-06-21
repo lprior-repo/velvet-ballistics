@@ -163,37 +163,31 @@ steps:
     let result = compile_yaml(yaml);
 
     // TDD: will succeed after implementation
-    match result {
-        Ok(workflow) => {
-            let parts = workflow.to_parts();
-            let nodes = &*parts.nodes;
-            // Verify TogetherStart, TogetherBranch, TogetherJoin nodes exist
-            let has_start = nodes
-                .iter()
-                .any(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }));
-            let has_branch = nodes
-                .iter()
-                .any(|n| matches!(n.kind, CompiledNodeKind::TogetherBranch { .. }));
-            let has_join = nodes
-                .iter()
-                .any(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }));
-            assert!(has_start, "IR must contain TogetherStart");
-            assert!(has_branch, "IR must contain TogetherBranch");
-            assert!(has_join, "IR must contain TogetherJoin");
+        let workflow = result.expect("Together lowering must succeed per spec");
 
-            // Digest must be computable
-            let digest = workflow.digest();
-            assert!(
-                !digest.as_bytes().iter().all(|&b| b == 0),
-                "Digest must be non-zero"
-            );
-        }
-        Err(errs) => {
-            // TDD: currently rejected; verify it's a structured error
-            let first = errs.iter().next().unwrap();
-            let _ = first; // Must not panic
-        }
-    }
+    let parts = workflow.to_parts();
+    let nodes = &*parts.nodes;
+    // Verify TogetherStart, TogetherBranch, TogetherJoin nodes exist
+    let has_start = nodes
+        .iter()
+        .any(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }));
+    let has_branch = nodes
+        .iter()
+        .any(|n| matches!(n.kind, CompiledNodeKind::TogetherBranch { .. }));
+    let has_join = nodes
+        .iter()
+        .any(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }));
+    assert!(has_start, "IR must contain TogetherStart");
+    assert!(has_branch, "IR must contain TogetherBranch");
+    assert!(has_join, "IR must contain TogetherJoin");
+
+    // Digest must be computable
+    let digest = workflow.digest();
+    assert!(
+        !digest.as_bytes().iter().all(|&b| b == 0),
+        "Digest must be non-zero"
+    );
+
 }
 
 // ---------------------------------------------------------------------------
@@ -240,29 +234,25 @@ steps:
 
     let result = compile_yaml(yaml);
 
-    match result {
-        Ok(workflow) => {
-            let parts = workflow.to_parts();
-            let nodes = &*parts.nodes;
-            // Both levels of together nodes must be present
-            let start_count = nodes
-                .iter()
-                .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }))
-                .count();
-            let join_count = nodes
-                .iter()
-                .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }))
-                .count();
-            assert_eq!(start_count, 2, "Should have outer + inner TogetherStart");
-            assert_eq!(join_count, 2, "Should have outer + inner TogetherJoin");
+        let workflow = result.expect("Together lowering must succeed per spec");
 
-            // Gate 11 should pass (implicitly checked by compile_source validation)
-            let _ = workflow.digest();
-        }
-        Err(_) => {
-            // TDD: currently rejected
-        }
-    }
+    let parts = workflow.to_parts();
+    let nodes = &*parts.nodes;
+    // Both levels of together nodes must be present
+    let start_count = nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherStart { .. }))
+        .count();
+    let join_count = nodes
+        .iter()
+        .filter(|n| matches!(n.kind, CompiledNodeKind::TogetherJoin { .. }))
+        .count();
+    assert_eq!(start_count, 2, "Should have outer + inner TogetherStart");
+    assert_eq!(join_count, 2, "Should have outer + inner TogetherJoin");
+
+    // Gate 11 should pass (implicitly checked by compile_source validation)
+    let _ = workflow.digest();
+
 }
 
 // ---------------------------------------------------------------------------
@@ -506,11 +496,17 @@ steps:
 
 // ---------------------------------------------------------------------------
 // E2E: Large together configuration (stress test)
+// DELETED per test review (C-09): the original test used 8 branches
+// with 4 Set steps each, which production's top-level Together
+// lowering correctly rejects (StepFieldShape for multi-step bodies).
+// The TDD-red `match result { Ok => assert, Err => {} }` mask hid this.
+// Replaced with a smaller valid 8-branch stress test below.
 // ---------------------------------------------------------------------------
 
 #[test]
 fn e2e_together_large_configuration() {
-    // 8 branches with 4 Set steps each = 2 + 8*(1+4) = 42 nodes
+    // 8 branches with 1 Set step each (top-level Together requires
+    // 1-step branches; multi-step branches are in body position only).
     let yaml = br#"version: velvet-ballistics/v1
 name: large_test
 when:
@@ -523,102 +519,49 @@ steps:
           steps:
             - id: s0_0
               set: { output: "v0_0", value: "0" }
-            - id: s0_1
-              set: { output: "v0_1", value: "1" }
-            - id: s0_2
-              set: { output: "v0_2", value: "2" }
-            - id: s0_3
-              set: { output: "v0_3", value: "3" }
         - label: b1
           steps:
             - id: s1_0
               set: { output: "v1_0", value: "0" }
-            - id: s1_1
-              set: { output: "v1_1", value: "1" }
-            - id: s1_2
-              set: { output: "v1_2", value: "2" }
-            - id: s1_3
-              set: { output: "v1_3", value: "3" }
         - label: b2
           steps:
             - id: s2_0
               set: { output: "v2_0", value: "0" }
-            - id: s2_1
-              set: { output: "v2_1", value: "1" }
-            - id: s2_2
-              set: { output: "v2_2", value: "2" }
-            - id: s2_3
-              set: { output: "v2_3", value: "3" }
         - label: b3
           steps:
             - id: s3_0
               set: { output: "v3_0", value: "0" }
-            - id: s3_1
-              set: { output: "v3_1", value: "1" }
-            - id: s3_2
-              set: { output: "v3_2", value: "2" }
-            - id: s3_3
-              set: { output: "v3_3", value: "3" }
         - label: b4
           steps:
             - id: s4_0
               set: { output: "v4_0", value: "0" }
-            - id: s4_1
-              set: { output: "v4_1", value: "1" }
-            - id: s4_2
-              set: { output: "v4_2", value: "2" }
-            - id: s4_3
-              set: { output: "v4_3", value: "3" }
         - label: b5
           steps:
             - id: s5_0
               set: { output: "v5_0", value: "0" }
-            - id: s5_1
-              set: { output: "v5_1", value: "1" }
-            - id: s5_2
-              set: { output: "v5_2", value: "2" }
-            - id: s5_3
-              set: { output: "v5_3", value: "3" }
         - label: b6
           steps:
             - id: s6_0
               set: { output: "v6_0", value: "0" }
-            - id: s6_1
-              set: { output: "v6_1", value: "1" }
-            - id: s6_2
-              set: { output: "v6_2", value: "2" }
-            - id: s6_3
-              set: { output: "v6_3", value: "3" }
         - label: b7
           steps:
             - id: s7_0
               set: { output: "v7_0", value: "0" }
-            - id: s7_1
-              set: { output: "v7_1", value: "1" }
-            - id: s7_2
-              set: { output: "v7_2", value: "2" }
-            - id: s7_3
-              set: { output: "v7_3", value: "3" }
   - id: done
     finish:
       result: 0
 "#;
 
     let result = compile_yaml(yaml);
-    // TDD: currently rejected, future: Ok(workflow)
-    match result {
-        Ok(workflow) => {
-            let parts = workflow.to_parts();
-            let nodes = &*parts.nodes;
-            // 2 base + 8*(1+4) = 42 together nodes + 1 finish node = 43
-            assert!(
-                nodes.len() >= 42,
-                "Expected at least 42 nodes, got {}",
-                nodes.len()
-            );
-        }
-        Err(_) => {
-            // TDD: acceptable
-        }
-    }
+    let workflow = result.expect("Together lowering must succeed per spec");
+
+    let parts = workflow.to_parts();
+    let nodes = &*parts.nodes;
+    // 2 base + 8*(1) + 1 finish = 11 nodes total
+    assert!(
+        nodes.len() >= 8,
+        "Expected at least 8 nodes, got {}",
+        nodes.len()
+    );
+
 }

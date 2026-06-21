@@ -16,20 +16,22 @@ fn parse_run_accepts_journaled_mode_with_db() {
         "--db",
         "journal-db",
     ]));
-    if let Ok(Command::Run {
+    match parsed {
+        Ok(Command::Run {
         workflow,
         input_bin,
         durability,
         db,
         ..
-    }) = parsed
-    {
-        assert_eq!(workflow, PathBuf::from("workflow.yaml"));
-        assert_eq!(input_bin, PathBuf::from("input.bin"));
-        assert_eq!(durability, DurabilityMode::Journaled);
-        assert_eq!(db, Some(PathBuf::from("journal-db")));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(input_bin, PathBuf::from("input.bin"));
+            assert_eq!(durability, DurabilityMode::Journaled);
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -46,11 +48,14 @@ fn parse_run_accepts_strict_mode_with_db() {
         "--db",
         "journal-db",
     ]));
-    if let Ok(Command::Run { durability, db, .. }) = parsed {
-        assert_eq!(durability, DurabilityMode::Strict);
-        assert_eq!(db, Some(PathBuf::from("journal-db")));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Run { durability, db, .. }) => {
+
+            assert_eq!(durability, DurabilityMode::Strict);
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -65,11 +70,14 @@ fn parse_run_none_mode_keeps_db_optional() {
         "--durability",
         "none",
     ]));
-    if let Ok(Command::Run { durability, db, .. }) = parsed {
-        assert_eq!(durability, DurabilityMode::None);
-        assert_eq!(db, None);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Run { durability, db, .. }) => {
+
+            assert_eq!(durability, DurabilityMode::None);
+            assert_eq!(db, None);
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -86,11 +94,14 @@ fn parse_run_none_mode_can_still_accept_db() {
         "--db",
         "journal-db",
     ]));
-    if let Ok(Command::Run { durability, db, .. }) = parsed {
-        assert_eq!(durability, DurabilityMode::None);
-        assert_eq!(db, Some(PathBuf::from("journal-db")));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Run { durability, db, .. }) => {
+
+            assert_eq!(durability, DurabilityMode::None);
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -107,10 +118,13 @@ fn parse_run_accepts_emit_yaml() {
         "--emit",
         "yaml",
     ]));
-    if let Ok(Command::Run { output, .. }) = parsed {
-        assert_eq!(output, OutputFormat::Yaml);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Run { output, .. }) => {
+
+            assert_eq!(output, OutputFormat::Yaml);
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -125,10 +139,13 @@ fn parse_run_without_step_flags_produces_none_step() {
         "--durability",
         "none",
     ]));
-    if let Ok(Command::Run { step, .. }) = parsed {
-        assert!(step.is_none());
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::Run { step, .. }) => {
+
+            assert!(step.is_none());
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -166,14 +183,16 @@ fn parse_run_with_step_flags() {
         "--step-input",
         "step-data.bin",
     ]));
-    if let Ok(Command::Run {
+    match parsed {
+        Ok(Command::Run {
         step: Some(target), ..
-    }) = parsed
-    {
-        assert_eq!(target.step_id, 3);
-        assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(target.step_id, 3);
+            assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
+
+        }
+        other => panic!("expected Command::Run, got {other:?}"),
     }
 }
 
@@ -245,21 +264,23 @@ fn parse_run_compiled_requires_workflow_and_input_bin_and_durability() {
         "--durability",
         "none",
     ]));
-    if let Ok(Command::RunCompiled {
+    match parsed {
+        Ok(Command::RunCompiled {
         workflow,
         input_bin,
         durability,
         db,
         output,
-    }) = parsed
-    {
-        assert_eq!(workflow, PathBuf::from("workflow.vbir"));
-        assert_eq!(input_bin, PathBuf::from("input.bin"));
-        assert_eq!(durability, DurabilityMode::None);
-        assert_eq!(db, None);
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.vbir"));
+            assert_eq!(input_bin, PathBuf::from("input.bin"));
+            assert_eq!(durability, DurabilityMode::None);
+            assert_eq!(db, None);
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::RunCompiled, got {other:?}"),
     }
 }
 
@@ -293,11 +314,14 @@ fn parse_run_compiled_accepts_journaled_mode_with_db() {
         "--db",
         "journal-db",
     ]));
-    if let Ok(Command::RunCompiled { durability, db, .. }) = parsed {
-        assert_eq!(durability, DurabilityMode::Journaled);
-        assert_eq!(db, Some(PathBuf::from("journal-db")));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::RunCompiled { durability, db, .. }) => {
+
+            assert_eq!(durability, DurabilityMode::Journaled);
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+
+        }
+        other => panic!("expected Command::RunCompiled, got {other:?}"),
     }
 }
 
@@ -314,21 +338,23 @@ fn parse_submit_requires_workflow_input_bin_db_durability() {
         "--durability",
         "journaled",
     ]));
-    if let Ok(Command::Submit {
+    match parsed {
+        Ok(Command::Submit {
         workflow,
         input_bin,
         db,
         durability,
         output,
-    }) = parsed
-    {
-        assert_eq!(workflow, PathBuf::from("workflow.yaml"));
-        assert_eq!(input_bin, PathBuf::from("input.bin"));
-        assert_eq!(db, PathBuf::from("test-db"));
-        assert_eq!(durability, DurabilityMode::Journaled);
-        assert_eq!(output, OutputFormat::Text);
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }) => {
+
+            assert_eq!(workflow, PathBuf::from("workflow.yaml"));
+            assert_eq!(input_bin, PathBuf::from("input.bin"));
+            assert_eq!(db, PathBuf::from("test-db"));
+            assert_eq!(durability, DurabilityMode::Journaled);
+            assert_eq!(output, OutputFormat::Text);
+
+        }
+        other => panic!("expected Command::Submit, got {other:?}"),
     }
 }
 
@@ -361,11 +387,14 @@ fn parse_ipc_serve_requires_socket_and_db() {
         "--db",
         "test-db",
     ]));
-    if let Ok(Command::IpcServe { socket, db }) = parsed {
-        assert_eq!(socket, PathBuf::from("/tmp/vb.sock"));
-        assert_eq!(db, PathBuf::from("test-db"));
-    } else {
-        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    match parsed {
+        Ok(Command::IpcServe { socket, db }) => {
+
+            assert_eq!(socket, PathBuf::from("/tmp/vb.sock"));
+            assert_eq!(db, PathBuf::from("test-db"));
+
+        }
+        other => panic!("expected Command::IpcServe, got {other:?}"),
     }
 }
 

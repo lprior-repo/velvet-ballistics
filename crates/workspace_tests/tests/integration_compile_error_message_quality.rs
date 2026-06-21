@@ -353,7 +353,7 @@ fn compile_error_source_too_large_includes_limit_info() {
     );
 }
 
-/// CompileError::DepthLimit: nesting depth limit enforced.
+/// CompileError::DepthLimit: nesting depth limit enforced by `parse_ast`.
 #[test]
 fn compile_error_depth_limit_includes_depth_value() {
     let compiler = YamlCompiler::new(vb_compile::YamlLimits {
@@ -370,13 +370,15 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compiler.compile(source);
-    // Note: max_depth may not be enforced in all compile paths
-    // This test verifies the limit type exists and can be configured
-    assert!(result.is_ok() || result.is_err());
+    // parse_ast enforces YamlLimits via validate_strict_profile; compile() does not.
+    let result = compiler.parse_ast(source);
+    assert!(
+        matches!(result, Err(CompileErrors(ref errors)) if errors.iter().any(|e| matches!(e, CompileError::DepthLimit { depth, limit } if *depth > *limit && *limit == 1))),
+        "max_depth=1 must reject nesting > 1, got {result:?}"
+    );
 }
 
-/// CompileError::SequenceLimit: sequence length limit.
+/// CompileError::SequenceLimit: sequence length limit enforced by `parse_ast`.
 #[test]
 fn compile_error_sequence_limit_exists_and_configurable() {
     let compiler = YamlCompiler::new(vb_compile::YamlLimits {
@@ -396,12 +398,14 @@ steps:
   - id: c
     finish: { result: 0 }
 "#;
-    let result = compiler.compile(source);
-    // Should either pass (limit not enforced in this path) or fail
-    assert!(result.is_ok() || result.is_err());
+    let result = compiler.parse_ast(source);
+    assert!(
+        matches!(result, Err(CompileErrors(ref errors)) if errors.iter().any(|e| matches!(e, CompileError::SequenceLimit { actual, limit } if *actual > *limit && *limit == 2))),
+        "max_sequence_len=2 must reject sequence of length 3, got {result:?}"
+    );
 }
 
-/// CompileError::ScalarLimit: scalar length limit.
+/// CompileError::ScalarLimit: scalar length limit enforced by `parse_ast`.
 #[test]
 fn compile_error_scalar_limit_exists() {
     let compiler = YamlCompiler::new(vb_compile::YamlLimits {
@@ -419,9 +423,11 @@ steps:
     finish:
       result: 0
 "#;
-    let result = compiler.compile(source);
-    // Either enforces limit or ignores it in this path
-    assert!(result.is_ok() || result.is_err());
+    let result = compiler.parse_ast(source);
+    assert!(
+        matches!(result, Err(CompileErrors(ref errors)) if errors.iter().any(|e| matches!(e, CompileError::ScalarLimit { actual, limit } if *actual > *limit && *limit == 5))),
+        "max_scalar_bytes=5 must reject scalar > 5 bytes, got {result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------

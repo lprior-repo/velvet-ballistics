@@ -146,38 +146,36 @@ mod process_lock_tests {
 
         let result = crate::FjallJournal::open(temp.path(), None);
 
-        match result {
-            Ok(_) => {
-                // Fjall may allow re-opening depending on its internal behavior
-                // If the second open succeeds, it means fjall handles this internally
-            }
-            Err(JournalError::ProcessLockHeld { .. }) => {
-                // This is the expected failure mode on most systems
-            }
-            Err(other) => {
-                // Any other error is acceptable as long as it's not a panic
-                _ = other;
-            }
-        }
+        assert!(
+            matches!(result, Err(JournalError::ProcessLockHeld { .. })),
+            "second open must fail with ProcessLockHeld, got {result:?}"
+        );
     }
 
     #[test]
     fn process_lock_is_released_on_drop() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let lock_path = temp.path().join(".process.lock");
         {
             let _journal = crate::FjallJournal::open(temp.path(), None)
                 .expect("first journal should open");
+            assert!(
+                lock_path.exists(),
+                ".process.lock must exist while journal is open"
+            );
             // Drop happens here
         }
+        assert!(
+            !lock_path.exists(),
+            ".process.lock must be released on journal drop"
+        );
+
         // After drop, we should be able to open again
         let result = crate::FjallJournal::open(temp.path(), None);
-        match result {
-            Ok(_) => {}
-            Err(e) => {
-                // On some systems the lock may take time to release
-                _ = e;
-            }
-        }
+        assert!(
+            result.is_ok(),
+            "re-open after drop must succeed because lock was released, got {result:?}"
+        );
     }
 
     #[test]

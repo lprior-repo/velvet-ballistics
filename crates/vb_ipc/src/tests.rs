@@ -442,16 +442,10 @@ fn ingress_frame_accessors_return_correct_values() {
 
 #[test]
 fn decode_returns_disconnected_when_buffer_empty() {
-    let (sender, receiver) = crossbeam_channel::bounded::<IngressFrame>(1);
-    drop(sender);
+    let mut ingress = MemoryIngress::bounded(QueueCapacity::new(std::num::NonZeroUsize::MIN));
+    ingress.disconnect_sender();
 
-    let result: Result<Option<IngressFrame>, IpcError> = match receiver.try_recv() {
-        Ok(_) => Ok(None),
-        Err(crossbeam_channel::TryRecvError::Empty) => Ok(None),
-        Err(crossbeam_channel::TryRecvError::Disconnected) => Err(IpcError::Disconnected),
-    };
-
-    assert_eq!(result, Err(IpcError::Disconnected));
+    assert_eq!(ingress.try_recv(), Err(IpcError::Disconnected));
 }
 
 #[test]

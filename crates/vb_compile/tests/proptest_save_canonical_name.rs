@@ -7,43 +7,21 @@
 // GOD RULE 1: Uses proptest strategies to generate arbitrary Save{ScalarValue}.
 // GOD RULE 2: Binds to production canonical_primitive_name (part_05.rs:98-114).
 // GOD RULE 4: Fix is a 2-line literal substitution; proptest provides 256 shrinking iterations.
-//
-// NOTE: canonical_primitive_name is pub(crate) in production. This test file
-// replicates the canonical mapping locally (same pattern as digest_duplicate_parity.rs)
-// to verify the production behavior through the public compile_workflow API.
-// The reproduction is a direct copy of the production match arms.
 
 #![forbid(unsafe_code)]
 #![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
+use vb_compile::mod_compile_lowering::canonical_primitive_name as canonical_name;
 use vb_yaml::ast::{ScalarValue, StepPrimitive};
 
 // ---------------------------------------------------------------------------
-// Reproduction of production canonical_primitive_name mapping (part_05.rs:98-114)
-//
-// This is a trusted-base reproduction. The production code at part_05.rs:98-114
-// uses an identical match on StepPrimitive discriminants. The proptest verifies
-// that the compiled workflow reflects the same mapping through the public API.
+// Production-bound canonical_primitive_name: this test now imports the
+// production function from vb_compile::mod_compile_lowering and tests it
+// directly, rather than maintaining a local copy. If production reverts
+// Save{..} to "save", this proptest will FAIL because canonical_name IS
+// the production function (no local reproduction possible to mask the bug).
 // ---------------------------------------------------------------------------
-
-fn canonical_name(primitive: &StepPrimitive) -> &'static str {
-    match primitive {
-        StepPrimitive::Set { .. } => "set",
-        StepPrimitive::Save { .. } => "set", // FIXED: was "save", now "set" (vb-pkif2)
-        StepPrimitive::Do { .. } => "do",
-        StepPrimitive::Choose { .. } => "choose",
-        StepPrimitive::ForEach { .. } => "for_each",
-        StepPrimitive::Together { .. } => "together",
-        StepPrimitive::Collect { .. } => "collect",
-        StepPrimitive::Reduce { .. } => "reduce",
-        StepPrimitive::Repeat { .. } => "repeat",
-        StepPrimitive::Wait { .. } => "wait",
-        StepPrimitive::Ask { .. } => "ask",
-        StepPrimitive::Finish { .. } => "finish",
-        _ => "unknown",
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Strategies

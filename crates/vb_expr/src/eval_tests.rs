@@ -666,6 +666,96 @@ mod tests {
         Ok(())
     }
 
+    // --- Section 46 no-short-circuit coverage for And/Or ---
+    //
+    // Production `eval_binary_op` (eval/ops.rs) must evaluate BOTH operands
+    // for `And` and `Or` even when the left operand alone determines the
+    // result. A short-circuit implementation (Rust `&&` / `||`) would skip
+    // the right operand's type enforcement and silently return the wrong
+    // variant. The four mismatch cases below catch any short-circuit
+    // regression by forcing a `TypeMismatch` from the right operand to be
+    // observed regardless of the left operand's value.
+
+    #[test]
+    fn eval_binary_op_and_evaluates_right_even_when_left_is_false() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::I64(7));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch (right must be type-checked even when left is false)".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_and_rejects_two_non_boolean_operands() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::I64(2));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_or_evaluates_right_even_when_left_is_true() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::I64(7));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch (right must be type-checked even when left is true)".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_or_rejects_two_non_boolean_operands() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::I64(1), SlotValue::I64(2));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_and_accepts_two_boolean_operands() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_or_accepts_two_boolean_operands() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_and_returns_false_when_left_true_right_false() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_or_returns_true_when_left_false_right_true() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
     #[test]
     fn eval_helper_applies_known_helper_exists() -> ExprResult<()> {
         let args = [SlotValue::Null];
