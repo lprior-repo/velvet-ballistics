@@ -2,7 +2,6 @@
 //!
 //! - `read_slot()` / `write_slot()` / `write_slot_with_taint()` — slot access.
 //! - `read_taint()` / `write_taint()` — taint marker access with init guard.
-//! - `find_handle_taint()` — internal taint lookup for object/list references.
 //! - `initialized_slots()` — compact view of initialized slots.
 //! - `slots_snapshot()` / `taint_snapshot()` / `states_snapshot()` — debugging snapshots.
 //! - `kani_harness_write_slot_clean()` — Kani-only pre-state builder.
@@ -114,45 +113,6 @@ impl RunFrame {
             .get(index)
             .copied()
             .ok_or(CoreError::SlotOutOfBounds { slot })
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn find_handle_taint(&self, value: &SlotValue) -> CoreResult<Taint> {
-        match value {
-            SlotValue::Object(id) => {
-                let mut idx = 0usize;
-                while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::Object(vid))) = self.slots.get(idx)
-                        && vid == id
-                    {
-                        return self.taint.get(idx).copied().ok_or(
-                            CoreError::InternalInvariantViolation {
-                                reason: "taint_slots_diverged",
-                            },
-                        );
-                    }
-                    idx = idx.saturating_add(1);
-                }
-                Ok(Taint::Clean)
-            }
-            SlotValue::List(id) => {
-                let mut idx = 0usize;
-                while idx < usize::from(self.slot_count) {
-                    if let Some(Some(SlotValue::List(vid))) = self.slots.get(idx)
-                        && vid == id
-                    {
-                        return self.taint.get(idx).copied().ok_or(
-                            CoreError::InternalInvariantViolation {
-                                reason: "taint_slots_diverged",
-                            },
-                        );
-                    }
-                    idx = idx.saturating_add(1);
-                }
-                Ok(Taint::Clean)
-            }
-            _ => Ok(Taint::Clean),
-        }
     }
 
     /// Writes a slot taint marker.
