@@ -20,6 +20,19 @@ pub(crate) enum OutputFormat {
     Postcard,
 }
 
+impl FromStr for OutputFormat {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "text" => Ok(Self::Text),
+            "yaml" => Ok(Self::Yaml),
+            "postcard" => Ok(Self::Postcard),
+            other => Err(ParseError::UnknownOutputFormat(other.into())),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum LegacyJsonOutput {
     #[default]
