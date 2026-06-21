@@ -48,6 +48,22 @@ impl TraceStatus {
     }
 }
 
+impl std::str::FromStr for TraceStatus {
+    type Err = crate::args::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pending" => Ok(Self::Pending),
+            "active" => Ok(Self::Active),
+            "waiting_answer" => Ok(Self::WaitingAnswer),
+            "cancelled" => Ok(Self::Cancelled),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            other => Err(crate::args::ParseError::InvalidTraceArgument(other.into())),
+        }
+    }
+}
+
 /// Convert a CLI `EventStatus` filter into the canonical `TraceStatus` used by
 /// the in-memory filter. The two enums share the same variant set, so this is
 /// a direct structural mapping.

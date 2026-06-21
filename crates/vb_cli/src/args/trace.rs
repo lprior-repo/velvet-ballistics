@@ -174,13 +174,5 @@ fn parse_trace_u64(flag: &'static str, raw: &str) -> Result<u64, ParseError> {
 }
 
 fn parse_trace_status(raw: &str) -> Result<TraceStatus, ParseError> {
-    match raw {
-        "pending" => Ok(TraceStatus::Pending),
-        "active" => Ok(TraceStatus::Active),
-        "waiting_answer" => Ok(TraceStatus::WaitingAnswer),
-        "cancelled" => Ok(TraceStatus::Cancelled),
-        "completed" => Ok(TraceStatus::Completed),
-        "failed" => Ok(TraceStatus::Failed),
-        other => Err(ParseError::UnknownEventStatus(other.into())),
-    }
+    raw.parse()
 }
