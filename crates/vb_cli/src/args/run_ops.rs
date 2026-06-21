@@ -62,15 +62,7 @@ pub(super) fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_event_status(raw: &str) -> Result<EventStatus, ParseError> {
-    match raw {
-        "pending" => Ok(EventStatus::Pending),
-        "active" => Ok(EventStatus::Active),
-        "waiting_answer" => Ok(EventStatus::WaitingAnswer),
-        "cancelled" => Ok(EventStatus::Cancelled),
-        "completed" => Ok(EventStatus::Completed),
-        "failed" => Ok(EventStatus::Failed),
-        other => Err(ParseError::UnknownEventStatus(other.into())),
-    }
+    raw.parse()
 }
 
 fn parse_event_limit(raw: &str) -> Result<i64, ParseError> {

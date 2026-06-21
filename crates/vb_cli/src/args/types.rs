@@ -107,6 +107,22 @@ impl EventStatus {
     }
 }
 
+impl FromStr for EventStatus {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pending" => Ok(Self::Pending),
+            "active" => Ok(Self::Active),
+            "waiting_answer" => Ok(Self::WaitingAnswer),
+            "cancelled" => Ok(Self::Cancelled),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            other => Err(ParseError::UnknownEventStatus(other.into())),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Command {
     Help,
