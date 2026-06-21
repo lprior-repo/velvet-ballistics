@@ -1900,3 +1900,266 @@ verus_file_triage_2026_06_19_v2:
         and is not part of any obligation's `files:` list.  Retired as
         of 2026-06-19; L4 evidence cites only the live file."
       replacement: crates/vb_storage/src/verification/verus/recovery_types_spec.rs
+      status: stale_removed_in_v3
+
+# vb-h39ky tier-a-12 triage v3 (2026-06-21, bead vb-2r5wk):
+# Re-executed the proof-plan.toml triage against the actual codebase after the
+# 2026-06-19 v2 catalog.  The 296-block estimate in the proof plan was based on
+# a counting methodology that double-counted per-file `verus!` blocks and
+# per-attribute `#[cfg(verus)]` annotations; the actual scope is 37 files with
+# `verus!` (34 distinct `verus! { }` blocks) and 22 `#[cfg(verus)]` attributes.
+#
+# Triage decisions are mapped to the 14 groups from
+# `.beads/vb-h39ky/proof-plan.toml`.  Counts reflect the actual file inventory.
+# Group 4 (parser-expression-shape) and Group 9 (recovery-replay) have no files
+# in the current tree and are recorded for future-proofing only.
+#
+# Registry gap flagged: the 7 entries under `dual_mode_proof_kernels_2026_06_19`
+# claim L4 production binding, but the corresponding `mod.rs` files explicitly
+# state their Taint / StepState / Budget / envelope_header / vb_kyyf_normalization
+# / profile_contract types are mirror models not bound to production.  These
+# kernels remain in the `register` list because they appear in an existing
+# obligation list, but v0.2.0 must re-validate them: each must either receive a
+# reviewed `extern_spec!` / `reveal_with_fuel` production binding, or move to
+# `retire_as_vacuum_model`.  The `vb_compile` part_03 kernel is similarly
+# flagged: its `verus!` block uses `#[cfg(verus_keep_ghost)]` and contains spec
+# functions referencing production by comment only.
+verus_file_triage_2026_06_19_v3:
+  total_files_with_verus_macro_block: 33
+  total_files_with_cfg_verus_only: 14
+  total_files_in_inventory: 47
+  total_verus_blocks: 34
+  total_cfg_verus_attributes: 22
+  total_cfg_verus_keep_ghost_attributes: 40
+  registered: 22
+  deferred: 12
+  retired: 5
+  registry_gap_files: 2
+  cfg_only_declaration_files_not_in_groups: 8
+  status: triage_complete_v3
+  artifact: .beads/vb-h39ky/triage_table.md
+  parent_bead: vb-h39ky
+  executed_by: vb-2r5wk
+
+  # ── 14-group breakdown mapped to actual files ─────────────────────────
+  # Each file appears in exactly one group; groups 4 and 9 have no files in
+  # the current tree.  Decision totals across groups 1-14 + cross_cutting:
+  #   register_in_v0_2_0                : 22 files (groups 1, 2, 3, 10, 11, 12 + cross_cutting)
+  #   defer_to_v0_2_0_with_obligation   : 12 files (groups 5, 6, 7; groups 4, 9, 13 have no files)
+  #   retire_as_vacuum_model            :  5 files (groups 8, 14)
+  #   registry_gap                      :  2 files (dual_mode mod.rs admitting vacuum)
+  #   cfg-only declaration files        :  8 files (vb_cli/lib.rs, vb_compile/mod_compile_lowering.rs,
+  #                                          vb_expr/{lib,bytecode/mod,lexer/mod}.rs, vb_ipc/{lib,verification/mod}.rs,
+  #                                          vb_runtime/verification/mod.rs — pure submodule
+  #                                          declarations, no verus! content; covered transitively by
+  #                                          their submodule entries in groups 1-12)
+  # Total covered : 22 + 12 + 5 + 2 + 8 = 49 (some files appear in two metrics)
+  # Unique files  : 47
+  groups:
+
+    - id: 1
+      name: type-enforcer
+      decision: register_in_v0_2_0
+      files:
+        - crates/vb_expr/src/eval/verus.rs
+      notes: "Covered by vb-bc33k (PO-vb-bc33k-001..006). L1 proptest
+        evidence at crates/vb_expr/tests/proptest_type_enforcer.rs."
+
+    - id: 2
+      name: bytecode-binary-op-classification
+      decision: register_in_v0_2_0
+      files:
+        - crates/vb_expr/src/bytecode/verus.rs
+      notes: "Covered by vb-bc33k (lemma_binary_op_correctness,
+        lemma_ExprHelper_to_ExprOp)."
+
+    - id: 3
+      name: lexer-keyword-classification
+      decision: register_in_v0_2_0
+      files:
+        - crates/vb_expr/src/lexer/verus.rs
+      notes: "Covered by vb-bc33k (lemma_keyword_classification)."
+
+    - id: 4
+      name: parser-expression-shape
+      decision: defer_to_v0_2_0_with_obligation
+      files: []
+      notes: "No files in current tree. Placeholder for future-proofing."
+
+    - id: 5
+      name: workflow-lifecycle-state
+      decision: defer_to_v0_2_0_with_obligation
+      files:
+        - crates/vb_core/src/workflow/lifecycle/mod.rs
+        - crates/vb_cli/src/verus_lifecycle.rs
+      notes: "Both files use reveal_with_fuel or extern_spec to bind to
+        production (check_lifecycle_transition, vb_core::workflow). Listed
+        as defer because no L4 obligation currently names these files;
+        vb-cli lifecycle is covered by VERUS-FWH-001..004 inline."
+
+    - id: 6
+      name: action-proof-lemmas
+      decision: defer_to_v0_2_0_with_obligation
+      files:
+        - crates/vb_core/src/action/proof.rs
+        - crates/vb_core/src/action/mod.rs
+        - crates/vb_core/src/value/taint.rs
+        - crates/vb_core/src/frame/verus_proofs.rs
+        - crates/vb_core/src/frame/mod.rs
+        - crates/vb_core/src/verification/mod.rs
+      notes: "All production-bound via reveal_with_fuel on production fns
+        (propagate_action_taint, compute_action_idempotency_key, join_taint,
+        is_valid_step_state_transition). Defer because no L4 obligation
+        currently names these files; v0.2.0 must add explicit obligation
+        rows."
+
+    - id: 7
+      name: queue-semantics
+      decision: defer_to_v0_2_0_with_obligation
+      files:
+        - crates/vb_queue_semantics/src/lib.rs
+        - crates/vb_queue_semantics/src/verification.rs
+        - crates/vb_queue_semantics/verification/mod.rs
+        - crates/vb_queue_semantics/verification/verus/mod.rs
+      notes: "Submodule declarations; the underlying spec files
+        (queue_semantics_specs.rs, queue_semantics_exec_bridges.rs) are
+        retired in group 14. vb-r37is is the umbrella obligation."
+
+    - id: 8
+      name: storage-journal-codec
+      decision: retire_as_vacuum_model
+      files:
+        - crates/vb_storage/src/verification/verus/recovery_types_spec.rs
+      notes: "Documented as STANDALONE SPEC LAYER with production
+        references by comment only. No extern_spec! / reveal_with_fuel in
+        code. Retired in v3; v0.2.0 must either wire actual production
+        bindings or keep retired. VB-MRWE.5 / VB-MRWE.6 obligations exist
+        but do not cite this file."
+
+    - id: 9
+      name: recovery-replay
+      decision: defer_to_v0_2_0_with_obligation
+      files: []
+      notes: "No files in current tree. Placeholder for future-proofing."
+
+    - id: 10
+      name: runtime-facade-api
+      decision: register_in_v0_2_0
+      files:
+        - crates/vb_runtime/src/verification/verus/runtime_facade_api.rs
+      notes: "Production-bound via exec bridge exec_shard_index_runtime
+        with ensures clauses; lemma_exec_shard_index_matches_spec closes
+        the bridge. VB-RUNTIME-FACADE-001 is the active obligation."
+
+    - id: 11
+      name: action-completion-fence
+      decision: register_in_v0_2_0
+      files:
+        - crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+        - crates/vb_runtime/src/verification/verus/vb_kzz99_action_completion.rs
+        - crates/vb_runtime/src/verification/verus/vb_rxru0_action_verus.rs
+      notes: "Covered by VB-RUNTIME-ACTION-FENCE-001,
+        VB-RUNTIME-ACTION-COMPLETION-001, VB-RUNTIME-ACTION-VERUS-001."
+
+    - id: 12
+      name: proof-kernels-dual-mode
+      decision: register_in_v0_2_0
+      registry_gap: true
+      files:
+        - crates/vb_proof_kernels/src/resource_budget/budget.rs
+        - crates/vb_proof_kernels/src/resource_budget/spec.rs
+        - crates/vb_proof_kernels/src/resource_budget/lemmas.rs
+        - crates/vb_proof_kernels/src/step_state/state.rs
+        - crates/vb_proof_kernels/src/step_state/spec.rs
+        - crates/vb_proof_kernels/src/step_state/lemmas.rs
+        - crates/vb_proof_kernels/src/taint/verus.rs
+        - crates/vb_proof_kernels/src/envelope_header.rs
+        - crates/vb_proof_kernels/src/vb_kyyf_normalization/mod.rs
+        - crates/vb_proof_kernels/src/profile_contract/contract_types.rs
+        - crates/vb_proof_kernels/src/profile_contract/contract_lemmas.rs
+        - crates/vb_proof_kernels/src/profile_contract/contract_witnesses.rs
+        - crates/vb_compile/src/mod_compile_lowering/part_03.rs
+        - crates/vb_compile/src/mod_compile_lowering/part_01_layout_proofs.rs
+      notes: "Registered via dual_mode_proof_kernels_2026_06_19. The mod.rs
+        files for resource_budget, step_state, and taint explicitly state
+        the types are mirror models not bound to production. v0.2.0 must
+        re-validate each kernel: wire extern_spec!/reveal_with_fuel or move
+        to retire_as_vacuum_model. part_03 uses #[cfg(verus_keep_ghost)]
+        with spec functions referencing production by comment only;
+        part_01_layout_proofs.rs is production-bound (GOD RULE 2 COMPLIANT
+        per file header) but is not yet in the dual_mode list. mod.rs
+        files (resource_budget, step_state, taint) are excluded from this
+        group because they are declarations, not verus! blocks."
+
+    - id: 13
+      name: classify-identity-normalize
+      decision: defer_to_v0_2_0_with_obligation
+      files: []
+      notes: "No standalone files. vb_kyyf_normalization and taint/verus.rs
+        are covered in group 12 (proof-kernels-dual-mode). The proof plan
+        referenced crates/vb_classify and crates/vb_normalize, which do not
+        exist in the current tree. Placeholder for future-proofing."
+
+    - id: 14
+      name: vacuum-spec-only-sketches
+      decision: retire_as_vacuum_model
+      files:
+        - crates/vb_compile/src/mod_compile_lowering/verus_reduce_proofs.rs
+        - crates/vb_compile/src/mod_compile_lowering/proofs.rs
+        - crates/vb_queue_semantics/verification/verus/queue_semantics_specs.rs
+        - crates/vb_queue_semantics/verification/verus/queue_semantics_exec_bridges.rs
+      notes: "All four files have explicit headers / inline comments
+        stating they are non-proof: verus_reduce_proofs.rs and proofs.rs
+        admit 'Signature mismatch — cannot reveal_with_fuel' and 'GOD
+        RULE 2 violation' respectively; queue_semantics_specs.rs is
+        'STATUS: NON-PROOF'; and queue_semantics_exec_bridges.rs is
+        'STATUS: NO PRODUCTION BRIDGES RETAINED'. None may be cited as
+        deductively_verified evidence. vb_storage/recovery_types_spec.rs
+        is captured in group 8."
+
+  # ── Cross-cutting entries not in groups 1-14 ─────────────────────────
+  cross_cutting:
+    - id: VB-IPC-5IEBH-001
+      file: crates/vb_ipc/src/verification/verus/vb_5iebh.rs
+      decision: register_in_v0_2_0
+      notes: "Uses #[extern_spec]; covered by VB-IPC-DECODE-001."
+
+  # ── registry_gap: dual-mode kernels with mod.rs admitting vacuum ──────
+  registry_gap:
+    - file: crates/vb_proof_kernels/src/resource_budget/mod.rs
+      mod_rs_quote: "Local-only resource budget sanity kernel. The Verus
+        layer models a mirror Budget type with mathematical nat fields; it
+        is not bound to production vb_core resource-budget types or
+        methods."
+      dual_mode_id: VB-PROOF-KERNELS-RESOURCE-BUDGET
+      recommendation: re_validate_in_v0_2_0
+    - file: crates/vb_proof_kernels/src/step_state/mod.rs
+      mod_rs_quote: "Local-only step-state sanity kernel. This module
+        defines a mirror StepState and transition relation; it is not
+        bound to production vb_core::frame state transition code."
+      dual_mode_id: VB-PROOF-KERNELS-STEP-STATE
+      recommendation: re_validate_in_v0_2_0
+
+  # ── Stale entries removed in v3 ──────────────────────────────────────
+  removed_in_v3:
+    - id: VB-STORAGE-RECOVERY-TYPES-VACUUM
+      file: crates/vb_storage/verification/verus/recovery_types_spec.rs
+      reason: "Vacuum duplicate file no longer exists in the current tree
+        (no crates/vb_storage/verification/ directory). The v3 retire list
+        captures the actual vacuum sketch files under groups 8 and 14."
+
+  # ── Forward to v0.2.0 ───────────────────────────────────────────────
+  forward_to_v0_2_0:
+    - "Add VB-CORE-WORKFLOW-LIFECYCLE-001, VB-CORE-ACTION-PROOF-001..003,
+      VB-CORE-VALUE-TAINT-001, VB-CORE-FRAME-VERUS-PROOFS-001,
+      VB-CORE-VERIFICATION-MOD-001 obligations for groups 5 and 6."
+    - "Re-validate each dual_mode_proof_kernels_2026_06_19 entry: wire
+      production binding (extern_spec! or reveal_with_fuel) or move to
+      retire_as_vacuum_model. resource_budget, step_state, taint, part_03
+      are confirmed gaps."
+    - "Wire vb_storage/recovery_types_spec.rs to production via extern_spec!
+      or keep retired."
+    - "Add part_01_layout_proofs.rs to dual_mode_proof_kernels_2026_06_19
+      (GOD RULE 2 COMPLIANT, not currently registered)."
+    - "Remove or quarantine the stale `vacuum duplicate` retire entry in
+      v2 — the duplicate file no longer exists."

@@ -2731,6 +2731,16 @@ fn watermark_preserves_snapshot_data_beyond_tail() {
     let frame = result.expect("tail after watermark must hydrate");
     assert_eq!(frame.pc(), StepIdx::ZERO, "pc must equal first_step (StepIdx::ZERO)");
     assert_eq!(frame.run_id(), run, "frame.run_id must round-trip");
+    assert_eq!(
+        frame.step_count(),
+        1,
+        "step_count must equal derived dimension from tail (StepIdx::ZERO + 1)"
+    );
+    assert_eq!(
+        frame.slot_count(),
+        1,
+        "slot_count must equal derived dimension from tail (SlotIdx::new(0) + 1)"
+    );
 }
 
 #[test]
@@ -2850,8 +2860,9 @@ fn check_compiled_ir_digest_accepts_matching_digest() {
     let divergent = test_digest(0xD2);
     let divergent_result = check_compiled_ir_digest(digest, divergent);
     assert!(
-        divergent_result.is_err(),
-        "divergent-input sub-assertion: mismatched digests must surface Err, got {divergent_result:?}"
+        matches!(divergent_result, Err(RecoveryError::CompiledIrDigestMismatch { expected: exp, found: got })
+            if exp == digest && got == divergent),
+        "divergent-input sub-assertion: mismatched digests must surface CompiledIrDigestMismatch with both fields, got {divergent_result:?}"
     );
 }
 
@@ -2905,6 +2916,25 @@ fn recover_runtime_summary_returns_recovery_hydration() {
         unreachable!("matches! above already gated this branch");
     };
     assert_eq!(summary.run, run, "summary.run must round-trip");
+    assert_eq!(
+        summary.workflow,
+        Some(digest),
+        "summary.workflow must carry the workflow digest from RunAccepted"
+    );
+    assert_eq!(
+        summary.steps_started, 1,
+        "summary.steps_started must equal the number of StepStarted events (1)"
+    );
+    assert_eq!(
+        summary.first_seq,
+        EventSeq::new(0),
+        "summary.first_seq must equal the first observed seq (RunAccepted @ 0)"
+    );
+    assert_eq!(
+        summary.last_seq,
+        EventSeq::new(1),
+        "summary.last_seq must equal the last observed seq (StepStarted @ 1)"
+    );
 }
 
 #[test]

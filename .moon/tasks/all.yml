@@ -222,6 +222,16 @@ tasks:
     options:
       runInCI: true
 
+  codes-registry-assembly:
+    command: 'bash scripts/check-codes-registry-assembly.sh'
+    inputs:
+      - 'scripts/check-codes-registry-assembly.sh'
+      - 'crates/vb_core/src/diagnostic/codes.rs'
+      - 'crates/vb_core/src/diagnostic/codes/**'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   blocker-closure-evidence:
     script: 'python scripts/check-vb-jpq7-closure-evidence.py --parent vb-jpq7 --bd-workdir "${VB_JPQ7_BD_WORKDIR:-/home/lewis/src/velvet-ballistics}"'
     inputs:

@@ -127,6 +127,10 @@ fn resume_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
 }
 
 /// Test resume_not_resumable_error: Resume run in non-Resumable state.
+/// The suspended_workflow has a Do action that suspends the run into
+/// `Resumable` state after the first tick. To exercise the NotResumable
+/// FSM contract, force the run into `Running` via runtime_state_insert
+/// before enqueueing the resume command.
 #[test]
 fn resume_active_run_returns_error() -> Result<(), RuntimeError> {
     let config = small_config();
@@ -136,7 +140,7 @@ fn resume_active_run_returns_error() -> Result<(), RuntimeError> {
     };
     let run = RunId::new(500);
 
-    // Submit the workflow - it's now in Running state, not Resumable
+    // Submit the workflow and drive it once so the run is tracked.
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run,
@@ -147,15 +151,17 @@ fn resume_active_run_returns_error() -> Result<(), RuntimeError> {
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Try to resume the active run - should fail because it's not in Resumable state
-    // The exact error depends on implementation
+    // Force the run into Running state to exercise the NotResumable FSM
+    // contract via the resume path. Production handle_resume rejects any
+    // state that is not Resumable or Resuming.
+    shard.runtime_state_insert(run, RuntimeState::Running);
+
     assert_eq!(
         shard.enqueue(ShardCommand::Resume { run }),
         Ok(())
     );
-    // Either it returns RunNotFound (if removed) or some resumable error
     let result = shard.tick();
-    // Result must surface NotResumable for the Running run
+    // Result must surface NotResumable for the Running run (FSM RQ-W0-07)
     assert!(
         matches!(result, Err(RuntimeError::NotResumable { .. })),
         "resume of Running run must surface NotResumable, got {result:?}"

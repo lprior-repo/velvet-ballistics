@@ -215,8 +215,14 @@ mod tests {
             .expect("bounded for_each workflow must compile at this layer");
         match compute_whole_workflow_budget(&workflow) {
             Ok(budget) => {
-                // Field #7 from the master §64 enumeration must be reachable.
-                let _ = budget.max_for_each_iterations;
+                // Field #7 from the master §64 enumeration must be reachable
+                // and hold a concrete value: `at_once: 2` on the for_each
+                // compiles to `ForEachStart.limit == 2`, which the budget
+                // analyzer accumulates into `max_for_each_iterations`.
+                assert_eq!(
+                    budget.max_for_each_iterations, 2,
+                    "for_each at_once=2 must surface max_for_each_iterations == 2"
+                );
             }
             Err(CompileError::UnboundedWorkflow { .. }) => {
                 // Acceptable: unbounded for_each is rejected per §64.
