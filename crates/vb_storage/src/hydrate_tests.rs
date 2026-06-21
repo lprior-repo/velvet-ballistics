@@ -137,7 +137,11 @@ mod hydrate_tests {
     fn validate_snapshot_metadata_accepts_matching_run() {
         let run = RunId::new(1);
         let result = validate_snapshot_metadata(run, EventSeq::new(0), run);
-        assert!(result.is_ok(), "matching run should succeed, got {:?}", result);
+        assert_eq!(
+            result,
+            Ok(()),
+            "matching run should succeed (validated metadata unit)"
+        );
     }
 
     #[test]
@@ -160,7 +164,11 @@ mod hydrate_tests {
         let run = RunId::new(3);
         let meta = TailEventMetadata::new(run, EventSeq::new(0));
         let result = validate_tail_run_metadata(meta, run);
-        assert!(result.is_ok(), "matching run should succeed, got {:?}", result);
+        assert_eq!(
+            result,
+            Ok(()),
+            "matching tail run should succeed (validated metadata unit)"
+        );
     }
 
     #[test]
@@ -183,7 +191,11 @@ mod hydrate_tests {
         let meta = TailEventMetadata::new(RunId::new(6), EventSeq::new(10));
         let snapshot_seq = EventSeq::new(5);
         let result = validate_tail_seq_after_snapshot(meta, snapshot_seq);
-        assert!(result.is_ok(), "larger seq should succeed, got {:?}", result);
+        assert_eq!(
+            result,
+            Ok(()),
+            "larger seq (10 > 5) should succeed (validated metadata unit)"
+        );
     }
 
     #[test]
@@ -213,19 +225,31 @@ mod hydrate_tests {
     #[test]
     fn validate_recovery_data_present_accepts_when_tail_not_empty() {
         let result = validate_recovery_data_present(false, true, true, RunId::new(9));
-        assert!(result.is_ok(), "should accept when tail is not empty, got {:?}", result);
+        assert_eq!(
+            result,
+            Ok(()),
+            "should accept when tail is not empty (validated metadata unit)"
+        );
     }
 
     #[test]
     fn validate_recovery_data_present_accepts_when_slots_not_empty() {
         let result = validate_recovery_data_present(true, false, true, RunId::new(10));
-        assert!(result.is_ok(), "should accept when slots not empty, got {:?}", result);
+        assert_eq!(
+            result,
+            Ok(()),
+            "should accept when slots not empty (validated metadata unit)"
+        );
     }
 
     #[test]
     fn validate_recovery_data_present_accepts_when_taint_not_empty() {
         let result = validate_recovery_data_present(true, true, false, RunId::new(11));
-        assert!(result.is_ok(), "should accept when taint not empty, got {:?}", result);
+        assert_eq!(
+            result,
+            Ok(()),
+            "should accept when taint not empty (validated metadata unit)"
+        );
     }
 
     #[test]

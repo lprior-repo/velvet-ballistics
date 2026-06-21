@@ -9,9 +9,6 @@ mod types;
 pub use input_mapping::InputMappingFailureKind;
 pub use types::RuntimeError;
 
-// Re-export RuntimeState for use as a field type in RuntimeError variants.
-pub(crate) use crate::shard::run_state::RuntimeState;
-
 /// Result alias for runtime operations.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
 

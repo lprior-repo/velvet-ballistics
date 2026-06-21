@@ -215,6 +215,11 @@ mod process_lock_tests {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         let result = crate::open_store(temp.path());
         assert!(result.is_ok(), "open_store should acquire process lock");
+        let lock_path = temp.path().join(".process.lock");
+        assert!(
+            lock_path.exists(),
+            "open_store must create .process.lock file (test name asserts the lock is acquired)"
+        );
     }
 
     #[test]
@@ -224,6 +229,11 @@ mod process_lock_tests {
         assert!(
             result.is_ok(),
             "init_keyspaces should acquire process lock"
+        );
+        let lock_path = temp.path().join(".process.lock");
+        assert!(
+            lock_path.exists(),
+            "init_keyspaces must create .process.lock file (test name asserts the lock is acquired)"
         );
     }
 }

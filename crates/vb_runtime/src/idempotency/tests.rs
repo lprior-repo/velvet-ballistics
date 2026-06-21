@@ -121,6 +121,32 @@ fn idempotency_tracker_capacity_one_evicts_on_second_insert() {
     assert_eq!(tracker.len(), 1);
 }
 
+#[test]
+fn idempotency_tracker_with_capacity_zero_is_usable() {
+    // Capacity zero is promoted to effective_capacity = 1 so the tracker
+    // remains usable. BTreeMap/BTreeSet construction must NOT call the
+    // nonexistent `with_capacity` method.
+    let mut tracker = IdempotencyTracker::with_capacity(0);
+    let ticket = make_ticket(7);
+    assert_eq!(tracker.mark_completed(&ticket), Ok(()));
+    assert!(tracker.is_completed(&ticket));
+    assert_eq!(tracker.len(), 1);
+}
+
+#[test]
+fn idempotency_tracker_with_capacity_zero_still_evicts_on_second_insert() {
+    // Even when capacity is promoted from 0 to 1, the eviction contract
+    // holds: a second distinct ticket evicts the first.
+    let mut tracker = IdempotencyTracker::with_capacity(0);
+    let ticket_a = make_ticket(30);
+    let ticket_b = make_ticket(40);
+    assert_eq!(tracker.mark_completed(&ticket_a), Ok(()));
+    assert_eq!(tracker.mark_completed(&ticket_b), Ok(()));
+    assert!(!tracker.is_completed(&ticket_a));
+    assert!(tracker.is_completed(&ticket_b));
+    assert_eq!(tracker.len(), 1);
+}
+
 // =====================================================================
 // Policy-aware tracking (VB-REPLAY-002)
 // =====================================================================

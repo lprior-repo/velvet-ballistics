@@ -167,12 +167,23 @@ fn test_prod_parse_schema_version_valid() {
 
 #[test]
 fn test_prod_parse_schema_version_invalid() {
-    assert!(parse_schema_version("").is_err());
-    assert!(parse_schema_version("1.0").is_err());
-    assert!(parse_schema_version("1.0.0.0").is_err());
-    assert!(parse_schema_version("abc").is_err());
-    assert!(parse_schema_version("1.0.abc").is_err());
-    assert!(parse_schema_version("v1.0.0").is_err());
+    for (input, expected_code) in [
+        ("", "MISSING_SCHEMA_VERSION"),
+        ("1.0", "INVALID_VERSION"),
+        ("1.0.0.0", "INVALID_VERSION"),
+        ("abc", "INVALID_VERSION"),
+        ("1.0.abc", "INVALID_VERSION"),
+        ("v1.0.0", "INVALID_VERSION"),
+    ] {
+        let err = parse_schema_version(input)
+            .err()
+            .unwrap_or_else(|| panic!("parse_schema_version({input:?}) must fail"));
+        let message = err.to_string();
+        assert!(
+            message.contains(expected_code),
+            "parse_schema_version({input:?}) must surface error code {expected_code:?}, got {message:?}"
+        );
+    }
 }
 
 #[test]
@@ -215,11 +226,23 @@ fn test_prod_parse_contract_kind_all_valid() {
 
 #[test]
 fn test_prod_parse_contract_kind_invalid() {
-    assert!(ContractKind::parse("").is_err());
-    assert!(ContractKind::parse("CLI_ENVELOPE").is_err());
-    assert!(ContractKind::parse("cli-envelope").is_err());
-    assert!(ContractKind::parse("unknown").is_err());
-    assert!(ContractKind::parse("cli_envelope_extra").is_err());
+    // ContractKind::parse returns Err(s.to_string()) on unknown inputs —
+    // the message echoes the offending input verbatim (production contract).
+    for input in [
+        "",
+        "CLI_ENVELOPE",
+        "cli-envelope",
+        "unknown",
+        "cli_envelope_extra",
+    ] {
+        let err = ContractKind::parse(input)
+            .err()
+            .unwrap_or_else(|| panic!("ContractKind::parse({input:?}) must fail"));
+        assert_eq!(
+            err, input,
+            "ContractKind::parse({input:?}) must echo the offending input verbatim"
+        );
+    }
 }
 
 #[test]
@@ -267,10 +290,27 @@ fn test_prod_compare_semver_greater() {
 
 #[test]
 fn test_prod_compare_semver_invalid_format() {
-    assert!(compare_semver("1.0", "1.0.0").is_err());
-    assert!(compare_semver("1.0.0", "1.0").is_err());
-    assert!(compare_semver("abc", "1.0.0").is_err());
-    assert!(compare_semver("1.0.0.0", "1.0.0").is_err());
+    // compare_semver returns Err(format!("Invalid semver format: a='{a}', b='{b}'"))
+    // on malformed semver strings — the message echoes both operands.
+    for (left, right) in [
+        ("1.0", "1.0.0"),
+        ("1.0.0", "1.0"),
+        ("abc", "1.0.0"),
+        ("1.0.0.0", "1.0.0"),
+    ] {
+        let err = compare_semver(left, right)
+            .err()
+            .unwrap_or_else(|| panic!("compare_semver({left:?}, {right:?}) must fail"));
+        let message = err.to_string();
+        assert!(
+            message.contains("Invalid semver format"),
+            "compare_semver({left:?}, {right:?}) must surface invalid-semver-format error, got {message:?}"
+        );
+        assert!(
+            message.contains(left) && message.contains(right),
+            "compare_semver({left:?}, {right:?}) error must include both operands, got {message:?}"
+        );
+    }
 }
 
 // ============================================================
@@ -279,15 +319,29 @@ fn test_prod_compare_semver_invalid_format() {
 
 #[test]
 fn test_prod_parse_vet_exit_code_success() {
-    assert!(parse_vet_exit_code(0).is_ok());
+    assert_eq!(
+        parse_vet_exit_code(0),
+        Ok(()),
+        "parse_vet_exit_code(0) must return Ok(()) (success path)"
+    );
 }
 
 #[test]
 fn test_prod_parse_vet_exit_code_failure() {
-    assert!(parse_vet_exit_code(1).is_err());
-    assert!(parse_vet_exit_code(-1).is_err());
-    assert!(parse_vet_exit_code(255).is_err());
-    assert!(parse_vet_exit_code(127).is_err());
+    for code in [1, -1, 255, 127] {
+        let err = parse_vet_exit_code(code)
+            .err()
+            .unwrap_or_else(|| panic!("parse_vet_exit_code({code}) must fail for non-success"));
+        let message = err.to_string();
+        assert!(
+            message.contains("cue vet exited with code"),
+            "parse_vet_exit_code({code}) must surface cue-vet-failure error, got {message:?}"
+        );
+        assert!(
+            message.contains(&code.to_string()),
+            "parse_vet_exit_code({code}) error message must include the actual exit code, got {message:?}"
+        );
+    }
 }
 
 #[test]
@@ -656,9 +710,20 @@ fn test_prod_parse_schema_version_uses_valid() {
 #[test]
 fn test_prod_parse_contract_kind_case_sensitive() {
     // ContractKind parsing is case-sensitive (lowercase only).
-    assert!(ContractKind::parse("cli_envelope").is_ok());
-    assert!(ContractKind::parse("cli_Envelope").is_err());
-    assert!(ContractKind::parse("CLI_ENVELOPE").is_err());
+    assert_eq!(
+        ContractKind::parse("cli_envelope"),
+        Ok(ContractKind::CliEnvelope),
+        "lowercase cli_envelope must round-trip to ContractKind::CliEnvelope"
+    );
+    for bad_input in ["cli_Envelope", "CLI_ENVELOPE"] {
+        let err = ContractKind::parse(bad_input)
+            .err()
+            .unwrap_or_else(|| panic!("ContractKind::parse({bad_input:?}) must fail (case-sensitive)"));
+        assert_eq!(
+            err, bad_input,
+            "ContractKind::parse({bad_input:?}) must echo the offending input verbatim"
+        );
+    }
 }
 
 // ============================================================

@@ -1,13 +1,12 @@
 #![forbid(unsafe_code)]
 //! Slot taint resolution for fail-closed replay.
 
-use vb_core::Taint;
-
 /// Copy-only observation of `RunFrame::read_taint` for fail-closed replay.
+#[cfg(kani)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintReadObservation {
     /// Existing taint was read successfully.
-    Existing(Taint),
+    Existing(vb_core::Taint),
     /// The slot is not initialized, so Clean is the only allowed default.
     Uninitialized,
     /// The taint read failed for any other reason and must fail closed.
@@ -15,15 +14,17 @@ pub(crate) enum SlotTaintReadObservation {
 }
 
 /// Copy-only taint resolution decision for slot replay.
+#[cfg(kani)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SlotTaintResolution {
     /// Continue with the selected taint value.
-    Use(Taint),
+    Use(vb_core::Taint),
     /// Abort replay instead of downgrading taint to Clean.
     FailClosed,
 }
 
 /// Resolves a taint read without allocating or mutating the frame.
+#[cfg(kani)]
 #[must_use]
 pub(crate) const fn resolve_slot_taint_read(
     observation: SlotTaintReadObservation,
@@ -35,8 +36,9 @@ pub(crate) const fn resolve_slot_taint_read(
     }
 }
 
+#[cfg(kani)]
 pub(crate) fn observe_slot_taint_read(
-    result: Result<Taint, vb_core::CoreError>,
+    result: Result<vb_core::Taint, vb_core::CoreError>,
 ) -> SlotTaintReadObservation {
     match result {
         Ok(taint) => SlotTaintReadObservation::Existing(taint),

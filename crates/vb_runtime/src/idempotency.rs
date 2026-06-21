@@ -69,11 +69,11 @@ impl IdempotencyTracker {
     pub fn with_capacity(capacity: usize) -> Self {
         let effective_capacity = capacity.max(1);
         Self {
-            completed: Map::with_capacity(effective_capacity),
+            completed: Map::new(),
             order: Vec::with_capacity(effective_capacity),
             capacity: effective_capacity,
             cursor: 0,
-            at_least_once_completed: Set::with_capacity(effective_capacity),
+            at_least_once_completed: Set::new(),
         }
     }
 

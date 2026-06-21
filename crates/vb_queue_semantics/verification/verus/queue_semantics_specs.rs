@@ -1,3 +1,13 @@
+// STATUS: retired_vacuum_verus_artifact
+// Bead: vb-2r5wk | Triage group: 14 (vacuum-spec-only-sketches)
+// Triage table: .beads/vb-h39ky/triage_table.md
+// Decision: retire_as_vacuum_model — no production binding (no extern_spec!,
+// no reveal_with_fuel, abstract int-typed functions, tautological lemmas).
+// Must NOT be cited as `deductively_verified` evidence. Retained in-tree as
+// a tombstone. The parent crate's verification/verus/mod.rs already notes
+// this file as 'deleted' (disconnected spec mirror). The file is not
+// declared in any mod.rs and is not part of the cargo workspace build path.
+//
 // Local Verus sketch for vb_queue_semantics queue arithmetic.
 //
 // STATUS: NON-PROOF / NOT PRODUCTION-BOUND.

@@ -121,25 +121,22 @@ impl JournalWriterQueue {
         &self,
         journal: &FjallJournal,
     ) -> Result<JournalWriterFlushReport, JournalError> {
-        // 1) Under the mutex: compute batch_len / has_strict and move the
+        // 1) Under the mutex: compute batch_len and move the
         //    batch out of the pending deque. Release the mutex before doing
         //    any journal IO so concurrent enqueues are not serialized
-        //    behind the slow fsync.
+        //    behind the slow fsync. The `has_strict` flag is computed
+        //    after the lock is released via `batch.iter().any(...)`.
         let mut batch: Vec<QueuedJournalEvent> = {
             let mut state = self
                 .state
                 .lock()
                 .map_err(|_| JournalError::WriteLockPoisoned)?;
             let mut batch_len = 0usize;
-            let mut has_strict = false;
 
             while batch_len < self.batch_size {
-                let Some(item) = state.pending.get(batch_len) else {
+                let Some(_item) = state.pending.get(batch_len) else {
                     break;
                 };
-                if item.profile == DurabilityProfile::Strict {
-                    has_strict = true;
-                }
                 batch_len = batch_len.saturating_add(1);
             }
 

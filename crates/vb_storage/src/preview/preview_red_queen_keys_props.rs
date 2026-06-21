@@ -54,12 +54,6 @@ impl Lcg {
             .wrapping_add(1_442_695_040_888_963_407_u64);
         self.state
     }
-    fn next_in_range(&mut self, lo: u64, hi_excl: u64) -> u64 {
-        if hi_excl <= lo {
-            return lo;
-        }
-        lo + self.next_u64() % (hi_excl - lo)
-    }
 }
 
 /// Property: mixed valid and invalid keys — invalid keys MUST be silently

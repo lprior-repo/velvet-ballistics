@@ -10,9 +10,8 @@ fn fresh_frame() -> RunFrame {
 
 #[test]
 fn retry_policy_new_succeeds_with_valid_params() {
-    let policy = RetryPolicy::new(3, 100, 2, DelayStrategy::ExponentialBackoff);
-    assert!(policy.is_ok());
-    let policy = policy.ok().expect("must succeed");
+    let policy = RetryPolicy::new(3, 100, 2, DelayStrategy::ExponentialBackoff)
+        .expect("RetryPolicy::new must succeed with valid params");
     assert_eq!(policy.max_attempts(), 3);
     assert_eq!(policy.delay_ms(), 100);
     assert_eq!(policy.backoff_multiplier(), 2);
@@ -222,13 +221,16 @@ fn retry_state_write_read_slot_roundtrip() {
         current_delay_ms: 0,
     };
     let write_result = state.write_to_slot(&mut frame, slot);
-    assert!(write_result.is_ok());
     let read_state = RetryState::read_from_slot(&frame, slot)
         .ok()
         .expect("read must succeed");
     assert_eq!(read_state.current_attempt(), 1);
     assert_eq!(read_state.remaining(), 5);
     assert_eq!(read_state.current_delay_ms(), 0);
+    assert!(
+        write_result.is_ok(),
+        "write_to_slot must succeed after read roundtrip preserved values"
+    );
 }
 
 #[test]
@@ -704,13 +706,13 @@ fn retry_start_writes_initial_state() {
         .ok()
         .expect("must succeed");
     let result = retry_start(&mut frame, &policy, slot);
-    assert!(result.is_ok());
     let state = RetryState::read_from_slot(&frame, slot)
         .ok()
         .expect("must read");
     assert_eq!(state.current_attempt(), 1);
     assert_eq!(state.remaining(), 3);
     assert_eq!(state.current_delay_ms(), 0);
+    assert!(result.is_ok(), "retry_start must succeed and persist state");
 }
 
 #[test]
@@ -1231,17 +1233,15 @@ fn retry_policy_with_max_attempts_handles_boundary() {
 
 #[test]
 fn retry_policy_with_none_strategy_succeeds() {
-    let policy = RetryPolicy::new(5, 0, 1, DelayStrategy::None);
-    assert!(policy.is_ok());
-    let policy = policy.ok().expect("must succeed");
+    let policy = RetryPolicy::new(5, 0, 1, DelayStrategy::None)
+        .expect("RetryPolicy::new must succeed with None strategy");
     assert_eq!(policy.strategy(), DelayStrategy::None);
 }
 
 #[test]
 fn retry_policy_with_exponential_backoff_succeeds() {
-    let policy = RetryPolicy::new(10, 200, 3, DelayStrategy::ExponentialBackoff);
-    assert!(policy.is_ok());
-    let policy = policy.ok().expect("must succeed");
+    let policy = RetryPolicy::new(10, 200, 3, DelayStrategy::ExponentialBackoff)
+        .expect("RetryPolicy::new must succeed with ExponentialBackoff strategy");
     assert_eq!(policy.backoff_multiplier(), 3);
 }
 

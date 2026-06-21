@@ -23,6 +23,7 @@ const RESOURCE_CONTRACT_POLICY_BYTES: usize = 128;
 /// (`policy_buffer_fits_canonical_resource_contract`) to detect any
 /// silent growth of `ResourceContract`.
 #[cfg(not(kani))]
+#[allow(dead_code, reason = "witness consumed by admission::tests regression test")]
 pub(crate) const fn resource_contract_policy_bytes_bound() -> usize {
     RESOURCE_CONTRACT_POLICY_BYTES
 }

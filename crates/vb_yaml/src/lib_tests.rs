@@ -1306,4 +1306,11 @@ fn load_fixture_source_parses_valid_workflow() {
         result.is_ok(),
         "load_fixture_source should accept valid workflow, got {result:?}"
     );
+    let workflow = result
+        .ok()
+        .expect("validated fixture load must yield a workflow");
+    assert!(
+        !workflow.steps.is_empty(),
+        "validated fixture must declare at least one step, got {workflow:?}"
+    );
 }

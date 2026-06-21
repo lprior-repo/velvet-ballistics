@@ -1725,11 +1725,15 @@ fn no_state_has_self_loop_transition() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(81);
 
-    // Cancelling a Pending bead should error, not leave it Pending
+    // Cancelling a Pending bead should error with LifecycleInvalidTransition,
+    // not silently leave it Pending.
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
-        result.is_err(),
-        "cancel from Pending must not succeed (no self-loop)"
+        matches!(
+            &result,
+            Err(vb_core::errors::CoreError::LifecycleInvalidTransition { .. })
+        ),
+        "cancel from Pending must surface LifecycleInvalidTransition (no self-loop), got {result:?}"
     );
 }
 

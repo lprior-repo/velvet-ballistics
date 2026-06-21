@@ -209,8 +209,7 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() -> Result<(), R
 #[test]
 fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() -> Result<(), RuntimeError> {
     let mut pool = crate::frame_pool::FramePool::new(2, 1, 2)
-        .ok()
-        .unwrap_or_else(|| panic!("FramePool::new failed"));
+        .expect("FramePool::new must succeed with capacity (2,1,2)");
     let f1 = pool.take(RunId::new(1), vb_core::ids::StepIdx::ZERO);
     let f2 = pool.take(RunId::new(2), vb_core::ids::StepIdx::ZERO);
     let f3 = pool.take(RunId::new(3), vb_core::ids::StepIdx::ZERO);

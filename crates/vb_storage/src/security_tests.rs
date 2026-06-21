@@ -764,7 +764,11 @@ mod tests {
         let payload = b"hello world";
         let digest: [u8; DIGEST_BYTES] = blake3::hash(payload).into();
         let result = verify_digest_match(payload, digest);
-        assert!(result.is_ok(), "correct digest should pass verification");
+        assert_eq!(
+            result,
+            Ok(()),
+            "SECURITY: correct digest must pass verification (and must NOT silently Ok on wrong digest — see rejects_wrong test)"
+        );
     }
 
     /// SECURITY: verify_digest_match rejects wrong digest.

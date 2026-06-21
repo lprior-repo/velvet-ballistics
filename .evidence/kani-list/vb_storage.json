@@ -1,6 +1,6 @@
 {
   "discovery_root": "crates/vb_storage/src",
-  "harness_count": 131,
+  "harness_count": 127,
   "harnesses": [
     {
       "cfg_kani": true,
@@ -784,38 +784,6 @@
       "harness": "check_queue_full_error_message",
       "kani_arbitrary_status": "kani_any_only",
       "path": "crates/vb_storage/src/kani_vb_vzcuf_ps003.rs",
-      "required_features": []
-    },
-    {
-      "cfg_kani": true,
-      "feature_gated": false,
-      "harness": "check_new_batch_is_empty",
-      "kani_arbitrary_status": "kani_any_only",
-      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
-      "required_features": []
-    },
-    {
-      "cfg_kani": true,
-      "feature_gated": false,
-      "harness": "check_queue_full_is_idempotent",
-      "kani_arbitrary_status": "kani_any_only",
-      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
-      "required_features": []
-    },
-    {
-      "cfg_kani": true,
-      "feature_gated": false,
-      "harness": "check_error_variants_for_state_preservation",
-      "kani_arbitrary_status": "kani_any_only",
-      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
-      "required_features": []
-    },
-    {
-      "cfg_kani": true,
-      "feature_gated": false,
-      "harness": "check_encode_record_deterministic",
-      "kani_arbitrary_status": "kani_any_only",
-      "path": "crates/vb_storage/src/kani_vb_vzcuf_ps004.rs",
       "required_features": []
     },
     {

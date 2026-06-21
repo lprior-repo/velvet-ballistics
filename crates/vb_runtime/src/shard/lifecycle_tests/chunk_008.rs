@@ -323,10 +323,8 @@
                 let contract = test_action_contract(Idempotency::DeterministicPure);
                 let frame_taint = state.frame.read_taint(SlotIdx::ZERO).unwrap();
                 let result = reject_taint_downgrade(frame_taint, &contract, Taint::Clean);
-                prop_assert!(result.is_err(),
-                    "DeterministicPure + {input_taint:?} input must reject");
                 match result {
-                    Ok(()) => unreachable!(),
+                    Ok(()) => prop_assert!(false, "DeterministicPure + {input_taint:?} input must reject, got Ok(())"),
                     Err(RuntimeError::ActionTaintDowngrade { required, supplied }) => {
                         prop_assert_eq!(required, Taint::Clean);
                         prop_assert_eq!(supplied, input_taint);

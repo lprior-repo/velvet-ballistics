@@ -123,6 +123,8 @@
 #![cfg(test)]
 #![forbid(unsafe_code)]
 
+use crate::CompileError;
+use crate::CompileErrors;
 use crate::SlotCompiler;
 use crate::mod_compile_lowering::emit_single_body_set;
 use proptest::prelude::*;
@@ -245,7 +247,7 @@ proptest! {
         prop_assert!(result.is_err(), "multi-step body → error");
     }
 
-    /// Zero-branch together → error (or graceful handling), no panic.
+    /// Zero-branch together → StepFieldShape error with "at least one branch".
     #[test]
     fn proptest_together_error_zero_branches(body in zero_branch_together_strategy()) {
         let mut builder = SlotCompiler::new();
@@ -259,17 +261,29 @@ proptest! {
             false,
         );
         prop_assert!(
-            matches!(result, Ok(()) | Err(_)),
-            "zero-branch together must return a Result without panic"
+            matches!(
+                &result,
+                Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(
+                    e,
+                    CompileError::StepFieldShape { field, expected, .. }
+                    if *field == "together.branches"
+                        && expected.contains("at least one branch")
+                ))
+            ),
+            "zero-branch together must surface StepFieldShape for `together.branches` with \
+             expected \"at least one branch\", got {result:?}"
         );
     }
 
-    /// Edge StepIdx together → error or success, but never panic.
+    /// Edge StepIdx together must not panic and must produce a Result whose
+    /// Ok path emits `> 0` nodes (TogetherStart + branches + TogetherJoin) or
+    /// surface an overflow/index/limit error when Err.
     #[test]
     fn proptest_together_error_stepidx_overflow(
         (body, edge_id) in edge_stepidx_together_strategy()
     ) {
         let mut builder = SlotCompiler::new();
+        let nodes_before = builder.nodes.len();
         let result = emit_single_body_set(
             &body,
             StepIdx::new(edge_id),
@@ -279,14 +293,30 @@ proptest! {
             &mut builder,
             false,
         );
-        // Must not panic. May return StepIndexOutOfRange.
-        match result {
+        match &result {
             Ok(()) => {
-                // Success at edge: must not exceed u16 range
-                // (checked by checked_step_offset in production code)
+                // Ok path: Together lowering must have emitted at least
+                // TogetherStart + TogetherJoin (2 nodes) for an empty-branch
+                // Together, plus nodes for each branch's body.
+                let nodes_after = builder.nodes.len();
+                let emitted = nodes_after.saturating_sub(nodes_before);
+                prop_assert!(
+                    emitted >= 2,
+                    "Ok edge-stepidx together must emit >= 2 nodes (TogetherStart+TogetherJoin), \
+                     got {emitted} nodes for body {body:?}"
+                );
             }
-            Err(_) => {
-                // Expected: StepIndexOutOfRange or similar
+            Err(CompileErrors(errors)) => {
+                prop_assert!(
+                    errors.iter().any(|e| matches!(
+                        e,
+                        CompileError::StepIndexOutOfRange { .. }
+                            | CompileError::PrimitiveLoweringLimitExceeded { .. }
+                            | CompileError::StepFieldShape { .. }
+                    )),
+                    "edge-stepidx together Err must surface StepIndexOutOfRange, \
+                     PrimitiveLoweringLimitExceeded, or StepFieldShape, got {result:?}"
+                );
             }
         }
     }

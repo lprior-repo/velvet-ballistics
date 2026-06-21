@@ -5,9 +5,8 @@
 
     use crate::RuntimeError;
 
-    use super::{
-        MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth,
-    };
+    use super::{Shard, ShardCommand, ShardConfig, ShardHealth};
+    use crate::shard::types::MAX_COMMAND_QUEUE_CAPACITY;
     use crate::shard::{DEFAULT_MAX_TERMINAL_RUNS, DEFAULT_TERMINAL_RUNS_TTL_TICKS};
 
     fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
@@ -258,7 +257,21 @@
             86_400,
             100_000,
         );
-        assert!(result.is_ok());
+        assert_eq!(
+            result,
+            Ok(ShardConfig {
+                command_queue_capacity: 8,
+                trace_capacity: 16,
+                step_budget_per_tick: 32,
+                max_active_runs: 4,
+                policy: vb_core::policy::RuntimePolicy::Strict,
+                coalesce_window_ticks: 1,
+                snapshot_interval_steps: 0,
+                max_terminal_runs: 16,
+                terminal_runs_ttl_ticks: 86_400,
+                max_terminal_outcomes: 100_000,
+            })
+        );
         Ok(())
     }
 
@@ -276,7 +289,21 @@
             0,
             100_000,
         );
-        assert!(result.is_ok());
+        assert_eq!(
+            result,
+            Ok(ShardConfig {
+                command_queue_capacity: 8,
+                trace_capacity: 16,
+                step_budget_per_tick: 32,
+                max_active_runs: 4,
+                policy: vb_core::policy::RuntimePolicy::Strict,
+                coalesce_window_ticks: 1,
+                snapshot_interval_steps: 100,
+                max_terminal_runs: 16,
+                terminal_runs_ttl_ticks: 0,
+                max_terminal_outcomes: 100_000,
+            })
+        );
         Ok(())
     }
 

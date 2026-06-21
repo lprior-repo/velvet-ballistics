@@ -117,6 +117,7 @@ use crate::ids::{ListId, SymbolId};
 use proptest::prelude::*;
 
 use super::*;
+use crate::errors::CoreError;
 
 proptest! {
     #[test]
@@ -163,7 +164,10 @@ proptest! {
     fn finite_f64_rejects_nan(nan_bits in 0u64..) {
         let val = f64::from_bits(nan_bits);
         if val.is_nan() {
-            prop_assert!(FiniteF64::new(val).is_err());
+            prop_assert!(matches!(
+                FiniteF64::new(val),
+                Err(CoreError::NonFiniteNumber)
+            ));
         }
     }
 }

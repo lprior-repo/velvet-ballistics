@@ -36,13 +36,6 @@ impl Lcg {
             .wrapping_add(1_442_695_040_888_963_407_u64);
         self.state
     }
-
-    pub(super) fn next_usize(&mut self, range: usize) -> usize {
-        if range == 0 {
-            return 0;
-        }
-        (self.next_u64() >> 32) as usize % range
-    }
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -484,13 +484,9 @@ fn nested_do_with_invalid_input_slot_returns_error() {
         "  - id: retry\n    repeat:\n      max_attempts: 3\n      steps:\n        - id: action_step\n          do:\n            action: \"0\"\n            input: \"99999\"\n  - id: done\n    finish:\n      result: 0\n",
     );
     let result = compile_workflow(yaml.as_bytes());
-    assert!(
-        result.is_err(),
-        "nested do with out-of-range input slot should fail"
-    );
     let errors = result
         .err()
-        .expect("compile_workflow failed as expected (verified by is_err above)");
+        .expect("nested do with out-of-range input slot must fail compilation");
     let first = errors
         .first()
         .expect("expected at least one error from compile_workflow");

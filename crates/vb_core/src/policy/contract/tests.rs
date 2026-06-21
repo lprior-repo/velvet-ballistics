@@ -131,10 +131,10 @@ fn test_to_resource_contract_returns_valid_contract() {
 fn test_resource_contract_fits_within_hard_limits() {
     let p = RuntimeLimitsProfile::strict();
     let rc = p.to_resource_contract();
-    assert!(
-        rc.fits_within_hard_limits().is_ok(),
-        "strict profile contract must fit hard limits: {:?}",
-        rc.fits_within_hard_limits()
+    assert_eq!(
+        rc.fits_within_hard_limits(),
+        Ok(()),
+        "strict profile contract must fit hard limits"
     );
 }
 
@@ -142,10 +142,10 @@ fn test_resource_contract_fits_within_hard_limits() {
 fn test_resource_contract_fits_within_profile() {
     let p = RuntimeLimitsProfile::strict();
     let rc = p.to_resource_contract();
-    assert!(
-        rc.fits_within_profile(&p).is_ok(),
-        "contract derived from profile must fit that profile: {:?}",
-        rc.fits_within_profile(&p)
+    assert_eq!(
+        rc.fits_within_profile(&p),
+        Ok(()),
+        "contract derived from profile must fit that profile"
     );
 }
 

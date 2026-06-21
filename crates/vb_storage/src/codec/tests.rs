@@ -562,7 +562,11 @@ fn verify_digest_match_accepts_correct_digest() {
     let payload = b"hello world";
     let digest: [u8; DIGEST_BYTES] = blake3::hash(payload).into();
     let result = verify_digest_match(payload, digest);
-    assert!(result.is_ok(), "correct digest should pass verification");
+    assert_eq!(
+        result,
+        Ok(()),
+        "correct digest must pass verification (security-relevant contract: must NOT silently Ok on wrong digest)"
+    );
 }
 
 #[test]
@@ -2810,7 +2814,11 @@ fn validate_replayed_event_with_zero_run_and_seq() {
         reason: None,
     };
     let result = validate_replayed_event(RunId::new(0), EventSeq::new(0), &event);
-    assert!(result.is_ok(), "zero run and seq should pass validation");
+    assert_eq!(
+        result,
+        Ok(()),
+        "zero run and seq must pass validation (boundary: minimum u64 boundary)"
+    );
 }
 
 #[test]
@@ -2822,7 +2830,11 @@ fn validate_replayed_event_with_max_run_and_seq() {
         reason: None,
     };
     let result = validate_replayed_event(RunId::new(u64::MAX), EventSeq::new(u64::MAX), &event);
-    assert!(result.is_ok(), "max run and seq should pass validation");
+    assert_eq!(
+        result,
+        Ok(()),
+        "max run and seq must pass validation (boundary: maximum u64 boundary)"
+    );
 }
 
 #[test]

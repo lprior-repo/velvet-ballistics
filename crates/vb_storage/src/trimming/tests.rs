@@ -78,28 +78,7 @@ fn write_header_with_workflow(
         .expect("header write should succeed");
 }
 
-fn insert_snapshot_payload_under_key(
-    journal: &FjallJournal,
-    key_run: RunId,
-    key_seq: EventSeq,
-    payload: &RunSnapshot,
-) {
-    let key = crate::keys::run_snapshot_key(key_run, key_seq).expect("snapshot key");
-    let value = crate::codec::encode_record(
-        crate::constants::MAGIC_SNAPSHOT,
-        crate::records::RecordKind::Snapshot,
-        payload.seq.get(),
-        payload,
-        crate::constants::MAX_SNAPSHOT_BYTES,
-    )
-    .expect("snapshot payload encode");
-    journal
-        .run_snapshot
-        .insert(key.to_vec(), value)
-        .expect("snapshot payload insert");
-}
-
-#[test]
+#[test] 
 fn trim_given_run_with_events_seq_0_to_9_and_snapshot_at_seq_5_trims_0_to_4() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(100);

@@ -1,3 +1,12 @@
+// STATUS: retired_vacuum_verus_artifact
+// Bead: vb-2r5wk | Triage group: 14 (vacuum-spec-only-sketches)
+// Triage table: .beads/vb-h39ky/triage_table.md
+// Decision: retire_as_vacuum_model — no production binding (signature mismatch
+// with production canonical_body_step_width; cannot reveal_with_fuel).
+// Must NOT be cited as `deductively_verified` evidence. Retained in-tree as
+// a tombstone to preserve the retirement decision and the parent module
+// declaration at crates/vb_compile/src/mod_compile_lowering.rs:24.
+//
 // Verification artifact: verus_reduce_proofs.rs
 // POs: PO-WIDTH-MATCH-VERUS-001, PO-OFFSET-VERUS-001, PO-CHAIN-VERUS-001,
 //      PO-NESTED-NEXT-VERUS-001, PO-NESTED-FOREACH-VERUS-001

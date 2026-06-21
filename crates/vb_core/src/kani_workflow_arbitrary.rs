@@ -74,9 +74,11 @@ impl kani::Arbitrary for ExprProgram {
             i += 1;
         }
         let max_stack: u8 = kani::any();
+        let constants: Vec<ConstValue> = Vec::new();
         Self {
             ops: ops.into_boxed_slice(),
             max_stack,
+            constants: constants.into_boxed_slice(),
         }
     }
 }

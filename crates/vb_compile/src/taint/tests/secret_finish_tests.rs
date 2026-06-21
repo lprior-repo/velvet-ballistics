@@ -143,8 +143,8 @@ steps:
     let workflow = compile_workflow(source)
         .expect("clean Finish must compile, got ");
     assert!(
-        workflow.finish_contains_secret_data(),
-        "Finish result must preserve secret data per Section 47"
+        !workflow.finish_contains_secret_data(),
+        "clean Finish (non-secret input) must NOT contain secret data per Section 47"
     );
 }
 
@@ -165,8 +165,8 @@ steps:
     let workflow = compile_workflow(source)
         .expect("literal Finish must compile, got ");
     assert!(
-        workflow.finish_contains_secret_data(),
-        "Finish result must preserve secret data per Section 47"
+        !workflow.finish_contains_secret_data(),
+        "literal Finish (non-secret value) must NOT contain secret data per Section 47"
     );
 }
 
@@ -259,6 +259,7 @@ steps:
     finish:
       result: 0
 "#;
+    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
@@ -287,6 +288,7 @@ steps:
     finish:
       result: 0
 "#;
+    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: secret-typed input in Save must be rejected, got {:?}",
@@ -314,6 +316,7 @@ steps:
     finish:
       result: 0
 "#;
+    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: composite with secret in Save must be rejected, got {:?}",
@@ -343,6 +346,7 @@ steps:
     finish:
       result: 1
 "#;
+    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: two-hop secret relay must be rejected, got {:?}",
@@ -370,6 +374,7 @@ steps:
     finish:
       result: 0
 "#;
+    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: nested secret in Save must be rejected, got {:?}",
@@ -442,9 +447,11 @@ steps:
     finish:
       result: $secrets.api_key
 "#;
+    let result = compile_workflow(source);
     assert!(
         matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "finish.result" }))),
-        "BUG: currently rejects secret Finish (Section 47 violation)"
+        "BUG: currently rejects secret Finish (Section 47 violation), got {:?}",
+        result
     );
 }
 
@@ -478,8 +485,8 @@ steps:
     let workflow = compile_workflow(source)
         .expect("clean input in Save should compile, got ");
     assert!(
-        workflow.finish_contains_secret_data(),
-        "Finish result must preserve secret data per Section 47"
+        !workflow.finish_contains_secret_data(),
+        "clean Finish (non-secret input) must NOT contain secret data per Section 47"
     );
 }
 
@@ -571,8 +578,8 @@ steps:
 
         let workflow = result.expect("clean input in Finish must compile, got ");
     prop_assert!(
-        workflow.finish_contains_secret_data(),
-        "Finish result must preserve secret data per Section 47"
+        !workflow.finish_contains_secret_data(),
+        "clean Finish (non-secret input) must NOT contain secret data per Section 47"
     );
     }
 }
@@ -595,8 +602,8 @@ steps:
 
         let workflow = result.expect("literal in Finish must compile, got ");
     prop_assert!(
-        workflow.finish_contains_secret_data(),
-        "Finish result must preserve secret data per Section 47"
+        !workflow.finish_contains_secret_data(),
+        "literal Finish (non-secret value) must NOT contain secret data per Section 47"
     );
     }
 }

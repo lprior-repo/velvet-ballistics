@@ -120,7 +120,8 @@
 use chrono::Utc;
 use tempfile::TempDir;
 use vb_core::{
-    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
+    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
+    WorkflowDigest,
 };
 use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
@@ -2287,7 +2288,32 @@ fn recover_all_incomplete_runs_excludes_finished_runs() {
 
     let journal = open_journal(&dir);
     let result = recover_runtime_summary(&journal, run);
-    assert!(result.is_ok(), "finished run should be recoverable");
+    let summary = result
+        .ok()
+        .expect("RunAccepted+StepSucceeded must be recoverable")
+        .summary();
+    assert_eq!(
+        summary.run, run,
+        "summary must carry the recovered run id"
+    );
+    assert_eq!(
+        summary.steps_started, 1,
+        "summary must count the StepStarted event"
+    );
+    assert_eq!(
+        summary.steps_succeeded, 1,
+        "summary must count the StepSucceeded event"
+    );
+    assert_eq!(
+        summary.first_seq,
+        EventSeq::new(0),
+        "summary first seq must be the RunAccepted seq"
+    );
+    assert_eq!(
+        summary.last_seq,
+        EventSeq::new(2),
+        "summary last seq must be the StepSucceeded seq"
+    );
 }
 
 #[test]
@@ -2427,8 +2453,9 @@ fn step_started_event_advances_pc() {
     ];
 
     let result = hydrate_run_frame_from_events(&events, run);
-    assert!(result.is_ok(), "should hydrate frame with step started");
-    let frame = result.unwrap();
+    let frame = result
+        .ok()
+        .expect("step-started events must hydrate to a frame");
     assert_eq!(frame.pc(), StepIdx::new(3), "PC should be at step 3");
     assert_eq!(frame.step_count(), 4, "step_count should be max_step + 1");
 }
@@ -2613,7 +2640,19 @@ fn run_failed_event_sets_terminal_state() {
     }
 
     let result = recover_runtime_summary(&open_journal(&dir), run);
-    assert!(result.is_ok(), "run failed event should be recoverable");
+    let summary = result
+        .ok()
+        .expect("run failed event must be recoverable")
+        .summary();
+    assert_eq!(
+        summary.run, run,
+        "summary must carry the recovered run id"
+    );
+    assert!(
+        matches!(summary.terminal, Some(RecoveryTerminalState::Failed { .. })),
+        "run failed event must surface Failed terminal state, got {:?}",
+        summary.terminal
+    );
 }
 
 #[test]
@@ -2648,15 +2687,15 @@ fn run_finished_event_sets_terminal_state_with_result() {
     }
 
     let result = recover_runtime_summary(&open_journal(&dir), run);
-    assert!(result.is_ok(), "run finished should be recoverable");
-    let summary = result.unwrap().summary();
-    assert!(summary.terminal.is_some(), "terminal should be present");
-    if let Some(terminal) = summary.terminal {
-        assert!(
-            matches!(terminal, RecoveryTerminalState::Finished { .. }),
-            "terminal should be Finished"
-        );
-    }
+    let summary = result
+        .ok()
+        .expect("run finished event must be recoverable")
+        .summary();
+    assert!(
+        matches!(summary.terminal, Some(RecoveryTerminalState::Finished { .. })),
+        "terminal should be Finished, got {:?}",
+        summary.terminal
+    );
 }
 
 #[test]
@@ -2685,15 +2724,15 @@ fn run_cancelled_event_sets_terminal_state() {
     }
 
     let result = recover_runtime_summary(&open_journal(&dir), run);
-    assert!(result.is_ok(), "run cancelled should be recoverable");
-    let summary = result.unwrap().summary();
-    assert!(summary.terminal.is_some(), "terminal should be present");
-    if let Some(terminal) = summary.terminal {
-        assert!(
-            matches!(terminal, RecoveryTerminalState::Cancelled),
-            "terminal should be Cancelled"
-        );
-    }
+    let summary = result
+        .ok()
+        .expect("run cancelled event must be recoverable")
+        .summary();
+    assert!(
+        matches!(summary.terminal, Some(RecoveryTerminalState::Cancelled)),
+        "terminal should be Cancelled, got {:?}",
+        summary.terminal
+    );
 }
 
 #[test]
@@ -2967,7 +3006,14 @@ fn snapshot_plus_tail_with_empty_taint_preserves_empty_taint() {
     ];
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    assert!(result.is_ok(), "empty taint should remain empty");
+    let frame = result
+        .ok()
+        .expect("hydrate_run_frame with empty taint must succeed");
+    assert_eq!(
+        frame.read_taint(SlotIdx::ZERO),
+        Ok(Taint::Clean),
+        "empty tail taint must hydrate to Clean"
+    );
 }
 
 #[test]

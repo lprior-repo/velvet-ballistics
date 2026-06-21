@@ -1,3 +1,13 @@
+// STATUS: retired_vacuum_verus_artifact
+// Bead: vb-2r5wk | Triage group: 14 (vacuum-spec-only-sketches)
+// Triage table: .beads/vb-h39ky/triage_table.md
+// Decision: retire_as_vacuum_model — no production binding (GOD RULE 1 violation:
+// lemma_nat_mul_* used assume(...); GOD RULE 2 violation: exec fn re-implementations
+// with different signatures from production; no extern_spec!, no reveal_with_fuel).
+// Must NOT be cited as `deductively_verified` evidence. Retained in-tree as
+// a tombstone to preserve the retirement decision and the parent module
+// declaration at crates/vb_compile/src/mod_compile_lowering.rs:32.
+//
 // Verification artifact: proofs.rs
 // Verifier: Verus
 //

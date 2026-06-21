@@ -59,11 +59,21 @@ proptest! {
         // may fail with a limit_exceeded error for very large inputs.
         #[allow(clippy::unwrap_used)]
         let inner = result.unwrap();
-        prop_assert!(
-            matches!(inner, Ok(_) | Err(_)),
-            "varied_choose_yaml compiles or errors gracefully (never panics), got {:?}",
-            inner
-        );
+        match &inner {
+            Ok(workflow) => {
+                prop_assert!(
+                    workflow.node_count() >= 2,
+                    "varied_choose_yaml Ok must compile to a workflow with >= 2 nodes \
+                     (ChooseStart + at least one branch), got node_count={} for input {:?}",
+                    workflow.node_count(),
+                    workflow
+                );
+            }
+            Err(_) => {
+                // Acceptable: YAML mapping limit or other limit_exceeded error.
+                // Production code never panics on bad input.
+            }
+        }
     }
 
   #[test]

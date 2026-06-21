@@ -36,6 +36,11 @@ mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
+// Section 47 contract tests for secret-data preservation in Finish results.
+// The `taint` module wires the test surface so the harness runs.
+#[cfg(test)]
+mod taint;
+
 // Proptest properties for Finish digest verification (vb-xi2f.34).
 #[cfg(test)]
 mod proptest_finish_digest;

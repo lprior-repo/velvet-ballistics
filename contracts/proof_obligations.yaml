@@ -1703,9 +1703,11 @@ dual_mode_proof_kernels_2026_06_19:
 #   - register_in_v0_1_x_or_v0_2_0: 24 files
 #     (7 dual-mode kernels, 4 action/runtime, 1 IPC scope, 3 recovery,
 #      3 vb_expr (vb-bc33k closure), 4 vb_compile (4 verus! blocks))
-#   - defer_to_v0_2_0_with_obligation: 6 files
-#     (vb_cli lifecycle, vb_core action/proof, vb_core/frame, vb_core/verification,
-#      vb_core/workflow/lifecycle, vb_proof_kernels/taint/verus)
+#   - defer_to_v0_2_0_with_obligation: 12 files (revised 2026-06-21)
+#     (vb_cli lifecycle, vb_core action/proof + action/mod, vb_core/frame +
+#      vb_core/frame/mod, vb_core/verification, vb_core/workflow/lifecycle,
+#      vb_queue_semantics/{lib, src/verification, verification/mod,
+#      verification/verus/mod})
 #   - retire_as_vacuum_model: 2 files
 #     (vb_storage has duplicate `verification/verus/recovery_types_spec.rs`
 #      at both `crates/vb_storage/src/verification/verus/` and
@@ -1721,8 +1723,22 @@ verus_file_triage_2026_06_19_v2:
   registered_retired: 0
   registered_via_obligation_files_list: 14
   registered_via_dual_mode_proof_kernels_2026_06_19: 11
-  deferred_to_v0_2_0: 6
+  deferred_to_v0_2_0: 12
   retired_as_vacuum_duplicate: 1
+  # Deferred file binding mechanism distribution (per vb-2r5wk closure
+  # 2026-06-21).  Documents the EXISTING production binding for each
+  # deferred file; no `#[verifier::external_body]` was added because
+  # those verus! blocks contain only spec/proof fn declarations and
+  # the binding is via reveal_with_fuel / extern_spec! / cfg(verus)
+  # submodule declaration — which are tighter than external_body trust
+  # stubs that would require `unimplemented!()` (forbidden by Holzman
+  # Rust constraints).
+  deferred_binding_mechanism_distribution:
+    reveal_with_fuel: 4
+    extern_spec: 1
+    cfg_verus_submodule_decl: 6
+    cfg_verus_empty_module: 1
+    total: 12
   status: triage_complete
 
   # ── register_in_v0_1_x_or_v0_2_0 ────────────────────────────────────────
@@ -1844,44 +1860,191 @@ verus_file_triage_2026_06_19_v2:
   # ── defer_to_v0_2_0 ────────────────────────────────────────────────────
   # Production-bound verus! blocks that are not yet carrying a per-file
   # obligation.  Will receive explicit obligations in v0.2.0.
+  #
+  # Binding status taxonomy (per vb-2r5wk triage closure):
+  #   binding_status: production_bound_reveal_with_fuel
+  #     — verus! block calls production fn via `reveal_with_fuel(<fn>, N)`.
+  #   binding_status: production_bound_extern_spec
+  #     — verus! block declares spec via `#[extern_spec(<crate>::<mod>)]`.
+  #   binding_status: declaration_only
+  #     — file contains only `#[cfg(verus)] mod <sub>;` declaration; the
+  #       actual verus! block is in the referenced submodule, which is
+  #       bound by one of the mechanisms above.
+  #
+  # `#[verifier::external_body]` is NOT applied to these files because:
+  #   1. The verus! blocks contain spec fn / proof fn declarations only —
+  #      no `pub exec fn` bodies that would require external_body.
+  #   2. external_body stubs use `unimplemented!()` which violates the
+  #      Holzman Rust constraint of no `unimplemented!` in production code.
+  #   3. The existing reveal_with_fuel / extern_spec bindings are
+  #      mathematically tighter than an external_body trust stub.
   defer_to_v0_2_0:
     - id: VB-CORE-ACTION-PROOF-DEF
       file: crates/vb_core/src/action/proof.rs
       bead: pending
+      binding_status: production_bound_reveal_with_fuel
+      binding_mechanism: reveal_with_fuel
+      production_target:
+        - vb_core::action::taint::propagate_action_taint
+        - vb_core::action::key::compute_action_idempotency_key
+        - vb_core::action::key::action_ticket_has_valid_key
+        - vb_core::action::key::issue_action_ticket
+      proof_count: 11
       rationale: "action classification idempotency proofs (Idempotency
-        lemmas) — production-bound in `crates/vb_core/src/action/`, but
-        no L4 obligation currently names this file. Defer until per-file
-        obligation granularity is enforced."
+        lemmas) — production-bound in `crates/vb_core/src/action/` via
+        `reveal_with_fuel(propagate_action_taint, 1)`,
+        `reveal_with_fuel(compute_action_idempotency_key, 1)`, and
+        `reveal(action_ticket_has_valid_key)`. No L4 obligation currently
+        names this file. Defer until per-file obligation granularity is
+        enforced; planned obligation VB-CORE-ACTION-PROOF-001 in v0.2.0."
     - id: VB-CORE-FRAME-VERUS-PROOFS-DEF
       file: crates/vb_core/src/frame/verus_proofs.rs
       bead: pending
-      rationale: "RunFrame::new in-frame Verus proofs (already covered
-        by VB-CORE-RUNFRAME-EXEC-001). Defer per-file entry until that
-        obligation is split per file."
+      binding_status: production_bound_reveal_with_fuel
+      binding_mechanism: reveal_with_fuel
+      production_target:
+        - vb_core::frame::is_valid_step_state_transition
+        - vb_core::frame::RunFrame::new
+      proof_count: 7
+      rationale: "RunFrame::new and StepState transition in-frame Verus
+        proofs. Production-bound via `reveal_with_fuel(
+        is_valid_step_state_transition, 1)`. Already covered by
+        VB-CORE-RUNFRAME-EXEC-001 at the obligation level; defer per-file
+        entry until that obligation is split per file. Planned obligation
+        VB-CORE-FRAME-VERUS-PROOFS-001 in v0.2.0."
     - id: VB-CORE-VALUE-TAINT-DEF
       file: crates/vb_core/src/value/taint.rs
       bead: pending
-      rationale: "Taint lattice Verus annotations.  Mirror dual-mode
-        kernel at crates/vb_proof_kernels/src/taint/verus.rs is
-        registered.  Defer until vb_core/src/value/taint.rs is also
-        registered under VB-CORE-TAINT-LATTICE-001."
+      binding_status: production_bound_reveal_with_fuel
+      binding_mechanism: reveal_with_fuel
+      production_target:
+        - vb_core::value::taint::join_taint
+      proof_count: 6
+      rationale: "Taint lattice Verus annotations. Production-bound via
+        `reveal_with_fuel(join_taint, 1)` (called twice in
+        lemma_join_taint_equals_spec and lemma_join_taint_monotone).
+        Mirror dual-mode kernel at
+        crates/vb_proof_kernels/src/taint/verus.rs is registered. Defer
+        until vb_core/src/value/taint.rs is also registered under
+        VB-CORE-TAINT-LATTICE-001. Planned obligation
+        VB-CORE-VALUE-TAINT-001 in v0.2.0."
     - id: VB-CORE-VERIFICATION-MOD-DEF
       file: crates/vb_core/src/verification/mod.rs
       bead: pending
-      rationale: "Top-level `reveal_with_fuel` Verus block orchestrating
-        per-module proofs.  No standalone obligation yet; covered
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_empty_module
+      production_target: []
+      proof_count: 0
+      rationale: "Top-level vb_core::verification module. Contains only
+        `#[cfg(verus)] pub mod verus { /* reserved */ }` — no verus!
+        block, no proof lemmas. The block is empty by design; per-file
+        proof targets live in the per-module verus! blocks (action/proof,
+        frame/verus_proofs, value/taint, workflow/lifecycle) which are
+        each registered above. No standalone obligation needed; covered
         transitively by VB-CORE-RUNFRAME-EXEC-001 and friends."
     - id: VB-CORE-WORKFLOW-LIFECYCLE-DEF
       file: crates/vb_core/src/workflow/lifecycle/mod.rs
       bead: pending
+      binding_status: production_bound_reveal_with_fuel
+      binding_mechanism: reveal_with_fuel
+      production_target:
+        - vb_core::workflow::transition::check_lifecycle_transition
+      proof_count: 5
       rationale: "Workflow lifecycle state-transition Verus proofs.
-        No standalone obligation yet."
+        Production-bound via `reveal_with_fuel(check_lifecycle_transition,
+        1)` in lemma_check_lifecycle_transition_matches_spec. No
+        standalone obligation yet; planned obligation
+        VB-CORE-WORKFLOW-LIFECYCLE-001 in v0.2.0."
     - id: VB-CLI-LIFECYCLE-DEF
       file: crates/vb_cli/src/verus_lifecycle.rs
       bead: pending
-      rationale: "CLI lifecycle command spec.  Production-bound in
-        vb_cli/src/lib.rs but no L4 obligation currently references
-        it."
+      binding_status: production_bound_extern_spec
+      binding_mechanism: extern_spec
+      production_target:
+        - vb_core::workflow::check_lifecycle_transition
+        - vb_core::workflow::LifecycleState::is_terminal
+        - vb_storage::recovery::types::ActionReplayTracker::is_resolved
+      proof_count: 5
+      rationale: "CLI lifecycle command spec. Production-bound via
+        `#[extern_spec(vb_core::workflow)]` (spec_would_append_journal,
+        spec_is_terminal, spec_check_lifecycle_transition) and
+        `#[extern_spec(vb_storage::recovery::types)]`
+        (spec_is_resolved). No L4 obligation currently references it;
+        planned obligation VB-CLI-LIFECYCLE-001 in v0.2.0."
+    # ── v3 additions: Group 6 declaration files ──────────────────────
+    - id: VB-CORE-ACTION-MOD-DEF
+      file: crates/vb_core/src/action/mod.rs
+      bead: pending
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_submodule_decl
+      production_target: []
+      proof_count: 0
+      rationale: "Declares `#[cfg(verus)] mod proof;` pointing at
+        crates/vb_core/src/action/proof.rs which is bound via
+        reveal_with_fuel (see VB-CORE-ACTION-PROOF-DEF). No proof content
+        in this file; binding inherited from referenced submodule."
+    - id: VB-CORE-FRAME-MOD-DEF
+      file: crates/vb_core/src/frame/mod.rs
+      bead: pending
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_submodule_decl
+      production_target: []
+      proof_count: 0
+      rationale: "Declares `#[cfg(verus)] pub mod verus_proofs;` pointing
+        at crates/vb_core/src/frame/verus_proofs.rs which is bound via
+        reveal_with_fuel (see VB-CORE-FRAME-VERUS-PROOFS-DEF). No proof
+        content in this file; binding inherited from referenced
+        submodule."
+    # ── v3 additions: Group 7 queue-semantics declaration files ───────
+    - id: VB-QUEUE-SEMANTICS-LIB-DEF
+      file: crates/vb_queue_semantics/src/lib.rs
+      bead: vb-r37is
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_submodule_decl
+      production_target: []
+      proof_count: 0
+      rationale: "Declares `#[cfg(verus)] pub mod verification;` pointing
+        at crates/vb_queue_semantics/src/verification.rs which transitively
+        references the production types in this lib.rs. No proof content
+        in this file; the actual bound verus! content lives in
+        verification/verus/queue_semantics_exec_bridges.rs (retired in
+        group 14 of the v3 triage as a non-production artifact). Pending
+        vb-r37is umbrella obligation to wire real production bridges."
+    - id: VB-QUEUE-SEMANTICS-VERIFICATION-RS-DEF
+      file: crates/vb_queue_semantics/src/verification.rs
+      bead: vb-r37is
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_path_redirect_decl
+      production_target: []
+      proof_count: 0
+      rationale: "Path-redirect declaration: `#[cfg(verus)] #[path =
+        \"../verification/verus/mod.rs\"] pub mod verus;`. Pure
+        declaration; production-binding target is the queue_semantics
+        lib.rs public API (see VB-QUEUE-SEMANTICS-LIB-DEF)."
+    - id: VB-QUEUE-SEMANTICS-VERIFICATION-MOD-DEF
+      file: crates/vb_queue_semantics/verification/mod.rs
+      bead: vb-r37is
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_submodule_decl
+      production_target: []
+      proof_count: 0
+      rationale: "Declares `#[cfg(verus)] pub mod verus;` pointing at
+        crates/vb_queue_semantics/verification/verus/mod.rs. Pure
+        declaration; production-binding target is the queue_semantics
+        lib.rs public API."
+    - id: VB-QUEUE-SEMANTICS-VERUS-MOD-DEF
+      file: crates/vb_queue_semantics/verification/verus/mod.rs
+      bead: vb-r37is
+      binding_status: declaration_only
+      binding_mechanism: cfg_verus_submodule_decl
+      production_target: []
+      proof_count: 0
+      rationale: "Declares `#[cfg(verus)] pub mod
+        queue_semantics_exec_bridges;` pointing at the (retired) bridges
+        file which is documented as `STATUS: NO PRODUCTION BRIDGES
+        RETAINED` (group 14). Pure declaration; production-binding
+        target is the queue_semantics lib.rs public API. Awaiting
+        vb-r37is umbrella obligation to wire real production bridges."
 
   # ── retire_as_vacuum_duplicate ──────────────────────────────────────────
   # The file at `crates/vb_storage/verification/verus/recovery_types_spec.rs`
@@ -2148,11 +2311,121 @@ verus_file_triage_2026_06_19_v3:
         (no crates/vb_storage/verification/ directory). The v3 retire list
         captures the actual vacuum sketch files under groups 8 and 14."
 
+  # ── retire_as_vacuum_model: physical retirement of vacuum artifacts ──
+  # Bead vb-2r5wk retired the 5 files below in place (status: retired_vacuum_verus_artifact
+  # header added to each file body) rather than deleting them, to preserve the
+  # parent module declarations and the explicit in-tree tombstone. None of these
+  # files may be cited as `deductively_verified` evidence. v0.2.0 must either
+  # wire real production bindings (`extern_spec!` / `reveal_with_fuel`) or keep
+  # this retire decision in force.
+  retire:
+    - id: VB-COMPILE-REDUCE-PROOFS-VACUUM
+      file: crates/vb_compile/src/mod_compile_lowering/verus_reduce_proofs.rs
+      triage_group: 14
+      decision: retire_as_vacuum_model
+      status: retired_vacuum_verus_artifact
+      in_tree_marker: "status: retired_vacuum_verus_artifact header at file top"
+      reason: "Signature mismatch — spec_canonical_step takes u16 step_kind,
+        production canonical_body_step_width takes &StepPrimitive enum;
+        cannot use reveal_with_fuel. All 23 proof lemmas (L1-L23) were
+        removed (empty bodies or trivial `assert ... by {}`); no
+        extern_spec! bindings to production code exist."
+      god_rule_violations: []
+      bead: vb-2r5wk
+      parent_module: crates/vb_compile/src/mod_compile_lowering.rs:24
+    - id: VB-COMPILE-PROOFS-VACUUM
+      file: crates/vb_compile/src/mod_compile_lowering/proofs.rs
+      triage_group: 14
+      decision: retire_as_vacuum_model
+      status: retired_vacuum_verus_artifact
+      in_tree_marker: "status: retired_vacuum_verus_artifact header at file top"
+      reason: "5 exec fn re-implementations with ensures clauses that assert
+        the exec fn's own logic satisfies a spec — different signatures from
+        production (body_width takes &[StepAst] with overhead and iterates),
+        cannot reveal_with_fuel. 3 lemma_nat_mul_* trust markers used
+        assume(...). 7 proof lemmas proved spec function properties only."
+      god_rule_violations:
+        - "GOD RULE 1 (assume(...) in trust markers)"
+        - "GOD RULE 2 (exec fn re-implementations, no production binding)"
+      bead: vb-2r5wk
+      parent_module: crates/vb_compile/src/mod_compile_lowering.rs:32
+    - id: VB-STORAGE-RECOVERY-TYPES-SPEC-VACUUM
+      file: crates/vb_storage/src/verification/verus/recovery_types_spec.rs
+      triage_group: 8
+      decision: retire_as_vacuum_model
+      status: retired_vacuum_verus_artifact
+      in_tree_marker: "status: retired_vacuum_verus_artifact header at file top"
+      reason: "STANDALONE SPEC LAYER compiled via `--crate-type=lib`;
+        spec fns reference production only by comment, no `extern_spec!`,
+        no `reveal_with_fuel`. The `pub mod verus;` declaration at
+        crates/vb_storage/src/verification/mod.rs:15 has no backing mod.rs
+        here, so this file is not part of the cargo workspace build path.
+        VB-MRWE.5 / VB-MRWE.6 obligations exist for production targets but
+        do not name this file."
+      god_rule_violations:
+        - "GOD RULE 2 (no production binding, mirror/spec layer only)"
+      bead: vb-2r5wk
+      forward_action: "v0.2.0 must wire actual extern_spec!/reveal_with_fuel
+        bindings or keep retired."
+    - id: VB-QUEUE-SEMANTICS-SPECS-VACUUM
+      file: crates/vb_queue_semantics/verification/verus/queue_semantics_specs.rs
+      triage_group: 14
+      decision: retire_as_vacuum_model
+      status: retired_vacuum_verus_artifact
+      in_tree_marker: "status: retired_vacuum_verus_artifact header at file top"
+      reason: "Header explicitly states 'STATUS: NON-PROOF / NOT
+        PRODUCTION-BOUND'. No extern_spec!, no reveal_with_fuel, abstract
+        int-typed functions, tautological lemmas. Parent crate's
+        verification/verus/mod.rs already notes this file as 'deleted'
+        (disconnected spec mirror). File is not declared in any mod.rs and
+        is not part of the cargo workspace build path."
+      god_rule_violations:
+        - "GOD RULE 2 (no production binding, mirror/spec layer only)"
+      bead: vb-2r5wk
+      forward_action: "vb-r37is is the umbrella obligation for queue
+        production-binding repair."
+    - id: VB-QUEUE-SEMANTICS-EXEC-BRIDGES-VACUUM
+      file: crates/vb_queue_semantics/verification/verus/queue_semantics_exec_bridges.rs
+      triage_group: 14
+      decision: retire_as_vacuum_model
+      status: retired_vacuum_verus_artifact
+      in_tree_marker: "status: retired_vacuum_verus_artifact header at file top"
+      reason: "Body is `verus! {} // verus!` followed by `fn main() {}` —
+        no proof obligations. Header states 'STATUS: NO PRODUCTION
+        BRIDGES RETAINED'. Previous mirror-type bridges (EnqueueDecision,
+        PopDecision, WarningPayload) were removed under vb-dzibx for
+        divergence from production enum/struct shapes."
+      god_rule_violations:
+        - "GOD RULE 2 (no production binding, mirror/spec layer only)"
+      bead: vb-2r5wk
+      parent_module: crates/vb_queue_semantics/verification/verus/mod.rs:7
+      forward_action: "Future production-bound repair must introduce
+        reviewed contracts against the actual Rust helper functions/types
+        or extracted kernels."
+
   # ── Forward to v0.2.0 ───────────────────────────────────────────────
   forward_to_v0_2_0:
     - "Add VB-CORE-WORKFLOW-LIFECYCLE-001, VB-CORE-ACTION-PROOF-001..003,
       VB-CORE-VALUE-TAINT-001, VB-CORE-FRAME-VERUS-PROOFS-001,
-      VB-CORE-VERIFICATION-MOD-001 obligations for groups 5 and 6."
+      VB-CORE-VERIFICATION-MOD-001 obligations for groups 5 and 6.
+      (binding_status already documented in v2 defer_to_v0_2_0 per
+      vb-2r5wk triage closure 2026-06-21: 4 reveal_with_fuel entries,
+      1 extern_spec entry, 1 empty-declaration entry.)"
+    - "Add VB-CORE-ACTION-MOD-001, VB-CORE-FRAME-MOD-001 declaration
+      obligation rows for the two Group 6 `mod` declaration files
+      (action/mod.rs, frame/mod.rs) — both are pure cfg(verus) submodule
+      declarations whose referenced submodules are already bound via
+      reveal_with_fuel."
+    - "Add VB-QUEUE-SEMANTICS-LIB-001, VB-QUEUE-SEMANTICS-VERIFICATION-RS-001,
+      VB-QUEUE-SEMANTICS-VERIFICATION-MOD-001, VB-QUEUE-SEMANTICS-VERUS-MOD-001
+      declaration obligation rows for the four Group 7 `mod` declaration
+      files (queue_semantics submodule tree) — all four are pure cfg(verus)
+      declarations. The leaf queue_semantics_exec_bridges.rs is already
+      retired in v3 retire_as_vacuum_model pending vb-r37is umbrella
+      obligation."
+    - "Add VB-CLI-LIFECYCLE-001 obligation row for
+      vb_cli/src/verus_lifecycle.rs (VERUS-FWH-001..004 inline; needs
+      per-file obligation split in v0.2.0)."
     - "Re-validate each dual_mode_proof_kernels_2026_06_19 entry: wire
       production binding (extern_spec! or reveal_with_fuel) or move to
       retire_as_vacuum_model. resource_budget, step_state, taint, part_03

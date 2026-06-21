@@ -1306,20 +1306,31 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
         "SetConst step should produce Finished or Continue signal, got {signal}"
     );
 
-    // TODO: Q2 resolution - full SlotValue vs summary serialization
-    // When Q2 is resolved, assert the exact structure:
-    // assert!(json.get("output_slot").is_some(), "Finished signal should include output_slot");
-    // let output_slot = json.get("output_slot").unwrap();
-    // assert!(output_slot.get("value").is_some(), "output_slot should have value");
-    // assert!(output_slot.get("taint").is_some(), "output_slot should have taint");
-
-    // For now, verify that some form of output is present
-    let has_output = json.get("output_slot").is_some()
-        || (json.get("deltas").is_some()
-            && json.get("deltas").unwrap().get("slot_deltas").is_some());
+    // POST005 contract: when a step has an output slot (SetConst does), the
+    // Finished signal must include `output_slot` with `slot`, `value`, and
+    // `taint` fields. The canonical shape is enforced by
+    // `crates/vb_cli/src/step_helpers.rs::build_step_json` which always emits
+    // `output_slot` for any node with `node.output = Some(_)`. The earlier
+    // `has_output` smoke test allowed a Q2-deferred fallback (`deltas.slot_deltas`)
+    // that no production path emits for SetConst, so it was a no-op assertion
+    // that masked contract drift.
+    let output_slot = json.get("output_slot");
     assert!(
-        has_output,
-        "Step result should include output information (output_slot or slot_deltas)"
+        output_slot.is_some(),
+        "Finished signal must include output_slot for step with output, got: {json}"
+    );
+    let output_slot = output_slot.expect("output_slot checked above");
+    assert!(
+        output_slot.get("slot").is_some(),
+        "output_slot must include 'slot' field, got: {output_slot}"
+    );
+    assert!(
+        output_slot.get("value").is_some(),
+        "output_slot must include 'value' field, got: {output_slot}"
+    );
+    assert!(
+        output_slot.get("taint").is_some(),
+        "output_slot must include 'taint' field, got: {output_slot}"
     );
 }
 

@@ -49,24 +49,24 @@ proptest! {
     #[test]
     fn from_str_rejects_unregistered(s in arb_unregistered_ascii()) {
         let parsed: Result<SymbolicCode, _> = s.as_str().parse();
-        let matched = matches!(parsed, Err(SymbolicCodeParseError { .. }));
-        prop_assert!(matched);
+        let matched = matches!(&parsed, Err(SymbolicCodeParseError { name, .. }) if name.as_ref() == s.as_str());
+        prop_assert!(matched, "expected SymbolicCodeParseError with name={s:?}, got {parsed:?}");
     }
 
     #[test]
     fn from_str_rejects_whitespace_wrapped_registered(s in arb_registered_str()) {
         let wrapped = format!(" {s} ");
         let parsed: Result<SymbolicCode, _> = wrapped.as_str().parse();
-        let matched = matches!(parsed, Err(SymbolicCodeParseError { .. }));
-        prop_assert!(matched);
+        let matched = matches!(&parsed, Err(SymbolicCodeParseError { name, .. }) if name.as_ref() == wrapped.as_str());
+        prop_assert!(matched, "expected SymbolicCodeParseError with name={wrapped:?}, got {parsed:?}");
     }
 
     #[test]
     fn from_str_rejects_lowercase_registered(s in arb_registered_str()) {
         let lower: String = s.to_lowercase();
         let parsed: Result<SymbolicCode, _> = lower.as_str().parse();
-        let matched = matches!(parsed, Err(SymbolicCodeParseError { .. }));
-        prop_assert!(matched);
+        let matched = matches!(&parsed, Err(SymbolicCodeParseError { name, .. }) if name.as_ref() == lower.as_str());
+        prop_assert!(matched, "expected SymbolicCodeParseError with name={lower:?}, got {parsed:?}");
     }
 
     #[test]
@@ -146,7 +146,10 @@ fn from_static_returns_none_for_empty_string() {
 #[test]
 fn from_str_rejects_empty() {
     let parsed: Result<SymbolicCode, _> = "".parse();
-    assert!(matches!(parsed, Err(SymbolicCodeParseError { .. })));
+    assert!(
+        matches!(&parsed, Err(SymbolicCodeParseError { name, .. }) if name.as_ref() == ""),
+        "expected SymbolicCodeParseError with name=\"\", got {parsed:?}"
+    );
 }
 
 #[test]

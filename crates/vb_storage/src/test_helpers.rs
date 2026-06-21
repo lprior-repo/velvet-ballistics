@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-#![allow(unused_imports)]
+#![allow(unused_imports, dead_code)]
 //! Test helpers that re-export vb_storage internals for use in tests.
 //!
 //! After refactoring, the lib.rs exports changed but tests.rs still expects
@@ -54,8 +54,12 @@ pub(crate) use crate::init_keyspaces;
 
 // ---------------------------------------------------------------------------
 // Free function wrappers for methods that tests expect as free functions
+// These are legacy shims duplicating `crate::convenience::*`; they remain
+// available here so older test sites that import via `use super::*` keep
+// compiling without forcing a rename.
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
 pub(crate) fn read_blob(
     journal: &FjallJournal,
     digest: [u8; DIGEST_BYTES],
@@ -63,6 +67,7 @@ pub(crate) fn read_blob(
     journal.blob(digest)
 }
 
+#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
 pub(crate) fn read_run_events(
     journal: &FjallJournal,
     run: RunId,
@@ -70,6 +75,7 @@ pub(crate) fn read_run_events(
     journal.events_for_run(run)
 }
 
+#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
 pub(crate) fn append_journal_event(
     journal: &FjallJournal,
     event: &JournalEvent,
@@ -77,6 +83,7 @@ pub(crate) fn append_journal_event(
     journal.append_journaled(event)
 }
 
+#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
 pub(crate) fn write_snapshot(journal: &FjallJournal, snapshot: &RunSnapshot) -> Result<(), JournalError> {
     journal.put_snapshot(snapshot)
 }

@@ -1,6 +1,5 @@
 use super::*;
 use crate::slot_extra::SlotWrittenExtraEnvelope;
-use crate::constants::MAX_FRAME_EXTRA_BYTES;
 use vb_core::Taint;
 
 #[test]

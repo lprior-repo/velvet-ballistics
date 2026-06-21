@@ -172,11 +172,17 @@ proptest! {
     fn yaml_compiler_compile_never_panics(yaml in valid_yaml_workflow()) {
         let result = YamlCompiler::default().compile(yaml.as_bytes());
 
-        // Valid YAML must compile to Ok
+        // Valid YAML must compile to Ok, and the compiled artifact must be a
+        // non-empty workflow (otherwise the compiler would be a no-op for
+        // structured input — a regression to catch).
+        let compiled = result
+            .ok()
+            .expect("YamlCompiler::compile on valid YAML must return Ok");
         prop_assert!(
-            result.is_ok(),
-            "YamlCompiler::compile on valid YAML must return Ok, got {:?}",
-            result
+            compiled.node_count() >= 2,
+            "YamlCompiler::compile on valid YAML must produce a workflow with >= 2 nodes, \
+             got node_count={} (compiler regression: returned Ok(empty))",
+            compiled.node_count()
         );
     }
 }

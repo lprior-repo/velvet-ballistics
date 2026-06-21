@@ -1,4 +1,17 @@
 #![forbid(unsafe_code)]
+//! STATUS: retired_vacuum_verus_artifact
+//! Bead: vb-2r5wk | Triage group: 8 (storage-journal-codec)
+//! Triage table: .beads/vb-h39ky/triage_table.md
+//! Decision: retire_as_vacuum_model — STANDALONE SPEC LAYER, compiled via
+//! `--crate-type=lib`; spec fns reference production only by comment, no
+//! `extern_spec!`, no `reveal_with_fuel`. The `pub mod verus;` declaration
+//! at crates/vb_storage/src/verification/mod.rs:15 has no backing mod.rs
+//! here, so this file is not part of the cargo workspace build path.
+//! Must NOT be cited as `deductively_verified` evidence. v0.2.0 must wire
+//! actual production bindings (`extern_spec!` or `reveal_with_fuel`) or
+//! keep retired. VB-MRWE.5 / VB-MRWE.6 obligations exist for the production
+//! targets but currently do not name this file.
+//!
 //! Verus proof artifacts for vb_storage recovery and classification types.
 //!
 //! This module provides:
