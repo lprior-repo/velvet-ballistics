@@ -118,6 +118,39 @@ fn nz_usize(value: usize, field: &'static str) -> Result<NonZeroUsize, ProfileVa
     }
 }
 
+/// Compile-time `1` constant for [`NonZero*`] types. The impossible
+/// `None` arm of `NonZero*::new(1)` uses `loop {}` (the divergent
+/// function type `!`) to satisfy the no-`unwrap`/no-`expect`/no-`panic`
+/// Holzman-Rust rules.
+trait NonZeroOne {
+    const ONE: Self;
+}
+
+impl NonZeroOne for NonZeroUsize {
+    const ONE: Self = match NonZeroUsize::new(1) {
+        Some(v) => v,
+        None => loop {},
+    };
+}
+impl NonZeroOne for NonZeroU32 {
+    const ONE: Self = match NonZeroU32::new(1) {
+        Some(v) => v,
+        None => loop {},
+    };
+}
+impl NonZeroOne for NonZeroU64 {
+    const ONE: Self = match NonZeroU64::new(1) {
+        Some(v) => v,
+        None => loop {},
+    };
+}
+impl NonZeroOne for NonZeroU16 {
+    const ONE: Self = match NonZeroU16::new(1) {
+        Some(v) => v,
+        None => loop {},
+    };
+}
+
 /// Convert a raw `u32` to `NonZeroU32`, returning a typed error on zero.
 #[inline]
 fn nz_u32(value: u32, field: &'static str) -> Result<NonZeroU32, ProfileValidationError> {
@@ -284,42 +317,19 @@ impl RuntimeLimitsProfile {
         // (a divergent function) as the fallback for the impossible `None`
         // case of `NonZero*::new(1)`.  This is unwrap-free, expect-free,
         // panic-free, and process::exit-free.
-        let nz_usize_val = |result: Result<NonZeroUsize, _>| -> NonZeroUsize {
+        let nz_or_one = |result: Result<T, ProfileValidationError>| -> T
+        where
+            T: NonZeroOne,
+        {
             match result {
                 Ok(v) => v,
-                Err(_) => match NonZeroUsize::new(1) {
-                    Some(v) => v,
-                    None => loop {},
-                },
+                Err(_) => T::ONE,
             }
         };
-        let nz_u32_val = |result: Result<NonZeroU32, _>| -> NonZeroU32 {
-            match result {
-                Ok(v) => v,
-                Err(_) => match NonZeroU32::new(1) {
-                    Some(v) => v,
-                    None => loop {},
-                },
-            }
-        };
-        let nz_u64_val = |result: Result<NonZeroU64, _>| -> NonZeroU64 {
-            match result {
-                Ok(v) => v,
-                Err(_) => match NonZeroU64::new(1) {
-                    Some(v) => v,
-                    None => loop {},
-                },
-            }
-        };
-        let nz_u16_val = |result: Result<NonZeroU16, _>| -> NonZeroU16 {
-            match result {
-                Ok(v) => v,
-                Err(_) => match NonZeroU16::new(1) {
-                    Some(v) => v,
-                    None => loop {},
-                },
-            }
-        };
+        let nz_usize_val = |result| nz_or_one::<NonZeroUsize>(result);
+        let nz_u32_val = |result| nz_or_one::<NonZeroU32>(result);
+        let nz_u64_val = |result| nz_or_one::<NonZeroU64>(result);
+        let nz_u16_val = |result| nz_or_one::<NonZeroU16>(result);
         Self {
             name,
             active_runs: nz_usize_val(nz_usize(config.active_runs, "active_runs")),
