@@ -43,7 +43,6 @@ pub(crate) mod kind {
 
 /// Kind enum representing all registered payload types.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub(crate) enum Kind {
     VerificationReport,
     DiagnosticReport,
@@ -90,7 +89,6 @@ impl Kind {
     }
 
     /// Parse a Kind from its string representation.
-    #[allow(dead_code)]
     pub(crate) fn from_str(s: &str) -> Option<Kind> {
         s.parse().ok()
     }
@@ -123,34 +121,6 @@ impl FromStr for Kind {
     }
 }
 
-/// Builds a structured output envelope with schema_version and kind fields.
-/// All outputs from CLI commands use this envelope discipline.
-///
-/// # Arguments
-/// * `data` - The payload data to wrap in the envelope
-/// * `kind` - The kind of payload being wrapped
-///
-/// # Returns
-/// A JSON Value representing the envelope with schema_version, kind, and data fields.
-///
-/// # Invariants
-/// - INV-002: schema_version is never empty (proven by constant being non-empty string)
-/// - INV-003: kind matches registered constants (Kind enum only constructed via from_str)
-/// - POST-003: Output contains schema_version field
-/// - POST-004: Output contains kind field
-#[must_use]
-#[allow(dead_code)]
-pub(crate) fn build_envelope(data: Value, kind: Kind) -> Value {
-    let mut envelope = Map::new();
-    envelope.insert(
-        "schema_version".to_string(),
-        Value::String(SCHEMA_VERSION.to_string()),
-    );
-    envelope.insert("kind".to_string(), Value::String(kind.as_str().to_string()));
-    envelope.insert("data".to_string(), data);
-    Value::Object(envelope)
-}
-
 /// Serializes data with version envelope for JSON output.
 /// Adds schema_version and kind fields to the output JSON object.
 ///
@@ -172,25 +142,6 @@ pub(crate) fn serialize_with_version(data: &Value, kind: Kind) -> Value {
     );
     envelope.insert("kind".to_string(), Value::String(kind.as_str().to_string()));
     Value::Object(envelope)
-}
-
-/// Error types for CLI envelope operations.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
-pub(crate) enum EnvelopeError {
-    SerializationFailed,
-    SchemaVersionMissing,
-    UnknownKind(String),
-}
-
-impl std::fmt::Display for EnvelopeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SerializationFailed => write!(f, "envelope serialization failed"),
-            Self::SchemaVersionMissing => write!(f, "schema_version field is missing or empty"),
-            Self::UnknownKind(k) => write!(f, "unknown kind: {k}"),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -223,9 +174,9 @@ mod tests {
     }
 
     #[test]
-    fn test_build_envelope_has_schema_version() {
+    fn test_serialize_with_version_has_schema_version() {
         let data = serde_json::json!({"status": "ok"});
-        let envelope = build_envelope(data, Kind::CliStatus);
+        let envelope = serialize_with_version(&data, Kind::CliStatus);
         assert_eq!(
             envelope.get("schema_version"),
             Some(&serde_json::json!("velvet-ballistics/cli-output/v1"))
@@ -233,17 +184,17 @@ mod tests {
     }
 
     #[test]
-    fn test_build_envelope_has_kind() {
+    fn test_serialize_with_version_has_kind() {
         let data = serde_json::json!({"status": "ok"});
-        let envelope = build_envelope(data, Kind::CliStatus);
+        let envelope = serialize_with_version(&data, Kind::CliStatus);
         assert_eq!(envelope.get("kind"), Some(&serde_json::json!("CliStatus")));
     }
 
     #[test]
-    fn test_build_envelope_has_data() {
+    fn test_serialize_with_version_has_data() {
         let data = serde_json::json!({"status": "ok", "count": 42});
-        let envelope = build_envelope(data.clone(), Kind::CliStatus);
-        assert_eq!(envelope.get("data"), Some(&data));
+        let envelope = serialize_with_version(&data, Kind::CliStatus);
+        assert_eq!(envelope.get("data"), Some(&serde_json::json!({"status": "ok", "count": 42})));
     }
 
     #[test]
