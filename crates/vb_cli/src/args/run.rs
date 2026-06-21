@@ -12,12 +12,7 @@ pub(super) fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow =
         find_positional(args, 2, "verify").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let profile = match named_flag(args, "--profile") {
-        Some(raw) => match raw.as_str() {
-            "quick" => VerifyProfile::Quick,
-            "standard" => VerifyProfile::Standard,
-            "full" => VerifyProfile::Full,
-            other => return Err(ParseError::UnknownProfile(other.into())),
-        },
+        Some(raw) => raw.parse::<VerifyProfile>()?,
         None => VerifyProfile::default(),
     };
     let output = parse_output_format(args);

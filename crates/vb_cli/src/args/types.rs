@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use vb_core::action::ActionName;
 
@@ -52,6 +53,19 @@ impl VerifyProfile {
             Self::Quick => "quick",
             Self::Standard => "standard",
             Self::Full => "full",
+        }
+    }
+}
+
+impl std::str::FromStr for VerifyProfile {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "quick" => Ok(Self::Quick),
+            "standard" => Ok(Self::Standard),
+            "full" => Ok(Self::Full),
+            other => Err(ParseError::UnknownProfile(other.into())),
         }
     }
 }
