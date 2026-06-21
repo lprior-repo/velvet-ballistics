@@ -12,7 +12,7 @@ fn shard_step_budget_one_processes_one_command_per_tick() -> Result<(), RuntimeE
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
@@ -249,7 +249,7 @@ fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), Runti
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
@@ -293,7 +293,7 @@ fn shard_command_queue_len_increments_on_enqueue() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     assert_eq!(shard.command_queue_len(), 0);

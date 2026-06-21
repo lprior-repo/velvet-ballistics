@@ -44,4 +44,6 @@ pub enum StorageKey {
     },
     /// Recovery-stamp progress marker.
     RecoveryStamp { run: RunId, seq: EventSeq },
+    /// Sequence-gap marker written by `inject_seq_gap`.
+    RunSeqGap { run: RunId, seq: EventSeq },
 }

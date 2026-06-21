@@ -214,7 +214,7 @@ fn shard_trace_ring_overflow_drops_events_gracefully() -> Result<(), RuntimeErro
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     // When submitting and completing multiple runs (producing >2 trace events)

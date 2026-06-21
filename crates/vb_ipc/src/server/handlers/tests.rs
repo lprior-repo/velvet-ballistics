@@ -5,6 +5,7 @@
 //! while the test module has full access to internal helpers via `super`.
 
 use super::actions::handle_answer_ask;
+use super::runs::handle_cancel_run;
 use crate::server::IpcResponse;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -26,7 +27,7 @@ fn runtime_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -299,6 +300,116 @@ fn handle_answer_ask_rejects_absent_pending_ask() {
             );
         }
     }
+}
+
+#[test]
+fn handle_cancel_run_accepts_reason_and_routes_to_runtime() {
+    use crate::IpcPayload;
+    use vb_runtime::journal::RuntimeJournalEvent;
+
+    let run_id = RunId::new(3201);
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let shard_count = NonZeroUsize::new(1);
+    let shard_count = match shard_count {
+        Some(value) => value,
+        None => return,
+    };
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone())
+        .expect("runtime config is valid");
+    let workflow = ask_then_finish_workflow();
+    let workflow = match workflow {
+        Some(w) => w,
+        None => return,
+    };
+    assert_eq!(runtime.submit_compiled(run_id, workflow), Ok(()));
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    let reason = "user requested abort";
+    let payload = postcard::to_allocvec(&IpcPayload::CancelRun {
+        run_id,
+        reason: Some(reason.as_bytes().to_vec()),
+    });
+    let payload = match payload {
+        Ok(bytes) => bytes,
+        Err(_) => return,
+    };
+
+    assert_eq!(
+        handle_cancel_run(&payload, &mut runtime),
+        IpcResponse::AcceptedRun { run_id: 3201 }
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    let snap = journal.snapshot();
+    let events = match snap {
+        Ok(events) => events,
+        Err(_) => return,
+    };
+    let matched = events.iter().any(|event| {
+        matches!(
+            event,
+            RuntimeJournalEvent::RunCancelled { run, reason: Some(r) }
+                if *run == run_id && r == reason
+        )
+    });
+    assert!(
+        matched,
+        "durable RunCancelled event must carry the IPC-supplied reason"
+    );
+}
+
+#[test]
+fn handle_cancel_run_without_reason_records_no_reason_on_journal() {
+    use crate::IpcPayload;
+    use vb_runtime::journal::RuntimeJournalEvent;
+
+    let run_id = RunId::new(3202);
+    let journal = Arc::new(VolatileRuntimeJournal::new());
+    let shard_count = NonZeroUsize::new(1);
+    let shard_count = match shard_count {
+        Some(value) => value,
+        None => return,
+    };
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone())
+        .expect("runtime config is valid");
+    let workflow = ask_then_finish_workflow();
+    let workflow = match workflow {
+        Some(w) => w,
+        None => return,
+    };
+    assert_eq!(runtime.submit_compiled(run_id, workflow), Ok(()));
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    let payload = postcard::to_allocvec(&IpcPayload::CancelRun {
+        run_id,
+        reason: None,
+    });
+    let payload = match payload {
+        Ok(bytes) => bytes,
+        Err(_) => return,
+    };
+
+    assert_eq!(
+        handle_cancel_run(&payload, &mut runtime),
+        IpcResponse::AcceptedRun { run_id: 3202 }
+    );
+    assert_eq!(runtime.tick_all(), Ok(true));
+
+    let snap = journal.snapshot();
+    let events = match snap {
+        Ok(events) => events,
+        Err(_) => return,
+    };
+    let matched = events.iter().any(|event| {
+        matches!(
+            event,
+            RuntimeJournalEvent::RunCancelled { run, reason: None } if *run == run_id
+        )
+    });
+    assert!(
+        matched,
+        "durable RunCancelled event must record None when caller omits reason"
+    );
 }
 
 #[test]

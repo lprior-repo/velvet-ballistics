@@ -151,6 +151,7 @@ fn queue_capacity_one_succeeds() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard = Shard::new(config)?;
     assert_eq!(shard.command_queue_capacity(), 1);
@@ -169,6 +170,7 @@ fn queue_capacity_max_succeeds() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard = Shard::new(config)?;
     assert_eq!(shard.command_queue_capacity(), MAX_COMMAND_QUEUE_CAPACITY);
@@ -187,6 +189,7 @@ fn queue_capacity_at_limit_accepts_enqueue() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard = Shard::new(config)?;
     assert!(shard.is_queue_full() == false);
@@ -252,6 +255,7 @@ fn shard_status_reports_command_queue_capacity() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard = Shard::new(config)?;
     let status = shard.status();
@@ -274,6 +278,7 @@ fn shard_status_reports_step_budget() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard = Shard::new(config)?;
     let status = shard.status();

@@ -30,6 +30,8 @@ impl Runtime {
             config.trace_capacity,
             config.step_budget_per_tick,
             config.max_active_runs,
+            config.coalesce_window_ticks,
+            config.max_terminal_runs,
         )?;
         let count = shard_count.get();
         let mut shards = Vec::with_capacity(count);
@@ -72,6 +74,8 @@ impl Runtime {
             config.trace_capacity,
             config.step_budget_per_tick,
             config.max_active_runs,
+            config.coalesce_window_ticks,
+            config.max_terminal_runs,
         )?;
         let journal = crate::journal::NoopRuntimeJournal::shared();
         let count = shard_count.get();

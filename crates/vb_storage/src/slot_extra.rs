@@ -3,6 +3,8 @@
 
 use vb_core::Taint;
 
+use crate::constants::MAX_FRAME_EXTRA_BYTES;
+
 /// Prefix that distinguishes the v1 slot-write envelope from legacy frame extra bytes.
 pub const SLOT_WRITTEN_EXTRA_PREFIX: &[u8; 5] = b"VBSE\x01";
 
@@ -16,6 +18,14 @@ pub enum SlotWrittenExtraError {
     AllocationFailed,
     /// Envelope prefix was present, but the payload could not be decoded.
     DecodeFailed,
+    /// Envelope payload exceeded [`MAX_FRAME_EXTRA_BYTES`] and was rejected
+    /// before postcard could allocate a `Vec` from its varint length prefix.
+    Oversized {
+        /// Observed payload length after the prefix was stripped.
+        len: usize,
+        /// Configured cap from [`MAX_FRAME_EXTRA_BYTES`].
+        max: usize,
+    },
 }
 
 /// Decoded v1 slot-write extra envelope.
@@ -57,13 +67,26 @@ pub fn encode_slot_written_extra(
 }
 
 /// Decodes a slot-write extra envelope or classifies legacy frame extra bytes.
+///
+/// Before handing the bytes to postcard, this function enforces a payload
+/// length cap from [`MAX_FRAME_EXTRA_BYTES`]. Without that cap, a hostile
+/// Fjall image can carry a single varint length prefix that requests an
+/// allocation up to `u32::MAX` bytes before any payload byte is validated.
 pub fn decode_slot_written_extra(
     bytes: &[u8],
 ) -> Result<DecodedSlotWrittenExtra<'_>, SlotWrittenExtraError> {
     match bytes.strip_prefix(SLOT_WRITTEN_EXTRA_PREFIX) {
-        Some(payload) => postcard::from_bytes::<SlotWrittenExtraEnvelope>(payload)
-            .map(DecodedSlotWrittenExtra::Envelope)
-            .map_err(|_| SlotWrittenExtraError::DecodeFailed),
+        Some(payload) => {
+            if payload.len() > MAX_FRAME_EXTRA_BYTES {
+                return Err(SlotWrittenExtraError::Oversized {
+                    len: payload.len(),
+                    max: MAX_FRAME_EXTRA_BYTES,
+                });
+            }
+            postcard::from_bytes::<SlotWrittenExtraEnvelope>(payload)
+                .map(DecodedSlotWrittenExtra::Envelope)
+                .map_err(|_| SlotWrittenExtraError::DecodeFailed)
+        }
         None => Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(bytes)),
     }
 }

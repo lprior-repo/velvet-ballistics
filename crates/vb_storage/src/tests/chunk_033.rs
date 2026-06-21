@@ -113,19 +113,19 @@ fn builder_build_produces_correct_record_count() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
     let run = RunId::new(8004);
-    let mut builder = BatchBuilder::new();
-    builder.push(JournalEvent::RunAccepted {
+    let mut builder = BatchBuilder::with_capacity(4).expect("builder");
+    let _ = builder.try_push(JournalEvent::RunAccepted {
         run,
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([1; 32]),
     });
-    builder.push(JournalEvent::StepStarted {
+    let _ = builder.try_push(JournalEvent::StepStarted {
         run,
         seq: EventSeq::new(1),
         step: StepIdx::new(0),
         attempt: 1,
     });
-    builder.push(JournalEvent::RunFinished {
+    let _ = builder.try_push(JournalEvent::RunFinished {
         run,
         seq: EventSeq::new(2),
         result: SlotIdx::new(0),

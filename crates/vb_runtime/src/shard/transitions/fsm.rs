@@ -7,6 +7,7 @@
 use vb_core::ids::RunId;
 
 use crate::shard::types::{RuntimeEvent, RuntimeState, Shard};
+use crate::{RuntimeError, RuntimeResult};
 
 impl Shard {
     /// Applies a RuntimeEvent to mutate runtime_states.
@@ -18,9 +19,14 @@ impl Shard {
     /// * `run` - The run identifier
     /// * `event` - The runtime event variant
     ///
+    /// # Returns
+    /// `Err(RuntimeError::NotResumable)` if `event == Resume` and the prior
+    /// runtime state is not `Resumable`. Other events do not require prior
+    /// state validation and always succeed.
+    ///
     /// # State Transitions
     /// * `Submit` → `runtime_states.insert(run, RuntimeState::Initial)`
-    /// * `Resume` → `runtime_states.insert(run, RuntimeState::Resuming)`
+    /// * `Resume` → `runtime_states.insert(run, RuntimeState::Resuming)` (requires prior state == Resumable)
     /// * `ResumeRollback` → `runtime_states.insert(run, RuntimeState::Resumable)` (journal failure)
     /// * `DriveContinue` → `runtime_states.insert(run, RuntimeState::Running)`
     /// * `AwaitAction` → `runtime_states.insert(run, RuntimeState::Resumable)`
@@ -42,12 +48,19 @@ impl Shard {
     ///     ensures event == ResumeRollback => runtime_states[run] == Resumable
     /// )]
     /// ```
-    pub(crate) fn apply(&mut self, run: RunId, event: RuntimeEvent) {
+    pub(crate) fn apply(&mut self, run: RunId, event: RuntimeEvent) -> RuntimeResult<()> {
         match event {
             RuntimeEvent::Submit => {
                 self.runtime_state_insert(run, RuntimeState::Initial);
             }
             RuntimeEvent::Resume => {
+                let prior = self.runtime_state_get(run).unwrap_or(RuntimeState::Initial);
+                if prior != RuntimeState::Resumable {
+                    return Err(RuntimeError::NotResumable {
+                        run,
+                        current_state: prior,
+                    });
+                }
                 self.runtime_state_insert(run, RuntimeState::Resuming);
             }
             RuntimeEvent::ResumeRollback => {
@@ -67,5 +80,6 @@ impl Shard {
                 self.runtime_states.swap_remove(&run);
             }
         }
+        Ok(())
     }
 }

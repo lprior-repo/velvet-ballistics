@@ -137,6 +137,7 @@
 use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
+use vb_core::{EngineError, EngineSignal};
 use vb_core::value_store::ValueStore;
 
 use crate::primitives::collect::{CollectStates, collect_next, collect_page, collect_start};
@@ -1441,10 +1442,13 @@ mod proptest_reentry {
 
     // ── PROP-1: jump_to_body_state_transitions ─────────────────────────
 
-    // PROP-1: For any initial StepState, `jump_to_body` never returns an
-    // error. After the call, the body step's state is always `Pending`
-    // (for Succeeded → Pending via `mark_pending`; all other states
-    // unchanged because `jump_to` resets PC but not state).
+    // PROP-1: For any initial StepState, `jump_to_body` either returns Ok
+    // (transient) with the program counter at the body, OR returns a typed
+    // `InternalInvariantViolation` for terminal states (Failed/Cancelled/
+    // Skipped) which must not be silently re-entered. After the call, the
+    // body step's state is `Running` when the prior state was `Succeeded`;
+    // all other transient states remain unchanged because `jump_to` resets
+    // the PC but not the state.
     proptest! {
         #[test]
         fn prop1_jump_to_body_never_errors(state in arb_step_state()) {
@@ -1480,6 +1484,27 @@ mod proptest_reentry {
             }
 
             let result = jump_to_body(&mut run, body);
+            // Terminal states must surface as typed InternalInvariantViolation
+            // rather than silently routing the PC to an unexecutable step
+            // (RQ-W0-13, RP-013).
+            match state {
+                StepState::Failed
+                | StepState::Cancelled
+                | StepState::Skipped => {
+                    prop_assert!(
+                        matches!(
+                            result,
+                            Err(vb_core::errors::CoreError::InternalInvariantViolation {
+                                reason: "jump_to_body on terminal step"
+                            })
+                        ),
+                        "terminal state must produce typed invariant violation, got {:?}",
+                        result
+                    );
+                    return Ok(());
+                }
+                _ => {}
+            }
             prop_assert!(
                 matches!(result, Ok(ref s) if s == &vb_core::EngineSignal::Continue),
                 "jump_to_body must return Ok(Continue); state={state:?}, got {:?}",

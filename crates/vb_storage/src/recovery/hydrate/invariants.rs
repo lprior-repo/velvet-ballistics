@@ -72,26 +72,26 @@ pub const fn hydrate_dimensions_positive(step_count: u16, slot_count: u16) -> bo
 
 /// Copy-only metadata needed to validate snapshot/tail hydration ordering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct TailEventMetadata {
+pub struct TailEventMetadata {
     pub(crate) run: RunId,
     pub(crate) seq: crate::EventSeq,
 }
 
 impl TailEventMetadata {
     #[must_use]
-    pub(crate) const fn new(run: RunId, seq: crate::EventSeq) -> Self {
+    pub const fn new(run: RunId, seq: crate::EventSeq) -> Self {
         Self { run, seq }
     }
 
     #[must_use]
-    pub(crate) const fn from_event(event: &JournalEvent) -> Self {
+    pub const fn from_event(event: &JournalEvent) -> Self {
         Self::new(event.run_id(), event.seq())
     }
 }
 
 /// Allocation-free classification for snapshot/tail hydration preconditions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SnapshotRecoveryInputViolation {
+pub enum SnapshotRecoveryInputViolation {
     SnapshotRunMismatch {
         snapshot_run: RunId,
         snapshot_seq: crate::EventSeq,
@@ -101,6 +101,13 @@ pub(crate) enum SnapshotRecoveryInputViolation {
         actual: RunId,
     },
     TailSeqNotAfterSnapshot {
+        snapshot_seq: crate::EventSeq,
+        actual_seq: crate::EventSeq,
+    },
+    /// First tail event sequence is not contiguous with snapshot sequence.
+    /// SR-006: rejects tail[0].seq != snapshot.seq + 1, which would silently
+    /// drop events between the snapshot and the tail.
+    TailSeqNotContiguousWithSnapshot {
         snapshot_seq: crate::EventSeq,
         actual_seq: crate::EventSeq,
     },

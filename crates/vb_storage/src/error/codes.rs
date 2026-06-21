@@ -78,6 +78,10 @@ impl JournalError {
     pub const JOURNAL_BATCH_BYTES_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x4022);
     /// Diagnostic code for artifact metadata mutation detected.
     pub const METADATA_MUTATION_CODE: DiagnosticCode = DiagnosticCode::new(0x4023);
+    /// Diagnostic code for `IndexStatusState::Other(byte)` key collision.
+    pub const INDEX_STATUS_STATE_COLLISION_CODE: DiagnosticCode = DiagnosticCode::new(0x4038);
+    /// Diagnostic code for reserved `EventSeq::MAX` sentinel encoding attempt.
+    pub const RESERVED_SEQ_SENTINEL_CODE: DiagnosticCode = DiagnosticCode::new(0x4039);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -133,6 +137,8 @@ impl JournalError {
             Self::InvalidRunId { .. } => Self::INVALID_RUN_ID_CODE,
             Self::JournalBatchBytesExceeded { .. } => Self::JOURNAL_BATCH_BYTES_EXCEEDED_CODE,
             Self::MetadataMutation { .. } => Self::METADATA_MUTATION_CODE,
+            Self::IndexStatusStateCollision { .. } => Self::INDEX_STATUS_STATE_COLLISION_CODE,
+            Self::ReservedSeqSentinel => Self::RESERVED_SEQ_SENTINEL_CODE,
         }
     }
 
@@ -190,6 +196,8 @@ impl JournalError {
             Self::InvalidRunId { .. } => "INVALID_RUN_ID",
             Self::JournalBatchBytesExceeded { .. } => "JOURNAL_BATCH_BYTES_EXCEEDED",
             Self::MetadataMutation { .. } => "METADATA_MUTATION",
+            Self::IndexStatusStateCollision { .. } => "INDEX_STATUS_STATE_COLLISION",
+            Self::ReservedSeqSentinel => "RESERVED_SEQ_SENTINEL",
         };
         if let Some(code) = SymbolicCode::from_static(s) {
             return code;

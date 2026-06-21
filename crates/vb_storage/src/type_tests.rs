@@ -201,9 +201,11 @@ mod type_tests {
         let report = JournalWriterFlushReport {
             drained: 15,
             written: 10,
+            pending_after: 0,
         };
         assert_eq!(report.drained, 15);
         assert_eq!(report.written, 10);
+        assert_eq!(report.pending_after, 0);
     }
 
     #[test]

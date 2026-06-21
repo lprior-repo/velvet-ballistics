@@ -506,6 +506,7 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let mut shard = Shard::new(config).map_err(|e| format!("{e:?}"))?;
     let run = RunId::new(5810);
@@ -548,6 +549,7 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let mut shard = Shard::new(config)?;
     let run = RunId::new(5811);

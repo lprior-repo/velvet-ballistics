@@ -7,7 +7,7 @@
 //! and filtering operations that only need header data.
 
 use crate::{
-    codec::header::decode_record_header,
+    codec::{header::decode_record_header, payload::verify_digest_match},
     constants::RECORD_HEADER_BYTES,
     error::JournalError,
     types::{RecordEnvelope, RecordHeader},
@@ -17,13 +17,16 @@ use crate::{
 ///
 /// Unlike `decode_record`, this does NOT call postcard deserialization
 /// on the payload. It returns the raw payload bytes as a subslice of
-/// the input, suitable for inspection-only workflows.
+/// the input, suitable for inspection-only workflows. The BLAKE3 payload
+/// digest is still verified against the header before the payload is
+/// returned, so callers can rely on the bytes being tamper-evident.
 ///
 /// # Errors
 ///
 /// Returns `JournalError` if the header is malformed, the magic is wrong,
 /// the schema is unsupported, the kind is unknown, the length is wrong,
-/// the payload is too large, trailing bytes remain, or the CRC checksum fails.
+/// the payload is too large, trailing bytes remain, the CRC checksum fails,
+/// or the payload BLAKE3 digest does not match the header's claim.
 pub fn decode_envelope_only(
     bytes: &[u8],
     expected_magic: u32,
@@ -50,6 +53,11 @@ pub fn decode_envelope_only(
             actual_len: bytes.len(),
         });
     }
+    // Verify the BLAKE3 payload digest even though we are skipping
+    // postcard deserialization. Skipping the hash would let a bit-flip
+    // on disk (the failure mode BLAKE3 is meant to detect) reach doctor
+    // and other inspection consumers as authoritative.
+    verify_digest_match(raw_payload, header.payload_digest)?;
 
     let envelope = RecordEnvelope {
         magic: header.magic,

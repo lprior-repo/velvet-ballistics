@@ -117,11 +117,12 @@ pub(super) mod submit {
 
 /// Handles cancel-run.
 pub fn handle_cancel_run(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(IpcPayload::CancelRun { run_id }) = decode_payload::<IpcPayload>(payload) else {
+    let Ok(IpcPayload::CancelRun { run_id, reason }) = decode_payload::<IpcPayload>(payload) else {
         return IpcResponse::BadRequest;
     };
 
-    match runtime.cancel_run(run_id) {
+    let reason_str = reason.and_then(|bytes| String::from_utf8(bytes).ok());
+    match runtime.cancel_run_with_reason(run_id, reason_str) {
         Ok(()) => IpcResponse::AcceptedRun {
             run_id: run_id.get(),
         },

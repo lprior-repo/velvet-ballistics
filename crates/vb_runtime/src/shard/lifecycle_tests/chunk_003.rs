@@ -82,7 +82,7 @@
             coalesce_window_ticks: 1,
             snapshot_interval_steps: 0,
             max_terminal_runs: 16,
-            terminal_runs_ttl_ticks: 86_400,
+            terminal_runs_ttl_ticks: 86_400,            max_terminal_outcomes: 100_000,
         };
         let mut shard = Shard::new(config)?;
         let wf1 = suspended_workflow().ok_or(RuntimeError::QueueFull)?;

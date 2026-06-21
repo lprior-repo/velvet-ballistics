@@ -136,6 +136,7 @@ impl JournalWriterQueue {
             return Ok(JournalWriterFlushReport {
                 drained: 0,
                 written: 0,
+                pending_after: state.pending.len(),
             });
         }
 
@@ -163,7 +164,11 @@ impl JournalWriterQueue {
                     None => return Err(JournalError::WriteLockPoisoned),
                 }
             }
-            return Ok(JournalWriterFlushReport { drained, written });
+            return Ok(JournalWriterFlushReport {
+                drained,
+                written,
+                pending_after: state.pending.len(),
+            });
         }
 
         let mut written = 0usize;
@@ -192,13 +197,17 @@ impl JournalWriterQueue {
             }
         }
 
-        Ok(JournalWriterFlushReport { drained, written })
+        Ok(JournalWriterFlushReport {
+            drained,
+            written,
+            pending_after: state.pending.len(),
+        })
     }
 
-    /// Flushes queued journal writes until the queue is empty.
-    ///
-    /// Maximum iterations: ceil(capacity / batch_size) + 2.
-    /// This is a static bound - the queue is bounded by construction.
+/// Flushes queued journal writes until the queue is empty.
+///
+/// Maximum iterations: ceil(capacity / batch_size) + 2.
+/// This is a static bound - the queue is bounded by construction.
     pub fn drain_all(
         &self,
         journal: &FjallJournal,
@@ -206,6 +215,7 @@ impl JournalWriterQueue {
         let mut total = JournalWriterFlushReport {
             drained: 0,
             written: 0,
+            pending_after: 0,
         };
 
         // Static bound: queue capacity divided by minimum batch size, plus buffer.
@@ -218,12 +228,25 @@ impl JournalWriterQueue {
             .saturating_add(2);
         for _ in 0..max_iterations {
             let report = self.flush_batch(journal)?;
-            if report.drained == 0 {
-                return Ok(total);
-            }
             total.drained = total.drained.saturating_add(report.drained);
             total.written = total.written.saturating_add(report.written);
+            if report.pending_after == 0 {
+                return Ok(total);
+            }
         }
+
+        // Static iteration bound exhausted with items still pending.
+        // Re-acquire the lock and report the actual remaining count so
+        // callers can detect drain-incomplete under concurrent enqueue
+        // instead of receiving a silent Ok.
+        let pending_after = {
+            let state = self
+                .state
+                .lock()
+                .map_err(|_| JournalError::WriteLockPoisoned)?;
+            state.pending.len()
+        };
+        total.pending_after = pending_after;
         Ok(total)
     }
 

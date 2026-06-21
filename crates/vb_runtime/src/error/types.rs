@@ -1,4 +1,5 @@
 use super::input_mapping::InputMappingFailureKind;
+use crate::shard::run_state::RuntimeState;
 use std::sync::Arc;
 use vb_core::ids::{RunId, StepIdx};
 
@@ -252,4 +253,12 @@ pub enum RuntimeError {
     /// typed error so the configuration bug is visible at the runtime
     /// boundary instead of being silently normalised.
     LruRingCapacityZero,
+    /// Resume transition rejected because the prior runtime state was
+    /// not `Resumable` (RQ-W0-07: RuntimeStateMachine FSM contract guard).
+    NotResumable {
+        /// Run identifier.
+        run: RunId,
+        /// Observed runtime state at the time of the rejected Resume.
+        current_state: RuntimeState,
+    },
 }

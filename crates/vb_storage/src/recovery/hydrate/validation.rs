@@ -12,7 +12,7 @@ use crate::{JournalEvent, RunSnapshot};
 use vb_core::{RunId, StepIdx};
 
 /// Top-level validation: run identity, sequence ordering, and data presence.
-pub(crate) fn validate_snapshot_recovery_inputs(
+pub fn validate_snapshot_recovery_inputs(
     snapshot: &RunSnapshot,
     tail_events: &[JournalEvent],
     run_id: RunId,
@@ -30,7 +30,7 @@ pub(crate) fn validate_snapshot_recovery_inputs(
     .map_err(snapshot_input_violation_to_error)
 }
 
-pub(crate) fn validate_snapshot_metadata(
+pub fn validate_snapshot_metadata(
     snapshot_run: RunId,
     snapshot_seq: crate::EventSeq,
     run_id: RunId,
@@ -56,7 +56,7 @@ pub(crate) fn validate_tail_events_match_run(
     Ok(())
 }
 
-pub(crate) fn validate_tail_run_metadata(
+pub fn validate_tail_run_metadata(
     event: TailEventMetadata,
     run_id: RunId,
 ) -> Result<(), SnapshotRecoveryInputViolation> {
@@ -70,10 +70,12 @@ pub(crate) fn validate_tail_run_metadata(
     }
 }
 
-pub(crate) fn validate_tail_events_after_snapshot(
+pub fn validate_tail_events_after_snapshot(
     tail_events: &[JournalEvent],
     snapshot: &RunSnapshot,
 ) -> RecoveryResult<()> {
+    validate_tail_first_seq_contiguous_with_snapshot(tail_events, snapshot.seq)
+        .map_err(snapshot_input_violation_to_error)?;
     for event in tail_events {
         validate_tail_seq_after_snapshot(TailEventMetadata::from_event(event), snapshot.seq)
             .map_err(snapshot_input_violation_to_error)?;
@@ -81,7 +83,31 @@ pub(crate) fn validate_tail_events_after_snapshot(
     Ok(())
 }
 
-pub(crate) fn validate_tail_seq_after_snapshot(
+/// SR-006: enforce that the first tail event is exactly `snapshot.seq + 1`.
+/// A gap between snapshot and tail would silently drop events during replay.
+pub fn validate_tail_first_seq_contiguous_with_snapshot(
+    tail_events: &[JournalEvent],
+    snapshot_seq: crate::EventSeq,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    let Some(first) = tail_events.first() else {
+        return Ok(());
+    };
+    let expected = crate::codec::next_seq(snapshot_seq)
+        .map_err(|_| SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
+            snapshot_seq,
+            actual_seq: first.seq(),
+        })?;
+    if first.seq() == expected {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
+            snapshot_seq,
+            actual_seq: first.seq(),
+        })
+    }
+}
+
+pub fn validate_tail_seq_after_snapshot(
     event: TailEventMetadata,
     snapshot_seq: crate::EventSeq,
 ) -> Result<(), SnapshotRecoveryInputViolation> {
@@ -95,7 +121,7 @@ pub(crate) fn validate_tail_seq_after_snapshot(
     }
 }
 
-pub(crate) fn validate_recovery_data_present(
+pub fn validate_recovery_data_present(
     tail_events_empty: bool,
     snapshot_slots_empty: bool,
     snapshot_taint_empty: bool,
@@ -137,6 +163,21 @@ pub(crate) fn snapshot_input_violation_to_error(
                 "tail event seq {} is not after snapshot seq {}",
                 actual_seq.get(),
                 snapshot_seq.get(),
+            ),
+        },
+        SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
+            snapshot_seq,
+            actual_seq,
+        } => RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: format!(
+                "tail event seq {} is not contiguous with snapshot seq {} (expected {})",
+                actual_seq.get(),
+                snapshot_seq.get(),
+                snapshot_seq
+                    .get()
+                    .checked_add(1)
+                    .map_or(u64::MAX, |value| value),
             ),
         },
         SnapshotRecoveryInputViolation::NoRecoveryData { run } => {

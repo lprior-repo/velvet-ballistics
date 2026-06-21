@@ -95,7 +95,7 @@ impl Shard {
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
                 // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-                self.apply(run, RuntimeEvent::Fail);
+                let _ = self.apply(run, RuntimeEvent::Fail);
                 self.fail_run_state(run, state)
             }
         }

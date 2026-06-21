@@ -51,28 +51,52 @@ impl<'j> JournalWriteBatch<'j> {
 
     /// Inserts a run header record into the batch.
     pub fn put_run_header(&mut self, record: &RunHeaderRecord) -> Result<(), JournalError> {
-        let key = run_header_key(record.run)?;
-        let value = encode_record(
+        let key = match run_header_key(record.run) {
+            Ok(k) => k,
+            Err(e) => {
+                self.state = BatchState::Aborted;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(
             MAGIC_INDEX_RECORD,
             RecordKind::RunHeader,
             record.run.get(),
             record,
             MAX_RUN_HEADER_BYTES,
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.state = BatchState::Aborted;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.run_header, key, value);
         Ok(())
     }
 
     /// Inserts a run snapshot record into the batch.
     pub fn put_snapshot(&mut self, snapshot: &RunSnapshot) -> Result<(), JournalError> {
-        let key = run_snapshot_key(snapshot.run, snapshot.seq)?;
-        let value = encode_record(
+        let key = match run_snapshot_key(snapshot.run, snapshot.seq) {
+            Ok(k) => k,
+            Err(e) => {
+                self.state = BatchState::Aborted;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(
             MAGIC_SNAPSHOT,
             RecordKind::Snapshot,
             snapshot.seq.get(),
             snapshot,
             MAX_SNAPSHOT_BYTES,
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.state = BatchState::Aborted;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.run_snapshot, key, value);
         Ok(())
     }

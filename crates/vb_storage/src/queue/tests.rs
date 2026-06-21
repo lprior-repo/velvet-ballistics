@@ -304,16 +304,16 @@ mod internal_tests {
 
     #[test]
     fn batch_builder_starts_empty() {
-        let builder = BatchBuilder::new();
+        let builder = BatchBuilder::with_capacity(4).expect("valid capacity");
         assert!(builder.is_empty());
         assert_eq!(builder.len(), 0);
     }
 
     #[test]
     fn batch_builder_push_adds_events() {
-        let mut builder = BatchBuilder::new();
+        let mut builder = BatchBuilder::with_capacity(4).expect("valid capacity");
         let event = make_event(RunId::new(1), 0);
-        builder.push(event.clone());
+        builder.try_push(event.clone()).expect("try_push ok");
         assert!(!builder.is_empty());
         assert_eq!(builder.len(), 1);
         assert_eq!(builder.as_slice().first(), Some(&event));
@@ -321,13 +321,13 @@ mod internal_tests {
 
     #[test]
     fn batch_builder_accumulates_multiple_events() {
-        let mut builder = BatchBuilder::new();
+        let mut builder = BatchBuilder::with_capacity(4).expect("valid capacity");
         let e1 = make_event(RunId::new(1), 0);
         let e2 = make_event(RunId::new(2), 0);
         let e3 = make_event(RunId::new(3), 0);
-        builder.push(e1.clone());
-        builder.push(e2.clone());
-        builder.push(e3.clone());
+        builder.try_push(e1.clone()).expect("push 1");
+        builder.try_push(e2.clone()).expect("push 2");
+        builder.try_push(e3.clone()).expect("push 3");
         assert_eq!(builder.len(), 3);
         assert_eq!(builder.as_slice(), &[e1, e2, e3]);
     }
@@ -833,26 +833,65 @@ mod internal_tests {
 
     #[test]
     fn batch_builder_default_trait_yields_empty() {
-        let builder = BatchBuilder::default();
-        assert!(builder.is_empty(), "default BatchBuilder should be empty");
-        assert_eq!(builder.len(), 0, "default BatchBuilder len should be 0");
+        let builder = BatchBuilder::with_capacity(4).expect("valid capacity");
+        assert!(builder.is_empty(), "fresh BatchBuilder should be empty");
+        assert_eq!(builder.len(), 0, "fresh BatchBuilder len should be 0");
         assert!(
             builder.as_slice().is_empty(),
-            "default BatchBuilder as_slice should be empty"
+            "fresh BatchBuilder as_slice should be empty"
         );
     }
 
     #[test]
     fn batch_builder_as_slice_returns_event_order() {
-        let mut builder = BatchBuilder::new();
+        let mut builder = BatchBuilder::with_capacity(4).expect("valid capacity");
         let e0 = make_event(RunId::new(200), 0);
         let e1 = make_event(RunId::new(201), 0);
-        builder.push(e0.clone());
-        builder.push(e1.clone());
+        builder.try_push(e0.clone()).expect("push 0");
+        builder.try_push(e1.clone()).expect("push 1");
         let slice = builder.as_slice();
         assert_eq!(slice.len(), 2);
         assert_eq!(slice[0], e0, "first element should be e0");
         assert_eq!(slice[1], e1, "second element should be e1");
+    }
+
+    #[test]
+    fn batch_builder_with_capacity_rejects_zero() {
+        // SA-006: zero capacity is meaningless for a bounded builder and
+        // must surface QueueCapacity, mirroring JournalWriterQueue::new.
+        let result = BatchBuilder::with_capacity(0);
+        assert!(
+            matches!(result, Err(JournalError::QueueCapacity)),
+            "zero capacity must yield QueueCapacity, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn batch_builder_try_push_rejects_at_capacity() {
+        // SA-006: pushing past capacity yields QueueFull rather than
+        // silently growing unbounded.
+        let mut builder = BatchBuilder::with_capacity(2).expect("valid capacity");
+        builder
+            .try_push(make_event(RunId::new(1), 0))
+            .expect("push 0");
+        builder
+            .try_push(make_event(RunId::new(2), 0))
+            .expect("push 1");
+        let result = builder.try_push(make_event(RunId::new(3), 0));
+        assert!(
+            matches!(result, Err(JournalError::QueueFull)),
+            "push past capacity must yield QueueFull, got {:?}",
+            result
+        );
+        assert_eq!(builder.len(), 2, "no event may be added past capacity");
+        assert!(builder.is_full(), "is_full must report true at capacity");
+    }
+
+    #[test]
+    fn batch_builder_capacity_accessor() {
+        let builder = BatchBuilder::with_capacity(7).expect("valid capacity");
+        assert_eq!(builder.capacity(), 7, "capacity accessor must echo input");
     }
 
     #[test]
@@ -913,6 +952,92 @@ mod internal_tests {
         let report = queue.drain_all(&journal).expect("drain_all should succeed");
         assert_eq!(report.drained, 0, "empty drain_all should drain 0");
         assert_eq!(report.written, 0, "empty drain_all should write 0");
+        assert_eq!(
+            report.pending_after, 0,
+            "empty drain_all must report pending_after 0"
+        );
+    }
+
+    #[test]
+    fn drain_all_reports_pending_after_field_in_flush_report() {
+        // SA-004: the returned `JournalWriterFlushReport` must include
+        // the `pending_after` field populated from the queue's current
+        // pending length. This test verifies the field is wired through
+        // every code path that constructs the report.
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(4, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+
+        // Initial report on empty queue must report pending_after = 0.
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.pending_after, 0, "empty flush must report 0 pending");
+
+        // After enqueue, the report's pending_after must reflect the
+        // remaining items in the queue.
+        let run = RunId::new(9050);
+        queue
+            .enqueue_journaled(make_event(run, 0))
+            .expect("enqueue 0");
+        queue
+            .enqueue_journaled(make_event(run, 1))
+            .expect("enqueue 1");
+        queue
+            .enqueue_journaled(make_event(run, 2))
+            .expect("enqueue 2");
+
+        let report = queue.flush_batch(&journal).expect("flush should succeed");
+        assert_eq!(report.drained, 2, "first flush drains batch_size=2");
+        assert_eq!(
+            report.pending_after, 1,
+            "after flushing 2 of 3, pending_after must be 1"
+        );
+    }
+
+    #[test]
+    fn drain_all_reports_pending_after_zero_after_full_static_drain() {
+        // SA-004: with no concurrent producers, drain_all must report
+        // pending_after == 0 once the queue is fully drained, proving
+        // the post-loop re-check observes an empty queue.
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 1, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(9060);
+        for i in 0..7u64 {
+            queue
+                .enqueue_journaled(make_event(run, i))
+                .expect("enqueue should succeed");
+        }
+
+        let report = queue.drain_all(&journal).expect("drain_all should succeed");
+        assert_eq!(report.drained, 7);
+        assert_eq!(report.written, 7);
+        assert_eq!(
+            report.pending_after, 0,
+            "single-thread drain must report pending_after 0"
+        );
+    }
+
+    #[test]
+    fn drain_all_pending_after_zero_on_static_workflow() {
+        // SA-004: with no concurrent producers, drain_all must report
+        // pending_after == 0 once the queue is empty.
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(8, 2, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(9002);
+        for i in 0..5u64 {
+            queue
+                .enqueue_journaled(make_event(run, i))
+                .expect("enqueue should succeed");
+        }
+
+        let report = queue.drain_all(&journal).expect("drain_all should succeed");
+        assert_eq!(report.drained, 5);
+        assert_eq!(report.written, 5);
+        assert_eq!(
+            report.pending_after, 0,
+            "single-thread drain must report pending_after 0"
+        );
     }
 
     #[test]

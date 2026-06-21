@@ -343,6 +343,7 @@ fn drain_report_contract_requires_three_drained_and_three_written() {
         JournalWriterFlushReport {
             drained: 3,
             written: 3,
+            pending_after: 0,
         }
     );
 }

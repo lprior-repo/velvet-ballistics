@@ -114,13 +114,13 @@ fn batch_builder_round_trips_via_append_strict_batch() {
     let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
     let run = RunId::new(64);
-    let mut builder = BatchBuilder::new();
-    builder.push(JournalEvent::RunAccepted {
+    let mut builder = BatchBuilder::with_capacity(4).expect("builder");
+    let _ = builder.try_push(JournalEvent::RunAccepted {
         run,
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([2; 32]),
     });
-    builder.push(JournalEvent::StepStarted {
+    let _ = builder.try_push(JournalEvent::StepStarted {
         run,
         seq: EventSeq::new(1),
         step: StepIdx::new(0),

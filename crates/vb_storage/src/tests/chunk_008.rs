@@ -183,5 +183,9 @@ fn public_open_wrappers_create_declared_keyspaces() {
 
     let reopened = init_keyspaces(temp_dir.path());
     assert!(reopened.is_ok(), "init_keyspaces should succeed");
-    assert_eq!(FjallJournal::declared_keyspaces().len(), 10);
+    assert_eq!(
+        FjallJournal::declared_keyspaces().len(),
+        11,
+        "run_seq_gap was added in vb-1rqz7.1, raising the declared-keyspaces count to 11"
+    );
 }

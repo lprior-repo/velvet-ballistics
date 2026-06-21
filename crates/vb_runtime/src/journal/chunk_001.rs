@@ -289,6 +289,7 @@ pub trait RuntimeJournal: Send + Sync {
         Ok(JournalWriterFlushReport {
             drained: 0,
             written: 0,
+            pending_after: 0,
         })
     }
 }

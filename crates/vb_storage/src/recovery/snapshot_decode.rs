@@ -97,9 +97,12 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
                 max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
                 min_step = Some(min_step.map_or(*step, |s| s.min(*step)));
             }
-            JournalEvent::ActionScheduledTicket { ticket, .. } => {
+            JournalEvent::ActionScheduledTicket { ticket, output, .. } => {
                 max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));
                 min_step = Some(min_step.map_or(ticket.step, |s| s.min(ticket.step)));
+                // SR-005: ticket output is the slot the action will write to, so the
+                // frame must reserve capacity for it even before the envelope lands.
+                max_slot = Some(max_slot.map_or(*output, |s| s.max(*output)));
             }
             JournalEvent::ActionCompletedEnvelope { ticket, output, .. } => {
                 max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));
@@ -109,6 +112,12 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
             JournalEvent::SlotWrittenEvent { slot, .. }
             | JournalEvent::RunFinished { result: slot, .. } => {
                 max_slot = Some(max_slot.map_or(*slot, |s| s.max(*slot)));
+            }
+            // SR-005: RunAnswered writes the answer into `slot_idx` and so requires
+            // the slot dimension to cover that index even when no other slot
+            // events preceded it in the tail.
+            JournalEvent::RunAnswered { slot_idx, .. } => {
+                max_slot = Some(max_slot.map_or(*slot_idx, |s| s.max(*slot_idx)));
             }
             _ => {}
         }

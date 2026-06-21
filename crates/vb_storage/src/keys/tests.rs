@@ -119,8 +119,8 @@ use crate::constants::{
 };
 use crate::keys::{
     blob_key, compiled_ir_key, encode_key, index_action_key, index_status_key, index_workflow_key,
-    journal_key, run_event_key, run_header_key, run_prefix_key, run_snapshot_key,
-    workflow_source_key,
+    journal_key, recovery_stamp_key, run_event_key, run_header_key, run_prefix_key,
+    run_snapshot_key, workflow_source_key,
 };
 use crate::types::{EventSeq, IndexStatusState, StorageKey};
 use vb_core::{ActionId, RunId, WorkflowId};
@@ -327,6 +327,104 @@ fn index_status_key_encodes_state_timestamp_run() -> Result<(), JournalError> {
 fn index_status_key_length() -> Result<(), JournalError> {
     let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
     assert_eq!(key.len(), INDEX_STATUS_KEY_BYTES);
+    Ok(())
+}
+
+#[test]
+fn index_status_key_rejects_other_byte_collision_with_named_variants() {
+    for byte in [0u8, 1, 2] {
+        let result = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(1));
+        let Err(JournalError::IndexStatusStateCollision { byte: found }) = result else {
+            panic!("Other({byte}) must be rejected with IndexStatusStateCollision, got {result:?}");
+        };
+        assert_eq!(found, byte, "reported byte must match the offender");
+    }
+}
+
+#[test]
+fn index_status_key_accepts_other_bytes_above_collision_range() -> Result<(), JournalError> {
+    for byte in [3u8, 4, 7, 42, 99, 255] {
+        let key = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(1))?;
+        assert_eq!(
+            key[1], byte,
+            "key byte must mirror the safe Other payload"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn index_status_state_try_new_other_rejects_collision_bytes() {
+    assert!(IndexStatusState::try_new_other(0).is_none());
+    assert!(IndexStatusState::try_new_other(1).is_none());
+    assert!(IndexStatusState::try_new_other(2).is_none());
+    assert_eq!(
+        IndexStatusState::try_new_other(3),
+        Some(IndexStatusState::Other(3))
+    );
+    assert_eq!(
+        IndexStatusState::try_new_other(255),
+        Some(IndexStatusState::Other(255))
+    );
+}
+
+#[test]
+fn index_status_state_named_variants_still_encode() -> Result<(), JournalError> {
+    let submitted = index_status_key(IndexStatusState::Submitted, 0, RunId::new(1))?;
+    assert_eq!(submitted[1], 0);
+    let active = index_status_key(IndexStatusState::Active, 0, RunId::new(1))?;
+    assert_eq!(active[1], 1);
+    let completed = index_status_key(IndexStatusState::Completed, 0, RunId::new(1))?;
+    assert_eq!(completed[1], 2);
+    Ok(())
+}
+
+#[test]
+fn run_event_key_rejects_reserved_seq_sentinel() {
+    let result = run_event_key(RunId::new(1), EventSeq::new(u64::MAX));
+    assert!(
+        matches!(result, Err(JournalError::ReservedSeqSentinel)),
+        "run_event_key must reject u64::MAX sentinel, got {result:?}"
+    );
+}
+
+#[test]
+fn run_snapshot_key_rejects_reserved_seq_sentinel() {
+    let result = run_snapshot_key(RunId::new(1), EventSeq::new(u64::MAX));
+    assert!(
+        matches!(result, Err(JournalError::ReservedSeqSentinel)),
+        "run_snapshot_key must reject u64::MAX sentinel, got {result:?}"
+    );
+}
+
+#[test]
+fn recovery_stamp_key_rejects_reserved_seq_sentinel() {
+    let result = recovery_stamp_key(RunId::new(1), EventSeq::new(u64::MAX));
+    assert!(
+        matches!(result, Err(JournalError::ReservedSeqSentinel)),
+        "recovery_stamp_key must reject u64::MAX sentinel, got {result:?}"
+    );
+}
+
+#[test]
+fn event_seq_try_new_rejects_reserved_sentinel() {
+    assert!(matches!(
+        EventSeq::try_new(u64::MAX),
+        Err(JournalError::ReservedSeqSentinel)
+    ));
+    assert_eq!(EventSeq::try_new(0).map(|s| s.get()), Ok(0));
+    assert_eq!(
+        EventSeq::try_new(u64::MAX - 1).map(|s| s.get()),
+        Ok(u64::MAX - 1)
+    );
+    assert!(EventSeq::is_reserved_sentinel(u64::MAX));
+    assert!(!EventSeq::is_reserved_sentinel(u64::MAX - 1));
+}
+
+#[test]
+fn run_event_key_accepts_max_encodable() -> Result<(), JournalError> {
+    let key = run_event_key(RunId::new(1), EventSeq::MAX_ENCODABLE)?;
+    assert_eq!(&key[9..], &(u64::MAX - 1).to_be_bytes());
     Ok(())
 }
 
@@ -602,9 +700,9 @@ fn run_event_key_with_zero_seq() -> Result<(), JournalError> {
 
 #[test]
 fn run_event_key_with_max_values() -> Result<(), JournalError> {
-    let key = run_event_key(RunId::new(u64::MAX), EventSeq::new(u64::MAX))?;
+    let key = run_event_key(RunId::new(u64::MAX), EventSeq::new(u64::MAX - 1))?;
     assert_eq!(&key[1..9], &u64::MAX.to_be_bytes());
-    assert_eq!(&key[9..], &u64::MAX.to_be_bytes());
+    assert_eq!(&key[9..], &(u64::MAX - 1).to_be_bytes());
     Ok(())
 }
 
@@ -763,7 +861,7 @@ fn run_event_key_is_deterministic() -> Result<(), JournalError> {
 #[test]
 fn run_event_key_output_length_is_17_bytes() -> Result<(), JournalError> {
     let run = RunId::new(u64::MAX);
-    let seq = EventSeq::new(u64::MAX);
+    let seq = EventSeq::new(u64::MAX - 1);
 
     let key = run_event_key(run, seq)?;
     assert_eq!(key.len(), JOURNAL_KEY_BYTES, "key must be exactly 17 bytes");

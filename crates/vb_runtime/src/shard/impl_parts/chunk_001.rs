@@ -1,3 +1,4 @@
+use crate::shard::bounded_outcomes::BoundedOutcomeIndex;
 use crate::shard::lru_ring::LruRing;
 use crate::shard::types::{RuntimeState, TerminalOutcome};
 use crate::AskAnswer;
@@ -23,13 +24,15 @@ impl Shard {
             config.trace_capacity,
             config.step_budget_per_tick,
             config.max_active_runs,
+            config.coalesce_window_ticks,
+            config.max_terminal_runs,
         )?;
         Ok(Self {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
             terminal_runs: LruRing::try_new(config.max_terminal_runs, config.terminal_runs_ttl_ticks)?,
-            terminal_outcomes: IndexMap::new(),
+            terminal_outcomes: BoundedOutcomeIndex::with_capacity(config.max_terminal_outcomes),
             journal_sequences: IndexMap::new(),
             pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
@@ -42,7 +45,7 @@ impl Shard {
             snapshot_interval_steps: config.snapshot_interval_steps,
             artifact_store,
             inspect_response: None,
-            shutting_down: false,
+            shutting_down: std::sync::atomic::AtomicBool::new(false),
             current_tick: TimerTick::new(0),
             journal,
             admission_lock: std::sync::Mutex::new(()),
@@ -90,7 +93,11 @@ impl Shard {
     /// except for the `Shutdown` sentinel which is always permitted so the
     /// caller can drive the drain to completion.
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
-        if self.shutting_down && !matches!(cmd, ShardCommand::Shutdown) {
+        if self
+            .shutting_down
+            .load(std::sync::atomic::Ordering::Acquire)
+            && !matches!(cmd, ShardCommand::Shutdown)
+        {
             return Err(RuntimeError::ShutdownInProgress);
         }
         match &cmd {
@@ -241,20 +248,24 @@ impl Shard {
 
     /// Records the terminal outcome for a run that is being moved to the
     /// terminal set. Idempotent: a later call for the same run id replaces
-    /// the prior outcome.
+    /// the prior outcome without consuming additional capacity. When the
+    /// bounded map is at capacity, the oldest entry is evicted FIFO before
+    /// the new outcome is recorded (RQ-W0-10).
     pub fn terminal_outcome_record(&mut self, run_id: RunId, outcome: TerminalOutcome) {
-        self.terminal_outcomes.insert(run_id, outcome);
+        self.terminal_outcomes.record(run_id, outcome);
     }
 
     /// Returns the recorded terminal outcome for a run id, if any.
     #[must_use]
     pub fn terminal_outcome_get(&self, run_id: RunId) -> Option<TerminalOutcome> {
-        self.terminal_outcomes.get(&run_id).copied()
+        self.terminal_outcomes.get(run_id)
     }
 
     /// Removes the recorded terminal outcome for a run id, if any.
-    pub fn terminal_outcomes_remove(&mut self, run_id: RunId) {
-        self.terminal_outcomes.swap_remove(&run_id);
+    ///
+    /// Returns `true` if an entry was removed.
+    pub fn terminal_outcomes_remove(&mut self, run_id: RunId) -> bool {
+        self.terminal_outcomes.remove(run_id)
     }
 
     /// Removes a run from the terminal runs set.
@@ -324,14 +335,14 @@ impl Shard {
 
     /// Returns true if the shard is shutting down.
     #[must_use]
-    pub const fn is_shutting_down(&self) -> bool {
-        self.shutting_down
+    pub fn is_shutting_down(&self) -> bool {
+        self.shutting_down.load(std::sync::atomic::Ordering::Acquire)
     }
 
     /// Returns a read-only status snapshot without draining queues or mutating shard state.
     #[must_use]
     pub fn status(&self) -> ShardStatus {
-        let shutting_down = self.shutting_down;
+        let shutting_down = self.is_shutting_down();
         ShardStatus {
             health: if shutting_down {
                 ShardHealth::ShuttingDown

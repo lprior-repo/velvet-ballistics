@@ -390,6 +390,70 @@ fn recovery_boundary_factory_frame_seed_round_trips_summary() -> Result<(), Runt
     Ok(())
 }
 
+/// RQ-W0-16: Cancelled and Killed terminal variants must be preserved as
+/// distinct from Failed and Finished by the recovery boundary so callers
+/// can detect the discrimination before attempting rehydration.
+#[test]
+fn recovery_boundary_preserves_cancelled_vs_failed_distinction() -> Result<(), RuntimeError> {
+    let cases = [
+        (
+            RunId::new(2001),
+            RecoveryTerminalState::Cancelled,
+        ),
+        (
+            RunId::new(2002),
+            RecoveryTerminalState::Killed,
+        ),
+        (
+            RunId::new(2003),
+            RecoveryTerminalState::Failed,
+        ),
+        (
+            RunId::new(2004),
+            RecoveryTerminalState::Finished {
+                result: SlotIdx::new(7),
+            },
+        ),
+    ];
+    for (run, terminal) in cases {
+        let summary = RecoveryRuntimeSummary {
+            run,
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(2),
+            workflow: Some(WorkflowDigest::from_bytes([8; 32])),
+            steps_started: 1,
+            steps_succeeded: 1,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 0,
+            terminal: Some(terminal),
+        };
+        let seed = RecoveryFrameSeed {
+            summary,
+            first_step: StepIdx::ZERO,
+            step_count: 1,
+            slot_count: 0,
+            pc: StepIdx::ZERO,
+            steps: Vec::new(),
+            slots: Vec::new(),
+            unsupported: UnsupportedRecoveryState::SUPPORTED,
+        };
+        let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+        let exposed = boundary.summary().terminal;
+        assert_eq!(
+            exposed,
+            Some(terminal),
+            "boundary must preserve {terminal:?} for run {run:?}"
+        );
+        assert!(
+            exposed.is_some(),
+            "rehydration must reject seed with terminal={terminal:?} (RQ-W0-16)"
+        );
+    }
+    Ok(())
+}
+
 /// Verifies that a hydrated run frame from a frame-seed hydration product
 /// can be inserted into a shard with a pending timer entry.
 #[test]

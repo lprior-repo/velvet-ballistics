@@ -181,9 +181,9 @@ fn envelope_round_trips_blob_record() {
 fn declared_keyspaces_returns_ten_entries() {
     // Given FjallJournal::declared_keyspaces()
     // When called
-    // Then it returns exactly 10 keyspace names
+    // Then it returns exactly 11 keyspace names (run_seq_gap was added in vb-1rqz7.1)
     let keyspaces = FjallJournal::declared_keyspaces();
-    assert_eq!(keyspaces.len(), 10);
+    assert_eq!(keyspaces.len(), 11);
     assert_eq!(keyspaces[0], "workflow_source");
     assert_eq!(keyspaces[1], "compiled_ir");
     assert_eq!(keyspaces[2], "run_header");
@@ -194,6 +194,7 @@ fn declared_keyspaces_returns_ten_entries() {
     assert_eq!(keyspaces[7], "index_workflow");
     assert_eq!(keyspaces[8], "index_action");
     assert_eq!(keyspaces[9], "recovery_stamp");
+    assert_eq!(keyspaces[10], "run_seq_gap");
 }
 
 #[test]

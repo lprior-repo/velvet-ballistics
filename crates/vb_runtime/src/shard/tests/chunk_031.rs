@@ -111,7 +111,7 @@ fn current_tick_starts_at_zero_for_custom_config() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     assert_eq!(shard.current_tick(), TimerTick::new(0));

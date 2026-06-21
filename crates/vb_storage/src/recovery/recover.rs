@@ -17,12 +17,17 @@ use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 /// present in the journal for the given run. A missing acceptance record is
 /// treated as a verification failure because it means the digest was never
 /// recorded and therefore cannot be trusted.
+///
+/// SR-002: this function reads the **full** per-run event history, including
+/// events that occurred at or before the most recent durable snapshot. The
+/// `RunAccepted` event always precedes any snapshot, so a tail-only reader
+/// would silently miss it.
 pub fn check_workflow_source_digest(
     journal: &FjallJournal,
     run: RunId,
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     for event in &events {
         if let JournalEvent::RunAccepted { workflow, .. } = event {
             if !workflow_digest_bytes_equal(*workflow, expected) {
@@ -193,11 +198,17 @@ pub fn check_policy_digests(
 }
 
 /// Recovers a summary-only runtime hydration product for a run.
+///
+/// SR-002: this function reads the **full** per-run event history. The
+/// `RunAccepted` event that supplies the workflow digest and the
+/// `RunAdmission` event that seeds the policy digests both precede any
+/// durable snapshot, so a tail-only reader would produce a summary with
+/// `workflow = None` and under-counted step/slot totals.
 pub fn recover_runtime_summary(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -206,49 +217,45 @@ pub fn recover_runtime_summary(
 
 /// Recovers a summary-only runtime hydration product and verifies terminal state.
 ///
-/// Returns `TerminalStateMismatch` when the recovered terminal state does not match
+/// Compares the recovered terminal state against the expected value via the
+/// `PartialEq` derive on [`RecoveryTerminalState`], so structurally distinct
+/// values (e.g. `Finished { result: SlotIdx(7) }` vs `Finished { result:
+/// SlotIdx(99) }`) cannot silently compare equal. Returns
+/// `TerminalStateMismatch` when the recovered terminal state does not match
 /// the expected value.
+///
+/// SR-002: reads the **full** per-run event history (see [`recover_runtime_summary`]).
 pub fn recover_runtime_summary_with_expected(
     journal: &FjallJournal,
     run: RunId,
     expected: crate::recovery::RecoveryTerminalState,
 ) -> RecoveryResult<RecoveryHydration> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
     let hydration = crate::recovery::replay::summary::summarize_recovery_events(&events)?;
 
-    let found_str = terminal_state_to_string(hydration.summary().terminal);
-    let expected_str = terminal_state_to_string(Some(expected));
-
-    if found_str != expected_str {
+    if hydration.summary().terminal != Some(expected) {
         return Err(RecoveryError::TerminalStateMismatch {
-            expected: expected_str,
-            found: found_str,
+            expected: format!("{:?}", Some(expected)),
+            found: format!("{:?}", hydration.summary().terminal),
         });
     }
 
     Ok(hydration)
 }
 
-/// Converts a `RecoveryTerminalState` to its string representation.
-fn terminal_state_to_string(terminal: Option<crate::recovery::RecoveryTerminalState>) -> String {
-    match terminal {
-        None => "NoTerminal".to_owned(),
-        Some(crate::recovery::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
-        Some(crate::recovery::RecoveryTerminalState::Killed) => "Killed".to_owned(),
-        Some(crate::recovery::RecoveryTerminalState::Failed) => "Failed".to_owned(),
-        Some(crate::recovery::RecoveryTerminalState::Finished { .. }) => "Finished".to_owned(),
-    }
-}
-
 /// Recovers a minimal live-frame seed from durable journal events for a run.
+///
+/// SR-002: reads the **full** per-run event history so the seed's
+/// `step_states` map and slot values reflect every step started before any
+/// snapshot, not just the tail.
 pub fn recover_runtime_frame_seed(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<crate::recovery::RecoveryFrameSeed> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -256,11 +263,15 @@ pub fn recover_runtime_frame_seed(
 }
 
 /// Recovers the latest run admission metadata for a run from durable events.
+///
+/// SR-002: reads the **full** per-run event history. The `RunAdmission` event
+/// always precedes any durable snapshot, so a tail-only reader would
+/// unconditionally return `None` once a snapshot has been written.
 pub fn recover_run_admission(
     journal: &FjallJournal,
     run: RunId,
 ) -> RecoveryResult<Option<crate::recovery::RecoveredRunAdmission>> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
@@ -270,6 +281,11 @@ pub fn recover_run_admission(
 /// Recovers summary hydration for every durable run header whose journal has no
 /// terminal event. The run header scan supplies candidates; journal events define
 /// incompleteness because the status byte/index has no stable terminal mapping.
+///
+/// SR-002: reads the **full** per-run event history for each candidate run so
+/// terminal events that occurred at or before the snapshot are still detected.
+/// A tail-only reader would re-enqueue completed runs whose terminal event was
+/// pre-snapshot, causing duplicate recovery.
 pub fn recover_all_incomplete_runs(
     journal: &FjallJournal,
 ) -> RecoveryResult<Vec<RecoveryHydration>> {
@@ -277,7 +293,7 @@ pub fn recover_all_incomplete_runs(
     let mut recovered = Vec::new();
 
     for header in headers {
-        let events = journal.events_for_run(header.run)?;
+        let events = journal.events_for_run_full(header.run)?;
         if events.is_empty() {
             return Err(RecoveryError::NoRecoveryData { run: header.run });
         }

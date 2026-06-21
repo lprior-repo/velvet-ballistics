@@ -113,7 +113,7 @@
 //! Ticket conversion helpers.
 
 use vb_core::RunId;
-use vb_core::action::ActionTicket;
+use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
 
 pub(crate) fn step_from_ticket(ticket: u64) -> Option<StepIdx> {
@@ -125,13 +125,19 @@ pub(crate) fn step_from_ticket(ticket: u64) -> Option<StepIdx> {
 
 pub fn action_ticket_from_wire(run_id: RunId, ticket: u64) -> Option<ActionTicket> {
     let step = step_from_ticket(ticket)?;
+    let action = ActionId::new(0);
+    // Derive the idempotency key from (run, seq, action) instead of using
+    // a hardcoded zero. Previously every wire-derived ticket shared
+    // `idempotency_key == 0`, defeating deduplication across different
+    // (run, ticket) pairs (RQ-W0-14, companion to RQ-W0-01).
+    let idempotency_key = compute_action_idempotency_key(run_id, SeqNo::ZERO, action);
     Some(ActionTicket {
         run: run_id,
         step,
         seq: SeqNo::ZERO,
-        action: ActionId::new(0),
+        action,
         attempt: 1,
-        idempotency_key: 0,
+        idempotency_key,
         capacity: 1,
         ..Default::default()
     })
@@ -197,6 +203,7 @@ mod tests {
 
     #[test]
     fn action_ticket_from_wire_returns_ticket_for_valid_step() {
+        use vb_core::action::compute_action_idempotency_key;
         let run_id = RunId::new(42);
         let result = action_ticket_from_wire(run_id, 10);
         assert!(result.is_some(), "valid ticket should produce ActionTicket");
@@ -207,7 +214,53 @@ mod tests {
         assert_eq!(ticket.seq, SeqNo::ZERO);
         assert_eq!(ticket.action, vb_core::ids::ActionId::new(0));
         assert_eq!(ticket.attempt, 1);
-        assert_eq!(ticket.idempotency_key, 0);
+        // RQ-W0-14: idempotency key is now derived from (run, seq, action)
+        // instead of being hardcoded to 0. Verify it equals the canonical
+        // computation for these ingredients.
+        let expected = compute_action_idempotency_key(
+            run_id,
+            SeqNo::ZERO,
+            vb_core::ids::ActionId::new(0),
+        );
+        assert_eq!(
+            ticket.idempotency_key, expected,
+            "idempotency_key must be derived from run/seq/action"
+        );
+    }
+
+    #[test]
+    fn action_ticket_from_wire_distinguishes_different_runs() {
+        let ticket_a = action_ticket_from_wire(RunId::new(1), 7).expect("valid");
+        let ticket_b = action_ticket_from_wire(RunId::new(2), 7).expect("valid");
+        assert_ne!(
+            ticket_a.idempotency_key, ticket_b.idempotency_key,
+            "different run ids must produce different idempotency keys"
+        );
+    }
+
+    #[test]
+    fn action_ticket_from_wire_distinguishes_different_steps() {
+        let run_id = RunId::new(5);
+        let ticket_a = action_ticket_from_wire(run_id, 7).expect("valid");
+        let ticket_b = action_ticket_from_wire(run_id, 8).expect("valid");
+        // The step field is captured but the idempotency key is derived from
+        // (run, seq, action); for the wire path action/seq are fixed, so the
+        // step must NOT appear in the key (otherwise the same wire command
+        // would map to two different keys for two different step targets).
+        assert_eq!(
+            ticket_a.idempotency_key, ticket_b.idempotency_key,
+            "step alone must not vary the idempotency key in the wire path"
+        );
+    }
+
+    #[test]
+    fn action_ticket_from_wire_matches_idempotency_validation() {
+        use vb_core::action::action_ticket_has_valid_key;
+        let ticket = action_ticket_from_wire(RunId::new(7), 3).expect("valid");
+        assert!(
+            action_ticket_has_valid_key(ticket),
+            "wire-derived ticket must carry a valid canonical idempotency key"
+        );
     }
 
     #[test]

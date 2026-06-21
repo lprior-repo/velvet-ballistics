@@ -54,10 +54,30 @@ impl Runtime {
 
     // ── Run lifecycle commands ─────────────────────────────────────────
 
-    /// Cancels a run.
+/// Cancels a run.
     pub fn cancel_run(&self, run: RunId) -> RuntimeResult<()> {
+        self.cancel_run_with_reason(run, None)
+    }
+
+    /// Cancels a run with an optional reason.
+    ///
+    /// The reason is recorded on the durable `RunCancelled` journal event so
+    /// the operator audit trail captures why the run was cancelled. Pass
+    /// `None` when no reason is available; the IPC layer uses `None` to
+    /// preserve backward compatibility with callers that did not supply a
+    /// reason (RQ-W0-11).
+    ///
+    /// This also serves as the RQ-W0-18 reason-propagation entry point:
+    /// the reason is propagated through the queue into the durable
+    /// `RunCancelled` journal event so post-mortem operators can attribute
+    /// the cancellation.
+    pub fn cancel_run_with_reason(
+        &self,
+        run: RunId,
+        reason: Option<String>,
+    ) -> RuntimeResult<()> {
         self.shard_for(run)?
-            .enqueue(ShardCommand::Cancel { run, reason: None })
+            .enqueue(ShardCommand::Cancel { run, reason })
     }
 
     /// Kills a run.

@@ -155,7 +155,7 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() -> Result<(), Ru
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));

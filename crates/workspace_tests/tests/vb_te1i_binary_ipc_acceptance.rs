@@ -574,6 +574,7 @@ fn ipc_all_11_commands_have_typed_responses() {
             }
             IpcCommand::CancelRun => postcard::to_allocvec(&IpcPayload::CancelRun {
                 run_id: RunId::new(1),
+                reason: None,
             })
             .unwrap_or_default(),
             IpcCommand::InspectRun => postcard::to_allocvec(&IpcPayload::InspectRun {

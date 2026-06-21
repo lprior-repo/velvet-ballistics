@@ -13,7 +13,7 @@ use crate::{
     constants::{
         KEYSPACE_BLOB, KEYSPACE_COMPILED_IR, KEYSPACE_INDEX_ACTION, KEYSPACE_INDEX_STATUS,
         KEYSPACE_INDEX_WORKFLOW, KEYSPACE_RECOVERY_STAMP, KEYSPACE_RUN_EVENT, KEYSPACE_RUN_HEADER,
-        KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
+        KEYSPACE_RUN_SEQ_GAP, KEYSPACE_RUN_SNAPSHOT, KEYSPACE_WORKFLOW_SOURCE,
     },
     error::JournalError,
     process_lock::ProcessLock,
@@ -60,6 +60,7 @@ pub struct FjallJournal {
     pub(crate) index_workflow: fjall::Keyspace,
     pub(crate) index_action: fjall::Keyspace,
     pub(crate) recovery_stamp: fjall::Keyspace,
+    pub(crate) run_seq_gap: fjall::Keyspace,
     #[cfg(test)]
     pub(crate) fail_next_persist: AtomicBool,
     // SAFETY: write_lock is used in append_unpersisted() for poison detection.
@@ -108,6 +109,9 @@ impl FjallJournal {
         let recovery_stamp = database.keyspace(KEYSPACE_RECOVERY_STAMP, || {
             crate::types::keyspace_options_for(KeyspaceProfile::Hot)
         })?;
+        let run_seq_gap = database.keyspace(KEYSPACE_RUN_SEQ_GAP, || {
+            crate::types::keyspace_options_for(KeyspaceProfile::Hot)
+        })?;
         Ok(Self {
             database,
             workflow_source,
@@ -120,6 +124,7 @@ impl FjallJournal {
             index_workflow,
             index_action,
             recovery_stamp,
+            run_seq_gap,
             #[cfg(test)]
             fail_next_persist: AtomicBool::new(false),
             write_lock: Mutex::new(()),
@@ -129,7 +134,7 @@ impl FjallJournal {
 
     /// Returns all declared keyspace names after a successful open.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 10] {
+    pub const fn declared_keyspaces() -> [&'static str; 11] {
         [
             KEYSPACE_WORKFLOW_SOURCE,
             KEYSPACE_COMPILED_IR,
@@ -141,6 +146,7 @@ impl FjallJournal {
             KEYSPACE_INDEX_WORKFLOW,
             KEYSPACE_INDEX_ACTION,
             KEYSPACE_RECOVERY_STAMP,
+            KEYSPACE_RUN_SEQ_GAP,
         ]
     }
 
@@ -208,21 +214,21 @@ impl FjallJournal {
         self.persist_strict()
     }
 
-    /// Flushes all memtables to SST files synchronously and then syncs the WAL.
-    ///
-    /// This method is critical for cross-process durability: when the `run` command
-    /// exits, memtable data would normally be lost. By rotating and waiting for each
-    /// memtable to be flushed to SST files (via Fjall's `rotate_memtable_and_wait`),
-    /// subsequent processes (e.g., `events`, `inspect`) can read the data from disk.
-    ///
-    /// The sequence is:
-    /// 1. For each keyspace, rotate the memtable and wait for flush to complete
-    /// 2. Sync the WAL journal via `persist_strict()`
-    ///
-    /// # Errors
-    ///
-    /// Returns `JournalError` if any keyspace flush or WAL sync fails.
-    pub fn flush_memtables(&self) -> Result<(), JournalError> {
+/// Flushes all memtables to SST files synchronously and then syncs the WAL.
+///
+/// This method is critical for cross-process durability: when the `run` command
+/// exits, memtable data would normally be lost. By rotating and waiting for each
+/// memtable to be flushed to SST files (via Fjall's `rotate_memtable_and_wait`),
+/// subsequent processes (e.g., `events`, `inspect`) can read the data from disk.
+///
+/// The sequence is:
+/// 1. For each keyspace, rotate the memtable and wait for flush to complete
+/// 2. Sync the WAL journal via `persist_strict()`
+///
+/// # Errors
+///
+/// Returns `JournalError` if any keyspace flush or WAL sync fails.
+pub fn flush_memtables(&self) -> Result<(), JournalError> {
         // Rotate and wait for each keyspace's memtable to be flushed to SST files.
         // This is the synchronous equivalent of waiting for background flush workers
         // to drain all sealed memtables.
@@ -236,6 +242,7 @@ impl FjallJournal {
         self.index_workflow.rotate_memtable_and_wait()?;
         self.index_action.rotate_memtable_and_wait()?;
         self.recovery_stamp.rotate_memtable_and_wait()?;
+        self.run_seq_gap.rotate_memtable_and_wait()?;
 
         // Sync the WAL journal after memtables are flushed.
         self.persist_strict()

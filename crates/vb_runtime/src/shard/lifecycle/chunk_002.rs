@@ -130,7 +130,8 @@ impl Shard {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
             self.terminal_outcome_record(run, TerminalOutcome::Cancelled);
-            self.counters.inc_failed();
+            // RQ-W0-17: cancel is no longer conflated with fail.
+            self.counters.inc_cancelled();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
         self.discard_journal_sequence(run);
@@ -147,7 +148,8 @@ impl Shard {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
             self.terminal_outcome_record(run, TerminalOutcome::Killed);
-            self.counters.inc_failed();
+            // RQ-W0-17: kill is no longer conflated with fail.
+            self.counters.inc_killed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
             self.append_journal_event(RuntimeJournalEvent::RunKilled { run, reason })?;
         }
@@ -208,7 +210,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         match result {
             Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
-                self.apply(run, RuntimeEvent::DriveContinue);
+                let _ = self.apply(run, RuntimeEvent::DriveContinue);
                 self.keep_run_with_snapshot(run, state)?;
                 Ok(())
             }
@@ -232,7 +234,7 @@ impl Shard {
         state: RunState,
         ticket: ActionTicket,
     ) -> RuntimeResult<()> {
-        self.apply(run, RuntimeEvent::AwaitAction);
+        let _ = self.apply(run, RuntimeEvent::AwaitAction);
         self.await_action(run, state, ticket)
     }
 
@@ -244,18 +246,18 @@ impl Shard {
         deadline_slot: SlotIdx,
     ) -> RuntimeResult<()> {
         self.await_timer(run, state, kind, deadline_slot)?;
-        self.apply(run, RuntimeEvent::AwaitTimer);
+        let _ = self.apply(run, RuntimeEvent::AwaitTimer);
         Ok(())
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.apply(run, RuntimeEvent::DriveFinished);
+        let _ = self.apply(run, RuntimeEvent::DriveFinished);
         self.finish_run(run, state)
     }
 
     fn apply_terminal_failed(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-        self.apply(run, RuntimeEvent::Fail);
+        let _ = self.apply(run, RuntimeEvent::Fail);
         self.fail_run_state(run, state)
     }
 }

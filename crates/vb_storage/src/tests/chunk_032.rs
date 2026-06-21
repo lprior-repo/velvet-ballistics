@@ -159,16 +159,16 @@ fn workflow_index_multiple_runs_same_workflow() {
 
 #[test]
 fn builder_initial_len_is_zero() {
-    let builder = BatchBuilder::new();
+    let builder = BatchBuilder::with_capacity(4).expect("builder");
     assert_eq!(builder.len(), 0, "new builder must have len 0");
     assert!(builder.is_empty(), "new builder must be empty");
 }
 
 #[test]
 fn builder_append_increments_len() {
-    let mut builder = BatchBuilder::new();
+    let mut builder = BatchBuilder::with_capacity(4).expect("builder");
     let run = RunId::new(8001);
-    builder.push(JournalEvent::RunAccepted {
+    let _ = builder.try_push(JournalEvent::RunAccepted {
         run,
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([1; 32]),
@@ -179,20 +179,20 @@ fn builder_append_increments_len() {
 
 #[test]
 fn builder_append_multiple_events_len_matches() {
-    let mut builder = BatchBuilder::new();
+    let mut builder = BatchBuilder::with_capacity(4).expect("builder");
     let run = RunId::new(8002);
-    builder.push(JournalEvent::RunAccepted {
+    let _ = builder.try_push(JournalEvent::RunAccepted {
         run,
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([1; 32]),
     });
-    builder.push(JournalEvent::StepStarted {
+    let _ = builder.try_push(JournalEvent::StepStarted {
         run,
         seq: EventSeq::new(1),
         step: StepIdx::new(0),
         attempt: 1,
     });
-    builder.push(JournalEvent::RunFinished {
+    let _ = builder.try_push(JournalEvent::RunFinished {
         run,
         seq: EventSeq::new(2),
         result: SlotIdx::new(0),
@@ -207,7 +207,7 @@ fn builder_append_multiple_events_len_matches() {
 
 #[test]
 fn builder_as_slice_returns_appended_events() {
-    let mut builder = BatchBuilder::new();
+    let mut builder = BatchBuilder::with_capacity(4).expect("builder");
     let run = RunId::new(8003);
     let e0 = JournalEvent::RunAccepted {
         run,
@@ -220,8 +220,8 @@ fn builder_as_slice_returns_appended_events() {
         attempt: 1,
         reason: None,
     };
-    builder.push(e0.clone());
-    builder.push(e1.clone());
+    let _ = builder.try_push(e0.clone());
+    let _ = builder.try_push(e1.clone());
     let slice = builder.as_slice();
     assert_eq!(slice.len(), 2);
     assert_eq!(

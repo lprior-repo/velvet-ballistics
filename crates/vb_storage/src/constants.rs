@@ -71,6 +71,18 @@ pub const MAGIC_INDEX_RECORD: u32 = 0x5642_4958;
 /// kind (wire ID 7) so that recovery writes can be admitted and rejected
 /// independently of the source/journal record paths.
 pub const MAGIC_RECOVERY_STAMP: u32 = 0x5652_5354;
+/// Sequence-gap marker magic, ASCII `VBSG`.
+///
+/// Used by `inject_seq_gap` to record a disaster-recovery gap marker at a
+/// `(run, seq)` position in a dedicated `run_seq_gap` keyspace. The marker
+/// has its own magic and `RecordKind::SequenceGap` (wire ID 60) so the
+/// journal-event reader never sees gap records as `RunCancelled` or any
+/// other terminal event.
+pub const MAGIC_JOURNAL_SEQUENCE_GAP: u32 = 0x5642_5347;
+/// `run_seq_gap` keyspace.
+pub const KEYSPACE_RUN_SEQ_GAP: &str = "run_seq_gap";
+/// `run_seq_gap` key prefix.
+pub const PREFIX_RUN_SEQ_GAP: u8 = 0x13;
 
 pub(crate) const JOURNAL_KEY_BYTES: usize = 17;
 pub(crate) const DIGEST_KEY_BYTES: usize = 33;
@@ -101,6 +113,20 @@ pub const MAX_SNAPSHOT_BYTES: u32 = 67_108_864;
 pub const MAX_BLOB_BYTES: u32 = 67_108_864;
 /// Maximum recovery-stamp payload bytes accepted by the recovery-stamp APIs.
 pub const MAX_RECOVERY_STAMP_BYTES: u32 = 4_096;
+/// Maximum sequence-gap marker payload bytes accepted by the gap APIs.
+///
+/// The gap marker payload is `()` (no body), so the bound is essentially
+/// `RECORD_HEADER_BYTES`. A small constant leaves headroom for future
+/// diagnostic payloads.
+pub const MAX_RUN_SEQ_GAP_BYTES: u32 = 64;
+/// Total byte width of a `run_seq_gap` storage key (`[0x13][run][seq]`).
+pub const RUN_SEQ_GAP_KEY_BYTES: usize = 17;
+/// Maximum bytes accepted for the optional `frame_extra` payload carried by
+/// the versioned slot-write envelope (after the `VBSE\x01` prefix is
+/// stripped). Bounded so a hostile Fjall image cannot trick
+/// `decode_slot_written_extra` into allocating an arbitrarily large `Vec`
+/// from a single varint prefix.
+pub const MAX_FRAME_EXTRA_BYTES: usize = 65_536;
 /// Maximum number of events permitted in a single journal write batch.
 pub const MAX_BATCH_COUNT: usize = 10_000;
 const _PAYLOAD_LEN_CONVERSION_MAX: u32 = 4_294_967_295;

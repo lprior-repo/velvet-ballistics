@@ -276,4 +276,8 @@ mod security_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod hydrate_tests;
+#[cfg(test)]
 mod vb_2bok_durability_gate_tests;
+#[cfg(test)]
+mod test_helpers;

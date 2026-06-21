@@ -3,6 +3,7 @@
 
 pub mod arena;
 pub mod ask;
+pub mod bounded_outcomes;
 pub mod command;
 pub mod completion_watermark;
 pub mod config;

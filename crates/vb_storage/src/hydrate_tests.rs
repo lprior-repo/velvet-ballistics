@@ -121,9 +121,17 @@
 mod hydrate_tests {
     use crate::EventSeq;
     use crate::recovery::{
-        hydrate::{validate_snapshot_metadata, validate_tail_run_metadata, validate_tail_seq_after_snapshot, validate_recovery_data_present, TailEventMetadata, SnapshotRecoveryInputViolation},
+        hydrate::{
+            invariants::{SnapshotRecoveryInputViolation, TailEventMetadata},
+            validate_recovery_data_present, validate_snapshot_metadata,
+            validate_snapshot_recovery_inputs, validate_tail_events_after_snapshot,
+            validate_tail_first_seq_contiguous_with_snapshot, validate_tail_run_metadata,
+            validate_tail_seq_after_snapshot,
+        },
+        RecoveryError, RunSnapshot,
     };
-    use vb_core::RunId;
+    use crate::events::JournalEvent;
+    use vb_core::{RunId, StepIdx, WorkflowDigest};
 
     #[test]
     fn validate_snapshot_metadata_accepts_matching_run() {
@@ -238,5 +246,128 @@ mod hydrate_tests {
         let meta = TailEventMetadata::new(run, seq);
         assert_eq!(meta.run, run);
         assert_eq!(meta.seq, seq);
+    }
+
+    #[test]
+    fn validate_tail_first_seq_contiguous_accepts_snapshot_plus_one() {
+        let result = validate_tail_first_seq_contiguous_with_snapshot(
+            &[event_at(RunId::new(20), EventSeq::new(6))],
+            EventSeq::new(5),
+        );
+        assert!(result.is_ok(), "seq 6 must be contiguous with snapshot seq 5, got {:?}", result);
+    }
+
+    #[test]
+    fn validate_tail_first_seq_contiguous_accepts_empty_tail() {
+        let result = validate_tail_first_seq_contiguous_with_snapshot(&[], EventSeq::new(5));
+        assert!(result.is_ok(), "empty tail must succeed (nothing to verify), got {:?}", result);
+    }
+
+    #[test]
+    fn validate_tail_first_seq_contiguous_rejects_gap() {
+        let result = validate_tail_first_seq_contiguous_with_snapshot(
+            &[event_at(RunId::new(21), EventSeq::new(9))],
+            EventSeq::new(5),
+        );
+        assert!(
+            matches!(
+                result,
+                Err(SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
+                    snapshot_seq,
+                    actual_seq,
+                }) if snapshot_seq == EventSeq::new(5) && actual_seq == EventSeq::new(9)
+            ),
+            "seq 9 must be rejected as gap after snapshot seq 5, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn validate_tail_first_seq_contiguous_rejects_equal_to_snapshot() {
+        let result = validate_tail_first_seq_contiguous_with_snapshot(
+            &[event_at(RunId::new(22), EventSeq::new(5))],
+            EventSeq::new(5),
+        );
+        assert!(
+            matches!(
+                result,
+                Err(SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot { .. })
+            ),
+            "seq 5 must be rejected (not contiguous with snapshot seq 5), got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn validate_tail_events_after_snapshot_rejects_non_contiguous_first() {
+        let run = RunId::new(23);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(3),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+            slots: Vec::new(),
+            taint: Vec::new(),
+        };
+        let tail = vec![
+            event_at(run, EventSeq::new(7)),
+            event_at(run, EventSeq::new(8)),
+        ];
+        let Err(err) = validate_tail_events_after_snapshot(&tail, &snapshot) else {
+            panic!("expected validation error");
+        };
+        assert!(
+            matches!(
+                err,
+                RecoveryError::ReplayDivergence { ref detail, .. }
+                    if detail.contains("not contiguous with snapshot seq 3")
+            ),
+            "expected non-contiguous rejection, got {:?}",
+            err
+        );
+    }
+
+    fn event_at(run: RunId, seq: EventSeq) -> JournalEvent {
+        JournalEvent::StepStarted {
+            run,
+            seq,
+            step: StepIdx::new(0),
+            attempt: 1,
+        }
+    }
+
+    #[test]
+    fn validate_snapshot_recovery_inputs_accepts_contiguous_tail() {
+        let run = RunId::new(24);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(3),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+            slots: Vec::new(),
+            taint: Vec::new(),
+        };
+        let tail = vec![event_at(run, EventSeq::new(4))];
+        let result = validate_snapshot_recovery_inputs(&snapshot, &tail, run);
+        assert!(result.is_ok(), "contiguous tail should validate, got {:?}", result);
+    }
+
+    #[test]
+    fn validate_snapshot_recovery_inputs_rejects_non_contiguous_tail() {
+        let run = RunId::new(25);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(3),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+            slots: Vec::new(),
+            taint: Vec::new(),
+        };
+        let tail = vec![event_at(run, EventSeq::new(7))];
+        let Err(err) = validate_snapshot_recovery_inputs(&snapshot, &tail, run) else {
+            panic!("expected validation error");
+        };
+        assert!(
+            matches!(err, RecoveryError::ReplayDivergence { .. }),
+            "expected ReplayDivergence, got {:?}",
+            err
+        );
     }
 }

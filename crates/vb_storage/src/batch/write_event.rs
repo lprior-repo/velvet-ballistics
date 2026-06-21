@@ -10,12 +10,27 @@ use crate::{
 };
 
 impl<'j> JournalWriteBatch<'j> {
-    /// Appends a journal event into the batch.
-    ///
-    /// Guard order: key construction, durable duplicate check, count capacity,
-    /// per-record encoding, accumulated byte admission, then inner insert.
+/// Appends a journal event into the batch.
+///
+/// Guard order: aborted-state check, key construction, in-flight
+/// (staged) duplicate check, durable (committed) duplicate check,
+/// count capacity, per-record encoding, accumulated byte admission,
+/// then inner insert.
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
+        if self.state.is_aborted() {
+            return Err(JournalError::DuplicateEvent {
+                run: event.run_id(),
+                seq: event.seq(),
+            });
+        }
         let key = run_event_key(event.run_id(), event.seq())?;
+        if self.staged_event_keys.contains(&key) {
+            self.state = BatchState::Aborted;
+            return Err(JournalError::DuplicateEvent {
+                run: event.run_id(),
+                seq: event.seq(),
+            });
+        }
         if self.journal.events.contains_key(key)? {
             self.state = BatchState::Aborted;
             return Err(JournalError::DuplicateEvent {
@@ -53,6 +68,7 @@ impl<'j> JournalWriteBatch<'j> {
             self.staged_bytes = attempted;
         }
 
+        self.staged_event_keys.insert(key);
         self.inner.insert(&self.journal.events, key, value);
         Ok(())
     }

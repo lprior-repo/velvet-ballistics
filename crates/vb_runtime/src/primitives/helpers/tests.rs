@@ -433,3 +433,61 @@ fn tc005_jump_to_body_asking_reentry_valid() -> Result<(), String> {
         format!("expected Asking (unchanged), got {state:?}"),
     )
 }
+
+// RQ-W0-13 (RP-013): jump_to_body must reject re-entry into terminal
+// states. Previously the helper silently set the program counter to the
+// terminal step, which violated the FSM contract.
+
+#[test]
+fn tc006_jump_to_body_failed_rejected() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let body = StepIdx::new(1);
+    run.mark_running(body).map_err(|e| format!("{e:?}"))?;
+    run.mark_failed(body).map_err(|e| format!("{e:?}"))?;
+    let result = jump_to_body(&mut run, body);
+    match result {
+        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+            reason == "jump_to_body on terminal step",
+            format!("unexpected reason: {reason}"),
+        ),
+        other => Err(format!(
+            "expected InternalInvariantViolation for Failed state, got {other:?}"
+        )),
+    }
+}
+
+#[test]
+fn tc007_jump_to_body_cancelled_rejected() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let body = StepIdx::new(1);
+    run.mark_running(body).map_err(|e| format!("{e:?}"))?;
+    run.mark_cancelled(body).map_err(|e| format!("{e:?}"))?;
+    let result = jump_to_body(&mut run, body);
+    match result {
+        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+            reason == "jump_to_body on terminal step",
+            format!("unexpected reason: {reason}"),
+        ),
+        other => Err(format!(
+            "expected InternalInvariantViolation for Cancelled state, got {other:?}"
+        )),
+    }
+}
+
+#[test]
+fn tc008_jump_to_body_skipped_rejected() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let body = StepIdx::new(1);
+    run.mark_pending(body).map_err(|e| format!("{e:?}"))?;
+    run.mark_skipped(body).map_err(|e| format!("{e:?}"))?;
+    let result = jump_to_body(&mut run, body);
+    match result {
+        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+            reason == "jump_to_body on terminal step",
+            format!("unexpected reason: {reason}"),
+        ),
+        other => Err(format!(
+            "expected InternalInvariantViolation for Skipped state, got {other:?}"
+        )),
+    }
+}

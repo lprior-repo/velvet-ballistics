@@ -86,23 +86,33 @@ pub fn recover_runtime_frame_seed_from_events_with_workflow(
 
 /// Validates that the workflow digest in the first accepted run event matches
 /// the expected compiled workflow digest.
+///
+/// Fails closed when no `RunAccepted` evidence is present in the event slice:
+/// a journal that contains no acceptance record cannot certify that the
+/// compiled workflow the caller holds matches the persisted run, so the digest
+/// gate must reject rather than silently pass.
 pub fn reject_workflow_digest_mismatch(
     events: &[JournalEvent],
     expected: WorkflowDigest,
 ) -> RecoveryResult<()> {
-    events
-        .iter()
-        .find_map(|event| match event {
-            JournalEvent::RunAccepted { workflow, .. } if *workflow != expected => {
-                Some(Err(RecoveryError::CompiledIrDigestMismatch {
-                    expected,
-                    found: *workflow,
-                }))
-            }
-            JournalEvent::RunAccepted { .. } => Some(Ok(())),
-            _ => None,
-        })
-        .map_or(Ok(()), |result| result)
+    match events.iter().find_map(|event| match event {
+        JournalEvent::RunAccepted { workflow, .. } if *workflow != expected => {
+            Some(Err(RecoveryError::CompiledIrDigestMismatch {
+                expected,
+                found: *workflow,
+            }))
+        }
+        JournalEvent::RunAccepted { .. } => Some(Ok(())),
+        _ => None,
+    }) {
+        Some(result) => result,
+        None => Err(RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: format!(
+                "RunAccepted evidence missing for workflow digest {expected:?}; cannot verify recovery workflow"
+            ),
+        }),
+    }
 }
 
 // ── Frame seed construction helpers ─────────────────────────────────────────

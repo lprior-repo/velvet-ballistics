@@ -137,7 +137,7 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
@@ -175,7 +175,7 @@ fn vb1u88_invariant_queue_len_never_exceeds_capacity() -> Result<(), RuntimeErro
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     for _ in 0..3 {
@@ -201,7 +201,7 @@ fn vb1u88_invariant_no_trace_dropped_during_operation() -> Result<(), RuntimeErr
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {

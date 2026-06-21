@@ -202,12 +202,12 @@ fn append_strict_batch_rejects_duplicate_within_batch() {
 
 #[test]
 fn batch_builder_collects_events() {
-    let mut builder = BatchBuilder::new();
+    let mut builder = BatchBuilder::with_capacity(4).expect("builder");
     assert!(builder.is_empty());
     assert_eq!(builder.len(), 0);
 
     let run = RunId::new(63);
-    builder.push(JournalEvent::RunAccepted {
+    let _ = builder.try_push(JournalEvent::RunAccepted {
         run,
         seq: EventSeq::new(0),
         workflow: WorkflowDigest::from_bytes([1; 32]),
@@ -215,7 +215,7 @@ fn batch_builder_collects_events() {
     assert_eq!(builder.len(), 1);
     assert!(!builder.is_empty());
 
-    builder.push(JournalEvent::RunFinished {
+    let _ = builder.try_push(JournalEvent::RunFinished {
         run,
         seq: EventSeq::new(1),
         result: vb_core::SlotIdx::new(0),

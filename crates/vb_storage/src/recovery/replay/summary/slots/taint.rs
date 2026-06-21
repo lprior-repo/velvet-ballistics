@@ -44,10 +44,6 @@ fn legacy_frame_extra_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTai
     }
 }
 
-fn legacy_slot_taint(value: SlotValue) -> Taint {
-    match value {
-        SlotValue::Bool(false) => Taint::Clean,
-        SlotValue::Bool(true) | SlotValue::Null => Taint::DerivedFromSecret,
-        _ => Taint::Secret,
-    }
+fn legacy_slot_taint(_value: SlotValue) -> Taint {
+    Taint::Secret
 }

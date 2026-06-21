@@ -93,24 +93,34 @@ impl Shard {
     }
 
     /// Drains currently queued commands, then marks the shard shut down.
+    ///
+    /// Pending timers are journaled via
+    /// [`Self::cancel_pending_timers_for_shutdown`] before being cleared so
+    /// the durable record matches the in-memory cleanup (RQ-W0-12, fixes
+    /// RS-206 which previously bypassed the cancellation journal).
     pub fn drain_pending_and_shutdown(&mut self) -> RuntimeResult<()> {
-        if self.shutting_down {
-            self.pending_timers.clear();
+        if self.is_shutting_down() {
+            self.cancel_pending_timers_for_shutdown()?;
             return Ok(());
         }
         self.drain_pending_commands(self.command_queue.len())?;
-        self.shutting_down = true;
-        self.pending_timers.clear();
+        self.shutting_down
+            .store(true, std::sync::atomic::Ordering::Release);
+        self.cancel_pending_timers_for_shutdown()?;
         Ok(())
     }
 
     fn drain_pending_commands(&mut self, command_count: usize) -> RuntimeResult<()> {
         (0..command_count).try_for_each(|_| {
-            if self.command_queue.is_empty() || self.shutting_down {
+            if self.command_queue.is_empty() || self.is_shutting_down() {
                 return Ok(());
             }
             if !self.tick()? {
-                self.pending_timers.clear();
+                // Journal the timer cancellations for runs that were
+                // suspended before the queue drained so the durable journal
+                // records the cancellation before the in-memory state is
+                // dropped (RQ-W0-12).
+                self.cancel_pending_timers_for_shutdown()?;
             }
             Ok(())
         })

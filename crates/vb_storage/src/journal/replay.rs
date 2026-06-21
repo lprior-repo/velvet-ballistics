@@ -53,6 +53,36 @@ impl FjallJournal {
         self.events_for_run_bounded(run, EventReplayLimit::DEFAULT)
     }
 
+    /// Replays the full per-run event history, including events that occurred
+    /// at or before the most recent durable snapshot.
+    ///
+    /// SR-002: public recovery APIs whose contract requires the full event
+    /// history (admission, summary, frame seed, workflow digest verification)
+    /// must use this reader. Default `events_for_run` / `events_for_run_bounded`
+    /// skip pre-snapshot events, which silently corrupts summaries, seeds, and
+    /// admission records for any run that has been snapshotted.
+    pub fn events_for_run_full_bounded(
+        &self,
+        run: vb_core::RunId,
+        limit: EventReplayLimit,
+    ) -> Result<Vec<JournalEvent>, JournalError> {
+        self.events_for_run_from(run, EventSeq::new(0), EventSeq::new(0), limit)
+    }
+
+    /// Replays one run's full event history, starting at `EventSeq::ZERO`.
+    ///
+    /// Unlike [`Self::events_for_run_bounded`], this method always reads from
+    /// the first event in the keyspace, regardless of any durable snapshot
+    /// for the run. Use this for full-history recovery paths that must
+    /// observe every event (e.g. `recover_full_journal`, which verifies
+    /// durable `RunAdmission` evidence at the start of the stream).
+    pub fn events_for_run_full(
+        &self,
+        run: vb_core::RunId,
+    ) -> Result<Vec<JournalEvent>, JournalError> {
+        self.events_for_run_full_bounded(run, EventReplayLimit::DEFAULT)
+    }
+
     /// Returns the raw bytes for a specific event by (run, seq) key.
     ///
     /// This is a public query API to support external verification of event writes
@@ -67,7 +97,7 @@ impl FjallJournal {
         Ok(result?.map(|s| s.to_vec()))
     }
 
-    /// Replays one run's events with an explicit event collection bound.
+/// Replays one run's events with an explicit event collection bound.
     pub fn events_for_run_bounded(
         &self,
         run: vb_core::RunId,

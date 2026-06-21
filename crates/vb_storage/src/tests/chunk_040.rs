@@ -330,6 +330,8 @@ fn journal_error_match_covers_all_variants() {
             JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
             JournalError::MetadataMutation { .. } => "metadata_mutation",
             JournalError::PayloadLenOverflow { .. } => "payload_len_overflow",
+            JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
+            JournalError::ReservedSeqSentinel => "reserved_seq_sentinel",
         }
     }
     let _ = _exhaustive_match;

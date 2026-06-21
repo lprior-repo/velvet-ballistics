@@ -24,6 +24,7 @@ fn config_interval_zero() -> ShardConfig {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -38,6 +39,7 @@ fn config_interval_n(n: u64) -> ShardConfig {
         snapshot_interval_steps: n,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 

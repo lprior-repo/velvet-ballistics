@@ -729,6 +729,7 @@ fn memory_ingress_is_empty_after_draining_all_frames() {
 fn payload_roundtrip_preserves_cancel_run_variant() {
     let payload = IpcPayload::CancelRun {
         run_id: RunId::new(42),
+        reason: None,
     };
 
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
@@ -1393,6 +1394,7 @@ fn ipc_error_diagnostic_code_response_decode_failed() {
 fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
     let payload = IpcPayload::CancelRun {
         run_id: RunId::new(0),
+        reason: None,
     };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
     assert_ok!(encoded);
@@ -1405,7 +1407,8 @@ fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
     assert_eq!(
         decoded,
         IpcPayload::CancelRun {
-            run_id: RunId::new(0)
+            run_id: RunId::new(0),
+            reason: None,
         }
     );
 }
@@ -1414,6 +1417,7 @@ fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
 fn adversarial_cancel_run_with_run_id_max_encoded_roundtrips() {
     let payload = IpcPayload::CancelRun {
         run_id: RunId::new(u64::MAX),
+        reason: None,
     };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
     assert_ok!(encoded);
@@ -2033,7 +2037,10 @@ mod proptests {
     proptest! {
         #[test]
         fn ipc_response_encode_decode_roundtrip(run_id_val in 0u64..) {
-            let payload = IpcPayload::CancelRun { run_id: RunId::new(run_id_val) };
+            let payload = IpcPayload::CancelRun {
+                run_id: RunId::new(run_id_val),
+                reason: None,
+            };
 
             let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
             prop_assert_ok!(encoded);

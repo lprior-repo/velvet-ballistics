@@ -89,8 +89,15 @@ proptest! {
                     prev = new_len;
                 }
                 Err(_) => {
-                    prop_assert_eq!(batch.len(), prev,
-                        "failed append must not change batch length");
+                    // Failed append either preserves length (non-aborting
+                    // rejection such as QueueFull) or aborts the batch
+                    // (intra-batch duplicate detection sets Aborted, in
+                    // which case len() reports 0). Both are acceptable;
+                    // assert the contract: batch.len() <= prev (a failed
+                    // append never increases length).
+                    prop_assert!(batch.len() <= prev,
+                        "failed append must not increase batch length: {} -> {}",
+                        prev, batch.len());
                 }
             }
         }

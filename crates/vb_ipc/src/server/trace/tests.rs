@@ -238,6 +238,22 @@ mod tests {
         assert_eq!(kind, IpcTraceEventKind::RunCancelled { run: run_id(14) });
     }
 
+    #[test]
+    fn trace_event_kind_maps_run_killed() {
+        let event = TraceEvent::RunKilled { run: run_id(15) };
+        let kind = trace_event_kind(&event);
+        assert_eq!(kind, IpcTraceEventKind::RunKilled { run: run_id(15) });
+    }
+
+    #[test]
+    fn run_killed_roundtrip_via_postcard() {
+        let original = IpcTraceEventKind::RunKilled { run: run_id(42) };
+        let encoded = postcard::to_allocvec(&original).expect("encode");
+        let decoded: IpcTraceEventKind =
+            postcard::from_bytes(&encoded).expect("decode");
+        assert_eq!(decoded, original);
+    }
+
     // ── typed_events_response tests ──
 
     #[test]
@@ -524,5 +540,10 @@ mod tests {
     #[test]
     fn ipc_trace_event_kind_roundtrip_run_cancelled() {
         roundtrip_ipc_trace_event_kind(IpcTraceEventKind::RunCancelled { run: run_id(14) });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_run_killed() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::RunKilled { run: run_id(15) });
     }
 }

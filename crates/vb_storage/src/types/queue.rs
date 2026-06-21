@@ -71,4 +71,12 @@ pub struct JournalWriterFlushReport {
     pub drained: usize,
     /// Number of events written to Fjall.
     pub written: usize,
+    /// Number of events still queued after the operation completed.
+    ///
+    /// Zero when the queue was fully drained. A non-zero value indicates
+    /// the static iteration bound was exhausted before the queue was
+    /// empty — typically because concurrent producers replenished the
+    /// queue mid-drain. Callers that need a fully-empty drain must
+    /// observe `pending_after == 0` and retry or escalate.
+    pub pending_after: usize,
 }

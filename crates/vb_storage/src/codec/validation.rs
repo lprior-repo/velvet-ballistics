@@ -1,7 +1,8 @@
 use crate::{
     constants::{
         CURRENT_SCHEMA_VERSION, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
-        MAGIC_JOURNAL_EVENT, MAGIC_RECOVERY_STAMP, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE,
+        MAGIC_JOURNAL_EVENT, MAGIC_JOURNAL_SEQUENCE_GAP, MAGIC_RECOVERY_STAMP, MAGIC_SNAPSHOT,
+        MAGIC_WORKFLOW_SOURCE,
     },
     error::JournalError,
     mrwe5_contract::{
@@ -32,7 +33,7 @@ pub(crate) fn validate_schema_version(version: u16) -> Result<(), JournalError> 
 }
 
 pub(crate) const fn is_known_record_kind(kind: u16) -> bool {
-    matches!(kind, 1 | 2 | 3 | 7 | 10..=29 | 30 | 40 | 50)
+    matches!(kind, 1 | 2 | 3 | 7 | 10..=29 | 30 | 40 | 50 | 60)
 }
 
 pub(crate) const fn is_journal_record_kind(kind: u16) -> bool {
@@ -75,6 +76,7 @@ pub(crate) const fn classify_kind_family(magic: u32, kind: u16) -> RecordKindFam
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
         MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),
         MAGIC_RECOVERY_STAMP => kind == RecordKind::RecoveryStamp.id(),
+        MAGIC_JOURNAL_SEQUENCE_GAP => kind == RecordKind::SequenceGap.id(),
         _ => false,
     };
     if valid {

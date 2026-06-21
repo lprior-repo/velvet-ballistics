@@ -1403,6 +1403,59 @@ fn decode_envelope_only_rejects_trailing_bytes_with_exact_offsets() -> Result<()
     Ok(())
 }
 
+#[test]
+fn decode_envelope_only_verifies_payload_digest() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let mut bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    // Flip a single bit inside the payload region. The header CRC still
+    // matches (it does not cover the payload), so the only way to detect
+    // the corruption is by recomputing the BLAKE3 digest.
+    let corrupt_index = RECORD_HEADER_BYTES;
+    bytes[corrupt_index] ^= 0x01;
+
+    let result = decode_envelope_only(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    assert!(
+        matches!(result, Err(JournalError::PayloadDigestMismatch)),
+        "decode_envelope_only must reject a payload whose BLAKE3 digest no longer matches the header, got {result:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn decode_envelope_only_accepts_valid_record() -> Result<(), JournalError> {
+    let event = JournalEvent::RunCancelled {
+        run: RunId::new(1),
+        seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
+    };
+    let bytes = encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::RunCancelled,
+        0,
+        &event,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )?;
+
+    let (envelope, raw_payload) =
+        decode_envelope_only(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;
+    assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
+    assert_eq!(raw_payload, &bytes[RECORD_HEADER_BYTES..]);
+    Ok(())
+}
+
 fn assert_journal_trailing_suffix_rejected(suffix: &[u8]) -> Result<(), JournalError> {
     let event = JournalEvent::RunCancelled {
         run: RunId::new(1),

@@ -12,7 +12,7 @@ impl Shard {
     /// Returns `true` if the shard should continue ticking, `false` if it
     /// should shut down.
     pub fn tick(&mut self) -> RuntimeResult<bool> {
-        if self.shutting_down {
+        if self.is_shutting_down() {
             // H5 mitigation: drain coalesce buffer before shutdown to prevent
             // journal data loss on the final tick.
             if !self.coalesce_buffer.is_empty() {
@@ -43,7 +43,7 @@ impl Shard {
         };
 
         self.dispatch_command(cmd)?;
-        if self.shutting_down {
+        if self.is_shutting_down() {
             // H5 mitigation: flush remaining buffer before shutdown.
             if !self.coalesce_buffer.is_empty() {
                 self.flush_coalesce_buffer()?;
@@ -255,7 +255,8 @@ impl Shard {
     }
 
     fn dispatch_shutdown(&mut self) -> RuntimeResult<()> {
-        self.shutting_down = true;
+        self.shutting_down
+            .store(true, std::sync::atomic::Ordering::Release);
         Ok(())
     }
 }

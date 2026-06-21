@@ -446,10 +446,37 @@ fn workflow_digest_rejection_reports_exact_mismatch_and_accepts_match() {
         reject_workflow_digest_mismatch(&events, found).ok(),
         Some(())
     );
-    assert_eq!(
-        reject_workflow_digest_mismatch(&[], expected).ok(),
-        Some(())
-    );
+}
+
+#[test]
+fn workflow_digest_rejection_fails_closed_without_run_accepted() {
+    let expected = digest(11);
+    let run = RunId::new(31);
+    let events = [
+        JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            attempt: 1,
+        },
+        JournalEvent::StepSucceeded {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            output: SlotIdx::new(0),
+        },
+    ];
+
+    assert!(matches!(
+        reject_workflow_digest_mismatch(&events, expected),
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO && detail.contains("RunAccepted evidence missing")
+    ));
+    assert!(matches!(
+        reject_workflow_digest_mismatch(&[], expected),
+        Err(RecoveryError::ReplayDivergence { step, detail })
+            if step == StepIdx::ZERO && detail.contains("RunAccepted evidence missing")
+    ));
 }
 
 #[test]
@@ -515,8 +542,8 @@ fn event_slot_values_cover_valid_corrupt_and_missing_frame_paths() {
             .iter()
             .any(|entry| entry.slot == SlotIdx::new(0)
                 && entry.value == SlotValue::Bool(true)
-                && entry.taint == Taint::DerivedFromSecret),
-        "Expected slot 0 with Bool(true) and DerivedFromSecret taint"
+                && entry.taint == Taint::Secret),
+        "Expected slot 0 with Bool(true) and Secret taint (SR-013: legacy fallback fails closed)"
     );
     assert!(
         recovered.unsupported.slot_values,
@@ -1040,4 +1067,142 @@ fn pending_actions_from_events_handles_ticket_variants() {
         step: StepIdx::new(1),
         action: ActionId::new(11),
     }));
+}
+
+/// SR-007: `ActionFailedEvent` must remove the action from the pending set,
+/// matching the accumulator semantics in `record_action_failed`. A failed
+/// action should never appear in the resume list because it has been
+/// resolved and re-execution would trigger non-idempotent side effects.
+#[test]
+fn pending_actions_from_events_removes_failed_action() {
+    let run = RunId::new(500);
+    let events: Vec<JournalEvent> = vec![
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+        JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            action: ActionId::new(3),
+            attempt: 1,
+        },
+        JournalEvent::ActionFailedEvent {
+            run,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(1),
+            action: ActionId::new(2),
+            attempt: 1,
+        },
+    ];
+
+    let result = pending_actions_from_events(&events);
+    assert_eq!(result.len(), 2);
+    let set: std::collections::HashSet<_> = result.into_iter().collect();
+    assert!(!set.contains(&crate::recovery::RecoveredPendingAction {
+        step: StepIdx::new(1),
+        action: ActionId::new(2),
+    }));
+    assert!(set.contains(&crate::recovery::RecoveredPendingAction {
+        step: StepIdx::new(0),
+        action: ActionId::new(1),
+    }));
+    assert!(set.contains(&crate::recovery::RecoveredPendingAction {
+        step: StepIdx::new(2),
+        action: ActionId::new(3),
+    }));
+}
+
+/// SR-007: Orphan `ActionFailedEvent` (no matching scheduled) is a no-op.
+#[test]
+fn pending_actions_from_events_orphan_failed_event_is_noop() {
+    let run = RunId::new(501);
+    let events = vec![JournalEvent::ActionFailedEvent {
+        run,
+        seq: EventSeq::new(0),
+        step: StepIdx::new(7),
+        action: ActionId::new(99),
+        attempt: 1,
+    }];
+
+    let result = pending_actions_from_events(&events);
+    assert!(result.is_empty());
+}
+
+// ══ legacy_slot_taint unit tests (SR-013 / P0) ════════════════════════════
+
+fn legacy_slot_taint(value: SlotValue) -> Taint {
+    crate::recovery::replay::summary::slots::taint::recovered_slot_taint(
+        SlotIdx::new(0),
+        value,
+        None,
+    )
+    .expect("legacy taint never errors")
+    .taint
+}
+
+fn legacy_frame_extra_slot_taint(value: SlotValue) -> Taint {
+    let extra = crate::events::SlotWriteExtra::Legacy(vec![0xAB, 0xCD, 0xEF, 0x42]);
+    crate::recovery::replay::summary::slots::taint::recovered_slot_taint(
+        SlotIdx::new(0),
+        value,
+        Some(&extra),
+    )
+    .expect("legacy frame extra taint never errors")
+    .taint
+}
+
+/// SR-013: legacy fallback without `SlotWriteExtra` must classify every value
+/// as `Taint::Secret`. The previous asymmetric `Bool(false) -> Clean` heuristic
+/// leaked secret-derived false predicates.
+#[test]
+fn legacy_slot_taint_classifies_bool_false_as_secret() {
+    assert_eq!(legacy_slot_taint(SlotValue::Bool(false)), Taint::Secret);
+}
+
+/// SR-013: legacy fallback must classify every value as `Taint::Secret`,
+/// regardless of provenance, because legacy events lack the modern taint
+/// envelope and the safe default is over-classification.
+#[test]
+fn legacy_slot_taint_classifies_every_value_as_secret() {
+    let cases = [
+        SlotValue::Bool(true),
+        SlotValue::Bool(false),
+        SlotValue::Null,
+        SlotValue::I64(0),
+        SlotValue::I64(42),
+        SlotValue::F64(vb_core::FiniteF64::new(0.0).expect("finite")),
+    ];
+    for value in cases {
+        assert_eq!(
+            legacy_slot_taint(value),
+            Taint::Secret,
+            "legacy taint for {value:?} must be Secret"
+        );
+    }
+}
+
+/// SR-013: legacy frame-extra envelope (no modern taint envelope) must also
+/// fail closed to `Taint::Secret`.
+#[test]
+fn legacy_frame_extra_slot_taint_classifies_as_secret() {
+    assert_eq!(
+        legacy_frame_extra_slot_taint(SlotValue::Bool(false)),
+        Taint::Secret
+    );
+    assert_eq!(
+        legacy_frame_extra_slot_taint(SlotValue::I64(7)),
+        Taint::Secret
+    );
 }

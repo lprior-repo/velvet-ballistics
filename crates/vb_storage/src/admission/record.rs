@@ -40,7 +40,8 @@ pub fn admit_compiled_artifact(
 pub fn validate_compiled_ir_record(record: &CompiledIrRecord) -> Result<(), JournalError> {
     super::bytes::reject_oversized_compiled_ir_value(record.ir.len())?;
     let artifact = decode_accepted_artifact_envelope(&record.ir)?;
-    validate_accepted_artifact_digest(&artifact, record.digest)
+    validate_accepted_artifact_digest(&artifact, record.digest)?;
+    validate_artifact_metadata_hash_binding(record, &artifact)
 }
 
 pub fn decode_accepted_artifact_envelope(bytes: &[u8]) -> Result<AcceptedArtifact, JournalError> {
@@ -98,6 +99,30 @@ pub(crate) fn validate_artifact_policy_digest(
         Ok(())
     } else {
         Err(JournalError::ArtifactMalformed)
+    }
+}
+
+/// Defense-in-depth check that the stored `metadata_hash` matches the
+/// metadata hash recomputed from the artifact bytes. A `None` value is
+/// accepted for backward compatibility with pre-mutation-protection
+/// records, but a `Some(stored)` value must agree with the recomputed
+/// hash; a mismatch indicates same-digest metadata mutation and is
+/// rejected with [`JournalError::MetadataMutation`].
+pub(crate) fn validate_artifact_metadata_hash_binding(
+    record: &crate::records::CompiledIrRecord,
+    artifact: &AcceptedArtifact,
+) -> Result<(), JournalError> {
+    let stored = match record.metadata_hash {
+        Some(stored) => stored,
+        None => return Ok(()),
+    };
+    let computed = super::metadata::compute_artifact_metadata_hash(artifact);
+    if stored == computed {
+        Ok(())
+    } else {
+        Err(JournalError::MetadataMutation {
+            digest: record.digest,
+        })
     }
 }
 

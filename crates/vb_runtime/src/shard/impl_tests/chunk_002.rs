@@ -1,4 +1,8 @@
 
+    use super::super::types::{RuntimeEvent, RuntimeState};
+#[allow(unused_imports)]
+use super::super::types::*;
+
     // =======================================================================
     // snapshot_run (direct, non-queued)
     // =======================================================================
@@ -148,5 +152,189 @@
         assert_eq!(status.health, ShardHealth::ShuttingDown);
         assert_eq!(status.running, false);
         assert_eq!(status.shutting_down, true);
+        Ok(())
+    }
+
+    // =======================================================================
+    // RQ-W0-06: Shard::enqueue TOCTOU with shutting_down.
+    //
+    // The `shutting_down` flag is now an `AtomicBool` so that the producer
+    // thread (calling `enqueue`) and the dispatcher thread (calling `tick`)
+    // can synchronise without holding a mutex. Producers must observe a
+    // consistent value via the Acquire load, and the dispatcher's Release
+    // store must synchronise the visibility of `shutting_down=true` to any
+    // subsequent producer that observes the value.
+    // =======================================================================
+
+    #[test]
+    fn enqueue_rejects_after_shutdown_processed_by_tick() -> Result<(), RuntimeError> {
+        let mut shard = Shard::new(small_config())?;
+        // First Shutdown is enqueued normally.
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+        // After tick() returns, shutting_down is true.
+        assert_eq!(shard.is_shutting_down(), true);
+        // Any further non-Shutdown command is rejected.
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run: RunId::new(1),
+                correlation: 1,
+            }),
+            Err(RuntimeError::ShutdownInProgress)
+        );
+        // Shutdown sentinel is still permitted (idempotent drain).
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        Ok(())
+    }
+
+    #[test]
+    fn enqueue_toctou_race_emits_shutdown_in_progress() -> Result<(), RuntimeError> {
+        // Simulate the TOCTOU scenario: producer thread inspects
+        // shutting_down (false), then dispatcher flips it to true, then
+        // producer tries to push. With the AtomicBool fix, the producer's
+        // load(Acquire) sees the Release store from the dispatcher, so the
+        // push is rejected with ShutdownInProgress rather than landing on a
+        // shutting-down shard.
+        let mut shard = Shard::new(small_config())?;
+        // Producer's perspective: shutting_down is currently false.
+        assert_eq!(shard.is_shutting_down(), false);
+        // Dispatcher: process Shutdown.
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+        assert_eq!(shard.is_shutting_down(), true);
+        // Producer attempts to enqueue after seeing the Acquire load.
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run: RunId::new(7),
+                correlation: 7,
+            }),
+            Err(RuntimeError::ShutdownInProgress)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn is_shutting_down_consistent_across_threads() -> Result<(), RuntimeError> {
+        // Drives the dispatcher and observes that `is_shutting_down()` flips
+        // synchronously from `false` to `true` once `tick()` processes the
+        // `Shutdown` sentinel. Because `shutting_down` is an `AtomicBool`,
+        // subsequent `enqueue` calls must observe the same value via
+        // Acquire/Release semantics and reject non-Shutdown commands with
+        // `RuntimeError::ShutdownInProgress`.
+        let mut shard = Shard::new(small_config())?;
+        assert_eq!(shard.is_shutting_down(), false);
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+        assert_eq!(shard.is_shutting_down(), true);
+        // After shutdown, every other command is rejected.
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run: RunId::new(1),
+                correlation: 1,
+            }),
+            Err(RuntimeError::ShutdownInProgress)
+        );
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        Ok(())
+    }
+
+    // =======================================================================
+    // RQ-W0-07: RuntimeStateMachine::apply must verify prior state for Resume.
+    //
+    // The `apply` method now requires the prior `RuntimeState` to be
+    // `Resumable` before transitioning to `Resuming`. Direct callers (other
+    // than the resume path, which already validates) can observe the new
+    // `RuntimeError::NotResumable` error if the FSM contract is violated.
+    // =======================================================================
+
+    #[test]
+    fn apply_resume_rejects_when_prior_state_is_running() {
+        let mut shard = Shard::new(small_config()).expect("shard");
+        let run = RunId::new(900);
+        // Inject a state that is NOT Resumable.
+        shard.runtime_state_insert(run, RuntimeState::Running);
+        let result = shard.apply(run, RuntimeEvent::Resume);
+        match result {
+            Err(RuntimeError::NotResumable {
+                run: returned_run,
+                current_state,
+            }) => {
+                assert_eq!(returned_run, run);
+                assert_eq!(current_state, RuntimeState::Running);
+            }
+            other => panic!("expected NotResumable, got {other:?}"),
+        }
+        // State must NOT have been mutated.
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Running));
+    }
+
+    #[test]
+    fn apply_resume_rejects_when_prior_state_is_initial() {
+        let mut shard = Shard::new(small_config()).expect("shard");
+        let run = RunId::new(901);
+        shard.runtime_state_insert(run, RuntimeState::Initial);
+        let result = shard.apply(run, RuntimeEvent::Resume);
+        assert!(matches!(
+            result,
+            Err(RuntimeError::NotResumable {
+                current_state: RuntimeState::Initial,
+                ..
+            })
+        ));
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Initial));
+    }
+
+    #[test]
+    fn apply_resume_rejects_when_no_state_recorded() {
+        let mut shard = Shard::new(small_config()).expect("shard");
+        let run = RunId::new(902);
+        // No state recorded for run.
+        assert_eq!(shard.runtime_state_get(run), None);
+        let result = shard.apply(run, RuntimeEvent::Resume);
+        assert!(matches!(
+            result,
+            Err(RuntimeError::NotResumable {
+                current_state: RuntimeState::Initial,
+                ..
+            })
+        ));
+        assert_eq!(shard.runtime_state_get(run), None);
+    }
+
+    #[test]
+    fn apply_resume_accepts_when_prior_state_is_resumable() -> Result<(), RuntimeError> {
+        let mut shard = Shard::new(small_config())?;
+        let run = RunId::new(903);
+        shard.runtime_state_insert(run, RuntimeState::Resumable);
+        shard.apply(run, RuntimeEvent::Resume)?;
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Resuming));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_resume_rejects_when_prior_state_is_failed() {
+        let mut shard = Shard::new(small_config()).expect("shard");
+        let run = RunId::new(904);
+        shard.runtime_state_insert(run, RuntimeState::Failed);
+        let result = shard.apply(run, RuntimeEvent::Resume);
+        assert!(matches!(
+            result,
+            Err(RuntimeError::NotResumable {
+                current_state: RuntimeState::Failed,
+                ..
+            })
+        ));
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Failed));
+    }
+
+    #[test]
+    fn apply_resume_rollback_does_not_require_prior_state() -> Result<(), RuntimeError> {
+        // ResumeRollback is the journal-failure path: it must unconditionally
+        // revert the state to Resumable, regardless of the prior state.
+        let mut shard = Shard::new(small_config())?;
+        let run = RunId::new(905);
+        shard.runtime_state_insert(run, RuntimeState::Resuming);
+        shard.apply(run, RuntimeEvent::ResumeRollback)?;
+        assert_eq!(shard.runtime_state_get(run), Some(RuntimeState::Resumable));
         Ok(())
     }

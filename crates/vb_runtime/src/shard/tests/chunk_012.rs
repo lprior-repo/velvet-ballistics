@@ -11,7 +11,7 @@ fn shard_remaining_capacity_decrements_on_enqueue() -> Result<(), RuntimeError> 
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     assert_eq!(shard.remaining_capacity(), 4);
@@ -36,7 +36,7 @@ fn shard_remaining_capacity_is_zero_when_full() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     // Fill the queue
@@ -70,7 +70,7 @@ fn shard_is_queue_full_returns_true_when_at_capacity() -> Result<(), RuntimeErro
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     // Fill the queue
@@ -94,7 +94,7 @@ fn shard_command_queue_capacity_returns_configured_value() -> Result<(), Runtime
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     // Then the capacity method returns 512
@@ -115,7 +115,7 @@ fn shard_remaining_capacity_after_pop() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -139,7 +139,7 @@ fn shard_queue_len_decrements_after_tick() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     // Cancel for a non-existent run returns typed error
@@ -263,6 +263,7 @@ fn shard_config_new_accepts_valid_parameters() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 100_000,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
         
 })
     );

@@ -595,7 +595,11 @@ fn append_strict_batch_on_empty_succeeds() {
 #[test]
 fn declared_keyspaces_count_matches_opened_keyspaces() {
     let declared = FjallJournal::declared_keyspaces();
-    assert_eq!(declared.len(), 10, "there should be 10 declared keyspaces");
+    assert_eq!(
+        declared.len(),
+        11,
+        "there should be 11 declared keyspaces (added run_seq_gap in vb-1rqz7.1)"
+    );
     let (_temp, _journal) = temp_journal();
     // If we got here, all keyspaces opened successfully
 }
@@ -2180,23 +2184,30 @@ fn blob_large_payload_roundtrips() {
 // =========================================================================
 
 #[test]
-fn batch_append_event_allows_duplicate_key_insertion() {
+fn batch_append_event_rejects_duplicate_key_within_batch() {
+    // SA-003: two append_event calls with the same (run, seq) inside a
+    // single batch must be rejected so the second cannot silently
+    // overwrite the first via Fjall last-write-wins.
     let (_temp, journal) = temp_journal();
     let run = RunId::new(14000);
     let event = make_event(run, 0);
 
     let mut batch = journal.batch();
     batch.append_event(&event).expect("first batch append");
-    batch
-        .append_event(&event)
-        .expect("second batch append in same batch");
+    let result = batch.append_event(&event);
+    assert!(
+        matches!(result, Err(crate::error::JournalError::DuplicateEvent { .. })),
+        "second batch append with same key must yield DuplicateEvent, got {:?}",
+        result
+    );
     batch.commit().expect("commit should succeed");
 
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(
         replayed.len(),
-        1,
-        "duplicate in batch should result in single event"
+        0,
+        "aborted batch must not persist any event, got {}",
+        replayed.len()
     );
 }
 

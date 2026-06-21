@@ -130,6 +130,7 @@
 )]
 use crate::admission::*;
 use crate::error::JournalError;
+use crate::records::CompiledIrRecord;
 
 #[test]
 fn verification_warning_display_formats_gate_code_message() {
@@ -1043,4 +1044,57 @@ fn submit_artifact_does_not_populate_index_status_or_workflow_keyspaces() -> Res
         ));
     }
     Ok(())
+}
+
+// =========================================================================
+// SA-007: validate_compiled_ir_record must enforce metadata_hash binding.
+// =========================================================================
+
+#[test]
+fn validate_compiled_ir_record_accepts_matching_metadata_hash() {
+    // SA-007 happy path: a freshly admitted record with a metadata_hash
+    // that matches the recomputed hash passes validation.
+    let record = crate::try_accepted_compiled_ir_record_for_test(b"sa-007-match".to_vec())
+        .expect("test fixture should encode");
+    let result = validate_compiled_ir_record(&record);
+    assert!(
+        result.is_ok(),
+        "matching metadata_hash must validate, got {:?}",
+        result
+    );
+}
+
+#[test]
+fn validate_compiled_ir_record_accepts_none_metadata_hash_for_backward_compat() {
+    // SA-007 backward compat: a record with metadata_hash = None
+    // (pre-mutation-protection) must still pass validation.
+    let mut record = crate::try_accepted_compiled_ir_record_for_test(b"sa-007-none".to_vec())
+        .expect("test fixture should encode");
+    record.metadata_hash = None;
+    let result = validate_compiled_ir_record(&record);
+    assert!(
+        result.is_ok(),
+        "metadata_hash=None must validate for backward compat, got {:?}",
+        result
+    );
+}
+
+#[test]
+fn validate_compiled_ir_record_rejects_mismatched_metadata_hash() {
+    // SA-007 defense in depth: a record whose stored metadata_hash does
+    // not match the recomputed artifact metadata hash is rejected with
+    // MetadataMutation — the same invariant the write path enforces.
+    let mut record =
+        crate::try_accepted_compiled_ir_record_for_test(b"sa-007-mismatch".to_vec())
+            .expect("test fixture should encode");
+    let mut bad_hash = [0u8; 32];
+    bad_hash[0] = 0xFF;
+    bad_hash[31] = 0xFE;
+    record.metadata_hash = Some(bad_hash);
+    let result = validate_compiled_ir_record(&record);
+    assert!(
+        matches!(result, Err(JournalError::MetadataMutation { digest }) if digest == record.digest),
+        "metadata_hash mismatch must yield MetadataMutation, got {:?}",
+        result
+    );
 }

@@ -9,6 +9,8 @@ pub struct ShardCounters {
     runs_submitted: AtomicU64,
     runs_completed: AtomicU64,
     runs_failed: AtomicU64,
+    runs_cancelled: AtomicU64,
+    runs_killed: AtomicU64,
     steps_executed: AtomicU64,
 }
 
@@ -26,6 +28,8 @@ impl ShardCounters {
             runs_submitted: AtomicU64::new(0),
             runs_completed: AtomicU64::new(0),
             runs_failed: AtomicU64::new(0),
+            runs_cancelled: AtomicU64::new(0),
+            runs_killed: AtomicU64::new(0),
             steps_executed: AtomicU64::new(0),
         }
     }
@@ -45,6 +49,16 @@ impl ShardCounters {
         self.runs_failed.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Increments the runs-cancelled counter (RQ-W0-17: previously conflated with `inc_failed`).
+    pub fn inc_cancelled(&self) {
+        self.runs_cancelled.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Increments the runs-killed counter (RQ-W0-17: previously conflated with `inc_failed`).
+    pub fn inc_killed(&self) {
+        self.runs_killed.fetch_add(1, Ordering::Relaxed);
+    }
+
     /// Adds to the steps-executed counter.
     pub fn add_steps(&self, count: u64) {
         self.steps_executed.fetch_add(count, Ordering::Relaxed);
@@ -62,8 +76,12 @@ pub struct CounterSnapshot {
     pub runs_submitted: u64,
     /// Total runs completed successfully.
     pub runs_completed: u64,
-    /// Total runs failed.
+    /// Total runs failed during deterministic execution.
     pub runs_failed: u64,
+    /// Total runs cancelled via `ShardCommand::Cancel` (RQ-W0-17).
+    pub runs_cancelled: u64,
+    /// Total runs killed via `ShardCommand::Kill` (RQ-W0-17).
+    pub runs_killed: u64,
     /// Total steps executed across all runs.
     pub steps_executed: u64,
 }
@@ -75,6 +93,8 @@ impl ShardCounters {
             runs_submitted: self.runs_submitted.load(Ordering::Relaxed),
             runs_completed: self.runs_completed.load(Ordering::Relaxed),
             runs_failed: self.runs_failed.load(Ordering::Relaxed),
+            runs_cancelled: self.runs_cancelled.load(Ordering::Relaxed),
+            runs_killed: self.runs_killed.load(Ordering::Relaxed),
             steps_executed: self.steps_executed.load(Ordering::Relaxed),
         }
     }
@@ -116,6 +136,10 @@ pub struct RuntimeMetricsSnapshot {
     pub runs_failed_total: u64,
     /// Total runs finished across all shards.
     pub runs_finished_total: u64,
+    /// Total runs cancelled across all shards (RQ-W0-17).
+    pub runs_cancelled_total: u64,
+    /// Total runs killed across all shards (RQ-W0-17).
+    pub runs_killed_total: u64,
     /// Total steps executed across all shards.
     pub steps_total: u64,
 }

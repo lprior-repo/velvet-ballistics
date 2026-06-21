@@ -10,13 +10,23 @@ use vb_core::{ActionId, StepIdx, WorkflowDigest};
 
 use super::core::replay_events;
 
-/// Replays a full journal for a run when no snapshot is available.
+/// Replays a full journal for a run. Reads the entire event history from
+/// sequence zero, including pre-snapshot events, regardless of whether a
+/// durable snapshot exists for the run.
+///
 /// Returns the ordered sequence of journal events and populates the action tracker.
 ///
 /// ## GAP-3: Policy Digest Verification
 ///
 /// Missing durable `RunAdmission` evidence fails closed instead of replaying
 /// without proof or fabricating a digest value.
+///
+/// ## SR-001: Full-history replay
+///
+/// `events_for_run` is snapshot-tail optimized (it skips events at or before
+/// the latest durable snapshot seq). `recover_full_journal` must verify
+/// `RunAdmission` evidence that lives at the start of the stream, so it
+/// reads via `events_for_run_full` which starts at `EventSeq::ZERO`.
 ///
 /// ## Recovery stamp integration (vb-k6iwh-r)
 ///
@@ -38,7 +48,7 @@ pub fn recover_full_journal(
     expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
     expected_policy_digests: &[(StepIdx, WorkflowDigest)],
 ) -> crate::recovery::RecoveryResult<Vec<JournalEvent>> {
-    let events = journal.events_for_run(run)?;
+    let events = journal.events_for_run_full(run)?;
     if events.is_empty() {
         return Err(crate::recovery::RecoveryError::NoRecoveryData { run });
     }
@@ -111,8 +121,31 @@ pub fn recover_snapshot_plus_tail(
     tail_events: &[JournalEvent],
     tracker: &mut crate::recovery::ActionReplayTracker,
 ) -> crate::recovery::RecoveryResult<Vec<JournalEvent>> {
-    // Verify snapshot consistency
+    // Verify snapshot consistency: per-event strict-greater, plus SR-006 cross-snapshot
+    // contiguity check (first tail event seq must equal snapshot.seq + 1).
     let snapshot_seq = snapshot.seq;
+    if let Some(first) = tail_events.first() {
+        let expected = crate::codec::next_seq(snapshot_seq).map_err(|_| {
+            crate::recovery::RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "snapshot seq {} overflows when computing tail start",
+                    snapshot_seq.get()
+                ),
+            }
+        })?;
+        if first.seq() != expected {
+            return Err(crate::recovery::RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "tail event seq {} is not contiguous with snapshot seq {} (expected {})",
+                    first.seq().get(),
+                    snapshot_seq.get(),
+                    expected.get()
+                ),
+            });
+        }
+    }
     for event in tail_events {
         if event.seq() <= snapshot_seq {
             return Err(crate::recovery::RecoveryError::ReplayDivergence {

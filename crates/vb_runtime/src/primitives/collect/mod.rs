@@ -142,13 +142,22 @@ fn finish_collect_start_page(
     current_page: ListId,
     time_limit_ms: Option<u64>,
     body: StepIdx,
-    done: StepIdx,
+    _done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    if plan.page_len >= plan.item_count {
-        states.remove(run.run_id(), plan.collector);
-        return jump_to(run, done);
-    }
+    // Always persist the pagination state for non-empty pages so that
+    // collect_next can validate page-order invariants and so that the body
+    // step is reached for single-page collections too. Previously a
+    // single-page collection (`page_len >= item_count`) jumped directly to
+    // `done`, skipping the body step (RQ-W0-13, RP-011).
     upsert_started_collect(run, states, &plan, current_page, time_limit_ms)?;
+    if plan.page_len >= plan.item_count {
+        // The page filled the source list in a single jump. Body still
+        // runs so single-page collectors behave consistently with
+        // multi-page collectors; collect_finish will skip the trailing
+        // collect_next because the active state at cursor == item_count
+        // is recognized as terminal.
+        return jump_to(run, body);
+    }
     jump_to(run, body)
 }
 
@@ -189,6 +198,18 @@ pub fn collect_next(
     done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let current_id = expect_list(*run.read_slot(collector_slot)?)?;
+    let has_state = states
+        .entries
+        .contains_key(&(run.run_id(), collector_slot));
+    if has_state {
+        // Validate the observed collector page matches the active pagination
+        // state before treating an empty list as terminal. With an active
+        // state entry, an empty collector page is evidence of corruption
+        // (stale/duplicate/out-of-order) and must surface as a typed
+        // CollectPageOrderViolation rather than silently terminating
+        // (RQ-W0-13, RP-015).
+        let _ = states.require_current_page(run.run_id(), collector_slot, current_id)?;
+    }
     let current = store.list(current_id)?;
     if current.is_empty() {
         states.remove(run.run_id(), collector_slot);

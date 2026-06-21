@@ -5,6 +5,8 @@
 // - kill_idempotent_property: Calling kill twice returns Ok both times
 
 // suspended_workflow() and small_config() are defined in earlier chunks
+// wait_workflow() is defined in chunk_dispatch_error_semantics.rs (also
+// included in this module)
 
 /// Test cancel_idempotent_property: Calling cancel twice on same run returns Ok both times.
 #[test]
@@ -43,7 +45,7 @@ fn cancel_idempotent_on_active_run() -> Result<(), RuntimeError> {
     assert_eq!(shard.tick(), Ok(true));
 
     // Counter should only be incremented once
-    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert_eq!(shard.counters().snapshot().runs_cancelled, 1);
     Ok(())
 }
 
@@ -83,7 +85,7 @@ fn kill_idempotent_on_active_run() -> Result<(), RuntimeError> {
     assert_eq!(shard.tick(), Ok(true));
 
     // Counter should only be incremented once
-    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+    assert_eq!(shard.counters().snapshot().runs_killed, 1);
     Ok(())
 }
 
@@ -349,6 +351,341 @@ fn kill_releases_frame_to_pool() -> Result<(), RuntimeError> {
     assert_eq!(shard.tick(), Ok(true));
 
     // Frame is released
+    assert_eq!(
+        shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+        Some(1)
+    );
+    Ok(())
+}
+
+// =============================================================================
+// RQ-W0-05: Cancel-after-Kill and Kill-after-Cancel cross-case tests.
+// These exercise the ordering between cancel and kill on the same run,
+// proving that the terminalization guarantees hold across cross-cases.
+// =============================================================================
+
+/// Test cancel_after_kill: Cancel issued after Kill must be a typed no-op.
+/// The run was already terminalized by Kill, so Cancel must:
+/// - return Ok
+/// - NOT insert a new RunCancelled journal event
+/// - NOT increment the runs_cancelled counter (RQ-W0-17)
+/// - leave terminal_runs monotonic (Killed outcome preserved)
+#[test]
+fn cancel_after_kill_is_typed_noop() -> Result<(), RuntimeError> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
+    let Some(workflow) = suspended_workflow() else {
+        return Ok(());
+    };
+    let run = RunId::new(310);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // First: Kill the run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Kill { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // After kill: run is in terminal_runs, no longer in active runs
+    assert_eq!(shard.run_state_contains(run), false);
+    assert_eq!(shard.terminal_runs_contains(run), true);
+    let baseline_cancelled = shard.counters().snapshot().runs_cancelled;
+
+    // Second: Cancel the already-killed run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Counter must NOT increment - terminalization already happened.
+    assert_eq!(shard.counters().snapshot().runs_cancelled, baseline_cancelled);
+
+    // No new RunCancelled journal event was appended.
+    let events = journal
+        .snapshot()
+        .map_err(|_| RuntimeError::QueueFull)?;
+    let cancelled_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(
+        cancelled_count, 0,
+        "cancel-after-kill must not emit RunCancelled journal event: {events:?}"
+    );
+
+    // Killed outcome preserved in terminal_runs
+    assert_eq!(shard.terminal_runs_contains(run), true);
+    Ok(())
+}
+
+/// Test kill_after_cancel: Kill issued after Cancel must be a typed no-op.
+/// The run was already terminalized by Cancel, so Kill must:
+/// - return Ok
+/// - NOT insert a new RunKilled journal event
+/// - NOT increment the runs_killed counter (RQ-W0-17)
+/// - leave terminal_runs monotonic (Cancelled outcome preserved)
+#[test]
+fn kill_after_cancel_is_typed_noop() -> Result<(), RuntimeError> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
+    let Some(workflow) = suspended_workflow() else {
+        return Ok(());
+    };
+    let run = RunId::new(311);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // First: Cancel the run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // After cancel: run is in terminal_runs, no longer in active runs
+    assert_eq!(shard.run_state_contains(run), false);
+    assert_eq!(shard.terminal_runs_contains(run), true);
+    let baseline_killed = shard.counters().snapshot().runs_killed;
+
+    // Second: Kill the already-cancelled run
+    assert_eq!(
+        shard.enqueue(ShardCommand::Kill { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Counter must NOT increment - terminalization already happened.
+    assert_eq!(shard.counters().snapshot().runs_killed, baseline_killed);
+
+    // No new RunKilled journal event was appended.
+    let events = journal
+        .snapshot()
+        .map_err(|_| RuntimeError::QueueFull)?;
+    let killed_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(
+        killed_count, 0,
+        "kill-after-cancel must not emit RunKilled journal event: {events:?}"
+    );
+
+    // Cancelled outcome preserved in terminal_runs
+    assert_eq!(shard.terminal_runs_contains(run), true);
+    Ok(())
+}
+
+/// Test cancel_after_kill_clears_pending_timer: Cancel after Kill does not
+/// re-clear a timer that was already cleared. This guards against any
+/// spurious pending_timer_remove during the cross-case.
+#[test]
+fn cancel_after_kill_does_not_re_clear_timer() -> Result<(), RuntimeError> {
+    let mut shard = Shard::new(small_config())?;
+    let Some(workflow) = wait_workflow() else {
+        return Ok(());
+    };
+    let run = RunId::new(312);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_count(), 1);
+
+    // Kill removes the pending timer
+    assert_eq!(
+        shard.enqueue(ShardCommand::Kill { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_count(), 0);
+
+    // Cancel after kill: no error, no new timer operations
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_count(), 0);
+    Ok(())
+}
+
+/// Test kill_after_cancel_clears_pending_timer: Kill after Cancel does not
+/// re-clear a timer that was already cleared.
+#[test]
+fn kill_after_cancel_does_not_re_clear_timer() -> Result<(), RuntimeError> {
+    let mut shard = Shard::new(small_config())?;
+    let Some(workflow) = wait_workflow() else {
+        return Ok(());
+    };
+    let run = RunId::new(313);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_count(), 1);
+
+    // Cancel removes the pending timer
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_count(), 0);
+
+    // Kill after cancel: no error, no new timer operations
+    assert_eq!(
+        shard.enqueue(ShardCommand::Kill { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timer_count(), 0);
+    Ok(())
+}
+
+/// Test cancel_kill_alternating: alternating cancel/kill/cancel/kill on the
+/// same run must remain a typed no-op after the first terminalization,
+/// with exactly one journal event emitted (the first terminalization).
+#[test]
+fn cancel_kill_alternating_keeps_terminalization_idempotent() -> Result<(), RuntimeError> {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared)?;
+    let Some(workflow) = suspended_workflow() else {
+        return Ok(());
+    };
+    let run = RunId::new(314);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // First terminalization: Cancel
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    let baseline_cancelled = shard.counters().snapshot().runs_cancelled;
+    assert_eq!(baseline_cancelled, 1);
+
+    // Alternate: Kill, Cancel, Kill, Cancel — all no-ops
+    for _ in 0..2 {
+        assert_eq!(
+            shard.enqueue(ShardCommand::Kill { run, reason: None }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    // Counter still at 1, not 5 (RQ-W0-17: cancel and kill use distinct counters)
+    assert_eq!(shard.counters().snapshot().runs_cancelled, baseline_cancelled);
+    assert_eq!(shard.counters().snapshot().runs_killed, 0);
+
+    // Exactly one RunCancelled journal event, zero RunKilled
+    let events = journal
+        .snapshot()
+        .map_err(|_| RuntimeError::QueueFull)?;
+    let cancelled_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run))
+        .count();
+    let killed_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunKilled { run: r, .. } if *r == run))
+        .count();
+    assert_eq!(cancelled_count, 1, "events: {events:?}");
+    assert_eq!(killed_count, 0, "events: {events:?}");
+    Ok(())
+}
+
+/// Test cancel_after_kill_releases_frame_only_once: Frame is released exactly
+/// once across the cross-case (the first terminalization wins).
+#[test]
+fn cancel_after_kill_releases_frame_only_once() -> Result<(), RuntimeError> {
+    let mut shard = Shard::new(small_config())?;
+    let Some(workflow) = suspended_workflow() else {
+        return Ok(());
+    };
+    let run = RunId::new(315);
+
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Frame allocated
+    assert_eq!(
+        shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+        Some(0)
+    );
+
+    // Kill releases frame
+    assert_eq!(
+        shard.enqueue(ShardCommand::Kill { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(
+        shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+        Some(1)
+    );
+
+    // Cancel after kill: frame availability stays at 1 (no double-release)
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
         Some(1)

@@ -132,6 +132,7 @@ use crate::recovery::{
     check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
     recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
+    recover_runtime_summary_with_expected,
     recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
 };
 use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
@@ -726,6 +727,106 @@ fn recover_runtime_summary_reads_summary_from_journal() {
     assert_eq!(summary.run, run);
     assert_eq!(summary.workflow, Some(workflow));
     assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+}
+
+/// SR-016: structural comparison of `Finished { result }` must distinguish
+/// different result slots. The previous string-based comparison collapsed
+/// every `Finished` variant into the literal `"Finished"`, allowing silently
+/// mismatched result slots to pass verification.
+#[test]
+fn recover_runtime_summary_with_expected_distinguishes_finished_result_slots() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+    let run = RunId::new(80);
+    let workflow = sample_digest(11);
+
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        })
+        .expect("accepted append succeeds");
+    journal
+        .append_journaled(&JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(1),
+            result: SlotIdx::new(7),
+            attempt: 1,
+        })
+        .expect("finished append succeeds");
+
+    // Same slot index: should succeed.
+    let matched = recover_runtime_summary_with_expected(
+        &journal,
+        run,
+        RecoveryTerminalState::Finished {
+            result: SlotIdx::new(7),
+        },
+    )
+    .expect("matching result slot must succeed");
+    assert_eq!(
+        matched.summary().terminal,
+        Some(RecoveryTerminalState::Finished {
+            result: SlotIdx::new(7),
+        })
+    );
+
+    // Different slot index: must fail closed with TerminalStateMismatch.
+    let mismatched = recover_runtime_summary_with_expected(
+        &journal,
+        run,
+        RecoveryTerminalState::Finished {
+            result: SlotIdx::new(99),
+        },
+    );
+    assert!(
+        matches!(
+            mismatched,
+            Err(RecoveryError::TerminalStateMismatch { ref expected, ref found })
+                if expected.contains("99") && found.contains("7")
+        ),
+        "Finished slot mismatch must produce TerminalStateMismatch, got {:?}",
+        mismatched
+    );
+}
+
+/// SR-016: variant-class mismatch (Cancelled vs Finished) must still be
+/// detected by the structural comparison — the existing typed comparison
+/// already handled this case, but the regression test pins the contract.
+#[test]
+fn recover_runtime_summary_with_expected_detects_variant_class_mismatch() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
+    let run = RunId::new(81);
+    let workflow = sample_digest(12);
+
+    journal
+        .append_journaled(&JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+        })
+        .expect("accepted append succeeds");
+    journal
+        .append_journaled(&JournalEvent::RunFinished {
+            run,
+            seq: EventSeq::new(1),
+            result: SlotIdx::new(0),
+            attempt: 1,
+        })
+        .expect("finished append succeeds");
+
+    let result = recover_runtime_summary_with_expected(
+        &journal,
+        run,
+        RecoveryTerminalState::Cancelled,
+    );
+    assert!(
+        matches!(result, Err(RecoveryError::TerminalStateMismatch { .. })),
+        "expected variant mismatch must surface TerminalStateMismatch, got {:?}",
+        result
+    );
 }
 
 #[test]
@@ -3239,7 +3340,7 @@ mod hydrate_run_frame_tests {
     };
     use crate::{DurableActionOutcome, EventSeq, JournalError, JournalEvent};
     use vb_core::action::{ActionTicket, MockMarker, compute_action_idempotency_key};
-    use vb_core::value::{SlotValue, Taint};
+    use vb_core::value::{ConstValue, SlotValue, Taint};
     use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, StepState, WorkflowDigest};
 
     fn sample_digest(byte: u8) -> WorkflowDigest {
@@ -3784,7 +3885,12 @@ mod hydrate_run_frame_tests {
     }
 
     #[test]
-    fn apply_tail_events_fails_closed_when_taint_read_fails() {
+    fn apply_tail_events_fails_closed_when_slot_out_of_bounds() {
+        // SR-003: taint is now decoded from the persisted envelope (`extra`)
+        // instead of inheriting the frame's prior taint. The frame constructed
+        // below has slot_count=0, so any slot write must fail closed via the
+        // bounds check (ReplayDivergence "slot write out of bounds") rather
+        // than via the legacy `read_taint` failure path.
         let run = RunId::new(1);
         let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 0)
             .expect("RunFrame::new must succeed for valid parameters");
@@ -3802,11 +3908,47 @@ mod hydrate_run_frame_tests {
 
         assert!(
             matches!(
-                result,
-                Err(RecoveryError::SlotTaintReadFailed { slot }) if slot == SlotIdx::new(0)
+                &result,
+                Err(RecoveryError::ReplayDivergence { detail, .. })
+                    if detail.contains("slot write out of bounds")
             ),
-            "taint read failure must not downgrade to Clean: {:?}",
+            "out-of-bounds slot write must fail closed with ReplayDivergence, got {:?}",
             result
+        );
+    }
+
+    #[test]
+    fn apply_tail_events_restores_secret_taint_from_event_extra() {
+        // SR-003: when a SlotWrittenEvent carries a versioned envelope that
+        // names a Secret taint, the tail replier must restore that taint on
+        // the frame even though the frame's prior slot array was Clean. The
+        // legacy accumulator path already did this; this test pins parity for
+        // the events-only hydration path.
+        let run = RunId::new(2);
+        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 4)
+            .expect("RunFrame::new must succeed for valid parameters");
+        let envelope = crate::slot_extra::SlotWrittenExtraEnvelope {
+            taint: Taint::Secret,
+            frame_extra: None,
+        };
+        let extra = crate::events::SlotWriteExtra::Versioned(envelope);
+        let tail = vec![JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(1),
+            slot: SlotIdx::new(2),
+            value: Some(postcard::to_allocvec(&SlotValue::I64(99)).expect("serialize")),
+            extra: Some(extra),
+            attempt: 1,
+        }];
+        let mut tracker = ActionReplayTracker::new();
+
+        apply_tail_events(&mut frame, &tail, &mut tracker)
+            .expect("apply_tail_events must succeed for in-bounds slot");
+
+        assert_eq!(
+            frame.read_taint(SlotIdx::new(2)),
+            Ok(Taint::Secret),
+            "slot taint must reflect the event's envelope, not the frame default"
         );
     }
 
@@ -4673,5 +4815,89 @@ mod hydrate_run_frame_tests {
         // - frame_from_snapshot.max_parallel_in_flight() = u16::MAX (default, never set)
         // - frame_from_journal.max_parallel_in_flight() = 0 (no parallel actions in this test)
         // This documents the architectural difference between the two paths.
+    }
+
+    // SR-005: dimension derivation must include all slot-bearing tail events.
+    #[test]
+    fn derive_dimensions_includes_run_answered_slot() {
+        let run = RunId::new(810);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow: sample_digest(7),
+            slots: Vec::new(),
+            taint: Vec::new(),
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::RunAnswered {
+                run,
+                seq: EventSeq::new(2),
+                slot_idx: SlotIdx::new(7),
+                answer: ConstValue::Bool(false),
+                timestamp: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0)
+                    .expect("epoch"),
+            },
+        ];
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        let Ok(frame) = result else {
+            panic!("hydrate must succeed when RunAnswered supplies slot index, got {result:?}");
+        };
+        assert!(
+            frame.slot_count() > SlotIdx::new(7).get(),
+            "slot_count must cover RunAnswered.slot_idx, got {}",
+            frame.slot_count()
+        );
+    }
+
+    #[test]
+    fn derive_dimensions_includes_action_scheduled_ticket_output() {
+        let run = RunId::new(811);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow: sample_digest(8),
+            slots: Vec::new(),
+            taint: Vec::new(),
+        };
+        let ticket = ActionTicket {
+            run,
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+            idempotency_key: compute_action_idempotency_key(run, SeqNo::new(0), ActionId::new(1)),
+            capacity: 1,
+            mock: MockMarker::default(),
+        };
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::ActionScheduledTicket {
+                run,
+                seq: EventSeq::new(2),
+                ticket,
+                input: SlotIdx::new(0),
+                output: SlotIdx::new(9),
+            },
+        ];
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        let Ok(frame) = result else {
+            panic!("hydrate must succeed when ActionScheduledTicket output is the slot index, got {result:?}");
+        };
+        assert!(
+            frame.slot_count() > SlotIdx::new(9).get(),
+            "slot_count must cover ActionScheduledTicket.output, got {}",
+            frame.slot_count()
+        );
     }
 }

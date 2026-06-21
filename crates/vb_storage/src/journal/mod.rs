@@ -15,6 +15,8 @@ pub(crate) mod replay;
 pub(crate) mod source;
 
 #[cfg(test)]
+mod regression_tests_vb_1rqz7;
+#[cfg(test)]
 mod tests;
 
 pub use self::core::{EventReplayLimit, FjallJournal};

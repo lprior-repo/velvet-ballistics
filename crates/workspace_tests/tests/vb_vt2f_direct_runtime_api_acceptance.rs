@@ -174,7 +174,7 @@ fn relaxed_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -182,7 +182,7 @@ fn strict_config() -> ShardConfig {
     ShardConfig {
         policy: RuntimePolicy::Strict,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
         ..relaxed_config()
     }
 }
@@ -191,7 +191,7 @@ fn trace_starved_config() -> ShardConfig {
     ShardConfig {
         trace_capacity: 1,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
         ..relaxed_config()
     }
 }

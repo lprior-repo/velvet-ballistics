@@ -11,7 +11,7 @@ fn vb1u88_queue_full_at_capacity_boundary() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
@@ -284,5 +284,91 @@ fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully(
     // Then: orphaned timer is cleared without panic
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.is_shutting_down(), true);
+    Ok(())
+}
+
+// =========================================================================
+// RQ-W0-12: drain_for_shutdown must journal WaitCancelled/AskCancelled
+// before clearing the in-memory timer map. Previously the public
+// drain_pending_and_shutdown path bypassed the journaling helper.
+// =========================================================================
+
+#[test]
+fn test_drain_for_shutdown_journals_wait_cancellation_events() -> Result<(), RuntimeError> {
+    // Given: a shard with a run that has a pending Wait timer and a journal
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let config = small_config();
+    let mut shard = Shard::new_with_journal(config, shared)?;
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return Ok(());
+    };
+    let run = super::RunId::new(9101);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // When: drain_for_shutdown is invoked
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+
+    // Then: the journal contains a WaitCancelled event for the run
+    let events = journal.snapshot().expect("journal snapshot should succeed");
+    let wait_cancelled_found = events
+        .iter()
+        .any(|event| matches!(event, RuntimeJournalEvent::WaitCancelled { run: r, .. } if *r == run));
+    assert!(
+        wait_cancelled_found,
+        "durable WaitCancelled event must be present after drain_for_shutdown"
+    );
+    Ok(())
+}
+
+#[test]
+fn test_drain_pending_and_shutdown_journals_timer_cancellations() -> Result<(), RuntimeError> {
+    // Given: a shard with a pending Wait timer and a journal
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let config = small_config();
+    let mut shard = Shard::new_with_journal(config, shared)?;
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return Ok(());
+    };
+    let run = super::RunId::new(9102);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // When: drain_pending_and_shutdown is invoked (RQ-W0-12: previously
+    // bypassed the cancellation journal)
+    assert_eq!(shard.drain_pending_and_shutdown(), Ok(()));
+
+    // Then: pending timers are cleared
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.is_shutting_down(), true);
+
+    // And: the durable journal contains a WaitCancelled event
+    let events = journal.snapshot().expect("journal snapshot should succeed");
+    let wait_cancelled_found = events
+        .iter()
+        .any(|event| matches!(event, RuntimeJournalEvent::WaitCancelled { run: r, .. } if *r == run));
+    assert!(
+        wait_cancelled_found,
+        "durable WaitCancelled event must be journaled by drain_pending_and_shutdown"
+    );
     Ok(())
 }

@@ -46,7 +46,7 @@ impl ReadOnlyJournal {
 
     /// Returns all declared keyspace names.
     #[must_use]
-    pub const fn declared_keyspaces() -> [&'static str; 10] {
+    pub const fn declared_keyspaces() -> [&'static str; 11] {
         FjallJournal::declared_keyspaces()
     }
 

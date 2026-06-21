@@ -13,10 +13,10 @@ use crate::{
         DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
         JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
         PREFIX_INDEX_STATUS, PREFIX_INDEX_WORKFLOW, PREFIX_RECOVERY_STAMP, PREFIX_RUN_EVENT,
-        PREFIX_RUN_HEADER, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE, RECOVERY_STAMP_KEY_BYTES,
-        RUN_ONLY_KEY_BYTES,
+        PREFIX_RUN_HEADER, PREFIX_RUN_SEQ_GAP, PREFIX_RUN_SNAPSHOT, PREFIX_WORKFLOW_SOURCE,
+        RECOVERY_STAMP_KEY_BYTES, RUN_ONLY_KEY_BYTES, RUN_SEQ_GAP_KEY_BYTES,
     },
-    types::EventSeq,
+    types::{EventSeq, IndexStatusState},
 };
 
 // ============================================================================
@@ -70,12 +70,25 @@ pub fn recovery_stamp_key(
     sequenced_run_key(PREFIX_RECOVERY_STAMP, run, seq)
 }
 
+/// Encodes `[0x13][run_id_u64_be][seq_u64_be]` for the `run_seq_gap` keyspace.
+pub fn run_seq_gap_key(
+    run: RunId,
+    seq: EventSeq,
+) -> Result<[u8; RUN_SEQ_GAP_KEY_BYTES], JournalError> {
+    sequenced_run_key(PREFIX_RUN_SEQ_GAP, run, seq)
+}
+
 /// Encodes `[0x30][state_u8][timestamp_u64_be][run_id_u64_be]`.
 pub fn index_status_key(
-    state: crate::types::IndexStatusState,
+    state: IndexStatusState,
     timestamp: u64,
     run: RunId,
 ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
+    if let IndexStatusState::Other(byte) = state {
+        if !IndexStatusState::is_valid_key_byte(byte) {
+            return Err(JournalError::IndexStatusStateCollision { byte });
+        }
+    }
     let mut key = ArrayVec::<u8, INDEX_STATUS_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_STATUS)
         .map_err(|_| JournalError::KeyCapacity)?;
@@ -146,6 +159,7 @@ pub fn encode_key(key: crate::types::StorageKey) -> Result<Vec<u8>, JournalError
         crate::types::StorageKey::RecoveryStamp { run, seq } => {
             recovery_stamp_key(run, seq)?.to_vec()
         }
+        crate::types::StorageKey::RunSeqGap { run, seq } => run_seq_gap_key(run, seq)?.to_vec(),
     };
     Ok(encoded)
 }
@@ -163,6 +177,9 @@ fn sequenced_run_key(
     run: RunId,
     seq: EventSeq,
 ) -> Result<[u8; JOURNAL_KEY_BYTES], JournalError> {
+    if EventSeq::is_reserved_sentinel(seq.get()) {
+        return Err(JournalError::ReservedSeqSentinel);
+    }
     let mut key = ArrayVec::<u8, JOURNAL_KEY_BYTES>::new();
     key.try_push(prefix)
         .map_err(|_| JournalError::KeyCapacity)?;

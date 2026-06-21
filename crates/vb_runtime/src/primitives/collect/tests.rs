@@ -4542,3 +4542,59 @@ fn collect_start_with_i64_source_returns_type_mismatch() -> Result<(), String> {
         )),
     }
 }
+
+// RQ-W0-13 (RP-015): collect_next must validate the observed collector
+// page against the active pagination state before treating an empty list
+// as terminal. Previously a stale or overwritten empty page silently
+// routed execution to `done` instead of surfacing the invariant violation.
+
+#[test]
+fn collect_next_rejects_empty_page_with_active_pagination_state() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+
+    // Build a non-empty source and run collect_start so the pagination
+    // state is recorded.
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+    collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        body,
+        done,
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start failed: {e:?}"))?;
+
+    // Overwrite the collector slot with an empty list (stale corruption).
+    let empty_id = store
+        .insert_list(Box::from([]) as Box<[SlotValue]>)
+        .map_err(|e| format!("insert_list empty failed: {e:?}"))?;
+    run.write_slot(collector, SlotValue::List(empty_id))
+        .map_err(|e| format!("write_slot failed: {e:?}"))?;
+
+    // Now collect_next must surface an InvalidCompiledWorkflow or
+    // CollectPageOrderViolation error rather than silently terminating.
+    let result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
+    match result {
+        Err(EngineError::InvalidCompiledWorkflow { .. })
+        | Err(EngineError::CollectPageOrderViolation { .. }) => Ok(()),
+        other => Err(format!(
+            "expected page-order violation, got {other:?}"
+        )),
+    }
+}

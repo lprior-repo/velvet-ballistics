@@ -58,6 +58,7 @@
             snapshot_interval_steps: 0,
             max_terminal_runs: 16,
             terminal_runs_ttl_ticks: 86_400,
+            max_terminal_outcomes: 100_000,
         }
     }
 
@@ -78,6 +79,7 @@
             snapshot_interval_steps: 0,
             max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
             terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
+            max_terminal_outcomes: crate::shard::bounded_outcomes::DEFAULT_MAX_TERMINAL_OUTCOMES,
         };
         assert_eq!(result, Ok(expected));
         Ok(())
@@ -136,6 +138,7 @@
             snapshot_interval_steps: 0,
             max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
             terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
+            max_terminal_outcomes: crate::shard::bounded_outcomes::DEFAULT_MAX_TERMINAL_OUTCOMES,
         };
         assert_eq!(result, Ok(expected));
         Ok(())
@@ -156,9 +159,166 @@
                 snapshot_interval_steps: 0,
                 max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
                 terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
+                max_terminal_outcomes: crate::shard::bounded_outcomes::DEFAULT_MAX_TERMINAL_OUTCOMES,
             })
         );
         Ok(())
+    }
+
+    // =======================================================================
+    // RQ-W0-15: ShardConfig full validation (new_full constructor and
+    // Shard::new struct-literal bypass closure)
+    // =======================================================================
+
+    #[test]
+    fn config_new_full_accepts_all_valid_fields() -> Result<(), RuntimeError> {
+        let result = ShardConfig::new_full(
+            8,
+            16,
+            32,
+            4,
+            vb_core::policy::RuntimePolicy::Strict,
+            5,
+            100,
+            16,
+            86_400,
+            100_000,
+        );
+        assert_eq!(
+            result,
+            Ok(ShardConfig {
+                command_queue_capacity: 8,
+                trace_capacity: 16,
+                step_budget_per_tick: 32,
+                max_active_runs: 4,
+                policy: vb_core::policy::RuntimePolicy::Strict,
+                coalesce_window_ticks: 5,
+                snapshot_interval_steps: 100,
+                max_terminal_runs: 16,
+                terminal_runs_ttl_ticks: 86_400,
+                max_terminal_outcomes: 100_000,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn config_new_full_rejects_zero_coalesce_window() -> Result<(), RuntimeError> {
+        let result = ShardConfig::new_full(
+            8,
+            16,
+            32,
+            4,
+            vb_core::policy::RuntimePolicy::Strict,
+            0,
+            100,
+            16,
+            86_400,
+            100_000,
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "coalesce_window_ticks_zero",
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn config_new_full_rejects_zero_max_terminal_runs() -> Result<(), RuntimeError> {
+        let result = ShardConfig::new_full(
+            8,
+            16,
+            32,
+            4,
+            vb_core::policy::RuntimePolicy::Strict,
+            1,
+            100,
+            0,
+            86_400,
+            100_000,
+        );
+        assert_eq!(result, Err(RuntimeError::LruRingCapacityZero));
+        Ok(())
+    }
+
+    #[test]
+    fn config_new_full_accepts_zero_snapshot_interval_as_disabled()
+    -> Result<(), RuntimeError> {
+        let result = ShardConfig::new_full(
+            8,
+            16,
+            32,
+            4,
+            vb_core::policy::RuntimePolicy::Strict,
+            1,
+            0,
+            16,
+            86_400,
+            100_000,
+        );
+        assert!(result.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn config_new_full_accepts_zero_ttl_ticks() -> Result<(), RuntimeError> {
+        let result = ShardConfig::new_full(
+            8,
+            16,
+            32,
+            4,
+            vb_core::policy::RuntimePolicy::Strict,
+            1,
+            100,
+            16,
+            0,
+            100_000,
+        );
+        assert!(result.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn shard_new_rejects_struct_literal_with_zero_coalesce_window() {
+        let config = ShardConfig {
+            command_queue_capacity: 8,
+            trace_capacity: 16,
+            step_budget_per_tick: 32,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Strict,
+            coalesce_window_ticks: 0,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: 16,
+            terminal_runs_ttl_ticks: 86_400,
+            max_terminal_outcomes: 16,
+        };
+        let result = Shard::new(config);
+        assert_eq!(
+            result.err(),
+            Some(RuntimeError::UnsupportedOperation {
+                operation: "coalesce_window_ticks_zero",
+            })
+        );
+    }
+
+    #[test]
+    fn shard_new_rejects_struct_literal_with_zero_max_terminal_runs() {
+        let config = ShardConfig {
+            command_queue_capacity: 8,
+            trace_capacity: 16,
+            step_budget_per_tick: 32,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Strict,
+            coalesce_window_ticks: 1,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: 0,
+            terminal_runs_ttl_ticks: 86_400,
+            max_terminal_outcomes: 16,
+        };
+        let result = Shard::new(config);
+        assert_eq!(result.err(), Some(RuntimeError::LruRingCapacityZero));
     }
 
     // =======================================================================

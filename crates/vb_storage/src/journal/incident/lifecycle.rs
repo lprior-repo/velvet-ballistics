@@ -23,44 +23,45 @@ pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str 
 
 /// Derives the final lifecycle state from a sequence of journal events.
 ///
-/// The last event in the sequence determines the final state:
-/// - `RunCancelled` → Cancelled
-/// - `RunResumed` → Active
-/// - `RunRetried` → Active
-/// - `RunAnswered` → Completed
-/// - `RunFinished` → Completed
-/// - `RunFailedEvent` → Failed
+/// The last event in the sequence determines the final state. Every current
+/// `JournalEvent` variant is classified explicitly — no wildcard arm exists.
+/// Adding a new variant to `JournalEvent` will fail to compile here until
+/// the new variant is mapped to an explicit `LifecycleState`, preventing the
+/// silent-default-to-`Active` behaviour previously masked by the wildcard.
 ///
-/// If no events exist, defaults to Pending.
+/// If no events exist, defaults to `Pending`.
 #[must_use]
-#[allow(unreachable_patterns)]
 pub fn derive_lifecycle_state_from_events(
     events: &[crate::events::JournalEvent],
 ) -> LifecycleState {
-    events
-        .last()
-        .map(|e| match e {
+    match events.last() {
+        None => LifecycleState::Pending,
+        Some(event) => match event {
             crate::events::JournalEvent::RunCancelled { .. } => LifecycleState::Cancelled,
+            crate::events::JournalEvent::RunKilled { .. } => LifecycleState::Cancelled,
+            crate::events::JournalEvent::RunFinished { .. } => LifecycleState::Completed,
+            crate::events::JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
+            crate::events::JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
             crate::events::JournalEvent::RunResumed { .. } => LifecycleState::Active,
             crate::events::JournalEvent::RunRetried { .. } => LifecycleState::Active,
-            crate::events::JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
-            crate::events::JournalEvent::RunFinished { .. } => LifecycleState::Completed,
-            crate::events::JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
             crate::events::JournalEvent::RunAccepted { .. } => LifecycleState::Active,
             crate::events::JournalEvent::RunAdmission { .. } => LifecycleState::Active,
             crate::events::JournalEvent::StepStarted { .. } => LifecycleState::Active,
             crate::events::JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
             crate::events::JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
-            crate::events::JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
+            crate::events::JournalEvent::ActionScheduledTicket { .. } => LifecycleState::Active,
             crate::events::JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
+            crate::events::JournalEvent::ActionCompletedEnvelope { .. } => LifecycleState::Active,
             crate::events::JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
+            crate::events::JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
             crate::events::JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
+            crate::events::JournalEvent::WaitCancelledEvent { .. } => LifecycleState::Active,
             crate::events::JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
             crate::events::JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
+            crate::events::JournalEvent::AskCancelledEvent { .. } => LifecycleState::Active,
             crate::events::JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
-            _ => LifecycleState::Active,
-        })
-        .unwrap_or(LifecycleState::Pending)
+        },
+    }
 }
 
 #[cfg(test)]

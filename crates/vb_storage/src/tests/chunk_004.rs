@@ -170,7 +170,11 @@ fn keyspace_profiles_return_distinct_configs() {
 fn journal_opens_declared_keyspaces_and_round_trips_typed_records() {
     let temp_dir = tempfile::tempdir().expect("setup: tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-    assert_eq!(FjallJournal::declared_keyspaces().len(), 10);
+    assert_eq!(
+        FjallJournal::declared_keyspaces().len(),
+        11,
+        "run_seq_gap was added in vb-1rqz7.1, raising the declared-keyspaces count to 11"
+    );
 
     let source_bytes = vec![b'n', b'a', b'm', b'e'];
     let workflow_digest = WorkflowDigest::from_bytes(blake3::hash(&source_bytes).into());

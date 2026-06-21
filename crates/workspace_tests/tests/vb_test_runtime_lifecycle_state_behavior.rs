@@ -189,7 +189,7 @@ fn test_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -1100,7 +1100,7 @@ fn submit_returns_exact_queue_full_on_full_queue() -> Result<(), String> {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
     };
     let runtime = Runtime::new(shard_count(1)?, config).expect("runtime config is valid");
 
@@ -1406,7 +1406,7 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,
+        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
     };
     let mut runtime = Runtime::new(shard_count(1)?, config).expect("runtime config is valid");
 

@@ -29,6 +29,13 @@ pub enum IpcPayload {
     CancelRun {
         /// Target run identifier.
         run_id: RunId,
+        /// Optional caller-supplied reason recorded in the journal entry.
+        ///
+        /// When `None`, the cancellation is recorded with no reason string.
+        /// When `Some`, the reason is passed through to
+        /// [`Runtime::cancel_run_with_reason`] so it lands on the durable
+        /// `RunCancelled` journal event (RQ-W0-11).
+        reason: Option<Vec<u8>>,
     },
     /// Inspect a run.
     InspectRun {
@@ -134,6 +141,8 @@ pub enum IpcTraceEventKind {
     RunFailed { run: RunId },
     /// A run was cancelled.
     RunCancelled { run: RunId },
+    /// A run was killed (RQ-W0-09).
+    RunKilled { run: RunId },
     /// An unknown event (for future compatibility).
     #[doc(hidden)]
     Unknown,

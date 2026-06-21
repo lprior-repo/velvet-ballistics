@@ -194,7 +194,7 @@ impl Shard {
         self.terminal_runs_remove(run)?;
         self.terminal_outcomes_remove(run);
         self.run_state_insert(run, state);
-        self.apply(run, RuntimeEvent::Submit);
+        let _ = self.apply(run, RuntimeEvent::Submit);
         match self.drive_run(run) {
             Ok(()) => Ok(()),
             Err(error) => {

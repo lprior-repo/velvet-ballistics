@@ -2,9 +2,6 @@
 //! Tail event application for RunFrame hydration.
 
 use crate::JournalEvent;
-use crate::recovery::event_replay::taint::{
-    SlotTaintResolution, observe_slot_taint_read, resolve_slot_taint_read,
-};
 use crate::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryResult, types::ActionReplayEffect,
 };
@@ -169,24 +166,26 @@ pub(crate) fn apply_tail_events(
                 sub_tail_parallel_in_flight(frame, *step)?;
                 executed = executed.saturating_add(1);
             }
-            JournalEvent::SlotWrittenEvent { slot, value, .. } => {
+            JournalEvent::SlotWrittenEvent { slot, value, extra, .. } => {
                 if let Some(bytes) = value {
-                    let slot_value = postcard::from_bytes(bytes).map_err(|_| {
+                    let slot_value = postcard::from_bytes::<SlotValue>(bytes).map_err(|_| {
                         RecoveryError::ReplayDivergence {
                             step: StepIdx::ZERO,
                             detail: format!("slot value decode failed for slot {:?}", slot),
                         }
                     })?;
-                    let taint = match resolve_slot_taint_read(observe_slot_taint_read(
-                        frame.read_taint(*slot),
-                    )) {
-                        SlotTaintResolution::Use(taint) => taint,
-                        SlotTaintResolution::FailClosed => {
-                            return Err(RecoveryError::SlotTaintReadFailed { slot: *slot });
-                        }
-                    };
+                    // SR-003: decode the slot taint from the persisted envelope
+                    // (when present) instead of inheriting whatever happens to be
+                    // in the frame. This restores parity with the accumulator path
+                    // and ensures Secret-derived slot writes are not silently
+                    // downgraded to Clean during events-only hydration.
+                    let recovered = crate::recovery::replay::summary::slots::taint::recovered_slot_taint(
+                        *slot,
+                        slot_value,
+                        extra.as_ref(),
+                    )?;
                     frame
-                        .write_slot_with_taint(*slot, slot_value, taint)
+                        .write_slot_with_taint(*slot, slot_value, recovered.taint)
                         .map_err(|_| RecoveryError::ReplayDivergence {
                             step: StepIdx::ZERO,
                             detail: "slot write out of bounds".to_owned(),

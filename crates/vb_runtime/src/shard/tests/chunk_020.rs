@@ -100,7 +100,7 @@ fn shard_capacity_one_submit_cancel_submit_sequence() -> Result<(), RuntimeError
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
 
@@ -237,6 +237,7 @@ fn shard_config_new_at_max_capacity_boundary() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 100_000,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
         
 })
     );
@@ -263,6 +264,7 @@ fn shard_config_new_at_minimum_capacity() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 100_000,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
         
 })
     );

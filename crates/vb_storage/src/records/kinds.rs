@@ -75,6 +75,14 @@ pub enum RecordKind {
     /// the journal-event magic (`"VBJE"`) — so that recovery writes can
     /// be admitted and rejected independently of the source/journal paths.
     RecoveryStamp = 7,
+    /// Sequence-gap marker (vb-1rqz7.1 / SJ-002 fix).
+    ///
+    /// Written by `inject_seq_gap` into the dedicated `run_seq_gap`
+    /// keyspace with magic `MAGIC_JOURNAL_SEQUENCE_GAP`. The marker is
+    /// never visible to the journal-event reader, so it cannot be
+    /// mis-decoded as `RunCancelled` (the prior bug) or any other
+    /// lifecycle event.
+    SequenceGap = 60,
 }
 
 impl RecordKind {

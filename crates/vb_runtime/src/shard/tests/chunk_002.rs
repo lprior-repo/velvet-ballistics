@@ -11,7 +11,7 @@ fn shard_rejects_active_run_capacity_overflow() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
@@ -51,7 +51,7 @@ fn inspect_command_stores_retrievable_snapshot() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
@@ -95,7 +95,7 @@ fn enqueue_shutdown_sets_shutting_down_flag() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     assert_eq!(shard.is_shutting_down(), false);
@@ -139,7 +139,7 @@ fn counters_reflect_submitted_after_submit_tick() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
@@ -171,7 +171,7 @@ fn inspect_nonexistent_run_returns_not_found() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     assert_eq!(

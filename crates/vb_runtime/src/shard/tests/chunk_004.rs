@@ -12,7 +12,7 @@ fn submit_returns_active_run_capacity_exceeded_at_limit() -> Result<(), RuntimeE
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(wf) = suspended_workflow() else {

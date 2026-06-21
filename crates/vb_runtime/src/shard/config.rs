@@ -13,6 +13,7 @@ use crate::frame_pool::FramePool;
 use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::TraceRing;
 
+use super::bounded_outcomes::{BoundedOutcomeIndex, DEFAULT_MAX_TERMINAL_OUTCOMES};
 use super::lru_ring::{DEFAULT_MAX_TERMINAL_RUNS, DEFAULT_TERMINAL_RUNS_TTL_TICKS, LruRing};
 
 // Re-export from queue for ShardConfig
@@ -68,6 +69,14 @@ pub struct ShardConfig {
     /// The default of `86_400` matches a 1-tick/second operating mode;
     /// operators using faster tick rates should scale accordingly.
     pub terminal_runs_ttl_ticks: u64,
+    /// Bounded capacity for the terminal-outcomes side table (RQ-W0-10).
+    ///
+    /// When the outcome map reaches this capacity, the oldest entry is
+    /// evicted FIFO before a new insert is recorded. Defaults to
+    /// `DEFAULT_MAX_TERMINAL_OUTCOMES` (matching `max_terminal_runs`); a
+    /// value of `0` is treated as `1` so the map remains usable for
+    /// minimal configurations.
+    pub max_terminal_outcomes: usize,
 }
 
 /// Returns true when a trace ring capacity can retain at least one trace event.
@@ -91,20 +100,37 @@ pub const fn is_valid_coalesce_window_ticks(count: u32) -> bool {
     count > 0
 }
 
+/// Returns true when a `max_terminal_runs` capacity is positive.
+///
+/// A zero-capacity terminal-runs ring is rejected at the runtime boundary
+/// instead of being silently normalised by `LruRing::try_new`.
+#[must_use]
+pub const fn is_valid_max_terminal_runs(capacity: usize) -> bool {
+    capacity > 0
+}
+
 /// Validates all `ShardConfig` capacity inputs and returns the first failure
 /// as a typed `RuntimeError`. Rejects `command_queue_capacity == 0`,
-/// `trace_capacity == 0`, `step_budget_per_tick == 0`, and
-/// `max_active_runs == 0`. Also rejects `command_queue_capacity` values
-/// above `MAX_COMMAND_QUEUE_CAPACITY`.
+/// `trace_capacity == 0`, `step_budget_per_tick == 0`,
+/// `max_active_runs == 0`, `coalesce_window_ticks == 0`, and
+/// `max_terminal_runs == 0`. Also rejects `command_queue_capacity` values
+/// above `MAX_COMMAND_QUEUE_CAPACITY`. `snapshot_interval_steps` and
+/// `terminal_runs_ttl_ticks` are accepted at any value: `0` disables
+/// periodic snapshots / TTL expiry respectively.
 ///
 /// Exposed at the module level so runtime construction can call it before
 /// `Shard` allocation, closing the gap where struct-literal config bypassed
-/// `ShardConfig::new`.
+/// `ShardConfig::new` and `Shard::new`. RQ-W0-15: previously only the first
+/// four fields were checked, leaving `coalesce_window_ticks` and the
+/// terminal-runs ring open to silent invalid configuration.
+#[allow(clippy::too_many_arguments)]
 pub fn validate_shard_config_inputs(
     command_queue_capacity: usize,
     trace_capacity: usize,
     step_budget_per_tick: u64,
     max_active_runs: usize,
+    coalesce_window_ticks: u32,
+    max_terminal_runs: usize,
 ) -> Result<(), crate::RuntimeError> {
     if !is_valid_command_queue_capacity(command_queue_capacity) {
         return Err(crate::RuntimeError::CommandQueueCapacityExceeded {
@@ -124,6 +150,14 @@ pub fn validate_shard_config_inputs(
     }
     if max_active_runs == 0 {
         return Err(crate::RuntimeError::ActiveRunCapacityZero);
+    }
+    if !is_valid_coalesce_window_ticks(coalesce_window_ticks) {
+        return Err(crate::RuntimeError::UnsupportedOperation {
+            operation: "coalesce_window_ticks_zero",
+        });
+    }
+    if !is_valid_max_terminal_runs(max_terminal_runs) {
+        return Err(crate::RuntimeError::LruRingCapacityZero);
     }
     Ok(())
 }
@@ -149,6 +183,7 @@ impl Default for ShardConfig {
             snapshot_interval_steps: 0,
             max_terminal_runs: DEFAULT_MAX_TERMINAL_RUNS,
             terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
+            max_terminal_outcomes: DEFAULT_MAX_TERMINAL_OUTCOMES,
         }
     }
 }
@@ -225,7 +260,13 @@ pub struct Shard {
     pub(crate) terminal_runs: LruRing<RunId>,
     /// Recorded terminal outcome per run id, populated when a run is moved
     /// into `terminal_runs` via cancel/kill/finish/fail.
-    pub(crate) terminal_outcomes: IndexMap<RunId, TerminalOutcome>,
+    ///
+    /// Bounded by `max_terminal_outcomes` to prevent unbounded growth when
+    /// `terminal_runs_insert` force-grows past `max_terminal_runs` under
+    /// sustained load. Newest outcomes win on collision; oldest outcomes
+    /// are evicted FIFO when capacity is reached (RQ-W0-10, companion to
+    /// MEM-01).
+    pub(crate) terminal_outcomes: BoundedOutcomeIndex,
     /// Next durable journal sequence by run, owned by this shard.
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
@@ -241,7 +282,11 @@ pub struct Shard {
     pub(crate) current_tick: TimerTick,
     pub(crate) artifact_store: crate::admission::SharedAcceptedArtifactStore,
     pub(crate) inspect_response: Option<InspectResponse>,
-    pub(crate) shutting_down: bool,
+    /// Atomic shutdown flag. Using `AtomicBool` makes the
+    /// `enqueue`/`tick` race-free: producers can observe the same
+    /// transition as the dispatcher without holding the dispatcher
+    /// mutex. The dispatcher remains the only writer.
+    pub(crate) shutting_down: std::sync::atomic::AtomicBool,
     pub(crate) journal: SharedRuntimeJournal,
     /// Remaining ticks in the current coalesce window.
     ///

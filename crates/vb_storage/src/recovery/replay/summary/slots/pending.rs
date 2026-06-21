@@ -52,6 +52,9 @@ fn recover_pending_actions_from_events_inner(
             JournalEvent::ActionCompletedEnvelope { ticket, .. } => {
                 pending.remove(&(ticket.action, ticket.step));
             }
+            JournalEvent::ActionFailedEvent { step, action, .. } => {
+                pending.remove(&(*action, *step));
+            }
             // All other events are irrelevant for pending actions tracking
             _ => {}
         }

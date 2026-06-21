@@ -25,6 +25,8 @@ struct RuntimeMetricTotals {
     runs_waiting: u32,
     runs_failed_total: u64,
     runs_finished_total: u64,
+    runs_cancelled_total: u64,
+    runs_killed_total: u64,
     steps_total: u64,
 }
 
@@ -38,6 +40,12 @@ impl RuntimeMetricTotals {
         self.runs_finished_total = self
             .runs_finished_total
             .saturating_add(metrics.counters.runs_completed);
+        self.runs_cancelled_total = self
+            .runs_cancelled_total
+            .saturating_add(metrics.counters.runs_cancelled);
+        self.runs_killed_total = self
+            .runs_killed_total
+            .saturating_add(metrics.counters.runs_killed);
         self.steps_total = self
             .steps_total
             .saturating_add(metrics.counters.steps_executed);
@@ -50,6 +58,8 @@ impl RuntimeMetricTotals {
             runs_waiting: self.runs_waiting,
             runs_failed_total: self.runs_failed_total,
             runs_finished_total: self.runs_finished_total,
+            runs_cancelled_total: self.runs_cancelled_total,
+            runs_killed_total: self.runs_killed_total,
             steps_total: self.steps_total,
         }
     }
@@ -83,6 +93,8 @@ impl Runtime {
             runs_submitted: 0,
             runs_completed: 0,
             runs_failed: 0,
+            runs_cancelled: 0,
+            runs_killed: 0,
             steps_executed: 0,
         };
         for shard in &self.shards {
@@ -90,6 +102,8 @@ impl Runtime {
             total.runs_submitted = total.runs_submitted.saturating_add(snap.runs_submitted);
             total.runs_completed = total.runs_completed.saturating_add(snap.runs_completed);
             total.runs_failed = total.runs_failed.saturating_add(snap.runs_failed);
+            total.runs_cancelled = total.runs_cancelled.saturating_add(snap.runs_cancelled);
+            total.runs_killed = total.runs_killed.saturating_add(snap.runs_killed);
             total.steps_executed = total.steps_executed.saturating_add(snap.steps_executed);
         }
         total

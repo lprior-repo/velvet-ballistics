@@ -225,6 +225,17 @@ pub enum JournalError {
         /// The invalid run identifier.
         run: RunId,
     },
+    /// `IndexStatusState::Other(v)` byte collides with a named variant
+    /// discriminant in the storage key.
+    #[error("index status state byte {byte} collides with named variant")]
+    IndexStatusStateCollision {
+        /// Byte value that would have collided with a named variant.
+        byte: u8,
+    },
+    /// `EventSeq` value `u64::MAX` is reserved by the key decoder and
+    /// therefore must not be encoded into a storage key.
+    #[error("event sequence u64::MAX is reserved and cannot be encoded")]
+    ReservedSeqSentinel,
     /// Runtime active run capacity is exhausted.
     #[error("active run capacity exceeded")]
     ActiveRunCapacityExceeded,
@@ -298,3 +309,131 @@ impl From<std::io::Error> for JournalError {
         JournalError::UnexpectedEof
     }
 }
+
+/// Manual `PartialEq` that compares only the variant discriminant and
+/// structurally-comparable fields. Variants whose inner payload is a foreign
+/// error type that does not implement `PartialEq` (`fjall::Error`,
+/// `std::io::Error`, `TrimError`, `ArtifactInvalidSource`) are treated as
+/// equal when their discriminant matches.
+impl PartialEq for JournalError {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+            && match (self, other) {
+                (Self::DuplicateEvent { run: a, seq: b }, Self::DuplicateEvent { run: c, seq: d }) => {
+                    a == c && b == d
+                }
+                (
+                    Self::WrongRun {
+                        expected: a,
+                        actual: b,
+                    },
+                    Self::WrongRun {
+                        expected: c,
+                        actual: d,
+                    },
+                ) => a == c && b == d,
+                (
+                    Self::SequenceGap {
+                        expected: a,
+                        actual: b,
+                    },
+                    Self::SequenceGap {
+                        expected: c,
+                        actual: d,
+                    },
+                ) => a == c && b == d,
+                (Self::BadMagic { found: a }, Self::BadMagic { found: b }) => a == b,
+                (
+                    Self::UnsupportedSchemaVersion { version: a },
+                    Self::UnsupportedSchemaVersion { version: b },
+                ) => a == b,
+                (
+                    Self::MigrationRequired { from: a, to: b },
+                    Self::MigrationRequired { from: c, to: d },
+                ) => a == c && b == d,
+                (Self::UnknownRecordKind { kind: a }, Self::UnknownRecordKind { kind: b }) => {
+                    a == b
+                }
+                (
+                    Self::RecordKindFamilyMismatch { magic: a, kind: b },
+                    Self::RecordKindFamilyMismatch { magic: c, kind: d },
+                ) => a == c && b == d,
+                (Self::HeaderLengthMismatch { found: a }, Self::HeaderLengthMismatch { found: b }) => {
+                    a == b
+                }
+                (
+                    Self::PayloadTooLarge { len: a, max: b },
+                    Self::PayloadTooLarge { len: c, max: d },
+                ) => a == c && b == d,
+                (Self::PayloadLenOverflow { len: a }, Self::PayloadLenOverflow { len: b }) => {
+                    a == b
+                }
+                (
+                    Self::UnexpectedTrailingBytes {
+                        declared_end: a,
+                        actual_len: b,
+                    },
+                    Self::UnexpectedTrailingBytes {
+                        declared_end: c,
+                        actual_len: d,
+                    },
+                ) => a == c && b == d,
+                (Self::InvalidGateCount { found: a }, Self::InvalidGateCount { found: b }) => {
+                    a == b
+                }
+                (
+                    Self::MissingRequiredProofFlag { flag: a },
+                    Self::MissingRequiredProofFlag { flag: b },
+                ) => a == b,
+                (Self::ArtifactNotFound { digest: a }, Self::ArtifactNotFound { digest: b }) => {
+                    a == b
+                }
+                (Self::MetadataMutation { digest: a }, Self::MetadataMutation { digest: b }) => {
+                    a == b
+                }
+                (Self::InvalidRunId { run: a }, Self::InvalidRunId { run: b }) => a == b,
+                (
+                    Self::IndexStatusStateCollision { byte: a },
+                    Self::IndexStatusStateCollision { byte: b },
+                ) => a == b,
+                (
+                    Self::TooManyEvents {
+                        run: a,
+                        limit: b,
+                        observed: c,
+                    },
+                    Self::TooManyEvents {
+                        run: d,
+                        limit: e,
+                        observed: f,
+                    },
+                ) => a == d && b == e && c == f,
+                (
+                    Self::ReplayAllocationFailed {
+                        run: a,
+                        requested: b,
+                    },
+                    Self::ReplayAllocationFailed {
+                        run: c,
+                        requested: d,
+                    },
+                ) => a == c && b == d,
+                (
+                    Self::JournalBatchBytesExceeded {
+                        attempted: a,
+                        limit: b,
+                    },
+                    Self::JournalBatchBytesExceeded {
+                        attempted: c,
+                        limit: d,
+                    },
+                ) => a == c && b == d,
+                (Self::InputTooLarge { len: a, max: b }, Self::InputTooLarge { len: c, max: d }) => {
+                    a == c && b == d
+                }
+                _ => true,
+            }
+    }
+}
+
+impl Eq for JournalError {}

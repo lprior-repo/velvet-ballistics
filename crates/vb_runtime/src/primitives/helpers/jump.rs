@@ -18,10 +18,13 @@ pub(crate) fn jump_to(
 /// Jumps to a step body, explicitly admitting a completed body through Pending
 /// before marking it [`Running`][vb_core::frame::StepState::Running].
 ///
-/// Terminal states (Succeeded, Failed, Cancelled, Skipped) are absorbing for
-/// direct transitions. Loop body re-entry uses the explicit admission path
-/// `Succeeded -> Pending -> Running` via `mark_pending` followed by
-/// `mark_running`; the direct Succeeded->Running edge is not valid.
+/// Terminal states (`Failed`, `Cancelled`, `Skipped`) are absorbing and
+/// re-entering them via a body jump is an internal invariant violation —
+/// return [`EngineError::InternalInvariantViolation`] for those cases so
+/// the lifecycle FSM rejects the path instead of silently pointing the
+/// program counter at an unexecutable step. Only `Succeeded` admits a
+/// reset to `Pending -> Running` via the explicit admission path used by
+/// loop re-entry (RQ-W0-13, RP-013).
 ///
 /// [`Running`][vb_core::frame::StepState::Running]: vb_core::frame::StepState::Running
 pub(crate) fn jump_to_body(
@@ -29,11 +32,21 @@ pub(crate) fn jump_to_body(
     body: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let current = run.step_state(body)?;
-    if current == vb_core::frame::StepState::Succeeded {
-        run.mark_pending(body)?;
-        run.mark_running(body)?;
+    match current {
+        vb_core::frame::StepState::Succeeded => {
+            run.mark_pending(body)?;
+            run.mark_running(body)?;
+            jump_to(run, body)
+        }
+        vb_core::frame::StepState::Failed
+        | vb_core::frame::StepState::Cancelled
+        | vb_core::frame::StepState::Skipped => Err(EngineError::InternalInvariantViolation {
+            reason: "jump_to_body on terminal step",
+        }),
+        // Pending, Running, Waiting, Asking all permit a body jump without
+        // re-admission: the engine already owns the step lifecycle.
+        _ => jump_to(run, body),
     }
-    jump_to(run, body)
 }
 
 /// Jumps to the next step, which must be present.

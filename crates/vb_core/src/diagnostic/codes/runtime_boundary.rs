@@ -213,4 +213,16 @@ pub(super) const ENTRIES: &[super::CodeEntry] = &[
         category: super::CodeCategory::RuntimeBoundary,
         deprecated: false,
     },
+    super::CodeEntry {
+        symbolic: "JOURNAL_INDEX_STATUS_STATE_COLLISION",
+        numeric: 0x4038,
+        category: super::CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
+    super::CodeEntry {
+        symbolic: "JOURNAL_RESERVED_SEQ_SENTINEL",
+        numeric: 0x4039,
+        category: super::CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
 ];

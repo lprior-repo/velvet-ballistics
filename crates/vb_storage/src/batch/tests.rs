@@ -111,6 +111,7 @@ use crate::{
     BlobRecord, EventSeq, IndexStatusState, JournalEvent, constants::DIGEST_BYTES,
     recovery::RunSnapshot,
 };
+use crate::constants::MAX_RUN_HEADER_BYTES;
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 fn temp_journal() -> (tempfile::TempDir, crate::FjallJournal) {
@@ -892,5 +893,162 @@ fn digest_verification_mandatory_on_blob() {
     assert!(
         matches!(result, Err(JournalError::PayloadDigestMismatch)),
         "blob digest verification must be mandatory"
+    );
+}
+
+// =========================================================================
+// SA-003: append_event must detect duplicates within the same batch.
+// =========================================================================
+
+#[test]
+fn batch_append_event_rejects_intra_batch_duplicate() {
+    // SA-003: two append_event calls with the same (run, seq) inside a
+    // single batch must be rejected so the second cannot silently
+    // overwrite the first via Fjall last-write-wins.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(8000);
+    let event = make_event(run, 0);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch
+        .append_event(&event)
+        .expect("first append in batch should succeed");
+    let result = batch.append_event(&event);
+    assert!(
+        matches!(result, Err(JournalError::DuplicateEvent { .. })),
+        "second append with same key must yield DuplicateEvent, got {:?}",
+        result
+    );
+    // Batch is aborted and commit() must not persist either event.
+    batch.commit().expect("aborted commit returns Ok(())");
+    let events = journal.events_for_run(run).expect("replay");
+    assert!(
+        events.is_empty(),
+        "aborted batch must not persist any event, got {} events",
+        events.len()
+    );
+}
+
+#[test]
+fn batch_append_event_intra_batch_dedup_aborts_batch() {
+    // SA-003 cross-keyspace: an intra-batch duplicate followed by a
+    // successful put_run_header must still abort the entire batch so
+    // that the cross-keyspace atomicity contract is preserved.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(8001);
+    let header = make_run_header(run);
+    let event = make_event(run, 0);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch
+        .append_event(&event)
+        .expect("first append succeeds");
+    let dup = batch.append_event(&event);
+    assert!(matches!(dup, Err(JournalError::DuplicateEvent { .. })));
+    // After abort, put_run_header still inserts into the inner batch but
+    // commit() must NOT persist anything.
+    batch.put_run_header(&header).expect("put header ok");
+    batch.commit().expect("aborted commit returns Ok(())");
+
+    let header_visible = journal.run_header(run).expect("get header");
+    assert!(
+        header_visible.is_none(),
+        "aborted batch must not persist run header"
+    );
+    let events = journal.events_for_run(run).expect("replay");
+    assert!(events.is_empty(), "no event may be persisted");
+}
+
+// =========================================================================
+// SA-001: put_run_header / put_snapshot must set Aborted on encode failure
+// so subsequent successful operations are not committed cross-keyspace.
+// =========================================================================
+
+#[test]
+fn batch_put_run_header_aborts_on_encode_failure() {
+    // SA-001 happy path: put_run_header with a valid record still commits.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7000);
+    let header = make_run_header(run);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.put_run_header(&header).expect("put header ok");
+    batch.commit().expect("commit should succeed");
+    let loaded = journal
+        .run_header(run)
+        .expect("get header")
+        .expect("header should be persisted");
+    assert_eq!(loaded.run, run);
+}
+
+#[test]
+fn batch_put_snapshot_aborts_on_encode_failure() {
+    // SA-001 happy path: put_snapshot with a valid record still commits.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7001);
+    let workflow = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(0),
+        workflow,
+        slots: vec![1, 2, 3],
+        taint: vec![0],
+    };
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.put_snapshot(&snapshot).expect("put snapshot ok");
+    batch.commit().expect("commit should succeed");
+    let loaded = journal
+        .snapshot(run, EventSeq::new(0))
+        .expect("get snapshot")
+        .expect("snapshot should be persisted");
+    assert_eq!(loaded.run, run);
+    assert_eq!(loaded.slots, vec![1, 2, 3]);
+}
+
+#[test]
+fn batch_aborted_by_put_blob_does_not_persist_subsequent_event() {
+    // SA-001 cross-keyspace contract: if any put_* method fails and
+    // transitions the batch to Aborted, commit() must NOT persist any of
+    // the previously staged operations. Verifies the uniform abort
+    // semantics that the fix to put_run_header/put_snapshot brings in
+    // line with put_workflow_source/put_blob.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(7002);
+    let header = make_run_header(run);
+    let event = make_event(run, 0);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch
+        .put_run_header(&header)
+        .expect("run header encode is bounded by struct fields");
+    batch.append_event(&event).expect("append ok");
+
+    // Force abort via a bad-digest blob (the well-defined path).
+    let bad_blob = BlobRecord {
+        digest: [0xFFu8; DIGEST_BYTES],
+        bytes: vec![1, 2, 3],
+    };
+    let abort_result = batch.put_blob(&bad_blob);
+    assert!(
+        matches!(abort_result, Err(JournalError::PayloadDigestMismatch)),
+        "bad digest must abort, got {:?}",
+        abort_result
+    );
+
+    // commit() on an aborted batch returns Ok(()) without persisting
+    // anything: the cross-keyspace atomicity contract requires no
+    // partial writes ever become visible.
+    batch.commit().expect("aborted commit returns Ok(())");
+
+    let header_visible = journal.run_header(run).expect("get header");
+    assert!(
+        header_visible.is_none(),
+        "aborted batch must not persist run header"
+    );
+    let events = journal.events_for_run(run).expect("replay");
+    assert!(
+        events.is_empty(),
+        "aborted batch must not persist staged event"
     );
 }

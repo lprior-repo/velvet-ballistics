@@ -103,7 +103,7 @@ fn shard_fill_queue_to_capacity_returns_queue_full() -> Result<(), RuntimeError>
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     // When filling the queue exactly
@@ -185,7 +185,7 @@ fn shard_step_budget_zero_still_submits_but_does_not_drive() -> Result<(), Runti
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {

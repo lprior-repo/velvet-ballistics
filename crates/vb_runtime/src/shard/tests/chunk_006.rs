@@ -178,7 +178,7 @@ fn shard_config_equality_differs() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     // Then they are not equal
     assert_ne!(a, b);

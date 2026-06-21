@@ -134,6 +134,7 @@ fn shard_config_new_accepts_max_step_budget() -> Result<(), RuntimeError> {
         snapshot_interval_steps: 0,
         max_terminal_runs: 100_000,
         terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
         
 })
     );

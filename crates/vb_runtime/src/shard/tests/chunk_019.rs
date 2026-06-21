@@ -63,7 +63,7 @@ fn shard_submit_after_full_cancel_resets_capacity() -> Result<(), RuntimeError> 
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
 

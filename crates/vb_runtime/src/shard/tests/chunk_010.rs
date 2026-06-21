@@ -52,7 +52,7 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() -> Result<(
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
@@ -192,7 +192,7 @@ fn shard_queue_full_prevents_further_command_submission() -> Result<(), RuntimeE
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let shard = Shard::new(config)?;
     // When filling the queue with 2 commands
@@ -219,7 +219,7 @@ fn shard_active_run_capacity_exhausted_returns_precise_capacity_error() -> Resul
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    
+        max_terminal_outcomes: 100_000,
 };
     let mut shard = Shard::new(config)?;
     let Some(wf1) = suspended_workflow() else {
