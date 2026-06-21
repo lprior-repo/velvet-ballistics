@@ -3,6 +3,8 @@
 //! This module provides structured output envelopes with schema_version and kind fields.
 //! All JSON/JSONL outputs follow the envelope discipline defined in contract.md.
 //!
+
+use std::str::FromStr;
 //! ## Contract Clauses
 //! - INV-002: schema_version field is never empty string
 //! - INV-003: kind field is stable and matches registered constants
@@ -90,25 +92,33 @@ impl Kind {
     /// Parse a Kind from its string representation.
     #[allow(dead_code)]
     pub(crate) fn from_str(s: &str) -> Option<Kind> {
+        s.parse().ok()
+    }
+}
+
+impl FromStr for Kind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            kind::VERIFICATION_REPORT => Some(Kind::VerificationReport),
-            kind::DIAGNOSTIC_REPORT => Some(Kind::DiagnosticReport),
-            kind::WORKFLOW_EXPLANATION => Some(Kind::WorkflowExplanation),
-            kind::WORKFLOW_GRAPH => Some(Kind::WorkflowGraph),
-            kind::SIMULATION_REPORT => Some(Kind::SimulationReport),
-            kind::SUBMIT_RUN_RESULT => Some(Kind::SubmitRunResult),
-            kind::RUN_INSPECTION => Some(Kind::RunInspection),
-            kind::RUN_EVENTS => Some(Kind::RunEvents),
-            kind::REPLAY_REPORT => Some(Kind::ReplayReport),
-            kind::INCIDENT_REPORT => Some(Kind::IncidentReport),
-            kind::ACTION_LIST => Some(Kind::ActionList),
-            kind::ACTION_DESCRIPTION => Some(Kind::ActionDescription),
-            kind::DOCTOR_REPORT => Some(Kind::DoctorReport),
-            kind::AI_CONTEXT_PACKET => Some(Kind::AiContextPacket),
-            kind::CLI_STATUS => Some(Kind::CliStatus),
-            kind::SYSTEM_STATUS => Some(Kind::SystemStatus),
-            kind::AGENT_CONTEXT => Some(Kind::AgentContext),
-            _ => None,
+            kind::VERIFICATION_REPORT => Ok(Kind::VerificationReport),
+            kind::DIAGNOSTIC_REPORT => Ok(Kind::DiagnosticReport),
+            kind::WORKFLOW_EXPLANATION => Ok(Kind::WorkflowExplanation),
+            kind::WORKFLOW_GRAPH => Ok(Kind::WorkflowGraph),
+            kind::SIMULATION_REPORT => Ok(Kind::SimulationReport),
+            kind::SUBMIT_RUN_RESULT => Ok(Kind::SubmitRunResult),
+            kind::RUN_INSPECTION => Ok(Kind::RunInspection),
+            kind::RUN_EVENTS => Ok(Kind::RunEvents),
+            kind::REPLAY_REPORT => Ok(Kind::ReplayReport),
+            kind::INCIDENT_REPORT => Ok(Kind::IncidentReport),
+            kind::ACTION_LIST => Ok(Kind::ActionList),
+            kind::ACTION_DESCRIPTION => Ok(Kind::ActionDescription),
+            kind::DOCTOR_REPORT => Ok(Kind::DoctorReport),
+            kind::AI_CONTEXT_PACKET => Ok(Kind::AiContextPacket),
+            kind::CLI_STATUS => Ok(Kind::CliStatus),
+            kind::SYSTEM_STATUS => Ok(Kind::SystemStatus),
+            kind::AGENT_CONTEXT => Ok(Kind::AgentContext),
+            _ => Err(()),
         }
     }
 }
@@ -203,13 +213,13 @@ mod tests {
 
     #[test]
     fn test_kind_from_str() {
-        assert_eq!(Kind::from_str("CliStatus"), Some(Kind::CliStatus));
-        assert_eq!(Kind::from_str("SystemStatus"), Some(Kind::SystemStatus));
+        assert_eq!(Kind::from_str("CliStatus"), Ok(Kind::CliStatus));
+        assert_eq!(Kind::from_str("SystemStatus"), Ok(Kind::SystemStatus));
         assert_eq!(
             Kind::from_str("AiContextPacket"),
-            Some(Kind::AiContextPacket)
+            Ok(Kind::AiContextPacket)
         );
-        assert_eq!(Kind::from_str("Unknown"), None);
+        assert_eq!(Kind::from_str("Unknown"), Err(()));
     }
 
     #[test]
@@ -281,7 +291,7 @@ mod tests {
         ];
         for (kind, expected_str) in kinds {
             assert_eq!(kind.as_str(), expected_str);
-            assert_eq!(Kind::from_str(expected_str), Some(kind));
+            assert_eq!(Kind::from_str(expected_str), Ok(kind));
         }
     }
 }
