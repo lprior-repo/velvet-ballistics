@@ -69,6 +69,7 @@ pub enum ShutdownTransition {
 
 /// Atomic shutdown state machine.
 #[derive(Debug)]
+#[repr(transparent)]
 pub struct ShutdownState {
     state: AtomicU8,
 }

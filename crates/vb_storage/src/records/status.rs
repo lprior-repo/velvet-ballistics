@@ -26,6 +26,7 @@ pub enum KnownRunHeaderStatus {
 
 /// Typed error for a status byte that is not known by this build.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct UnknownRunHeaderStatus {
     byte: u8,
 }

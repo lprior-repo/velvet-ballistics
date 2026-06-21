@@ -12,6 +12,7 @@ use crate::value::{SlotValue, Taint};
 /// that exceeds this ceiling is clamped, and [`StepBudget::try_take`] returns an
 /// error if the internal counter somehow exceeds the ceiling.
 #[derive(Debug, Clone)]
+#[repr(transparent)]
 pub struct StepBudget {
     remaining: u64,
 }

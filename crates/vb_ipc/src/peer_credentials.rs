@@ -45,6 +45,7 @@ impl PeerIdentity {
 /// Identity of the local server process. Used to compare against
 /// [`PeerIdentity::euid`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 pub struct ServerIdentity {
     /// Effective user id of the running server.
     pub euid: u32,
