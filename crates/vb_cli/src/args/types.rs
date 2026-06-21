@@ -329,6 +329,19 @@ impl DurabilityMode {
     }
 }
 
+impl FromStr for DurabilityMode {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "strict" => Ok(Self::Strict),
+            "journaled" => Ok(Self::Journaled),
+            "none" => Ok(Self::None),
+            other => Err(ParseError::UnknownDurability(other.into())),
+        }
+    }
+}
+
 /// Single-step isolation target for `run --step`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StepTarget {

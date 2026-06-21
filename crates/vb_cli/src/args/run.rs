@@ -187,10 +187,5 @@ pub(super) fn parse_submit(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
-    match raw {
-        "strict" => Ok(DurabilityMode::Strict),
-        "journaled" => Ok(DurabilityMode::Journaled),
-        "none" => Ok(DurabilityMode::None),
-        other => Err(ParseError::UnknownDurability(other.into())),
-    }
+    raw.parse()
 }
