@@ -41,6 +41,7 @@ impl RunId {
     }
 
     #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    #[must_use]
     pub fn as_u64(self) -> u64 {
         self.0
     }
@@ -112,6 +113,7 @@ impl SeqNo {
     }
 
     #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    #[must_use]
     pub fn as_u64(self) -> u64 {
         self.0
     }
