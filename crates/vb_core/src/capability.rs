@@ -13,14 +13,17 @@ pub struct Capability {
 }
 
 impl Capability {
+    #[must_use]
     pub fn new(name: Box<str>, action: ActionId) -> Self {
         Self { name, action }
     }
 
+    #[must_use]
     pub const fn name(&self) -> &str {
         &self.name
     }
 
+    #[must_use]
     pub const fn action_id(&self) -> ActionId {
         self.action
     }
@@ -33,16 +36,19 @@ pub struct CapabilitySet {
 }
 
 impl CapabilitySet {
+    #[must_use]
     pub fn empty() -> Self {
         Self { grants: Vec::new() }
     }
 
+    #[must_use]
     pub fn from_grants(grants: Box<[Capability]>) -> Self {
         Self {
             grants: grants.into_vec(),
         }
     }
 
+    #[must_use]
     pub fn grants(&self, required: &Capability) -> bool {
         let mut i = 0;
         while i < self.grants.len() {
@@ -68,10 +74,12 @@ impl CapabilitySet {
         false
     }
 
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.grants.len()
     }
 
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.grants.is_empty()
     }
