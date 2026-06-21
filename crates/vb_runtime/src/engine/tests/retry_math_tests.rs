@@ -308,3 +308,83 @@ fn delay_for_attempt_does_not_exceed_cap_at_high_attempts() {
         "non-exponential base_delay (9000) should be capped to max_interval (5000)"
     );
 }
+
+// =====================================================================
+// RE-012: next_cursor must not silently duplicate the maximum attempt
+// =====================================================================
+
+#[test]
+fn re012_next_cursor_at_u16_max_returns_typed_error_instead_of_duplicate() {
+    let policy = RetryPolicy {
+        max_attempts: u16::MAX,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    // Caller-supplied cursor at the boundary that previously passed
+    // `validate_cursor` then duplicated the attempt under saturating_add(1).
+    let cursor = RetryCursor {
+        attempt: u16::MAX,
+        remaining: 2,
+        delay_ms: 0,
+        exhausted: false,
+    };
+
+    let result = policy.next_cursor(10_000, cursor);
+
+    assert_eq!(
+        result.err(),
+        Some(RetryPolicyMathError::CursorInconsistent),
+        "advancing past u16::MAX must fail closed with a typed error"
+    );
+}
+
+#[test]
+fn re012_validate_cursor_rejects_inconsistent_attempt_window() {
+    let policy = RetryPolicy {
+        max_attempts: 5,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    // attempt=4 with remaining=3 would require attempts 4, 5, 6 — but
+    // max_attempts=5 only permits 1..=5. The window is inconsistent.
+    let cursor = RetryCursor {
+        attempt: 4,
+        remaining: 3,
+        delay_ms: 0,
+        exhausted: false,
+    };
+
+    // next_cursor delegates to validate_cursor, so the same error must
+    // surface before the saturating advance can manufacture a duplicate.
+    let result = policy.next_cursor(10_000, cursor);
+
+    assert_eq!(
+        result.err(),
+        Some(RetryPolicyMathError::CursorInconsistent),
+        "cursors whose attempt window exceeds max_attempts must be rejected"
+    );
+}
+
+#[test]
+fn re012_next_cursor_consistent_max_attempt_advances_normally() {
+    let policy = RetryPolicy {
+        max_attempts: 5,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    // attempt=5, remaining=1 is a valid exhausted-boundary cursor.
+    let cursor = RetryCursor {
+        attempt: 5,
+        remaining: 1,
+        delay_ms: 0,
+        exhausted: false,
+    };
+
+    let next = policy
+        .next_cursor(10_000, cursor)
+        .expect("attempt=5 remaining=1 must advance to exhausted");
+
+    assert!(next.exhausted);
+    assert_eq!(next.remaining, 0);
+    assert_eq!(next.attempt, 5, "attempt preserved on exhaustion");
+}

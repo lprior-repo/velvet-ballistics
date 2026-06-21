@@ -1339,6 +1339,38 @@ fn validate_action_outcome_ready_rejects_out_of_bounds_slot() {
 }
 
 #[test]
+fn validate_action_outcome_ready_rejects_zero_output_contract() {
+    let contract = ActionContract {
+        id: ActionId::new(7),
+        name: ActionName::new("zero-output").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 0,
+        max_input_bytes: 1024,
+        max_output_bytes: 0,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let output = ActionOutputReady {
+        output_slot: SlotIdx::new(0),
+        value: SlotValue::I64(42),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    let outcome = ActionOutcome::Ready(output);
+    let result = validate_action_outcome(&contract, &outcome, Taint::Clean);
+    assert_eq!(
+        result,
+        Err(ActionError::OutputSlotOutOfBounds {
+            slot: 0,
+            max_slots: 0,
+        })
+    );
+}
+
+#[test]
 fn validate_action_outcome_failed_always_succeeds() {
     let contract = ActionContract {
         id: ActionId::new(1),

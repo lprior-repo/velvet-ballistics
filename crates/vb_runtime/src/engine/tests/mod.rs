@@ -2689,3 +2689,112 @@ fn engine_recognizes_4variant_unknown_retry_safety() {
         "Unknown and NotRetrySafe must collapse at the retriable gate (C8)"
     );
 }
+
+// =========================================================================
+// RE-013: drive_deterministic_full and drive_with_actions must refuse to
+// dispatch when retry_policy.max_attempts == 0. The downstream action
+// ticket invariant `attempt <= capacity` would otherwise be violated.
+// =========================================================================
+
+/// RE-013: `drive_deterministic_full` returns `RetryZeroMaxAttempts` when
+/// `max_attempts == 0`. Bead vb-tqn41.
+#[test]
+fn re013_drive_deterministic_full_rejects_zero_max_attempts() {
+    use crate::primitives::collect::CollectStates;
+    use vb_core::engine::StepBudget;
+    use vb_core::value_store::ValueStore;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract,
+        WorkflowParts};
+
+    let node = CompiledNode {
+        id: StepIdx::ZERO,
+        output: None,
+        next: Some(StepIdx::new(1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    };
+    let finish = CompiledNode {
+        id: StepIdx::new(1),
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    };
+    let parts = WorkflowParts {
+        name: Box::from("re013_zero_attempts"),
+        digest: vb_core::ids::WorkflowDigest::from_bytes([0; 32]),
+        nodes: Box::from([node, finish]),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::ZERO,
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::from([]),
+    };
+    let wf = CompiledWorkflow::try_from_parts(parts).expect("workflow");
+    let mut r = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2) {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    let mut b = StepBudget::new(10);
+    let mut store = ValueStore::new();
+    let mut evidence = EvidenceCollector::new();
+    let mut collect_states = CollectStates::new();
+    let granted = CapabilitySet::empty();
+    let bad_policy = RetryPolicy {
+        max_attempts: 0,
+        base_delay_ms: 0,
+        exponential_backoff: false,
+    };
+    let result = drive_deterministic_full(
+        &wf,
+        &mut r,
+        &mut b,
+        &mut store,
+        &[],
+        bad_policy,
+        &mut evidence,
+        &mut collect_states,
+        &granted,
+    );
+    match result {
+        Err(RuntimeEngineError::RetryZeroMaxAttempts) => {}
+        other => panic!("expected RetryZeroMaxAttempts, got {other:?}"),
+    }
+    assert_eq!(
+        RuntimeEngineError::RetryZeroMaxAttempts.runtime_code(),
+        Some("RETRY_ZERO_MAX_ATTEMPTS"),
+        "RetryZeroMaxAttempts must carry the RETRY_ZERO_MAX_ATTEMPTS runtime code"
+    );
+}
+
+/// RE-013: `RetryPolicy::try_new` rejects zero attempts; `is_valid_for_dispatch`
+/// reports false. `NEVER` and `DEFAULT` remain valid.
+#[test]
+fn re013_retry_policy_helpers_reject_zero_attempts() {
+    assert!(RetryPolicy::try_new(0, 0, false).is_none());
+    assert_eq!(
+        RetryPolicy::try_new(1, 0, false),
+        Some(RetryPolicy {
+            max_attempts: 1,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        })
+    );
+    assert!(
+        !RetryPolicy {
+            max_attempts: 0,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        }
+        .is_valid_for_dispatch()
+    );
+    assert!(RetryPolicy::NEVER.is_valid_for_dispatch());
+    assert!(RetryPolicy::DEFAULT.is_valid_for_dispatch());
+}

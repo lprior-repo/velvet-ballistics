@@ -36,7 +36,12 @@ pub fn validate_parts(parts: &crate::workflow::WorkflowParts) -> Result<(), Work
     }
     validate_resource_contract(parts)?;
     validate_entry(parts.entry, parts.nodes.len())?;
-    expressions::validate_expressions(&parts.expressions, parts.accessors.len())?;
+    expressions::validate_expressions(
+        &parts.expressions,
+        parts.slot_count,
+        parts.constants.len(),
+        parts.accessors.len(),
+    )?;
     validate_accessors(&parts.accessors, parts.slot_count)?;
     for (index, node) in parts.nodes.iter().enumerate() {
         validate_node_id(node, index)?;

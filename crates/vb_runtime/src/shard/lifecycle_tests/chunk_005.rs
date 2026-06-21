@@ -178,6 +178,74 @@ fn ask_answer_unknown_run_returns_run_not_found() -> Result<(), RuntimeError> {
     Ok(())
 }
 
+// RS-103 regression: the handler must reject answers whose supplied
+// answer_slot or resume_step does not match the workflow-derived
+// authority. Previously the handler trusted both fields from the
+// answer payload.
+#[test]
+fn ask_answer_with_wrong_answer_slot_is_rejected() -> Result<(), RuntimeError> {
+    let mut shard = Shard::new(small_config())?;
+    let wf = require_workflow("ask", ask_workflow()).map_err(|_| RuntimeError::QueueFull)?;
+    let run = RunId::new(71);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Workflow authority: AskResume at step 3 answers slot 2.
+    // Caller supplies an answer with an unauthorized answer slot (5).
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: StepIdx::new(2),
+            resume_step: StepIdx::new(3),
+        },
+        answer_slot: SlotIdx::new(5),
+        value: SlotValue::I64(77),
+        taint: Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
+}
+
+#[test]
+fn ask_answer_with_wrong_resume_step_is_rejected() -> Result<(), RuntimeError> {
+    let mut shard = Shard::new(small_config())?;
+    let wf = require_workflow("ask", ask_workflow()).map_err(|_| RuntimeError::QueueFull)?;
+    let run = RunId::new(72);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Workflow authority: resume_step is 3 (AskResume step).
+    // Caller supplies an answer pointing at an arbitrary other step.
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run,
+            ask_step: StepIdx::new(2),
+            resume_step: StepIdx::new(99),
+        },
+        answer_slot: SlotIdx::new(2),
+        value: SlotValue::I64(77),
+        taint: Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    Ok(())
+}
+
 #[test]
 fn timer_fire_advances_wait_to_completion() -> Result<(), RuntimeError> {
     let mut shard = Shard::new(small_config())?;

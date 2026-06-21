@@ -2200,7 +2200,12 @@ fn batch_append_event_rejects_duplicate_key_within_batch() {
         "second batch append with same key must yield DuplicateEvent, got {:?}",
         result
     );
-    batch.commit().expect("commit should succeed");
+    // SA-002: commit must surface the abort as a typed error.
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted { .. })),
+        "aborted batch commit must return Err(BatchAborted), got {commit_result:?}"
+    );
 
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(

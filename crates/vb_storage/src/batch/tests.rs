@@ -919,8 +919,13 @@ fn batch_append_event_rejects_intra_batch_duplicate() {
         "second append with same key must yield DuplicateEvent, got {:?}",
         result
     );
-    // Batch is aborted and commit() must not persist either event.
-    batch.commit().expect("aborted commit returns Ok(())");
+    // Batch is aborted and commit() must surface the abort as a typed error
+    // (SA-002) instead of silently returning Ok(()).
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted { .. })),
+        "aborted commit must return Err(BatchAborted), got {commit_result:?}"
+    );
     let events = journal.events_for_run(run).expect("replay");
     assert!(
         events.is_empty(),
@@ -946,9 +951,14 @@ fn batch_append_event_intra_batch_dedup_aborts_batch() {
     let dup = batch.append_event(&event);
     assert!(matches!(dup, Err(JournalError::DuplicateEvent { .. })));
     // After abort, put_run_header still inserts into the inner batch but
-    // commit() must NOT persist anything.
+    // commit() must NOT persist anything, and must surface the abort as a
+    // typed error per SA-002.
     batch.put_run_header(&header).expect("put header ok");
-    batch.commit().expect("aborted commit returns Ok(())");
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted { .. })),
+        "aborted commit must return Err(BatchAborted), got {commit_result:?}"
+    );
 
     let header_visible = journal.run_header(run).expect("get header");
     assert!(
@@ -1036,10 +1046,14 @@ fn batch_aborted_by_put_blob_does_not_persist_subsequent_event() {
         abort_result
     );
 
-    // commit() on an aborted batch returns Ok(()) without persisting
-    // anything: the cross-keyspace atomicity contract requires no
-    // partial writes ever become visible.
-    batch.commit().expect("aborted commit returns Ok(())");
+    // commit() on an aborted batch must return Err(BatchAborted) per
+    // SA-002 without persisting anything: the cross-keyspace atomicity
+    // contract requires no partial writes ever become visible.
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted { .. })),
+        "aborted commit must return Err(BatchAborted), got {commit_result:?}"
+    );
 
     let header_visible = journal.run_header(run).expect("get header");
     assert!(
@@ -1051,4 +1065,100 @@ fn batch_aborted_by_put_blob_does_not_persist_subsequent_event() {
         events.is_empty(),
         "aborted batch must not persist staged event"
     );
+}
+
+// =========================================================================
+// SA-002: commit() on an aborted batch must return Err(BatchAborted),
+// not silently Ok(()). Bead vb-83aqs.
+// =========================================================================
+
+#[test]
+fn sa002_commit_aborted_batch_returns_typed_error_not_silent_ok() {
+    // Given: a batch that has been aborted via a digest mismatch in put_blob.
+    let (_temp, journal) = temp_journal();
+    let _run = RunId::new(9000);
+    let bad_blob = BlobRecord {
+        digest: [0xFEu8; DIGEST_BYTES],
+        bytes: vec![1, 2, 3],
+    };
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    let abort_result = batch.put_blob(&bad_blob);
+    assert!(
+        matches!(abort_result, Err(JournalError::PayloadDigestMismatch)),
+        "bad digest must abort the batch, got {abort_result:?}"
+    );
+
+    // When: commit() is called on the aborted batch
+    let commit_result = batch.commit();
+
+    // Then: the commit must surface the abort as a typed BatchAborted error
+    // and must NOT silently report success. The reason string must identify
+    // which staging method aborted the batch.
+    match commit_result {
+        Err(JournalError::BatchAborted { reason }) => {
+            assert_eq!(
+                reason, "blob_digest_mismatch",
+                "abort reason must identify the staging method that aborted the batch"
+            );
+        }
+        other => panic!(
+            "aborted commit must return Err(BatchAborted), got {other:?}"
+        ),
+    }
+}
+
+#[test]
+fn sa002_aborted_batch_commit_does_not_persist_staged_writes() {
+    // Cross-keyspace atomicity must still hold: an aborted batch must not
+    // partially persist staged writes even after the commit error.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(9001);
+    let header = make_run_header(run);
+    let event = make_event(run, 0);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch
+        .put_run_header(&header)
+        .expect("header encode is bounded");
+    batch.append_event(&event).expect("first event append");
+
+    // Force abort via duplicate event.
+    let dup = batch.append_event(&event);
+    assert!(matches!(dup, Err(JournalError::DuplicateEvent { .. })));
+
+    // commit must surface Err(BatchAborted).
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted { reason }) if reason == "duplicate_event_staged"),
+        "aborted commit must surface Err(BatchAborted) with the abort reason, got {commit_result:?}"
+    );
+
+    // Atomicity: nothing must be persisted.
+    let header_visible = journal.run_header(run).expect("get header");
+    assert!(
+        header_visible.is_none(),
+        "aborted batch must not persist run header"
+    );
+    let events = journal.events_for_run(run).expect("replay");
+    assert!(events.is_empty(), "aborted batch must not persist any event");
+}
+
+#[test]
+fn sa002_open_batch_commit_still_succeeds() {
+    // Regression guard: the new BatchAborted behavior must not break the
+    // normal commit path for an open batch.
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(9002);
+    let header = make_run_header(run);
+
+    let mut batch = JournalWriteBatch::new(&journal);
+    batch.put_run_header(&header).expect("put header ok");
+    batch.commit().expect("commit of open batch must succeed");
+
+    let loaded = journal
+        .run_header(run)
+        .expect("get header")
+        .expect("header should be persisted after commit");
+    assert_eq!(loaded.run, run);
 }

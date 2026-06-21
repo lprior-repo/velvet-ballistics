@@ -1,8 +1,27 @@
 #![forbid(unsafe_code)]
 //! Bounded compiled slug codec for yield-budget-constrained workflow execution.
 
-use super::types::{CompiledSlugs, SlugParseError, YbBoundedSlugs};
+use super::types::{
+    CompiledSlugs, MAX_SLUG_PATH_SEGMENTS, MAX_SLUGS_PER_WORKFLOW, SlugParseError, YbBoundedSlugs,
+};
 use super::validation::validate_compiled_slugs;
+
+/// Maximum allowed payload size for a compiled-slug blob.
+///
+/// CW-011: this preflight is computed from `MAX_SLUGS_PER_WORKFLOW` and the
+/// worst-case encoded size of a single slug (full path + varint yield cost).
+/// Any payload larger than this cannot decode into a value that survives
+/// admission, so we reject it before `postcard::from_bytes` allocates a
+/// potentially enormous `Box<[YbBoundedSlug]>`.
+pub const MAX_SLUG_PAYLOAD_BYTES: usize =
+    // Header: varint(MAX_SLUGS_PER_WORKFLOW) (3 bytes max) + u64 total_yield_cost (9 bytes max).
+    12 + MAX_SLUGS_PER_WORKFLOW
+        * (
+            // Per-slug worst case: varint path length (1 byte) +
+            // MAX_SLUG_PATH_SEGMENTS segments (each 1-byte variant + 5-byte u32 varint) +
+            // u64 yield_cost (9 bytes max).
+            1 + MAX_SLUG_PATH_SEGMENTS * 6 + 9
+        );
 
 /// Decodes compiled slugs from bytes and validates them against a yield budget.
 ///
@@ -13,11 +32,14 @@ use super::validation::validate_compiled_slugs;
 ///
 /// # Errors
 ///
-/// Returns `SlugParseError::Decode` if the byte sequence is not valid
-/// postcard-encoded `CompiledSlugs`. Returns `SlugParseError::YbBudgetExceeded`
-/// if the total yield cost of all slugs exceeds `max_yield_budget`. Returns
-/// `SlugParseError::SlugPathTooDeep` if any slug exceeds the path depth limit.
-/// Returns `SlugParseError::TooManySlugs` if the number of slugs exceeds
+/// Returns `SlugParseError::PayloadTooLarge` if the input bytes exceed
+/// `MAX_SLUG_PAYLOAD_BYTES` (CW-011: prevent pre-validation allocation
+/// blowup). Returns `SlugParseError::Decode` if the byte sequence is not
+/// valid postcard-encoded `CompiledSlugs`. Returns
+/// `SlugParseError::YbBudgetExceeded` if the total yield cost of all slugs
+/// exceeds `max_yield_budget`. Returns `SlugParseError::SlugPathTooDeep` if
+/// any slug exceeds the path depth limit. Returns
+/// `SlugParseError::TooManySlugs` if the number of slugs exceeds
 /// `MAX_SLUGS_PER_WORKFLOW`. Returns `SlugParseError::YieldCostOverflow` if the
 /// recomputed yield sum overflows `u64`. Returns
 /// `SlugParseError::TotalYieldCostMismatch` if the serialized total differs from
@@ -27,6 +49,12 @@ pub fn from_bytes_compiled_slugs(
     bytes: &[u8],
     max_yield_budget: u64,
 ) -> Result<YbBoundedSlugs, SlugParseError> {
+    if bytes.len() > MAX_SLUG_PAYLOAD_BYTES {
+        return Err(SlugParseError::PayloadTooLarge {
+            size: bytes.len(),
+            max: MAX_SLUG_PAYLOAD_BYTES,
+        });
+    }
     let compiled: CompiledSlugs = postcard::from_bytes(bytes).map_err(SlugParseError::Decode)?;
     validate_compiled_slugs(compiled, max_yield_budget)
 }
@@ -253,4 +281,38 @@ mod tests {
             Err(err) => Err(format!("compiled slug admission failed: {err}")),
         }
     }
+}
+
+// =====================================================================
+// CW-011: preflight rejects oversized payloads before decode
+// =====================================================================
+
+#[test]
+fn cw011_oversized_payload_rejected_before_postcard_decode() {
+    // Payload larger than MAX_SLUG_PAYLOAD_BYTES cannot be admitted
+    // even if the encoded value would be valid; the preflight must
+    // surface PayloadTooLarge before postcard allocates the array.
+    let oversized = vec![0u8; MAX_SLUG_PAYLOAD_BYTES + 1];
+    let result = from_bytes_compiled_slugs(&oversized, u64::MAX);
+    assert_eq!(
+        result,
+        Err(SlugParseError::PayloadTooLarge {
+            size: MAX_SLUG_PAYLOAD_BYTES + 1,
+            max: MAX_SLUG_PAYLOAD_BYTES,
+        })
+    );
+}
+
+#[test]
+fn cw011_max_size_payload_is_not_rejected_by_preflight() {
+    // Exactly at the boundary the preflight must pass through to the
+    // decode step, even if decode ultimately fails for other reasons.
+    // Empty input is below the size, so the preflight passes and the
+    // postcard decode produces its own error — but NOT PayloadTooLarge.
+    let empty: [u8; 0] = [];
+    let result = from_bytes_compiled_slugs(&empty, u64::MAX);
+    assert!(
+        !matches!(result, Err(SlugParseError::PayloadTooLarge { .. })),
+        "empty payload must not trip the preflight; got {result:?}"
+    );
 }

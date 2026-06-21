@@ -53,7 +53,13 @@ pub enum CodeCategory {
     Lifecycle,
     /// Runtime boundary errors: E40xx
     RuntimeBoundary,
-    /// Internal invariant violations (fallback codes): E13xx
+    /// Internal invariant violations and unclassified fallback codes.
+    ///
+    /// CV-105: this is the catch-all category for codes that are not in the
+    /// registry and whose high byte does not have a dedicated category
+    /// mapping. It is intentionally NOT bound to a specific high byte such
+    /// as `E13xx`, because that range is shared with the [`Accessor`]
+    /// category (e.g. `INTERNAL_INVARIANT_VIOLATION` lives at `0x1309`).
     Internal,
 }
 

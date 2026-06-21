@@ -203,7 +203,8 @@ fn step_once_state_mapping_harness() {
         let expected_state = match signal {
             EngineSignal::Continue | EngineSignal::Finished(_, _) => StepState::Succeeded,
             EngineSignal::AwaitingAction { .. } | EngineSignal::StepBudgetExhausted => StepState::Running,
-            EngineSignal::AwaitingWait { deadline_slot: _ } => StepState::Waiting,
+            EngineSignal::AwaitingWait { deadline_slot: _ }
+            | EngineSignal::AwaitingEvent { event: _, timeout_slot: _ } => StepState::Waiting,
             EngineSignal::AwaitingAsk { timeout_slot: _ } => StepState::Asking,
         };
 

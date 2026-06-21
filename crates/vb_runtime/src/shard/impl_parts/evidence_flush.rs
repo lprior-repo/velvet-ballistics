@@ -3,15 +3,40 @@ impl Shard {
     /// journal and trace ring. This satisfies the Phase 40/44 evidence
     /// chain requirement: StepStarted before SlotWritten for every step,
     /// followed by StepSucceeded.
+    ///
+    /// RS-205: if any event fails to flush, the unprocessed suffix
+    /// (the failed event and every event that would have followed) is
+    /// restored into the collector so a subsequent flush attempt can
+    /// retry them instead of silently dropping the evidence chain.
     pub(crate) fn flush_evidence(
         &mut self,
         run: RunId,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<()> {
-        evidence
-            .drain()
-            .into_iter()
-            .try_for_each(|event| self.flush_evidence_event(run, event))
+        let events = evidence.drain();
+        for (offset, event) in events.iter().enumerate() {
+            let result = self.flush_evidence_event(run, *event);
+            if let Err(error) = result {
+                self.restore_evidence_suffix(evidence, &events, offset);
+                return Err(error);
+            }
+        }
+        Ok(())
+    }
+
+    /// Restores the unprocessed evidence suffix (failed event + everything
+    /// after it) back into the collector so a subsequent flush can retry.
+    fn restore_evidence_suffix(
+        &self,
+        evidence: &mut EvidenceCollector,
+        events: &[EvidenceEvent],
+        failed_offset: usize,
+    ) {
+        if let Some(suffix) = events.get(failed_offset..) {
+            for event in suffix.iter().copied() {
+                evidence.push_event(event);
+            }
+        }
     }
 
     fn flush_evidence_event(&mut self, run: RunId, event: EvidenceEvent) -> RuntimeResult<()> {

@@ -702,7 +702,7 @@ fn wait_until_returns_awaiting_wait_and_step_enters_waiting_state() -> Result<()
 }
 
 #[test]
-fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Result<(), String> {
+fn wait_event_returns_awaiting_event_and_preserves_step_in_waiting_state() -> Result<(), String> {
     let parts = WorkflowParts {
         name: Box::<str>::from("wait_event_test"),
         digest: WorkflowDigest::from_bytes([0x0B; 32]),
@@ -733,10 +733,61 @@ fn wait_event_returns_awaiting_wait_and_preserves_step_in_waiting_state() -> Res
 
     let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
+    // CE-001 regression: WaitEvent without a timeout now emits the
+    // dedicated AwaitingEvent signal with the event slot and `None`
+    // timeout slot, NOT a synthetic AwaitingWait whose deadline_slot
+    // is the event slot.
     ensure_equal(
         result,
-        EngineSignal::AwaitingWait {
-            deadline_slot: SlotIdx::new(0),
+        EngineSignal::AwaitingEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: None,
+        },
+    )?;
+    ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
+    Ok(())
+}
+
+#[test]
+fn wait_event_with_timeout_returns_awaiting_event_with_timeout_slot(
+) -> Result<(), String> {
+    let parts = WorkflowParts {
+        name: Box::<str>::from("wait_event_with_timeout_test"),
+        digest: WorkflowDigest::from_bytes([0x0B; 32]),
+        nodes: vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitEvent {
+                event: SlotIdx::new(0),
+                timeout_slot: Some(SlotIdx::new(1)),
+            },
+        }]
+        .into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 2,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: crate::ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    };
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let mut run = test_frame(RunId::new(213), &workflow)?;
+    let mut store = test_store();
+
+    let result = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+
+    // CE-001 regression: WaitEvent with a timeout emits AwaitingEvent
+    // whose timeout_slot is the workflow's timeout slot, NOT the event slot.
+    ensure_equal(
+        result,
+        EngineSignal::AwaitingEvent {
+            event: SlotIdx::new(0),
+            timeout_slot: Some(SlotIdx::new(1)),
         },
     )?;
     ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;

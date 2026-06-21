@@ -42,6 +42,13 @@ pub(crate) fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> Runtime
 /// Collects evidence events (StepStarted/StepSucceeded) for every step
 /// executed during the drive loop. The caller drains these events to emit
 /// them to the journal and trace ring.
+///
+/// # Errors (RE-013)
+///
+/// Returns [`RuntimeEngineError::RetryZeroMaxAttempts`] when the supplied
+/// `retry_policy.max_attempts` is zero. Issuing an action ticket with
+/// `attempt = 1` and `capacity = 0` would violate the ticket invariant
+/// `attempt <= capacity`, so the runtime refuses to dispatch the run.
 #[allow(clippy::too_many_arguments)]
 pub fn drive_deterministic_full(
     plan: &CompiledWorkflow,
@@ -54,6 +61,9 @@ pub fn drive_deterministic_full(
     collect_states: &mut CollectStates,
     granted: &vb_core::capability::CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    if !retry_policy.is_valid_for_dispatch() {
+        return Err(RuntimeEngineError::RetryZeroMaxAttempts);
+    }
     initialize_drive(run, plan)?;
 
     loop {
@@ -162,6 +172,11 @@ fn collect_written_slot(node: &CompiledNode) -> Option<SlotIdx> {
 }
 
 /// Backward-compatible drive loop matching the original drive_with_actions signature.
+///
+/// # Errors (RE-013)
+///
+/// Returns [`RuntimeEngineError::RetryZeroMaxAttempts`] when the supplied
+/// `retry_policy.max_attempts` is zero.
 pub fn drive_with_actions(
     plan: &CompiledWorkflow,
     run: &mut RunFrame,
@@ -169,6 +184,9 @@ pub fn drive_with_actions(
     contracts: &[ActionContract],
     retry_policy: RetryPolicy,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    if !retry_policy.is_valid_for_dispatch() {
+        return Err(RuntimeEngineError::RetryZeroMaxAttempts);
+    }
     let mut store = ValueStore::new();
     let mut evidence = EvidenceCollector::new();
     let mut collect_states = CollectStates::new();

@@ -244,14 +244,38 @@ mod type_tests {
         assert_eq!(IndexStatusState::Submitted.to_u8(), 0);
         assert_eq!(IndexStatusState::Active.to_u8(), 1);
         assert_eq!(IndexStatusState::Completed.to_u8(), 2);
-        assert_eq!(IndexStatusState::Other(99).to_u8(), 99);
+        // SC-001: Other(v) is offset by MIN_OTHER_BYTE on the wire so
+        // its encoded byte never collides with a named-variant discriminant.
+        assert_eq!(IndexStatusState::Other(99).to_u8(), 99 + 3);
+        assert_eq!(IndexStatusState::Other(0).to_u8(), 3);
+        assert_eq!(IndexStatusState::Other(252).to_u8(), 255);
     }
 
     #[test]
     fn index_status_state_roundtrip_from_and_to_u8() {
-        for value in [0u8, 1, 2, 7, 42, 255] {
+        // SC-001: the offset encoding is a strict bijection on every byte.
+        // `from_u8(b).to_u8() == b` for all `b` in 0..=u8::MAX.
+        for value in [0u8, 1, 2, 3, 4, 7, 42, 99, 252, 253, 254, 255] {
             let state = IndexStatusState::from_u8(value);
-            assert_eq!(state.to_u8(), value, "roundtrip failed for value {}", value);
+            assert_eq!(
+                state.to_u8(),
+                value,
+                "roundtrip failed for value {}",
+                value
+            );
+        }
+    }
+
+    #[test]
+    fn index_status_state_other_encoded_byte_never_collides_with_named_variants() {
+        // SC-001: for every Other payload 0..=MAX_OTHER_BYTE, the encoded
+        // byte must NOT equal any named-variant discriminant (0, 1, 2).
+        for payload in 0u8..=IndexStatusState::MAX_OTHER_BYTE {
+            let encoded = IndexStatusState::Other(payload).to_u8();
+            assert!(
+                encoded >= IndexStatusState::MIN_OTHER_BYTE,
+                "Other({payload}) encoded as byte {encoded} must not collide with a named variant"
+            );
         }
     }
 

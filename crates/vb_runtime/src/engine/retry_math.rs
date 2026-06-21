@@ -50,6 +50,11 @@ pub enum RetryPolicyMathError {
     /// Cursor remaining attempts exceeded the policy maximum.
     #[error("retry cursor remaining exceeded max_attempts")]
     RemainingExceeded,
+    /// Cursor's claimed remaining attempts cannot fit within the policy
+    /// maximum, given the current attempt. Returned when a public cursor
+    /// declares an attempt window that would advance past `max_attempts`.
+    #[error("retry cursor inconsistent: attempt window exceeds max_attempts")]
+    CursorInconsistent,
 }
 
 impl RetryPolicy {
@@ -105,11 +110,18 @@ impl RetryPolicy {
                 ..cursor
             });
         }
-        let next_attempt = cursor.attempt.saturating_add(1);
+        // Checked advance: a saturating_add(1) at u16::MAX would silently
+        // duplicate the previous attempt. Use checked arithmetic so an
+        // overflow is reported as a typed error rather than producing a
+        // plausible-but-wrong cursor.
+        let next_attempt = cursor
+            .attempt
+            .checked_add(1)
+            .ok_or(RetryPolicyMathError::CursorInconsistent)?;
         self.validate_attempt(next_attempt)?;
         Ok(RetryCursor {
             attempt: next_attempt,
-            remaining: cursor.remaining.saturating_sub(1),
+            remaining: cursor.remaining - 1,
             delay_ms: self.delay_after_valid_attempt(max_interval_ms, cursor.attempt),
             exhausted: false,
         })
@@ -154,6 +166,21 @@ impl RetryPolicy {
         }
         if cursor.exhausted {
             return Ok(cursor);
+        }
+        // Reject cursors whose claimed attempt window cannot fit within
+        // the policy maximum. A non-exhausted cursor with `remaining`
+        // attempts starting at `attempt` must satisfy
+        // `attempt + remaining - 1 <= max_attempts`. Catching this here
+        // prevents a subsequent `next_cursor` from being asked to
+        // advance past the policy limit via saturating arithmetic.
+        if cursor.remaining > 0 {
+            let last_attempt = match cursor.attempt.checked_add(cursor.remaining - 1) {
+                Some(value) => value,
+                None => return Err(RetryPolicyMathError::CursorInconsistent),
+            };
+            if last_attempt > self.max_attempts {
+                return Err(RetryPolicyMathError::CursorInconsistent);
+            }
         }
         match self.validate_attempt(cursor.attempt) {
             Ok(_) => Ok(cursor),

@@ -1,3 +1,5 @@
+use vb_core::frame::StepState;
+
 impl Shard {
     // =============================================================================
     // Action completion and failure lifecycle methods
@@ -49,6 +51,26 @@ impl Shard {
         run: RunId,
         step: StepIdx,
     ) -> RuntimeResult<()> {
+        // RS-010: probe the run state but do NOT mutate the frame yet.
+        // Journal the StepSucceeded event first so a journal append
+        // failure leaves the in-memory frame consistent with the durable
+        // record. Mirrors the ordering used by `handle_action_completion`.
+        {
+            let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
+            if state.frame.step_state(step) != Ok(StepState::Running) {
+                return Err(RuntimeError::RunNotFound);
+            }
+        }
+        // Evidence chain: emit StepSucceeded for legacy action completion.
+        // Legacy path has no output slot information. Append before any
+        // frame mutation so a journal failure does not desynchronise
+        // memory and durability (the journal is the source of truth).
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: SlotIdx::ZERO,
+            attempt: 1,
+        })?;
         let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         state
             .frame
@@ -56,14 +78,6 @@ impl Shard {
             .map_err(|_| RuntimeError::RunNotFound)?;
         self.trace_ring
             .push(TraceEvent::ActionCompleted { run, step });
-        // Evidence chain: emit StepSucceeded for legacy action completion.
-        // Legacy path has no output slot information.
-        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
-            run,
-            step,
-            output: SlotIdx::ZERO,
-            attempt: 1,
-        })?;
         self.drive_run(run)
     }
 

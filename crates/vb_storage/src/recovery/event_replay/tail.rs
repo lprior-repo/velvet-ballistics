@@ -53,9 +53,14 @@ pub(crate) fn apply_tail_events(
     tail_events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<u64> {
-    // Reset max_parallel_in_flight to 0 so add_parallel_in_flight correctly
-    // tracks the peak observed during replay (matching the full-journal path).
-    frame.set_max_parallel_in_flight(0);
+    // CF-001 fix: `add_parallel_in_flight` now enforces the configured
+    // ceiling instead of silently ratcheting `max_parallel_in_flight`
+    // upward. Recovery replay needs to observe the peak across the
+    // tail events without ever hitting the ceiling, so install the
+    // maximum possible ceiling (`u16::MAX`). The post-replay code in
+    // `recovery::hydrate::apply` will overwrite the field with the
+    // observed peak once the events have been consumed.
+    frame.set_max_parallel_in_flight(u16::MAX);
     let mut executed = 0u64;
     for event in tail_events {
         match event {

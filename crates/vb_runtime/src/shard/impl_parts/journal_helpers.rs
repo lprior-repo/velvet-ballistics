@@ -70,45 +70,58 @@ impl Shard {
     /// via `RuntimeJournal::append_sequenced_batch`.
     ///
     /// This is called when the coalesce window expires (counter reaches zero).
-    /// Each event is written with its recorded per-run starting sequence.
+    ///
+    /// RS-001: the buffer commonly contains events for more than one run
+    /// (the default `coalesce_window_ticks: 10` lets one tick dispatch a
+    /// command for run B while run A's events are still buffered). The
+    /// pre-fix implementation collapsed every event onto the first buffered
+    /// event's sequence and called `append_sequenced_batch(&events, first_seq)`,
+    /// which assigns *contiguous* sequences `seq_start, seq_start+1, …` to
+    /// the supplied slice — corrupting per-run journal sequences for every
+    /// non-first run in the buffer. The current implementation groups
+    /// buffered events by `run_id` in insertion order and flushes each group
+    /// with the earliest recorded starting sequence for that group, so each
+    /// run's sequence numbering remains contiguous and independent.
     ///
     /// On success the per-run `journal_sequences` are advanced past the last
     /// event assigned to each run, and the buffer is cleared. On failure,
     /// the per-run sequence map and the buffer remain unchanged so the next
-    /// flush attempt reuses the same starting sequence (RQ-W0-19).
+    /// flush attempt reuses the same starting sequences (RQ-W0-19).
     #[cfg(not(kani))]
     pub(crate) fn flush_coalesce_buffer(&mut self) -> RuntimeResult<()> {
         if self.coalesce_buffer.is_empty() {
             return Ok(());
         }
 
-        let events: Vec<RuntimeJournalEvent> = self
-            .coalesce_buffer
-            .iter()
-            .map(|(event, _seq)| event.clone())
-            .collect();
-
-        // Use the first event's sequence as the batch start. The batch method
-        // assigns contiguous sequences from seq_start, so we use the earliest
-        // sequence in the buffer as the anchor point.
-        let first_seq = self
-            .coalesce_buffer
-            .first()
-            .map(|(_, seq)| *seq)
-            .unwrap_or(EventSeq::ZERO);
-
-        self.journal.append_sequenced_batch(&events, first_seq)?;
-
-        // RQ-W0-19: advance per-run sequences only after the batch persists.
-        // `append_sequenced_batch` assigns contiguous sequences from
-        // `first_seq` per run, so the count of buffered events per run
-        // determines the post-flush sequence.
-        let mut count_per_run: std::collections::HashMap<RunId, usize> =
+        // RS-001: group buffered events by run, preserving each run's
+        // earliest recorded starting sequence. Insertion order within each
+        // run matches the buffer order so the relative order of events for a
+        // single run is preserved (matters for storage events whose internal
+        // ordering is observed by `events_for_run`).
+        let mut groups: std::collections::HashMap<RunId, (EventSeq, Vec<RuntimeJournalEvent>)> =
             std::collections::HashMap::new();
-        for (event, _) in &self.coalesce_buffer {
-            *count_per_run.entry(event.run_id()).or_insert(0) += 1;
+        for (event, seq) in self.coalesce_buffer.iter() {
+            let entry = groups
+                .entry(event.run_id())
+                .or_insert_with(|| (*seq, Vec::new()));
+            entry.1.push(event.clone());
         }
-        for (run, count) in count_per_run {
+
+        // Sort groups by their earliest recorded sequence so the flush order
+        // is deterministic and matches each run's natural sequence order.
+        let mut flush_plan: Vec<(RunId, EventSeq, Vec<RuntimeJournalEvent>)> = Vec::new();
+        for (run, (group_start, group_events)) in groups {
+            flush_plan.push((run, group_start, group_events));
+        }
+        flush_plan.sort_by_key(|(_, start, _)| *start);
+
+        for (run, group_start, group_events) in flush_plan {
+            self.journal
+                .append_sequenced_batch(&group_events, group_start)?;
+            // RQ-W0-19: advance this run's per-run sequence by the count of
+            // events actually persisted for it (each run's group is
+            // contiguous within itself, so advance == group len).
+            let count = group_events.len();
             let current = self.journal_sequence_for(run);
             let advance = u64::try_from(count)
                 .map_err(|_| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
@@ -444,6 +457,161 @@ mod coalesce_atomicity_tests {
             seq_after.get(),
             3,
             "post-flush sequence must equal the buffered event count, not be double-advanced"
+        );
+    }
+
+    // ── RS-001 regression: cross-run coalesce flush ─────────────────────
+    //
+    // Journal stub that records each batch with the per-batch start
+    // sequence so the test can verify per-event sequence assignment
+    // across interleaved runs. Without the fix, all events in the
+    // flush land on sequences contiguous with the FIRST buffered
+    // event's sequence, regardless of the run the events belong to.
+    #[derive(Debug)]
+    struct RecordingJournal {
+        batches: Mutex<Vec<(EventSeq, Vec<RuntimeJournalEvent>)>>,
+    }
+
+    impl RecordingJournal {
+        fn shared() -> Arc<Self> {
+            Arc::new(Self {
+                batches: Mutex::new(Vec::new()),
+            })
+        }
+        fn recorded(&self) -> Vec<(EventSeq, Vec<RuntimeJournalEvent>)> {
+            self.batches
+                .lock()
+                .map(|v| v.clone())
+                .unwrap_or_default()
+        }
+    }
+
+    impl crate::journal::RuntimeJournal for RecordingJournal {
+        fn append(&self, _event: RuntimeJournalEvent) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+        fn append_sequenced(
+            &self,
+            _event: RuntimeJournalEvent,
+            _seq: EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+        fn append_sequenced_batch(
+            &self,
+            events: &[RuntimeJournalEvent],
+            seq_start: EventSeq,
+        ) -> crate::RuntimeResult<()> {
+            self.batches
+                .lock()
+                .map_err(|_| RuntimeError::JournalPoisoned)?
+                .push((seq_start, events.to_vec()));
+            Ok(())
+        }
+        fn probe(&self) -> crate::RuntimeResult<()> {
+            Ok(())
+        }
+    }
+
+    /// RS-001 regression: the coalesce flush must preserve each run's
+    /// recorded starting sequence even when the buffer contains events
+    /// for more than one run. The pre-fix code passed the *first* buffered
+    /// event's sequence as the batch start to `append_sequenced_batch`,
+    /// which then assigned contiguous sequences `seq_start, seq_start+1, …`
+    /// to every event in the batch — corrupting per-run journal sequences
+    /// for every non-first run.
+    #[test]
+    fn rs001_flush_preserves_per_run_sequences_across_runs() {
+        let journal = RecordingJournal::shared();
+        let mut shard = Shard::new_with_journal_and_artifact_store(
+            ShardConfig {
+                coalesce_window_ticks: 8,
+                ..ShardConfig::default()
+            },
+            journal.clone(),
+            crate::admission::AlwaysPresentArtifactStore::shared(),
+        )
+        .expect("shard must construct");
+
+        let run_a = RunId::new(0xA_AAAAA);
+        let run_b = RunId::new(0xB_BBBBB);
+
+        // Pre-seed journal_sequences so the buffer records the
+        // expected starting sequences: A=5, B=3.
+        shard.journal_sequences.insert(run_a, EventSeq::new(5));
+        shard.journal_sequences.insert(run_b, EventSeq::new(3));
+
+        let step = vb_core::ids::StepIdx::ZERO;
+        shard
+            .append_journal_event(RuntimeJournalEvent::StepStarted { run: run_a, step })
+            .expect("buffer A@5");
+        shard
+            .append_journal_event(RuntimeJournalEvent::StepStarted { run: run_b, step })
+            .expect("buffer B@3");
+        shard
+            .append_journal_event(RuntimeJournalEvent::StepStarted { run: run_a, step })
+            .expect("buffer A@6");
+
+        assert_eq!(
+            shard.coalesce_buffer.len(),
+            3,
+            "all three events buffered while window is active"
+        );
+
+        // Force flush.
+        shard.current_coalesce_window_remaining = 0;
+        shard.tick().expect("tick must succeed");
+
+        let batches = journal.recorded();
+        // RS-001: events are flushed grouped by run, not collapsed onto the
+        // first event's sequence. With buffer order (A@5, B@3, A@6), the
+        // groups are run A with [A@5, A@6] (start 5) and run B with [B@3]
+        // (start 3), giving two batches.
+        assert_eq!(
+            batches.len(),
+            2,
+            "cross-run flush must emit one batch per run group"
+        );
+
+        // The critical regression assertion: run B's event must persist at
+        // its own recorded starting seq (3), NOT be reassigned to a
+        // contiguous slot after run A's events.
+        let run_b_batch = batches
+            .iter()
+            .find(|(start, events)| {
+                *start == EventSeq::new(3)
+                    && events.iter().any(|e| e.run_id() == run_b)
+            })
+            .expect("run B batch must persist at seq 3");
+        let run_a_batch = batches
+            .iter()
+            .find(|(start, events)| {
+                *start == EventSeq::new(5)
+                    && events.iter().any(|e| e.run_id() == run_a)
+            })
+            .expect("run A batch must persist at seq 5");
+
+        assert_eq!(
+            run_b_batch.1.len(),
+            1,
+            "run B batch contains exactly the buffered event for run B"
+        );
+        assert_eq!(
+            run_a_batch.1.len(),
+            2,
+            "run A batch contains both buffered events for run A"
+        );
+
+        // Per-run sequence map must reflect the per-run event count.
+        assert_eq!(
+            shard.journal_sequences.get(&run_a).copied().unwrap_or(EventSeq::ZERO),
+            EventSeq::new(7),
+            "run A's sequence must advance to one past its last event (5 + 2 = 7)"
+        );
+        assert_eq!(
+            shard.journal_sequences.get(&run_b).copied().unwrap_or(EventSeq::ZERO),
+            EventSeq::new(4),
+            "run B's sequence must advance to one past its last event (3 + 1 = 4)"
         );
     }
 }

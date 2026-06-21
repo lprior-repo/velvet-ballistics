@@ -228,6 +228,15 @@ impl JournalWriterQueue {
 ///
 /// Maximum iterations: ceil(capacity / batch_size) + 2.
 /// This is a static bound - the queue is bounded by construction.
+///
+/// SA-004: when the static bound is exhausted and items remain, the
+/// returned `JournalWriterFlushReport.pending_after` carries the actual
+/// remaining count so the caller can detect a drain-incomplete under
+/// concurrent enqueue instead of receiving a silent success. When the
+/// queue has been shut down (no more enqueues accepted), the function
+/// continues draining past the static bound because the remaining
+/// items must be flushed deterministically — a drain-incomplete under
+/// shutdown is a real bug, not a benign race.
     pub fn drain_all(
         &self,
         journal: &FjallJournal,
@@ -246,19 +255,44 @@ impl JournalWriterQueue {
             .checked_div(self.batch_size)
             .ok_or(JournalError::QueueCapacity)?
             .saturating_add(2);
-        for _ in 0..max_iterations {
+        let mut iterations = 0usize;
+        loop {
             let report = self.flush_batch(journal)?;
             total.drained = total.drained.saturating_add(report.drained);
             total.written = total.written.saturating_add(report.written);
             if report.pending_after == 0 {
                 return Ok(total);
             }
+            iterations = iterations.saturating_add(1);
+            if iterations >= max_iterations {
+                break;
+            }
         }
 
         // Static iteration bound exhausted with items still pending.
-        // Re-acquire the lock and report the actual remaining count so
-        // callers can detect drain-incomplete under concurrent enqueue
-        // instead of receiving a silent Ok.
+        // If shutdown has been signalled, no new enqueues can arrive so
+        // drain MUST complete; loop until empty to make this guarantee
+        // explicit. Otherwise (race with concurrent producers) re-acquire
+        // the lock and report the actual remaining count so callers can
+        // detect drain-incomplete instead of receiving a silent Ok.
+        let shutdown = {
+            let state = self
+                .state
+                .lock()
+                .map_err(|_| JournalError::WriteLockPoisoned)?;
+            state.shutdown
+        };
+        if shutdown {
+            loop {
+                let report = self.flush_batch(journal)?;
+                total.drained = total.drained.saturating_add(report.drained);
+                total.written = total.written.saturating_add(report.written);
+                if report.pending_after == 0 {
+                    return Ok(total);
+                }
+            }
+        }
+
         let pending_after = {
             let state = self
                 .state

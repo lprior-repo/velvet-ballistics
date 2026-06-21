@@ -18,6 +18,7 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use vb_core::ids::RunId;
+use vb_core::policy::RuntimePolicy;
 use vb_core::value::ConstValue;
 use vb_core::workflow::{ResourceContract, WorkflowParts};
 use vb_core::{
@@ -71,9 +72,18 @@ fn minimal_workflow() -> CompiledWorkflow {
 fn build_runtime_with_capturing_journal() -> (Runtime, Arc<vb_runtime::journal::VolatileRuntimeJournal>) {
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
     let shared = journal.clone();
+    // Relaxed policy wires `AlwaysPresentArtifactStore` automatically so the
+    // captured-journal runtime accepts the test workflow digest without seeding
+    // a per-test artifact store. `coalesce_window_ticks: 1` disables the
+    // coalescing buffer so journal events are appended immediately per tick.
+    let config = ShardConfig {
+        policy: RuntimePolicy::Relaxed,
+        coalesce_window_ticks: 1,
+        ..ShardConfig::default()
+    };
     let runtime = Runtime::new_with_journal(
         NonZeroUsize::MIN,
-        ShardConfig::default(),
+        config,
         shared,
     )
     .expect("runtime construction must succeed with default config");

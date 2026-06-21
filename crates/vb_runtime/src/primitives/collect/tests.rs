@@ -1124,7 +1124,11 @@ fn collect_next_progresses_pages_then_jumps_done() {
     let finished = collect_next(&mut run, &mut store, &mut states, collector, body, done);
     assert_eq!(finished, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), done);
-    assert_slot_list_items(&run, &store, collector, &[]);
+    // RP-012: the last real page must remain in the collector slot so
+    // `collect_finish` can read it as the collected result. The pre-fix
+    // behaviour overwrote it with an empty sentinel, which silently turned
+    // every multi-page collection into `[]`.
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(3)]);
 }
 
 #[test]
@@ -2301,7 +2305,11 @@ fn collect_full_lifecycle_single_item_pages() -> Result<(), String> {
         run.pc() == done,
         format!("expected pc={done:?} after exhaustion, got {:?}", run.pc()),
     )?;
-    assert_slot_list_items(&run, &store, collector, &[]);
+    // RP-012: the last real page must remain in the collector slot so
+    // `collect_finish` can read it as the collected result. The pre-fix
+    // behaviour overwrote it with an empty sentinel, which silently turned
+    // every multi-page collection into `[]`.
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(40)]);
     Ok(())
 }
 
@@ -4597,4 +4605,88 @@ fn collect_next_rejects_empty_page_with_active_pagination_state() -> Result<(), 
             "expected page-order violation, got {other:?}"
         )),
     }
+}
+
+/// RP-012 regression: a multi-page collect where the final page is reached
+/// through `collect_next` must keep the last real page in the collector slot
+/// so that `collect_finish` reads it as the collected result. The pre-fix
+/// behaviour overwrote the collector slot with an empty sentinel before
+/// routing to `done`, which silently turned every multi-page collect into
+/// the empty list — an input-size-dependent correctness bug.
+#[test]
+fn rp012_collect_finish_emits_final_page_after_terminal_collect_next() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let output = SlotIdx::new(2);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    let next = StepIdx::new(3);
+
+    // 4 items, page size 3 → two pages: [10,20,30] (page 1) and [40] (page 2).
+    // This shape guarantees the *terminal* call is the one that reaches
+    // `cursor >= item_count` (the last page partially fills the page_size
+    // budget), exercising the exact path that pre-fix silently corrupted.
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![
+            SlotValue::I64(10),
+            SlotValue::I64(20),
+            SlotValue::I64(30),
+            SlotValue::I64(40),
+        ],
+    );
+
+    collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        3,
+        body,
+        done,
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start: {e:?}"))?;
+    assert_slot_list_items(
+        &run,
+        &store,
+        collector,
+        &[SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)],
+    );
+
+    // Body processes page 1, then collect_next advances to page 2 ([40]).
+    run.mark_running(body).map_err(|e| format!("mark_running: {e:?}"))?;
+    run.mark_succeeded(body)
+        .map_err(|e| format!("mark_succeeded: {e:?}"))?;
+    collect_next(&mut run, &mut store, &mut states, collector, body, done)
+        .map_err(|e| format!("collect_next 1: {e:?}"))?;
+    assert_eq!(run.pc(), body);
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(40)]);
+
+    // Body processes page 2, then collect_next reaches the terminal step.
+    run.mark_running(body).map_err(|e| format!("mark_running: {e:?}"))?;
+    run.mark_succeeded(body)
+        .map_err(|e| format!("mark_succeeded: {e:?}"))?;
+    let final_signal = collect_next(&mut run, &mut store, &mut states, collector, body, done)
+        .map_err(|e| format!("collect_next final: {e:?}"))?;
+    assert_eq!(final_signal, vb_core::EngineSignal::Continue);
+    assert_eq!(run.pc(), done);
+    // RP-012 invariant: the last real page must remain in the collector
+    // slot. The pre-fix implementation overwrote this with `[]` before
+    // jumping to `done`, turning every multi-page collect into the empty
+    // list and silently corrupting `collect_finish`'s output.
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(40)]);
+
+    // collect_finish must read the preserved last page and emit it.
+    collect_finish(&mut run, &mut states, collector, Some(output), Some(next), done)
+        .map_err(|e| format!("collect_finish: {e:?}"))?;
+    assert_slot_list_items(&run, &store, output, &[SlotValue::I64(40)]);
+    Ok(())
 }

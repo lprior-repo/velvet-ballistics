@@ -84,10 +84,15 @@ pub fn index_status_key(
     timestamp: u64,
     run: RunId,
 ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
-    if let IndexStatusState::Other(byte) = state {
-        if !IndexStatusState::is_valid_key_byte(byte) {
-            return Err(JournalError::IndexStatusStateCollision { byte });
-        }
+    // SC-001 defense-in-depth: reject Other payloads that would overflow the
+    // offset encoding (v + MIN_OTHER_BYTE > u8::MAX). try_new_other already
+    // enforces this at construction, but a direct variant construction can
+    // still produce an out-of-range payload and we must not let it corrupt
+    // the wire format.
+    if let IndexStatusState::Other(byte) = state
+        && byte > IndexStatusState::MAX_OTHER_BYTE
+    {
+        return Err(JournalError::IndexStatusStateCollision { byte });
     }
     let mut key = ArrayVec::<u8, INDEX_STATUS_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_STATUS)

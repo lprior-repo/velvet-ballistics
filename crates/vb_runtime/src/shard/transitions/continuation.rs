@@ -71,19 +71,50 @@ impl Shard {
             Err(RuntimeError::UnsupportedOperation {
                 operation: "retry_metadata_missing",
             }) => ticket.capacity,
-            Err(error) => return Err(error),
+            Err(error) => {
+                // RS-005: restore the run state on intermediate failure so
+                // the run is not silently dropped from shard bookkeeping.
+                self.run_state_insert(run, state);
+                return Err(error);
+            }
         };
-        let ticket = normalize_scheduled_ticket(&state, ActionTicket { capacity, ..ticket })?;
+        let ticket = match normalize_scheduled_ticket(&state, ActionTicket {
+            capacity,
+            ..ticket
+        }) {
+            Ok(t) => t,
+            Err(error) => {
+                self.run_state_insert(run, state);
+                return Err(error);
+            }
+        };
         record_scheduled_attempt(&mut state, ticket);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });
-        let output = action_output_slot(&state, ticket.step)?;
-        let input = action_input_slot(&state, ticket.step)?;
-        self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
+        let output = match action_output_slot(&state, ticket.step) {
+            Ok(slot) => slot,
+            Err(error) => {
+                self.run_state_insert(run, state);
+                return Err(error);
+            }
+        };
+        let input = match action_input_slot(&state, ticket.step) {
+            Ok(slot) => slot,
+            Err(error) => {
+                self.run_state_insert(run, state);
+                return Err(error);
+            }
+        };
+        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
             ticket,
             input,
             output,
-        })?;
+        }) {
+            // RS-005: restore the run state on intermediate failure so the
+            // run is not silently dropped from shard bookkeeping.
+            self.run_state_insert(run, state);
+            return Err(error);
+        }
         self.run_state_insert(run, state);
         Ok(())
     }

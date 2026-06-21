@@ -373,7 +373,9 @@ fn run_event_key_ordering_matches_numeric_comparison() {
     let run = run_id(42);
     let key0 = run_event_key(run, event_seq(0)).expect("key at seq=0 must encode");
     let key255 = run_event_key(run, event_seq(255)).expect("key at seq=255 must encode");
-    let key_max = run_event_key(run, event_seq(u64::MAX)).expect("key at seq=u64::MAX must encode");
+    // u64::MAX is the reserved sentinel — encode below it for the high boundary.
+    let key_max = run_event_key(run, event_seq(u64::MAX - 1))
+        .expect("key at seq=u64::MAX-1 must encode");
 
     // When: comparing lexicographically
     // Then: ordering matches numeric comparison
@@ -385,13 +387,14 @@ fn run_event_key_ordering_matches_numeric_comparison() {
     );
     assert!(
         key255 < key_max,
-        "key(seq=255) must sort before key(seq=u64::MAX)"
+        "key(seq=255) must sort before key(seq=u64::MAX-1)"
     );
 }
 
 #[test]
 fn sequence_bytes_decoded_to_correct_u64_values() {
-    // Given: keys at known sequence positions
+    // Given: keys at known sequence positions (u64::MAX is the reserved
+    // sentinel and must not be encodable; see max_sequence_key_rejects_reserved_sentinel)
     let run = run_id(1);
     let tests = [
         (0u64, "seq=0"),
@@ -399,7 +402,6 @@ fn sequence_bytes_decoded_to_correct_u64_values() {
         (255, "seq=255"),
         (1u64 << 63, "seq=midpoint"),
         (u64::MAX - 1, "seq=MAX-1"),
-        (u64::MAX, "seq=MAX"),
     ];
 
     for &(seq_val, label) in &tests {
@@ -830,19 +832,35 @@ fn single_event_at_max_minus_one_replays_correctly() {
 
 #[test]
 fn max_sequence_key_encodes_without_panic() {
-    // Given: seq=u64::MAX
+    // Given: seq=u64::MAX (reserved sentinel — must be rejected, not panic)
     let run = run_id(1);
     let seq = event_seq(u64::MAX);
 
     // When: encoding key
-    let key = run_event_key(run, seq).expect("run_event_key at seq=u64::MAX must encode");
+    // Then: encoder must surface ReservedSeqSentinel (no panic) for the
+    // reserved sentinel value u64::MAX.
+    let key = run_event_key(run, seq);
+    assert!(
+        matches!(key, Err(JournalError::ReservedSeqSentinel)),
+        "run_event_key at seq=u64::MAX must return Err(ReservedSeqSentinel), got {key:?}"
+    );
+}
 
-    // Then: bytes 9..17 are u64::MAX big-endian
+#[test]
+fn max_sequence_key_encodes_just_below_sentinel() {
+    // Given: seq=u64::MAX - 1 (just below the reserved sentinel)
+    let run = run_id(1);
+    let seq = event_seq(u64::MAX - 1);
+
+    // When: encoding key
+    let key = run_event_key(run, seq).expect("run_event_key at seq=u64::MAX-1 must encode");
+
+    // Then: bytes 9..17 are (u64::MAX - 1) big-endian
     let seq_bytes = event_key_seq_bytes(&key);
     assert_eq!(
         seq_bytes,
-        u64::MAX.to_be_bytes(),
-        "seq bytes at u64::MAX must match u64::MAX.to_be_bytes()"
+        (u64::MAX - 1).to_be_bytes(),
+        "seq bytes at u64::MAX-1 must match (u64::MAX-1).to_be_bytes()"
     );
 }
 
@@ -939,9 +957,10 @@ fn run_event_key_construction_with_various_sequences_does_not_panic() {
 
 #[test]
 fn run_event_key_has_correct_byte_length_for_all_boundary_sequences() {
-    // Given: boundary sequence values
+    // Given: boundary sequence values (u64::MAX is the reserved sentinel and
+    // must be rejected; use u64::MAX - 1 for the high boundary).
     let run = run_id(0xABCD);
-    let boundaries = [(0u64, "zero"), (1, "one"), (u64::MAX, "max")];
+    let boundaries = [(0u64, "zero"), (1, "one"), (u64::MAX - 1, "max_minus_one")];
 
     for &(seq_val, label) in &boundaries {
         let key = run_event_key(run, event_seq(seq_val))
@@ -960,6 +979,21 @@ fn run_event_key_has_correct_byte_length_for_all_boundary_sequences() {
             "first byte must be 0x11 (run_event prefix)"
         );
     }
+}
+
+#[test]
+fn run_event_key_rejects_reserved_sentinel() {
+    // Given: seq=u64::MAX (reserved sentinel)
+    let run = run_id(0xABCD);
+    let seq = event_seq(u64::MAX);
+
+    // When/Then: encoding must return ReservedSeqSentinel (not panic, not
+    // produce a 17-byte key).
+    let key = run_event_key(run, seq);
+    assert!(
+        matches!(key, Err(JournalError::ReservedSeqSentinel)),
+        "run_event_key at seq=u64::MAX must return Err(ReservedSeqSentinel), got {key:?}"
+    );
 }
 
 #[test]

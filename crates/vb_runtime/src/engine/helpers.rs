@@ -15,7 +15,9 @@ pub fn mark_step_after_signal(
     signal: &RuntimeSignal,
 ) -> Result<(), EngineError> {
     match signal {
-        RuntimeSignal::AwaitingWait(_) => run.mark_waiting(step),
+        RuntimeSignal::AwaitingWait(_) | RuntimeSignal::AwaitingEvent { .. } => {
+            run.mark_waiting(step)
+        }
         RuntimeSignal::AwaitingAsk(_) => run.mark_asking(step),
         RuntimeSignal::AwaitingAction(_) | RuntimeSignal::StepBudgetExhausted => Ok(()),
         RuntimeSignal::Continue | RuntimeSignal::Finished(_) => run.mark_succeeded(step),

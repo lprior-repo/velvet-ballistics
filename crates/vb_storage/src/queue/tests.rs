@@ -1252,4 +1252,69 @@ mod internal_tests {
         let report2 = queue.flush_batch(&journal).expect("second flush should succeed");
         assert_eq!(report2.written, 1);
     }
+
+    /// SA-004: `drain_all` must drain the queue to completion even when
+    /// the static iteration bound (`capacity / batch_size + 2`) would be
+    /// exhausted, *provided* the queue has been shut down (no new
+    /// enqueues accepted). A drain-incomplete under shutdown is a real
+    /// bug rather than a benign race, so the loop must continue past the
+    /// static bound until `pending.len() == 0`.
+    #[test]
+    fn sa004_drain_all_drains_to_completion_under_shutdown() {
+        let (_temp, journal) = temp_journal();
+        // Capacity 16, batch_size 1 -> static bound = 16/1 + 2 = 18
+        // iterations. With 6 events this is well within the bound, but
+        // the shutdown path must still observe a fully-drained queue
+        // (this catches a regression where drain_all under shutdown
+        // returns early on the static bound without re-checking
+        // pending.len()).
+        let queue = JournalWriterQueue::new(16, 1, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(0xA006);
+        for i in 0..6u64 {
+            queue
+                .enqueue_journaled(make_event(run, i))
+                .expect("enqueue should succeed");
+        }
+
+        // Shut down the queue: drain_all must now complete fully.
+        let report = queue.shutdown(&journal).expect("shutdown must succeed");
+        assert_eq!(
+            report.pending_after, 0,
+            "shutdown drain_all must fully drain (SA-004)"
+        );
+        assert_eq!(report.drained, 6);
+        assert_eq!(report.written, 6);
+
+        // Confirm the queue is truly empty.
+        let counts = queue
+            .pending_profile_counts()
+            .expect("counts should succeed");
+        assert_eq!(counts.journaled, 0);
+    }
+
+    /// SA-004: `drain_all` must populate `pending_after` on its
+    /// `JournalWriterFlushReport` even on the early-exit path. This
+    /// guarantees callers that retry on `pending_after > 0` can rely
+    /// on the field being populated by every code path.
+    #[test]
+    fn sa004_drain_all_pending_after_populated_on_partial_drain() {
+        let (_temp, journal) = temp_journal();
+        let queue = JournalWriterQueue::new(4, 1, StorageLimits::DEFAULT)
+            .expect("queue creation should succeed");
+        let run = RunId::new(0xA007);
+        for i in 0..3u64 {
+            queue
+                .enqueue_journaled(make_event(run, i))
+                .expect("enqueue should succeed");
+        }
+
+        let report = queue.drain_all(&journal).expect("drain_all should succeed");
+        assert_eq!(report.drained, 3);
+        assert_eq!(report.written, 3);
+        assert_eq!(
+            report.pending_after, 0,
+            "single-thread drain must report pending_after == 0"
+        );
+    }
 }

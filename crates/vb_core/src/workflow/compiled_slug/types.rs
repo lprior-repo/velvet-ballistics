@@ -110,6 +110,16 @@ pub enum SlugParseError {
         /// Maximum allowed slugs.
         max: usize,
     },
+    /// The serialized payload exceeds the maximum byte size permitted
+    /// before deserialization (CW-011). Rejected up front so the decoder
+    /// cannot allocate an oversized `Box<[YbBoundedSlug]>`.
+    #[error("slug payload too large: {size} bytes (max {max})")]
+    PayloadTooLarge {
+        /// Actual payload size in bytes.
+        size: usize,
+        /// Maximum allowed payload size in bytes.
+        max: usize,
+    },
     /// Recomputing the sum of all per-slug yield costs overflowed `u64`.
     #[error("slug yield cost sum overflowed u64")]
     YieldCostOverflow,

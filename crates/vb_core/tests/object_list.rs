@@ -394,3 +394,64 @@ fn build_list_with_taint_rejects_uninitialized_slot() {
         })
     );
 }
+
+// ===== ValueStore::insert_object duplicate-key rejection (CF-006) =====
+
+#[test]
+fn insert_object_rejects_duplicate_keys() {
+    use vb_core::value_store::ObjectField;
+
+    let mut store = ValueStore::new();
+    let sym_a = store.insert_symbol("a").expect("symbol a");
+    let fields: Box<[ObjectField]> = vec![
+        ObjectField {
+            key: sym_a,
+            value: SlotValue::I64(1),
+            taint: Taint::Clean,
+        },
+        ObjectField {
+            key: sym_a,
+            value: SlotValue::I64(2),
+            taint: Taint::Clean,
+        },
+    ]
+    .into_boxed_slice();
+    let result = store.insert_object(fields);
+    assert_eq!(
+        result,
+        Err(vb_core::errors::CoreError::InvalidCompiledWorkflow {
+            reason: "duplicate_object_key",
+        })
+    );
+    assert_eq!(store.object_count(), 0);
+}
+
+#[test]
+fn insert_object_accepts_distinct_keys() {
+    use vb_core::value_store::ObjectField;
+
+    let mut store = ValueStore::new();
+    let sym_a = store.insert_symbol("a").expect("symbol a");
+    let sym_b = store.insert_symbol("b").expect("symbol b");
+    let fields: Box<[ObjectField]> = vec![
+        ObjectField {
+            key: sym_a,
+            value: SlotValue::I64(1),
+            taint: Taint::Clean,
+        },
+        ObjectField {
+            key: sym_b,
+            value: SlotValue::I64(2),
+            taint: Taint::Clean,
+        },
+    ]
+    .into_boxed_slice();
+    let obj = store.insert_object(fields).expect("insert_object");
+    assert_eq!(store.object_count(), 1);
+    assert_eq!(store.object_field(obj, sym_a).expect("field a"), SlotValue::I64(1));
+    assert_eq!(store.object_field(obj, sym_b).expect("field b"), SlotValue::I64(2));
+    let slice = store.object(obj).expect("object");
+    assert_eq!(slice.len(), 2);
+    assert_eq!(slice[0].value, SlotValue::I64(1));
+    assert_eq!(slice[1].value, SlotValue::I64(2));
+}

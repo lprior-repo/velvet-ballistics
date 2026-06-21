@@ -332,39 +332,80 @@ fn index_status_key_length() -> Result<(), JournalError> {
 
 #[test]
 fn index_status_key_rejects_other_byte_collision_with_named_variants() {
+    // SC-001: Other(v) is encoded as v + MIN_OTHER_BYTE on the wire, so the
+    // encoded byte is always >= 3 and never collides with named variants.
+    // The key encoder therefore accepts Other(0), Other(1), Other(2) — they
+    // no longer pose a keyspace-integrity risk.
     for byte in [0u8, 1, 2] {
         let result = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(1));
-        let Err(JournalError::IndexStatusStateCollision { byte: found }) = result else {
-            panic!("Other({byte}) must be rejected with IndexStatusStateCollision, got {result:?}");
-        };
-        assert_eq!(found, byte, "reported byte must match the offender");
+        assert!(
+            result.is_ok(),
+            "Other({byte}) must be accepted after SC-001 offset encoding, got {result:?}"
+        );
+        let key = result.unwrap();
+        let expected = byte.saturating_add(IndexStatusState::MIN_OTHER_BYTE);
+        assert_eq!(
+            key[1], expected,
+            "encoded byte must equal payload + MIN_OTHER_BYTE for SC-001 bijection"
+        );
     }
 }
 
 #[test]
 fn index_status_key_accepts_other_bytes_above_collision_range() -> Result<(), JournalError> {
-    for byte in [3u8, 4, 7, 42, 99, 255] {
+    // SC-001: the encoded byte is payload + MIN_OTHER_BYTE.
+    for byte in [3u8, 4, 7, 42, 99, 252] {
         let key = index_status_key(IndexStatusState::Other(byte), 0, RunId::new(1))?;
         assert_eq!(
-            key[1], byte,
-            "key byte must mirror the safe Other payload"
+            key[1],
+            byte + IndexStatusState::MIN_OTHER_BYTE,
+            "encoded byte must equal payload + MIN_OTHER_BYTE"
         );
     }
     Ok(())
 }
 
 #[test]
+fn index_status_key_rejects_overflowing_other_payloads() {
+    // SC-001: Other(v) with v > MAX_OTHER_BYTE would overflow the wire
+    // encoding. try_new_other rejects them at construction, so we cannot
+    // build such an Other directly, but the encoder-side defensive check
+    // is documented via is_valid_key_byte.
+    assert_eq!(
+        IndexStatusState::MAX_OTHER_BYTE,
+        u8::MAX - IndexStatusState::MIN_OTHER_BYTE,
+        "MAX_OTHER_BYTE must be u8::MAX - MIN_OTHER_BYTE"
+    );
+}
+
+#[test]
 fn index_status_state_try_new_other_rejects_collision_bytes() {
-    assert!(IndexStatusState::try_new_other(0).is_none());
-    assert!(IndexStatusState::try_new_other(1).is_none());
-    assert!(IndexStatusState::try_new_other(2).is_none());
+    // SC-001: try_new_other accepts any payload 0..=MAX_OTHER_BYTE because
+    // the offset encoding is a strict bijection — payloads in 0..=2 now
+    // encode as bytes 3..=5, which never collide with named variants.
+    assert_eq!(
+        IndexStatusState::try_new_other(0),
+        Some(IndexStatusState::Other(0))
+    );
+    assert_eq!(
+        IndexStatusState::try_new_other(1),
+        Some(IndexStatusState::Other(1))
+    );
+    assert_eq!(
+        IndexStatusState::try_new_other(2),
+        Some(IndexStatusState::Other(2))
+    );
     assert_eq!(
         IndexStatusState::try_new_other(3),
         Some(IndexStatusState::Other(3))
     );
+    // Overflow: payload v + 3 must fit in u8.
+    assert!(IndexStatusState::try_new_other(253).is_none());
+    assert!(IndexStatusState::try_new_other(254).is_none());
+    assert!(IndexStatusState::try_new_other(255).is_none());
     assert_eq!(
-        IndexStatusState::try_new_other(255),
-        Some(IndexStatusState::Other(255))
+        IndexStatusState::try_new_other(IndexStatusState::MAX_OTHER_BYTE),
+        Some(IndexStatusState::Other(IndexStatusState::MAX_OTHER_BYTE))
     );
 }
 

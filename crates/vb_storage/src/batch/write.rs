@@ -76,9 +76,18 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Commits the batch atomically.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`JournalError::BatchAborted`] when the batch is in the
+    /// aborted state (i.e. a prior staging method surfaced a typed error).
+    /// Callers must discard the batch and start a new one. The previous
+    /// silent-Ok behavior allowed writes to be silently dropped when the
+    /// caller pattern was `if let Err(e) = batch.put_blob(...) { warn!(?e); }
+    /// batch.commit()?;` — see bead vb-83aqs (SA-002).
     pub fn commit(self) -> Result<(), JournalError> {
-        if self.state.is_aborted() {
-            return Ok(());
+        if let Some(reason) = self.state.abort_reason() {
+            return Err(JournalError::BatchAborted { reason });
         }
         self.inner.commit()?;
         Ok(())

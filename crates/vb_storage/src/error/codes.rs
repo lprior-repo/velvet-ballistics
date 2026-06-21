@@ -82,6 +82,8 @@ impl JournalError {
     pub const INDEX_STATUS_STATE_COLLISION_CODE: DiagnosticCode = DiagnosticCode::new(0x4038);
     /// Diagnostic code for reserved `EventSeq::MAX` sentinel encoding attempt.
     pub const RESERVED_SEQ_SENTINEL_CODE: DiagnosticCode = DiagnosticCode::new(0x4039);
+    /// Diagnostic code for batch aborted by a staging operation.
+    pub const BATCH_ABORTED_CODE: DiagnosticCode = DiagnosticCode::new(0x403A);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -139,6 +141,7 @@ impl JournalError {
             Self::MetadataMutation { .. } => Self::METADATA_MUTATION_CODE,
             Self::IndexStatusStateCollision { .. } => Self::INDEX_STATUS_STATE_COLLISION_CODE,
             Self::ReservedSeqSentinel => Self::RESERVED_SEQ_SENTINEL_CODE,
+            Self::BatchAborted { .. } => Self::BATCH_ABORTED_CODE,
         }
     }
 
@@ -198,6 +201,7 @@ impl JournalError {
             Self::MetadataMutation { .. } => "METADATA_MUTATION",
             Self::IndexStatusStateCollision { .. } => "INDEX_STATUS_STATE_COLLISION",
             Self::ReservedSeqSentinel => "RESERVED_SEQ_SENTINEL",
+            Self::BatchAborted { .. } => "BATCH_ABORTED",
         };
         if let Some(code) = SymbolicCode::from_static(s) {
             return code;

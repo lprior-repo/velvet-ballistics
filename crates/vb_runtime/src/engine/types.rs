@@ -61,6 +61,12 @@ pub enum RuntimeEngineError {
         /// Requested branch count.
         requested: usize,
     },
+    /// Retry policy admitted zero attempts. The runtime drive refuses to
+    /// dispatch because issuing an action ticket with `attempt = 1` and
+    /// `capacity = 0` would violate the ticket invariant `attempt <= capacity`.
+    /// See bead vb-tqn41 (RE-013).
+    #[error("retry policy has zero max_attempts")]
+    RetryZeroMaxAttempts,
 }
 
 impl From<EngineError> for RuntimeEngineError {
@@ -79,6 +85,8 @@ impl RuntimeEngineError {
     /// Runtime code for exhausted retry policies.
     pub const RETRY_EXHAUSTED_RUNTIME_CODE: &str = "RETRY_EXHAUSTED";
     pub const BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE: &str = "BRANCH_LIMIT_EXCEEDED";
+    /// Runtime code for a rejected zero-attempt retry policy.
+    pub const RETRY_ZERO_MAX_ATTEMPTS_RUNTIME_CODE: &str = "RETRY_ZERO_MAX_ATTEMPTS";
 
     /// Returns the stable section 17 runtime code when this error has a direct mapping.
     #[must_use]
@@ -90,6 +98,7 @@ impl RuntimeEngineError {
             Self::RetryExhausted { .. } => Some(Self::RETRY_EXHAUSTED_RUNTIME_CODE),
             Self::TaintViolation { .. } => None,
             Self::BranchLimitExceeded { .. } => Some(Self::BRANCH_LIMIT_EXCEEDED_RUNTIME_CODE),
+            Self::RetryZeroMaxAttempts => Some(Self::RETRY_ZERO_MAX_ATTEMPTS_RUNTIME_CODE),
         }
     }
 }
@@ -119,6 +128,35 @@ impl RetryPolicy {
         base_delay_ms: 100,
         exponential_backoff: false,
     };
+
+    /// RE-013: returns `true` when the policy admits at least one attempt.
+    /// The runtime drive refuses to dispatch a policy with
+    /// `max_attempts == 0` because issuing an action ticket with
+    /// `attempt = 1` and `capacity = 0` would violate the ticket
+    /// invariant `attempt <= capacity`.
+    #[must_use]
+    pub const fn is_valid_for_dispatch(self) -> bool {
+        self.max_attempts > 0
+    }
+
+    /// RE-013: fallible constructor that rejects policies admitting zero
+    /// attempts. Use this when building a policy from external input.
+    #[must_use]
+    pub const fn try_new(
+        max_attempts: u16,
+        base_delay_ms: u64,
+        exponential_backoff: bool,
+    ) -> Option<Self> {
+        if max_attempts == 0 {
+            None
+        } else {
+            Some(Self {
+                max_attempts,
+                base_delay_ms,
+                exponential_backoff,
+            })
+        }
+    }
 }
 
 /// Extended engine signal returned by the action-aware execution loop.
@@ -135,6 +173,16 @@ pub enum RuntimeSignal {
     AwaitingAction(ActionTicket),
     /// Run is awaiting a wait condition. Carries the slot the wait primitive read its deadline from.
     AwaitingWait(vb_core::ids::SlotIdx),
+    /// Run is awaiting an event. Carries the event slot the primitive
+    /// validated and an optional timeout slot. The event slot MUST NOT
+    /// be treated as a deadline: an event without a timeout has no
+    /// deadline at all and only resumes on the event firing.
+    AwaitingEvent {
+        /// Slot the wait-event primitive read its event identifier from.
+        event: vb_core::ids::SlotIdx,
+        /// Optional timeout slot for the event wait.
+        timeout_slot: Option<vb_core::ids::SlotIdx>,
+    },
     /// Run is awaiting external input (ask). Carries the optional timeout slot.
     AwaitingAsk(Option<vb_core::ids::SlotIdx>),
 }

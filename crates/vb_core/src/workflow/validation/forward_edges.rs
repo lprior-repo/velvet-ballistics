@@ -189,6 +189,18 @@ fn push_loop_span(
         return Ok(());
     };
 
+    // Drop already-ended spans BEFORE the nesting comparison so that
+    // sequential loops (whose previous span's `done <= ci`) do not
+    // register as a stale enclosing loop. The remaining spans are the
+    // active enclosing loops, which are the only ones that should
+    // constrain the new span's nesting.
+    while spans
+        .last()
+        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
+    {
+        spans.pop();
+    }
+
     match spans.last().copied() {
         Some((_outer_start, outer_done)) if done_idx > outer_done => {
             return Err(WorkflowError::ImproperLoopNesting {
@@ -205,13 +217,6 @@ fn push_loop_span(
             });
         }
         _ => {}
-    }
-
-    while spans
-        .last()
-        .is_some_and(|&(_, done): &(usize, usize)| done <= ci)
-    {
-        spans.pop();
     }
 
     spans.push((ci, done_idx));

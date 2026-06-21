@@ -168,6 +168,41 @@ impl EvidenceCollector {
         core::mem::take(&mut self.events)
     }
 
+    /// Restores a single evidence event to the collector. Used by
+    /// [`crate::shard::Shard::flush_evidence`] when a partial flush
+    /// fails so the unprocessed suffix can be retried instead of
+    /// dropped (RS-205).
+    ///
+    /// Capacity overflow is reported via the `dropped` counter rather
+    /// than a panic; downstream callers can observe the loss.
+    pub fn push_event(&mut self, event: EvidenceEvent) {
+        match event {
+            EvidenceEvent::StepStarted { step } => self.push_step_started(step),
+            EvidenceEvent::StepSucceeded { step, output } => {
+                self.push_step_succeeded(step, output);
+            }
+            EvidenceEvent::SlotWritten {
+                slot,
+                value,
+                taint,
+                extra,
+            } => {
+                if extra.is_some() {
+                    let _ = self.push_slot_written_with_extra(slot, value, taint, extra);
+                } else if self.events.len() < self.capacity {
+                    self.events.push(EvidenceEvent::SlotWritten {
+                        slot,
+                        value,
+                        taint,
+                        extra: None,
+                    });
+                } else {
+                    self.dropped = self.dropped.saturating_add(1);
+                }
+            }
+        }
+    }
+
     /// Returns the number of collected events.
     #[must_use]
     pub fn len(&self) -> usize {

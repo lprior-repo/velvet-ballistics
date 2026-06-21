@@ -25,14 +25,18 @@ impl<'j> JournalWriteBatch<'j> {
         }
         let key = run_event_key(event.run_id(), event.seq())?;
         if self.staged_event_keys.contains(&key) {
-            self.state = BatchState::Aborted;
+            self.state = BatchState::Aborted {
+                reason: "duplicate_event_staged",
+            };
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),
                 seq: event.seq(),
             });
         }
         if self.journal.events.contains_key(key)? {
-            self.state = BatchState::Aborted;
+            self.state = BatchState::Aborted {
+                reason: "duplicate_event_committed",
+            };
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),
                 seq: event.seq(),

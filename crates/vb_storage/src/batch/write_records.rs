@@ -22,13 +22,17 @@ impl<'j> JournalWriteBatch<'j> {
         if let Err(e) =
             crate::journal::verify_content_digest(&record.source, &record.digest.as_bytes())
         {
-            self.state = BatchState::Aborted;
+            self.state = BatchState::Aborted {
+                reason: "workflow_source_digest_mismatch",
+            };
             return Err(e);
         }
         let key = match workflow_source_key(record.digest.as_bytes()) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted {
+                    reason: "workflow_source_key_failed",
+                };
                 return Err(e);
             }
         };
@@ -41,7 +45,9 @@ impl<'j> JournalWriteBatch<'j> {
         ) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted {
+                    reason: "workflow_source_encode_failed",
+                };
                 return Err(e);
             }
         };
@@ -54,7 +60,7 @@ impl<'j> JournalWriteBatch<'j> {
         let key = match run_header_key(record.run) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted { reason: "batch_aborted" };
                 return Err(e);
             }
         };
@@ -67,7 +73,7 @@ impl<'j> JournalWriteBatch<'j> {
         ) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted { reason: "batch_aborted" };
                 return Err(e);
             }
         };
@@ -80,7 +86,7 @@ impl<'j> JournalWriteBatch<'j> {
         let key = match run_snapshot_key(snapshot.run, snapshot.seq) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted { reason: "batch_aborted" };
                 return Err(e);
             }
         };
@@ -93,7 +99,7 @@ impl<'j> JournalWriteBatch<'j> {
         ) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted { reason: "batch_aborted" };
                 return Err(e);
             }
         };
@@ -104,20 +110,26 @@ impl<'j> JournalWriteBatch<'j> {
     /// Inserts a blob record into the batch.
     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
         if let Err(e) = crate::journal::verify_content_digest(&record.bytes, &record.digest) {
-            self.state = BatchState::Aborted;
+            self.state = BatchState::Aborted {
+                reason: "blob_digest_mismatch",
+            };
             return Err(e);
         }
         let key = match blob_key(record.digest) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted {
+                    reason: "blob_key_failed",
+                };
                 return Err(e);
             }
         };
         let value = match encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted;
+                self.state = BatchState::Aborted {
+                    reason: "blob_encode_failed",
+                };
                 return Err(e);
             }
         };

@@ -132,6 +132,12 @@ impl ValueStore {
     }
 
     /// Inserts object fields in caller-provided deterministic order.
+    ///
+    /// Returns [`CoreError::InvalidCompiledWorkflow`] with reason
+    /// `"duplicate_object_key"` if the same key appears more than once. The
+    /// slice and the secondary index must agree, so callers (and untrusted
+    /// IR generators) cannot admit an object whose raw fields disagree with
+    /// the keyed lookup used by `object_field`/`object_taint`.
     pub fn insert_object(&mut self, fields: impl Into<Box<[ObjectField]>>) -> CoreResult<ObjectId> {
         let fields = fields.into();
         validate_object_len(fields.len())?;
@@ -146,8 +152,17 @@ impl ValueStore {
                 .ok_or(CoreError::InternalInvariantViolation {
                     reason: "object field index checked by loop bound",
                 })?;
-            index.entry(field.key).or_insert(field.value);
-            taint_index.entry(field.key).or_insert(field.taint);
+            match index.entry(field.key) {
+                indexmap::map::Entry::Vacant(slot) => {
+                    slot.insert(field.value);
+                    taint_index.insert(field.key, field.taint);
+                }
+                indexmap::map::Entry::Occupied(_) => {
+                    return Err(CoreError::InvalidCompiledWorkflow {
+                        reason: "duplicate_object_key",
+                    });
+                }
+            }
             field_pos = field_pos
                 .checked_add(1)
                 .ok_or(CoreError::InternalInvariantViolation {

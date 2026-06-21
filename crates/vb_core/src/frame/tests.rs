@@ -730,7 +730,7 @@ mod tests {
     #[test]
     fn parallel_in_flight_overflow_returns_error() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, 1)?;
-        frame.set_max_parallel_in_flight(u16::MAX - 1);
+        frame.set_max_parallel_in_flight(u16::MAX);
 
         frame.add_parallel_in_flight(u16::MAX)?;
         assert_eq!(
@@ -739,6 +739,81 @@ mod tests {
                 reason: "parallel_in_flight overflow"
             })
         );
+
+        Ok(())
+    }
+
+    /// CF-001 regression: add_parallel_in_flight must enforce the
+    /// configured ceiling by returning `BudgetExceeded`, never by silently
+    /// ratcheting `max_parallel_in_flight` upward to match the new total.
+    #[test]
+    fn parallel_in_flight_exceeding_ceiling_returns_budget_exceeded()
+    -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1)?;
+        frame.set_max_parallel_in_flight(5);
+
+        // Below the ceiling: accepted.
+        frame.add_parallel_in_flight(3)?;
+        assert_eq!(frame.parallel_in_flight(), 3);
+        // Add to exactly the ceiling: accepted.
+        frame.add_parallel_in_flight(2)?;
+        assert_eq!(frame.parallel_in_flight(), 5);
+
+        // Adding 1 more must be rejected with BudgetExceeded, not silently
+        // succeed by ratcheting max_parallel_in_flight to 6.
+        assert_eq!(
+            frame.add_parallel_in_flight(1),
+            Err(CoreError::BudgetExceeded {
+                budget: "parallel_in_flight",
+                limit: 5,
+            })
+        );
+        // The counter and ceiling are unchanged by the rejected call.
+        assert_eq!(frame.parallel_in_flight(), 5);
+        assert_eq!(frame.max_parallel_in_flight(), 5);
+
+        Ok(())
+    }
+
+    /// CF-001 regression (bh_eng_17): `add_parallel_in_flight` saturates
+    /// at the configured ceiling rather than ratcheting the field upward
+    /// to follow the observed peak. The accessor docstring declares the
+    /// field as the "Maximum allowed parallel in-flight branches for this
+    /// workflow", i.e. a configured ceiling, so exceeding it must surface
+    /// as a typed `BudgetExceeded` error.
+    #[test]
+    fn bh_eng_17_parallel_count_saturates_on_overflow() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1)?;
+        // A reasonable production ceiling. The pre-fix code would have
+        // ratcheted `max_parallel_in_flight` to 20 silently.
+        frame.set_max_parallel_in_flight(10);
+
+        // Add 6 then 4 (total 10, exactly at the ceiling): accepted.
+        frame.add_parallel_in_flight(6)?;
+        assert_eq!(frame.parallel_in_flight(), 6);
+        frame.add_parallel_in_flight(4)?;
+        assert_eq!(frame.parallel_in_flight(), 10);
+
+        // Adding 10 more would push the total to 20, double the ceiling.
+        // The pre-fix code would silently set max_parallel_in_flight=20.
+        assert_eq!(
+            frame.add_parallel_in_flight(10),
+            Err(CoreError::BudgetExceeded {
+                budget: "parallel_in_flight",
+                limit: 10,
+            })
+        );
+        // Counter unchanged by the rejected call; ceiling is unchanged.
+        assert_eq!(frame.parallel_in_flight(), 10);
+        assert_eq!(frame.max_parallel_in_flight(), 10);
+
+        // Drain the counter, then re-add up to the ceiling — the ceiling is
+        // still the original configured value, not the observed peak.
+        frame.sub_parallel_in_flight(10)?;
+        assert_eq!(frame.parallel_in_flight(), 0);
+        frame.add_parallel_in_flight(8)?;
+        assert_eq!(frame.parallel_in_flight(), 8);
+        assert_eq!(frame.max_parallel_in_flight(), 10);
 
         Ok(())
     }

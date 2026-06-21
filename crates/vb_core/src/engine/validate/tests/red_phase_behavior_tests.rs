@@ -1470,6 +1470,58 @@ mod complex_nested_workflow_validation {
             Err(WorkflowError::ImproperLoopNesting { .. })
         ));
     }
+
+    // CW-004 regression: sequential loops whose previous `done` index is
+    // strictly less than the next loop's start must be accepted. The
+    // previous validator checked nesting BEFORE popping ended spans, so
+    // a stale prior span caused ordinary sequential loops to be flagged
+    // as improperly nested.
+    #[test]
+    fn accepts_sequential_loops_with_strictly_increasing_done() {
+        let parts = WorkflowParts {
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 5,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(3),
+                    },
+                },
+                nop_node(1),
+                nop_node(2),
+                nop_node(3),
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(2),
+                        limit: 5,
+                        body: StepIdx::new(5),
+                        done: StepIdx::new(6),
+                    },
+                },
+                nop_node(5),
+                finish_node(6, 0),
+            ]
+            .into_boxed_slice(),
+            slot_count: 3,
+            entry: StepIdx::new(0),
+            ..valid_parts()
+        };
+        kani::assert_eq!(validate_compiled_workflow(&parts), Ok(()));
+        kani::assert_eq!(validate_transition_target(&parts), Ok(()));
+    }
 }
 
 // ---------------------------------------------------------------------------

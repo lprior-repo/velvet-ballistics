@@ -32,6 +32,23 @@ pub use validation::{
     validate_compiled_query_summary,
 };
 
+/// Maximum allowed payload size for a compiled-query blob.
+///
+/// CW-011: this preflight is computed from `MAX_QUERIES_PER_WORKFLOW` and the
+/// worst-case encoded size of a single query (full path + varint yield cost).
+/// Any payload larger than this cannot decode into a value that survives
+/// admission, so we reject it before `postcard::from_bytes` allocates a
+/// potentially enormous `Box<[YbBoundedQuery]>`.
+pub const MAX_QUERY_PAYLOAD_BYTES: usize =
+    // Header: varint(MAX_QUERIES_PER_WORKFLOW) (3 bytes max) + u64 total_yield_cost (9 bytes max).
+    12 + MAX_QUERIES_PER_WORKFLOW
+        * (
+            // Per-query worst case: varint path length (1 byte) +
+            // MAX_QUERY_PATH_SEGMENTS segments (each 1-byte variant + 5-byte u32 varint) +
+            // 1-byte QueryOutputType variant + u64 yield_cost (9 bytes max).
+            1 + MAX_QUERY_PATH_SEGMENTS * 6 + 1 + 9
+        );
+
 /// Decodes compiled queries from bytes and validates them against a yield budget.
 ///
 /// Deserializes the `CompiledQueries` structure using `postcard::from_bytes` and
@@ -41,11 +58,14 @@ pub use validation::{
 ///
 /// # Errors
 ///
-/// Returns `QueryParseError::Decode` if the byte sequence is not valid
-/// postcard-encoded `CompiledQueries`. Returns `QueryParseError::YbBudgetExceeded`
-/// if the total yield cost of all queries exceeds `max_yield_budget`. Returns
-/// `QueryParseError::QueryPathTooDeep` if any query exceeds the path depth limit.
-/// Returns `QueryParseError::TooManyQueries` if the number of queries exceeds
+/// Returns `QueryParseError::PayloadTooLarge` if the input bytes exceed
+/// `MAX_QUERY_PAYLOAD_BYTES` (CW-011: prevent pre-validation allocation
+/// blowup). Returns `QueryParseError::Decode` if the byte sequence is not
+/// valid postcard-encoded `CompiledQueries`. Returns
+/// `QueryParseError::YbBudgetExceeded` if the total yield cost of all queries
+/// exceeds `max_yield_budget`. Returns `QueryParseError::QueryPathTooDeep` if
+/// any query exceeds the path depth limit. Returns
+/// `QueryParseError::TooManyQueries` if the number of queries exceeds
 /// `MAX_QUERIES_PER_WORKFLOW`. Returns `QueryParseError::YieldCostOverflow` if
 /// the recomputed yield sum overflows `u64`. Returns
 /// `QueryParseError::TotalYieldCostMismatch` if the serialized total differs
@@ -55,6 +75,12 @@ pub fn from_bytes_compiled_queries(
     bytes: &[u8],
     max_yield_budget: u64,
 ) -> Result<YbBoundedQueries, QueryParseError> {
+    if bytes.len() > MAX_QUERY_PAYLOAD_BYTES {
+        return Err(QueryParseError::PayloadTooLarge {
+            size: bytes.len(),
+            max: MAX_QUERY_PAYLOAD_BYTES,
+        });
+    }
     let compiled: CompiledQueries = postcard::from_bytes(bytes).map_err(QueryParseError::Decode)?;
     validate_compiled_queries(compiled, max_yield_budget)
 }

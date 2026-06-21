@@ -1507,33 +1507,317 @@ fn eval_load_accessor_out_of_bounds_returns_error() -> Result<(), CoreError> {
     Ok(())
 }
 
-// ---- Unsupported ops ----
+// ---- CE-002 regression: previously-unsupported ops are now supported ----
 
 #[test]
-fn eval_unsupported_op_returns_error() -> Result<(), CoreError> {
+fn eval_contains_op_is_now_supported() -> Result<(), CoreError> {
+    // CE-002 regression: ExprOp::Contains is supported by the engine
+    // and must therefore be supported by replay. The previous behavior
+    // of returning Internal("unsupported expression op for replay")
+    // broke parity for valid deterministic workflows.
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let haystack = store.insert_symbol("hello world")?;
+    let needle = store.insert_symbol("world")?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+
+    stack.push(SlotValue::Symbol(haystack)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::Symbol(needle)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Contains, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::Bool(true), "Contains should yield Bool(true)");
+    Ok(())
+}
+
+#[test]
+fn eval_neg_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
+    stack.push(SlotValue::I64(7)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Neg, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::I64(-7), "Neg should yield I64(-7)");
+    Ok(())
+}
 
-    let result = eval_replay_op(
+#[test]
+fn eval_starts_with_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let text = store.insert_symbol("hello world")?;
+    let prefix = store.insert_symbol("hello")?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::Symbol(text)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::Symbol(prefix)).map_err(replay_err_to_core)?;
+    eval_replay_op(
         &plan,
         &run,
         &mut store,
-        ExprOp::Contains,
+        ExprOp::StartsWith,
         &mut stack,
         &mut taint,
-    );
-    assert!(
-        matches!(
-            result,
-            Err(ReplayError::Internal {
-                reason: "unsupported expression op for replay"
+    )
+    .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::Bool(true), "StartsWith should yield Bool(true)");
+    Ok(())
+}
+
+#[test]
+fn eval_ends_with_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let text = store.insert_symbol("hello world")?;
+    let suffix = store.insert_symbol("world")?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::Symbol(text)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::Symbol(suffix)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::EndsWith, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::Bool(true), "EndsWith should yield Bool(true)");
+    Ok(())
+}
+
+#[test]
+fn eval_has_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store
+        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Has, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::Bool(true), "Has should yield Bool(true)");
+    Ok(())
+}
+
+#[test]
+fn eval_exists_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let obj_id = store.insert_object(
+        vec![crate::value_store::ObjectField::clean(
+            crate::ids::SymbolId::new(0),
+            SlotValue::I64(1),
+        )]
+        .into_boxed_slice(),
+    )?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::Object(obj_id)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Exists, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::Bool(true), "Exists should yield Bool(true)");
+    Ok(())
+}
+
+#[test]
+fn eval_length_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store
+        .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Length, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::I64(2), "Length should yield I64(2)");
+    Ok(())
+}
+
+#[test]
+fn eval_empty_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let empty_list = store
+        .insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(empty_list)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Empty, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::Bool(true), "Empty should yield Bool(true)");
+    Ok(())
+}
+
+#[test]
+fn eval_append_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store
+        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::I64(3)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Append, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let new_list = stack.pop().map_err(replay_err_to_core)?;
+    let items = match new_list {
+        SlotValue::List(id) => store.list(id)?,
+        _ => {
+            return Err(CoreError::InternalInvariantViolation {
+                reason: "Append should produce a List",
             })
-        ),
-        "Contains op should be unsupported for replay"
-    );
+        }
+    };
+    assert_eq!(items.len(), 3, "appended list should have 3 items");
+    assert_eq!(items[2], SlotValue::I64(3), "last item should be 3");
+    Ok(())
+}
+
+#[test]
+fn eval_append_if_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store.insert_list(vec![SlotValue::I64(1)].into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::Bool(false)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::AppendIf, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let new_list = stack.pop().map_err(replay_err_to_core)?;
+    let items = match new_list {
+        SlotValue::List(id) => store.list(id)?,
+        _ => {
+            return Err(CoreError::InternalInvariantViolation {
+                reason: "AppendIf should produce a List",
+            })
+        }
+    };
+    assert_eq!(items.len(), 1, "append_if with false should not append");
+    Ok(())
+}
+
+#[test]
+fn eval_merge_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let left = store.insert_object(
+        vec![crate::value_store::ObjectField::clean(
+            crate::ids::SymbolId::new(0),
+            SlotValue::I64(1),
+        )]
+        .into_boxed_slice(),
+    )?;
+    let right = store.insert_object(
+        vec![crate::value_store::ObjectField::clean(
+            crate::ids::SymbolId::new(1),
+            SlotValue::I64(2),
+        )]
+        .into_boxed_slice(),
+    )?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::Object(left)).map_err(replay_err_to_core)?;
+    stack.push(SlotValue::Object(right)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Merge, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let merged = stack.pop().map_err(replay_err_to_core)?;
+    let fields = match merged {
+        SlotValue::Object(id) => store.object(id)?,
+        _ => {
+            return Err(CoreError::InternalInvariantViolation {
+                reason: "Merge should produce an Object",
+            })
+        }
+    };
+    assert_eq!(fields.len(), 2, "merged object should have 2 fields");
+    Ok(())
+}
+
+#[test]
+fn eval_sum_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store
+        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Sum, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::I64(6), "Sum should yield I64(6)");
+    Ok(())
+}
+
+#[test]
+fn eval_count_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store
+        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Count, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let result = stack.pop().map_err(replay_err_to_core)?;
+    assert_eq!(result, SlotValue::I64(3), "Count should yield I64(3)");
+    Ok(())
+}
+
+#[test]
+fn eval_unique_op_is_now_supported() -> Result<(), CoreError> {
+    let plan = make_minimal_plan_with_constants(vec![])?;
+    let run = make_frame(2)?;
+    let mut store = ValueStore::new();
+    let list_id = store.insert_list(
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+        ]
+        .into_boxed_slice(),
+    )?;
+    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+    let mut taint = Taint::Clean;
+    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    eval_replay_op(&plan, &run, &mut store, ExprOp::Unique, &mut stack, &mut taint)
+        .map_err(replay_err_to_core)?;
+    let new_list = stack.pop().map_err(replay_err_to_core)?;
+    let items = match new_list {
+        SlotValue::List(id) => store.list(id)?,
+        _ => {
+            return Err(CoreError::InternalInvariantViolation {
+                reason: "Unique should produce a List",
+            })
+        }
+    };
+    assert_eq!(items.len(), 3, "Unique should dedupe to 3 items");
     Ok(())
 }
 
@@ -1883,83 +2167,8 @@ fn blackhat_expression_stack_overflow_is_safe() -> Result<(), CoreError> {
     Ok(())
 }
 
-// --- FINDING BH-OPS-07: Unsupported ops return error, not panic ---
-
-fn check_unsupported_op_returns_error(op: ExprOp) -> Result<(), CoreError> {
-    let plan = make_minimal_plan_with_constants(vec![])?;
-    let run = make_frame(4)?;
-    let mut store = ValueStore::new();
-    let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
-    let mut taint = Taint::Clean;
-    let result = eval_replay_op(&plan, &run, &mut store, op, &mut stack, &mut taint);
-    assert!(
-        matches!(result, Err(ReplayError::Internal { .. })),
-        "BLACKHAT BH-OPS-07: unsupported op {op:?} must return error, not panic"
-    );
-    Ok(())
-}
-
-#[test]
-fn blackhat_unsupported_op_contains_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Contains)
-}
-
-#[test]
-fn blackhat_unsupported_op_starts_with_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::StartsWith)
-}
-
-#[test]
-fn blackhat_unsupported_op_ends_with_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::EndsWith)
-}
-
-#[test]
-fn blackhat_unsupported_op_has_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Has)
-}
-
-#[test]
-fn blackhat_unsupported_op_exists_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Exists)
-}
-
-#[test]
-fn blackhat_unsupported_op_length_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Length)
-}
-
-#[test]
-fn blackhat_unsupported_op_empty_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Empty)
-}
-
-#[test]
-fn blackhat_unsupported_op_append_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Append)
-}
-
-#[test]
-fn blackhat_unsupported_op_append_if_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::AppendIf)
-}
-
-#[test]
-fn blackhat_unsupported_op_merge_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Merge)
-}
-
-#[test]
-fn blackhat_unsupported_op_sum_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Sum)
-}
-
-#[test]
-fn blackhat_unsupported_op_count_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Count)
-}
-
-#[test]
-fn blackhat_unsupported_op_unique_returns_error() -> Result<(), CoreError> {
-    check_unsupported_op_returns_error(ExprOp::Unique)
-}
+// --- BH-OPS-07 retired: previously-unsupported ops are now supported (CE-002) ---
+// The negative-coverage tests above intentionally asserted that deterministic
+// engine-supported operators were rejected by replay. CE-002 parity closes
+// that gap; the corresponding positive-coverage tests live in
+// "CE-002 regression: previously-unsupported ops now succeed".

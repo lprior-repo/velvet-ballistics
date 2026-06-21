@@ -29,6 +29,30 @@ impl Shard {
             return Err(RuntimeError::InvalidActionCompletion);
         }
         let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
+        // RS-103 fix: derive the canonical resume step and answer slot
+        // from the workflow's AskResume node and reject answers whose
+        // supplied ticket fields do not match the workflow authority.
+        // The pending_timer only constrains `step` and `kind`; this
+        // preflight closes the gap where `answer.answer_slot` and
+        // `answer.ticket.resume_step` were trusted from the caller.
+        let resume_step = state
+            .workflow
+            .node(pending_timer.step)
+            .and_then(|node| node.next)
+            .ok_or(RuntimeError::InvalidActionCompletion)?;
+        let ask_resume = state
+            .workflow
+            .node(resume_step)
+            .ok_or(RuntimeError::InvalidActionCompletion)?;
+        let expected_answer_slot = match ask_resume.kind {
+            vb_core::workflow::CompiledNodeKind::AskResume { answer } => answer,
+            _ => return Err(RuntimeError::InvalidActionCompletion),
+        };
+        if answer.ticket.resume_step != resume_step
+            || answer.answer_slot != expected_answer_slot
+        {
+            return Err(RuntimeError::InvalidActionCompletion);
+        }
         let contract = state.workflow.resource_contract();
         if answer.taint == Taint::Secret && !contract.allows_secret_results {
             return Err(RuntimeError::SecretResultNotAllowed);
@@ -99,19 +123,36 @@ impl Shard {
                 return Err(RuntimeError::InvalidTimerFire);
             }
         };
-        crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
+        if let Err(error) =
+            crate::shard::helpers::advance_after_timer_fire(&mut state, timer)
+        {
+            // RS-005: restore the run state on intermediate failure so the
+            // run is not silently dropped from shard bookkeeping.
+            self.run_state_insert(run, state);
+            return Err(error);
+        }
         match timer.kind {
             PendingTimerKind::Wait => {
-                self.append_journal_event(RuntimeJournalEvent::WaitResolved {
-                    run,
-                    step: timer.step,
-                })?;
+                if let Err(error) =
+                    self.append_journal_event(RuntimeJournalEvent::WaitResolved {
+                        run,
+                        step: timer.step,
+                    })
+                {
+                    self.run_state_insert(run, state);
+                    return Err(error);
+                }
             }
             PendingTimerKind::Ask => {}
         }
         let mut evidence = EvidenceCollector::new();
         let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
-        self.flush_evidence(run, &mut evidence)?;
+        if let Err(error) = self.flush_evidence(run, &mut evidence) {
+            // RS-005: restore the run state on intermediate failure so the
+            // run is not silently dropped from shard bookkeeping.
+            self.run_state_insert(run, state);
+            return Err(error);
+        }
         self.apply_drive_result(run, state, result)
     }
 
@@ -137,6 +178,11 @@ impl Shard {
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
+        // RS-101: route the cancel through the FSM TerminalRemove event so
+        // `runtime_states` is cleared consistently with the other terminal
+        // paths (fail/finish/done). Without this, the FSM map retains a
+        // stale entry (Initial/Running/Resumable) for a cancelled run.
+        let _ = self.apply(run, RuntimeEvent::TerminalRemove);
         self.discard_journal_sequence(run);
         Ok(())
     }
@@ -159,6 +205,11 @@ impl Shard {
             self.trace_ring.push(TraceEvent::RunKilled { run });
             self.append_journal_event(RuntimeJournalEvent::RunKilled { run, reason })?;
         }
+        // RS-101: route the kill through the FSM TerminalRemove event so
+        // `runtime_states` is cleared consistently with the other terminal
+        // paths (fail/finish/done). Without this, the FSM map retains a
+        // stale entry (Initial/Running/Resumable) for a killed run.
+        let _ = self.apply(run, RuntimeEvent::TerminalRemove);
         self.discard_journal_sequence(run);
         Ok(())
     }
@@ -172,7 +223,12 @@ impl Shard {
         let mut state = self.take_run_state(run)?;
         let mut evidence = EvidenceCollector::new();
         let result = Self::drive_state(&mut state, self.step_budget_per_tick, &mut evidence);
-        self.flush_evidence(run, &mut evidence)?;
+        if let Err(error) = self.flush_evidence(run, &mut evidence) {
+            // RS-005: restore the run state on intermediate failure so the
+            // run is not silently dropped from shard bookkeeping.
+            self.run_state_insert(run, state);
+            return Err(error);
+        }
         self.apply_drive_result(run, state, result)
     }
 
@@ -227,6 +283,15 @@ impl Shard {
             Ok(RuntimeSignal::AwaitingWait(deadline_slot)) => {
                 self.apply_awaiting_timer(run, state, PendingTimerKind::Wait, deadline_slot)
             }
+            Ok(RuntimeSignal::AwaitingEvent { event, timeout_slot }) => {
+                // CE-001 fix: WaitEvent without a timeout has no deadline slot.
+                // The event slot MUST NOT be substituted as a deadline; an event
+                // without a timeout never races the timer and is resumed only
+                // when the event fires. With a timeout, the deadline slot is the
+                // workflow's `timeout_slot`, not the event slot.
+                let _ = event;
+                self.apply_awaiting_event(run, state, timeout_slot)
+            }
             Ok(RuntimeSignal::AwaitingAsk(timeout_slot)) => {
                 self.apply_awaiting_timer(run, state, PendingTimerKind::Ask, timeout_slot.unwrap_or(vb_core::ids::SlotIdx::ZERO))
             }
@@ -254,6 +319,35 @@ impl Shard {
         self.await_timer(run, state, kind, deadline_slot)?;
         let _ = self.apply(run, RuntimeEvent::AwaitTimer);
         Ok(())
+    }
+
+    /// CE-001: WaitEvent authority. The deadline slot is the
+    /// `timeout_slot` when present; otherwise there is no deadline
+    /// and the host waits for the event to fire. The event slot is
+    /// never substituted as a deadline.
+    fn apply_awaiting_event(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        timeout_slot: Option<SlotIdx>,
+    ) -> RuntimeResult<()> {
+        match timeout_slot {
+            Some(slot) => self.apply_awaiting_timer(run, state, PendingTimerKind::Wait, slot),
+            None => {
+                // Event-only wait: no deadline. Insert the run without a
+                // pending timer so the run is suspended until an external
+                // event command resumes it.
+                self.counters.add_steps(state.frame.executed());
+                let step = state.frame.pc();
+                let _ = self.append_journal_event(RuntimeJournalEvent::WaitScheduled {
+                    run,
+                    step,
+                    deadline_ms: u64::MAX,
+                });
+                self.run_state_insert(run, state);
+                Ok(())
+            }
+        }
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {

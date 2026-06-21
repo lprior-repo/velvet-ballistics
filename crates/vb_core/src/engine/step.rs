@@ -123,8 +123,9 @@ fn execute_suspension_node(
         CompiledNodeKind::WaitEvent {
             event,
             timeout_slot,
-        } => Ok(EngineSignal::AwaitingWait {
-            deadline_slot: timeout_slot.unwrap_or(*event),
+        } => Ok(EngineSignal::AwaitingEvent {
+            event: *event,
+            timeout_slot: *timeout_slot,
         }),
         CompiledNodeKind::Ask { timeout_slot, .. } => Ok(EngineSignal::AwaitingAsk {
             timeout_slot: *timeout_slot,
@@ -257,7 +258,9 @@ fn mark_step_after_signal(
     signal: &EngineSignal,
 ) -> Result<(), EngineError> {
     match signal {
-        EngineSignal::AwaitingWait { .. } => run.mark_waiting(step),
+        EngineSignal::AwaitingWait { .. } | EngineSignal::AwaitingEvent { .. } => {
+            run.mark_waiting(step)
+        }
         EngineSignal::AwaitingAsk { .. } => run.mark_asking(step),
         EngineSignal::AwaitingAction { .. } | EngineSignal::StepBudgetExhausted => Ok(()),
         EngineSignal::Continue | EngineSignal::Finished(_, _) => run.mark_succeeded(step),

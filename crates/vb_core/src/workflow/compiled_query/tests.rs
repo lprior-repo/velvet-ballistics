@@ -421,3 +421,31 @@ fn compiled_queries_keep_empty_path_root_accessor_valid() -> Result<(), String> 
         Err(err) => Err(format!("compiled query admission failed: {err}")),
     }
 }
+
+// =====================================================================
+// CW-011: preflight rejects oversized payloads before decode
+// =====================================================================
+
+#[test]
+fn cw011_oversized_query_payload_rejected_before_postcard_decode() {
+    use crate::workflow::compiled_query::MAX_QUERY_PAYLOAD_BYTES;
+    let oversized = vec![0u8; MAX_QUERY_PAYLOAD_BYTES + 1];
+    let result = from_bytes_compiled_queries(&oversized, u64::MAX);
+    assert_eq!(
+        result,
+        Err(QueryParseError::PayloadTooLarge {
+            size: MAX_QUERY_PAYLOAD_BYTES + 1,
+            max: MAX_QUERY_PAYLOAD_BYTES,
+        })
+    );
+}
+
+#[test]
+fn cw011_empty_query_payload_is_not_rejected_by_preflight() {
+    let empty: [u8; 0] = [];
+    let result = from_bytes_compiled_queries(&empty, u64::MAX);
+    assert!(
+        !matches!(result, Err(QueryParseError::PayloadTooLarge { .. })),
+        "empty payload must not trip the preflight; got {result:?}"
+    );
+}

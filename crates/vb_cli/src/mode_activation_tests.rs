@@ -921,10 +921,20 @@ proptest! {
             "simulate", "ai-context", "agent-context", "status", "action",
         ][..])
     ) {
-        // Property 1: Every valid command string is handled without panic
-        // Some commands need additional args, so Err is acceptable
+        // Property 1: parse_args must produce a typed Result and must not panic.
+        // Commands that require additional args surface Err(ParseError::MissingArgument);
+        // commands with all-optional args surface Ok(Command::_). UnknownCommand is reserved
+        // for the unknown-command proptest below.
         let parsed = crate::args::parse_args(&args(&["velvet-ballistics", cmd_name]));
-        assert!(matches!(parsed, Ok(_) | Err(_)));
+        match &parsed {
+            Ok(Command::Version) | Ok(Command::Help) => { /* commands with no required args */ }
+            Ok(_) => panic!("bare {} must require additional args, got {parsed:?}", cmd_name),
+            Err(ParseError::MissingArgument(_)) => { /* expected for bare commands */ }
+            Err(other) => panic!(
+                "{} must produce MissingArgument or Ok(Version|Help), got {:?}",
+                cmd_name, other
+            ),
+        }
     }
 
     #[test]

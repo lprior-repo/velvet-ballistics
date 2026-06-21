@@ -223,9 +223,14 @@ fn check_taint_downgrade(
 }
 
 /// Checks that the output slot index is within the contract's declared bounds.
+///
+/// A contract that declares `output_slot_count == 0` produces no outputs, so any
+/// ready outcome carrying an output slot must be rejected. The previous
+/// implementation special-cased `max_slots > 0`, which inverted the most
+/// restrictive contract into the most permissive one.
 fn check_output_slot_in_bounds(slot: SlotIdx, max_slots: u16) -> Result<(), ActionError> {
     let slot_raw = slot.get();
-    if u32::from(slot_raw) >= u32::from(max_slots) && max_slots > 0 {
+    if max_slots == 0 || u32::from(slot_raw) >= u32::from(max_slots) {
         return Err(ActionError::OutputSlotOutOfBounds {
             slot: slot_raw,
             max_slots,

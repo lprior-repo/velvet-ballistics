@@ -12,6 +12,42 @@ use crate::ids::{SlotIdx, StepIdx, SymbolId};
 use crate::limits::{MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE};
 use crate::workflow::{CompiledNode, ExprBranch, SlotBranch, WorkflowError, WorkflowParts};
 
+/// Checks that a node-local fanout count does not exceed the declared contract.
+///
+/// A contract value of `0` is treated as opt-out (legacy callers may pass
+/// `0` to mean "no check"), preserving existing test fixtures that pair
+/// zeroed budget fields with otherwise-valid workflows.
+fn check_against_contract_fanout(
+    actual: usize,
+    contract_max: u16,
+) -> Result<(), WorkflowError> {
+    if contract_max > 0 && actual > usize::from(contract_max) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_fanout",
+        })
+    } else {
+        Ok(())
+    }
+}
+
+/// Checks that a node-local retry count does not exceed the declared contract.
+///
+/// A contract value of `0` is treated as opt-out (legacy callers may pass
+/// `0` to mean "no check"), preserving existing test fixtures that pair
+/// zeroed budget fields with otherwise-valid workflows.
+fn check_against_contract_retry(
+    actual: u16,
+    contract_max: u16,
+) -> Result<(), WorkflowError> {
+    if contract_max > 0 && actual > contract_max {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_retry_attempts",
+        })
+    } else {
+        Ok(())
+    }
+}
+
 /// Validates the four common fields shared by every node kind.
 ///
 /// - `output` — optional slot write target
@@ -96,13 +132,15 @@ pub(crate) fn validate_two_steps(
 }
 
 /// Validates a TogetherStart node: all branch targets and join must be valid
-/// steps, and the branch table must have at least one entry.
+/// steps, and the branch table must have at least one entry. The branch count
+/// must not exceed the declared resource contract's `max_fanout`.
 pub(crate) fn validate_together(
     branches: &[StepIdx],
     join: StepIdx,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_branch_route(branches.len(), Some(join))?;
+    check_against_contract_fanout(branches.len(), parts.resource_contract.max_fanout)?;
     for branch in branches {
         validate_step(*branch, parts.nodes.len())?;
     }
@@ -150,8 +188,8 @@ pub(crate) fn validate_reduce_next(
     validate_two_steps(body, done, parts)
 }
 
-/// Validates a RepeatStart node: max_attempts must be non-zero, body/done steps
-/// must be valid.
+/// Validates a RepeatStart node: max_attempts must be non-zero and bounded by
+/// the declared resource contract, and body/done steps must be valid.
 pub(crate) fn validate_repeat_start(
     max_attempts: u16,
     body: StepIdx,
@@ -159,17 +197,20 @@ pub(crate) fn validate_repeat_start(
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_nonzero_u16(max_attempts, "max_retry_attempts")?;
+    check_against_contract_retry(max_attempts, parts.resource_contract.max_retry_attempts)?;
     validate_two_steps(body, done, parts)
 }
 
 /// Validates a ChooseSlot node: each branch maps a boolean slot to a step target,
-/// and the table must have at least one entry or an otherwise clause.
+/// and the table must have at least one entry or an otherwise clause. The branch
+/// count must not exceed the declared resource contract's `max_fanout`.
 pub(crate) fn validate_slot_choose(
     branches: &[SlotBranch],
     otherwise: Option<StepIdx>,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_branch_route(branches.len(), otherwise)?;
+    check_against_contract_fanout(branches.len(), parts.resource_contract.max_fanout)?;
     branches.iter().try_for_each(|branch| {
         validate_slot(branch.condition, parts.slot_count)?;
         validate_step(branch.target, parts.nodes.len())
@@ -179,12 +220,14 @@ pub(crate) fn validate_slot_choose(
 
 /// Validates a Choose (ExprBranch) node: each branch maps an expression condition
 /// to a step target, and the table must have at least one entry or an otherwise.
+/// The branch count must not exceed the declared resource contract's `max_fanout`.
 pub(crate) fn validate_expr_choose(
     branches: &[ExprBranch],
     otherwise: Option<StepIdx>,
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_branch_route(branches.len(), otherwise)?;
+    check_against_contract_fanout(branches.len(), parts.resource_contract.max_fanout)?;
     branches.iter().try_for_each(|branch| {
         validate_expr(branch.condition, parts.expressions.len())?;
         validate_step(branch.target, parts.nodes.len())

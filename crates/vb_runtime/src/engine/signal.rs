@@ -57,6 +57,13 @@ pub fn runtime_from_core(run: RunId, journal_seq: SeqNo, signal: EngineSignal) -
             })
         }
         EngineSignal::AwaitingWait { deadline_slot } => RuntimeSignal::AwaitingWait(deadline_slot),
+        EngineSignal::AwaitingEvent {
+            event,
+            timeout_slot,
+        } => RuntimeSignal::AwaitingEvent {
+            event,
+            timeout_slot,
+        },
         EngineSignal::AwaitingAsk { timeout_slot } => RuntimeSignal::AwaitingAsk(timeout_slot),
         // Handle any future EngineSignal variants as Continue (safest default).
         #[allow(unreachable_code)]

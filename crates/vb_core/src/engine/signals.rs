@@ -132,6 +132,19 @@ pub enum EngineSignal {
         /// obtain the actual deadline value the wait validated.
         deadline_slot: SlotIdx,
     },
+    /// The run suspended on an event. Carries the event slot the
+    /// primitive validated and an optional timeout slot. The host
+    /// runtime MUST NOT treat the event slot as a deadline: an event
+    /// without a timeout has no deadline at all and waits for the
+    /// event to fire. With a timeout, the host arms a timer using the
+    /// timeout slot and races the event against the timer.
+    AwaitingEvent {
+        /// Slot the wait-event primitive read its event identifier from.
+        event: SlotIdx,
+        /// Optional slot for the timeout deadline. `None` means the
+        /// wait-event has no timeout.
+        timeout_slot: Option<SlotIdx>,
+    },
     /// The run suspended on ask. Carries the optional timeout slot
     /// for ask nodes that include a timeout; `None` means the ask
     /// has no timeout and only the prompt is suspended.

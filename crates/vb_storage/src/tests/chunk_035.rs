@@ -138,9 +138,12 @@ fn batch_put_compiled_ir_rejects_forged_digest_and_aborts() {
     batch
         .put_run_header(&header)
         .expect("post-abort staging call should not persist on commit");
-    batch
-        .commit()
-        .expect("aborted batch commit must be a no-op");
+    // SA-002: commit must surface the abort as a typed error.
+    let commit_result = batch.commit();
+    assert!(
+        matches!(commit_result, Err(JournalError::BatchAborted { .. })),
+        "aborted batch commit must return Err(BatchAborted), got {commit_result:?}"
+    );
 
     assert!(
         journal

@@ -107,13 +107,20 @@ fn lru_ring_property_random_ops_consistency_check() {
                 0 => {
                     // Insert — sweep happens inside LruRing only if item is new
                     let already = ring.contains(&id);
-                    if ring.insert(id, now).is_ok() {
-                        if !already {
-                            truth_ts.retain(|_, ts| ts.saturating_add(10) > tick);
-                            truth.retain(|id| truth_ts.contains_key(id));
+                    match ring.insert(id, now) {
+                        Ok(_) => {
+                            if !already {
+                                truth_ts.retain(|_, ts| ts.saturating_add(10) > tick);
+                                truth.retain(|id| truth_ts.contains_key(id));
+                            }
+                            truth.insert(id_raw);
+                            truth_ts.entry(id_raw).or_insert(tick);
                         }
-                        truth.insert(id_raw);
-                        truth_ts.entry(id_raw).or_insert(tick);
+                        Err(e) => {
+                            panic!(
+                                "ring insert must succeed for in-range id {id:?} at seed={seed}, tick={tick}: {e:?}"
+                            );
+                        }
                     }
                 }
                 1 => {

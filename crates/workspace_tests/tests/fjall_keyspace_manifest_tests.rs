@@ -286,19 +286,36 @@ proptest! {
 
 #[test]
 fn max_sequence_ordering() {
+    // u64::MAX is the reserved sentinel and must be rejected by the encoder.
+    // Verify the ordering contract using u64::MAX - 2 / u64::MAX - 1 instead.
     let run = RunId::new(1);
-    let key_max = run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX)).unwrap();
     let key_max_minus_1 =
         run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 1)).unwrap();
+    let key_max_minus_2 =
+        run_event_key(run, vb_storage::types::EventSeq::new(u64::MAX - 2)).unwrap();
 
     assert!(
-        key_max_minus_1 < key_max,
-        "u64::MAX-1 key must sort before u64::MAX key"
+        key_max_minus_2 < key_max_minus_1,
+        "u64::MAX-2 key must sort before u64::MAX-1 key"
     );
     assert_eq!(
-        &key_max[9..17],
-        &u64::MAX.to_be_bytes(),
-        "seq portion of max key must be u64::MAX bytes"
+        &key_max_minus_1[9..17],
+        &(u64::MAX - 1).to_be_bytes(),
+        "seq portion of max-1 key must be u64::MAX-1 bytes"
+    );
+}
+
+#[test]
+fn max_sequence_encoder_rejects_reserved_sentinel() {
+    // Given: seq=u64::MAX (reserved sentinel)
+    let run = RunId::new(1);
+    let seq = vb_storage::types::EventSeq::new(u64::MAX);
+
+    // When/Then: encoder must surface ReservedSeqSentinel without panic.
+    let result = run_event_key(run, seq);
+    assert!(
+        matches!(result, Err(vb_storage::JournalError::ReservedSeqSentinel)),
+        "run_event_key at seq=u64::MAX must return Err(ReservedSeqSentinel), got {result:?}"
     );
 }
 

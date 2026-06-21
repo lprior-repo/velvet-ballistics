@@ -213,7 +213,15 @@ pub fn collect_next(
     }
     let plan = build_collect_next_plan(run, store, states, collector_slot, current_id)?;
     let Some((state, page, page_len)) = plan else {
-        return write_terminal_collect_page(run, store, states, collector_slot, done);
+        // RP-012: terminal pagination step. The last real page is already
+        // in the collector slot (it was just validated above). Do NOT
+        // overwrite it with an empty sentinel — `collect_finish` reads the
+        // collector slot as the collected result, so an empty sentinel here
+        // would silently turn a multi-page collection into an empty list.
+        // Keep the last page in the collector, drop the pagination state,
+        // and route to `done`.
+        states.remove(run.run_id(), collector_slot);
+        return jump_to(run, done);
     };
     let current_page = write_collected_page(run, store, collector_slot, page)?;
     let cursor = checked_add_usize(state.cursor, page_len, "collect cursor overflow")?;
@@ -245,19 +253,6 @@ fn build_collect_next_plan(
     let page = copy_page_range(source_items, state.cursor, state.page_size)?;
     let page_len = page.len();
     Ok(Some((state, page, page_len)))
-}
-
-fn write_terminal_collect_page(
-    run: &mut RunFrame,
-    store: &mut ValueStore,
-    states: &mut CollectStates,
-    collector_slot: SlotIdx,
-    done: StepIdx,
-) -> Result<vb_core::EngineSignal, EngineError> {
-    let empty_page = Vec::<SlotValue>::new().into_boxed_slice();
-    let _page_id = write_collected_page(run, store, collector_slot, empty_page)?;
-    states.remove(run.run_id(), collector_slot);
-    jump_to(run, done)
 }
 
 /// Executes CollectFinish: writes the collected result to output.

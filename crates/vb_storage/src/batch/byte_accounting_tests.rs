@@ -801,8 +801,12 @@ fn e2e_aborted_batch_commit_succeeds_with_no_persist() {
         matches!(result, Err(JournalError::DuplicateEvent { run: _, seq: _ })),
         "duplicate event must produce DuplicateEvent error, got {result:?}"
     );
-    // Commit should succeed (no-op for aborted batch)
-    batch2.commit().expect("aborted batch commit must succeed");
+    // Commit must surface the abort as a typed error per SA-002.
+    let commit2 = batch2.commit();
+    assert!(
+        matches!(commit2, Err(JournalError::BatchAborted { .. })),
+        "aborted batch commit must return Err(BatchAborted), got {commit2:?}"
+    );
 
     // Only one event persists
     let events = journal.events_for_run(run).expect("replay");

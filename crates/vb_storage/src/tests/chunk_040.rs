@@ -332,6 +332,7 @@ fn journal_error_match_covers_all_variants() {
             JournalError::PayloadLenOverflow { .. } => "payload_len_overflow",
             JournalError::IndexStatusStateCollision { .. } => "index_status_state_collision",
             JournalError::ReservedSeqSentinel => "reserved_seq_sentinel",
+            JournalError::BatchAborted { .. } => "batch_aborted",
         }
     }
     let _ = _exhaustive_match;

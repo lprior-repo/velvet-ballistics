@@ -126,13 +126,16 @@ fn index_action_key_produces_expected_key_bytes() {
 
 #[test]
 fn index_status_key_produces_expected_key_bytes() {
-    // Given state=5, timestamp=1000, run=50
+    // Given state=Other(5), timestamp=1000, run=50
     // When index_status_key is called
     // Then the key is [0x30][state_u8][timestamp_u64_be][run_u64_be]
+    //
+    // SC-001: Other(v) is encoded as v + MIN_OTHER_BYTE on the wire, so
+    // Other(5) maps to byte 8 (5 + 3).
     let key = index_status_key(IndexStatusState::Other(5), 1000, RunId::new(50));
     let key = key.expect("index_status_key should succeed");
     assert_eq!(key[0], 0x30);
-    assert_eq!(key[1], 5);
+    assert_eq!(key[1], 5 + IndexStatusState::MIN_OTHER_BYTE);
     assert_eq!(key[2..10], 1000u64.to_be_bytes());
     assert_eq!(key[10..18], 50u64.to_be_bytes());
 }

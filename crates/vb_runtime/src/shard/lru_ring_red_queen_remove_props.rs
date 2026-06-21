@@ -93,8 +93,8 @@ fn lru_ring_property_remove_uses_free_list_correctly() {
     // Now at capacity; another insert should fail.
     let result = ring.insert(RunId::new(7), TimerTick::new(0));
     assert!(
-        result.is_err(),
-        "insert at capacity must return Err, got {result:?}"
+        matches!(result, Err(crate::RuntimeError::TerminalRunsLruFull { .. })),
+        "insert at capacity must return Err(TerminalRunsLruFull {{ .. }}), got {result:?}"
     );
 }
 

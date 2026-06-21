@@ -232,6 +232,14 @@ pub enum JournalError {
         /// Byte value that would have collided with a named variant.
         byte: u8,
     },
+    /// Batch was previously aborted by a staging operation that surfaced
+    /// a typed error. The batch cannot be committed; callers must
+    /// discard it and start a new batch.
+    #[error("cannot commit aborted batch: {reason}")]
+    BatchAborted {
+        /// Reason the batch was aborted.
+        reason: &'static str,
+    },
     /// `EventSeq` value `u64::MAX` is reserved by the key decoder and
     /// therefore must not be encoded into a storage key.
     #[error("event sequence u64::MAX is reserved and cannot be encoded")]
@@ -396,6 +404,7 @@ impl PartialEq for JournalError {
                     Self::IndexStatusStateCollision { byte: a },
                     Self::IndexStatusStateCollision { byte: b },
                 ) => a == b,
+                (Self::BatchAborted { reason: a }, Self::BatchAborted { reason: b }) => a == b,
                 (
                     Self::TooManyEvents {
                         run: a,

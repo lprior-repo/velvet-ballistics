@@ -63,6 +63,15 @@ pub fn is_registered_numeric(code: u16) -> bool {
 /// `CodeCategory::Internal` for `INTERNAL_INVARIANT_VIOLATION` at
 /// `0x1309`) are correctly classified instead of being misclassified by
 /// the high byte alone.
+///
+/// CV-105: the `0x13` high byte is intentionally absent from the
+/// fallback. That range is shared between [`CodeCategory::Accessor`]
+/// (e.g. `ACCESSOR_CONST_OUT_OF_BOUNDS` at `0x1315`) and
+/// [`CodeCategory::Internal`] (e.g. `INTERNAL_INVARIANT_VIOLATION` at
+/// `0x1309`), so a high-byte heuristic cannot disambiguate the two.
+/// Unregistered codes in `0x13xx` therefore fall through to the default
+/// catch-all category ([`CodeCategory::Internal`]) rather than being
+/// silently misclassified as `Accessor`.
 #[must_use]
 pub fn category_from_numeric(numeric: u16) -> super::codes::CodeCategory {
     // 1. Consult registry for the authoritative category.
@@ -83,7 +92,9 @@ pub fn category_from_numeric(numeric: u16) -> super::codes::CodeCategory {
         0x10 => super::codes::CodeCategory::Compilation,
         0x11 => super::codes::CodeCategory::WorkflowIr,
         0x12 => super::codes::CodeCategory::Expression,
-        0x13 => super::codes::CodeCategory::Accessor,
+        // 0x13 is intentionally not mapped: the E13xx range is shared by
+        // Accessor and Internal, so a high-byte heuristic would silently
+        // misclassify unregistered codes. See CV-105.
         0x14 => super::codes::CodeCategory::Lowering,
         0x15 => super::codes::CodeCategory::Lifecycle,
         0x20 => super::codes::CodeCategory::Storage,
@@ -188,3 +199,37 @@ mod tests {
         assert!(!is_supported_code(0x07FF)); // gap between ContractDiscovery and Compilation
     }
 }
+
+    // CV-105: unregistered codes in the 0x13xx range must not be silently
+    // classified as Accessor. Both Accessor and Internal share the 0x13
+    // high byte, so a high-byte heuristic cannot disambiguate them.
+    // Unregistered codes fall through to the Internal catch-all instead.
+    #[test]
+    fn cv105_unregistered_0x13xx_falls_through_to_internal_not_accessor() {
+        // 0x1300 is in the shared 0x13xx range but not in the registry.
+        assert!(!is_registered_numeric(0x1300));
+        assert_eq!(
+            category_from_numeric(0x1300),
+            super::codes::CodeCategory::Internal,
+            "unregistered 0x13xx codes must fall through to Internal"
+        );
+        // 0x13FF is at the far end of the 0x13xx range.
+        assert!(!is_registered_numeric(0x13FF));
+        assert_eq!(
+            category_from_numeric(0x13FF),
+            super::codes::CodeCategory::Internal,
+            "unregistered 0x13xx codes must fall through to Internal"
+        );
+    }
+
+    #[test]
+    fn cv105_registered_0x1309_remains_internal_via_registry() {
+        // The 0x1309 entry is explicitly Internal in the registry and
+        // must keep that classification even though its high byte is
+        // shared with Accessor codes.
+        assert!(is_registered_numeric(0x1309));
+        assert_eq!(
+            category_from_numeric(0x1309),
+            super::codes::CodeCategory::Internal
+        );
+    }
