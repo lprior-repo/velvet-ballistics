@@ -203,7 +203,7 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     write_file(
         &root.join("Cargo.toml"),
         &format!(
-            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"fuzz\"]\n"
+            "[workspace]\nmembers = [\n{member_lines}]\nexclude = [\"target/miri-tmp\", \"crates/vb_ui\", \"fuzz\", \"crates/vb_ajc40_flux\"]\n"
         ),
     )?;
     for (member, package_name) in MEMBERS {
@@ -220,7 +220,7 @@ fn write_manifest(root: &Path, member: &str, package_name: &str) -> Result<(), s
     }
     if member == "crates/vb_core" {
         manifest.push_str(
-            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nkani-resource-contract-boundaries = []\nvolatile = []\ntest-util = []\n",
+            "\n[features]\ndefault = []\nbench = []\nkani-diagnostic-codes = []\nkani-resource-contract-boundaries = []\nkani-vb-5iebh-check-scope = []\nkani-vb-ajc40 = []\nkani-vb-god2f-proof-kernels = []\nlegacy-tests = []\nvolatile = []\ntest-util = []\nvb-rxru0-flux-refinements = []\nvb-rxru0-mock-marker = []\n",
         );
     }
     if member == "crates/vb_validate" {
@@ -241,21 +241,15 @@ fn stderr(output: &Output) -> String {
 }
 
 // Package name drift reports exact member and expected name
-// Re-ignore: write_manifest only writes vb_cli Cargo.toml, but the
-// check-workspace-assertions script also checks vb_core features and
-// workspace.exclude against the real repo state. The test setup does
-// not provide matching vb_core manifests, so the assertion for the
-// vb_cli package name error is drowned out by unrelated drift errors.
 #[test]
-#[ignore = "BLOCKED: check-workspace-assertions reports vb_core drift errors in addition to the vb_cli package-name error; test assertion needs to filter or setup needs to provide matching vb_core manifests"]
 fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     let dir = workspace()?;
-    write_manifest(dir.path(), "crates/vb_cli", "velvet-ballistics")?;
+    write_manifest(dir.path(), "crates/vb_cli", "vb_cli")?;
     let output = run_assertions(dir.path())?;
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_cli/Cargo.toml: package.name expected \"velvet-ballistics\", got Some(\"velvet-ballistics\")\n"
+        "crates/vb_cli/Cargo.toml: package.name expected \"velvet-ballistics\", got Some(\"vb_cli\")\n"
     );
     Ok(())
 }
@@ -269,7 +263,7 @@ fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"kani-vb-god2f-proof-kernels\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\"]\ncrates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballistics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
+        "crates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballistics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
     );
     Ok(())
 }
@@ -283,7 +277,7 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "Cargo.toml: workspace.exclude missing [\"crates/vb_ajc40_flux\"]\ncrates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"kani-resource-contract-boundaries\", \"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"kani-vb-god2f-proof-kernels\", \"test-util\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
+        "crates/vb_core/Cargo.toml: features missing [\"kani-diagnostic-codes\", \"kani-resource-contract-boundaries\", \"kani-vb-5iebh-check-scope\", \"kani-vb-ajc40\", \"kani-vb-god2f-proof-kernels\", \"legacy-tests\", \"test-util\", \"vb-rxru0-flux-refinements\", \"vb-rxru0-mock-marker\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
 }

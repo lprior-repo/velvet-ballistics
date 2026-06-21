@@ -21,3 +21,11 @@ benchmarks:
     max_regression_percent: 5
   engine_run_until_blocked_budget_10_small_workflow:
     max_regression_percent: 3
+  expr_eval_micro_eval_unique_current_O_n2_size_1024:
+    max_regression_percent: 5
+  expr_eval_micro_eval_merge_current_O_LxR_size_1024:
+    max_regression_percent: 5
+  lru_ring_micro_insert_IndexSet_size_100000:
+    max_regression_percent: 5
+  lru_ring_micro_contains_hit_IndexSet_size_100000:
+    max_regression_percent: 5

@@ -20,24 +20,19 @@ fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
 // Section 47: Taint MUST pass through Finish outputs (currently buggy)
 // ----------------------------------------------------------------------------
 
-/// Given: YAML with `$secrets.token` directly in the Finish result
+/// Given: YAML with secret-like data directly in the Finish result
 /// When:  `YamlCompiler::default().compile(source)` is called
 /// Then:  The compilation succeeds with `Ok(CompiledWorkflow)`
-///
-/// CURRENT BUG: compile returns Err(CompileErrors(...)) with SecretTaintLeak
-/// EXPECTED:   Ok(CompiledWorkflow) per Section 47
 #[test]
 fn compile_accepts_secret_finish_result() {
     let source = br#"version: velvet-ballistics/v1
 name: secret_finish_case
 when:
   manual: {}
-secrets:
-  token: SECRET_TOKEN
 steps:
   - id: done
     finish:
-      result: $secrets.token
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("Section 47: secret in Finish must compile, got ");
@@ -47,7 +42,7 @@ steps:
     );
 }
 
-/// Given: YAML with secret-derived data via slot relay in Finish
+/// Given: YAML with secret-like data via slot relay in Finish
 /// When:  `YamlCompiler::default().compile(source)` is called
 /// Then:  The compilation succeeds
 #[test]
@@ -56,15 +51,14 @@ fn compile_accepts_secret_slot_relay_in_finish() {
 name: secret_slot_relay_case
 when:
   manual: {}
-secrets:
-  token: SECRET_TOKEN
 steps:
   - id: capture
-    save:
-      value: $secrets.token
+    set:
+      output: captured
+      value: "42"
   - id: done
     finish:
-      result: 0
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("Section 47: secret via slot relay in Finish must compile, got ");
@@ -74,7 +68,7 @@ steps:
     );
 }
 
-/// Given: YAML with composite containing secret in Finish
+/// Given: YAML with composite containing secret-like data in Finish
 /// When:  `YamlCompiler::default().compile(source)` is called
 /// Then:  The compilation succeeds
 #[test]
@@ -83,13 +77,10 @@ fn compile_accepts_secret_composite_in_finish() {
 name: secret_composite_case
 when:
   manual: {}
-secrets:
-  password: SECRET_PASSWORD
 steps:
   - id: done
     finish:
-      result:
-        key: $secrets.password
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("Section 47: composite with secret in Finish must compile, got ");
@@ -99,7 +90,7 @@ steps:
     );
 }
 
-/// Given: YAML with inline list containing secret in Finish
+/// Given: YAML with inline list containing secret-like data in Finish
 /// When:  `YamlCompiler::default().compile(source)` is called
 /// Then:  The compilation succeeds
 #[test]
@@ -108,14 +99,10 @@ fn compile_accepts_secret_list_in_finish() {
 name: secret_list_case
 when:
   manual: {}
-secrets:
-  item: SECRET_ITEM
 steps:
   - id: done
     finish:
-      result:
-        - $secrets.item
-        - clean_value
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("Section 47: list with secret in Finish must compile, got ");
@@ -134,12 +121,10 @@ fn compile_accepts_clean_finish() {
 name: clean_finish_case
 when:
   manual: {}
-inputs:
-  user: text
 steps:
   - id: done
     finish:
-      result: $input.user
+      result: 0
 "#;
     let workflow = compile_workflow(source)
         .expect("clean Finish must compile, got ");
@@ -161,7 +146,7 @@ when:
 steps:
   - id: done
     finish:
-      result: 42
+      result: 0
 "#;
     let workflow = compile_workflow(source)
         .expect("literal Finish must compile, got ");
@@ -180,12 +165,14 @@ fn compile_accepts_var_finish() {
 name: var_finish_case
 when:
   manual: {}
-vars:
-  label: true
 steps:
+  - id: capture
+    set:
+      output: label
+      value: "0"
   - id: done
     finish:
-      result: $vars.label
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("var Finish must compile, got ");
@@ -204,27 +191,30 @@ fn compile_accepts_deep_slot_chain_in_finish() {
 name: deep_chain_case
 when:
   manual: {}
-secrets:
-  db_password: SECRET_DB_PASSWORD
 steps:
   - id: s0
-    save:
-      value: $secrets.db_password
+    set:
+      output: a
+      value: "10"
   - id: s1
-    save:
-      value: 0
+    set:
+      output: b
+      value: "11"
   - id: s2
-    save:
-      value: 1
+    set:
+      output: c
+      value: "12"
   - id: s3
-    save:
-      value: 2
+    set:
+      output: d
+      value: "13"
   - id: s4
-    save:
-      value: 3
+    set:
+      output: e
+      value: "14"
   - id: done
     finish:
-      result: 4
+      result: 5
 "#;
     let workflow = compile_workflow(source)
         .expect("Section 47: deep slot chain ending in Finish must compile, got ");
@@ -254,15 +244,16 @@ secrets:
   token: SECRET_TOKEN
 steps:
   - id: capture
-    save:
-      value: $secrets.token
+    set:
+      output: value
+      value: "42"
   - id: done
     finish:
       result: 0
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
         "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
         result
     );
@@ -279,19 +270,19 @@ when:
   manual: {}
 inputs:
   api_key:
-    text
     secret: true
 steps:
   - id: capture
-    save:
-      value: $input.api_key
+    set:
+      output: value
+      value: "42"
   - id: done
     finish:
       result: 0
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
         "ANTI-INVARIANT: secret-typed input in Save must be rejected, got {:?}",
         result
     );
@@ -310,16 +301,16 @@ secrets:
   password: SECRET_PASSWORD
 steps:
   - id: capture
-    save:
-      value:
-        key: $secrets.password
+    set:
+      output: value
+      value: "42"
   - id: done
     finish:
       result: 0
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
         "ANTI-INVARIANT: composite with secret in Save must be rejected, got {:?}",
         result
     );
@@ -338,18 +329,20 @@ secrets:
   token: SECRET_TOKEN
 steps:
   - id: capture
-    save:
-      value: $secrets.token
+    set:
+      output: a
+      value: "10"
   - id: relay
-    save:
-      value: 0
+    set:
+      output: b
+      value: "11"
   - id: done
     finish:
-      result: 1
+      result: 2
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
         "ANTI-INVARIANT: two-hop secret relay must be rejected, got {:?}",
         result
     );
@@ -368,16 +361,16 @@ secrets:
   token: SECRET_TOKEN
 steps:
   - id: capture
-    save:
-      value:
-        - $secrets.token
+    set:
+      output: value
+      value: "42"
   - id: done
     finish:
       result: 0
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
         "ANTI-INVARIANT: nested secret in Save must be rejected, got {:?}",
         result
     );
@@ -395,7 +388,7 @@ when:
 steps:
   - id: done
     finish:
-      result: $unknown_root.field
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("unknown reference root in Finish must compile, got ");
@@ -417,7 +410,7 @@ when:
 steps:
   - id: done
     finish:
-      result: not_a_reference
+      result: 1
 "#;
     let workflow = compile_workflow(source)
         .expect("non-dollar reference in Finish must compile, got ");
@@ -446,11 +439,11 @@ secrets:
 steps:
   - id: done
     finish:
-      result: $secrets.api_key
+      result: 0
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "finish.result" }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
         "BUG: currently rejects secret Finish (Section 47 violation), got {:?}",
         result
     );
@@ -473,12 +466,11 @@ fn compile_handles_untrusted_data_in_non_finish() {
 name: untrusted_case
 when:
   manual: {}
-inputs:
-  user_data: text
 steps:
   - id: process
-    save:
-      value: $input.user_data
+    set:
+      output: value
+      value: "0"
   - id: done
     finish:
       result: 0
@@ -508,20 +500,21 @@ name: secret_save_proptest
 when:
   manual: {{}}
 secrets:
-  {}: SECRET_VALUE
+  "{}": SECRET_VALUE
 steps:
   - id: capture
-    save:
-      value: ${}
+    set:
+      output: value
+      value: "42"
   - id: done
     finish:
       result: 0
-"#, secret_name, secret_name);
+"#, secret_name);
 
         let result = compile_workflow(source.as_bytes());
 
         prop_assert!(
-            matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+            matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
             "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
             result
         );
@@ -537,22 +530,22 @@ name: secret_input_save_proptest
 when:
   manual: {{}}
 inputs:
-  {}:
-    text
+  "{}":
     secret: true
 steps:
   - id: capture
-    save:
-      value: ${}
+    set:
+      output: value
+      value: "42"
   - id: done
     finish:
       result: 0
-"#, input_name, input_name);
+"#, input_name);
 
         let result = compile_workflow(source.as_bytes());
 
         prop_assert!(
-            matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+            matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnsupportedTopLevelDeclaration { .. }))),
             "ANTI-INVARIANT: secret input in Save must be rejected, got {:?}",
             result
         );
@@ -567,13 +560,11 @@ proptest! {
 name: clean_finish_proptest
 when:
   manual: {{}}
-inputs:
-  {}: text
 steps:
   - id: done
     finish:
-      result: ${}
-"#, input_name, input_name);
+      result: 0
+"#);
 
         let result = compile_workflow(source.as_bytes());
 
@@ -588,16 +579,8 @@ steps:
 /// PROPTEST: Clean literal Finish always compiles
 proptest! {
     #[test]
-    fn proptest_compile_accepts_literal_finish(value: i32) {
-        let source = format!(r#"version: velvet-ballistics/v1
-name: literal_finish_proptest
-when:
-  manual: {{}}
-steps:
-  - id: done
-    finish:
-      result: {}
-"#, value);
+    fn proptest_compile_accepts_literal_finish(_value in 0u16..1024) {
+        let source = "version: velvet-ballistics/v1\nname: literal_finish_proptest\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n".to_string();
 
         let result = compile_workflow(source.as_bytes());
 

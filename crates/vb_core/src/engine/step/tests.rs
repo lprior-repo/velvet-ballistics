@@ -897,7 +897,7 @@ fn step_once_awaiting_action_preserves_pc() -> Result<(), String> {
         EngineSignal::AwaitingAction {
             step: StepIdx::new(0),
             seq: SeqNo::ZERO,
-            action: ActionId::new(7),
+            action: ActionId::new(1),
         },
     )?;
     // PC must NOT advance for AwaitingAction

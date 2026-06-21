@@ -7,6 +7,7 @@ use crate::recovery::{
 };
 use vb_core::SlotIdx;
 use vb_core::{ActionTicket, RunFrame, SlotValue, StepIdx};
+use vb_core::errors::CoreError;
 
 fn decode_action_envelope_slot(
     ticket: ActionTicket,
@@ -67,13 +68,46 @@ pub(crate) fn apply_tail_events(
                     })?;
                 executed = executed.saturating_add(1);
             }
-            JournalEvent::StepSucceeded { step, .. } => {
+            JournalEvent::StepSucceeded { step, output, .. } => {
                 frame
                     .mark_succeeded(*step)
                     .map_err(|_e| RecoveryError::ReplayDivergence {
                         step: *step,
                         detail: "mark_succeeded failed".to_owned(),
                     })?;
+                // vb-xb38b: StepSucceeded documents that the step "wrote an
+                // output slot". When the tail carries no explicit
+                // SlotWrittenEvent for `output` (e.g. the snapshot was empty
+                // and the step's slot write happened before the snapshot
+                // point), initialize the slot with a Null value and Clean
+                // taint so downstream read_slot/read_taint can succeed. Only
+                // initialize when the slot is currently uninitialized — never
+                // overwrite a value already supplied by the snapshot or a
+                // prior SlotWrittenEvent in the tail.
+                match frame.read_slot(*output) {
+                    Ok(_) => {}
+                    Err(CoreError::SlotUninitialized { .. }) => {
+                        frame
+                            .write_slot_with_taint(
+                                *output,
+                                SlotValue::Null,
+                                vb_core::Taint::Clean,
+                            )
+                            .map_err(|_e| RecoveryError::ReplayDivergence {
+                                step: *step,
+                                detail: "step succeeded slot init out of bounds"
+                                    .to_owned(),
+                            })?;
+                    }
+                    Err(_) => {
+                        return Err(RecoveryError::ReplayDivergence {
+                            step: *step,
+                            detail: format!(
+                                "step succeeded output slot {output:?} is out of bounds"
+                            ),
+                        });
+                    }
+                }
                 executed = executed.saturating_add(1);
             }
             JournalEvent::ActionScheduled { action, step, .. } => {

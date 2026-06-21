@@ -397,9 +397,8 @@ fn runtime_error_all_symbolic_codes_are_registered() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "BLOCK_GLOBAL: JournalError::KeyCapacity diagnostic_code lookup returns fallback — needs registry fix"]
 fn journal_error_symbolic_code_key_capacity() {
-    let code = JournalError::KeyCapacity.symbolic_code();
+    let code = HasSymbolicCode::symbolic_code(&JournalError::KeyCapacity);
     assert_eq!(code.as_str(), "JOURNAL_KEY_CAPACITY");
 }
 

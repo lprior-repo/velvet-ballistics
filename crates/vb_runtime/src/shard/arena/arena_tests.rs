@@ -221,11 +221,3 @@ fn slot_set_rejects_stale_reinsert() {
     set.insert(successor).unwrap();
     assert!(set.contains(successor));
 }
-
-#[test]
-#[ignore = "types lack Default impl — must be rewritten with proper construction"]
-fn arena_manager_deallocate_all() {
-    todo!(
-        "arena_manager_deallocate_all requires Default on RunState, RuntimeState, PendingTimer, FramePool"
-    )
-}

@@ -305,11 +305,10 @@ fn e2e_runtime_error_chain() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "KEY_CAPACITY_EXCEEDED symbolic code may have changed after vb-xi2f.9/10 registry expansion"]
 fn e2e_journal_error_chain() {
     let error = JournalError::KeyCapacity;
     let code = HasSymbolicCode::symbolic_code(&error);
-    assert_eq!(code.as_str(), "KEY_CAPACITY_EXCEEDED");
+    assert_eq!(code.as_str(), "JOURNAL_KEY_CAPACITY");
 }
 
 // ---------------------------------------------------------------------------

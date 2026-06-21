@@ -489,16 +489,13 @@ fn frame_seed_slot_dimension_overflow_reports_exact_variant() {
         output: SlotIdx::MAX,
     }];
 
-    // Frame seed now handles large slot indices gracefully instead of erroring
+    // vb-xb38b: StepSucceeded.output now contributes to the slot dimension
+    // (previously it was silently dropped), so SlotIdx::MAX produces the
+    // typed FrameDimensionOverflow error rather than overflowing u16.
     let result = recover_runtime_frame_seed_from_events(&events);
-    assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
-    let seed = result.unwrap();
-    assert_eq!(seed.step_count, 1);
     assert!(
-        seed.steps
-            .iter()
-            .any(|entry| entry.step == StepIdx::new(0)
-                && entry.state == RecoveredStepState::Succeeded)
+        matches!(result, Err(RecoveryError::FrameDimensionOverflow { run: found }) if found == run),
+        "Expected FrameDimensionOverflow for SlotIdx::MAX output, got {result:?}"
     );
 }
 

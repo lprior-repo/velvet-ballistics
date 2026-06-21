@@ -127,8 +127,13 @@ impl FrameSeedAccumulator {
             JournalEvent::StepStarted { step, .. } => {
                 Ok(self.record_step(*step, crate::recovery::RecoveredStepState::Running))
             }
-            JournalEvent::StepSucceeded { step, .. } => Ok(self
+            JournalEvent::StepSucceeded { step, output, .. } => Ok(self
                 .record_step(*step, crate::recovery::RecoveredStepState::Succeeded)
+                // vb-xb38b: StepSucceeded carries an `output` slot reference.
+                // Track it in the slot dimension so `hydrate_run_frame_from_events`
+                // produces a frame with `slot_count >= output + 1`, matching the
+                // snapshot+tail hydration path's behaviour.
+                .record_slot(*output)
                 .record_last_succeeded(*step)),
             JournalEvent::ActionScheduled { action, step, .. } => {
                 self.record_action_scheduled(*action, *step)

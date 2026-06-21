@@ -87,7 +87,6 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
     for event in tail_events {
         match event {
             JournalEvent::StepStarted { step, .. }
-            | JournalEvent::StepSucceeded { step, .. }
             | JournalEvent::ActionScheduled { step, .. }
             | JournalEvent::ActionCompletedEvent { step, .. }
             | JournalEvent::ActionFailedEvent { step, .. }
@@ -96,6 +95,15 @@ pub(super) fn derive_dimensions_from_snapshot_and_tail(
             | JournalEvent::RetryScheduledEvent { step, .. } => {
                 max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
                 min_step = Some(min_step.map_or(*step, |s| s.min(*step)));
+            }
+            // SR-005 / vb-xb38b: StepSucceeded writes its result into `output`,
+            // so the slot dimension must cover that index even when no other
+            // slot-bearing events preceded it in the tail. Mirrors the
+            // ActionCompletedEnvelope treatment so the two cannot drift.
+            JournalEvent::StepSucceeded { step, output, .. } => {
+                max_step = Some(max_step.map_or(*step, |s| s.max(*step)));
+                min_step = Some(min_step.map_or(*step, |s| s.min(*step)));
+                max_slot = Some(max_slot.map_or(*output, |s| s.max(*output)));
             }
             JournalEvent::ActionScheduledTicket { ticket, output, .. } => {
                 max_step = Some(max_step.map_or(ticket.step, |s| s.max(ticket.step)));

@@ -682,9 +682,7 @@ fn bounded_payload_rejects_exactly_one_over_nonzero_min_limit() {
 
 /// Strategy: arbitrary non-zero capacity capped at 1024.
 fn arb_capacity() -> impl Strategy<Value = QueueCapacity> {
-    any::<NonZeroUsize>()
-        .prop_filter("capacity must be > 0 and ≤ 1024", |nz| nz.get() <= 1024)
-        .prop_map(QueueCapacity::new)
+    (1usize..=1024).prop_map(|n| QueueCapacity::new(NonZeroUsize::new(n).expect("range is non-empty")))
 }
 
 /// Strategy: arbitrary `IngressFrame` within default payload limit.
