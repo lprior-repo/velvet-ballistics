@@ -695,3 +695,4 @@ crates/vb_runtime/src/shard/lru_ring_tests.rs|lewis|vb-hzxog|split-after-current
 
 crates/vb_core/src/engine/expr_eval/red_queen_property_tests.rs|lewis|vb-hzxog|split-after-current-batch-landing|vb-hzxog red-queen pressure tests for eval_unique/eval_merge FiniteF64/SlotValue Hash contracts (673 lines); split by property domain (IndexSet dedup / HashMap merge / Hash contract) after landing.
 crates/vb_runtime/src/shard/lru_ring_red_queen_tests.rs|lewis|vb-hzxog|split-after-current-batch-landing|vb-hzxog red-queen pressure tests for LruRing slot arena (353 lines); split by op category (insert/remove/sweep/clear) after landing.
+crates/vb_storage/src/preview/preview_red_queen_tests.rs|lewis|vb-hzxog|split-after-current-batch-landing|vb-hzxog red-queen pressure tests for preview_keyspace contract (max_records, max_bytes, invalid keys, truncation) (384 lines); split by cap category (records/bytes/payload/truncation) after landing.

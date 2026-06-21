@@ -102,6 +102,9 @@ pub fn preview_keyspace(
 }
 
 #[cfg(test)]
+mod preview_red_queen_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::types::PreviewConfig;

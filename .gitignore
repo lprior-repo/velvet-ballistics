@@ -107,3 +107,8 @@ truth-serum-*.md
 # Rust compiler internal-compiler-error dumps
 rustc-ice-*.txt
 .tmp_orphans_*
+
+# Verus build artifacts (created when running verus --crate-type=lib on
+# standalone verification/*.rs files)
+verification/verus/*.rlib
+verification/verus/*.rmeta

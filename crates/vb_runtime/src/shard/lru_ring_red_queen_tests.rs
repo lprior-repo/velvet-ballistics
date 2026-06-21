@@ -351,3 +351,110 @@ fn lru_ring_property_remove_uses_free_list_correctly() {
         "insert at capacity must return Err, got {result:?}"
     );
 }
+
+/// Adversarial test for FINDING-006+012 push_tail debug_assert!.
+///
+/// Repeatedly fill, drain, refill a ring. Every remove pushes a slot onto
+/// the free list; the next insert pops it. The push_tail debug_assert!
+/// requires that every popped slot is `None` (free). If a future regression
+/// breaks the free-list accounting (e.g. pushing a live slot back onto
+/// free), this test panics with the new debug_assert message.
+#[test]
+fn lru_ring_property_push_tail_invariant_repeated_fill_drain_cycles() {
+    // Try multiple capacities and id pool sizes to exercise all slot
+    // positions in the free list.
+    for (capacity, pool, cycles) in [(2usize, 4usize, 2000usize), (8, 16, 1000), (16, 32, 500)] {
+        let mut ring: LruRing<RunId> = LruRing::new(capacity, u64::MAX);
+        for cycle in 0..cycles {
+            // Fill the ring with `capacity` unique ids.
+            for i in 0..capacity {
+                let id = RunId::new(((cycle * capacity + i) % pool) as u64 + 1);
+                let _ = ring.insert(id, TimerTick::new(cycle as u64));
+            }
+            assert_eq!(
+                ring.len(),
+                capacity,
+                "cycle {cycle}: ring should be full at capacity {capacity}"
+            );
+            // Drain it.
+            for i in 0..capacity {
+                let id = RunId::new(((cycle * capacity + i) % pool) as u64 + 1);
+                ring.remove(&id);
+            }
+            assert!(
+                ring.is_empty(),
+                "cycle {cycle}: ring should be empty after drain"
+            );
+        }
+    }
+}
+
+/// Adversarial test: remove-same-item-twice is a documented no-op and MUST
+/// NOT push the same slot onto free twice. If it did, the next insert
+/// would pop a slot whose arena entry is still Some (because we never
+/// unlinked it the second time), triggering the push_tail debug_assert.
+#[test]
+fn lru_ring_property_remove_same_item_twice_is_safe() {
+    let mut ring: LruRing<RunId> = LruRing::new(4, u64::MAX);
+    ring.insert(RunId::new(1), TimerTick::new(0)).unwrap();
+    ring.insert(RunId::new(2), TimerTick::new(0)).unwrap();
+    ring.remove(&RunId::new(1));
+    // Second remove of the same id: must be a no-op (item not in
+    // position anymore).
+    ring.remove(&RunId::new(1));
+    assert_eq!(ring.len(), 1);
+    // Reinsert 1 — slot 0 should be reused safely.
+    ring.insert(RunId::new(1), TimerTick::new(10)).unwrap();
+    assert_eq!(ring.len(), 2);
+    assert!(ring.contains(&RunId::new(1)));
+    assert!(ring.contains(&RunId::new(2)));
+}
+
+/// Adversarial test: capacity overflow path. fill → insert (full) → remove
+/// → insert. The `TerminalRunsLruFull` error path must NOT leave the ring
+/// in an inconsistent state. The next insert after a remove must succeed
+/// and properly update the free list (this is the case that exercises the
+/// push_tail debug_assert most aggressively).
+#[test]
+fn lru_ring_property_capacity_overflow_then_recover() {
+    let mut ring: LruRing<RunId> = LruRing::new(3, u64::MAX);
+    ring.insert(RunId::new(1), TimerTick::new(0)).unwrap();
+    ring.insert(RunId::new(2), TimerTick::new(0)).unwrap();
+    ring.insert(RunId::new(3), TimerTick::new(0)).unwrap();
+    // At capacity.
+    let r = ring.insert(RunId::new(4), TimerTick::new(0));
+    assert!(r.is_err(), "must fail when full");
+    assert_eq!(ring.len(), 3);
+    // Remove one and try again — must succeed.
+    ring.remove(&RunId::new(2));
+    ring.insert(RunId::new(5), TimerTick::new(0)).unwrap();
+    assert_eq!(ring.len(), 3);
+    assert!(ring.contains(&RunId::new(5)));
+    assert!(!ring.contains(&RunId::new(2)));
+    assert!(ring.contains(&RunId::new(1)));
+    assert!(ring.contains(&RunId::new(3)));
+}
+
+/// Adversarial test: aggressive TTL sweep pattern — rapidly advancing time
+/// causes repeated eviction. The sweep_expired path also pushes slots onto
+/// the free list. This stresses the push_tail debug_assert through a
+/// different code path than remove().
+#[test]
+fn lru_ring_property_sweep_expired_then_insert_does_not_fire_invariant() {
+    let mut ring: LruRing<RunId> = LruRing::new(8, 10);
+    for i in 0..8u64 {
+        ring.insert(RunId::new(i + 1), TimerTick::new(i)).unwrap();
+    }
+    // Sweep at t=20 — all 8 items are expired (ts + 10 <= 20).
+    ring.sweep_expired(TimerTick::new(20));
+    assert!(ring.is_empty(), "all items should be expired");
+    // Re-insert — all slots should be on the free list.
+    for i in 0..8u64 {
+        ring.insert(RunId::new(i + 100), TimerTick::new(100 + i))
+            .unwrap();
+    }
+    assert_eq!(ring.len(), 8);
+    // Now sweep at t=200 — all expire again.
+    ring.sweep_expired(TimerTick::new(200));
+    assert!(ring.is_empty());
+}
