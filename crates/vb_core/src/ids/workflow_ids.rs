@@ -121,6 +121,7 @@ impl SeqNo {
 
 impl WorkflowId {
     #[deprecated(since = "0.1.0", note = "Use .get() instead")]
+    #[must_use]
     pub fn as_u32(self) -> u32 {
         self.0
     }
