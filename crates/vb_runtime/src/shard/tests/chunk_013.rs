@@ -86,7 +86,7 @@ fn retryable_failure() -> vb_core::action::ActionFailure {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str> -> Result<(), RuntimeError> {
+fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), ) -> Result<(), &'static str> -> Result<(), RuntimeError>'static str> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let workflow = finished_workflow().ok_or("finished workflow fixture construction failed")?;
@@ -109,7 +109,7 @@ fn shard_submit_with_inputs_seeds_slots_and_drives() -> Result<(), &'static str>
 }
 
 #[test]
-fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> -> Result<(), RuntimeError> {
+fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), ) -> Result<(), &'static str> -> Result<(), RuntimeError>'static str> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let workflow = suspended_workflow().ok_or("suspended workflow fixture construction failed")?;
@@ -139,7 +139,7 @@ fn shard_submit_with_inputs_rejects_duplicate_run() -> Result<(), &'static str> 
 }
 
 #[test]
-fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), &'static str> -> Result<(), RuntimeError> {
+fn shard_submit_with_inputs_rejects_capacity_exceeded() -> Result<(), ) -> Result<(), &'static str> -> Result<(), RuntimeError>'static str> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
@@ -305,7 +305,7 @@ fn shard_submit_run_admission_append_failure_maps_to_admission_header_persistenc
 // ---------------------------------------------------------------------------
 
 #[test]
-fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<(), &'static str> -> Result<(), RuntimeError> {
+fn shard_resume_on_waiting_run_after_timer_removed_still_suspends() -> Result<(), ) -> Result<(), &'static str> -> Result<(), RuntimeError>'static str> {
     // Submit a timed wait workflow, which enters a wait-suspended state with a pending timer.
     let config = small_config();
     let mut shard = Shard::new(config)?;

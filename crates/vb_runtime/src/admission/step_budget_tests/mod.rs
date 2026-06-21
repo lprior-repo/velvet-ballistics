@@ -99,7 +99,7 @@ fn preflight_step_budget_rejects_actual_ir_over_limit_when_declared_at_limit() -
 }
 
 #[test]
-fn submit_50k_step_workflow_rejected() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn submit_50k_step_workflow_rejected() -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(1);
     let workflow = workflow_with_max_steps(50_000_u16);
@@ -108,7 +108,6 @@ fn submit_50k_step_workflow_rejected() -> Result<(), RuntimeError> -> Result<(),
         result,
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
-    Ok(())
     Ok(())
 }
 
@@ -134,7 +133,7 @@ fn submit_declared_limit_but_actual_ir_over_limit_rejected_before_enqueue()
 }
 
 #[test]
-fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(2);
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
@@ -143,11 +142,10 @@ fn submit_1k_step_workflow_accepted() -> Result<(), RuntimeError> -> Result<(), 
     let result = runtime.submit_direct(run, workflow);
     assert!(result.is_ok(), "submit_direct should accept 1000-step workflow");
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn submit_compiled_with_inputs_also_enforces_step_budget() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn submit_compiled_with_inputs_also_enforces_step_budget() -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let run = RunId::new(3);
     let workflow = workflow_with_max_steps(50_000_u16);
@@ -157,7 +155,6 @@ fn submit_compiled_with_inputs_also_enforces_step_budget() -> Result<(), Runtime
         result,
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
-    Ok(())
     Ok(())
 }
 
@@ -188,7 +185,7 @@ fn submit_direct_with_inputs_grants_and_contracts_also_enforces_step_budget()
 /// All three production submit entry points must reject a 50,000-step
 /// workflow with the typed `AdmissionBudgetExceeded` error.
 #[test]
-fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), RuntimeError> {
     let max_steps = 50_000_u16;
 
     // Entry point 1: `submit_direct`
@@ -228,7 +225,6 @@ fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), Runtim
         Err(RuntimeError::AdmissionBudgetExceeded { actual: 50_000, .. })
     ));
     Ok(())
-    Ok(())
 }
 
 /// Regression test for risk R2: admission atomicity under a single-threaded
@@ -238,7 +234,7 @@ fn all_three_submit_entry_points_reject_50k_step_workflow() -> Result<(), Runtim
 /// budget are each evaluated and either both accepted or one rejected
 /// cleanly — never an inconsistent state.
 #[test]
-fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> {
     let runtime = runtime_with_policy(RuntimePolicy::Strict)?;
     let max_steps = u16::try_from(vb_core::limits::MAX_STEPS_PER_WORKFLOW)
         .ok_or(RuntimeError::QueueFull)?;
@@ -254,6 +250,5 @@ fn admission_lock_serializes_sequential_submits() -> Result<(), RuntimeError> ->
             "unexpected submit result"
         );
     }
-    Ok(())
     Ok(())
 }

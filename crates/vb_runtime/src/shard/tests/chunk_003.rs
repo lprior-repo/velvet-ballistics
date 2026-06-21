@@ -85,7 +85,7 @@ fn small_config() -> ShardConfig {
 }
 
 #[test]
-fn finished_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn finished_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = finished_workflow() else {
@@ -105,11 +105,10 @@ fn finished_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> -
     let available = shard.frame_pools.get(&(2, 1)).map(FramePool::available);
     assert_eq!(available, Some(1));
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = suspended_workflow() else {
@@ -138,11 +137,10 @@ fn cancelled_run_releases_frame_to_dimension_pool() -> Result<(), RuntimeError> 
         Some(1)
     );
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn cancel_cleans_pending_timer() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn cancel_cleans_pending_timer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
@@ -165,11 +163,10 @@ fn cancel_cleans_pending_timer() -> Result<(), RuntimeError> -> Result<(), Runti
 
     assert_eq!(shard.pending_timers.len(), 0);
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_wait_then_finish_workflow() else {
@@ -193,11 +190,10 @@ fn finish_cleans_pending_timer_after_timer_fire() -> Result<(), RuntimeError> ->
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), RuntimeError> {
     let config = small_config();
     let mut shard = Shard::new(config)?;
     let Some(workflow) = timed_ask_without_answer_workflow() else {
@@ -221,11 +217,10 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), Ru
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn enqueue_returns_queue_full_when_capacity_exceeded() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn enqueue_returns_queue_full_when_capacity_exceeded() -> Result<(), RuntimeError> {
     // Given a shard with very small command queue
     let config = ShardConfig {
         command_queue_capacity: 2,
@@ -241,18 +236,16 @@ fn enqueue_returns_queue_full_when_capacity_exceeded() -> Result<(), RuntimeErro
     let shard = Shard::new(config)?;
     // When enqueuing more commands than capacity allows
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
-    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     // Then the third enqueue returns QueueFull
     assert_eq!(
         shard.enqueue(ShardCommand::Shutdown),
         Err(RuntimeError::QueueFull)
     );
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn tick_after_shutdown_returns_false() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn tick_after_shutdown_returns_false() -> Result<(), RuntimeError> {
     // Given a shard that has received a shutdown command
     let config = small_config();
     let mut shard = Shard::new(config)?;
@@ -262,11 +255,10 @@ fn tick_after_shutdown_returns_false() -> Result<(), RuntimeError> -> Result<(),
     // Then subsequent tick also returns false (shutting_down flag is set)
     assert_eq!(shard.tick(), Ok(false));
     Ok(())
-    Ok(())
 }
 
 #[test]
-fn submit_returns_run_already_exists_for_duplicate() -> Result<(), RuntimeError> -> Result<(), RuntimeError> {
+fn submit_returns_run_already_exists_for_duplicate() -> Result<(), RuntimeError> {
     // Given a shard with an active run
     let config = small_config();
     let mut shard = Shard::new(config)?;
@@ -294,6 +286,5 @@ fn submit_returns_run_already_exists_for_duplicate() -> Result<(), RuntimeError>
     );
     // Then tick returns RunAlreadyExists
     assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
-    Ok(())
     Ok(())
 }
