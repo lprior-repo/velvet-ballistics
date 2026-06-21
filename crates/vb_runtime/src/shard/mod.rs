@@ -20,6 +20,7 @@ mod lru_ring_tests;
 pub mod property_tests;
 pub mod queue;
 pub mod run_state;
+#[cfg(test)]
 pub mod tests;
 pub mod timer;
 pub mod timer_wheel;
