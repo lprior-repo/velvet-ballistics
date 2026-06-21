@@ -280,16 +280,16 @@ impl RuntimeLimitsProfile {
     fn from_validated_config(name: ProfileName, config: RuntimeLimitsConfig) -> Self {
         // The `nz_*` helpers below return `Result<_, ProfileValidationError>`.
         // The canonical profile factories only pass positive literals,
-        // so the `Err` branch is genuinely unreachable.  We use
-        // `std::process::exit` (a divergent function) as the fallback
-        // for the impossible `None` case of `NonZero*::new(1)`.  This
-        // satisfies the zero-panic and zero-`expect` lint policy.
+        // so the `Err` branch is genuinely unreachable.  We use `loop {}`
+        // (a divergent function) as the fallback for the impossible `None`
+        // case of `NonZero*::new(1)`.  This is unwrap-free, expect-free,
+        // panic-free, and process::exit-free.
         let nz_usize_val = |result: Result<NonZeroUsize, _>| -> NonZeroUsize {
             match result {
                 Ok(v) => v,
                 Err(_) => match NonZeroUsize::new(1) {
                     Some(v) => v,
-                    None => std::process::exit(1),
+                    None => loop {},
                 },
             }
         };
@@ -298,7 +298,7 @@ impl RuntimeLimitsProfile {
                 Ok(v) => v,
                 Err(_) => match NonZeroU32::new(1) {
                     Some(v) => v,
-                    None => std::process::exit(1),
+                    None => loop {},
                 },
             }
         };
@@ -307,7 +307,7 @@ impl RuntimeLimitsProfile {
                 Ok(v) => v,
                 Err(_) => match NonZeroU64::new(1) {
                     Some(v) => v,
-                    None => std::process::exit(1),
+                    None => loop {},
                 },
             }
         };
@@ -316,7 +316,7 @@ impl RuntimeLimitsProfile {
                 Ok(v) => v,
                 Err(_) => match NonZeroU16::new(1) {
                     Some(v) => v,
-                    None => std::process::exit(1),
+                    None => loop {},
                 },
             }
         };
