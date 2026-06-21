@@ -124,15 +124,7 @@ impl PeerPolicy {
                         reason: "peer identity unavailable on this platform",
                     }
                 } else {
-                    let mut idx = 0_usize;
-                    let mut accepted = false;
-                    while let Some(candidate) = allowed.get(idx) {
-                        if *candidate == peer.euid {
-                            accepted = true;
-                            break;
-                        }
-                        idx = idx.saturating_add(1);
-                    }
+                    let accepted = allowed.iter().any(|candidate| *candidate == peer.euid);
                     if accepted {
                         PeerCheckOutcome::Accept
                     } else {
