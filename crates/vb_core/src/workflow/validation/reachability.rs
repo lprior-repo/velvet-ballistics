@@ -14,7 +14,7 @@ pub(crate) fn validate_reachability(parts: &WorkflowParts) -> Result<(), Workflo
     }
 
     let mut visited: Vec<bool> = vec![false; node_count];
-    let mut queue: Vec<usize> = Vec::new();
+    let mut queue: Vec<usize> = Vec::with_capacity(node_count);
 
     let entry_usize = parts.entry.as_usize();
     if entry_usize >= node_count {
@@ -37,7 +37,7 @@ pub(crate) fn validate_reachability(parts: &WorkflowParts) -> Result<(), Workflo
             None => break,
         };
 
-        let mut targets: Vec<StepIdx> = Vec::new();
+        let mut targets: Vec<StepIdx> = Vec::with_capacity(8);
         let node = match parts.nodes.get(current) {
             Some(n) => n,
             None => break,

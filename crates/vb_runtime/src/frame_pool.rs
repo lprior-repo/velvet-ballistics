@@ -31,7 +31,7 @@ impl FramePool {
             });
         }
         Ok(Self {
-            frames: Vec::new(),
+            frames: Vec::with_capacity(capacity),
             step_count,
             slot_count,
             capacity,

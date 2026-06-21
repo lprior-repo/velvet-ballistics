@@ -49,8 +49,10 @@ impl Shard {
             current_tick: TimerTick::new(0),
             journal,
             admission_lock: std::sync::Mutex::new(()),
-            current_coalesce_window_remaining: 0,
-            coalesce_buffer: Vec::new(),
+            current_coalesce_window_remaining: config.coalesce_window_ticks.saturating_sub(1),
+            coalesce_buffer: Vec::with_capacity(
+                usize::try_from(config.coalesce_window_ticks).unwrap_or(0_usize),
+            ),
             #[cfg(feature = "test-util")]
             pending_workflows: IndexMap::new(),
         })

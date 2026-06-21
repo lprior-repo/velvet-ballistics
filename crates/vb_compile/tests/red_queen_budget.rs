@@ -460,7 +460,10 @@ fn red_queen_budget_has_all_documented_fields() {
     );
     assert_eq!(budget.max_fanout, 0, "no fanout in linear workflow");
     assert_eq!(budget.max_nesting_depth, 0, "no nesting in linear workflow");
-    assert_eq!(budget.max_action_tickets, 0, "no Do nodes in linear workflow");
+    assert_eq!(
+        budget.max_action_tickets, 0,
+        "no Do nodes in linear workflow"
+    );
     assert_eq!(
         budget.max_parallel_in_flight, 0,
         "no parallel in-flight in linear workflow"

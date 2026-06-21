@@ -292,10 +292,11 @@ proptest! {
     fn proptest_body_dispatcher_invariant_width_parity(
         body in flat_together_body_strategy()
     ) {
-        if body.len() != 1 {
-            return Ok(()); // Only single-step bodies
-        }
-
+        prop_assert_eq!(
+            body.len(),
+            1,
+            "flat_together_body_strategy must produce exactly one Together step"
+        );
         let primitive = &body[0].primitive;
 
         let width_result = canonical_body_step_width(primitive);

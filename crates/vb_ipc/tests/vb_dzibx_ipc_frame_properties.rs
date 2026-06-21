@@ -30,6 +30,32 @@ fn any_wire_command() -> impl Strategy<Value = IpcCommand> {
     })
 }
 
+/// Restrict generated flags to those the production decoder will accept.
+///
+/// GAP-5: `IpcFrameHeader::decode` now rejects flag words outside the
+/// command-specific valid mask or with reserved global bits set. The
+/// proptest strat must constrain `flags` accordingly. Returns true iff
+/// `raw` would pass the production `CommandFlags::validate` check for
+/// the given command.
+fn flags_valid_for_command(command: IpcCommand, raw: u16) -> bool {
+    let mask = vb_ipc::CommandFlags::valid_mask(command);
+    (raw & vb_ipc::RESERVED_GLOBAL_MASK) == 0 && (raw & !mask) == 0
+}
+
+/// Joint strategy: produces a command and a flag word valid for that
+/// command. Used in proptest patterns where `flags` must depend on
+/// the preceding `command` strategy value (which the `proptest!` macro
+/// does not allow referencing inside a per-argument strategy).
+fn any_command_and_valid_flags() -> impl Strategy<Value = (IpcCommand, u16)> {
+    any_wire_command().prop_flat_map(|command| {
+        let mask = vb_ipc::CommandFlags::valid_mask(command);
+        // INV-6: valid_mask has no bits set in 0xFF00, so we can emit
+        // any subset of the low byte. `0..=mask` produces values up to
+        // the mask, and masking again keeps only valid bits.
+        (Just(command), (0..=mask).prop_map(move |v| v & mask))
+    })
+}
+
 fn bounded_payload() -> impl Strategy<Value = Vec<u8>> {
     prop::collection::vec(any::<u8>(), 0..=TEST_MAX_PAYLOAD_BYTES)
 }
@@ -178,8 +204,11 @@ fn boundary_payload(length: usize) -> Vec<u8> {
 
 fn check_exact_payload_length_boundary(length: usize) -> Result<(), String> {
     let payload = boundary_payload(length);
+    // GAP-5: Health accepts only zero flags; 0x55AA would now be
+    // rejected at decode. Use SubmitRunInline which allows the full
+    // low byte (0x00FF) — 0x0055 is within the mask.
     let frame = string_ipc(
-        encode_frame(IpcCommand::Health, 0x55AA, 0x1234, &payload),
+        encode_frame(IpcCommand::SubmitRunInline, 0x0055, 0x1234, &payload),
         "encode_frame boundary",
     )?;
     let expected_len = checked_add_string(IPC_HEADER_LEN, payload.len(), "frame boundary len")?;
@@ -193,8 +222,8 @@ fn check_exact_payload_length_boundary(length: usize) -> Result<(), String> {
         IpcFrameHeader::decode(&header_bytes, TEST_MAX_PAYLOAD),
         "IpcFrameHeader::decode boundary",
     )?;
-    assert_equal(header.command, IpcCommand::Health, "boundary command")?;
-    assert_equal(header.flags, 0x55AA, "boundary flags")?;
+    assert_equal(header.command, IpcCommand::SubmitRunInline, "boundary command")?;
+    assert_equal(header.flags, 0x0055, "boundary flags")?;
     assert_equal(header.correlation, 0x1234, "boundary correlation")?;
     assert_equal(
         usize::try_from(header.payload_len)
@@ -227,8 +256,7 @@ fn check_exact_payload_length_boundary(length: usize) -> Result<(), String> {
 proptest! {
     #[test]
     fn rpo_ipc_003_generated_encode_read_decode_preserves_lengths_and_bytes(
-        command in any_wire_command(),
-        flags in any::<u16>(),
+        (command, flags) in any_command_and_valid_flags(),
         correlation in any::<u64>(),
         payload in bounded_payload(),
     ) {
@@ -280,8 +308,7 @@ proptest! {
 
     #[test]
     fn rpo_ipc_003_generated_oversize_declarations_reject_concrete_error(
-        command in any_wire_command(),
-        flags in any::<u16>(),
+        (command, flags) in any_command_and_valid_flags(),
         correlation in any::<u64>(),
         limit in 1usize..=TEST_MAX_PAYLOAD_BYTES,
         extra in 1usize..=TEST_MAX_PAYLOAD_BYTES,

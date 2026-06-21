@@ -154,7 +154,10 @@ mod tests {
             budget.max_together_branches, 0,
             "linear workflow has no Together"
         );
-        assert_eq!(budget.max_repeat_attempts, 0, "linear workflow has no Repeat");
+        assert_eq!(
+            budget.max_repeat_attempts, 0,
+            "linear workflow has no Repeat"
+        );
         assert_eq!(
             budget.max_run_time_seconds, 2,
             "max_run_time_seconds tracks max_total_steps at 1 step/second"

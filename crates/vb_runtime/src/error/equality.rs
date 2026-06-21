@@ -31,6 +31,7 @@ fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
         RuntimeError::SecretResultNotAllowed => Some(13),
         RuntimeError::ShardNotFound { .. } => Some(14),
         RuntimeError::MigrateSelf => Some(15),
+        RuntimeError::LruRingCapacityZero => Some(16),
         _ => None,
     }
 }

@@ -1462,7 +1462,10 @@ fn validate_idempotency_key_determinism_unit_rejects_each_kind() {
     let err = validate_idempotency_key_determinism(&["$clock.ms"]).unwrap_err();
     match err {
         CompileError::IdempotencyKeyNotDeterministic { kind, .. } => {
-            assert!(matches!(kind, crate::errors::NonDeterministicKind::WallClock));
+            assert!(matches!(
+                kind,
+                crate::errors::NonDeterministicKind::WallClock
+            ));
         }
         other => panic!("expected WallClock kind for $clock.ms, got: {other:?}"),
     }

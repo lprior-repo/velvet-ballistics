@@ -22,22 +22,27 @@ impl Shard {
         }
 
         // Start a fresh coalesce window when the counter is at zero.
+        // If a previous window failed to flush, the buffered events are
+        // still present; we retry the flush here. A successful flush
+        // opens a new window, while a failed flush leaves the counter at
+        // zero so the next tick can retry (RQ-W0-19: failed flushes must
+        // not drop or rewrite events).
         if self.current_coalesce_window_remaining == 0 {
-            let window = self.coalesce_window_ticks;
-            self.current_coalesce_window_remaining = window.saturating_sub(1);
-            self.coalesce_buffer.clear();
+            if self.flush_coalesce_buffer().is_ok() {
+                let window = self.coalesce_window_ticks;
+                self.current_coalesce_window_remaining = window.saturating_sub(1);
+            }
         }
 
         let Some(cmd) = self.command_queue.pop() else {
             // Decrement the coalesce window counter on empty ticks
             // so the window expires based on elapsed time, not command volume.
+            // The next flush attempt happens at the start of the following
+            // tick (see the start-of-tick block above) once the counter
+            // reaches zero, which preserves RQ-W0-19 atomicity on failure.
             if self.current_coalesce_window_remaining > 0 {
                 self.current_coalesce_window_remaining =
                     self.current_coalesce_window_remaining.saturating_sub(1);
-            }
-            // Window expired: flush buffered events atomically.
-            if self.current_coalesce_window_remaining == 0 {
-                self.flush_coalesce_buffer()?;
             }
             return Ok(true);
         };
@@ -53,15 +58,12 @@ impl Shard {
 
         // Decrement the coalesce window counter every tick, including
         // empty-queue ticks, so the window can expire regardless of
-        // command throughput.
+        // command throughput. The next flush attempt happens at the start
+        // of the following tick once the counter reaches zero, which
+        // preserves RQ-W0-19 atomicity on failure.
         if self.current_coalesce_window_remaining > 0 {
             self.current_coalesce_window_remaining =
                 self.current_coalesce_window_remaining.saturating_sub(1);
-        }
-
-        // Window expired: flush buffered events atomically.
-        if self.current_coalesce_window_remaining == 0 {
-            self.flush_coalesce_buffer()?;
         }
 
         Ok(true)

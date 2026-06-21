@@ -72,7 +72,7 @@ impl EvidenceCollector {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            events: Vec::new(),
+            events: Vec::with_capacity(DEFAULT_EVIDENCE_CAPACITY),
             capacity: DEFAULT_EVIDENCE_CAPACITY,
             dropped: 0,
         }
@@ -82,7 +82,7 @@ impl EvidenceCollector {
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            events: Vec::new(),
+            events: Vec::with_capacity(capacity),
             capacity,
             dropped: 0,
         }

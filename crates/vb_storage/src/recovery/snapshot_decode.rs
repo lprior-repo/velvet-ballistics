@@ -39,7 +39,7 @@ pub(super) fn decode_snapshot_slots(
         })?;
 
     // Merge slots and taint, preferring explicit taint from the taint vector
-    let mut entries = Vec::new();
+    let mut entries = Vec::with_capacity(slots.len());
     for (slot, value, default_taint) in slots {
         let explicit_taint = taint
             .iter()

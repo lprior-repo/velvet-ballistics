@@ -98,8 +98,14 @@ fn current_unix_millis_saturating() -> u64 {
     }
 }
 
-/// Loads a snapshot from the journal, translating decode failures to
-/// `RecoveryError::CorruptSnapshot`.
+/// Loads a snapshot from the journal, distinguishing missing snapshots from
+/// corrupted ones.
+///
+/// A successful read returns the snapshot. If the journal has no row at the
+/// requested `(run, seq)` pair, returns `MissingSnapshot` so callers can
+/// recover or skip without treating the absence as corruption. Decode failures
+/// (`PostcardDecodeFailed`) and other integrity evidence gaps remain mapped to
+/// `CorruptSnapshot` so callers fail closed.
 pub fn load_snapshot(
     journal: &FjallJournal,
     run: RunId,
@@ -107,7 +113,8 @@ pub fn load_snapshot(
 ) -> crate::recovery::RecoveryResult<crate::recovery::RunSnapshot> {
     match journal.snapshot(run, seq) {
         Ok(Some(snapshot)) => Ok(snapshot),
-        Ok(None) | Err(JournalError::PostcardDecodeFailed) => {
+        Ok(None) => Err(crate::recovery::RecoveryError::MissingSnapshot { run, seq }),
+        Err(JournalError::PostcardDecodeFailed) => {
             Err(crate::recovery::RecoveryError::CorruptSnapshot { run, seq })
         }
         Err(other) => Err(crate::recovery::RecoveryError::Journal(other)),

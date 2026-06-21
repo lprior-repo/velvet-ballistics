@@ -124,6 +124,14 @@ pub enum RecoveryError {
         /// Snapshot sequence.
         seq: EventSeq,
     },
+    /// No snapshot exists for the requested `(run, seq)` pair.
+    #[error("snapshot missing for run {run:?} at seq {seq:?}")]
+    MissingSnapshot {
+        /// Run identifier.
+        run: RunId,
+        /// Snapshot sequence.
+        seq: EventSeq,
+    },
     /// Recovery produced a terminal state that does not match expectations.
     #[error("recovery terminal state mismatch: expected {expected:?}, found {found:?}")]
     TerminalStateMismatch {

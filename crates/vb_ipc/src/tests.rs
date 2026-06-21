@@ -255,7 +255,9 @@ fn command_ids_cover_required_surface() {
 
 #[test]
 fn header_roundtrips_little_endian_fields() {
-    let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 7, 42, 3);
+    // GAP-5: CompleteAction accepts only zero flags; use SubmitRunInline
+    // with low-byte flags=7 to preserve the roundtrip shape.
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 7, 42, 3);
     let encoded = header.encode();
     assert_ok!(encoded, "header should encode to fixed width");
     let Ok(encoded) = encoded else { return };
@@ -511,7 +513,9 @@ fn decode_payload_returns_decode_failed_on_garbage() {
 
 #[test]
 fn encode_header_always_produces_fixed_width() {
-    let header = IpcFrameHeader::new(IpcCommand::Shutdown, 0xFFFF, 0xDEAD_BEEF_CAFE, 1024);
+    // GAP-5: Shutdown accepts zero flags only; encode is the trust boundary
+    // that must succeed regardless of flag content.
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0x00FF, 0xDEAD_BEEF_CAFE, 1024);
 
     let encoded = header.encode();
     assert_ok!(encoded, "header encode should succeed");
@@ -998,7 +1002,8 @@ fn ipc_frame_header_new_stores_all_fields() {
 
 #[test]
 fn ut_header_encoding_roundtrips() {
-    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0x1234, 0xDEAD_BEEF, 512);
+    // GAP-5: SubmitRunInline accepts up to 0x00FF. Use 0x0034 (low byte only).
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0x0034, 0xDEAD_BEEF, 512);
     let encoded = header.encode().expect("header must encode");
     let decoded =
         IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT).expect("header must decode");
@@ -1024,7 +1029,8 @@ fn ut_header_envelope_bytes_carry_root_capability() {
 
 #[test]
 fn header_encode_decode_roundtrip_preserves_flags() {
-    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 999, 10);
+    // GAP-5: SubmitRun accepts the full low byte; 0x00FF is the contract max.
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0x00FF, 999, 10);
     let encoded = header.encode();
     assert_ok!(encoded, "header should encode");
     let Ok(encoded) = encoded else { return };
@@ -1033,7 +1039,7 @@ fn header_encode_decode_roundtrip_preserves_flags() {
 
     assert_ok!(decoded, "header should decode");
     let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded.flags, 0xABCD);
+    assert_eq!(decoded.flags, 0x00FF);
 }
 
 #[test]
@@ -1887,8 +1893,10 @@ fn frame_validation_valid_frame_parse_succeeds() {
 
 #[test]
 fn frame_validation_roundtrip_encode_decode_preserves_all_fields() {
+    // GAP-5: CompleteAction accepts only zero flags; the test previously
+    // used 0xABCD which now triggers InvalidCommandFlags at decode.
     let original_header =
-        IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
+        IpcFrameHeader::new(IpcCommand::SubmitRun, 0x00FF, 0x1234_5678_9ABC_DEF0, 8);
     let encoded = original_header.encode();
     assert_ok!(encoded, "header should encode");
     let Ok(encoded) = encoded else { return };
@@ -1898,8 +1906,8 @@ fn frame_validation_roundtrip_encode_decode_preserves_all_fields() {
 
     assert_ok!(result, "frame should decode");
     let Ok(frame) = result else { return };
-    assert_eq!(frame.header().command, IpcCommand::CompleteAction);
-    assert_eq!(frame.header().flags, 0xABCD);
+    assert_eq!(frame.header().command, IpcCommand::SubmitRun);
+    assert_eq!(frame.header().flags, 0x00FF);
     assert_eq!(frame.header().correlation, 0x1234_5678_9ABC_DEF0);
     assert_eq!(frame.header().payload_len, 8);
     assert_eq!(frame.payload().bytes().as_ref(), b"payload!");

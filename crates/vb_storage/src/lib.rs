@@ -281,3 +281,14 @@ mod hydrate_tests;
 mod vb_2bok_durability_gate_tests;
 #[cfg(test)]
 mod test_helpers;
+
+// Section 38 property tests (master §38).
+// Each submodule covers one named property:
+//   - digest_stability
+//   - layout_stability
+//   - for_each_ordering
+//   - bound_enforcement
+//   - state_machine
+//   - taint_safety
+#[cfg(test)]
+mod property_tests;

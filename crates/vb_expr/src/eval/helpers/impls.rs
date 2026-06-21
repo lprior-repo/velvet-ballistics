@@ -73,7 +73,7 @@ pub(crate) fn eval_helper_unique_with_store(
 ) -> ExprResult<SlotValue> {
     let list_id = expect_list(*value)?;
     let items = list_items(store, list_id)?;
-    let mut seen: Vec<SlotValue> = Vec::new();
+    let mut seen: Vec<SlotValue> = Vec::with_capacity(items.len());
     for &item in items {
         if !seen.contains(&item) {
             seen.push(item);

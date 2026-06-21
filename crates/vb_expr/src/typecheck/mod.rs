@@ -40,7 +40,7 @@ impl TypeContext {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            variables: Vec::new(),
+            variables: Vec::with_capacity(8),
         }
     }
 

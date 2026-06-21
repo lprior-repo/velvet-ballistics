@@ -11,18 +11,18 @@ impl VolatileRuntimeJournal {
 
     /// Creates an empty volatile journal.
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            events: Mutex::new(Vec::new()),
+            events: Mutex::new(Vec::with_capacity(Self::DEFAULT_CAPACITY)),
             capacity: Self::DEFAULT_CAPACITY,
         }
     }
 
     /// Creates an empty volatile journal with an explicit event capacity.
     #[must_use]
-    pub const fn with_capacity(capacity: NonZeroUsize) -> Self {
+    pub fn with_capacity(capacity: NonZeroUsize) -> Self {
         Self {
-            events: Mutex::new(Vec::new()),
+            events: Mutex::new(Vec::with_capacity(capacity.get())),
             capacity: capacity.get(),
         }
     }

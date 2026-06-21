@@ -36,7 +36,7 @@ pub(super) fn count_total_steps(
     let mut in_path: Vec<u16> = bounded_tracking_vec(node_count);
     let mut total: u64 = 0;
 
-    let mut stack: Vec<StepIdx> = Vec::new();
+    let mut stack: Vec<StepIdx> = Vec::with_capacity(node_count);
     stack.push(entry);
 
     while let Some(current) = stack.pop() {

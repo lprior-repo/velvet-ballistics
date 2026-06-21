@@ -176,7 +176,8 @@ fn do_action_field_affects_digest() {
     let do_step = do_primitive("my_action", "0");
 
     let mut hasher_explicit = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_explicit, &do_step).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_explicit, &do_step)
+        .expect("digest must succeed for valid primitive");
     let digest_explicit = hasher_explicit.finalize();
 
     // Simulate the pre-fix catch-all: only hash the primitive name "do"
@@ -266,7 +267,8 @@ fn choose_fields_affect_digest() {
     );
 
     let mut hasher_explicit = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_explicit, &choose).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_explicit, &choose)
+        .expect("digest must succeed for valid primitive");
     let digest_explicit = hasher_explicit.finalize();
 
     // Simulate the pre-fix catch-all: only hash the primitive name "choose"
@@ -297,11 +299,13 @@ fn choose_different_branch_count_produces_different_digest() {
     );
 
     let mut hasher_a = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_a, &choose_a).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_a, &choose_a)
+        .expect("digest must succeed for valid primitive");
     let digest_a = hasher_a.finalize();
 
     let mut hasher_b = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_b, &choose_b).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_b, &choose_b)
+        .expect("digest must succeed for valid primitive");
     let digest_b = hasher_b.finalize();
 
     assert_ne!(
@@ -323,11 +327,13 @@ fn choose_different_when_label_produces_different_digest() {
     );
 
     let mut hasher_a = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_a, &choose_a).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_a, &choose_a)
+        .expect("digest must succeed for valid primitive");
     let digest_a = hasher_a.finalize();
 
     let mut hasher_b = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_b, &choose_b).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_b, &choose_b)
+        .expect("digest must succeed for valid primitive");
     let digest_b = hasher_b.finalize();
 
     assert_ne!(
@@ -350,11 +356,13 @@ fn choose_different_otherwise_produces_different_digest() {
     );
 
     let mut hasher_a = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_a, &choose_a).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_a, &choose_a)
+        .expect("digest must succeed for valid primitive");
     let digest_a = hasher_a.finalize();
 
     let mut hasher_b = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_b, &choose_b).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_b, &choose_b)
+        .expect("digest must succeed for valid primitive");
     let digest_b = hasher_b.finalize();
 
     assert_ne!(
@@ -376,11 +384,13 @@ fn choose_otherwise_none_vs_some_produces_different_digest() {
     );
 
     let mut hasher_none = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_none, &choose_none).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_none, &choose_none)
+        .expect("digest must succeed for valid primitive");
     let digest_none = hasher_none.finalize();
 
     let mut hasher_some = blake3::Hasher::new();
-    digest_step_primitive(&mut hasher_some, &choose_some).expect("digest must succeed for valid primitive");
+    digest_step_primitive(&mut hasher_some, &choose_some)
+        .expect("digest must succeed for valid primitive");
     let digest_some = hasher_some.finalize();
 
     assert_ne!(

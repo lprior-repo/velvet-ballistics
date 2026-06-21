@@ -131,6 +131,7 @@ mod storage_tests {
                 17 => RecordKind::AskScheduled,
                 18 => RecordKind::AskAnswered,
                 19 => RecordKind::RetryScheduled,
+                20 => RecordKind::StepFailed,
                 21 => RecordKind::RunCancelled,
                 22 => RecordKind::RunFinished,
                 23 => RecordKind::RunFailed,
@@ -138,7 +139,11 @@ mod storage_tests {
                 25 => RecordKind::RunResumed,
                 26 => RecordKind::RunRetried,
                 27 => RecordKind::RunAnswered,
-                _ => return Ok(()),
+                other => {
+                    return Err(proptest::test_runner::TestCaseError::fail(format!(
+                        "unmapped RecordKind id {other} in strategy 10..=27"
+                    )));
+                }
             };
 
             let event = JournalEvent::RunAccepted {

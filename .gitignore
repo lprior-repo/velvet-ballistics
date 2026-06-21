@@ -10,6 +10,7 @@ fuzz/target/
 /refactor/
 /vb-*/
 /ws-batch-*/
+/velvet-ballistics:*_dir/
 /velvet_ballistics_figma_ready_tightened_screens/
 /velvet_ballistics_makepad_ui_master_plan_with_images/
 

@@ -17,3 +17,12 @@ PASS verus verification/verus/vb_mrwe5_roundtrip.rs
 PASS verus verification/verus/vb_mrwe5_compat_kind_family.rs
 PASS verus verification/verus/step_budget.rs
 PASS verus verification/verus/vb_jpq724_events_for_run_production.rs
+PASS verus verification/verus/signals_invariant.rs
+PASS verus verification/verus/run_loop_termination.rs
+PASS verus verification/verus/vb_cli_commands_journal_trace.rs
+PASS verus verification/verus/budget_bounded.rs
+PASS verus verification/verus/idempotency_replay_tracker.rs
+PASS verus verification/verus/accepted_artifact_admission_decision.rs
+PASS verus crates/vb_runtime/src/verification/verus/vb_y9d3v_action_fence.rs
+PASS verus contracts/verus/vb_boundary_inventory_validation_spec.rs
+VERUS_TRUST_SCAN_OK

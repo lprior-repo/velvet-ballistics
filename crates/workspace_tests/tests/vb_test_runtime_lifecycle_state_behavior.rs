@@ -466,7 +466,7 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
 /// L1-3: Action completion transitions run from Resumable to Running then Finished
 // Pre-existing issue: test fails with InvalidActionCompletion
 #[test]
-#[ignore]
+#[ignore = "BLOCKED: runtime action completion pipeline rejects valid ticket with InvalidActionCompletion after submit+tick; pre-existing bug pending vb_runtime fix"]
 fn action_completion_transitions_run_from_resumable_to_finished() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");

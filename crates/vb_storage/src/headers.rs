@@ -48,7 +48,7 @@ impl FjallJournal {
 
     /// Loads all run metadata records in key order.
     pub fn run_headers(&self) -> Result<Vec<RunHeaderRecord>, JournalError> {
-        let mut headers = Vec::new();
+        let mut headers = Vec::with_capacity(16);
         let prefix = [PREFIX_RUN_HEADER];
         for item in self.run_header.prefix(prefix) {
             let value = item.value()?;

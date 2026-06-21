@@ -121,7 +121,7 @@ impl FjallJournal {
         first_event: EventSeq,
         limit: EventReplayLimit,
     ) -> Result<Vec<JournalEvent>, JournalError> {
-        let mut replay = Vec::new();
+        let mut replay = Vec::with_capacity(limit.max_events());
         let mut expected = Some(first_event);
         let start_key = run_event_key(run, start_seq)?;
         let run_prefix = run_prefix_key(run)?;

@@ -156,9 +156,8 @@ mod tests {
 
             let chain = build_chain(base, &widths, next_step);
 
-            if chain.is_empty() {
-                return Ok(());
-            }
+            // Strategy guarantees at least 1 width => chain is non-empty.
+            prop_assert!(!chain.is_empty(), "chain must be non-empty for any widths input");
 
             // Chain must be continuous
             for i in 0..chain.len() - 1 {

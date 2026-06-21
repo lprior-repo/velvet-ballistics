@@ -48,13 +48,13 @@ fn submit_artifact_for_policy(
     policy: vb_core::RuntimePolicy,
     admission_inputs: AdmissionInputs,
 ) -> Result<AcceptedArtifact, JournalError> {
-    match policy {
+    let artifact = match policy {
         vb_core::RuntimePolicy::Relaxed => submit_relaxed_artifact_with_evidence(
             journal,
             workflow,
             admission_inputs.required_capabilities,
             &admission_inputs.idempotency_evidence,
-        ),
+        )?,
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
             submit_checked_artifact_with_evidence(
                 journal,
@@ -62,12 +62,17 @@ fn submit_artifact_for_policy(
                 policy,
                 admission_inputs.required_capabilities,
                 admission_inputs.idempotency_evidence,
-            )
+            )?
         }
         // `RuntimePolicy` is `#[non_exhaustive]`; unknown variants
         // fail closed rather than silently accept malformed artifacts.
-        _ => Err(JournalError::ArtifactMalformed),
-    }
+        _ => return Err(JournalError::ArtifactMalformed),
+    };
+    // Live read-back applies to every policy. A write that returned `Ok`
+    // but is not immediately readable indicates an Fjall/Lsm anomaly or
+    // corruption and must surface regardless of durability mode.
+    verify_persisted_artifact_present(journal, workflow.digest())?;
+    Ok(artifact)
 }
 
 fn submit_relaxed_artifact_with_evidence(
@@ -103,7 +108,6 @@ fn submit_checked_artifact_with_evidence(
     if durable {
         journal.persist_strict()?;
     }
-    verify_persisted_artifact_present(journal, workflow.digest())?;
     Ok(artifact)
 }
 

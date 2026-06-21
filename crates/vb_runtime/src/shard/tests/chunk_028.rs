@@ -32,40 +32,30 @@ fn is_resumable_returns_false_when_state_cannot_be_resumed() {
 /// and the drive step can be recovered by a subsequent resume attempt.
 #[test]
 fn handle_resume_recovers_resuming_state_without_reappending() -> Result<(), RuntimeError> {
-    use vb_core::ids::RunId;
-    use vb_core::value::ConstValue;
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-    };
-    use vb_core::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
-    let set_const = CompiledNode {
+    // Use a `Do` action that suspends waiting for completion so the run
+    // remains in `Running` after the initial tick rather than racing to
+    // `Finish` before the recovery transition.
+    let action = CompiledNode {
         id: StepIdx::new(0),
         output: Some(SlotIdx::new(0)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::new(0),
-        },
-    };
-    let finish = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
         next: None,
         on_error: None,
         error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(0),
+        kind: CompiledNodeKind::Do {
+            action: ActionId::new(0),
+            input: SlotIdx::new(0),
         },
     };
     let parts = WorkflowParts {
         name: Box::<str>::from("rq_w0_20_resuming_recovery"),
         digest: WorkflowDigest::from_bytes([0x20; 32]),
-        nodes: Box::new([set_const, finish]),
+        nodes: Box::new([action]),
         expressions: Box::new([]),
         accessors: Box::new([]),
-        constants: Box::new([ConstValue::Bool(true)]),
+        constants: Box::new([]),
         slot_count: 1,
         symbols_count: 0,
         entry: StepIdx::new(0),
@@ -86,30 +76,35 @@ fn handle_resume_recovers_resuming_state_without_reappending() -> Result<(), Run
         caps: vb_core::capability::CapabilitySet::empty(),
     })?;
     shard.tick()?;
-    assert_eq!(shard.runtime_state_get(run), Some(super::RuntimeState::Running));
+    // The Do action suspends awaiting its completion ticket, so the
+    // runtime state machine transitions to `Resumable` (the valid
+    // pre-`Resuming` state for a suspended run).
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(super::RuntimeState::Resumable)
+    );
 
     // Manually transition the run to Resuming to simulate the
     // half-completed state left by a crashed handle_resume attempt.
     shard.runtime_state_insert(run, super::RuntimeState::Resuming);
 
     // Recovery call must succeed (RQ-W0-20) without re-asserting the
-    // NotResumable error. The run drives forward and finishes.
+    // NotResumable error. The drive step advances the run forward; the
+    // Do action suspends again on the action-completion ticket, so the
+    // state machine transitions `Resuming -> Running -> Resumable`.
     let result = shard.handle_resume(run);
     assert!(
         result.is_ok(),
         "handle_resume must accept Resuming as recoverable; got {result:?}"
     );
 
-    // Run should now be terminal (Completed via finish). The post-resume
-    // drive reaches the Finish node and applies DriveFinished, which
-    // removes the run from runtime_states.
-    assert!(
-        shard.runtime_state_get(run).is_none(),
-        "resumed run must reach terminal state after recovery drive"
-    );
-    assert!(
-        shard.terminal_runs_contains(run),
-        "resumed run must be recorded in terminal_runs"
+    // After the recovery drive, the run is still suspended on the Do
+    // action and therefore tracked in runtime_states as `Resumable`,
+    // awaiting the action-completion ticket.
+    assert_eq!(
+        shard.runtime_state_get(run),
+        Some(super::RuntimeState::Resumable),
+        "resumed run must re-suspend on the Do action after recovery drive"
     );
     Ok(())
 }

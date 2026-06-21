@@ -1796,3 +1796,91 @@ mod merge_more_edge_cases {
         assert_eq!(fields[0].value, SlotValue::I64(99));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Section 46: helper error path tests
+//
+// Covers:
+//   - eval_has with out-of-bounds list handle (NOTE: eval_has operates on list
+//     handles, not symbol handles; the OOB error variant is ListOutOfBounds)
+//   - eval_append with out-of-bounds list handle
+//   - eval_append_if with out-of-bounds list handle
+//   - eval_sum overflow when summing i64::MAX + 1
+//
+// The sum overflow check returns EngineError::InvalidCompiledWorkflow with
+// reason "sum overflow" (see ops_text_list.rs:148). This is the canonical
+// error variant for sum saturation in this engine; no separate IntegerOverflow
+// variant exists in EngineError.
+// ---------------------------------------------------------------------------
+
+mod helper_error_path_tests {
+    use super::*;
+
+    #[test]
+    fn has_returns_error_when_list_handle_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        let bogus = ListId::new(9999);
+        push_value(&mut stack, SlotValue::List(bogus)).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        let result = eval_has(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds { list: bogus })
+        );
+    }
+
+    #[test]
+    fn append_returns_error_when_list_handle_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let bogus = ListId::new(8888);
+        push_value(&mut stack, SlotValue::List(bogus)).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        let result = eval_append(&mut stack, &mut store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds { list: bogus })
+        );
+    }
+
+    #[test]
+    fn append_if_returns_error_when_list_handle_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let bogus = ListId::new(7777);
+        push_value(&mut stack, SlotValue::List(bogus)).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        push_value(&mut stack, SlotValue::Bool(true)).expect("push");
+        let result = eval_append_if(&mut stack, &mut store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds { list: bogus })
+        );
+    }
+
+    #[test]
+    fn sum_returns_error_on_i64_overflow() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(i64::MAX), SlotValue::I64(1)].into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum],
+            vec![SlotValue::List(list)],
+            vec![],
+            &mut store,
+        );
+        match result {
+            Err(EngineError::InvalidCompiledWorkflow { reason }) => {
+                assert!(
+                    reason.contains("overflow"),
+                    "reason should mention overflow, got: {reason}"
+                );
+            }
+            other => panic!("expected InvalidCompiledWorkflow overflow, got {other:?}"),
+        }
+    }
+}

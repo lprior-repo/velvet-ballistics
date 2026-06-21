@@ -14,7 +14,7 @@ pub(super) fn count_path_steps(
     node_count: usize,
 ) -> Result<u64, BudgetTraversalError> {
     let mut visited: Vec<bool> = vec![false; node_count];
-    let mut stack: Vec<StepIdx> = Vec::new();
+    let mut stack: Vec<StepIdx> = Vec::with_capacity(node_count);
     stack.push(entry);
     let mut total: u64 = 0;
     while let Some(current) = stack.pop() {
@@ -68,7 +68,7 @@ fn push_path_successors(
 /// Returns 0 if start is None or node not found.
 fn iterative_branch_depth(nodes: &[CompiledNode], start: StepIdx, max_depth: u64) -> u64 {
     let mut visited: Vec<bool> = vec![false; nodes.len()];
-    let mut stack: Vec<StepIdx> = Vec::new();
+    let mut stack: Vec<StepIdx> = Vec::with_capacity(nodes.len());
     stack.push(start);
     let mut count: u64 = 0;
 

@@ -61,11 +61,16 @@ impl TrimError {
         vb_core::DiagnosticCode::new(0x4103);
     pub const INCOMPLETE_TRIM_CODE: vb_core::DiagnosticCode = vb_core::DiagnosticCode::new(0x4102);
 
+    /// Diagnostic code for the wrapped journal error variant.
+    pub const fn journal_inner_code(inner: &JournalError) -> vb_core::DiagnosticCode {
+        inner.diagnostic_code()
+    }
+
     #[must_use]
     pub const fn diagnostic_code(&self) -> vb_core::DiagnosticCode {
         match self {
             Self::Fjall(_) => JournalError::FJALL_CODE,
-            Self::Journal(_) => JournalError::FJALL_CODE,
+            Self::Journal(inner) => inner.diagnostic_code(),
             Self::NoDurableSnapshot { .. } => Self::NO_DURABLE_SNAPSHOT_CODE,
             Self::RetentionPolicyBlocks { .. } => Self::RETENTION_POLICY_BLOCKS_CODE,
             Self::IncompleteTrim { .. } => Self::INCOMPLETE_TRIM_CODE,

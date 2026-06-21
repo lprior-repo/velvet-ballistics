@@ -12,22 +12,25 @@ Each round is a closed loop: **review → bead → fix → verify → push → c
 
 | Round | Status | Review Artifact | Fix Beads | Verify | Push |
 |-------|--------|-----------------|-----------|--------|------|
-| 1     | IN PROGRESS | `.evidence/test-review/slice-{1..4}-*.md` + `test-suite-review.md` | 24 P1 (vb-b9sab, vb-wuexb, ...) | pending | pending |
-| 2     | NOT STARTED | - | - | - | - |
-| 3     | NOT STARTED | - | - | - | - |
-| 4     | NOT STARTED | - | - | - | - |
-| 5     | NOT STARTED | - | - | - | - |
-| 6     | NOT STARTED | - | - | - | - |
-| 7     | NOT STARTED | - | - | - | - |
-| 8     | NOT STARTED | - | - | - | - |
-| 9     | NOT STARTED | - | - | - | - |
-| 10    | NOT STARTED | - | - | - | - |
-| 11-19 | NOT STARTED | - | - | - | - |
-| 20    | NOT STARTED | - | - | - | - |
-| 21-29 | NOT STARTED | - | - | - | - |
-| 30    | NOT STARTED | - | - | - | - |
-| 31-39 | NOT STARTED | - | - | - | - |
-| 40    | NOT STARTED | - | - | - | - |
+| 1     | IN PROGRESS (review done; fixes in flight) | `.evidence/test-review/slice-{1..4}-*.md` (34C / 33H / 26M / 21L) + `test-suite-review.md` | 1 P1 (vb-lynec) + 7 P2 (vb-2yzii, vb-42jci, vb-jtic4, vb-nkymh, vb-qt3uy, vb-sgfcb, vb-w0n0t) | pending | pending |
+| 1.5   | PLANNED | re-dispatch slice-1 to close F-05..F-10 mutation gaps | (same vb-lynec + new P1s for F-05..F-08) | TBD | TBD |
+| 2     | NOT STARTED | `slice-{core-runtime,storage-workspace,compile-cli-validate-proof,misc}-review-2.md` | TBD (`vb-8o0ul`) | TBD | TBD |
+| 3     | NOT STARTED | TBD | TBD (`vb-f4t4j`) | TBD | TBD |
+| 4     | NOT STARTED | TBD | TBD (`vb-psb5f`) | TBD | TBD |
+| 5     | NOT STARTED | TBD | TBD (`vb-rxwux`) | TBD | TBD |
+| 6     | NOT STARTED | TBD | TBD (`vb-gm7n7`) | TBD | TBD |
+| 7     | NOT STARTED | TBD | TBD (`vb-kt8e1`) | TBD | TBD |
+| 8     | NOT STARTED | TBD | TBD (`vb-2bknr`) | TBD | TBD |
+| 9     | NOT STARTED | TBD | TBD (`vb-mo33q`) | TBD | TBD |
+| 10    | NOT STARTED | TBD | TBD (`vb-dl2o1`) | TBD | TBD |
+| 11-19 | NOT STARTED | TBD | TBD | TBD | TBD |
+| 20    | NOT STARTED | TBD | TBD (`vb-dbwmx`) | TBD | TBD |
+| 21-29 | NOT STARTED | TBD | TBD | TBD | TBD |
+| 30    | NOT STARTED | TBD | TBD (`vb-wkpi3`) | TBD | TBD |
+| 31-39 | NOT STARTED | TBD | TBD | TBD | TBD |
+| 40    | NOT STARTED | TBD | TBD (`vb-ejwgp`) | TBD | TBD |
+
+Bead IDs for rounds 2-40 are filed in `bd list -p 3 --label test-review` (39 P3 task beads).
 
 ## Loop Protocol
 

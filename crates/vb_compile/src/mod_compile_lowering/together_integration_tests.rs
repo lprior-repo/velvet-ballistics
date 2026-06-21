@@ -269,7 +269,7 @@ fn nested_together_inner_nodes_at_correct_offsets() {
         false,
     );
 
-        let () = emit_result.expect("Together lowering must succeed per spec");
+    let () = emit_result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     let nodes = &*parts.nodes;
@@ -310,7 +310,6 @@ fn nested_together_inner_nodes_at_correct_offsets() {
             outer_join_idx
         );
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -359,7 +358,7 @@ steps:
     let result = crate::compile_workflow(yaml_source);
 
     // TDD: will succeed after implementation
-        let workflow = result.expect("Together lowering must succeed per spec");
+    let workflow = result.expect("Together lowering must succeed per spec");
 
     let parts = workflow.to_parts();
     let nodes = &*parts.nodes;
@@ -373,7 +372,6 @@ steps:
         .collect();
     assert!(starts.len() >= 2, "Expected inner + outer TogetherStart");
     assert!(joins.len() >= 2, "Expected inner + outer TogetherJoin");
-
 }
 
 // ---------------------------------------------------------------------------

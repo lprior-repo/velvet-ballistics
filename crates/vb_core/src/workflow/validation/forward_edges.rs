@@ -9,7 +9,7 @@ use crate::workflow::{CompiledNodeKind, WorkflowError, WorkflowParts};
 
 /// Validates forward-edge ordering and loop-nesting invariants.
 pub(crate) fn validate_forward_edges(parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    let mut loop_spans: Vec<(usize, usize)> = Vec::new();
+    let mut loop_spans: Vec<(usize, usize)> = Vec::with_capacity(parts.nodes.len());
 
     for (index, node) in parts.nodes.iter().enumerate() {
         let current_id = StepIdx::new(u16::try_from(index).map_err(|_| {

@@ -344,14 +344,10 @@ proptest! {
         let value_base = 42i64;
         let value = value_base + (seed % 10) as i64;
         std::hint::black_box(value);
-        let journal = match temp_journal() {
-            Ok(j) => j,
-            Err(e) => return Err(TestCaseError::reject(format!("journal open failed: {e}"))),
-        };
-        let workflow = match minimal_workflow(value) {
-            Ok(w) => w,
-            Err(e) => return Err(TestCaseError::reject(format!("workflow build failed: {e}"))),
-        };
+        let journal = temp_journal()
+            .map_err(|e| TestCaseError::fail(format!("journal open failed: {e}")))?;
+        let workflow = minimal_workflow(value)
+            .map_err(|e| TestCaseError::fail(format!("workflow build failed: {e}")))?;
         let expected_digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
@@ -380,14 +376,10 @@ proptest! {
         let value_base = 42i64;
         let value = value_base + (seed % 10) as i64;
         std::hint::black_box(value);
-        let journal = match temp_journal() {
-            Ok(j) => j,
-            Err(e) => return Err(TestCaseError::reject(format!("journal open failed: {e}"))),
-        };
-        let workflow = match minimal_workflow(value) {
-            Ok(w) => w,
-            Err(e) => return Err(TestCaseError::reject(format!("workflow build failed: {e}"))),
-        };
+        let journal = temp_journal()
+            .map_err(|e| TestCaseError::fail(format!("journal open failed: {e}")))?;
+        let workflow = minimal_workflow(value)
+            .map_err(|e| TestCaseError::fail(format!("workflow build failed: {e}")))?;
         let expected_digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled);
@@ -413,14 +405,10 @@ proptest! {
         let value_base = 42i64;
         let value = value_base + (seed % 10) as i64;
         std::hint::black_box(value);
-        let journal = match temp_journal() {
-            Ok(j) => j,
-            Err(e) => return Err(TestCaseError::reject(format!("journal open failed: {e}"))),
-        };
-        let workflow = match minimal_workflow(value) {
-            Ok(w) => w,
-            Err(e) => return Err(TestCaseError::reject(format!("workflow build failed: {e}"))),
-        };
+        let journal = temp_journal()
+            .map_err(|e| TestCaseError::fail(format!("journal open failed: {e}")))?;
+        let workflow = minimal_workflow(value)
+            .map_err(|e| TestCaseError::fail(format!("workflow build failed: {e}")))?;
         let expected_digest = workflow.digest();
 
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict);

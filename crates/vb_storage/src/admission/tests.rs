@@ -453,6 +453,96 @@ fn submit_artifact_journaled_roundtrip_bytes_match() -> Result<(), String> {
 }
 
 // =========================================================================
+// submit_artifact: live readback parity across policies (vb-1rqz7.22 / SA-009)
+// =========================================================================
+
+#[test]
+fn submit_artifact_relaxed_artifact_is_readable_in_place() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("submit_artifact(relaxed) failed: {e}"))?;
+
+    // vb-1rqz7.22 / SA-009: relaxed admission must perform the same live
+    // read-back check as journaled/strict. The artifact must be readable
+    // from the journal immediately after the relaxed call returns Ok.
+    let stored = journal
+        .compiled_ir(result.digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    let record = stored.ok_or_else(|| {
+        String::from("relaxed submit must persist an artifact readable from the journal")
+    })?;
+    assert_eq!(
+        record.digest, result.digest,
+        "stored digest must match returned artifact digest under relaxed policy"
+    );
+    Ok(())
+}
+
+#[test]
+fn submit_artifact_journaled_artifact_is_readable_in_place() -> Result<(), String> {
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+        .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
+
+    let stored = journal
+        .compiled_ir(result.digest)
+        .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+    let record = stored.ok_or_else(|| {
+        String::from("journaled submit must persist an artifact readable from the journal")
+    })?;
+    assert_eq!(
+        record.digest, result.digest,
+        "stored digest must match returned artifact digest under journaled policy"
+    );
+    Ok(())
+}
+
+// =========================================================================
+// verify_persisted_artifact_present: typed absent-key (vb-1rqz7.24 / SA-015)
+// =========================================================================
+
+#[test]
+fn verify_persisted_artifact_present_reports_artifact_not_found() -> Result<(), String> {
+    use crate::admission::persistence::verify_persisted_artifact_present;
+
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let absent = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
+
+    let err = verify_persisted_artifact_present(&journal, absent)
+        .expect_err("absent artifact must error");
+    match err {
+        JournalError::ArtifactNotFound { digest } => {
+            assert_eq!(digest, absent, "absent-key error must carry the digest");
+        }
+        other => {
+            return Err(format!(
+                "verify_persisted_artifact_present must return ArtifactNotFound for absent keys, got {other:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn verify_persisted_artifact_present_succeeds_after_submit() -> Result<(), String> {
+    use crate::admission::persistence::verify_persisted_artifact_present;
+
+    let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+    let workflow = minimal_workflow()?;
+
+    let _ = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+        .map_err(|e| format!("submit failed: {e}"))?;
+
+    verify_persisted_artifact_present(&journal, workflow.digest())
+        .map_err(|e| format!("verify_persisted_artifact_present must succeed after submit: {e}"))?;
+    Ok(())
+}
+
+// =========================================================================
 // admit_compiled_artifact
 // =========================================================================
 

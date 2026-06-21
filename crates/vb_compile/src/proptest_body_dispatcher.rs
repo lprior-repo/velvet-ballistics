@@ -15,6 +15,15 @@
 //
 // GOD RULE 1: Uses proptest strategy with Arbitrary for all StepPrimitive variants.
 // GOD RULE 2: Binds to actual Rust emit_single_body_set implementation.
+//
+// Audit (GAP-006, TEST-S0-04): Each of the five proptests below exercises a
+// distinct strategy and contains no `return Ok(())` early-exit / truncation:
+//   - proptest_body_dispatcher_empty: hardcoded empty body (covers 1 input)
+//   - proptest_body_dispatcher_non_set: non_set_body_strategy (4 variants)
+//   - proptest_body_dispatcher_invariant_empty: hardcoded empty body (1 input)
+//   - proptest_body_dispatcher_invariant_non_set: non_set_body_strategy
+//   - proptest_body_dispatcher_invariant_set: valid_set_body_strategy
+// No silent single-strategy truncation remains.
 
 #![cfg(test)]
 #![forbid(unsafe_code)]

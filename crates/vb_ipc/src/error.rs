@@ -81,6 +81,30 @@ pub enum IpcError {
         /// Reason for the peer-credentials rejection.
         &'static str,
     ),
+    /// Frame flags carry bits outside the command-specific valid mask.
+    #[error(
+        "IPC frame has invalid flags for command {command:?}: raw flags={flags:#06x}, \
+         no bits allowed outside the command's valid mask"
+    )]
+    InvalidCommandFlags {
+        /// Command whose flags were rejected.
+        command: crate::commands::IpcCommand,
+        /// Raw 16-bit flag word from the decoded frame.
+        flags: u16,
+    },
+    /// Frame flags carry bits in the global reserved mask (0xFF00).
+    #[error(
+        "IPC frame has reserved bits set for command {command:?}: actual={actual:#06x}, \
+         reserved_mask={reserved_mask:#06x}"
+    )]
+    ReservedBitsSet {
+        /// Command whose flags were rejected.
+        command: crate::commands::IpcCommand,
+        /// Raw 16-bit flag word from the decoded frame.
+        actual: u16,
+        /// The reserved-bit mask that was violated (always 0xFF00).
+        reserved_mask: u16,
+    },
 }
 
 impl IpcError {
@@ -120,9 +144,13 @@ impl IpcError {
     /// Diagnostic code for response decode failed.
     pub const RESPONSE_DECODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x300E);
     /// Diagnostic code for missing or invalid caller capabilities.
-    pub const PERMISSION_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x300F);
+    pub const PERMISSION_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x3013);
     /// Diagnostic code for peer-credentials rejection on Unix sockets.
-    pub const PEER_CREDENTIALS_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x3010);
+    pub const PEER_CREDENTIALS_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x3014);
+    /// Diagnostic code for invalid command-specific flag bits.
+    pub const INVALID_COMMAND_FLAGS_CODE: DiagnosticCode = DiagnosticCode::new(0x300F);
+    /// Diagnostic code for reserved high-byte flag bits set.
+    pub const RESERVED_BITS_SET_CODE: DiagnosticCode = DiagnosticCode::new(0x3010);
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -144,6 +172,8 @@ impl IpcError {
             Self::ResponseDecodeFailed => Self::RESPONSE_DECODE_FAILED_CODE,
             Self::PermissionDenied => Self::PERMISSION_DENIED_CODE,
             Self::PeerCredentialsFailed(_) => Self::PEER_CREDENTIALS_FAILED_CODE,
+            Self::InvalidCommandFlags { .. } => Self::INVALID_COMMAND_FLAGS_CODE,
+            Self::ReservedBitsSet { .. } => Self::RESERVED_BITS_SET_CODE,
         }
     }
 
@@ -162,7 +192,9 @@ impl IpcError {
             | Self::PayloadLengthMismatch { .. }
             | Self::HeaderDecodeFailed
             | Self::PayloadDecodeFailed
-            | Self::ResponseDecodeFailed => Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE),
+            | Self::ResponseDecodeFailed
+            | Self::InvalidCommandFlags { .. }
+            | Self::ReservedBitsSet { .. } => Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE),
             Self::PermissionDenied | Self::PeerCredentialsFailed(_) => {
                 Some(Self::IPC_FRAME_INVALID_RUNTIME_CODE)
             }

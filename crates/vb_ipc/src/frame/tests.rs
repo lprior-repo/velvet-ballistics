@@ -687,8 +687,8 @@ fn decode_frame_payload_succeeds_for_matching_length() {
 
 #[test]
 fn encode_frame_with_nonzero_flags() {
-    // Given: a frame with flags=0x1234
-    let result = encode_frame(IpcCommand::Health, 0x1234, 1, b"");
+    // GAP-5: SubmitRun accepts the full low byte; 0x1234 is within mask.
+    let result = encode_frame(IpcCommand::SubmitRun, 0x1234, 1, b"");
 
     // When: encoding
     assert_ok!(result, "encode should succeed");
@@ -1394,7 +1394,8 @@ fn encode_frame_with_all_flags_set() {
 
 #[test]
 fn decode_frame_header_preserves_all_fields() {
-    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 0x1234_5678_9ABC_DEF0, 4096);
+    // GAP-5: SubmitRun accepts the full low byte; 0x00FF is the contract max.
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0x00FF, 0x1234_5678_9ABC_DEF0, 4096);
     let encoded = header.encode();
     assert_ok!(encoded);
     let Ok(encoded) = encoded else {
@@ -1406,7 +1407,7 @@ fn decode_frame_header_preserves_all_fields() {
         panic!("header should decode")
     };
     assert_eq!(decoded.command, IpcCommand::SubmitRun);
-    assert_eq!(decoded.flags, 0xABCD);
+    assert_eq!(decoded.flags, 0x00FF);
     assert_eq!(decoded.correlation, 0x1234_5678_9ABC_DEF0);
     assert_eq!(decoded.payload_len, 4096);
 }

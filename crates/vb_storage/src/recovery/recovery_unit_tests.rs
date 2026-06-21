@@ -263,6 +263,17 @@ mod tests {
     }
 
     #[test]
+    fn recovery_error_missing_snapshot() {
+        let run = RunId::new(13);
+        let seq = EventSeq::new(7);
+        let err = RecoveryError::MissingSnapshot { run, seq };
+        assert!(matches!(
+            err,
+            RecoveryError::MissingSnapshot { run: r, seq: s } if r == run && s == seq
+        ));
+    }
+
+    #[test]
     fn recovery_error_terminal_state_mismatch() {
         let expected = "Finished".to_string();
         let found = "Cancelled".to_string();
@@ -1290,6 +1301,7 @@ mod tests {
                 RecoveryError::CorruptSlotTaint { .. } => "corrupt_slot_taint",
                 RecoveryError::NoRecoveryData { .. } => "no_recovery_data",
                 RecoveryError::CorruptSnapshot { .. } => "corrupt_snapshot",
+                RecoveryError::MissingSnapshot { .. } => "missing_snapshot",
                 RecoveryError::TerminalStateMismatch { .. } => "terminal_state_mismatch",
                 RecoveryError::FrameDimensionOverflow { .. } => "frame_dimension_overflow",
             }

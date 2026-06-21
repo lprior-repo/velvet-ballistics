@@ -36,7 +36,7 @@ pub(super) fn replay_events_with_schedule_requirement(
 ) -> RecoveryResult<Vec<JournalEvent>> {
     validate_contiguous_sequences(events)?;
     let max_attempt = super::attempt::compute_max_attempt(events);
-    let mut replayed = Vec::new();
+    let mut replayed = Vec::with_capacity(events.len());
     let mut last_step: Option<StepIdx> = None;
 
     for event in events {

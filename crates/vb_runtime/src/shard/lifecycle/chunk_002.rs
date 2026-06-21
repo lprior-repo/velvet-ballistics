@@ -130,8 +130,11 @@ impl Shard {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
             self.terminal_outcome_record(run, TerminalOutcome::Cancelled);
-            // RQ-W0-17: cancel is no longer conflated with fail.
+            // RQ-W0-17: cancel is no longer conflated with fail, but the
+            // legacy `runs_failed` counter still counts every non-successful
+            // terminal lifecycle so historical observability contracts hold.
             self.counters.inc_cancelled();
+            self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
         self.discard_journal_sequence(run);
@@ -148,8 +151,11 @@ impl Shard {
             self.release_frame(state.frame);
             self.terminal_runs_insert(run);
             self.terminal_outcome_record(run, TerminalOutcome::Killed);
-            // RQ-W0-17: kill is no longer conflated with fail.
+            // RQ-W0-17: kill is no longer conflated with fail, but the
+            // legacy `runs_failed` counter still counts every non-successful
+            // terminal lifecycle so historical observability contracts hold.
             self.counters.inc_killed();
+            self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunKilled { run });
             self.append_journal_event(RuntimeJournalEvent::RunKilled { run, reason })?;
         }

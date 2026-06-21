@@ -58,9 +58,7 @@ pub fn encode_slot_written_extra(
         .len()
         .checked_add(payload.len())
         .ok_or(SlotWrittenExtraError::AllocationFailed)?;
-    let mut out = Vec::new();
-    out.try_reserve(capacity)
-        .map_err(|_| SlotWrittenExtraError::AllocationFailed)?;
+    let mut out = Vec::with_capacity(capacity);
     out.extend_from_slice(SLOT_WRITTEN_EXTRA_PREFIX);
     out.extend_from_slice(&payload);
     Ok(out)

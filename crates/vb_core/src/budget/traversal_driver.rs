@@ -84,7 +84,7 @@ pub(super) fn compute_fanout_and_depth(
     )?;
 
     // Recurse into all successor targets.
-    let mut targets: Vec<StepIdx> = Vec::new();
+    let mut targets: Vec<StepIdx> = Vec::with_capacity(8);
     push_successor_targets(&node.kind, &mut targets);
     if let Some(next) = node.next {
         targets.push(next);

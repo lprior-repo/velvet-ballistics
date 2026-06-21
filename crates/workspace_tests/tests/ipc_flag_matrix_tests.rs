@@ -310,9 +310,9 @@ fn raw_header_cmd_id(command_id: u16, flags: u16) -> [u8; IPC_HEADER_LEN] {
 /// For any command and any low-byte flags (current decoder accepts all),
 /// encode→decode preserves all 4 header fields bit-exact.
 ///
-/// NOTE: Uses flags in 0x0000..=0x00FF to stay within the operational
-/// flag space. After GAP-5 integration (flag validation in decode), this
-/// test will need updating to generate only command-valid flags.
+/// GAP-5: restrict the random flag word to the per-command valid mask
+/// (no reserved bits, no out-of-mask bits) so the decoder accepts the
+/// generated header.
 #[cfg(not(kani))]
 #[test]
 fn proptest_header_roundtrip_preserves_all_fields() {
@@ -329,8 +329,16 @@ fn proptest_header_roundtrip_preserves_all_fields() {
         let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
 
-        // Generate flags within low byte only (0x00..=0xFF)
-        let flags: u16 = rng.random_range(0..=0x00FF_u16);
+        // GAP-5: pick a flag value within the command's valid mask only
+        // (no reserved bits, no out-of-mask bits).
+        let mask = valid_mask_ref(command);
+        let flags: u16 = if mask == 0 {
+            0x0000
+        } else {
+            // sample any subset of bits within mask
+            let raw: u16 = rng.random_range(0..=mask);
+            raw & mask
+        };
 
         // Generate correlation: any u64
         let correlation: u64 = rng.random();
@@ -371,44 +379,51 @@ fn proptest_header_roundtrip_preserves_all_fields() {
 /// For every command, if raw flags have bits outside the command's
 /// valid mask or in the reserved global mask, decode returns Err
 /// with the correct error variant.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1 (CommandFlags), GAP-2/GAP-3
-/// (new error variants), and GAP-5 (decode integration).
 #[test]
-#[ignore = "GAP-1,GAP-2,GAP-3,GAP-5: CommandFlags::validate and decode integration not yet implemented"]
 fn proptest_decode_rejects_invalid_flags_per_command() {
-    // ── PRE-INTEGRATION: verify against contract model ──
-    // This test body models the expected behavior: for each command,
-    // generate random u16 flags, classify them using the contract model
-    // (valid / ReservedBitsSet / InvalidCommandFlags), and assert that
-    // decode() returns the expected result.
-    //
-    // When GAP-1 through GAP-5 are resolved, remove `#[ignore]` and
-    // replace the comment body with actual assertions against
-    // IpcFrameHeader::decode().
-
     // Contract model classification function (inline for clarity).
-    fn expected_outcome(command: IpcCommand, raw: u16) -> Option<&'static str> {
-        // Reserved bits check (precedence)
+    fn expected_outcome(command: IpcCommand, raw: u16) -> Result<(), IpcError> {
         if (raw & RESERVED_GLOBAL_MASK) != 0 {
-            return Some("ReservedBitsSet");
+            return Err(IpcError::ReservedBitsSet {
+                command,
+                actual: raw,
+                reserved_mask: RESERVED_GLOBAL_MASK,
+            });
         }
-        // Command-specific valid mask check
         let mask = valid_mask_ref(command);
         if (raw & !mask) != 0 {
-            return Some("InvalidCommandFlags");
+            return Err(IpcError::InvalidCommandFlags {
+                command,
+                flags: raw,
+            });
         }
-        // Valid
-        None
+        Ok(())
     }
 
-    // Enumerate all 11 commands × sample flag values.
-    // After GAP resolution, replace with actual decode() assertions.
+    // Enumerate all 11 commands × sample flag values; assert against the
+    // production decoder's actual return value.
     for command in &ALL_COMMANDS {
         for &test_flag in &[0x0000_u16, 0x0001, 0x00FF, 0x0100, 0xFF00, 0xFF01, 0xFFFF] {
-            let _outcome = expected_outcome(*command, test_flag);
-            // TODO(GAP-5): assert_eq!(actual_decode_result, expected_error)
-            let _ = _outcome; // suppress unused warning
+            let header = IpcFrameHeader::new(*command, test_flag, 0, 0);
+            let encoded = header.encode().expect("encode must succeed for any flags");
+            let actual = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+            let expected_err = expected_outcome(*command, test_flag);
+            match expected_err {
+                Ok(()) => assert!(
+                    actual.is_ok(),
+                    "decode must accept flags={:#06x} for {:?}; got {:?}",
+                    test_flag,
+                    command,
+                    actual
+                ),
+                Err(expected) => assert_eq!(
+                    actual,
+                    Err(expected),
+                    "decode outcome mismatch for {:?} flags={:#06x}",
+                    command,
+                    test_flag
+                ),
+            }
         }
     }
 }
@@ -427,7 +442,14 @@ fn proptest_idempotent_header_encode_decode_roundtrip() {
     for _ in 0..500 {
         let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
-        let flags: u16 = rng.random_range(0..=0x00FF_u16);
+        // GAP-5: restrict flags to the command's valid mask so decode accepts.
+        let mask = valid_mask_ref(command);
+        let flags: u16 = if mask == 0 {
+            0x0000
+        } else {
+            let raw: u16 = rng.random_range(0..=mask);
+            raw & mask
+        };
         let correlation: u64 = rng.random();
         let payload_len: u32 = rng.random_range(0..=(DEFAULT_MAX_PAYLOAD));
 
@@ -511,20 +533,19 @@ fn proptest_valid_mask_is_disjoint_from_reserved_global_mask() {
 }
 
 /// PO-VB39JP-022:
-/// When both reserved field (offset 10..12) is non-zero AND flags are
-/// invalid, `ReservedNonZero` is returned — NOT a flag error.
-/// This tests the current decode precedence order.
+/// Precedence test for decode error reporting.
 ///
-/// SEC-01: Wire offset 10..12 is now the caller-capabilities envelope, not
-/// a hard-zero reserved field. The decoder no longer returns
-/// `ReservedNonZero` for that slot. The `IpcError::ReservedNonZero`
-/// variant still exists in the enum (diagnostic code 0x3007) for
-/// forward compatibility but is not produced by the current decoder.
-/// This test is marked `#[ignore]` until either the variant is removed
-/// or the test is rewritten for the new capabilities-envelope semantics.
+/// SEC-01 transition: the wire slot at offset 10..12 is now the
+/// caller-capabilities envelope (zero is the missing-capability
+/// sentinel). The decoder returns `PermissionDenied` when this slot is
+/// zero. When the slot is non-zero, decoding proceeds to flag
+/// validation: reserved bits beat invalid command flags.
+///
+/// This test verifies the post-SEC-01 precedence: zero capabilities
+/// (PermissionDenied) fires BEFORE flag validation, but valid
+/// capabilities with reserved flags fire ReservedBitsSet.
 #[test]
-#[ignore = "SEC-01: reserved field at offset 10..12 is now the capabilities envelope; ReservedNonZero is not produced from this slot"]
-fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
+fn decode_precedence_capabilities_envelope_then_flag_validation() {
     use rand::Rng;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
@@ -535,7 +556,7 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
         let cmd_idx: usize = rng.random_range(0..11);
         let command = ALL_COMMANDS[cmd_idx];
 
-        // Flags with at least one invalid aspect (reserved bit or outside mask)
+        // Flags with at least one invalid aspect (reserved bit or outside mask).
         let flags: u16 = loop {
             let f: u16 = rng.random();
             if (f & RESERVED_GLOBAL_MASK) != 0 || (f & !valid_mask_ref(command)) != 0 {
@@ -543,27 +564,42 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
             }
         };
 
-        // Reserved field non-zero (any non-zero u16)
-        let reserved: u16 = loop {
-            let r: u16 = rng.random();
-            if r != 0 {
-                break r;
-            }
-        };
-
-        let header_bytes = raw_header_with_flags(command, flags, reserved);
-
+        // SEC-01: zero capabilities is the missing-capability sentinel —
+        // PermissionDenied must fire BEFORE flag validation.
+        let header_bytes = raw_header_with_flags(command, flags, 0x0000);
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-
-        // Must be ReservedNonZero, NOT a flag error.
         assert_eq!(
             result,
-            Err(IpcError::ReservedNonZero { actual: reserved }),
-            "ReservedNonZero must take precedence over flag errors: command={:?} flags={:#06x} reserved={:#06x}",
+            Err(IpcError::PermissionDenied),
+            "PermissionDenied must take precedence over flag errors: command={:?} flags={:#06x}",
             command,
-            flags,
-            reserved
+            flags
         );
+
+        // Non-zero capabilities with reserved flags: ReservedBitsSet fires.
+        let header_bytes = raw_header_with_flags(command, flags, 0x0001);
+        let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+        if (flags & RESERVED_GLOBAL_MASK) != 0 {
+            assert_eq!(
+                result,
+                Err(IpcError::ReservedBitsSet {
+                    command,
+                    actual: flags,
+                    reserved_mask: RESERVED_GLOBAL_MASK,
+                }),
+                "ReservedBitsSet must surface for flags={:#06x} on command={:?}",
+                flags,
+                command
+            );
+        } else {
+            assert_eq!(
+                result,
+                Err(IpcError::InvalidCommandFlags { command, flags }),
+                "InvalidCommandFlags must surface for flags={:#06x} on command={:?}",
+                flags,
+                command
+            );
+        }
     }
 }
 
@@ -573,96 +609,64 @@ fn proptest_decode_reserved_field_error_takes_precedence_over_flag_error() {
 
 /// B-FLAG-001: CommandFlags::validate returns Ok(CommandFlags(0)) when
 /// raw flags equal zero for any command.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1 (CommandFlags struct).
 #[test]
-#[ignore = "GAP-1: CommandFlags struct and validate() not yet implemented"]
 fn validate_zero_flags_succeeds_for_all_11_commands() {
-    // TODO(GAP-1): Replace comment body with:
-    // for command in &ALL_COMMANDS {
-    //     let result = CommandFlags::validate(*command, 0x0000);
-    //     assert!(result.is_ok(), "zero flags should be valid for {:?}", command);
-    //     assert_eq!(result.unwrap().as_u16(), 0);
-    // }
     for command in &ALL_COMMANDS {
-        // TODO(post-GAP-1): assert!(CommandFlags::validate(*command, 0x0000).is_ok());
-        // Placeholder: verify the contract model says zero is valid for all commands
-        let _ = command;
+        let result = vb_ipc::CommandFlags::validate(*command, 0x0000);
+        assert!(
+            result.is_ok(),
+            "zero flags should be valid for {:?}",
+            command
+        );
+        let flags = result.expect("zero flags must validate");
+        assert_eq!(flags.as_u16(), 0);
     }
 }
 
 /// B-FLAG-002: CommandFlags::validate returns Ok when flags are within
 /// the command's valid mask and no reserved bits.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1.
 #[test]
-#[ignore = "GAP-1: CommandFlags struct and validate() not yet implemented"]
 fn validate_accepts_flags_within_valid_mask_for_each_command() {
-    // TODO(GAP-1): Replace with actual CommandFlags::validate assertions.
-    // For commands with non-zero masks:
-    //   - SubmitRun (≤0x00FF): validate(SubmitRun, 0x0001) → Ok(commandFlags)
-    //   - InspectRun (≤0x0003): validate(InspectRun, 0x0001) → Ok
-    //   - DrainTrace (≤0x0007): validate(DrainTrace, 0x0004) → Ok
-    //   - etc.
     for command in &NONZERO_MASK_COMMANDS {
         let mask = valid_mask_ref(*command);
-        // Test a few representative valid flags
-        let test_flags: Vec<u16> = if mask > 0 {
-            let mut v = vec![0x0001_u16];
-            if mask >= 0x00FF {
-                v.push(0x00FF);
-                v.push(0x0055);
-            } else {
-                v.push(mask);
-            }
-            v
+        let test_flags: Vec<u16> = if mask >= 0x00FF {
+            vec![0x0001_u16, 0x00FF, 0x0055]
+        } else if mask > 0 {
+            vec![0x0001_u16, mask]
         } else {
-            vec![0x0000]
+            vec![0x0000_u16]
         };
         for &f in &test_flags {
+            let result = vb_ipc::CommandFlags::validate(*command, f);
             assert!(
-                f <= mask,
-                "test flag {:#06x} must be <= mask {:#06x} for {:?}",
+                result.is_ok(),
+                "validate({:?}, {:#06x}) must succeed; got {:?}",
+                command,
                 f,
-                mask,
-                command
+                result
             );
         }
-        let _ = test_flags;
     }
 }
 
 /// B-FLAG-003: CommandFlags::validate returns Err(ReservedBitsSet) when
 /// raw flags contain any bit in the global reserved mask (0xFF00),
 /// regardless of command.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1 and GAP-3.
 #[test]
-#[ignore = "GAP-1,GAP-3: CommandFlags::validate and IpcError::ReservedBitsSet not yet implemented"]
 fn validate_returns_reserved_bits_set_for_all_11_commands() {
-    // TODO(GAP-1,GAP-3): Replace with:
-    // for command in &ALL_COMMANDS {
-    //     for &reserved_flag in &[0x0100_u16, 0x8000, 0xFF00, 0x0F00] {
-    //         let result = CommandFlags::validate(*command, reserved_flag);
-    //         assert_eq!(
-    //             result,
-    //             Err(IpcError::ReservedBitsSet {
-    //                 command: *command,
-    //                 actual: reserved_flag,
-    //                 reserved_mask: 0xFF00,
-    //             })
-    //         );
-    //     }
-    // }
-    // Placeholder: verify reserved bits are in the global mask
     for command in &ALL_COMMANDS {
         for &reserved_flag in &[0x0100_u16, 0x8000, 0xFF00, 0x0F00] {
-            assert_ne!(
-                reserved_flag & RESERVED_GLOBAL_MASK,
-                0,
-                "test flag {:#06x} must have bits in reserved mask for {:?}",
-                reserved_flag,
-                command
+            let result = vb_ipc::CommandFlags::validate(*command, reserved_flag);
+            assert_eq!(
+                result,
+                Err(IpcError::ReservedBitsSet {
+                    command: *command,
+                    actual: reserved_flag,
+                    reserved_mask: RESERVED_GLOBAL_MASK,
+                }),
+                "validate({:?}, {:#06x}) must return ReservedBitsSet",
+                command,
+                reserved_flag
             );
         }
     }
@@ -671,14 +675,8 @@ fn validate_returns_reserved_bits_set_for_all_11_commands() {
 /// B-FLAG-004: CommandFlags::validate returns Err(InvalidCommandFlags)
 /// when raw flags contain bits outside the command's valid mask but no
 /// reserved bits.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1 and GAP-2.
 #[test]
-#[ignore = "GAP-1,GAP-2: CommandFlags::validate and IpcError::InvalidCommandFlags not yet implemented"]
 fn validate_returns_invalid_command_flags_when_flags_outside_valid_mask() {
-    // TODO(GAP-1,GAP-2): Replace with actual assertions.
-    // Zero-mask commands: any non-zero low-byte flag → InvalidCommandFlags
-    // Non-zero-mask commands: flags outside mask but within low byte → InvalidCommandFlags
     for command in &ALL_COMMANDS {
         let mask = valid_mask_ref(*command);
         let invalid_flags: Vec<u16> = if mask == 0 {
@@ -690,21 +688,19 @@ fn validate_returns_invalid_command_flags_when_flags_outside_valid_mask() {
         } else if mask == 0x0007 {
             vec![0x0008_u16]
         } else {
-            // mask == 0x00FF: no invalid low-byte flags exist (all 0x00..0xFF are valid)
+            // mask == 0x00FF: no invalid low-byte flags exist
             vec![]
         };
         for &f in &invalid_flags {
-            assert!(
-                (f & !mask) != 0,
-                "test flag {:#06x} must be outside mask {:#06x} for {:?}",
-                f,
-                mask,
-                command
-            );
+            let result = vb_ipc::CommandFlags::validate(*command, f);
             assert_eq!(
-                f & RESERVED_GLOBAL_MASK,
-                0,
-                "test flag {:#06x} must not have reserved bits for InvalidCommandFlags test",
+                result,
+                Err(IpcError::InvalidCommandFlags {
+                    command: *command,
+                    flags: f,
+                }),
+                "validate({:?}, {:#06x}) must return InvalidCommandFlags",
+                command,
                 f
             );
         }
@@ -714,63 +710,28 @@ fn validate_returns_invalid_command_flags_when_flags_outside_valid_mask() {
 /// B-FLAG-005: Reserved-bit check takes precedence over valid-mask check.
 /// Any bit in 0xFF00 → ReservedBitsSet, even if other low-byte bits are
 /// also invalid per the command's mask.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1.
 #[test]
-#[ignore = "GAP-1: CommandFlags::validate not yet implemented"]
 fn validate_returns_reserved_bits_set_not_invalid_command_flags_when_both_conditions_apply() {
-    // TODO(GAP-1,GAP-3): Replace with:
-    // let result = CommandFlags::validate(IpcCommand::Health, 0xFF01);
-    // assert_eq!(
-    //     result,
-    //     Err(IpcError::ReservedBitsSet {
-    //         command: IpcCommand::Health,
-    //         actual: 0xFF01,
-    //         reserved_mask: 0xFF00,
-    //     })
-    // );
-    // NOT: Err(IpcError::InvalidCommandFlags { ... })
-    //
-    // Test with each command to ensure precedence is universal:
     for command in &ALL_COMMANDS {
         let raw = 0xFF01_u16;
-        assert_ne!(
-            raw & RESERVED_GLOBAL_MASK,
-            0,
-            "test flag {:#06x} has reserved bits",
-            raw
-        );
-        assert_ne!(
-            raw & !valid_mask_ref(*command),
-            0,
-            "test flag {:#06x} has invalid bits for {:?}",
-            raw,
+        let result = vb_ipc::CommandFlags::validate(*command, raw);
+        assert_eq!(
+            result,
+            Err(IpcError::ReservedBitsSet {
+                command: *command,
+                actual: raw,
+                reserved_mask: RESERVED_GLOBAL_MASK,
+            }),
+            "validate({:?}, 0xFF01) must return ReservedBitsSet (precedence over InvalidCommandFlags)",
             command
         );
-        // When implemented: reserved check must fire first
-        let _ = command;
     }
 }
 
 /// B-FLAG-006: Commands with valid_mask == 0x0000 reject ANY non-zero
 /// flag value as InvalidCommandFlags (when no reserved bits are set).
-///
-/// PRE-INTEGRATION: Blocked until GAP-1 and GAP-2.
 #[test]
-#[ignore = "GAP-1,GAP-2: CommandFlags::validate and IpcError::InvalidCommandFlags not yet implemented"]
 fn validate_rejects_every_nonzero_flag_for_zero_mask_commands() {
-    // TODO(GAP-1,GAP-2): Replace with 8 commands × 4 flag values = 32 assertions.
-    // for command in &ZERO_MASK_COMMANDS {
-    //     for &flag in &[0x0001_u16, 0x0002, 0x00FF, 0x0055] {
-    //         assert_eq!(
-    //             CommandFlags::validate(*command, flag),
-    //             Err(IpcError::InvalidCommandFlags {
-    //                 command: *command,
-    //                 flags: flag,
-    //             })
-    //         );
-    //     }
-    // }
     for command in &ZERO_MASK_COMMANDS {
         assert_eq!(
             valid_mask_ref(*command),
@@ -779,14 +740,17 @@ fn validate_rejects_every_nonzero_flag_for_zero_mask_commands() {
             command
         );
         for &flag in &[0x0001_u16, 0x0002, 0x00FF, 0x0055] {
-            assert!(flag != 0, "test flag must be non-zero");
-            // After GAP-2: verify this is InvalidCommandFlags, not ReservedBitsSet
+            let result = vb_ipc::CommandFlags::validate(*command, flag);
             assert_eq!(
-                flag & RESERVED_GLOBAL_MASK,
-                0,
-                "test flag must not have reserved bits"
+                result,
+                Err(IpcError::InvalidCommandFlags {
+                    command: *command,
+                    flags: flag,
+                }),
+                "validate({:?}, {:#06x}) must return InvalidCommandFlags",
+                command,
+                flag
             );
-            let _ = (command, flag);
         }
     }
 }
@@ -808,26 +772,15 @@ fn valid_mask_and_reserved_global_mask_are_disjoint_for_all_commands() {
 
 /// B-FLAG-008: CommandFlags::as_u16() returns the exact raw flags value
 /// passed to a successful validate() call.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1.
 #[test]
-#[ignore = "GAP-1: CommandFlags struct not yet implemented"]
 fn command_flags_as_u16_returns_the_validated_value() {
-    // TODO(post-GAP-1): assert_eq!(flags.as_u16(), expected) — when CommandFlags
-    // is implemented, replace the placeholder below with actual assertions:
-    //
-    // let flags = CommandFlags::validate(IpcCommand::SubmitRunInline, 0x00FF).unwrap();
-    // assert_eq!(flags.as_u16(), 0x00FF);
-    //
-    // Also test with zero:
-    // let flags = CommandFlags::validate(IpcCommand::Health, 0).unwrap();
-    // assert_eq!(flags.as_u16(), 0);
-    let _ = (
-        IpcCommand::SubmitRunInline,
-        0x00FF_u16,
-        IpcCommand::Health,
-        0x0000_u16,
-    );
+    let flags = vb_ipc::CommandFlags::validate(IpcCommand::SubmitRunInline, 0x00FF)
+        .expect("SubmitRunInline accepts 0x00FF");
+    assert_eq!(flags.as_u16(), 0x00FF);
+
+    let zero = vb_ipc::CommandFlags::validate(IpcCommand::Health, 0)
+        .expect("Health accepts zero");
+    assert_eq!(zero.as_u16(), 0);
 }
 
 // ============================================================================
@@ -837,46 +790,64 @@ fn command_flags_as_u16_returns_the_validated_value() {
 /// B-ERROR-001: IpcError::InvalidCommandFlags returns diagnostic code
 /// 0x300F, the Display impl contains "invalid flags", the command
 /// name, and the flags value.
-///
-/// PRE-INTEGRATION: Blocked until GAP-2 and GAP-4.
 #[test]
-#[ignore = "GAP-2,GAP-4: IpcError::InvalidCommandFlags variant and diagnostic code 0x300F not yet implemented"]
 fn invalid_command_flags_error_returns_diagnostic_code_0x300_f() {
-    // TODO(post-GAP-2): Replace with actual assertions when IpcError::InvalidCommandFlags exists.
-    // TODO(post-GAP-2): assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x300F));
-    //
-    // Full expected assertions:
-    // let err = IpcError::InvalidCommandFlags { command: IpcCommand::Health, flags: 0x0001 };
-    // assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x300F));
-    // let msg = format!("{}", err);
-    // assert!(msg.contains("invalid flags"), "message must contain 'invalid flags': {msg}");
-    // assert!(msg.contains("Health"), "message must contain command name: {msg}");
-    // assert!(msg.contains("0x0001"), "message must contain flags value: {msg}");
-    // assert_eq!(err.runtime_code(), Some(IpcError::IPC_FRAME_INVALID_RUNTIME_CODE));
-    let _expected_code: u16 = 0x300F;
+    let err = IpcError::InvalidCommandFlags {
+        command: IpcCommand::Health,
+        flags: 0x0001,
+    };
+    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x300F));
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("invalid flags"),
+        "message must contain 'invalid flags': {msg}"
+    );
+    assert!(
+        msg.contains("Health"),
+        "message must contain command name: {msg}"
+    );
+    assert!(
+        msg.contains("0x0001"),
+        "message must contain flags value: {msg}"
+    );
+    assert_eq!(
+        err.runtime_code(),
+        Some(IpcError::IPC_FRAME_INVALID_RUNTIME_CODE)
+    );
 }
 
 /// B-ERROR-002: IpcError::ReservedBitsSet returns diagnostic code
 /// 0x3010, the Display impl contains "reserved", the command name,
 /// the actual value, and the mask.
-///
-/// PRE-INTEGRATION: Blocked until GAP-3 and GAP-4.
 #[test]
-#[ignore = "GAP-3,GAP-4: IpcError::ReservedBitsSet variant and diagnostic code 0x3010 not yet implemented"]
 fn reserved_bits_set_error_returns_diagnostic_code_0x3010() {
-    // TODO(post-GAP-3): Replace with actual assertions when IpcError::ReservedBitsSet exists.
-    // TODO(post-GAP-3): assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x3010));
-    //
-    // Full expected assertions:
-    // let err = IpcError::ReservedBitsSet { command: IpcCommand::Shutdown, actual: 0x8000, reserved_mask: 0xFF00 };
-    // assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x3010));
-    // let msg = format!("{}", err);
-    // assert!(msg.contains("reserved"), "message must contain 'reserved': {msg}");
-    // assert!(msg.contains("Shutdown"), "message must contain command name: {msg}");
-    // assert!(msg.contains("0x8000"), "message must contain actual value: {msg}");
-    // assert!(msg.contains("0xff00"), "message must contain reserved_mask: {msg}");
-    // assert_eq!(err.runtime_code(), Some(IpcError::IPC_FRAME_INVALID_RUNTIME_CODE));
-    let _expected_code: u16 = 0x3010;
+    let err = IpcError::ReservedBitsSet {
+        command: IpcCommand::Shutdown,
+        actual: 0x8000,
+        reserved_mask: 0xFF00,
+    };
+    assert_eq!(err.diagnostic_code(), DiagnosticCode::new(0x3010));
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("reserved"),
+        "message must contain 'reserved': {msg}"
+    );
+    assert!(
+        msg.contains("Shutdown"),
+        "message must contain command name: {msg}"
+    );
+    assert!(
+        msg.contains("0x8000"),
+        "message must contain actual value: {msg}"
+    );
+    assert!(
+        msg.contains("0xff00"),
+        "message must contain reserved_mask: {msg}"
+    );
+    assert_eq!(
+        err.runtime_code(),
+        Some(IpcError::IPC_FRAME_INVALID_RUNTIME_CODE)
+    );
 }
 
 // ============================================================================
@@ -1130,24 +1101,25 @@ fn header_encode_decode_is_idempotent_for_valid_headers() {
     }
 }
 
-/// Regression: explicit test that flags=0xFFFF roundtrips through the
-/// current decoder (which does not validate flags). This test documents
-/// the pre-GAP-5 behavior and must be updated when flag validation is
-/// integrated into decode().
-///
-/// After GAP-5: flags=0xFFFF should REJECT (ReservedBitsSet), not roundtrip.
-/// This test will be replaced by decode rejection tests.
+/// Regression: explicit test that flags=0xFFFF now REJECTS at decode
+/// after GAP-5 (the reserved-bits check fires). Previously (pre-GAP-5)
+/// this roundtripped successfully; the post-GAP-5 behavior is the
+/// contract-correct one.
 #[test]
-fn header_roundtrip_accepts_flags_ffff_when_no_validation() {
+fn decode_rejects_flags_ffff_with_reserved_bits_set_after_gap5() {
     let header = IpcFrameHeader::new(IpcCommand::Health, 0xFFFF, 99, 0);
     let encoded = header.encode().expect("encode must succeed");
-    let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
-        .expect("decode must succeed in pre-GAP-5 state (no flag validation)");
+    let result = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(decoded.command, IpcCommand::Health);
-    assert_eq!(decoded.flags, 0xFFFF);
-    assert_eq!(decoded.correlation, 99);
-    assert_eq!(decoded.payload_len, 0);
+    assert_eq!(
+        result,
+        Err(IpcError::ReservedBitsSet {
+            command: IpcCommand::Health,
+            actual: 0xFFFF,
+            reserved_mask: RESERVED_GLOBAL_MASK,
+        }),
+        "decode must reject 0xFFFF with ReservedBitsSet after GAP-5"
+    );
 }
 
 // ============================================================================
@@ -1158,77 +1130,44 @@ fn header_roundtrip_accepts_flags_ffff_when_no_validation() {
 /// IpcFrameHeader::decode() returns Err(InvalidCommandFlags) when header
 /// is structurally valid but flags are outside the command's valid mask.
 /// Example: CompleteAction (zero-mask) with flags=0x0001.
-///
-/// PRE-INTEGRATION: Blocked until GAP-1 (CommandFlags), GAP-2
-/// (InvalidCommandFlags variant), and GAP-5 (decode integration).
 #[test]
-#[ignore = "GAP-1,GAP-2,GAP-5: CommandFlags::validate and decode flag validation not yet implemented"]
 fn decode_returns_invalid_command_flags_when_complete_action_has_flag_bit_set() {
-    // TODO(GAP-1,GAP-2,GAP-5): Replace with:
-    // let header_bytes = raw_header_with_flags(IpcCommand::CompleteAction, 0x0001, 0);
-    // let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-    // assert_eq!(
-    //     result,
-    //     Err(IpcError::InvalidCommandFlags {
-    //         command: IpcCommand::CompleteAction,
-    //         flags: 0x0001,
-    //     })
-    // );
-    //
-    // Additionally test all zero-mask commands with flags=0x0001:
-    // for command in &ZERO_MASK_COMMANDS { ... }
-    let header_bytes = raw_header_with_flags(IpcCommand::CompleteAction, 0x0001, 0);
-
-    // Current (pre-GAP) behavior: decode succeeds with flags=0x0001
-    // because flag validation is not yet integrated.
-    let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-    assert!(
-        result.is_ok(),
-        "PRE-INTEGRATION: decode currently accepts flags=0x0001 for CompleteAction; \
-         this MUST change to Err(InvalidCommandFlags) when GAP-5 is resolved"
-    );
-
-    // Document the expected post-GAP behavior
-    let _expected_cmd = IpcCommand::CompleteAction;
-    let _expected_flags: u16 = 0x0001;
+    for command in &ZERO_MASK_COMMANDS {
+        let header_bytes = raw_header_with_flags(*command, 0x0001, 0x0001);
+        let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+        assert_eq!(
+            result,
+            Err(IpcError::InvalidCommandFlags {
+                command: *command,
+                flags: 0x0001,
+            }),
+            "decode must reject flags=0x0001 for zero-mask command {command:?}"
+        );
+    }
 }
 
 /// B-DECODE-002:
 /// IpcFrameHeader::decode() returns Err(ReservedBitsSet) when header is
 /// structurally valid but flags have reserved bits set.
 /// Example: Health with flags=0x0100 (bit in reserved high byte).
-///
-/// PRE-INTEGRATION: Blocked until GAP-1, GAP-3, and GAP-5.
 #[test]
-#[ignore = "GAP-1,GAP-3,GAP-5: CommandFlags::validate, IpcError::ReservedBitsSet, and decode integration not yet implemented"]
 fn decode_returns_reserved_bits_set_when_health_has_high_byte_flag_set() {
-    // TODO(GAP-1,GAP-3,GAP-5): Replace with:
-    // let header_bytes = raw_header_with_flags(IpcCommand::Health, 0x0100, 0);
-    // let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-    // assert_eq!(
-    //     result,
-    //     Err(IpcError::ReservedBitsSet {
-    //         command: IpcCommand::Health,
-    //         actual: 0x0100,
-    //         reserved_mask: 0xFF00,
-    //     })
-    // );
-    //
-    // Additionally test with 0x8000, 0xFF00, 0x1100 across all commands.
-    let header_bytes = raw_header_with_flags(IpcCommand::Health, 0x0100, 0);
-
-    // Current (pre-GAP) behavior: decode succeeds with reserved flags
-    let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-    assert!(
-        result.is_ok(),
-        "PRE-INTEGRATION: decode currently accepts reserved flags=0x0100 for Health; \
-         this MUST change to Err(ReservedBitsSet) when GAP-5 is resolved"
-    );
-
-    // Document expected post-GAP behavior
-    let _expected_cmd = IpcCommand::Health;
-    let _expected_actual: u16 = 0x0100;
-    let _expected_mask: u16 = 0xFF00;
+    let reserved_test_flags: [u16; 4] = [0x0100, 0x8000, 0xFF00, 0x1100];
+    for command in &ALL_COMMANDS {
+        for &flags in &reserved_test_flags {
+            let header_bytes = raw_header_with_flags(*command, flags, 0x0001);
+            let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+            assert_eq!(
+                result,
+                Err(IpcError::ReservedBitsSet {
+                    command: *command,
+                    actual: flags,
+                    reserved_mask: RESERVED_GLOBAL_MASK,
+                }),
+                "decode must reject flags={flags:#06x} with ReservedBitsSet for {command:?}"
+            );
+        }
+    }
 }
 
 // ============================================================================
@@ -1237,28 +1176,25 @@ fn decode_returns_reserved_bits_set_when_health_has_high_byte_flag_set() {
 
 /// B-DECODE-003:
 /// Flag validation errors occur at the correct precedence position in
-/// decode: after magic, version, command, reserved field, payload bounds;
-/// before returning Ok. When both reserved field is non-zero AND flags
-/// are invalid, ReservedNonZero is returned — NOT a flag error.
+/// decode: after magic, version, command, capabilities envelope, payload
+/// bounds; before returning Ok. When the capabilities envelope is the
+/// zero sentinel AND flags are invalid, `PermissionDenied` is returned
+/// — NOT a flag error.
 ///
-/// This tests the CURRENT decode behavior where reserved field check
-/// (step 5) precedes the flag check location (step 8, future).
-///
-/// SEC-01: Wire offset 10..12 is now the caller-capabilities envelope.
-/// The decoder no longer returns `ReservedNonZero` for that slot.
-/// This test is marked `#[ignore]` until either the variant is removed
-/// or the test is rewritten for the new capabilities-envelope semantics.
+/// SEC-01 transition: the wire slot at offset 10..12 is the
+/// caller-capabilities envelope (zero is the missing-capability
+/// sentinel). This test verifies the post-SEC-01 precedence: zero
+/// capabilities (PermissionDenied) fires BEFORE flag validation.
 #[test]
-#[ignore = "SEC-01: reserved field at offset 10..12 is now the capabilities envelope; ReservedNonZero is not produced from this slot"]
-fn decode_returns_reserved_non_zero_not_reserved_bits_set_when_reserved_field_is_nonzero() {
-    // Given: a valid-till-reserved header with reserved_field ≠ 0
-    //        and flags that would be rejected if flag check ran first
+fn decode_returns_permission_denied_not_flag_error_when_capabilities_zero_and_flags_invalid() {
+    // Given: a header with capabilities_envelope = 0 (the sentinel) and
+    //        flags that would be rejected if flag check ran first
     let header_bytes = raw_header_bytes(
         IPC_MAGIC,
         IPC_VERSION,
         IpcCommand::Health.as_u16(),
         0x0100, // flags with reserved bit set
-        0x0007, // reserved field non-zero
+        0x0000, // capabilities envelope = 0 (sentinel)
         42,
         0,
     )
@@ -1267,11 +1203,11 @@ fn decode_returns_reserved_non_zero_not_reserved_bits_set_when_reserved_field_is
     // When: decode() is called
     let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
 
-    // Then: ReservedNonZero is returned, NOT a flag error
+    // Then: PermissionDenied is returned, NOT a flag error
     assert_eq!(
         result,
-        Err(IpcError::ReservedNonZero { actual: 0x0007 }),
-        "ReservedNonZero must take precedence over any flag errors"
+        Err(IpcError::PermissionDenied),
+        "PermissionDenied (capabilities=0) must take precedence over flag errors"
     );
 }
 
@@ -1338,30 +1274,49 @@ fn decode_returns_unknown_command_for_command_ids_0_and_above_11() {
 }
 
 /// B-DECODE-005:
-/// The two reserved-related error variants are distinct and come from
-/// different wire fields:
-///   - ReservedNonZero: reserved field at offset 10..12 is non-zero
-///   - ReservedBitsSet (future): flags field at offset 8..10 has reserved bits
+/// The two wire-related error sources for the SEC-01 envelope and
+/// flag-reserved bits must be distinguishable:
 ///
-/// This test verifies the current behavior where decode() correctly
-/// returns ReservedNonZero for the header-level reserved field, and
-/// documents where ReservedBitsSet will be returned after GAP-5.
+///   - `PermissionDenied` is returned when the capabilities envelope
+///     (offset 10..12) is zero — the missing-capability sentinel.
+///   - `ReservedBitsSet` is returned when flags (offset 8..10) carry
+///     reserved bits (mask 0xFF00) AND the capabilities envelope is
+///     non-zero.
 ///
-/// SEC-01: Wire offset 10..12 is now the caller-capabilities envelope.
-/// The decoder no longer returns `ReservedNonZero` for that slot.
-/// This test is marked `#[ignore]` until either the variant is removed
-/// or the test is rewritten for the new capabilities-envelope semantics.
+/// This test verifies the post-SEC-01 behavior end-to-end.
 #[test]
-#[ignore = "SEC-01: reserved field at offset 10..12 is now the capabilities envelope; ReservedNonZero is not produced from this slot"]
-fn decode_distinguishes_reserved_non_zero_field_from_reserved_bits_in_flags() {
-    // Test A: reserved field ≠ 0, flags = 0 → ReservedNonZero
+fn decode_distinguishes_capabilities_envelope_from_reserved_bits_in_flags() {
+    // Test A: capabilities envelope = 0x00FF (non-zero, ROOT+more) and
+    // flags = 0 → Ok. A non-zero capabilities envelope is valid; only
+    // the zero sentinel triggers PermissionDenied.
     {
         let header_bytes = raw_header_bytes(
             IPC_MAGIC,
             IPC_VERSION,
             IpcCommand::Health.as_u16(),
             0x0000, // flags clean
-            0x00FF, // reserved field non-zero
+            0x00FF, // capabilities envelope: non-zero, valid
+            1,
+            0,
+        )
+        .expect("raw_header_bytes must succeed");
+
+        let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
+        assert!(
+            result.is_ok(),
+            "non-zero capabilities envelope must decode; got {:?}",
+            result
+        );
+    }
+
+    // Test A2: capabilities envelope = 0 → PermissionDenied
+    {
+        let header_bytes = raw_header_bytes(
+            IPC_MAGIC,
+            IPC_VERSION,
+            IpcCommand::Health.as_u16(),
+            0x0000,
+            0x0000, // capabilities envelope = 0 → PermissionDenied sentinel
             1,
             0,
         )
@@ -1370,53 +1325,45 @@ fn decode_distinguishes_reserved_non_zero_field_from_reserved_bits_in_flags() {
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
         assert_eq!(
             result,
-            Err(IpcError::ReservedNonZero { actual: 0x00FF }),
-            "non-zero reserved field must return ReservedNonZero"
+            Err(IpcError::PermissionDenied),
+            "zero capabilities envelope must produce PermissionDenied (SEC-01 sentinel)"
         );
     }
 
-    // Test B: reserved field = 0, flags with reserved bits → currently Ok
-    // After GAP-5 this will be ReservedBitsSet.
-    // This documents the CURRENT behavior and serves as a regression
-    // checkpoint for when GAP-5 is resolved.
+    // Test B: capabilities envelope = non-zero, flags with reserved bits
+    // → ReservedBitsSet.
     {
         let header_bytes = raw_header_bytes(
             IPC_MAGIC,
             IPC_VERSION,
             IpcCommand::Health.as_u16(),
             0x0100, // flags with reserved bit (bit 8)
-            0x0000, // reserved field clean
+            0x0001, // capabilities envelope = ROOT
             1,
             0,
         )
         .expect("raw_header_bytes must succeed");
 
         let result = IpcFrameHeader::decode(&header_bytes, MaxPayloadBytes::DEFAULT);
-
-        // PRE-INTEGRATION: decode currently succeeds
-        assert!(
-            result.is_ok(),
-            "PRE-INTEGRATION: decode currently accepts reserved flags; \
-             after GAP-5 this must return Err(ReservedBitsSet)"
-        );
-
-        // Verify the decoded header has the correct flags
-        let decoded = result.expect("just checked");
         assert_eq!(
-            decoded.flags, 0x0100,
-            "current decoder preserves reserved flags bits"
+            result,
+            Err(IpcError::ReservedBitsSet {
+                command: IpcCommand::Health,
+                actual: 0x0100,
+                reserved_mask: RESERVED_GLOBAL_MASK,
+            }),
+            "non-zero capabilities + reserved-bit flags must surface ReservedBitsSet"
         );
-        assert_eq!(decoded.command, IpcCommand::Health);
     }
 
-    // Test C: reserved field = 0, flags = 0 → Ok (control)
+    // Test C: clean header (capabilities=ROOT, flags=0) → Ok
     {
         let header_bytes = raw_header_bytes(
             IPC_MAGIC,
             IPC_VERSION,
             IpcCommand::Health.as_u16(),
             0x0000,
-            0x0000,
+            0x0001,
             1,
             0,
         )
@@ -1560,73 +1507,119 @@ fn all_11_commands_have_correct_wire_ids_and_roundtrip_from_u16() {
 // and 0xFFFF roundtrip) matches the pre-integration state, serving as a
 // regression checkpoint.
 
-/// Regression: verifies that the existing macro-based roundtrip test values
-/// (0xABCD, 0xFFFF) currently roundtrip through the decoder. After GAP-5,
-/// these flag values will be rejected and the downstream tests must be updated.
+/// Regression: documents that the existing macro-based roundtrip test
+/// values (0xABCD, 0xFFFF) now REJECT at decode after GAP-5. Replace
+/// the pre-GAP-5 acceptance assertion with the contract-correct
+/// rejection behavior. Downstream tests must be updated to use
+/// command-valid flags.
 #[test]
-fn regression_existing_roundtrip_macro_flag_values_currently_pass() {
-    // These are the flag values used in ipc_header_roundtrip_test! macro.
-    let dangerous_flags: [u16; 3] = [0x0000, 0xABCD, 0xFFFF];
+fn regression_existing_roundtrip_macro_flag_values_rejected_after_gap5() {
+    // These are the flag values previously used in ipc_header_roundtrip_test!.
+    let rejected_flags: [u16; 3] = [0x0001, 0xABCD, 0xFFFF];
 
     for command in &ALL_COMMANDS {
-        for &flags in &dangerous_flags {
+        for &flags in &rejected_flags {
             let header = IpcFrameHeader::new(*command, flags, 0, 0);
             let encoded = header.encode().expect("encode must succeed");
-            let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
-                .expect("decode must succeed in pre-GAP-5 state");
+            let result = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-            assert_eq!(decoded.command, *command);
-            assert_eq!(
-                decoded.flags, flags,
-                "flags={:#06x} must roundtrip in pre-GAP-5 state for {:?}",
-                flags, command
-            );
+            // Reserved bits must fire first (precedence: ReservedBitsSet
+            // beats InvalidCommandFlags). 0x0001 has no reserved bits and
+            // is rejected only for zero-mask commands.
+            if (flags & RESERVED_GLOBAL_MASK) != 0 {
+                assert_eq!(
+                    result,
+                    Err(IpcError::ReservedBitsSet {
+                        command: *command,
+                        actual: flags,
+                        reserved_mask: RESERVED_GLOBAL_MASK,
+                    }),
+                    "decode must reject flags={flags:#06x} with ReservedBitsSet for {command:?}"
+                );
+            } else if valid_mask_ref(*command) == 0 {
+                assert_eq!(
+                    result,
+                    Err(IpcError::InvalidCommandFlags {
+                        command: *command,
+                        flags,
+                    }),
+                    "decode must reject flags={flags:#06x} with InvalidCommandFlags for zero-mask command {command:?}"
+                );
+            } else {
+                // Non-zero-mask command with flags within low byte:
+                // accept only flags that are within the mask; for the
+                // 0x0001 case on commands with mask>=1 (SubmitRun,
+                // SubmitRunInline, ListEvents) this should roundtrip.
+                let within_mask = (flags & !valid_mask_ref(*command)) == 0;
+                if within_mask {
+                    assert!(
+                        result.is_ok(),
+                        "decode must accept flags={flags:#06x} for {command:?} (within mask)"
+                    );
+                } else {
+                    assert_eq!(
+                        result,
+                        Err(IpcError::InvalidCommandFlags {
+                            command: *command,
+                            flags,
+                        }),
+                        "decode must reject flags={flags:#06x} with InvalidCommandFlags for {command:?}"
+                    );
+                }
+            }
         }
     }
 }
 
-/// Regression: CompleteAction with flags=0xABCD (used in existing
-/// frame_validation_roundtrip_encode_decode_preserves_all_fields test)
-/// currently roundtrips but will fail after GAP-5.
+/// Regression: CompleteAction with flags=0xABCD now REJECTS at decode
+/// after GAP-5 (InvalidCommandFlags for zero-mask commands).
 #[test]
-fn regression_complete_action_with_flags_0x_abcd_currently_roundtrips() {
+fn regression_complete_action_with_flags_0x_abcd_now_rejects() {
     let header = IpcFrameHeader::new(IpcCommand::CompleteAction, 0xABCD, 0x1234_5678_9ABC_DEF0, 8);
     let encoded = header.encode().expect("encode must succeed");
-    let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
-        .expect("decode must succeed in pre-GAP-5 state");
+    let result = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(decoded.command, IpcCommand::CompleteAction);
-    assert_eq!(decoded.flags, 0xABCD);
-    assert_eq!(decoded.correlation, 0x1234_5678_9ABC_DEF0);
-    assert_eq!(decoded.payload_len, 8);
+    assert_eq!(
+        result,
+        Err(IpcError::ReservedBitsSet {
+            command: IpcCommand::CompleteAction,
+            actual: 0xABCD,
+            reserved_mask: RESERVED_GLOBAL_MASK,
+        }),
+        "CompleteAction+0xABCD must reject with ReservedBitsSet (reserved bits win precedence)"
+    );
 }
 
-/// Regression: SubmitRun with flags=0xABCD (used in existing
-/// header_encode_decode_roundtrip_preserves_flags test) currently
-/// roundtrips but will fail after GAP-5.
+/// Regression: SubmitRun with flags=0xABCD now REJECTS at decode after
+/// GAP-5 (ReservedBitsSet because 0xABCD has bits in 0xFF00).
 #[test]
-fn regression_submit_run_with_flags_0x_abcd_currently_roundtrips() {
+fn regression_submit_run_with_flags_0x_abcd_now_rejects() {
     let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 999, 10);
     let encoded = header.encode().expect("encode must succeed");
-    let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT)
-        .expect("decode must succeed in pre-GAP-5 state");
+    let result = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
 
-    assert_eq!(decoded.command, IpcCommand::SubmitRun);
-    assert_eq!(decoded.flags, 0xABCD);
-    assert_eq!(decoded.correlation, 999);
-    assert_eq!(decoded.payload_len, 10);
+    assert_eq!(
+        result,
+        Err(IpcError::ReservedBitsSet {
+            command: IpcCommand::SubmitRun,
+            actual: 0xABCD,
+            reserved_mask: RESERVED_GLOBAL_MASK,
+        }),
+        "SubmitRun+0xABCD must reject with ReservedBitsSet after GAP-5"
+    );
 }
 
 // ============================================================================
 // Section J: Comprehensive flag test matrix — all 11 commands × flag classes
 // ============================================================================
 
-/// Combinatorial test: for each of the 11 commands, test the current
-/// roundtrip behavior across all flag classes defined in the contract
-/// matrix (§8.1). This documents the pre-GAP-5 acceptance of all flag
-/// values and provides a structured matrix for post-GAP migration.
+/// Combinatorial test: for each of the 11 commands, verify the contract
+/// behavior across all flag classes defined in the matrix (§8.1).
+/// After GAP-5, only valid flag classes roundtrip; reserved and
+/// invalid-low classes must reject with the contract-correct error
+/// variants.
 #[test]
-fn flag_matrix_all_11_commands_all_classes_roundtrip_in_current_code() {
+fn flag_matrix_all_11_commands_all_classes_decode_contract() {
     /// Represents a flag test case in the contract matrix.
     struct FlagCase {
         label: &'static str,
@@ -1708,6 +1701,21 @@ fn flag_matrix_all_11_commands_all_classes_roundtrip_in_current_code() {
         cases
     };
 
+    /// Classifies a flag test case into the expected decode outcome.
+    fn expected_outcome(command: IpcCommand, flags: u16) -> Result<(), IpcError> {
+        if (flags & RESERVED_GLOBAL_MASK) != 0 {
+            return Err(IpcError::ReservedBitsSet {
+                command,
+                actual: flags,
+                reserved_mask: RESERVED_GLOBAL_MASK,
+            });
+        }
+        if (flags & !valid_mask_ref(command)) != 0 {
+            return Err(IpcError::InvalidCommandFlags { command, flags });
+        }
+        Ok(())
+    }
+
     for command in &ALL_COMMANDS {
         let cases = flag_cases(*command);
 
@@ -1723,26 +1731,26 @@ fn flag_matrix_all_11_commands_all_classes_roundtrip_in_current_code() {
                 }
             };
 
-            let decoded = match IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT) {
-                Ok(h) => h,
-                Err(e) => {
-                    panic!(
-                        "decode failed for {:?} flags={:#06x} label={}: {:?}",
-                        command, case.flags, case.label, e
-                    );
-                }
-            };
-
-            assert_eq!(
-                decoded.command, *command,
-                "command mismatch for {:?} flags={:#06x} label={}",
-                command, case.flags, case.label
-            );
-            assert_eq!(
-                decoded.flags, case.flags,
-                "flags mismatch for {:?}: expected {:#06x}, got {:#06x} label={}",
-                command, case.flags, decoded.flags, case.label
-            );
+            let result = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
+            let expected_err = expected_outcome(*command, case.flags);
+            match expected_err {
+                Ok(()) => assert!(
+                    result.is_ok(),
+                    "decode must accept flags={:#06x} label={} for {:?}; got {:?}",
+                    case.flags,
+                    case.label,
+                    command,
+                    result
+                ),
+                Err(expected) => assert_eq!(
+                    result,
+                    Err(expected),
+                    "decode outcome mismatch for {:?} flags={:#06x} label={}",
+                    command,
+                    case.flags,
+                    case.label
+                ),
+            }
         }
     }
 }

@@ -131,7 +131,8 @@ pub fn preview_keyspace(
                 Err(_) => u64::MAX,
             },
         })?;
-    let mut result: Vec<(StorageKey, Vec<u8>, PreviewPayload)> = Vec::new();
+    let mut result: Vec<(StorageKey, Vec<u8>, PreviewPayload)> =
+        Vec::with_capacity(config.max_records().get());
     let mut state = PreviewState::new(config.max_records().get(), config.max_bytes());
     for (k, v) in entries {
         if process_entry((k, v), &mut result, &mut state)?.is_break() {

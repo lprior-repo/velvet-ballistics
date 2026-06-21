@@ -7,3 +7,4 @@
 cc 706a164307b3cead20e76a47a4c9ff6ee29759fb65a9e53618d04ba42a216fb0 # shrinks to (_kind, ast) = (F64, Unary { op: Neg, expr: Literal(F64(FiniteF64(0.0))) })
 cc d831781724cc807f2df9449d62bc4c95696b1968bc474dfefdbf88bf8d3a1f87 # shrinks to (_kind, ast) = (F64, Unary { op: Neg, expr: Unary { op: Neg, expr: Literal(F64(FiniteF64(0.0))) } })
 cc 43be53711277fbd09a27d8f70abbc1c759fbb248fc8c4f52a3f34fba38d35d02 # shrinks to (_kind, ast) = (F64, Unary { op: Neg, expr: Literal(F64(FiniteF64(0.0))) })
+cc 1ff56e96bc11a3bcf1a730e807e88fec772954771a2b72699341dc0e72094226 # shrinks to (_kind, ast) = (I64, Binary { op: Lt, left: Literal(I64(0)), right: Unary { op: Neg, expr: Literal(I64(-1)) } })

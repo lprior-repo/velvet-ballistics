@@ -16,6 +16,7 @@ pub mod bounded;
 pub mod capabilities;
 pub mod client;
 pub mod codec;
+pub mod command_flags;
 pub mod commands;
 pub mod constants;
 pub mod error;
@@ -70,6 +71,7 @@ pub use crate::capabilities::{
     OPERATOR_CAPABILITY_BIT, ROOT_CAPABILITY_BIT, SUBMITTER_CAPABILITY_BIT,
 };
 pub use crate::codec::{decode_payload, encode_payload};
+pub use crate::command_flags::{CommandFlags, RESERVED_GLOBAL_MASK};
 pub use crate::commands::IpcCommand;
 pub use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 pub use crate::error::IpcError;

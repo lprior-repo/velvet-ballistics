@@ -76,14 +76,15 @@ impl ValueStore {
     /// Creates a cold value store with a hard cap on total arena entries.
     #[must_use]
     pub fn with_max_slots(max_slots: u16) -> Self {
+        let initial_cap = usize::from(max_slots);
         Self {
-            symbols: Vec::new(),
-            lists: Vec::new(),
-            list_taints: Vec::new(),
-            objects: Vec::new(),
-            object_field_index: Vec::new(),
-            object_taint_index: Vec::new(),
-            blobs: Vec::new(),
+            symbols: Vec::with_capacity(initial_cap),
+            lists: Vec::with_capacity(initial_cap),
+            list_taints: Vec::with_capacity(initial_cap),
+            objects: Vec::with_capacity(initial_cap),
+            object_field_index: Vec::with_capacity(initial_cap),
+            object_taint_index: Vec::with_capacity(initial_cap),
+            blobs: Vec::with_capacity(initial_cap),
             max_arena_entries: u64::from(max_slots),
         }
     }

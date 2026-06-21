@@ -290,7 +290,7 @@ pub fn recover_all_incomplete_runs(
     journal: &FjallJournal,
 ) -> RecoveryResult<Vec<RecoveryHydration>> {
     let headers = journal.run_headers()?;
-    let mut recovered = Vec::new();
+    let mut recovered = Vec::with_capacity(headers.len());
 
     for header in headers {
         let events = journal.events_for_run_full(header.run)?;

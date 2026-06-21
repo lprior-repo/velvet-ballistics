@@ -287,10 +287,14 @@ impl IpcServer {
         if let Some(index) = free_slot {
             let token = Token(index.saturating_add(1));
 
+            let buffer_capacity = IPC_HEADER_LEN
+                .checked_add(MaxPayloadBytes::DEFAULT.get())
+                .unwrap_or(0);
+
             let mut client = ClientConnection {
                 stream,
-                read_buffer: Vec::new(),
-                write_buffer: Vec::new(),
+                read_buffer: Vec::with_capacity(buffer_capacity),
+                write_buffer: Vec::with_capacity(buffer_capacity),
                 magic_state: MagicValidationState::AwaitingMagic,
             };
 

@@ -602,7 +602,7 @@ fn test_direct_api_cancel_known_run_records_cancellation() -> Result<(), String>
 
 // Pre-existing issue: run doesn't reach Finished after action completion
 #[test]
-#[ignore]
+#[ignore = "BLOCKED: runtime action completion pipeline rejects valid ticket with InvalidActionCompletion after submit+tick; pre-existing bug pending vb_runtime fix"]
 fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String> {
     // Given: SCN-VT2F-004 two suspended runs and a public action ticket for one run.
     let journal = Arc::new(VolatileRuntimeJournal::new());

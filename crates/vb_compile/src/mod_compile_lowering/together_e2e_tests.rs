@@ -163,7 +163,7 @@ steps:
     let result = compile_yaml(yaml);
 
     // TDD: will succeed after implementation
-        let workflow = result.expect("Together lowering must succeed per spec");
+    let workflow = result.expect("Together lowering must succeed per spec");
 
     let parts = workflow.to_parts();
     let nodes = &*parts.nodes;
@@ -187,7 +187,6 @@ steps:
         !digest.as_bytes().iter().all(|&b| b == 0),
         "Digest must be non-zero"
     );
-
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +233,7 @@ steps:
 
     let result = compile_yaml(yaml);
 
-        let workflow = result.expect("Together lowering must succeed per spec");
+    let workflow = result.expect("Together lowering must succeed per spec");
 
     let parts = workflow.to_parts();
     let nodes = &*parts.nodes;
@@ -252,7 +251,6 @@ steps:
 
     // Gate 11 should pass (implicitly checked by compile_source validation)
     let _ = workflow.digest();
-
 }
 
 // ---------------------------------------------------------------------------
@@ -563,5 +561,4 @@ steps:
         "Expected at least 8 nodes, got {}",
         nodes.len()
     );
-
 }

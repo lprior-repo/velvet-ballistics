@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 29ae3434b5106498a04a86856d3ca58f32db8b270a888f1268ba1d12e43bec82 # shrinks to ops = [LoadSlot(SlotIdx(0)), LoadSlot(SlotIdx(0))]
+cc be1b415a336b4768bf1d3ed05426dfd7adab33cffbd5e0f95d8aaa954a907799 # shrinks to ops = [LoadSlot(SlotIdx(0)), LoadSlot(SlotIdx(0))], declared_max = 0
+cc 3fe4ecdb6f1a0fa4899cd00bb657ae40c131e8622ed2e31fc7a043564c30270f # shrinks to ops = [LoadSlot(SlotIdx(0)), LoadSlot(SlotIdx(0)), Add], declared_max = 0

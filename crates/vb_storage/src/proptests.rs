@@ -182,7 +182,11 @@ mod proptests {
                 21 => RecordKind::RunCancelled,
                 22 => RecordKind::RunFinished,
                 23 => RecordKind::RunFailed,
-                _ => return Ok(()),
+                other => {
+                    return Err(proptest::test_runner::TestCaseError::fail(format!(
+                        "unmapped RecordKind id {other} in strategy 10..=23"
+                    )));
+                }
             };
             let encoded = encode_record(
                 MAGIC_JOURNAL_EVENT,

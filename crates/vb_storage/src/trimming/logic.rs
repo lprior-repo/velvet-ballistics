@@ -72,15 +72,18 @@ impl FjallJournal {
 
         for item in self.events.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
+            // vb-1rqz7.26 / SC-006: a key shorter than the run-event contract
+            // (17 bytes) is by definition corruption; fail closed instead of
+            // silently leaving the row un-trimmable.
             if key.len() < 17 {
-                continue;
+                return Err(TrimError::IncompleteTrim { deleted_count });
             }
             let slice = key
                 .get(9..17)
-                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+                .ok_or(TrimError::IncompleteTrim { deleted_count })?;
             let seq_bytes: [u8; 8] = slice
                 .try_into()
-                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+                .map_err(|_| TrimError::IncompleteTrim { deleted_count })?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < cutoff_seq.get() {
@@ -115,7 +118,7 @@ impl FjallJournal {
     /// blocked by retention policy are skipped.
     pub fn trim_all_eligible_runs(&self, policy: TrimPolicy) -> TrimResult<Vec<TrimmedRunResult>> {
         let headers = self.run_headers()?;
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(headers.len());
 
         for header in headers {
             match self.trim_events_for_run(header.run, policy) {
@@ -137,7 +140,7 @@ impl FjallJournal {
         policy: TrimPolicy,
     ) -> Result<TrimDiagnostic, JournalError> {
         let headers = self.run_headers()?;
-        let mut runs = Vec::new();
+        let mut runs = Vec::with_capacity(headers.len());
         let mut total_runs: u64 = 0;
         let mut eligible_runs: u64 = 0;
         let mut blocked_runs: u64 = 0;
@@ -212,15 +215,18 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, prefix_key) {
             let key = item.key().map_err(JournalError::from)?;
+            // vb-1rqz7.25 / CC-002: a key shorter than the run-event contract
+            // (17 bytes) is by definition corruption; fail closed instead of
+            // silently treating it as nothing.
             if key.len() < 17 {
-                continue;
+                return Err(JournalError::from(TrimError::IncompleteTrim { deleted_count: count }));
             }
             let slice = key.get(9..17).ok_or_else(|| {
-                JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 })
+                JournalError::from(TrimError::IncompleteTrim { deleted_count: count })
             })?;
-            let seq_bytes: [u8; 8] = slice
-                .try_into()
-                .map_err(|_| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
+            let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| {
+                JournalError::from(TrimError::IncompleteTrim { deleted_count: count })
+            })?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < safe_point.get() {
@@ -271,7 +277,7 @@ impl FjallJournal {
         };
 
         let all_headers = self.run_headers().map_err(TrimError::from)?;
-        let mut terminal_runs: Vec<(RunId, u64)> = Vec::new();
+        let mut terminal_runs: Vec<(RunId, u64)> = Vec::with_capacity(all_headers.len());
 
         for h in all_headers {
             if h.workflow_id != header.workflow_id {

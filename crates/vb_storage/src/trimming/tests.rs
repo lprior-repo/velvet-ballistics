@@ -435,6 +435,120 @@ fn latest_durable_snapshot_seq_rejects_payload_seq_mismatch() {
     }
 }
 
+// =========================================================================
+// vb-1rqz7.26 / SC-006 — trim_events_for_run fails closed on malformed keys
+// =========================================================================
+
+#[test]
+fn trim_events_for_run_fails_closed_on_malformed_event_key() {
+    use crate::constants::{MAGIC_JOURNAL_EVENT, PREFIX_RUN_EVENT};
+    use crate::records::RecordKind;
+
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x7A01);
+
+    // Plant a header + a real snapshot so trim has a valid cutoff.
+    let digest = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
+    write_header(&journal, run, digest);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(3),
+        workflow: digest,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal.put_snapshot(&snapshot).expect("snapshot put");
+
+    // Plant a real 17-byte event so trim has at least one valid row.
+    let event = make_event(run, 0);
+    journal
+        .append_journaled(&event)
+        .expect("append real event should succeed");
+
+    // Plant a corrupted key (shorter than the 17-byte run-event contract)
+    // directly under the same run-event prefix so the scan encounters it.
+    let mut short_key = [0u8; 9];
+    short_key[0] = PREFIX_RUN_EVENT;
+    short_key[1..9].copy_from_slice(&run.get().to_be_bytes());
+    let value = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::StepStarted,
+        0,
+        &[0u8, 1, 2, 3],
+        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .expect("event record encode");
+    journal
+        .events
+        .insert(short_key.to_vec(), value)
+        .expect("malformed short key insert");
+
+    let policy = TrimPolicy::default();
+    let err = journal
+        .trim_events_for_run(run, policy)
+        .expect_err("short key must fail closed");
+    assert!(
+        matches!(err, TrimError::IncompleteTrim { .. }),
+        "short event key must surface as IncompleteTrim, got {err:?}"
+    );
+}
+
+// =========================================================================
+// vb-1rqz7.25 / CC-002 — count_trimmable_events fails closed on malformed keys
+// =========================================================================
+
+#[test]
+fn trim_eligibility_diagnostic_fails_closed_on_malformed_event_key() {
+    use crate::constants::{MAGIC_JOURNAL_EVENT, PREFIX_RUN_EVENT};
+    use crate::records::RecordKind;
+
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(0x7A02);
+
+    let digest = WorkflowDigest::from_bytes([0x78; DIGEST_BYTES]);
+    write_header(&journal, run, digest);
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(3),
+        workflow: digest,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal.put_snapshot(&snapshot).expect("snapshot put");
+
+    let event = make_event(run, 0);
+    journal.append_journaled(&event).expect("append event");
+
+    let mut short_key = [0u8; 9];
+    short_key[0] = PREFIX_RUN_EVENT;
+    short_key[1..9].copy_from_slice(&run.get().to_be_bytes());
+    let value = crate::codec::encode_record(
+        MAGIC_JOURNAL_EVENT,
+        RecordKind::StepStarted,
+        0,
+        &[0u8, 1, 2, 3],
+        crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+    )
+    .expect("event record encode");
+    journal
+        .events
+        .insert(short_key.to_vec(), value)
+        .expect("malformed short key insert");
+
+    let policy = TrimPolicy::default();
+    let err = journal
+        .trim_eligibility_diagnostic(policy)
+        .expect_err("short key must fail closed");
+    let converted = match err {
+        JournalError::Trim(inner) => *inner,
+        other => panic!("trim diagnostic must wrap as JournalError::Trim, got {other:?}"),
+    };
+    assert!(
+        matches!(converted, TrimError::IncompleteTrim { .. }),
+        "trim diagnostic must surface IncompleteTrim, got {converted:?}"
+    );
+}
+
 #[test]
 fn trim_preserves_events_at_or_after_snapshot() {
     let (_temp, journal) = temp_journal();
@@ -712,6 +826,28 @@ fn retention_policy_blocks_error_has_correct_diagnostic_code() {
     assert_eq!(
         err.diagnostic_code(),
         TrimError::RETENTION_POLICY_BLOCKS_CODE
+    );
+}
+
+#[test]
+fn journal_wrapped_error_delegates_to_inner_diagnostic_code() {
+    use crate::error::JournalError;
+
+    let inner = JournalError::WrongRun {
+        expected: RunId::new(1),
+        actual: RunId::new(2),
+    };
+    let inner_code = inner.diagnostic_code();
+    let err = TrimError::Journal(inner);
+    assert_eq!(
+        err.diagnostic_code(),
+        inner_code,
+        "TrimError::Journal must delegate to its inner JournalError diagnostic code"
+    );
+    assert_ne!(
+        err.diagnostic_code(),
+        JournalError::FJALL_CODE,
+        "delegation must not fall back to the generic FJALL_CODE"
     );
 }
 

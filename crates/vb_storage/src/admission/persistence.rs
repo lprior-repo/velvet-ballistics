@@ -24,23 +24,28 @@ pub(crate) fn persist_accepted_artifact_ir(
 }
 
 /// Serializes an accepted artifact to postcard bytes.
+///
+/// The underlying postcard encode error is preserved via the `Encode`
+/// variant of `JournalError` so callers can distinguish serialization
+/// failures from unrelated artifact-corruption cases.
 pub(crate) fn serialize_accepted_artifact(
     artifact: &AcceptedArtifact,
 ) -> Result<Vec<u8>, JournalError> {
-    postcard::to_allocvec(artifact).map_err(|_| JournalError::ArtifactMalformed)
+    postcard::to_allocvec(artifact).map_err(JournalError::from)
 }
 
 /// Verifies that a persisted artifact is present in the journal.
+///
+/// The underlying journal error is propagated unchanged; only the
+/// absent-key case is translated into the typed `ArtifactNotFound`
+/// variant so callers can distinguish "row missing" from "row corrupt
+/// or unreadable".
 pub(crate) fn verify_persisted_artifact_present(
     journal: &FjallJournal,
     digest: vb_core::WorkflowDigest,
 ) -> Result<(), JournalError> {
-    let stored = journal
-        .compiled_ir(digest)
-        .map_err(|_| JournalError::ArtifactMalformed)?;
-    if stored.is_some() {
-        Ok(())
-    } else {
-        Err(JournalError::ArtifactMalformed)
+    match journal.compiled_ir(digest)? {
+        Some(_) => Ok(()),
+        None => Err(JournalError::ArtifactNotFound { digest }),
     }
 }

@@ -7,6 +7,7 @@ use std::io::Cursor;
 
 use crate::bounded::{BoundedPayload, MaxPayloadBytes};
 use crate::capabilities::CallerCapabilities;
+use crate::command_flags::CommandFlags;
 use crate::commands::IpcCommand;
 use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 use crate::error::IpcError;
@@ -116,7 +117,7 @@ impl IpcFrameHeader {
                 .read_u16::<LittleEndian>()
                 .map_err(|_| IpcError::HeaderDecodeFailed)?,
         )?;
-        let flags = cursor
+        let raw_flags = cursor
             .read_u16::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;
         // SEC-01: previously the reserved slot — now reads the caller-capability
@@ -129,6 +130,15 @@ impl IpcFrameHeader {
             Some(caps) => caps,
             None => return Err(IpcError::PermissionDenied),
         };
+        // GAP-5: validate the raw flag word against the command-specific
+        // valid mask and the reserved-global mask. The validate() return
+        // value is discarded because the inner u16 is already known to be
+        // equal to `raw_flags`; we only need the side-effect of confirming
+        // the bits are within contract. This call also surfaces the
+        // contract-correct error variants (`ReservedBitsSet`,
+        // `InvalidCommandFlags`) with the full context fields.
+        let _ = CommandFlags::validate(command, raw_flags)?;
+        let flags = raw_flags;
         let correlation = cursor
             .read_u64::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;

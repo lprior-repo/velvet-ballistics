@@ -20,8 +20,8 @@ const MAX_CONSTANTS: usize = 65_535;
 
 /// Compiles an expression AST into a bounded postfix bytecode program.
 pub fn compile_expr_to_bytecode(ast: &ExprAst) -> ExprResult<ExprProgram> {
-    let mut ops = Vec::new();
-    let mut constants = Vec::new();
+    let mut ops = Vec::with_capacity(MAX_OPS);
+    let mut constants = Vec::with_capacity(MAX_CONSTANTS);
     let resolver = RejectingResolver;
     lower_expr(ast, &mut constants, &mut ops, &resolver)?;
     let op_count = ops.len();
@@ -37,7 +37,7 @@ pub fn compile_expr_with_pool(
     ast: &ExprAst,
     constants: &mut Vec<ConstValue>,
 ) -> ExprResult<ExprProgram> {
-    let mut ops = Vec::new();
+    let mut ops = Vec::with_capacity(MAX_OPS);
     let resolver = RejectingResolver;
     lower_expr(ast, constants, &mut ops, &resolver)?;
     let op_count = ops.len();
@@ -78,7 +78,7 @@ where
 {
     let tokens = crate::lexer::lex_expr(source)?;
     let ast = crate::parser::parse_expr(&tokens)?;
-    let mut constants = Vec::new();
+    let mut constants = Vec::with_capacity(MAX_CONSTANTS);
     let program = compile_expr_with_resolver(&ast, &mut constants, resolver)?;
     Ok((program, constants))
 }
@@ -92,7 +92,7 @@ pub fn compile_expr_with_resolver<R>(
 where
     R: ReferenceResolver,
 {
-    let mut ops = Vec::new();
+    let mut ops = Vec::with_capacity(MAX_OPS);
     lower_expr(ast, constants, &mut ops, resolver)?;
     let op_count = ops.len();
     validate_op_count(&ops)?;

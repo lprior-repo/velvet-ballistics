@@ -69,7 +69,7 @@ fn count_body_region_nodes(
     node_count: usize,
 ) -> Result<u64, BudgetError> {
     let mut region_visited: Vec<bool> = vec![false; node_count];
-    let mut stack: Vec<StepIdx> = Vec::new();
+    let mut stack: Vec<StepIdx> = Vec::with_capacity(node_count);
     stack.push(body);
 
     let mut count: u64 = 0;

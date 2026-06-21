@@ -1769,12 +1769,30 @@ proptest! {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         );
         if header_result.is_ok() {
-            match full_result {
-                Ok(_) => { }
-                Err(_) => { }
-            }
+            // When the header passes, the full decoder must also succeed
+            // because the projection scan cannot accept header-Ok + payload-Fail
+            // for the same byte slice (the projection reuses header trust).
+            prop_assert!(
+                matches!(full_result, Ok(_)),
+                "projection scan: header OK but full decode failed: {:?}",
+                full_result
+            );
         } else {
-            prop_assert!(full_result.is_err());
+            // When the header is rejected, the full decoder must fail with one
+            // of the typed envelope errors — never silently succeed.
+            prop_assert!(
+                matches!(
+                    full_result,
+                    Err(JournalError::UnexpectedEof)
+                        | Err(JournalError::BadMagic { .. })
+                        | Err(JournalError::HeaderLengthMismatch { .. })
+                        | Err(JournalError::PayloadTooLarge { .. })
+                        | Err(JournalError::HeaderChecksumMismatch)
+                ),
+                "projection scan: header rejected but full decode failed with \
+                 non-header error variant: {:?}",
+                full_result
+            );
         }
     }
 }

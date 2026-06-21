@@ -67,6 +67,15 @@ mod diag_tests;
 #[cfg(test)]
 mod red_phase_proptest;
 
+// Section 38 property tests (master §38).
+// Each submodule covers one named property:
+//   - constant_folding_validation
+//   - taint_safety
+//   - bound_enforcement
+//   - state_machine
+#[cfg(test)]
+mod property_tests;
+
 // Kani harnesses for idempotency gate verification (State 5 proof-writer).
 #[cfg(kani)]
 pub mod kani_idempotency_contract;

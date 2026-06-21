@@ -205,7 +205,7 @@ fn emit_single_body_set_lowers_together_to_flat_ir() {
     // Then: After implementation, returns Ok(()) with 4 nodes emitted
     // (TogetherStart + TogetherBranch[0] + TogetherBranch[1] + TogetherJoin)
     // TDD: currently returns Err(UnsupportedStepPrimitive)
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     // width = 2 + 2*(1 + 1) = 6? No: together_width = 2 + branch1_body(1+1) + branch2_body(1+1) = 2+2+2=6
@@ -254,7 +254,7 @@ fn together_start_node_is_at_base_step_index() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     let first = &parts.nodes[0];
@@ -264,7 +264,6 @@ fn together_start_node_is_at_base_step_index() {
         // width = 2 + 1*(1 + 1) = 4
         assert!(join.as_usize() > base_id.as_usize());
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -290,7 +289,7 @@ fn together_branch_nodes_have_correct_indices() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     let branch_indices: Vec<u16> = parts
@@ -302,7 +301,6 @@ fn together_branch_nodes_have_correct_indices() {
         })
         .collect();
     assert_eq!(branch_indices, vec![0, 1, 2]);
-
 }
 
 // ---------------------------------------------------------------------------
@@ -327,12 +325,11 @@ fn together_join_is_last_emitted_node() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     let last = parts.nodes.last().unwrap();
     assert!(matches!(last.kind, CompiledNodeKind::TogetherJoin { .. }));
-
 }
 
 // ---------------------------------------------------------------------------
@@ -361,7 +358,7 @@ fn emitted_node_count_matches_together_width() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     // Together width = 2 + branch1_body(1+1) + branch2_body(1+1) = 2 + 2 + 2 = 6
@@ -392,7 +389,7 @@ fn together_uses_caller_provided_accumulator_slot() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     // TogetherBranch and TogetherJoin should use caller_slot as accumulator
@@ -405,7 +402,6 @@ fn together_uses_caller_provided_accumulator_slot() {
             _ => {}
         }
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -542,7 +538,7 @@ fn emit_single_body_together_creates_correct_together_start_node() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     let start = &parts.nodes[0];
@@ -552,7 +548,6 @@ fn emit_single_body_together_creates_correct_together_start_node() {
         // width = 2 + 3*(1 + 1) = 8; join = 10 + 8 - 1 = 17
         assert_eq!(*join, StepIdx::new(17));
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -579,7 +574,7 @@ fn emit_single_body_together_emits_branch_nodes_in_order() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     // Find all branch indices in order
@@ -592,7 +587,6 @@ fn emit_single_body_together_emits_branch_nodes_in_order() {
         })
         .collect();
     assert_eq!(branch_order, vec![0, 1, 2, 3]);
-
 }
 
 // ---------------------------------------------------------------------------
@@ -617,7 +611,7 @@ fn emit_single_body_together_recursively_lowers_branch_bodies() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     // Verify both Set-node and Do-node exist in the IR
@@ -631,7 +625,6 @@ fn emit_single_body_together_recursively_lowers_branch_bodies() {
         .any(|n| matches!(n.kind, CompiledNodeKind::Do { .. }));
     assert!(has_set, "Should contain SetConst node from branch a body");
     assert!(has_do, "Should contain Do node from branch b body");
-
 }
 
 // ---------------------------------------------------------------------------
@@ -659,7 +652,7 @@ fn emit_single_body_together_emits_together_join_with_correct_count() {
         false,
     );
 
-        let () = result.expect("Together lowering must succeed per spec");
+    let () = result.expect("Together lowering must succeed per spec");
 
     let parts = builder.build_parts("test", dummy_digest()).unwrap();
     let join = parts.nodes.last().unwrap();
@@ -673,7 +666,6 @@ fn emit_single_body_together_emits_together_join_with_correct_count() {
     } else {
         panic!("Last node should be TogetherJoin");
     }
-
 }
 
 // ---------------------------------------------------------------------------

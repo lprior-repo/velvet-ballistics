@@ -35,10 +35,10 @@
 use crate::{
     constants::DIGEST_BYTES,
     recovery::{
-        ActionReplayTracker,
+        self, ActionReplayTracker,
         check_workflow_source_digest, recover_run_admission, recover_runtime_frame_seed,
         recover_runtime_summary, recover_runtime_summary_with_expected,
-        replay::{is_terminal_event, recover_full_journal},
+        replay::{is_terminal_event, load_snapshot, recover_full_journal},
     },
     recovery::RecoveryTerminalState,
     test_helpers::make_temp_journal_pair,
@@ -398,6 +398,54 @@ fn inject_seq_gap_does_not_classify_run_as_cancelled() {
 // Keep DIGEST_BYTES referenced so the import does not get flagged.
 #[allow(dead_code)]
 const _DIGEST_BYTES_USED: usize = DIGEST_BYTES;
+
+// =========================================================================
+// vb-1rqz7.32 / SR-004 — load_snapshot distinguishes missing from corrupt
+// =========================================================================
+
+#[test]
+fn load_snapshot_reports_missing_when_no_row_exists() {
+    let (_temp, journal) = make_temp_journal_pair();
+    let run = RunId::new(0x5F0);
+    let seq = EventSeq::new(7);
+
+    let err = load_snapshot(&journal, run, seq).expect_err("missing snapshot must error");
+    assert!(
+        matches!(err, recovery::RecoveryError::MissingSnapshot { run: r, seq: s }
+            if r == run && s == seq),
+        "missing snapshot must return MissingSnapshot, got {:?}",
+        err
+    );
+}
+
+#[test]
+fn load_snapshot_returns_snapshot_when_present() {
+    let (_temp, journal) = make_temp_journal_pair();
+    let run = RunId::new(0x5F1);
+    let workflow = WorkflowDigest::from_bytes([0xB1; DIGEST_BYTES]);
+
+    let snapshot = RunSnapshot {
+        run,
+        seq: EventSeq::new(3),
+        workflow,
+        slots: vec![],
+        taint: vec![],
+    };
+    journal
+        .put_snapshot(&snapshot)
+        .expect("put_snapshot should succeed");
+
+    let loaded = load_snapshot(&journal, run, EventSeq::new(3))
+        .expect("present snapshot must load");
+    assert_eq!(
+        loaded.seq, snapshot.seq,
+        "loaded snapshot must match persisted seq"
+    );
+    assert_eq!(
+        loaded.run, snapshot.run,
+        "loaded snapshot must match persisted run"
+    );
+}
 
 // =========================================================================
 // vb-1rqz7.5 / SR-002 — public recovery APIs read full event history

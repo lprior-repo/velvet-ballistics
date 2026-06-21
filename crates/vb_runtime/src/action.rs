@@ -33,8 +33,8 @@ impl ActionRegistry {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            slots: Vec::new(),
-            by_name: HashMap::new(),
+            slots: Vec::with_capacity(MAX_REGISTERED_ACTIONS),
+            by_name: HashMap::with_capacity(MAX_REGISTERED_ACTIONS),
         }
     }
 

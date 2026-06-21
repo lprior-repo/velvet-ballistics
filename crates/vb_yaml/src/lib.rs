@@ -117,3 +117,10 @@ pub fn load_fixture_source(text: &str) -> crate::YamlResult<ast::WorkflowSource>
 
 #[cfg(test)]
 mod lib_tests;
+
+// Section 38 property tests (master §38).
+// Each submodule covers one named property:
+//   - yaml_event_classification
+//   - yaml_profile_enforcement
+#[cfg(test)]
+mod property_tests;

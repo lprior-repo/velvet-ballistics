@@ -262,12 +262,10 @@ fn reject_non_deterministic_reference(reference: &str) -> Result<(), CompileErro
             reference: Box::from(reference),
             kind: NonDeterministicKind::Time,
         }),
-        "wall_clock" | "wallclock" | "clock" => {
-            Err(CompileError::IdempotencyKeyNotDeterministic {
-                reference: Box::from(reference),
-                kind: NonDeterministicKind::WallClock,
-            })
-        }
+        "wall_clock" | "wallclock" | "clock" => Err(CompileError::IdempotencyKeyNotDeterministic {
+            reference: Box::from(reference),
+            kind: NonDeterministicKind::WallClock,
+        }),
         _ => Ok(()),
     }
 }
