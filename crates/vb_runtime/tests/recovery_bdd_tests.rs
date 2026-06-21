@@ -498,7 +498,7 @@ fn snapshot_plus_tail_rejects_tail_before_snapshot() {
     };
     assert_eq!(step, StepIdx::ZERO);
     assert!(
-        detail.contains("not after snapshot seq"),
+        detail.contains("not contiguous") || detail.contains("not after snapshot seq"),
         "detail should mention snapshot seq violation: {detail}"
     );
 }

@@ -8,10 +8,5 @@
 //! ## Test file location
 //!
 //! The 931-line `array_queue_tests.rs` lives at `src/queue/tests/array_queue_tests.rs`
-//! and is included as a `#[cfg(test)]` submodule below so Cargo compiles it
-//! as part of the `vb_ipc` library test binary (otherwise Cargo's integration
-//! test discovery would not pick it up under `src/queue/tests/`).
-
-#[cfg(test)]
-#[path = "tests/array_queue_tests.rs"]
-mod tests;
+//! and is wired into the test binary from `crates/vb_ipc/src/lib.rs` via
+//! `#[path = "queue/tests/array_queue_tests.rs"] mod array_queue_tests;`.

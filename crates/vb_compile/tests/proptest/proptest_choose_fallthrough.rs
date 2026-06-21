@@ -45,13 +45,8 @@ proptest! {
         let result = vb_compile::compile_workflow(yaml.as_bytes());
 
         // Valid YAML → Ok; iterate nodes to verify body chain integrity.
-        assert!(
-            result.is_ok(),
-            "choose yaml must compile Ok, got {:?}",
-            result
-        );
         #[allow(clippy::unwrap_used)]
-        let workflow = result.unwrap();
+        let workflow = result.expect("choose yaml must compile");
         let nc = workflow.node_count();
         let mut found_choose = false;
         for i in 0..nc {

@@ -2262,22 +2262,8 @@ fn taint_postcard_roundtrip_preserves_all_three_variants() {
         Taint::Secret,
     ];
     for variant in variants {
-        let bytes = postcard::to_allocvec(&variant);
-        assert!(
-            bytes.is_ok(),
-            "postcard serialization should succeed for {variant:?}"
-        );
-        let Ok(bytes) = bytes else {
-            continue;
-        };
-        let recovered: Result<Taint, _> = postcard::from_bytes(&bytes);
-        assert!(
-            recovered.is_ok(),
-            "postcard deserialization should succeed for {variant:?}"
-        );
-        let Ok(recovered) = recovered else {
-            continue;
-        };
+        let bytes = postcard::to_allocvec(&variant).expect("postcard serialize Taint");
+        let recovered: Taint = postcard::from_bytes(&bytes).expect("postcard deserialize Taint");
         assert_eq!(
             variant, recovered,
             "postcard roundtrip must preserve {variant:?}"

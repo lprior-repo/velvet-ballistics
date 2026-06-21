@@ -61,13 +61,8 @@ proptest! {
     fn first_node_after_setup_is_choose_slot(body_counts in body_counts_strategy()) {
         let yaml = choose_yaml(&body_counts);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        prop_assert!(
-            result.is_ok(),
-            "choose yaml must compile Ok, got {:?}",
-            result
-        );
-        // The YAML produced is always valid; unwrap is safe after matches! check above.
-        let workflow = result.expect("matches! above guarantees Ok");
+        // The YAML produced is always valid; expect() proves is_ok.
+        let workflow = result.expect("choose yaml must compile");
 
         // After the Setup step (node 0), the next emitted node should be ChooseSlot.
         let choose_node = workflow.node(StepIdx::new(1));

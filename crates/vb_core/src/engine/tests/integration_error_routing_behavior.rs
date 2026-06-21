@@ -1473,6 +1473,7 @@ fn double_fault_handler_step_has_no_handler() -> Result<(), String> {
 mod proptest_properties {
     use proptest::prelude::*;
 
+    use crate::engine::ErrorHandlerOutcome;
     use crate::engine::ErrorSlotData;
     use crate::engine::error_routing::route_error_handler;
     use crate::errors::EngineError;
@@ -1605,7 +1606,11 @@ mod proptest_properties {
                 workflow.slot_count(),
             ).expect("valid frame");
             let result = route_error_handler(&workflow, &mut run, StepIdx::new(0), &error);
-            let _ = result;
+            let outcome = result.expect("route_error_handler must surface Err or Ok, never panic");
+            prop_assert!(matches!(
+                outcome,
+                ErrorHandlerOutcome::Routed | ErrorHandlerOutcome::NoHandler
+            ));
         }
 
         #[test]

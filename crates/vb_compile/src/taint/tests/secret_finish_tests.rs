@@ -6,12 +6,13 @@
 
 use crate::{CompileError, CompileErrors, YamlCompiler};
 use proptest::prelude::*;
+use vb_core::CompiledWorkflow;
 
 // ----------------------------------------------------------------------------
 // Test helpers
 // ----------------------------------------------------------------------------
 
-fn compile_workflow(source: &[u8]) -> Result<crate::CompiledWorkflow, CompileErrors> {
+fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
     YamlCompiler::default().compile(source)
 }
 
@@ -261,7 +262,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
         result
     );
@@ -290,7 +291,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: secret-typed input in Save must be rejected, got {:?}",
         result
     );
@@ -318,7 +319,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: composite with secret in Save must be rejected, got {:?}",
         result
     );
@@ -348,7 +349,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: two-hop secret relay must be rejected, got {:?}",
         result
     );
@@ -376,7 +377,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
         "ANTI-INVARIANT: nested secret in Save must be rejected, got {:?}",
         result
     );
@@ -449,7 +450,7 @@ steps:
 "#;
     let result = compile_workflow(source);
     assert!(
-        matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "finish.result" }))),
+        matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { field: "finish.result" }))),
         "BUG: currently rejects secret Finish (Section 47 violation), got {:?}",
         result
     );
@@ -520,7 +521,7 @@ steps:
         let result = compile_workflow(source.as_bytes());
 
         prop_assert!(
-            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+            matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
             "ANTI-INVARIANT: secret in Save must be rejected, got {:?}",
             result
         );
@@ -551,7 +552,7 @@ steps:
         let result = compile_workflow(source.as_bytes());
 
         prop_assert!(
-            matches!(result, Err(CompileErrors(errors)) if errors.0.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
+            matches!(&result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::SecretTaintLeak { .. }))),
             "ANTI-INVARIANT: secret input in Save must be rejected, got {:?}",
             result
         );

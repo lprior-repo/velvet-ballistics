@@ -46,11 +46,21 @@ proptest! {
     fn otherwise_present_compiles(body_counts in body_counts_strategy()) {
         let yaml = make_choose_yaml(&body_counts, true);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        // Valid YAML with otherwise → Ok
+        // Valid YAML with otherwise → Ok with at least one ChooseSlot node.
+        let workflow = result.expect("choose with otherwise must compile");
+        let nc = workflow.node_count();
+        let mut found_choose = false;
+        for i in 0..nc {
+            if let Some(node) = workflow.node(StepIdx::new(i))
+                && matches!(node.kind, CompiledNodeKind::ChooseSlot { otherwise: Some(_), .. })
+            {
+                found_choose = true;
+                break;
+            }
+        }
         prop_assert!(
-            result.is_ok(),
-            "choose with otherwise must compile Ok, got {:?}",
-            result
+            found_choose,
+            "workflow with `otherwise:` must contain at least one ChooseSlot with otherwise=Some, got node_count={nc}"
         );
     }
 
@@ -58,12 +68,7 @@ proptest! {
     fn otherwise_target_exists(body_counts in body_counts_strategy()) {
         let yaml = make_choose_yaml(&body_counts, true);
         let result = vb_compile::compile_workflow(yaml.as_bytes());
-        prop_assert!(
-            result.is_ok(),
-            "choose with otherwise must compile Ok, got {:?}",
-            result
-        );
-        let workflow = result.expect("matches! above guarantees Ok");
+        let workflow = result.expect("choose with otherwise must compile");
         let nc = workflow.node_count();
         let mut found_choose = false;
         for i in 0..nc {

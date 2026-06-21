@@ -26,6 +26,7 @@ pub mod ingress;
 pub mod metrics;
 pub mod payloads;
 pub mod peer_credentials;
+pub mod queue;
 pub mod server;
 
 #[cfg(verus)]
@@ -92,6 +93,9 @@ pub use crate::peer_credentials::{PeerCheckOutcome, PeerIdentity, PeerPolicy, Se
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod array_queue_tests;
 
 // #[cfg(test)]
 // mod property_tests;

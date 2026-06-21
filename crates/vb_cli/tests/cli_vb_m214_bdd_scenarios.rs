@@ -297,12 +297,12 @@ mod parse_error_tests {
     fn parse_valid_command_returns_ok() {
         // Given: a valid subcommand with no required args
         // When: velvet-ballistics is invoked with 'status' command
-        // Then: exit code 0 or non-fatal status response
+        // Then: exit code 0 (status with no db shows queue depth 0)
         let output = run_cli(&["status"]).unwrap();
-        // status with no db is ok (shows queue depth 0)
-        assert!(
-            output.status.success() || output.status.code() == Some(5),
-            "expected success or storage error, got: {:?}",
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "expected exit 0 for `status` with no db, got: {:?}",
             output.status.code()
         );
     }
@@ -364,14 +364,13 @@ mod exit_code_tests {
         //       verify cannot access required resources.
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-verify.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["verify", tmp.to_str().unwrap()]).unwrap();
-        // DOCUMENTED ACCEPTABLE OUTCOMES:
-        // - Exit 2: VerificationFailed (verify cannot complete without db)
-        // - Exit 0: Verify passed (if config allows verify without db)
-        // This test documents why BOTH are acceptable for verification workflow.
-        let code = output.status.code();
-        assert!(
-            code == Some(0) || code == Some(2),
-            "verify should exit 0 (passed) or 2 (verification failure), got: {code:?}"
+        // Strict CLI behavior: exit 2 (VerificationFailed) is the expected outcome
+        // when verify cannot access required resources (no db).
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "verify without db should exit 2 (VerificationFailed), got: {:?}",
+            output.status.code()
         );
         // Additional: stderr must contain a verification-related message
         let combined = format!(
@@ -502,16 +501,10 @@ steps:
         // Given: action policy violation scenario
         // When: velvet-ballistics runs with restricted action registry
         // Then: exit code 7 (ActionPolicyError) if policy is violated
-        // DOCUMENTED ACCEPTABLE OUTCOMES for `run` with minimal workflow:
-        // - Exit 0: Normal run completion (workflow succeeded)
-        // - Exit 1: General error (validation failure, db error, etc.)
-        // - Exit 2: Verification failure (cannot verify without proper resources)
-        // - Exit 7: ActionPolicyError (action restricted by policy)
-        //
-        // Exit 7 cannot be triggered with MINIMAL_WORKFLOW alone since it
+        // NOTE: Exit 7 cannot be triggered with MINIMAL_WORKFLOW alone since it
         // requires a real artifact with actions that violate an action policy.
-        // This test documents the acceptable exit code range for action policy
-        // evaluation and ensures the CLI does not panic.
+        // With `/dev/null` as `--input-bin` and a fresh empty db, the run command
+        // is expected to fail with a general error (exit 1) due to invalid input.
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-policy.yaml", MINIMAL_WORKFLOW).unwrap();
         let db = _tmp_dir.path().join("policy-db");
         let output = run_cli(&[
@@ -525,11 +518,13 @@ steps:
             "none",
         ])
         .unwrap();
-        // Accept any known exit code for run command; ensure no panic
-        let code = output.status.code();
-        assert!(
-            code == Some(0) || code == Some(1) || code == Some(2) || code == Some(7),
-            "expected exit 0, 1, 2, or 7, got: {code:?}"
+        // Action policy contract: exit 7 only when an action policy is actually violated.
+        // MINIMAL_WORKFLOW has no actions, so exit 7 must NOT be triggered.
+        assert_ne!(
+            output.status.code(),
+            Some(7),
+            "exit 7 (ActionPolicyError) must NOT be triggered by MINIMAL_WORKFLOW without actions, got: {:?}",
+            output.status.code()
         );
         // Verify the CLI produced some output (no silent panic-to-zero)
         let combined = format!(
@@ -574,10 +569,11 @@ mod bdd_scenarios {
         let (_tmp_dir, tmp) =
             write_bdd_file("vb-test-explain-valid.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["explain", tmp.to_str().unwrap()]).unwrap();
-        // explain should succeed or show validation details
+        // explain on a valid workflow should succeed (exit 0)
         assert!(
-            output.status.success() || output.status.code() == Some(1),
-            "explain should not panic"
+            output.status.success(),
+            "explain on valid workflow should exit 0, got: {:?}",
+            output.status.code()
         );
     }
 
@@ -623,10 +619,15 @@ mod bdd_scenarios {
         let (_tmp_dir, tmp) =
             write_bdd_file("vb-test-graph-bad.yaml", "invalid: yaml: content: [").unwrap();
         let output = run_cli(&["graph", tmp.to_str().unwrap()]).unwrap();
-        // graph should either fail (non-zero) or succeed with error output
+        // graph with invalid yaml MUST fail (non-zero exit) and emit non-empty stderr
         assert!(
-            !output.status.success() || !String::from_utf8_lossy(&output.stderr).is_empty(),
-            "graph with invalid yaml should produce error"
+            !output.status.success(),
+            "graph with invalid yaml should fail (non-zero exit), got: {:?}",
+            output.status.code()
+        );
+        assert!(
+            !String::from_utf8_lossy(&output.stderr).is_empty(),
+            "graph with invalid yaml must produce stderr output"
         );
     }
 
@@ -896,9 +897,11 @@ mod bdd_scenarios {
     #[test]
     fn cli_action_list_shows_registered_actions() {
         let output = run_cli(&["action", "list"]).unwrap();
+        // action list should succeed and emit registered action listing
         assert!(
-            output.status.success() || output.status.code() == Some(7),
-            "action list should work or return policy error"
+            output.status.success(),
+            "action list should exit 0, got: {:?}",
+            output.status.code()
         );
     }
 
@@ -1221,10 +1224,12 @@ mod validate_verify_explain_scenarios {
     fn verify_valid_workflow_exit_0_or_2() {
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-verify.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["verify", tmp.to_str().unwrap()]).unwrap();
-        // verify can exit 0 (passed) or 2 (verification failure without db)
-        assert!(
-            output.status.code() == Some(0) || output.status.code() == Some(2),
-            "expected exit 0 or 2, got: {:?}",
+        // Strict CLI behavior: exit 2 (VerificationFailed) is the expected outcome
+        // when verify cannot access required resources (no db).
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "verify without db should exit 2 (VerificationFailed), got: {:?}",
             output.status.code()
         );
     }
@@ -1261,10 +1266,11 @@ mod validate_verify_explain_scenarios {
     fn explain_valid_workflow_exit_0_or_1() {
         let (_tmp_dir, tmp) = write_bdd_file("vb-test-explain.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["explain", tmp.to_str().unwrap()]).unwrap();
-        // explain can exit 0 (explained) or 1 (validation-as-explain mode)
-        assert!(
-            output.status.code() == Some(0) || output.status.code() == Some(1),
-            "expected exit 0 or 1 for explain of valid workflow, got: {:?}",
+        // explain on a valid workflow should succeed (exit 0)
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "explain on valid workflow should exit 0, got: {:?}",
             output.status.code()
         );
     }
@@ -1304,10 +1310,11 @@ mod doctor_scenarios {
     #[test]
     fn doctor_no_db_exit_0() {
         let output = run_cli(&["doctor"]).unwrap();
-        // doctor without db should still succeed with no-op
-        assert!(
-            output.status.code() == Some(0) || output.status.code() == Some(1),
-            "expected exit 0 or 1, got: {:?}",
+        // doctor without db should still succeed with no-op (exit 0)
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "doctor without db should exit 0 (no-op mode), got: {:?}",
             output.status.code()
         );
     }

@@ -359,11 +359,21 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        // Top-level together with empty branches: may succeed or fail
-        // depending on how branches without `steps:` are parsed.
-        // Not in scope for body-position lowering (vb-xi2f.22).
-        // Result is either Ok or Err (no panic).
-        let _ = result;
+        // Top-level together with empty branches: compilation must not panic.
+        // May fail if branches without `steps:` are rejected at top-level.
+        // Verify the Result is a proper Result (no panic).
+        match result {
+            Ok(workflow) => {
+                assert!(
+                    workflow.node_count() >= 1,
+                    "empty-branches together Ok must emit at least 1 node, got {}",
+                    workflow.node_count()
+                );
+            }
+            Err(_) => {
+                // Acceptable: empty branches may be rejected at top-level parsing.
+            }
+        }
     }
 
     // Many branches with many steps
@@ -399,10 +409,20 @@ steps:
       result: 0
 "#;
         let result = compile_yaml(yaml);
-        // Top-level together with many branches: compilation path not
-        // in scope for body-position lowering (vb-xi2f.22).
-        // Result is either Ok or Err (no panic).
-        let _ = result;
+        // Top-level together with many branches: compilation must not panic.
+        // Result is either Ok or Err depending on top-level parsing.
+        match result {
+            Ok(workflow) => {
+                assert!(
+                    workflow.node_count() >= 1,
+                    "many-branches together Ok must emit at least 1 node, got {}",
+                    workflow.node_count()
+                );
+            }
+            Err(_) => {
+                // Acceptable: top-level Together parsing may reject many branches.
+            }
+        }
     }
 }
 
@@ -438,10 +458,20 @@ steps:
 "#;
 
     let result = compile_yaml(yaml);
-    // Together with Do in branches: top-level compilation not in scope
-    // for body-position lowering (vb-xi2f.22).
-    // Result is either Ok or Err (no panic).
-    let _ = result;
+    // Together with Do in branches: compilation must not panic.
+    // Result is either Ok or Err depending on top-level parsing.
+    match result {
+        Ok(workflow) => {
+            assert!(
+                workflow.node_count() >= 1,
+                "do-in-branches together Ok must emit at least 1 node, got {}",
+                workflow.node_count()
+            );
+        }
+        Err(_) => {
+            // Acceptable: top-level Together parsing may reject do in branches.
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -486,10 +516,20 @@ steps:
 "#;
 
     let result = compile_yaml(yaml);
-    // Together with ForEach in branches: YAML format compatibility
-    // depends on canonical YAML parsing, not body lowering (vb-xi2f.22).
-    // Result is either Ok or Err (no panic).
-    let _ = result;
+    // Together with ForEach in branches: compilation must not panic.
+    // Result is either Ok or Err depending on top-level parsing.
+    match result {
+        Ok(workflow) => {
+            assert!(
+                workflow.node_count() >= 1,
+                "foreach-in-branches together Ok must emit at least 1 node, got {}",
+                workflow.node_count()
+            );
+        }
+        Err(_) => {
+            // Acceptable: top-level Together parsing may reject foreach in branches.
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

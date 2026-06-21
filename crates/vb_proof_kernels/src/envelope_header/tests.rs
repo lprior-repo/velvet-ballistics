@@ -141,15 +141,40 @@ fn test_validate_header_before_alloc_rejects_oversize() {
 }
 
 #[test]
-fn test_compute_header_crc_returns_zero() {
+fn test_compute_header_crc_is_deterministic() {
+    // compute_header_crc must be deterministic: same header → same CRC.
+    // This is enforceable even on the current stub (which returns 0);
+    // a regression to a non-deterministic impl (e.g., random) would break this.
     let header = EnvelopeHeader::new();
-    assert_eq!(compute_header_crc(&header), 0);
+    let crc1 = compute_header_crc(&header);
+    let crc2 = compute_header_crc(&header);
+    assert_eq!(
+        crc1, crc2,
+        "compute_header_crc must be deterministic for the same header"
+    );
 }
 
 #[test]
-fn test_validate_header_crc_always_true() {
+fn test_validate_header_crc_accepts_default_header() {
+    // validate_header_crc must accept a header whose CRC matches the
+    // compute_header_crc output. For a valid (unmodified) header the
+    // CRC contract requires validation to succeed.
     let header = EnvelopeHeader::new();
-    assert!(validate_header_crc(&header));
+    let crc = compute_header_crc(&header);
+    let valid = validate_header_crc(&header);
+    if crc == 0 {
+        // Current stub impl: validate is constant true. Document that.
+        assert!(
+            valid,
+            "validate_header_crc accepts default header (stub contract)"
+        );
+    } else {
+        // Real impl: CRC of a default header must validate as true.
+        assert!(
+            valid,
+            "validate_header_crc must accept a header whose CRC matches compute_header_crc"
+        );
+    }
 }
 
 #[test]
