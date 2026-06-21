@@ -4554,7 +4554,8 @@ fn missing_shard_submit_to_start(c: &mut Criterion) {
 
     let config = ShardConfig::default();
     let journal = NoopRuntimeJournal::shared_for_tests_and_benchmarks();
-    let shard = vb_runtime::shard::Shard::new_with_journal(config, journal);
+    let shard = vb_runtime::shard::Shard::new_with_journal(config, journal)
+        .expect("shard config is valid");
 
     let workflow = vb_compile::compile_workflow(SMALL_WORKFLOW);
     if let Ok(ref wf) = workflow {
@@ -4595,7 +4596,8 @@ fn missing_shard_submit_to_finish(c: &mut Criterion) {
     if let Ok(ref wf) = workflow {
         let config = ShardConfig::default();
         let journal = NoopRuntimeJournal::shared_for_tests_and_benchmarks();
-        let mut shard = vb_runtime::shard::Shard::new_with_journal(config, journal);
+        let mut shard = vb_runtime::shard::Shard::new_with_journal(config, journal)
+            .expect("shard config is valid");
         let caps = vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
 
         group.bench_function(
@@ -4877,7 +4879,7 @@ fn missing_action_complete_resume_bench(c: &mut Criterion) {
         Some(n) => n,
         None => return,
     };
-    let mut runtime = Runtime::new(shard_count, config);
+    let mut runtime = Runtime::new(shard_count, config).expect("runtime config is valid");
 
     if let Some(ref wf) = workflow {
         let run = RunId::new(900);
@@ -4946,7 +4948,7 @@ fn missing_wait_timer_resume_bench(c: &mut Criterion) {
         Some(n) => n,
         None => return,
     };
-    let mut runtime = Runtime::new(shard_count, config);
+    let mut runtime = Runtime::new(shard_count, config).expect("runtime config is valid");
 
     if let Some(ref wf) = workflow {
         let run = RunId::new(901);

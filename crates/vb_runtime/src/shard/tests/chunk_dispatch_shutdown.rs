@@ -266,7 +266,7 @@ fn shutdown_prevents_new_commands_after_flag_set() -> Result<(), RuntimeError> {
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.tick(), Ok(false));
 
-    // Now enqueue a submit - it goes into queue
+    // Now enqueue a submit - rejected because shutdown is in progress
     let run = RunId::new(430);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -274,7 +274,7 @@ fn shutdown_prevents_new_commands_after_flag_set() -> Result<(), RuntimeError> {
             workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
-        Ok(())
+        Err(RuntimeError::ShutdownInProgress)
     );
 
     // But tick returns false immediately since shutting_down

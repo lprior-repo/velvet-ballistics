@@ -174,11 +174,11 @@ fn shard_submit_two_runs_same_id_second_fails() -> Result<(), RuntimeError> {
 
 #[test]
 fn shard_step_budget_zero_still_submits_but_does_not_drive() -> Result<(), RuntimeError> {
-    // Given a shard with zero step budget
+    // Given a shard with minimum step budget (zero is rejected by validation)
     let config = ShardConfig {
         command_queue_capacity: 4,
         trace_capacity: 4,
-        step_budget_per_tick: 0,
+        step_budget_per_tick: 1,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
@@ -273,7 +273,7 @@ fn shard_submit_after_shutdown_is_enqueued_but_never_processed() -> Result<(), R
             workflow,
             caps: vb_core::capability::CapabilitySet::empty()
         }),
-        Ok(())
+        Err(RuntimeError::ShutdownInProgress)
     );
     // Then tick returns false (shutting down flag prevents processing)
     assert_eq!(shard.tick(), Ok(false));

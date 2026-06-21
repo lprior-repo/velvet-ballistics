@@ -136,7 +136,7 @@
 )]
 #![forbid(unsafe_code)]
 
-use velvet_ballistics_workspace_tests::acceptance_catalog::{
+use vb_workspace_tests::acceptance_catalog::{
     CatalogValidationError, Scenario, catalog, validate_catalog,
 };
 

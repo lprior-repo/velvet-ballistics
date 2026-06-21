@@ -180,7 +180,7 @@ fn temp_socket_path(_name: &str) -> PathBuf {
 fn make_runtime() -> Runtime {
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    Runtime::new(NonZeroUsize::MIN, config)
+    Runtime::new(NonZeroUsize::MIN, config).expect("relaxed runtime config is valid")
 }
 
 /// Builds a raw IPC frame: header + payload bytes.
@@ -467,7 +467,7 @@ fn ipc_returns_queue_full_when_backpressure_limit_is_hit() {
     // Create a runtime with minimum capacity to make backpressure observable.
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    let mut runtime = Runtime::new(NonZeroUsize::MIN, config);
+    let mut runtime = Runtime::new(NonZeroUsize::MIN, config).expect("runtime config is valid");
 
     let mut client = UnixStream::connect(&path).expect("client should connect");
 

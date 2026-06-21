@@ -161,7 +161,7 @@ use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RecoveryError, RecoveryFrameSeedBuilder,
 };
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
-use velvet_ballistics_workspace_tests::acceptance_catalog::{Scenario, catalog};
+use vb_workspace_tests::acceptance_catalog::{Scenario, catalog};
 
 const BEAD_ID: &str = "vb-kyyf";
 const BDD_KYYF_001: &str = "BDD-KYYF-001";
@@ -564,7 +564,7 @@ fn durable_runtime_public_surface(
             public_surface: "vb_core::CompiledWorkflow public constructor",
         }
     })?;
-    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), shared);
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), shared).expect("runtime config is valid");
     runtime
         .submit_compiled_with_inputs(run, workflow, Box::from([]))
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {

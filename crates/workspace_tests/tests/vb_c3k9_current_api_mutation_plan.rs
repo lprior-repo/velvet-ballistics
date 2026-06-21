@@ -136,7 +136,7 @@
     unused_variables
 )]
 
-use velvet_ballistics_workspace_tests::quality::current_api_mutation_plan::{
+use vb_workspace_tests::quality::current_api_mutation_plan::{
     MissingRequirement, REQUIRED_SECTIONS, validate_plan,
 };
 

@@ -492,7 +492,7 @@ mod trigger_condition_evaluation {
         let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
 
         // Sharp assertion: AwaitingAction signal
-        assert_eq!(result, EngineSignal::AwaitingAction);
+        assert!(matches!(result, EngineSignal::AwaitingAction { .. }));
         // PC does not advance for AwaitingAction
         assert_eq!(run.pc(), StepIdx::new(0));
         Ok(())
@@ -609,7 +609,7 @@ mod trigger_condition_evaluation {
         let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
             .map_err(|e| e.to_string())?;
 
-        assert_eq!(result, EngineSignal::AwaitingAction);
+        assert!(matches!(result, EngineSignal::AwaitingAction { .. }));
         Ok(())
     }
 }
@@ -716,7 +716,7 @@ mod fail_closed_vs_fail_open {
         .map_err(|e| e.to_string())?;
 
         // No handler configured, so AwaitingAction is returned for external handling
-        assert_eq!(signal, EngineSignal::AwaitingAction);
+        assert!(matches!(signal, EngineSignal::AwaitingAction { .. }));
         assert_eq!(
             run.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?,
             StepState::Failed
@@ -1406,7 +1406,11 @@ mod signal_exhaustion_paths {
             EngineSignal::Continue,
             EngineSignal::Finished(SlotValue::Null, Taint::Clean),
             EngineSignal::StepBudgetExhausted,
-            EngineSignal::AwaitingAction,
+            EngineSignal::AwaitingAction {
+                step: StepIdx::new(0),
+                seq: SeqNo::ZERO,
+                action: ActionId::new(0),
+            },
             EngineSignal::AwaitingWait {
                 deadline_slot: vb_core::ids::SlotIdx::new(0),
             },

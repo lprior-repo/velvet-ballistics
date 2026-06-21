@@ -509,7 +509,8 @@ fn run_strict_submit_with_store(
         },
         journal.clone(),
         Arc::new(store),
-    );
+    )
+    .expect("shard config is valid");
     let before = snapshot(&shard, &journal)?;
     shard.enqueue(ShardCommand::SubmitPrePersisted {
         run: run_id,
@@ -1539,7 +1540,8 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
     let mut shard = Shard::new(ShardConfig {
         policy: RuntimePolicy::Strict,
         ..ShardConfig::default()
-    });
+    })
+    .expect("shard config is valid");
 
     // When
     shard

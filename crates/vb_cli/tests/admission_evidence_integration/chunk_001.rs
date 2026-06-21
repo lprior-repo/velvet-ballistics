@@ -270,7 +270,7 @@ fn storage_failure_before_header_prevents_ack() {
         shard_count,
         test_config(),
         Arc::new(FailingBeforeHeaderJournal),
-    );
+        ).expect("runtime config is valid");
 
     assert_eq!(
         runtime.submit_direct(RunId::new(4505), workflow),
@@ -344,7 +344,7 @@ fn multiple_runs_concurrent_produce_correct_completion_counters() {
         shard_count,
         test_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+        ).expect("runtime config is valid");
 
     match runtime.submit_direct(RunId::new(1), workflow1) {
         Ok(()) => {}
@@ -390,7 +390,7 @@ fn runtime_rejects_submission_when_capacity_exceeded() {
         shard_count,
         config,
         vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+        ).expect("runtime config is valid");
 
     let mut submitted = 0u64;
     let mut hit_capacity = false;
@@ -467,8 +467,12 @@ fn submit_with_tainted_input_propagates_taint_through_runtime() {
         return;
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        journal.clone(),
+    )
+    .expect("runtime config is valid");
     let run_id = RunId::new(9);
 
     match runtime.submit_direct_with_inputs_grants_and_contracts(

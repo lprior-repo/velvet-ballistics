@@ -140,7 +140,8 @@ fn runtime_with_pending_ask(
     journal: Arc<VolatileRuntimeJournal>,
 ) -> Option<Runtime> {
     let shard_count = NonZeroUsize::new(1)?;
-    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal);
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal)
+        .expect("runtime config is valid");
     let workflow = ask_then_finish_workflow()?;
     if runtime.submit_compiled(run_id, workflow) != Ok(()) {
         return None;
@@ -280,7 +281,8 @@ fn handle_answer_ask_rejects_absent_pending_ask() {
         // Unreachable: the assertion above guarantees shard_count is non-zero.
         None => return,
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config());
+    let mut runtime = Runtime::new(shard_count, runtime_config())
+        .expect("runtime config is valid");
     let run_id = RunId::new(3103);
     let answer = must_encoded_value(&SlotValue::Bool(true));
     let payload = must_answer_payload(run_id, SlotIdx::new(1), answer, None);

@@ -226,7 +226,7 @@ fn submit_command(run: u64) -> ShardCommand {
 #[test]
 fn enqueue_returns_queue_full_when_command_queue_at_capacity() {
     let capacity = 4usize;
-    let shard = Shard::new(new_shard_config(capacity));
+    let shard = Shard::new(new_shard_config(capacity)).expect("shard config is valid");
 
     for i in 0..capacity {
         assert!(
@@ -250,7 +250,7 @@ fn enqueue_returns_queue_full_when_command_queue_at_capacity() {
 #[test]
 fn queue_full_preserves_queue_length() {
     let capacity = 4usize;
-    let shard = Shard::new(new_shard_config(capacity));
+    let shard = Shard::new(new_shard_config(capacity)).expect("shard config is valid");
 
     for i in 0..capacity {
         shard.enqueue(submit_command(i as u64)).ok();
@@ -270,7 +270,7 @@ fn queue_full_preserves_queue_length() {
 #[test]
 fn queue_full_preserves_active_run_count() {
     let capacity = 2usize;
-    let mut shard = Shard::new(new_shard_config(capacity));
+    let mut shard = Shard::new(new_shard_config(capacity)).expect("shard config is valid");
 
     // Submit and process a command
     shard.enqueue(submit_command(1)).ok();
@@ -295,7 +295,7 @@ fn queue_full_preserves_active_run_count() {
 #[test]
 fn pre_enqueue_rejection_preserves_shard_state_when_full() {
     let capacity = 3usize;
-    let shard = Shard::new(new_shard_config(capacity));
+    let shard = Shard::new(new_shard_config(capacity)).expect("shard config is valid");
 
     for i in 0..capacity {
         shard.enqueue(submit_command(i as u64)).ok();
@@ -320,7 +320,7 @@ fn pre_enqueue_rejection_preserves_shard_state_when_full() {
 #[test]
 fn enqueue_accepts_when_not_full() {
     let capacity = 4usize;
-    let shard = Shard::new(new_shard_config(capacity));
+    let shard = Shard::new(new_shard_config(capacity)).expect("shard config is valid");
 
     for i in 0..(capacity - 1) {
         let result = shard.enqueue(submit_command(i as u64));
@@ -338,7 +338,7 @@ proptest! {
     ) {
         let cap = capacity as usize;
         let load = (load as usize).min(cap);
-        let shard = Shard::new(new_shard_config(cap));
+        let shard = Shard::new(new_shard_config(cap)).expect("shard config is valid");
 
         for i in 0..load {
             let result = shard.enqueue(submit_command(i as u64));
@@ -369,7 +369,7 @@ proptest! {
 /// not increase the active run count, and must return the correct error.
 #[test]
 fn active_run_count_unchanged_when_submit_fails_due_to_duplicate_run() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     // Submit a unique run — must succeed
     shard
@@ -415,7 +415,7 @@ fn active_run_count_unchanged_when_submit_fails_due_to_duplicate_run() {
 /// No run state is inserted for a rejected (duplicate) run.
 #[test]
 fn no_run_state_inserted_on_rejection_duplicate() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     shard
         .enqueue(submit_command(1))
@@ -459,7 +459,8 @@ fn no_run_inserted_when_active_run_capacity_exceeded() {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    });
+    })
+    .expect("shard config is valid");
 
     shard
         .enqueue(submit_command(1))
@@ -506,7 +507,8 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    });
+    })
+    .expect("shard config is valid");
 
     // Get initial pool metrics (pool may be lazily created)
     let (initial_free, initial_total) = shard.frame_pool_metrics();
@@ -548,7 +550,7 @@ fn frame_pool_count_exactly_preserved_after_capacity_rejection() {
 /// confirming the duplicate check also occurs before frame allocation.
 #[test]
 fn frame_pool_count_exactly_preserved_after_duplicate_rejection() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     // Accept run 1
     shard
@@ -596,7 +598,8 @@ fn staged_frame_release_integration_accept_then_reject() {
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
-    });
+    })
+    .expect("shard config is valid");
 
     // Initial state: no frame pool (lazy creation), no runs
     assert_eq!(shard.active_run_count(), 0);
@@ -646,7 +649,7 @@ fn staged_frame_release_integration_accept_then_reject() {
 /// An accepted admission consumes a command (queue empty after tick).
 #[test]
 fn accepted_admission_consumes_queue_command() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     shard.enqueue(submit_command(1)).ok();
     assert_eq!(shard.command_queue_len(), 1);
@@ -665,7 +668,7 @@ fn accepted_admission_consumes_queue_command() {
 /// A rejected admission (duplicate) does not create extra runs.
 #[test]
 fn rejected_admission_does_not_create_run() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     shard.enqueue(submit_command(1)).ok();
     let _ = shard.tick();
@@ -689,7 +692,7 @@ fn rejected_admission_does_not_create_run() {
 /// Shard public API: active_run_count, status, and queue state.
 #[test]
 fn rejected_run_not_found_in_shard_state() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     // First submission — accept and verify observable effects
     shard
@@ -756,7 +759,7 @@ fn rejected_run_not_found_in_shard_state() {
 /// new runs add to the active set without evicting existing ones.
 #[test]
 fn supersession_preserves_prior_runs() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     // Submit run 1 — accepted
     shard
@@ -806,7 +809,7 @@ fn supersession_preserves_prior_runs() {
 #[test]
 fn invocation_ledger_records_workflow_on_accept() {
     let workflow = do_workflow();
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     // Snapshot shard state before acceptance
     assert_eq!(shard.active_run_count(), 0, "shard starts empty");
@@ -897,7 +900,8 @@ proptest! {
             max_terminal_runs: 16,
             terminal_runs_ttl_ticks: 86_400,
 
-});
+        })
+        .expect("shard config is valid");
 
         // Submit unique runs
         for i in 0..run_count {
@@ -938,7 +942,7 @@ proptest! {
 
 #[test]
 fn tick_on_empty_queue_returns_ok_true() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
     let result = shard.tick();
     assert_eq!(
         result,
@@ -949,14 +953,14 @@ fn tick_on_empty_queue_returns_ok_true() {
 
 #[test]
 fn command_queue_len_zero_after_new_shard() {
-    let shard = Shard::new(new_shard_config(8));
+    let shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
     assert_eq!(shard.command_queue_len(), 0);
     assert!(!shard.is_queue_full());
 }
 
 #[test]
 fn enqueue_then_tick_consumes_command() {
-    let mut shard = Shard::new(new_shard_config(8));
+    let mut shard = Shard::new(new_shard_config(8)).expect("shard config is valid");
 
     shard.enqueue(submit_command(1)).ok();
     assert_eq!(shard.command_queue_len(), 1);

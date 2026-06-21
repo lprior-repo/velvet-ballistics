@@ -141,7 +141,7 @@ use vb_core::{ListId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest}
 use vb_runtime::primitives::collect::CollectPaginationState;
 use vb_storage::recovery::{RecoveryError, hydrate_run_frame, hydrate_run_frame_from_events};
 use vb_storage::{
-    EventReplayLimit, EventSeq, FjallJournal, JournalError, JournalEvent, RunSnapshot,
+    EventReplayLimit, EventSeq, FjallJournal, JournalError, JournalEvent, RunSnapshot, SlotWriteExtra,
 };
 
 const JOURNAL_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/journal/replay.rs");
@@ -204,13 +204,13 @@ fn journal_at_temp_path() -> Result<(tempfile::TempDir, FjallJournal), String> {
     Ok((temp, journal))
 }
 
-fn corrupt_slot_taint_envelope() -> Vec<u8> {
+fn corrupt_slot_taint_envelope() -> SlotWriteExtra {
     let mut bytes = vb_storage::SLOT_WRITTEN_EXTRA_PREFIX.to_vec();
     bytes.extend_from_slice(&[255, 255, 255]);
-    bytes
+    SlotWriteExtra::Legacy(bytes)
 }
 
-fn collect_frame_extra(run: RunId, slot: SlotIdx) -> Result<Vec<u8>, String> {
+fn collect_frame_extra(run: RunId, slot: SlotIdx) -> Result<SlotWriteExtra, String> {
     let state = CollectPaginationState {
         run_id: run,
         collector_slot: slot,
@@ -224,7 +224,8 @@ fn collect_frame_extra(run: RunId, slot: SlotIdx) -> Result<Vec<u8>, String> {
         start_millis: 0,
         from_journal: false,
     };
-    postcard::to_allocvec(&state).map_err(|err| err.to_string())
+    let bytes = postcard::to_allocvec(&state).map_err(|err| err.to_string())?;
+    Ok(SlotWriteExtra::Legacy(bytes))
 }
 
 #[test]

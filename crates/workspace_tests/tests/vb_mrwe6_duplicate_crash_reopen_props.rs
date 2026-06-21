@@ -176,6 +176,7 @@ fn unrelated(run: RunId, seq: u64, attempt: u16) -> JournalEvent {
         run,
         seq: EventSeq::new(seq),
         attempt,
+        reason: None,
     }
 }
 

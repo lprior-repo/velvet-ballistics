@@ -223,7 +223,7 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() -> Result<(), Ru
 fn enqueue_returns_queue_full_when_capacity_exceeded() -> Result<(), RuntimeError> {
     // Given a shard with very small command queue
     let config = ShardConfig {
-        command_queue_capacity: 2,
+        command_queue_capacity: 1,
         trace_capacity: 4,
         step_budget_per_tick: 4,
         max_active_runs: 4,
@@ -235,8 +235,10 @@ fn enqueue_returns_queue_full_when_capacity_exceeded() -> Result<(), RuntimeErro
     };
     let shard = Shard::new(config)?;
     // When enqueuing more commands than capacity allows
+    // Shutdown is always permitted past full (does not return ShutdownInProgress)
+    // but Shutdown commands still occupy queue slots.
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
-    // Then the third enqueue returns QueueFull
+    // The second Shutdown overflows the queue capacity of 1.
     assert_eq!(
         shard.enqueue(ShardCommand::Shutdown),
         Err(RuntimeError::QueueFull)

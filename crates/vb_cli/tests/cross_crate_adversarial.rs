@@ -1607,7 +1607,7 @@ fn runtime_submit_and_tick_simple_workflow() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let mut runtime = Runtime::new(shard_count, config);
+    let mut runtime = Runtime::new(shard_count, config).expect("runtime config is valid");
     let run_id = RunId::new(100);
 
     // When: submitting and ticking
@@ -1687,7 +1687,7 @@ fn runtime_rejects_duplicate_run_id_on_tick() {
         max_terminal_runs: 16,
         terminal_runs_ttl_ticks: 86_400,
     };
-    let mut runtime = Runtime::new(shard_count, config);
+    let mut runtime = Runtime::new(shard_count, config).expect("runtime config is valid");
     let run_id = RunId::new(200);
 
     // When: submitting the same run ID twice, then ticking

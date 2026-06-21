@@ -208,18 +208,18 @@ fn recovery_from_corrupt_snapshot_sequence_is_detected() {
     };
 
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
-    // Hydration should succeed because the seed itself is valid (corrupt snapshot
-    // is a storage-layer concern; the boundary only validates the seed shape).
+    // Contract: a seed with empty steps/slots vectors fails hydration as
+    // RuntimeError::InvalidRecoveryHydration because the production boundary
+    // requires at least one step and one slot to form a valid RunFrame shape.
     let result = boundary.hydrate_run_frame();
-    // Contract: an empty seed with step_count=0 and slot_count=0 must hydrate to a
-    // valid empty RunFrame carrying the seed's run id and zero step/slot counts.
     assert!(
-        matches!(result, Ok(ref frame) if frame.run_id() == run
-            && frame.step_count() == 0
-            && frame.slot_count() == 0),
-        "empty seed must hydrate to a valid empty run frame, got {result:?}"
+        matches!(result, Err(ref e) if matches!(e, RuntimeError::InvalidRecoveryHydration)),
+        "empty seed must be rejected as invalid hydration, got {result:?}"
     );
 }
+
+#[allow(unused_imports)]
+use vb_runtime::RuntimeError;
 
 /// UnsupportedRecoveryState union of two unsupported flags.
 #[test]

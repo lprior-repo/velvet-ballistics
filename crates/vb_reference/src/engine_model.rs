@@ -78,11 +78,15 @@ pub fn signal_to_string(signal: &EngineSignal) -> String {
             format!("Finished({:?}, {:?})", value, taint)
         }
         EngineSignal::StepBudgetExhausted => "StepBudgetExhausted".to_string(),
-        EngineSignal::AwaitingAction(ticket) => {
-            format!("AwaitingAction({:?})", ticket)
+        EngineSignal::AwaitingAction { step, seq, action } => {
+            format!("AwaitingAction {{ step: {:?}, seq: {:?}, action: {:?} }}", step, seq, action)
         }
-        EngineSignal::AwaitingWait => "AwaitingWait".to_string(),
-        EngineSignal::AwaitingAsk => "AwaitingAsk".to_string(),
+        EngineSignal::AwaitingWait { deadline_slot } => {
+            format!("AwaitingWait {{ deadline_slot: {:?} }}", deadline_slot)
+        }
+        EngineSignal::AwaitingAsk { timeout_slot } => {
+            format!("AwaitingAsk {{ timeout_slot: {:?} }}", timeout_slot)
+        }
     }
 }
 

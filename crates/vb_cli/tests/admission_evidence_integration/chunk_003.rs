@@ -18,8 +18,12 @@ fn evidence_chain_after_execution() {
         return;
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        journal.clone(),
+    )
+    .expect("runtime config is valid");
     let run_id = RunId::new(3);
 
     // When: submitting and ticking (suspends on action)
@@ -205,7 +209,7 @@ fn capability_check_rejects_unauthorized_action() {
         shard_count,
         test_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
-    );
+        ).expect("runtime config is valid");
     let run_id = RunId::new(4);
     match submit_do_action_run(&runtime, run_id, workflow) {
         Ok(()) => {}
@@ -264,8 +268,12 @@ fn evidence_chain_captures_action_timeout_and_failure() {
         return;
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        journal.clone(),
+    )
+    .expect("runtime config is valid");
     let run_id = RunId::new(10);
 
     match submit_do_action_run(&runtime, run_id, workflow) {
@@ -348,8 +356,12 @@ fn evidence_chain_preserves_event_ordering_across_restarts() {
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
     let run_id = RunId::new(11);
 
-    let mut runtime1 =
-        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let mut runtime1 = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        journal.clone(),
+    )
+    .expect("runtime config is valid");
     match submit_do_action_run(&runtime1, run_id, workflow) {
         Ok(()) => {}
         Err(err) => {

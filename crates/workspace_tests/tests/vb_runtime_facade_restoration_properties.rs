@@ -214,10 +214,10 @@ fn test_runtime_error_display_unsupported_operation() {
 #[test]
 fn test_runtime_result_ok() {
     let config = ShardConfig::default();
-    let result: RuntimeResult<Runtime> = Ok(Runtime::new(
+    let result: RuntimeResult<Runtime> = Runtime::new(
         NonZeroUsize::new(2).expect("non-zero"),
         config,
-    ));
+    );
     assert!(result.is_ok());
 }
 

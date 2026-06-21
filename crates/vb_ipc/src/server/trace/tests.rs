@@ -24,7 +24,7 @@ mod tests {
             ..ShardConfig::default()
         };
         config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-        Runtime::new(NonZeroUsize::MIN, config)
+        Runtime::new(NonZeroUsize::MIN, config).expect("relaxed runtime config is valid")
     }
 
     fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {

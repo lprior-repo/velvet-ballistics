@@ -486,7 +486,7 @@ mod behavior_run_until_blocked {
         // Note: executed counter is NOT incremented for AwaitingAction because
         // the step is suspended, not completed. The step is in Running state.
         let signal = result.expect("run_until_blocked should not error");
-        assert_eq!(signal, EngineSignal::AwaitingAction);
+        assert!(matches!(signal, EngineSignal::AwaitingAction { .. }));
         assert_eq!(frame.executed(), 0); // Step suspended, not executed to completion
     }
 }
@@ -599,7 +599,7 @@ mod behavior_step_once {
 
         // THEN: Returns AwaitingAction
         let signal = result.expect("step_once should not error");
-        assert_eq!(signal, EngineSignal::AwaitingAction);
+        assert!(matches!(signal, EngineSignal::AwaitingAction { .. }));
     }
 }
 
@@ -1158,7 +1158,7 @@ mod behavior_engine_signals {
 
         // THEN: AwaitingAction is returned
         let signal = result.expect("step_once should succeed");
-        assert_eq!(signal, EngineSignal::AwaitingAction);
+        assert!(matches!(signal, EngineSignal::AwaitingAction { .. }));
     }
 
     #[test]

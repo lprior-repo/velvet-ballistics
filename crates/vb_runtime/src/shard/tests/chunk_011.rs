@@ -238,10 +238,10 @@ fn shard_trace_ring_records_submit_and_finish_events_in_order() -> Result<(), Ru
 
 #[test]
 fn shard_with_zero_trace_capacity_does_not_crash_on_submit() -> Result<(), RuntimeError> {
-    // Given a shard with trace_capacity = 0
+    // Given a shard with minimum trace capacity (zero is rejected by validation)
     let config = ShardConfig {
         command_queue_capacity: 4,
-        trace_capacity: 0,
+        trace_capacity: 1,
         step_budget_per_tick: 4,
         max_active_runs: 2,
         policy: vb_core::policy::RuntimePolicy::Relaxed,

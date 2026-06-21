@@ -185,7 +185,7 @@ impl Drop for CleanupPath<'_> {
 fn make_runtime() -> Runtime {
     let mut config = ShardConfig::default();
     config.policy = vb_core::policy::RuntimePolicy::Relaxed;
-    Runtime::new(NonZeroUsize::MIN, config)
+    Runtime::new(NonZeroUsize::MIN, config).expect("relaxed runtime config is valid")
 }
 
 #[test]

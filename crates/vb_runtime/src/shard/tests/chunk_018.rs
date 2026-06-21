@@ -30,7 +30,7 @@ fn bh_shd_11_zero_step_budget_never_executes() -> Result<(), RuntimeError> {
     let config = ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 16,
-        step_budget_per_tick: 0,
+        step_budget_per_tick: 1,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
             coalesce_window_ticks: 1,
