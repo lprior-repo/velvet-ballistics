@@ -1,3 +1,17 @@
+/// Submit mode controlling when the admission header journal event is persisted.
+///
+/// `PersistNow` is the standard path: the helper appends the header event
+/// during the submit transaction. `PrePersisted` is used by callers that
+/// have already (or will) persist the header themselves and want the helper
+/// to skip that step. Replaces the previous `persist_header: bool` parameter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SubmitMode {
+    /// Helper persists the `RunSubmitted` header event itself.
+    PersistNow,
+    /// Caller has already persisted (or will persist) the header; helper skips.
+    PrePersisted,
+}
+
 impl Shard {
     // =============================================================================
     // Submit lifecycle methods
@@ -10,13 +24,13 @@ impl Shard {
         workflow: CompiledWorkflow,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_contracts_and_header_mode(
+        self.handle_submit_with_inputs_contracts_and_mode(
             run,
             workflow,
             &[],
             caps,
             &[],
-            true,
+            SubmitMode::PersistNow,
         )
     }
 
@@ -28,20 +42,20 @@ impl Shard {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let Some(action) = test_first_do_action(&workflow) else {
-            return self.handle_submit_with_inputs_contracts_and_header_mode(
+            return self.handle_submit_with_inputs_contracts_and_mode(
                 run,
                 workflow,
                 &[],
                 caps,
                 &[],
-                true,
+                SubmitMode::PersistNow,
             );
         };
         let inputs = [(SlotIdx::new(0), SlotValue::I64(0))];
         let test_caps = test_contract_grants(action);
         let contracts = test_contracts_through(action);
-        self.handle_submit_with_inputs_contracts_and_header_mode(
-            run, workflow, &inputs, test_caps, &contracts, true,
+        self.handle_submit_with_inputs_contracts_and_mode(
+            run, workflow, &inputs, test_caps, &contracts, SubmitMode::PersistNow,
         )
     }
 
@@ -51,13 +65,13 @@ impl Shard {
         workflow: CompiledWorkflow,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_contracts_and_header_mode(
+        self.handle_submit_with_inputs_contracts_and_mode(
             run,
             workflow,
             &[],
             caps,
             &[],
-            false,
+            SubmitMode::PrePersisted,
         )
     }
 
@@ -69,13 +83,13 @@ impl Shard {
         inputs: &[(SlotIdx, SlotValue)],
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_contracts_and_header_mode(
+        self.handle_submit_with_inputs_contracts_and_mode(
             run,
             workflow,
             inputs,
             caps,
             &[],
-            true,
+            SubmitMode::PersistNow,
         )
     }
 
@@ -88,19 +102,19 @@ impl Shard {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let Some(action) = test_first_do_action(&workflow) else {
-            return self.handle_submit_with_inputs_contracts_and_header_mode(
+            return self.handle_submit_with_inputs_contracts_and_mode(
                 run,
                 workflow,
                 inputs,
                 caps,
                 &[],
-                true,
+                SubmitMode::PersistNow,
             );
         };
         let test_caps = test_contract_grants(action);
         let contracts = test_contracts_through(action);
-        self.handle_submit_with_inputs_contracts_and_header_mode(
-            run, workflow, inputs, test_caps, &contracts, true,
+        self.handle_submit_with_inputs_contracts_and_mode(
+            run, workflow, inputs, test_caps, &contracts, SubmitMode::PersistNow,
         )
     }
 
@@ -111,13 +125,13 @@ impl Shard {
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_contracts_and_header_mode(
+        self.handle_submit_with_inputs_contracts_and_mode(
             run,
             workflow,
             &[],
             caps,
             action_contracts,
-            true,
+            SubmitMode::PersistNow,
         )
     }
 
@@ -129,24 +143,24 @@ impl Shard {
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_contracts_and_header_mode(
+        self.handle_submit_with_inputs_contracts_and_mode(
             run,
             workflow,
             inputs,
             caps,
             action_contracts,
-            true,
+            SubmitMode::PersistNow,
         )
     }
 
-    fn handle_submit_with_inputs_contracts_and_header_mode(
+    fn handle_submit_with_inputs_contracts_and_mode(
         &mut self,
         run: RunId,
         workflow: CompiledWorkflow,
         inputs: &[(SlotIdx, SlotValue)],
         caps: CapabilitySet,
         action_contracts: &[vb_core::action::ActionContract],
-        persist_header: bool,
+        mode: SubmitMode,
     ) -> RuntimeResult<()> {
         if self.run_state_contains(run) {
             return Err(RuntimeError::RunAlreadyExists);
@@ -161,7 +175,7 @@ impl Shard {
         let mut frame = self.take_frame_for(run, &workflow)?;
         crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
-        if persist_header {
+        if mode == SubmitMode::PersistNow {
             self.append_admission_header_journal_event(
                 run,
                 RuntimeJournalEvent::RunSubmitted {
