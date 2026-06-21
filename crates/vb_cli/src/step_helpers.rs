@@ -416,7 +416,7 @@ pub(crate) fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
         vb_core::EngineSignal::Continue => "Continue",
         vb_core::EngineSignal::Finished(_, _) => "Finished",
         vb_core::EngineSignal::StepBudgetExhausted => "StepBudgetExhausted",
-        vb_core::EngineSignal::AwaitingAction => "AwaitingAction",
+        vb_core::EngineSignal::AwaitingAction { .. } => "AwaitingAction",
         vb_core::EngineSignal::AwaitingWait { .. } => "AwaitingWait",
         vb_core::EngineSignal::AwaitingAsk { timeout_slot: None } => "AwaitingAsk",
         _ => "Unknown",

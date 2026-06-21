@@ -3,7 +3,7 @@
 //! Repeat node handlers: attempt loops with max-attempt tracking.
 
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::{SeqNo, SlotIdx, StepIdx};
 
 use crate::engine::signal::runtime_from_core;
 use crate::engine::types::{RuntimeEngineError, RuntimeEngineResult, RuntimeSignal};
@@ -17,9 +17,10 @@ pub(crate) fn handle_repeat_start(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::repeat::repeat_start(run, max_attempts, body, done, output)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Repeat Attempt ───────────────────────────────────────────────
@@ -30,9 +31,10 @@ pub(crate) fn handle_repeat_attempt(
     body: StepIdx,
     done: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::repeat::repeat_attempt(run, attempt_slot, body, done)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Repeat Check ─────────────────────────────────────────────────
@@ -44,9 +46,10 @@ pub(crate) fn handle_repeat_check(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::repeat::repeat_check(run, attempt_slot, done, next, step)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Repeat Finish ────────────────────────────────────────────────
@@ -58,7 +61,8 @@ pub(crate) fn handle_repeat_finish(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::repeat::repeat_finish(run, result, output, next, step)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }

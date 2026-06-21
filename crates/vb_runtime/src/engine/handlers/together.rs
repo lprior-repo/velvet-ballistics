@@ -3,7 +3,7 @@
 //! Together node handlers: fan-out to parallel branches and join results.
 
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::{SeqNo, SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 
 use crate::engine::signal::runtime_from_core;
@@ -18,9 +18,10 @@ pub(crate) fn handle_together_start(
     join: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::together::together_start(run, store, branches, join, output)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Together Branch ──────────────────────────────────────────────
@@ -34,6 +35,7 @@ pub(crate) fn handle_together_branch(
     accumulator: SlotIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::together::together_branch(
         run,
         store,
@@ -44,7 +46,7 @@ pub(crate) fn handle_together_branch(
         output,
     )
     .map_err(RuntimeEngineError::Core)
-    .map(runtime_from_core)
+    .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Together Join ────────────────────────────────────────────────
@@ -58,6 +60,7 @@ pub(crate) fn handle_together_join(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     match crate::primitives::together::together_join(
         run,
         store,
@@ -67,7 +70,7 @@ pub(crate) fn handle_together_join(
         next,
         step,
     ) {
-        Ok(signal) => Ok(runtime_from_core(signal)),
+        Ok(signal) => Ok(runtime_from_core(run_id, SeqNo::ZERO, signal)),
         Err(e) => Err(RuntimeEngineError::Core(e)),
     }
 }

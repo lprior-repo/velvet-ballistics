@@ -1809,10 +1809,16 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_04_runtime_from_core_discards_taint_from_finished() {
-        let clean_signal =
-            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
-        let secret_signal =
-            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Secret));
+        let clean_signal = runtime_from_core(
+            RunId::new(1),
+            SeqNo::ZERO,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean),
+        );
+        let secret_signal = runtime_from_core(
+            RunId::new(1),
+            SeqNo::ZERO,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Secret),
+        );
         assert_eq!(
             clean_signal, secret_signal,
             "BH-ENG-04: taint is discarded in runtime_from_core, both signals are equal"

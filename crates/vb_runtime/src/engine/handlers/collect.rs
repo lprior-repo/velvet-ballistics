@@ -3,7 +3,7 @@
 //! Collect node handlers: paginated collection accumulation.
 
 use vb_core::frame::RunFrame;
-use vb_core::ids::{SlotIdx, StepIdx};
+use vb_core::ids::{SeqNo, SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 
 use crate::engine::signal::runtime_from_core;
@@ -24,11 +24,12 @@ pub(crate) fn handle_collect_start(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::collect::collect_start(
         run, store, cs, source, limit, page_size, body, done, output, None,
     )
     .map_err(RuntimeEngineError::Core)
-    .map(runtime_from_core)
+    .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Collect Page ─────────────────────────────────────────────────
@@ -41,9 +42,10 @@ pub(crate) fn handle_collect_page(
     body: StepIdx,
     done: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::collect::collect_page(run, store, cs, collector_slot, body, done)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Collect Next ─────────────────────────────────────────────────
@@ -56,9 +58,10 @@ pub(crate) fn handle_collect_next(
     body: StepIdx,
     done: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::collect::collect_next(run, store, cs, collector_slot, body, done)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Collect Finish ───────────────────────────────────────────────
@@ -71,8 +74,9 @@ pub(crate) fn handle_collect_finish(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     match crate::primitives::collect::collect_finish(run, cs, collector_slot, output, next, step) {
-        Ok(signal) => Ok(runtime_from_core(signal)),
+        Ok(signal) => Ok(runtime_from_core(run_id, SeqNo::ZERO, signal)),
         Err(e) => Err(RuntimeEngineError::Core(e)),
     }
 }

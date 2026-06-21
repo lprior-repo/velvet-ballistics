@@ -3,7 +3,7 @@
 //! Reduce node handlers: fold over collections with accumulator.
 
 use vb_core::frame::RunFrame;
-use vb_core::ids::{ConstIdx, SlotIdx, StepIdx};
+use vb_core::ids::{ConstIdx, SeqNo, SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
@@ -24,6 +24,7 @@ pub(crate) fn handle_reduce_start(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::reduce::reduce_start(
         plan,
         run,
@@ -36,7 +37,7 @@ pub(crate) fn handle_reduce_start(
         output,
     )
     .map_err(RuntimeEngineError::Core)
-    .map(runtime_from_core)
+    .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Reduce Next ──────────────────────────────────────────────────
@@ -50,6 +51,7 @@ pub(crate) fn handle_reduce_next(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::reduce::reduce_next(
         run,
         store,
@@ -60,7 +62,7 @@ pub(crate) fn handle_reduce_next(
         output,
     )
     .map_err(RuntimeEngineError::Core)
-    .map(runtime_from_core)
+    .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── Reduce Finish ────────────────────────────────────────────────
@@ -72,8 +74,9 @@ pub(crate) fn handle_reduce_finish(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     match crate::primitives::reduce::reduce_finish(run, accumulator, output, next, step) {
-        Ok(signal) => Ok(runtime_from_core(signal)),
+        Ok(signal) => Ok(runtime_from_core(run_id, SeqNo::ZERO, signal)),
         Err(e) => Err(RuntimeEngineError::Core(e)),
     }
 }

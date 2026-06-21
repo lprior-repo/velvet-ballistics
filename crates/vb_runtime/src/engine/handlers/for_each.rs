@@ -3,7 +3,7 @@
 //! ForEach node handlers: iterate over collections.
 
 use vb_core::frame::RunFrame;
-use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
+use vb_core::ids::{FanoutLimit, SeqNo, SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
 
 use crate::engine::signal::runtime_from_core;
@@ -22,6 +22,7 @@ pub(crate) fn handle_for_each_start(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::for_each::for_each_start(
         run,
         store,
@@ -33,7 +34,7 @@ pub(crate) fn handle_for_each_start(
         output,
     )
     .map_err(RuntimeEngineError::Core)
-    .map(runtime_from_core)
+    .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── ForEach Next ─────────────────────────────────────────────────
@@ -46,9 +47,10 @@ pub(crate) fn handle_for_each_next(
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     crate::primitives::for_each::for_each_next(run, store, iterator_slot, body, done, output)
         .map_err(RuntimeEngineError::Core)
-        .map(runtime_from_core)
+        .map(|signal| runtime_from_core(run_id, SeqNo::ZERO, signal))
 }
 
 // ── ForEach Join ─────────────────────────────────────────────────
@@ -60,8 +62,9 @@ pub(crate) fn handle_for_each_join(
     next: Option<StepIdx>,
     step: StepIdx,
 ) -> RuntimeEngineResult<RuntimeSignal> {
+    let run_id = run.run_id();
     match crate::primitives::for_each::for_each_join(run, output, node_output, next, step) {
-        Ok(signal) => Ok(runtime_from_core(signal)),
+        Ok(signal) => Ok(runtime_from_core(run_id, SeqNo::ZERO, signal)),
         Err(e) => Err(RuntimeEngineError::Core(e)),
     }
 }

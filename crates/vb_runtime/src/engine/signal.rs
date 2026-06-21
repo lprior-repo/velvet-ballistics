@@ -10,7 +10,7 @@
 
 use vb_core::action::{ActionTicket, compute_action_idempotency_key};
 use vb_core::engine::EngineSignal;
-use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+use vb_core::ids::{RunId, SeqNo};
 
 use crate::engine::types::RuntimeSignal;
 
