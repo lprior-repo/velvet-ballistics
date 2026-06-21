@@ -191,10 +191,5 @@ fn parse_action_inspect_registry_arg(
 }
 
 fn parse_action_registry_mode(value: &str) -> Result<ActionRegistryMode, ParseError> {
-    match value {
-        "registered" => Ok(ActionRegistryMode::Registered),
-        "empty" => Ok(ActionRegistryMode::Empty),
-        "uninitialized" => Ok(ActionRegistryMode::Uninitialized),
-        other => Err(ParseError::UnknownActionRegistry(other.into())),
-    }
+    value.parse()
 }

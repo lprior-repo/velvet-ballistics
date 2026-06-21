@@ -304,6 +304,19 @@ pub(crate) enum ActionRegistryMode {
     Uninitialized,
 }
 
+impl FromStr for ActionRegistryMode {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "registered" => Ok(Self::Registered),
+            "empty" => Ok(Self::Empty),
+            "uninitialized" => Ok(Self::Uninitialized),
+            other => Err(ParseError::UnknownActionRegistry(other.into())),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EmitTarget {
     Ir,
