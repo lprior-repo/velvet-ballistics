@@ -177,7 +177,7 @@ impl FrameSeedAccumulator {
             }
             JournalEvent::SlotWrittenEvent {
                 slot, value, extra, ..
-            } => self.record_slot_write(*slot, value, extra),
+            } => self.record_slot_write(*slot, value, extra.as_ref()),
             JournalEvent::RunFinished { result, .. } => Ok(self.record_slot(*result)),
             _ => Ok(self),
         }
@@ -209,7 +209,7 @@ impl FrameSeedAccumulator {
         mut self,
         slot: SlotIdx,
         value: &Option<Vec<u8>>,
-        extra: &Option<Vec<u8>>,
+        extra: Option<&crate::events::SlotWriteExtra>,
     ) -> RecoveryResult<Self> {
         self.max_slot_idx = max_slot(self.max_slot_idx, slot);
         match value

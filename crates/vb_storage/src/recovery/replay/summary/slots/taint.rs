@@ -5,8 +5,8 @@
 //! - `RecoveredSlotTaint` — taint with unsafety flag
 //! - `recovered_slot_taint` — slot taint from event data
 
-use crate::recovery::{RecoveryError, RecoveryResult};
-use crate::slot_extra::{DecodedSlotWrittenExtra, decode_slot_written_extra};
+use crate::events::SlotWriteExtra;
+use crate::recovery::RecoveryResult;
 use vb_core::{SlotIdx, SlotValue, Taint};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,30 +16,17 @@ pub(crate) struct RecoveredSlotTaint {
 }
 
 pub(crate) fn recovered_slot_taint(
-    slot: SlotIdx,
+    _slot: SlotIdx,
     value: SlotValue,
-    extra: &Option<Vec<u8>>,
+    extra: Option<&SlotWriteExtra>,
 ) -> RecoveryResult<RecoveredSlotTaint> {
     match extra {
-        Some(bytes) => decoded_slot_taint(slot, value, bytes),
-        None => Ok(legacy_recovered_slot_taint(value)),
-    }
-}
-
-fn decoded_slot_taint(
-    slot: SlotIdx,
-    value: SlotValue,
-    bytes: &[u8],
-) -> RecoveryResult<RecoveredSlotTaint> {
-    match decode_slot_written_extra(bytes) {
-        Ok(DecodedSlotWrittenExtra::Envelope(envelope)) => Ok(RecoveredSlotTaint {
+        Some(SlotWriteExtra::Versioned(envelope)) => Ok(RecoveredSlotTaint {
             taint: envelope.taint,
             unsupported: false,
         }),
-        Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(_)) => {
-            Ok(legacy_frame_extra_recovered_slot_taint(value))
-        }
-        Err(_) => Err(RecoveryError::CorruptSlotTaint { slot }),
+        Some(SlotWriteExtra::Legacy(_)) => Ok(legacy_frame_extra_recovered_slot_taint(value)),
+        None => Ok(legacy_recovered_slot_taint(value)),
     }
 }
 

@@ -137,7 +137,12 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
                 seq: EventSeq::new(6),
                 slot: SlotIdx::new(5),
                 value: Some(Vec::new()),
-                extra: vb_storage::encode_slot_written_extra(Taint::Clean, None).ok(),
+                extra: Some(vb_storage::SlotWriteExtra::Versioned(
+                    vb_storage::SlotWrittenExtraEnvelope {
+                        taint: Taint::Clean,
+                        frame_extra: None,
+                    },
+                )),
                 attempt: 1,
             },
         ]

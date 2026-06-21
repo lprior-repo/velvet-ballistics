@@ -38,6 +38,8 @@ impl JournalError {
     pub const HEADER_LENGTH_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4010);
     /// Diagnostic code for payload too large.
     pub const PAYLOAD_TOO_LARGE_CODE: DiagnosticCode = DiagnosticCode::new(0x4011);
+    /// Diagnostic code for length exceeding `u32::MAX` (could not be represented).
+    pub const PAYLOAD_LEN_OVERFLOW_CODE: DiagnosticCode = DiagnosticCode::new(0x4037);
     /// Diagnostic code for header checksum mismatch.
     pub const HEADER_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4012);
     /// Diagnostic code for payload digest mismatch.
@@ -99,6 +101,7 @@ impl JournalError {
             Self::RecordKindFamilyMismatch { .. } => Self::RECORD_KIND_FAMILY_MISMATCH_CODE,
             Self::HeaderLengthMismatch { .. } => Self::HEADER_LENGTH_MISMATCH_CODE,
             Self::PayloadTooLarge { .. } => Self::PAYLOAD_TOO_LARGE_CODE,
+            Self::PayloadLenOverflow { .. } => Self::PAYLOAD_LEN_OVERFLOW_CODE,
             Self::HeaderChecksumMismatch => Self::HEADER_CHECKSUM_MISMATCH_CODE,
             Self::PayloadDigestMismatch => Self::PAYLOAD_DIGEST_MISMATCH_CODE,
             Self::UnexpectedEof => Self::UNEXPECTED_EOF_CODE,
@@ -155,6 +158,7 @@ impl JournalError {
             Self::RecordKindFamilyMismatch { .. } => "RECORD_KIND_FAMILY_MISMATCH",
             Self::HeaderLengthMismatch { .. } => "HEADER_LENGTH_MISMATCH",
             Self::PayloadTooLarge { .. } => "PAYLOAD_TOO_LARGE",
+            Self::PayloadLenOverflow { .. } => "JOURNAL_PAYLOAD_LEN_OVERFLOW",
             Self::HeaderChecksumMismatch => "HEADER_CHECKSUM_MISMATCH",
             Self::PayloadDigestMismatch => "PAYLOAD_DIGEST_MISMATCH",
             Self::UnexpectedEof => "UNEXPECTED_EOF",

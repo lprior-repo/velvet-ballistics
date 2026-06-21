@@ -277,6 +277,7 @@ fn event_status_run_killed_maps_to_cancelled() {
         run,
         seq: EventSeq::new(0),
         attempt: 1,
+        reason: None,
     };
     assert_eq!(event_status(&event), Some(super::TraceStatus::Cancelled));
 }

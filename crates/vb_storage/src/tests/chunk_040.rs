@@ -329,6 +329,7 @@ fn journal_error_match_covers_all_variants() {
             JournalError::Trim(_) => "trim",
             JournalError::JournalBatchBytesExceeded { .. } => "journal_batch_bytes_exceeded",
             JournalError::MetadataMutation { .. } => "metadata_mutation",
+            JournalError::PayloadLenOverflow { .. } => "payload_len_overflow",
         }
     }
     let _ = _exhaustive_match;

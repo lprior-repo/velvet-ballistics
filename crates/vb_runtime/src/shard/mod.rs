@@ -13,9 +13,17 @@ pub mod introspection;
 pub mod lifecycle;
 pub mod lru_ring;
 #[cfg(test)]
-mod lru_ring_red_queen_tests;
+mod lru_ring_capacity_tests;
 #[cfg(test)]
-mod lru_ring_tests;
+mod lru_ring_red_queen_combined_props;
+#[cfg(test)]
+mod lru_ring_red_queen_props_helpers;
+#[cfg(test)]
+mod lru_ring_red_queen_remove_props;
+#[cfg(test)]
+mod lru_ring_red_queen_sweep_props;
+#[cfg(test)]
+mod lru_ring_remove_tests;
 #[cfg(test)]
 pub mod property_tests;
 pub mod queue;

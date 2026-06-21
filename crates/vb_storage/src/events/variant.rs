@@ -4,6 +4,7 @@
 //! JSONL is a projection, not this durable format.
 
 use crate::EventSeq;
+use crate::events::slot_write_extra::SlotWriteExtra;
 use chrono::{DateTime, Utc};
 use vb_core::{
     ActionId, ActionTicket, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, StepIdx,
@@ -142,9 +143,9 @@ pub enum JournalEvent {
         /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
         #[serde(default)]
         value: Option<Vec<u8>>,
-        /// Versioned slot-write extra envelope, or legacy encoded frame extra data.
+        /// Parsed slot-write extra (None / Versioned envelope / Legacy bytes).
         #[serde(default)]
-        extra: Option<Vec<u8>>,
+        extra: Option<SlotWriteExtra>,
         /// Attempt number (1-based).
         attempt: u16,
     },

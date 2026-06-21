@@ -285,10 +285,12 @@ impl StorageRuntimeJournal {
 fn encoded_slot_taint_extra(
     taint: Taint,
     extra: Option<Vec<u8>>,
-) -> RuntimeResult<Option<Vec<u8>>> {
-    vb_storage::encode_slot_written_extra(taint, extra)
-        .map(Some)
-        .map_err(|_| RuntimeError::EncodeFailed)
+) -> RuntimeResult<Option<vb_storage::SlotWriteExtra>> {
+    let envelope = vb_storage::SlotWrittenExtraEnvelope {
+        taint,
+        frame_extra: extra,
+    };
+    Ok(Some(vb_storage::SlotWriteExtra::Versioned(envelope)))
 }
 
 impl RuntimeJournal for StorageRuntimeJournal {

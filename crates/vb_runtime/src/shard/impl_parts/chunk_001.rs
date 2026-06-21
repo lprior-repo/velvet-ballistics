@@ -28,7 +28,7 @@ impl Shard {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
-            terminal_runs: LruRing::new(config.max_terminal_runs, config.terminal_runs_ttl_ticks),
+            terminal_runs: LruRing::try_new(config.max_terminal_runs, config.terminal_runs_ttl_ticks)?,
             terminal_outcomes: IndexMap::new(),
             journal_sequences: IndexMap::new(),
             pending_timers: IndexMap::new(),

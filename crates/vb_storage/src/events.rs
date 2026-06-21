@@ -12,6 +12,7 @@
 mod access;
 mod kind;
 mod outcome;
+pub mod slot_write_extra;
 mod valid;
 pub mod variant;
 
@@ -21,4 +22,5 @@ pub mod variant;
 
 pub use kind::JournalEventKindClass;
 pub use outcome::DurableActionOutcome;
+pub use slot_write_extra::SlotWriteExtra;
 pub use variant::JournalEvent;

@@ -139,7 +139,7 @@ use vb_runtime::shard::timer::TimerTick;
 fn red_queen_ten_thousand_items_never_exceeds_capacity() {
     let capacity = 100usize;
     let ttl = u64::MAX; // disable TTL eviction for this test
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, ttl);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, ttl).expect("non-zero test capacity");
 
     let mut overflow_count = 0u32;
     let mut ok_count = 0u32;
@@ -187,7 +187,7 @@ fn red_queen_ten_thousand_items_with_ttl_evicts_correctly() {
     // be present after the wave.
     let capacity = 50usize;
     let ttl = 100u64;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, ttl);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, ttl).expect("non-zero test capacity");
 
     for wave in 0..200u64 {
         // Each wave inserts `capacity` distinct items at a tick well past
@@ -229,7 +229,7 @@ fn red_queen_ten_thousand_items_with_ttl_evicts_correctly() {
 fn red_queen_ttl_exact_boundary_deterministic() {
     let capacity = 4usize;
     let ttl = 100u64;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, ttl);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, ttl).expect("non-zero test capacity");
 
     // Insert 4 items at tick = 1000.
     let baseline = TimerTick::new(1000);
@@ -265,7 +265,7 @@ fn red_queen_ttl_zero_disables_eviction() {
     // Per implementation: ttl_ticks == 0 returns early from sweep_expired,
     // so ttl=0 disables TTL eviction entirely (treating it as "no expiry").
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, 0);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, 0).expect("non-zero test capacity");
     for offset in 0..4u64 {
         let run = RunId::new(offset + 1);
         ring.insert(run, TimerTick::new(10)).expect("insert");
@@ -296,7 +296,7 @@ fn red_queen_ttl_zero_disables_eviction() {
 #[test]
 fn red_queen_reinsert_existing_item_is_idempotent() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, u64::MAX);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     let run = RunId::new(42);
     ring.insert(run, TimerTick::new(100)).expect("first insert");
     let overflow = ring.insert(run, TimerTick::new(200));
@@ -326,7 +326,7 @@ fn red_queen_reinsert_existing_item_is_idempotent() {
 #[test]
 fn red_queen_force_insert_grows_ring_but_counts_overflow() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, u64::MAX);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     for offset in 0..4u64 {
         ring.insert(RunId::new(offset + 1), TimerTick::new(100))
             .expect("fill");
@@ -354,7 +354,7 @@ fn red_queen_force_insert_grows_ring_but_counts_overflow() {
 #[test]
 fn red_queen_remove_then_reinsert_frees_slot() {
     let capacity = 2usize;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, u64::MAX);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     ring.insert(RunId::new(1), TimerTick::new(100)).expect("a");
     ring.insert(RunId::new(2), TimerTick::new(200)).expect("b");
     assert!(ring.contains(&RunId::new(1)));
@@ -376,7 +376,7 @@ fn red_queen_remove_then_reinsert_frees_slot() {
 #[test]
 fn red_queen_remove_all_entries_leaves_empty_ring() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, u64::MAX);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     for offset in 0..4u64 {
         ring.insert(RunId::new(offset + 1), TimerTick::new(100))
             .expect("fill");
@@ -396,7 +396,7 @@ fn red_queen_remove_all_entries_leaves_empty_ring() {
 fn red_queen_clear_preserves_capacity_and_ttl() {
     let capacity = 8usize;
     let ttl = 12345u64;
-    let mut ring: LruRing<RunId> = LruRing::new(capacity, ttl);
+    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, ttl).expect("non-zero test capacity");
     for offset in 0..capacity {
         ring.insert(RunId::new(offset as u64 + 1), TimerTick::new(100))
             .expect("fill");
@@ -414,19 +414,15 @@ fn red_queen_clear_preserves_capacity_and_ttl() {
 }
 
 // ---------------------------------------------------------------------------
-// Q7 — capacity=0 is normalized to 1 (per implementation contract)
+// Q7 — capacity=0 is rejected with a typed error (BH-W0-S09)
 // ---------------------------------------------------------------------------
 
 #[test]
-fn red_queen_capacity_zero_is_normalized_to_one() {
-    let mut ring: LruRing<RunId> = LruRing::new(0, u64::MAX);
-    assert_eq!(ring.capacity(), 1, "capacity=0 must be normalized to 1");
-    ring.insert(RunId::new(1), TimerTick::new(100))
-        .expect("first insert under normalized capacity");
-    let outcome = ring.insert(RunId::new(2), TimerTick::new(200));
+fn red_queen_capacity_zero_is_rejected_by_try_new() {
+    let outcome = LruRing::<RunId>::try_new(0, u64::MAX);
     assert!(
-        matches!(outcome, Err(RuntimeError::TerminalRunsLruFull { .. })),
-        "second insert at normalized capacity must refuse, got: {outcome:?}"
+        matches!(outcome, Err(RuntimeError::LruRingCapacityZero)),
+        "capacity=0 must surface RuntimeError::LruRingCapacityZero, got: {outcome:?}"
     );
 }
 
@@ -436,7 +432,7 @@ fn red_queen_capacity_zero_is_normalized_to_one() {
 
 #[test]
 fn red_queen_default_factory_constants_match_documented_values() {
-    let ring: LruRing<RunId> = LruRing::new(DEFAULT_MAX_TERMINAL_RUNS, 86_400);
+    let ring: LruRing<RunId> = LruRing::try_new(DEFAULT_MAX_TERMINAL_RUNS, 86_400).expect("non-zero test capacity");
     assert_eq!(ring.capacity(), DEFAULT_MAX_TERMINAL_RUNS);
     assert_eq!(ring.ttl_ticks(), 86_400);
     assert!(ring.is_empty());
@@ -454,7 +450,9 @@ fn red_queen_default_factory_constants_match_documented_values() {
 fn red_queen_concurrent_insert_eight_threads() {
     let capacity = 200usize;
     let ttl = u64::MAX;
-    let ring = Arc::new(std::sync::Mutex::new(LruRing::<RunId>::new(capacity, ttl)));
+    let ring = Arc::new(std::sync::Mutex::new(
+        LruRing::<RunId>::try_new(capacity, ttl).expect("non-zero test capacity"),
+    ));
     let barrier = Arc::new(Barrier::new(8));
 
     let handles: Vec<_> = (0..8)
@@ -513,7 +511,7 @@ fn red_queen_concurrent_insert_eight_threads() {
 #[test]
 fn red_queen_many_sweeps_counter_saturates_safely() {
     // Capacity 2, TTL 1: every sweep at a new tick evicts everything.
-    let mut ring: LruRing<RunId> = LruRing::new(2, 1);
+    let mut ring: LruRing<RunId> = LruRing::try_new(2, 1).expect("non-zero test capacity");
     for tick in 0..1000u64 {
         // Each insert at a unique tick will sweep any prior entries
         // (their ts + 1 <= tick).

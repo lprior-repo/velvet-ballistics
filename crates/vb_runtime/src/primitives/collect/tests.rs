@@ -99,7 +99,7 @@ fn slot_written_extra_at_seq(
         attempt: 1,
         slot,
         value: None,
-        extra: Some(extra),
+        extra: Some(vb_storage::SlotWriteExtra::Legacy(extra)),
     }
 }
 
@@ -3685,7 +3685,7 @@ fn recovered_collect_state_rejects_run_mismatch_and_inserts_no_state() -> Result
         seq: EventSeq::new(3),
         slot: collector,
         value: None,
-        extra: Some(extra),
+        extra: Some(vb_storage::SlotWriteExtra::Legacy(extra)),
         attempt: 1,
     };
 
@@ -3720,7 +3720,7 @@ fn recovered_collect_state_rejects_slot_mismatch_and_inserts_no_state() -> Resul
         seq: EventSeq::new(4),
         slot: event_slot,
         value: None,
-        extra: Some(extra),
+        extra: Some(vb_storage::SlotWriteExtra::Legacy(extra)),
         attempt: 1,
     };
 
@@ -3756,7 +3756,7 @@ fn collect_hydration_current_page_mismatch_returns_page_mismatch_and_no_state() 
         seq: EventSeq::new(5),
         slot: collector,
         value: Some(encoded_value),
-        extra: Some(extra),
+        extra: Some(vb_storage::SlotWriteExtra::Legacy(extra)),
         attempt: 1,
     };
     let mut states = CollectStates::new();
@@ -3789,7 +3789,7 @@ fn collect_hydration_corrupt_slot_value_with_collect_extra_returns_decode_failed
         seq: EventSeq::new(6),
         slot: collector,
         value: Some(vec![0xFF, 0x00, 0x13]),
-        extra: Some(extra),
+        extra: Some(vb_storage::SlotWriteExtra::Legacy(extra)),
         attempt: 1,
     };
     let mut states = CollectStates::new();

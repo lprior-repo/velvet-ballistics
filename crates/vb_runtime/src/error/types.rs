@@ -246,4 +246,10 @@ pub enum RuntimeError {
         /// Configured terminal-runs ring capacity.
         capacity: usize,
     },
+    /// `LruRing::try_new` rejected a capacity of zero. A zero-capacity
+    /// ring would silently rewrite to capacity 1, which is the
+    /// black-hat finding BH-W0-S09; the constructor now surfaces a
+    /// typed error so the configuration bug is visible at the runtime
+    /// boundary instead of being silently normalised.
+    LruRingCapacityZero,
 }

@@ -906,7 +906,7 @@ fn collect_cursor_page_order_survive_via_extra_field() {
             seq: EventSeq::new(2),
             slot: SlotIdx::new(0),
             value: None,
-            extra: Some(extra_bytes.clone()),
+            extra: Some(vb_storage::SlotWriteExtra::Legacy(extra_bytes.clone())),
             attempt: 1,
         },
     ];
@@ -930,7 +930,7 @@ fn collect_cursor_page_order_survive_via_extra_field() {
         Some(JournalEvent::SlotWrittenEvent { extra, .. }) => {
             assert_eq!(
                 extra.as_ref(),
-                Some(&extra_bytes),
+                Some(&vb_storage::SlotWriteExtra::Legacy(extra_bytes.clone())),
                 "extra bytes must survive across restart"
             );
         }
@@ -965,7 +965,7 @@ fn corrupt_collect_extra_does_not_panic_storage_layer() {
             seq: EventSeq::new(1),
             slot: SlotIdx::ZERO,
             value: None,
-            extra: Some(corrupt_extra),
+            extra: Some(vb_storage::SlotWriteExtra::Legacy(corrupt_extra)),
             attempt: 1,
         },
     ];

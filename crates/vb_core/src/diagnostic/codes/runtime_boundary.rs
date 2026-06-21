@@ -207,4 +207,10 @@ pub(super) const ENTRIES: &[super::CodeEntry] = &[
         category: super::CodeCategory::RuntimeBoundary,
         deprecated: false,
     },
+    super::CodeEntry {
+        symbolic: "JOURNAL_PAYLOAD_LEN_OVERFLOW",
+        numeric: 0x4037,
+        category: super::CodeCategory::RuntimeBoundary,
+        deprecated: false,
+    },
 ];

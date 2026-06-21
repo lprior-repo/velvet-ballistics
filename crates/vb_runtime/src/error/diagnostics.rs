@@ -55,6 +55,7 @@ impl RuntimeError {
     pub const FOR_EACH_ITEM_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x4036);
     pub const ADMISSION_BUDGET_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2020);
     pub const TERMINAL_RUNS_LRU_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2021);
+    pub const LRU_RING_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2022);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -114,6 +115,7 @@ impl RuntimeError {
             Self::ForEachItemFailed { .. } => Self::FOR_EACH_ITEM_FAILED_CODE,
             Self::AdmissionBudgetExceeded { .. } => Self::ADMISSION_BUDGET_EXCEEDED_CODE,
             Self::TerminalRunsLruFull { .. } => Self::TERMINAL_RUNS_LRU_FULL_CODE,
+            Self::LruRingCapacityZero => Self::LRU_RING_CAPACITY_ZERO_CODE,
         }
     }
 
@@ -169,6 +171,7 @@ impl RuntimeError {
             | Self::InvalidRecoveryHydration
             | Self::CommandQueueCapacityExceeded { .. }
             | Self::ActiveRunCapacityZero
+            | Self::LruRingCapacityZero
             | Self::AdmissionArtifactNotFound { .. }
             | Self::AdmissionArtifactInvalid { .. }
             | Self::AdmissionCapabilityDenied { .. }

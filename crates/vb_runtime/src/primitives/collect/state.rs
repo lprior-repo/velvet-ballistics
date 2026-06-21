@@ -253,26 +253,21 @@ impl CollectStates {
         slot: SlotIdx,
         seq: vb_storage::EventSeq,
         value: Option<&[u8]>,
-        extra: &[u8],
+        extra: &vb_storage::SlotWriteExtra,
     ) -> Result<(), EngineError> {
-        match vb_storage::decode_slot_written_extra(extra) {
-            Ok(vb_storage::DecodedSlotWrittenExtra::Envelope(envelope)) => {
-                match envelope.frame_extra {
+        match extra {
+            vb_storage::SlotWriteExtra::Versioned(envelope) => {
+                match envelope.frame_extra.as_deref() {
                     Some(frame_extra) => {
-                        self.hydrate_frame_extra(run, slot, seq, value, &frame_extra)
+                        self.hydrate_frame_extra(run, slot, seq, value, frame_extra)
                     }
                     None => Ok(()),
                 }
             }
-            Ok(vb_storage::DecodedSlotWrittenExtra::LegacyFrameExtra(frame_extra)) => {
-                self.hydrate_frame_extra(run, slot, seq, value, frame_extra)
+            vb_storage::SlotWriteExtra::Legacy(frame_extra) => {
+                self.hydrate_frame_extra(run, slot, seq, value, frame_extra.as_slice())
             }
-            Err(_) => Err(EngineError::CollectExtraHydrationFailed {
-                kind: CollectExtraHydrationFailureKind::DecodeFailed,
-                run_id: run,
-                collector_slot: slot,
-                event_seq: Some(core_event_seq(seq)),
-            }),
+            _ => Ok(()),
         }
     }
 

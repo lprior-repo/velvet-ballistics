@@ -124,6 +124,17 @@ pub enum JournalError {
         /// Maximum allowed length.
         max: u32,
     },
+    /// Payload or entry-count length could not be represented as `u32`.
+    ///
+    /// Distinct from [`PayloadTooLarge`](Self::PayloadTooLarge): that variant
+    /// reports a payload that exceeded a *configured* `u32` maximum, while
+    /// this variant reports an observed length that cannot even fit in `u32`.
+    /// Carries the real `u64` observation rather than fabricating a `u32`.
+    #[error("length {len} exceeds u32::MAX and cannot be represented")]
+    PayloadLenOverflow {
+        /// Observed length that did not fit in `u32`.
+        len: u64,
+    },
     /// Header CRC32C did not match.
     #[error("record header checksum mismatch")]
     HeaderChecksumMismatch,

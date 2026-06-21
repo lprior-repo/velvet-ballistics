@@ -1,3 +1,7 @@
+#![forbid(unsafe_code)]
+#![deny(unused_must_use)]
+#![deny(rust_2018_idioms)]
+
 //! Velvet Ballistics Workspace Tests
 //!
 //! Test infrastructure and workspace-level testing support.

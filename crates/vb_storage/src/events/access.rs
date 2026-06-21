@@ -7,34 +7,82 @@ use super::variant::JournalEvent;
 use crate::{EventSeq, RecordKind};
 use vb_core::RunId;
 
+/// Match-arm fragment covering every `JournalEvent` variant and binding the
+/// named common field (`run` or `seq`).
+///
+/// Invoked at match-arm position; the OR-pattern it produces is followed by
+/// `=>` and a body at the call site. Used by `run_id` and `seq` so that
+/// adding a new variant only requires appending one line here.
+macro_rules! event_variants {
+    ($field:ident) => {
+        Self::RunAccepted { $field, .. }
+            | Self::RunAdmission { $field, .. }
+            | Self::StepStarted { $field, .. }
+            | Self::StepSucceeded { $field, .. }
+            | Self::ActionScheduled { $field, .. }
+            | Self::ActionCompletedEvent { $field, .. }
+            | Self::ActionScheduledTicket { $field, .. }
+            | Self::ActionCompletedEnvelope { $field, .. }
+            | Self::ActionFailedEvent { $field, .. }
+            | Self::SlotWrittenEvent { $field, .. }
+            | Self::WaitScheduledEvent { $field, .. }
+            | Self::WaitCancelledEvent { $field, .. }
+            | Self::AskScheduledEvent { $field, .. }
+            | Self::AskAnsweredEvent { $field, .. }
+            | Self::AskCancelledEvent { $field, .. }
+            | Self::RetryScheduledEvent { $field, .. }
+            | Self::RunCancelled { $field, .. }
+            | Self::RunKilled { $field, .. }
+            | Self::RunFinished { $field, .. }
+            | Self::RunFailedEvent { $field, .. }
+            | Self::RunResumed { $field, .. }
+            | Self::RunRetried { $field, .. }
+            | Self::RunAnswered { $field, .. }
+    };
+}
+
+/// Match expression for `attempt()`, emitted as a complete expression body.
+/// Three categories are recognised: direct `attempt: u16` field, `ticket.attempt`
+/// via the enclosed `ActionTicket`, and absent (returns `None`).
+///
+/// Invoked at expression position; macro_rules! cannot expand directly to
+/// match arms, so the entire match expression lives here.
+macro_rules! attempt_match {
+    ($self:expr) => {
+        match $self {
+            Self::ActionScheduled { attempt, .. }
+            | Self::ActionCompletedEvent { attempt, .. }
+            | Self::ActionFailedEvent { attempt, .. }
+            | Self::SlotWrittenEvent { attempt, .. }
+            | Self::WaitScheduledEvent { attempt, .. }
+            | Self::WaitCancelledEvent { attempt, .. }
+            | Self::AskScheduledEvent { attempt, .. }
+            | Self::AskAnsweredEvent { attempt, .. }
+            | Self::AskCancelledEvent { attempt, .. }
+            | Self::RetryScheduledEvent { attempt, .. }
+            | Self::StepStarted { attempt, .. }
+            | Self::RunCancelled { attempt, .. }
+            | Self::RunKilled { attempt, .. }
+            | Self::RunFinished { attempt, .. }
+            | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
+            Self::ActionScheduledTicket { ticket, .. }
+            | Self::ActionCompletedEnvelope { ticket, .. } => Some(ticket.attempt),
+            Self::RunAccepted { .. }
+            | Self::RunAdmission { .. }
+            | Self::StepSucceeded { .. }
+            | Self::RunResumed { .. }
+            | Self::RunRetried { .. }
+            | Self::RunAnswered { .. } => None,
+        }
+    };
+}
+
 impl JournalEvent {
     /// Run identifier carried by this event.
     #[must_use]
     pub const fn run_id(&self) -> RunId {
         match self {
-            Self::RunAccepted { run, .. }
-            | Self::RunAdmission { run, .. }
-            | Self::StepStarted { run, .. }
-            | Self::StepSucceeded { run, .. }
-            | Self::ActionScheduled { run, .. }
-            | Self::ActionCompletedEvent { run, .. }
-            | Self::ActionScheduledTicket { run, .. }
-            | Self::ActionCompletedEnvelope { run, .. }
-            | Self::ActionFailedEvent { run, .. }
-            | Self::SlotWrittenEvent { run, .. }
-            | Self::WaitScheduledEvent { run, .. }
-            | Self::WaitCancelledEvent { run, .. }
-            | Self::AskScheduledEvent { run, .. }
-            | Self::AskAnsweredEvent { run, .. }
-            | Self::AskCancelledEvent { run, .. }
-            | Self::RetryScheduledEvent { run, .. }
-            | Self::RunCancelled { run, .. }
-            | Self::RunKilled { run, .. }
-            | Self::RunFinished { run, .. }
-            | Self::RunFailedEvent { run, .. }
-            | Self::RunResumed { run, .. }
-            | Self::RunRetried { run, .. }
-            | Self::RunAnswered { run, .. } => *run,
+            event_variants!(run) => *run,
         }
     }
 
@@ -45,29 +93,7 @@ impl JournalEvent {
     #[must_use]
     pub const fn seq(&self) -> EventSeq {
         match self {
-            Self::RunAccepted { seq, .. }
-            | Self::RunAdmission { seq, .. }
-            | Self::StepStarted { seq, .. }
-            | Self::StepSucceeded { seq, .. }
-            | Self::ActionScheduled { seq, .. }
-            | Self::ActionCompletedEvent { seq, .. }
-            | Self::ActionScheduledTicket { seq, .. }
-            | Self::ActionCompletedEnvelope { seq, .. }
-            | Self::ActionFailedEvent { seq, .. }
-            | Self::SlotWrittenEvent { seq, .. }
-            | Self::WaitScheduledEvent { seq, .. }
-            | Self::WaitCancelledEvent { seq, .. }
-            | Self::AskScheduledEvent { seq, .. }
-            | Self::AskAnsweredEvent { seq, .. }
-            | Self::AskCancelledEvent { seq, .. }
-            | Self::RetryScheduledEvent { seq, .. }
-            | Self::RunCancelled { seq, .. }
-            | Self::RunKilled { seq, .. }
-            | Self::RunFinished { seq, .. }
-            | Self::RunFailedEvent { seq, .. }
-            | Self::RunResumed { seq, .. }
-            | Self::RunRetried { seq, .. }
-            | Self::RunAnswered { seq, .. } => *seq,
+            event_variants!(seq) => *seq,
         }
     }
 
@@ -126,31 +152,7 @@ impl JournalEvent {
     /// attempt 1 by the replay filtering logic (PRE-001).
     #[must_use]
     pub const fn attempt(&self) -> Option<u16> {
-        match self {
-            Self::ActionScheduled { attempt, .. }
-            | Self::ActionCompletedEvent { attempt, .. }
-            | Self::ActionFailedEvent { attempt, .. }
-            | Self::SlotWrittenEvent { attempt, .. }
-            | Self::WaitScheduledEvent { attempt, .. }
-            | Self::WaitCancelledEvent { attempt, .. }
-            | Self::AskScheduledEvent { attempt, .. }
-            | Self::AskAnsweredEvent { attempt, .. }
-            | Self::AskCancelledEvent { attempt, .. }
-            | Self::RetryScheduledEvent { attempt, .. }
-            | Self::StepStarted { attempt, .. }
-            | Self::RunCancelled { attempt, .. }
-            | Self::RunKilled { attempt, .. }
-            | Self::RunFinished { attempt, .. }
-            | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
-            Self::ActionScheduledTicket { ticket, .. }
-            | Self::ActionCompletedEnvelope { ticket, .. } => Some(ticket.attempt),
-            Self::RunAccepted { .. }
-            | Self::RunAdmission { .. }
-            | Self::StepSucceeded { .. }
-            | Self::RunResumed { .. }
-            | Self::RunRetried { .. }
-            | Self::RunAnswered { .. } => None,
-        }
+        attempt_match!(self)
     }
 
     /// Returns the deadline duration in milliseconds for wait/ask events.

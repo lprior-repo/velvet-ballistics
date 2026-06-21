@@ -12,9 +12,87 @@
 //! (key bytes + value bytes). The caller (doctor command) is responsible
 //! for reading entries from the journal keyspace.
 
+use std::ops::ControlFlow;
+
 use crate::JournalError;
 use crate::keys::decode_storage_key;
 use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
+
+/// Per-iteration state threaded through `process_entry`.
+struct PreviewState {
+    records_yielded: usize,
+    bytes_accumulated: u32,
+    truncated: bool,
+    max_records_val: usize,
+    max_bytes_val: u32,
+}
+
+impl PreviewState {
+    /// Create a fresh `PreviewState` from the configured caps.
+    const fn new(max_records_val: usize, max_bytes_val: u32) -> Self {
+        Self {
+            records_yielded: 0,
+            bytes_accumulated: 0,
+            truncated: false,
+            max_records_val,
+            max_bytes_val,
+        }
+    }
+}
+
+/// Check whether admitting `payload_len` extra bytes would exceed `max_bytes`.
+///
+/// Returns `Ok(new_accumulated)` if the record fits within the cap, or
+/// `Err(())` if the projected running total would exceed `max_bytes`.
+/// The sum is computed with `saturating_add` per the defensive-coding rule.
+const fn try_admit_record(
+    bytes_accumulated: u32,
+    payload_len: u32,
+    max_bytes: u32,
+) -> Result<u32, ()> {
+    let projected = bytes_accumulated.saturating_add(payload_len);
+    if projected > max_bytes {
+        Err(())
+    } else {
+        Ok(projected)
+    }
+}
+
+/// Process a single (key, value) entry: decode, byte-cap check, records-cap check, append.
+///
+/// Returns `ControlFlow::Break(())` once either cap has been hit and the
+/// caller should stop iterating, or `ControlFlow::Continue(())` if the
+/// entry was admitted (or silently skipped because of an invalid key).
+fn process_entry(
+    (key_bytes, value_bytes): (&[u8], &[u8]),
+    result_entries: &mut Vec<(StorageKey, Vec<u8>, PreviewPayload)>,
+    state: &mut PreviewState,
+) -> Result<ControlFlow<()>, JournalError> {
+    let key = match decode_storage_key(key_bytes) {
+        Ok(k) => k,
+        Err(_) => return Ok(ControlFlow::Continue(())),
+    };
+    let payload_len =
+        u32::try_from(value_bytes.len()).map_err(|_| JournalError::PayloadLenOverflow {
+            len: value_bytes.len() as u64,
+        })?;
+    if state.records_yielded >= state.max_records_val {
+        state.truncated = true;
+        return Ok(ControlFlow::Break(()));
+    }
+    match try_admit_record(state.bytes_accumulated, payload_len, state.max_bytes_val) {
+        Ok(new_total) => {
+            state.bytes_accumulated = new_total;
+            result_entries.push((key, value_bytes.to_vec(), PreviewPayload::Raw));
+            state.records_yielded = state.records_yielded.saturating_add(1);
+            Ok(ControlFlow::Continue(()))
+        }
+        Err(()) => {
+            state.truncated = true;
+            Ok(ControlFlow::Break(()))
+        }
+    }
+}
 
 /// Produces a bounded preview from a slice of keyspace entries.
 ///
@@ -39,70 +117,35 @@ use crate::types::{DecodedPreview, PreviewConfig, PreviewPayload, StorageKey};
 ///
 /// # Errors
 ///
-/// Returns `JournalError::PayloadTooLarge` if any entry's value bytes
-/// length exceeds `u32::MAX`, guarding against silent truncation on
-/// 64-bit platforms.
+/// Returns `JournalError::PayloadLenOverflow` if any entry's value bytes
+/// length exceeds `u32::MAX`, carrying the real observed length, or if
+/// `entries.len()` overflows `u64` on 32-bit platforms.
 pub fn preview_keyspace(
     config: PreviewConfig,
     entries: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<DecodedPreview, JournalError> {
-    let max_records_val = config.max_records().get();
-    let max_bytes_val = config.max_bytes();
-
-    let mut result_entries: Vec<(StorageKey, Vec<u8>, PreviewPayload)> = Vec::new();
-    let mut records_yielded: usize = 0;
-    let mut bytes_accumulated: u32 = 0;
-    let mut truncated = false;
-    let total_entries =
-        u64::try_from(entries.len()).map_err(|_| JournalError::PayloadTooLarge {
-            len: u32::MAX,
-            max: u32::MAX,
-        })?;
-
-    for (key_bytes, value_bytes) in entries {
-        // Decode the key. Corrupt keys are silently skipped
-        // (consistent with production doctor behavior).
-        let key = match decode_storage_key(key_bytes) {
-            Ok(k) => k,
-            Err(_) => continue,
-        };
-
-        let payload_len =
-            u32::try_from(value_bytes.len()).map_err(|_| JournalError::PayloadTooLarge {
-                len: u32::MAX,
-                max: u32::MAX,
-            })?;
-
-        // Record cap: stop if we've already yielded max_records.
-        if records_yielded >= max_records_val {
-            truncated = true;
+    let total_entries = u64::try_from(entries.len())
+        .map_err(|_| JournalError::PayloadLenOverflow { len: entries.len() as u64 })?;
+    let mut result: Vec<(StorageKey, Vec<u8>, PreviewPayload)> = Vec::new();
+    let mut state = PreviewState::new(config.max_records().get(), config.max_bytes());
+    for (k, v) in entries {
+        if process_entry((k, v), &mut result, &mut state)?.is_break() {
             break;
         }
-
-        // Byte cap: HARD cap — do NOT include this record if it would
-        // cause bytes_accumulated to exceed max_bytes.
-        // Uses saturating_add as defensive coding (GOD RULE 3).
-        let projected = bytes_accumulated.saturating_add(payload_len);
-        if projected > max_bytes_val {
-            truncated = true;
-            break;
-        }
-
-        // Both caps not hit: include this record.
-        bytes_accumulated = projected; // Safe: checked projected <= max_bytes_val
-        result_entries.push((key, value_bytes.clone(), PreviewPayload::Raw));
-        records_yielded = records_yielded.saturating_add(1);
     }
-
     Ok(DecodedPreview {
-        entries: result_entries,
+        entries: result,
         total_keyspace_records: total_entries,
-        truncated,
+        truncated: state.truncated,
     })
 }
 
 #[cfg(test)]
-mod preview_red_queen_tests;
+mod preview_red_queen_bytes_props;
+#[cfg(test)]
+mod preview_red_queen_keys_props;
+#[cfg(test)]
+mod preview_red_queen_records_props;
 
 #[cfg(test)]
 mod tests {

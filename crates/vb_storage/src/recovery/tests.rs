@@ -3237,7 +3237,7 @@ mod hydrate_run_frame_tests {
         ActionReplayTracker, RecoveryError, RunSnapshot, hydrate_run_frame,
         hydrate_run_frame_from_events,
     };
-    use crate::{DurableActionOutcome, EventSeq, JournalEvent};
+    use crate::{DurableActionOutcome, EventSeq, JournalError, JournalEvent};
     use vb_core::action::{ActionTicket, MockMarker, compute_action_idempotency_key};
     use vb_core::value::{SlotValue, Taint};
     use vb_core::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, StepState, WorkflowDigest};
@@ -3428,7 +3428,7 @@ mod hydrate_run_frame_tests {
     }
 
     #[test]
-    fn hydrate_run_frame_from_events_rejects_corrupt_slot_taint_metadata() {
+    fn hydrate_run_frame_from_events_accepts_legacy_prefixed_bytes() {
         let run = RunId::new(1);
         let slot = SlotIdx::new(0);
         let events = vec![
@@ -3448,14 +3448,26 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(2),
                 slot,
                 value: Some(postcard::to_allocvec(&SlotValue::Bool(false)).expect("serialize")),
-                extra: Some(corrupt_slot_taint_envelope()),
+                extra: Some(crate::events::SlotWriteExtra::Legacy(
+                    corrupt_slot_taint_envelope(),
+                )),
                 attempt: 1,
             },
         ];
 
         let result = hydrate_run_frame_from_events(&events, run);
+        assert!(
+            result.is_ok(),
+            "legacy bytes with v1 prefix are accepted as legacy frame-extra, got: {result:?}"
+        );
+    }
 
-        assert!(matches!(result, Err(RecoveryError::CorruptSlotTaint { slot: s }) if s == slot));
+    #[test]
+    fn slot_write_extra_parse_rejects_corrupt_envelope_payload() {
+        let bytes = corrupt_slot_taint_envelope();
+        let err = crate::events::SlotWriteExtra::parse(&bytes)
+            .expect_err("corrupt envelope must fail parse");
+        assert!(matches!(err, JournalError::PostcardDecodeFailed));
     }
 
     #[test]
@@ -3479,7 +3491,7 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(2),
                 slot,
                 value: Some(postcard::to_allocvec(&SlotValue::Bool(false)).expect("serialize")),
-                extra: Some(vec![1, 2, 3, 4]),
+                extra: Some(crate::events::SlotWriteExtra::Legacy(vec![1, 2, 3, 4])),
                 attempt: 1,
             },
         ];
