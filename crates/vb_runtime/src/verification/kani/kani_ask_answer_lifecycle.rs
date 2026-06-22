@@ -124,51 +124,6 @@ fn kani_ask_answer_append_failure_no_timer() {
             let timer_count = shard.pending_timers.len();
             kani::assert(
                 timer_count == 0,
-                "apply(AwaitAction) must set Resumable state",
-            );
-        }
-    }
-}
-
-// =========================================================================
-// PO-vb282my-AA-KANI-002: Append failure
-// When journal append fails, apply is not called.
-// Test that apply only runs after successful append by verifying
-// the append_journal_event stub returns both Ok and Err paths.
-// =========================================================================
-
-#[kani::proof]
-#[kani::unwind(10)]
-fn kani_ask_answer_append_failure_no_timer() {
-    let mut shard = new_shard();
-    let run = any_run_id();
-
-    // Call production append_journal_event (stubbed under kani — returns kani::any())
-    let ask_event = RuntimeJournalEvent::AskScheduled {
-        run,
-        step: vb_core::ids::StepIdx::new(0),
-    };
-    let append_result = shard.append_journal_event(ask_event);
-
-    // After append_journal_event, journal_sequences may or may not be updated
-    // depending on the stub result. The production code in await_timer only
-    // calls pending_timers.insert() if append_journal_event returned Ok.
-    //
-    // Verify: if append fails (Err), pending_timers must remain unchanged.
-    // We check by verifying the append_journal_event call succeeded/failed.
-
-    match append_result {
-        Ok(()) => {
-            // On success, journal_sequence should be advanced
-            // The stub returns Ok(()) and advance_journal_sequence is called.
-            // journal_sequences may contain the sequence if the stub advanced it.
-        }
-        Err(_) => {
-            // On failure, pending_timers must NOT be modified
-            // Since we started with empty pending_timers, it should still be empty.
-            let timer_count = shard.pending_timers.len();
-            kani::kani::assert(
-                timer_count == 0,
                 "append failure must not modify pending_timers",
             );
         }
@@ -310,7 +265,7 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
 
     shard.apply(run, RuntimeEvent::AwaitTimer);
     let state = shard.runtime_state_get(run);
-    kani::kani::assert(
+    kani::assert(
         state == Some(RuntimeState::Resumable),
         "after AwaitTimer, state is Resumable",
     );
@@ -318,7 +273,7 @@ fn kani_ask_answer_slot_written_failure_skip_ask_answered() {
     // Verify that calling apply(AwaitTimer) again is idempotent
     shard.apply(run, RuntimeEvent::AwaitTimer);
     let state2 = shard.runtime_state_get(run);
-    kani::kani::assert(
+    kani::assert(
         state2 == Some(RuntimeState::Resumable),
         "apply(AwaitTimer) is idempotent",
     );
@@ -368,56 +323,7 @@ fn kani_ask_answer_journal_monotonicity() {
             // On failure, sequence must NOT be advanced
             // (advance_journal_sequence is only called on Ok path)
             let after_seq = shard.journal_seq_get(run);
-            kani::assert(after_seq == 0, "apply(AwaitTimer) is idempotent");
-        }
-    }
-}
-
-// =========================================================================
-// PO-vb282my-AA-KANI-006: Journal sequence monotonicity
-// Each successful append increments per-run sequence counter;
-// no duplicate seq per run.
-// Test the production advance_journal_sequence via append_journal_event.
-// =========================================================================
-
-#[kani::proof]
-#[kani::unwind(20)]
-fn kani_ask_answer_journal_monotonicity() {
-    let mut shard = new_shard();
-    let run = any_run_id();
-
-    // Record initial sequence state
-    let initial_seq = shard.journal_seq_get(run);
-
-    // Call production append_journal_event (stubbed under kani — returns kani::any())
-    // When it returns Ok, advance_journal_sequence is called internally.
-    let event = RuntimeJournalEvent::AskScheduled {
-        run,
-        step: vb_core::ids::StepIdx::new(0),
-    };
-    let result = shard.append_journal_event(event);
-
-    // Verify sequence behavior based on stub result
-    match result {
-        Ok(()) => {
-            // On success, advance_journal_sequence should have incremented the sequence
-            let after_seq = shard.journal_seq_get(run);
-            match (initial_seq, after_seq) {
-                (None, Some(new_seq)) => {
-                    // First append: sequence should be ZERO + 1 = 1
-                }
-                (Some(old), Some(new)) => {
-                    // Subsequent append: new must be old + 1
-                    // But only if the stub returned Ok AND advance_journal_sequence succeeded
-                }
-                _ => {}
-            }
-        }
-        Err(_) => {
-            // On failure, sequence must NOT be advanced
-            // (advance_journal_sequence is only called on Ok path)
-            let after_seq = shard.journal_seq_get(run);
-            kani::kani::assert(
+            kani::assert(
                 after_seq == initial_seq,
                 "append failure must not advance sequence",
             );

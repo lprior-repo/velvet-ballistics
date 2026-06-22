@@ -136,37 +136,6 @@ fn proof_replay_divergence_same_key_different_ticket() {
     kani::assume(ticket_b.idempotency_key == key);
     kani::assume(ticket_b.attempt != ticket_a.attempt);
 
-    let len_after_a = tracker.insert(ticket_a);
-    let len_after_b = tracker.insert(ticket_b);
-    kani::assert(
-        len_after_a == len_after_b,
-        "duplicate completion must not change tracker length",
-    );
-}
-
-// =========================================================================
-// FWH-006: Duplicate completion with different digest — replay divergence
-// =========================================================================
-
-/// FWH-006: Two tickets with the same idempotency_key but different
-/// attempt numbers represent a replay divergence. The tracker correctly
-/// rejects the second because it keys on idempotency_key only.
-///
-/// Property: If ticket_a.key == ticket_b.key but ticket_a != ticket_b,
-/// then mark_completed(ticket_b) returns CompletionAlreadyRecorded.
-#[kani::proof]
-#[kani::unwind(12)]
-fn proof_replay_divergence_same_key_different_ticket() {
-    let capacity = any_bounded_capacity();
-    let mut tracker = IdempotencyTracker::new(capacity);
-
-    let key = kani::any::<u128>();
-    let mut ticket_a = any_bounded_ticket();
-    kani::assume(ticket_a.idempotency_key == key);
-    let mut ticket_b = any_bounded_ticket();
-    kani::assume(ticket_b.idempotency_key == key);
-    kani::assume(ticket_b.attempt != ticket_a.attempt);
-
     kani::assert(
         ticket_a != ticket_b,
         "tickets must differ (different attempt)",
@@ -306,57 +275,11 @@ fn proof_track_for_policy_deterministic_pure_always_new() {
     let first = tracker.track_for_policy(Idempotency::DeterministicPure, key);
     let second = tracker.track_for_policy(Idempotency::DeterministicPure, key);
 
-    kani::assert(
-        first.is_ok() && second.is_ok(),
-        "DeterministicPure must always succeed",
-    );
-    let (v1, v2) = (first.unwrap(), second.unwrap());
-    kani::assert(
-        v1 != v2,
-        "DeterministicPure must produce distinct keys for same logical key",
-    );
-}
-
-// =========================================================================
-// Policy-aware tracking invariants
-// =========================================================================
-
-/// Proof: track_for_policy is idempotent for DeterministicPure.
-#[kani::proof]
-#[kani::unwind(8)]
-fn proof_track_for_policy_deterministic_pure_always_new() {
-    let mut tracker = IdempotencyTracker::with_default_capacity();
-    let key = kani::any::<u128>();
-
-    let first = tracker.track_for_policy(Idempotency::DeterministicPure, key);
-    let second = tracker.track_for_policy(Idempotency::DeterministicPure, key);
-
     kani::assert(first, "first track must return true");
     kani::assert(second, "second track must also return true (no tracking)");
     kani::assert(
         !tracker.is_completed_for_policy(Idempotency::DeterministicPure, key),
         "DeterministicPure must never be tracked",
-    );
-}
-
-/// Proof: track_for_policy deduplicates for AtLeastOnceExternal.
-#[kani::proof]
-#[kani::unwind(8)]
-fn proof_track_for_policy_at_least_once_deduplicates() {
-    let mut tracker = IdempotencyTracker::with_default_capacity();
-    let key = kani::any::<u128>();
-
-    let first = tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key);
-    let second = tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key);
-
-    kani::assert(
-        first.is_ok() && second.is_ok(),
-        "AtLeastOnceExternal must succeed for both calls",
-    );
-    let (v1, v2) = (first.unwrap(), second.unwrap());
-    kani::assert(
-        v1 == v2,
-        "AtLeastOnceExternal must deduplicate same logical key",
     );
 }
 
