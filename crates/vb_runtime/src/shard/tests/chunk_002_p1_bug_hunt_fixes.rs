@@ -187,7 +187,7 @@ fn evidence_collector_push_event_round_trips_drain() {
         SlotValue::I64(42),
         Taint::Clean,
     );
-    collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)));
+    collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(0)), 1);
 
     let drained: Vec<EvidenceEvent> = collector.drain();
     assert_eq!(drained.len(), 3);

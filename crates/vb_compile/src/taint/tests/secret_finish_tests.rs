@@ -34,8 +34,8 @@ steps:
     finish:
       result: 1
 "#;
-    let workflow = compile_workflow(source)
-        .expect("Section 47: secret in Finish must compile, got ");
+    let workflow =
+        compile_workflow(source).expect("Section 47: secret in Finish must compile, got ");
     assert!(
         workflow.finish_contains_secret_data(),
         "Finish result must preserve secret data per Section 47"
@@ -126,8 +126,7 @@ steps:
     finish:
       result: 0
 "#;
-    let workflow = compile_workflow(source)
-        .expect("clean Finish must compile, got ");
+    let workflow = compile_workflow(source).expect("clean Finish must compile, got ");
     assert!(
         !workflow.finish_contains_secret_data(),
         "clean Finish (non-secret input) must NOT contain secret data per Section 47"
@@ -148,8 +147,7 @@ steps:
     finish:
       result: 0
 "#;
-    let workflow = compile_workflow(source)
-        .expect("literal Finish must compile, got ");
+    let workflow = compile_workflow(source).expect("literal Finish must compile, got ");
     assert!(
         !workflow.finish_contains_secret_data(),
         "literal Finish (non-secret value) must NOT contain secret data per Section 47"
@@ -174,8 +172,7 @@ steps:
     finish:
       result: 1
 "#;
-    let workflow = compile_workflow(source)
-        .expect("var Finish must compile, got ");
+    let workflow = compile_workflow(source).expect("var Finish must compile, got ");
     assert!(
         workflow.finish_contains_secret_data(),
         "Finish result must preserve secret data per Section 47"
@@ -390,8 +387,8 @@ steps:
     finish:
       result: 1
 "#;
-    let workflow = compile_workflow(source)
-        .expect("unknown reference root in Finish must compile, got ");
+    let workflow =
+        compile_workflow(source).expect("unknown reference root in Finish must compile, got ");
     assert!(
         workflow.finish_contains_secret_data(),
         "Finish result must preserve secret data per Section 47"
@@ -412,8 +409,8 @@ steps:
     finish:
       result: 1
 "#;
-    let workflow = compile_workflow(source)
-        .expect("non-dollar reference in Finish must compile, got ");
+    let workflow =
+        compile_workflow(source).expect("non-dollar reference in Finish must compile, got ");
     assert!(
         workflow.finish_contains_secret_data(),
         "Finish result must preserve secret data per Section 47"
@@ -475,8 +472,7 @@ steps:
     finish:
       result: 0
 "#;
-    let workflow = compile_workflow(source)
-        .expect("clean input in Save should compile, got ");
+    let workflow = compile_workflow(source).expect("clean input in Save should compile, got ");
     assert!(
         !workflow.finish_contains_secret_data(),
         "clean Finish (non-secret input) must NOT contain secret data per Section 47"

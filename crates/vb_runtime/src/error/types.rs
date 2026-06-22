@@ -335,4 +335,14 @@ pub enum RuntimeError {
         /// Observed runtime state at the time of the rejected Resume.
         current_state: RuntimeState,
     },
+    /// `ShardConfig` validation rejected one or more fields.
+    ///
+    /// `errors` carries every invalid field as a typed `RuntimeError`,
+    /// in field declaration order. Replaces the previous field-by-field
+    /// validators that hid later failures (RS-217: shard config
+    /// validation omitted fields).
+    ConfigInvalid {
+        /// Per-field validation failures, in field declaration order.
+        errors: Vec<RuntimeError>,
+    },
 }

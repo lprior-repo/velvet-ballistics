@@ -202,18 +202,17 @@ const fn build_registry() -> [CodeEntry; TOTAL_LEN] {
 }
 
 const fn copy_slice(src: &[CodeEntry], dst: &mut [CodeEntry; TOTAL_LEN], i: &mut usize) {
-    let mut j: usize = 0;
-    while j < src.len() {
-        if let Some((dst_slot, src_val)) = dst.get_mut(*i).zip(src.get(j)) {
-            *dst_slot = *src_val;
-        }
+    let (_, tail) = dst.split_at_mut(*i);
+    copy_src_into(src, tail, i);
+}
+
+const fn copy_src_into(src: &[CodeEntry], dst: &mut [CodeEntry], i: &mut usize) {
+    if let ([src_head, src_tail @ ..], Some((dst_first, dst_tail))) = (src, dst.split_first_mut()) {
+        *dst_first = *src_head;
         *i = match i.checked_add(1) {
             Some(next) => next,
             None => return,
         };
-        j = match j.checked_add(1) {
-            Some(next) => next,
-            None => return,
-        };
+        copy_src_into(src_tail, dst_tail, i);
     }
 }

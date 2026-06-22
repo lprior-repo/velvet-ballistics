@@ -331,15 +331,11 @@ fn build_shards() -> (Shard, Shard, Arc<CountingJournal>, Arc<CountingJournal>) 
     let journal_b: SharedRuntimeJournal = counting_b.clone();
 
     let artifact_store: SharedAcceptedArtifactStore = AlwaysPresentArtifactStore::shared();
-    let shard_a = Shard::new_with_journal_and_artifact_store(
-        config_a,
-        journal_a,
-        artifact_store.clone(),
-    )
-    .expect("shard config is valid");
-    let shard_b =
-        Shard::new_with_journal_and_artifact_store(config_b, journal_b, artifact_store)
+    let shard_a =
+        Shard::new_with_journal_and_artifact_store(config_a, journal_a, artifact_store.clone())
             .expect("shard config is valid");
+    let shard_b = Shard::new_with_journal_and_artifact_store(config_b, journal_b, artifact_store)
+        .expect("shard config is valid");
 
     (shard_a, shard_b, counting_a, counting_b)
 }

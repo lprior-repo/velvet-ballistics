@@ -249,8 +249,7 @@ mod tests {
     fn run_killed_roundtrip_via_postcard() {
         let original = IpcTraceEventKind::RunKilled { run: run_id(42) };
         let encoded = postcard::to_allocvec(&original).expect("encode");
-        let decoded: IpcTraceEventKind =
-            postcard::from_bytes(&encoded).expect("decode");
+        let decoded: IpcTraceEventKind = postcard::from_bytes(&encoded).expect("decode");
         assert_eq!(decoded, original);
     }
 

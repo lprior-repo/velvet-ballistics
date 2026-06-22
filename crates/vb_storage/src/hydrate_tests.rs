@@ -106,7 +106,6 @@
     clippy::unwrap_or_default,
     clippy::default_trait_access
 )]
-
 #![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(
@@ -120,7 +119,9 @@
 )]
 mod hydrate_tests {
     use crate::EventSeq;
+    use crate::events::JournalEvent;
     use crate::recovery::{
+        RecoveryError, RunSnapshot,
         hydrate::{
             invariants::{SnapshotRecoveryInputViolation, TailEventMetadata},
             validate_recovery_data_present, validate_snapshot_metadata,
@@ -128,9 +129,7 @@ mod hydrate_tests {
             validate_tail_first_seq_contiguous_with_snapshot, validate_tail_run_metadata,
             validate_tail_seq_after_snapshot,
         },
-        RecoveryError, RunSnapshot,
     };
-    use crate::events::JournalEvent;
     use vb_core::{RunId, StepIdx, WorkflowDigest};
 
     #[test]
@@ -204,7 +203,10 @@ mod hydrate_tests {
         let snapshot_seq = EventSeq::new(5);
         let result = validate_tail_seq_after_snapshot(meta, snapshot_seq);
         assert!(
-            matches!(result, Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })),
+            matches!(
+                result,
+                Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })
+            ),
             "equal seq should be rejected, got {:?}",
             result
         );
@@ -216,7 +218,10 @@ mod hydrate_tests {
         let snapshot_seq = EventSeq::new(5);
         let result = validate_tail_seq_after_snapshot(meta, snapshot_seq);
         assert!(
-            matches!(result, Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })),
+            matches!(
+                result,
+                Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot { .. })
+            ),
             "smaller seq should be rejected, got {:?}",
             result
         );
@@ -278,13 +283,21 @@ mod hydrate_tests {
             &[event_at(RunId::new(20), EventSeq::new(6))],
             EventSeq::new(5),
         );
-        assert!(result.is_ok(), "seq 6 must be contiguous with snapshot seq 5, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "seq 6 must be contiguous with snapshot seq 5, got {:?}",
+            result
+        );
     }
 
     #[test]
     fn validate_tail_first_seq_contiguous_accepts_empty_tail() {
         let result = validate_tail_first_seq_contiguous_with_snapshot(&[], EventSeq::new(5));
-        assert!(result.is_ok(), "empty tail must succeed (nothing to verify), got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "empty tail must succeed (nothing to verify), got {:?}",
+            result
+        );
     }
 
     #[test]
@@ -371,7 +384,11 @@ mod hydrate_tests {
         };
         let tail = vec![event_at(run, EventSeq::new(4))];
         let result = validate_snapshot_recovery_inputs(&snapshot, &tail, run);
-        assert!(result.is_ok(), "contiguous tail should validate, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "contiguous tail should validate, got {:?}",
+            result
+        );
     }
 
     #[test]

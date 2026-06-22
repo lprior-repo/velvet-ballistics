@@ -107,11 +107,11 @@
     clippy::default_trait_access
 )]
 use super::*;
+use crate::constants::MAX_RUN_HEADER_BYTES;
 use crate::{
     BlobRecord, EventSeq, IndexStatusState, JournalEvent, constants::DIGEST_BYTES,
     recovery::RunSnapshot,
 };
-use crate::constants::MAX_RUN_HEADER_BYTES;
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 fn temp_journal() -> (tempfile::TempDir, crate::FjallJournal) {
@@ -945,9 +945,7 @@ fn batch_append_event_intra_batch_dedup_aborts_batch() {
     let event = make_event(run, 0);
 
     let mut batch = JournalWriteBatch::new(&journal);
-    batch
-        .append_event(&event)
-        .expect("first append succeeds");
+    batch.append_event(&event).expect("first append succeeds");
     let dup = batch.append_event(&event);
     assert!(matches!(dup, Err(JournalError::DuplicateEvent { .. })));
     // After abort, put_run_header still inserts into the inner batch but
@@ -1102,9 +1100,7 @@ fn sa002_commit_aborted_batch_returns_typed_error_not_silent_ok() {
                 "abort reason must identify the staging method that aborted the batch"
             );
         }
-        other => panic!(
-            "aborted commit must return Err(BatchAborted), got {other:?}"
-        ),
+        other => panic!("aborted commit must return Err(BatchAborted), got {other:?}"),
     }
 }
 
@@ -1141,7 +1137,10 @@ fn sa002_aborted_batch_commit_does_not_persist_staged_writes() {
         "aborted batch must not persist run header"
     );
     let events = journal.events_for_run(run).expect("replay");
-    assert!(events.is_empty(), "aborted batch must not persist any event");
+    assert!(
+        events.is_empty(),
+        "aborted batch must not persist any event"
+    );
 }
 
 #[test]

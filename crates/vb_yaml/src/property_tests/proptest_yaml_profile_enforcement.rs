@@ -25,8 +25,7 @@ use proptest::prelude::*;
 
 use crate::events::collect_events;
 use crate::{
-    YamlError, reject_duplicate_keys, reject_yaml_1_1_ambiguous_scalars,
-    validate_yaml_profile,
+    YamlError, reject_duplicate_keys, reject_yaml_1_1_ambiguous_scalars, validate_yaml_profile,
 };
 
 fn arb_safe_key() -> impl Strategy<Value = String> {

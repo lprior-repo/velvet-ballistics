@@ -5,10 +5,10 @@ fn test_first_do_action(workflow: &CompiledWorkflow) -> Option<vb_core::ids::Act
     let count = workflow.node_count();
     while index < count {
         let step = StepIdx::new(index);
-        if let Some(node) = workflow.node(step) {
-            if let vb_core::workflow::CompiledNodeKind::Do { action, .. } = node.kind {
-                return Some(action);
-            }
+        if let Some(node) = workflow.node(step)
+            && let vb_core::workflow::CompiledNodeKind::Do { action, .. } = &node.kind
+        {
+            return Some(*action);
         }
         index = index.saturating_add(1);
     }

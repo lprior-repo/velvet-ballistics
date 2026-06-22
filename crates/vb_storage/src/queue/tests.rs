@@ -1249,7 +1249,9 @@ mod internal_tests {
             producer_result.is_ok(),
             "concurrent enqueue during flush_batch must succeed (mutex was released)"
         );
-        let report2 = queue.flush_batch(&journal).expect("second flush should succeed");
+        let report2 = queue
+            .flush_batch(&journal)
+            .expect("second flush should succeed");
         assert_eq!(report2.written, 1);
     }
 

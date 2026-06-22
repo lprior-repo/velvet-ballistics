@@ -336,7 +336,8 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() -> Result<(), Run
 }
 
 #[test]
-fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs() -> Result<(), RuntimeError> {
+fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs()
+-> Result<(), RuntimeError> {
     // Given: two independent resume failures with distinguishable runtime sources.
     let first_error =
         resume_error_from_resumed_append_failure(RunId::new(600), RuntimeError::QueueFull);
@@ -364,7 +365,8 @@ fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs() ->
 }
 
 #[test]
-fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_failure() -> Result<(), RuntimeError> {
+fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_failure()
+-> Result<(), RuntimeError> {
     // Given: the thread has already observed a sourced resume journal failure.
     let prior_error =
         resume_error_from_resumed_append_failure(RunId::new(602), RuntimeError::JournalPoisoned);
@@ -387,7 +389,8 @@ fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_fa
 }
 
 #[test]
-fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source() -> Result<(), RuntimeError> {
+fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source()
+-> Result<(), RuntimeError> {
     // Given: a prior resume failure recorded a non-default runtime source on this thread.
     let prior_error =
         resume_error_from_resumed_append_failure(RunId::new(603), RuntimeError::QueueFull);
@@ -412,7 +415,8 @@ fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source() -> R
 }
 
 #[test]
-fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() -> Result<(), RuntimeError> {
+fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() -> Result<(), RuntimeError>
+{
     // Given: a real resume failure recorded QueueFull, but nobody has observed
     // that returned error's source yet. This leaves the vulnerable stale-source
     // design with a pending source that is not bound to the returned error.
@@ -437,7 +441,8 @@ fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() -> Resul
 }
 
 #[test]
-fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source() -> Result<(), RuntimeError> {
+fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source()
+-> Result<(), RuntimeError> {
     // Given: a real resume failure recorded JournalPoisoned, but its source has
     // not been observed or bound yet.
     let unobserved_error =
@@ -582,7 +587,8 @@ fn handle_submit_propagates_journal_failure_before_drive_run() -> Result<(), Run
 /// The journal must contain RunSubmitted BEFORE RunAdmission (per handle_submit
 /// ordering: RunSubmitted append first, then RunAdmission append).
 #[test]
-fn handle_submit_journal_event_ordering_run_submitted_before_admission() -> Result<(), RuntimeError> {
+fn handle_submit_journal_event_ordering_run_submitted_before_admission() -> Result<(), RuntimeError>
+{
     let journal = Arc::new(VolatileRuntimeJournal::new());
     let mut shard = Shard::new_with_journal(small_config(), journal.clone())?;
 

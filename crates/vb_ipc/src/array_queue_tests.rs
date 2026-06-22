@@ -41,7 +41,10 @@ fn make_frame(run_id_val: u64, payload_bytes: impl Into<Bytes>) -> IngressFrame 
         MaxPayloadBytes::DEFAULT,
     )
     .unwrap_or_else(|e| {
-        panic!("test frame must be valid, got {:?} for run_id={}", e, run_id_val)
+        panic!(
+            "test frame must be valid, got {:?} for run_id={}",
+            e, run_id_val
+        )
     })
 }
 
@@ -77,7 +80,11 @@ fn memory_ingress_bounded_constructor_produces_memory_ingress_instance() {
     let recv_result = ingress.try_recv();
     let recv_frame = recv_result.expect("recv from fresh queue must succeed");
     let recv_frame = recv_frame.expect("recv from fresh queue must return Some(frame)");
-    assert_eq!(recv_frame.run_id(), RunId::new(1), "recv frame must have correct run_id");
+    assert_eq!(
+        recv_frame.run_id(),
+        RunId::new(1),
+        "recv frame must have correct run_id"
+    );
     assert_eq!(recv_frame.workflow(), WorkflowDigest::from_bytes([0u8; 32]));
 }
 
@@ -277,7 +284,10 @@ fn bounded_payload_new_accepts_empty_payload_for_any_limit() {
     for limit in limits {
         let result = BoundedPayload::new(Bytes::new(), limit);
         let bounded = result.unwrap_or_else(|e| {
-            panic!("empty payload must be accepted with limit {:?}: {:?}", limit, e)
+            panic!(
+                "empty payload must be accepted with limit {:?}: {:?}",
+                limit, e
+            )
         });
         assert_eq!(
             bounded.bytes().len(),
@@ -429,7 +439,10 @@ fn memory_ingress_try_recv_returns_none_when_queue_is_empty() {
         Ok(None),
         "recv on empty queue must return Ok(None), not Err"
     );
-    assert!(matches!(result, Ok(None)), "result must be Ok(None) exactly");
+    assert!(
+        matches!(result, Ok(None)),
+        "result must be Ok(None) exactly"
+    );
 }
 
 /// Empty queue: `Ok(None)` is NOT the same as `Err(Disconnected)`.
@@ -604,13 +617,12 @@ fn ingress_frame_new_accepts_single_byte_payloads_within_limit() {
             payload,
             MaxPayloadBytes::DEFAULT,
         );
-        let frame = result
-            .unwrap_or_else(|e| {
-                panic!(
-                    "single byte 0x{:02X} must be accepted within limit: {:?}",
-                    byte, e
-                )
-            });
+        let frame = result.unwrap_or_else(|e| {
+            panic!(
+                "single byte 0x{:02X} must be accepted within limit: {:?}",
+                byte, e
+            )
+        });
         assert_eq!(frame.run_id(), RunId::new(1));
         assert_eq!(frame.payload().bytes().len(), 1);
     }
@@ -682,7 +694,8 @@ fn bounded_payload_rejects_exactly_one_over_nonzero_min_limit() {
 
 /// Strategy: arbitrary non-zero capacity capped at 1024.
 fn arb_capacity() -> impl Strategy<Value = QueueCapacity> {
-    (1usize..=1024).prop_map(|n| QueueCapacity::new(NonZeroUsize::new(n).expect("range is non-empty")))
+    (1usize..=1024)
+        .prop_map(|n| QueueCapacity::new(NonZeroUsize::new(n).expect("range is non-empty")))
 }
 
 /// Strategy: arbitrary `IngressFrame` within default payload limit.

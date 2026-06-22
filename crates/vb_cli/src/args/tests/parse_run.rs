@@ -16,18 +16,16 @@ fn parse_run_accepts_db_for_journaled_mode() {
 
     match parsed {
         Ok(Command::Run {
-        workflow,
-        input_bin,
-        durability,
-        db,
-        ..
-    }) => {
-
+            workflow,
+            input_bin,
+            durability,
+            db,
+            ..
+        }) => {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(input_bin, PathBuf::from("input.bin"));
             assert_eq!(durability, DurabilityMode::Journaled);
             assert_eq!(db, Some(PathBuf::from("journal-db")));
-
         }
         other => panic!("expected Command::Run, got {other:?}"),
     }
@@ -65,10 +63,8 @@ fn parse_run_none_mode_keeps_db_optional() {
 
     match parsed {
         Ok(Command::Run { durability, db, .. }) => {
-
             assert_eq!(durability, DurabilityMode::None);
             assert_eq!(db, None);
-
         }
         other => panic!("expected Command::Run, got {other:?}"),
     }
@@ -87,9 +83,7 @@ fn parse_run_without_step_flags_produces_none_step() {
     ]));
     match parsed {
         Ok(Command::Run { step, .. }) => {
-
             assert!(step.is_none());
-
         }
         other => panic!("expected Command::Run, got {other:?}"),
     }
@@ -131,12 +125,10 @@ fn parse_run_with_step_flags() {
     ]));
     match parsed {
         Ok(Command::Run {
-        step: Some(target), ..
-    }) => {
-
+            step: Some(target), ..
+        }) => {
             assert_eq!(target.step_id, 3);
             assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
-
         }
         other => panic!("expected Command::Run, got {other:?}"),
     }

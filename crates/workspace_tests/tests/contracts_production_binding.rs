@@ -716,9 +716,9 @@ fn test_prod_parse_contract_kind_case_sensitive() {
         "lowercase cli_envelope must round-trip to ContractKind::CliEnvelope"
     );
     for bad_input in ["cli_Envelope", "CLI_ENVELOPE"] {
-        let err = ContractKind::parse(bad_input)
-            .err()
-            .unwrap_or_else(|| panic!("ContractKind::parse({bad_input:?}) must fail (case-sensitive)"));
+        let err = ContractKind::parse(bad_input).err().unwrap_or_else(|| {
+            panic!("ContractKind::parse({bad_input:?}) must fail (case-sensitive)")
+        });
         assert_eq!(
             err, bad_input,
             "ContractKind::parse({bad_input:?}) must echo the offending input verbatim"

@@ -18,6 +18,7 @@ pub fn validate_resource_contract(parts: &WorkflowParts) -> Result<(), WorkflowE
     let contract = parts.resource_contract;
     validate_resource_counts(parts, contract)?;
     validate_expr_stack_contract(parts.expressions.as_ref(), contract.max_expr_stack)?;
+    validate_step_budget_per_tick(contract.max_step_budget_per_tick)?;
     validate_transitions_per_tick(contract.max_transitions_per_tick)
 }
 
@@ -127,6 +128,28 @@ fn validate_transitions_per_tick(max_transitions_per_tick: u64) -> Result<(), Wo
     if max_transitions_per_tick > MAX_STEP_BUDGET {
         return Err(WorkflowError::ResourceContractTooLarge {
             resource: "max_transitions_per_tick",
+        });
+    }
+    Ok(())
+}
+
+/// Validates that `max_step_budget_per_tick` is within acceptable bounds.
+///
+/// Must be at least 1 (non-zero) and must not exceed the protocol hard limit
+/// (`MAX_STEP_BUDGET`). A zero budget would prevent the runtime from
+/// executing any deterministic steps; an oversized budget would let a
+/// single workflow request more deterministic transitions per tick than the
+/// protocol allows, enabling denial-of-service.
+fn validate_step_budget_per_tick(max_step_budget_per_tick: u64) -> Result<(), WorkflowError> {
+    use crate::limits::MAX_STEP_BUDGET;
+    if max_step_budget_per_tick == 0 {
+        return Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_step_budget_per_tick",
+        });
+    }
+    if max_step_budget_per_tick > MAX_STEP_BUDGET {
+        return Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_step_budget_per_tick",
         });
     }
     Ok(())

@@ -749,8 +749,7 @@ fn wait_event_returns_awaiting_event_and_preserves_step_in_waiting_state() -> Re
 }
 
 #[test]
-fn wait_event_with_timeout_returns_awaiting_event_with_timeout_slot(
-) -> Result<(), String> {
+fn wait_event_with_timeout_returns_awaiting_event_with_timeout_slot() -> Result<(), String> {
     let parts = WorkflowParts {
         name: Box::<str>::from("wait_event_with_timeout_test"),
         digest: WorkflowDigest::from_bytes([0x0B; 32]),

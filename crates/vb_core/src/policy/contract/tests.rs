@@ -157,7 +157,11 @@ fn test_new_validates_zero_active_runs() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "active_runs", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "active_runs",
+                value: 0,
+                ..
+            })
         ),
         "zero active_runs must surface ExceedsHardLimit with field=active_runs, value=0, got {result:?}"
     );
@@ -171,7 +175,11 @@ fn test_new_validates_zero_retry_attempts() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "retry_attempts", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "retry_attempts",
+                value: 0,
+                ..
+            })
         ),
         "zero retry_attempts must surface ExceedsHardLimit with field=retry_attempts, value=0, got {result:?}"
     );
@@ -185,7 +193,11 @@ fn test_new_validates_zero_trace_ring_capacity() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "trace_ring_capacity", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "trace_ring_capacity",
+                value: 0,
+                ..
+            })
         ),
         "zero trace_ring_capacity must surface ExceedsHardLimit with field=trace_ring_capacity, value=0, got {result:?}"
     );
@@ -217,7 +229,11 @@ fn test_new_validates_zero_for_each_item_count() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "for_each_item_count", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "for_each_item_count",
+                value: 0,
+                ..
+            })
         ),
         "zero for_each_item_count must surface ExceedsHardLimit, got {result:?}"
     );
@@ -231,7 +247,10 @@ fn test_new_validates_for_each_item_count_exceeds_limit() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "for_each_item_count", .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "for_each_item_count",
+                ..
+            })
         ),
         "for_each_item_count > MAX_FOR_EACH_ITEMS must surface ExceedsHardLimit, got {result:?}"
     );
@@ -245,7 +264,11 @@ fn test_new_validates_zero_collect_pages() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_pages", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_pages",
+                value: 0,
+                ..
+            })
         ),
         "zero collect_pages must surface ExceedsHardLimit, got {result:?}"
     );
@@ -259,7 +282,10 @@ fn test_new_validates_collect_pages_exceeds_limit() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_pages", .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_pages",
+                ..
+            })
         ),
         "collect_pages > MAX_COLLECT_PAGES must surface ExceedsHardLimit, got {result:?}"
     );
@@ -273,7 +299,11 @@ fn test_new_validates_zero_collect_time_seconds() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_time_seconds", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_time_seconds",
+                value: 0,
+                ..
+            })
         ),
         "zero collect_time_seconds must surface ExceedsHardLimit, got {result:?}"
     );
@@ -287,7 +317,10 @@ fn test_new_validates_collect_time_seconds_exceeds_limit() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "collect_time_seconds", .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "collect_time_seconds",
+                ..
+            })
         ),
         "collect_time_seconds > MAX_COLLECT_TIME_SECONDS must surface ExceedsHardLimit, got {result:?}"
     );
@@ -301,7 +334,11 @@ fn test_new_validates_zero_repeat_time_seconds() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "repeat_time_seconds", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "repeat_time_seconds",
+                value: 0,
+                ..
+            })
         ),
         "zero repeat_time_seconds must surface ExceedsHardLimit, got {result:?}"
     );
@@ -315,7 +352,10 @@ fn test_new_validates_repeat_time_seconds_exceeds_limit() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "repeat_time_seconds", .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "repeat_time_seconds",
+                ..
+            })
         ),
         "repeat_time_seconds > MAX_REPEAT_TIME_SECONDS must surface ExceedsHardLimit, got {result:?}"
     );
@@ -329,7 +369,11 @@ fn test_new_validates_zero_max_wait_duration_seconds() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "max_wait_duration_seconds", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "max_wait_duration_seconds",
+                value: 0,
+                ..
+            })
         ),
         "zero max_wait_duration_seconds must surface ExceedsHardLimit, got {result:?}"
     );
@@ -343,7 +387,10 @@ fn test_new_validates_max_wait_duration_seconds_exceeds_limit() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "max_wait_duration_seconds", .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "max_wait_duration_seconds",
+                ..
+            })
         ),
         "max_wait_duration_seconds > MAX_WAIT_DURATION_SECONDS must surface ExceedsHardLimit, got {result:?}"
     );
@@ -357,7 +404,11 @@ fn test_new_validates_zero_ask_timeout_seconds() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "ask_timeout_seconds", value: 0, .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "ask_timeout_seconds",
+                value: 0,
+                ..
+            })
         ),
         "zero ask_timeout_seconds must surface ExceedsHardLimit, got {result:?}"
     );
@@ -371,7 +422,10 @@ fn test_new_validates_ask_timeout_seconds_exceeds_limit() {
     assert!(
         matches!(
             result,
-            Err(ProfileValidationError::ExceedsHardLimit { field: "ask_timeout_seconds", .. })
+            Err(ProfileValidationError::ExceedsHardLimit {
+                field: "ask_timeout_seconds",
+                ..
+            })
         ),
         "ask_timeout_seconds > MAX_ASK_TIMEOUT_SECONDS must surface ExceedsHardLimit, got {result:?}"
     );
@@ -391,15 +445,21 @@ fn test_new_validates_max_trace_ring_capacity_boundary() {
 #[test]
 fn test_canonical_profiles_validate_against_hard_limits() {
     assert!(
-        RuntimeLimitsProfile::strict().to_policy().absolute_max_trace_events
+        RuntimeLimitsProfile::strict()
+            .to_policy()
+            .absolute_max_trace_events
             <= u64::try_from(MAX_TRACE_RING_CAPACITY).unwrap_or(u64::MAX)
     );
     assert!(
-        RuntimeLimitsProfile::journaled().to_policy().absolute_max_trace_events
+        RuntimeLimitsProfile::journaled()
+            .to_policy()
+            .absolute_max_trace_events
             <= u64::try_from(MAX_TRACE_RING_CAPACITY).unwrap_or(u64::MAX)
     );
     assert!(
-        RuntimeLimitsProfile::relaxed().to_policy().absolute_max_trace_events
+        RuntimeLimitsProfile::relaxed()
+            .to_policy()
+            .absolute_max_trace_events
             <= u64::try_from(MAX_TRACE_RING_CAPACITY).unwrap_or(u64::MAX)
     );
 }

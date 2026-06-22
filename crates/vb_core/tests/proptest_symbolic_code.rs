@@ -12,7 +12,9 @@
 #![allow(clippy::expect_used)]
 
 use proptest::prelude::*;
-use vb_core::diagnostic::{CODE_REGISTRY, SymbolicCode, SymbolicCodeParseError, numeric_to_symbolic, symbolic_to_numeric};
+use vb_core::diagnostic::{
+    CODE_REGISTRY, SymbolicCode, SymbolicCodeParseError, numeric_to_symbolic, symbolic_to_numeric,
+};
 
 // ---------------------------------------------------------------------------
 // Strategies

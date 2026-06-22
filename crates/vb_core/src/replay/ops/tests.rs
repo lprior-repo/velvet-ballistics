@@ -1523,12 +1523,27 @@ fn eval_contains_op_is_now_supported() -> Result<(), CoreError> {
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
 
-    stack.push(SlotValue::Symbol(haystack)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::Symbol(needle)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Contains, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::Symbol(haystack))
         .map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::Symbol(needle))
+        .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Contains,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
-    assert_eq!(result, SlotValue::Bool(true), "Contains should yield Bool(true)");
+    assert_eq!(
+        result,
+        SlotValue::Bool(true),
+        "Contains should yield Bool(true)"
+    );
     Ok(())
 }
 
@@ -1556,8 +1571,12 @@ fn eval_starts_with_op_is_now_supported() -> Result<(), CoreError> {
     let prefix = store.insert_symbol("hello")?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::Symbol(text)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::Symbol(prefix)).map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::Symbol(text))
+        .map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::Symbol(prefix))
+        .map_err(replay_err_to_core)?;
     eval_replay_op(
         &plan,
         &run,
@@ -1568,7 +1587,11 @@ fn eval_starts_with_op_is_now_supported() -> Result<(), CoreError> {
     )
     .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
-    assert_eq!(result, SlotValue::Bool(true), "StartsWith should yield Bool(true)");
+    assert_eq!(
+        result,
+        SlotValue::Bool(true),
+        "StartsWith should yield Bool(true)"
+    );
     Ok(())
 }
 
@@ -1581,12 +1604,27 @@ fn eval_ends_with_op_is_now_supported() -> Result<(), CoreError> {
     let suffix = store.insert_symbol("world")?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::Symbol(text)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::Symbol(suffix)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::EndsWith, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::Symbol(text))
         .map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::Symbol(suffix))
+        .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::EndsWith,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
-    assert_eq!(result, SlotValue::Bool(true), "EndsWith should yield Bool(true)");
+    assert_eq!(
+        result,
+        SlotValue::Bool(true),
+        "EndsWith should yield Bool(true)"
+    );
     Ok(())
 }
 
@@ -1595,11 +1633,14 @@ fn eval_has_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
-    let list_id = store
-        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())?;
+    let list_id = store.insert_list(
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+    )?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::List(list_id))
+        .map_err(replay_err_to_core)?;
     stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
     eval_replay_op(&plan, &run, &mut store, ExprOp::Has, &mut stack, &mut taint)
         .map_err(replay_err_to_core)?;
@@ -1622,11 +1663,24 @@ fn eval_exists_op_is_now_supported() -> Result<(), CoreError> {
     )?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::Object(obj_id)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Exists, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::Object(obj_id))
         .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Exists,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
-    assert_eq!(result, SlotValue::Bool(true), "Exists should yield Bool(true)");
+    assert_eq!(
+        result,
+        SlotValue::Bool(true),
+        "Exists should yield Bool(true)"
+    );
     Ok(())
 }
 
@@ -1635,13 +1689,22 @@ fn eval_length_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
-    let list_id = store
-        .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())?;
+    let list_id =
+        store.insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Length, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::List(list_id))
         .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Length,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
     assert_eq!(result, SlotValue::I64(2), "Length should yield I64(2)");
     Ok(())
@@ -1652,15 +1715,27 @@ fn eval_empty_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
-    let empty_list = store
-        .insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
+    let empty_list = store.insert_list(Vec::<SlotValue>::new().into_boxed_slice())?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(empty_list)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Empty, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::List(empty_list))
         .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Empty,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
-    assert_eq!(result, SlotValue::Bool(true), "Empty should yield Bool(true)");
+    assert_eq!(
+        result,
+        SlotValue::Bool(true),
+        "Empty should yield Bool(true)"
+    );
     Ok(())
 }
 
@@ -1669,21 +1744,30 @@ fn eval_append_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
-    let list_id = store
-        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())?;
+    let list_id =
+        store.insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::I64(3)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Append, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::List(list_id))
         .map_err(replay_err_to_core)?;
+    stack.push(SlotValue::I64(3)).map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Append,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let new_list = stack.pop().map_err(replay_err_to_core)?;
     let items = match new_list {
         SlotValue::List(id) => store.list(id)?,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
                 reason: "Append should produce a List",
-            })
+            });
         }
     };
     assert_eq!(items.len(), 3, "appended list should have 3 items");
@@ -1699,18 +1783,29 @@ fn eval_append_if_op_is_now_supported() -> Result<(), CoreError> {
     let list_id = store.insert_list(vec![SlotValue::I64(1)].into_boxed_slice())?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::Bool(false)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::AppendIf, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::List(list_id))
         .map_err(replay_err_to_core)?;
+    stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::Bool(false))
+        .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::AppendIf,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let new_list = stack.pop().map_err(replay_err_to_core)?;
     let items = match new_list {
         SlotValue::List(id) => store.list(id)?,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
                 reason: "AppendIf should produce a List",
-            })
+            });
         }
     };
     assert_eq!(items.len(), 1, "append_if with false should not append");
@@ -1738,17 +1833,28 @@ fn eval_merge_op_is_now_supported() -> Result<(), CoreError> {
     )?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::Object(left)).map_err(replay_err_to_core)?;
-    stack.push(SlotValue::Object(right)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Merge, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::Object(left))
         .map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::Object(right))
+        .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Merge,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let merged = stack.pop().map_err(replay_err_to_core)?;
     let fields = match merged {
         SlotValue::Object(id) => store.object(id)?,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
                 reason: "Merge should produce an Object",
-            })
+            });
         }
     };
     assert_eq!(fields.len(), 2, "merged object should have 2 fields");
@@ -1760,11 +1866,14 @@ fn eval_sum_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
-    let list_id = store
-        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())?;
+    let list_id = store.insert_list(
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+    )?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
+    stack
+        .push(SlotValue::List(list_id))
+        .map_err(replay_err_to_core)?;
     eval_replay_op(&plan, &run, &mut store, ExprOp::Sum, &mut stack, &mut taint)
         .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
@@ -1777,13 +1886,23 @@ fn eval_count_op_is_now_supported() -> Result<(), CoreError> {
     let plan = make_minimal_plan_with_constants(vec![])?;
     let run = make_frame(2)?;
     let mut store = ValueStore::new();
-    let list_id = store
-        .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice())?;
+    let list_id = store.insert_list(
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
+    )?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Count, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::List(list_id))
         .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Count,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let result = stack.pop().map_err(replay_err_to_core)?;
     assert_eq!(result, SlotValue::I64(3), "Count should yield I64(3)");
     Ok(())
@@ -1805,16 +1924,25 @@ fn eval_unique_op_is_now_supported() -> Result<(), CoreError> {
     )?;
     let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
     let mut taint = Taint::Clean;
-    stack.push(SlotValue::List(list_id)).map_err(replay_err_to_core)?;
-    eval_replay_op(&plan, &run, &mut store, ExprOp::Unique, &mut stack, &mut taint)
+    stack
+        .push(SlotValue::List(list_id))
         .map_err(replay_err_to_core)?;
+    eval_replay_op(
+        &plan,
+        &run,
+        &mut store,
+        ExprOp::Unique,
+        &mut stack,
+        &mut taint,
+    )
+    .map_err(replay_err_to_core)?;
     let new_list = stack.pop().map_err(replay_err_to_core)?;
     let items = match new_list {
         SlotValue::List(id) => store.list(id)?,
         _ => {
             return Err(CoreError::InternalInvariantViolation {
                 reason: "Unique should produce a List",
-            })
+            });
         }
     };
     assert_eq!(items.len(), 3, "Unique should dedupe to 3 items");

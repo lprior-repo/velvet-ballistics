@@ -393,6 +393,25 @@ impl crate::journal::RuntimeJournal for RejectTimerScheduledJournal {
         Ok(())
     }
 
+    fn append_sequenced(
+        &self,
+        event: RuntimeJournalEvent,
+        _seq: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        self.append(event)
+    }
+
+    fn append_sequenced_batch(
+        &self,
+        events: &[RuntimeJournalEvent],
+        _seq_start: vb_storage::EventSeq,
+    ) -> crate::RuntimeResult<()> {
+        for event in events {
+            self.append(event.clone())?;
+        }
+        Ok(())
+    }
+
     fn probe(&self) -> crate::RuntimeResult<()> {
         Ok(())
     }
@@ -481,9 +500,13 @@ fn runtime_ask_timer_append_failure_does_not_register_pending_timer() -> Result<
 
     assert_eq!(shard.pending_timer_get(run), None);
     assert_eq!(shard.run_state_contains(run), true);
-    assert_eq!(
-        shard.runtime_state_get(run),
-        Some(super::RuntimeState::Initial)
+    let state = shard.runtime_state_get(run);
+    assert!(
+        matches!(
+            state,
+            Some(super::RuntimeState::Initial) | Some(super::RuntimeState::Running)
+        ),
+        "FSM must not have advanced past AwaitTimer after journal failure, got {state:?}"
     );
     match journal.snapshot() {
         Ok(events) => {

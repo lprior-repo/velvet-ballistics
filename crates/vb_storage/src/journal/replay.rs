@@ -99,7 +99,7 @@ impl FjallJournal {
         Ok(result?.map(|s| s.to_vec()))
     }
 
-/// Replays one run's events with an explicit event collection bound.
+    /// Replays one run's events with an explicit event collection bound.
     pub fn events_for_run_bounded(
         &self,
         run: vb_core::RunId,

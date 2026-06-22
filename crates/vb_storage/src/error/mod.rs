@@ -327,9 +327,10 @@ impl PartialEq for JournalError {
     fn eq(&self, other: &Self) -> bool {
         std::mem::discriminant(self) == std::mem::discriminant(other)
             && match (self, other) {
-                (Self::DuplicateEvent { run: a, seq: b }, Self::DuplicateEvent { run: c, seq: d }) => {
-                    a == c && b == d
-                }
+                (
+                    Self::DuplicateEvent { run: a, seq: b },
+                    Self::DuplicateEvent { run: c, seq: d },
+                ) => a == c && b == d,
                 (
                     Self::WrongRun {
                         expected: a,
@@ -366,9 +367,10 @@ impl PartialEq for JournalError {
                     Self::RecordKindFamilyMismatch { magic: a, kind: b },
                     Self::RecordKindFamilyMismatch { magic: c, kind: d },
                 ) => a == c && b == d,
-                (Self::HeaderLengthMismatch { found: a }, Self::HeaderLengthMismatch { found: b }) => {
-                    a == b
-                }
+                (
+                    Self::HeaderLengthMismatch { found: a },
+                    Self::HeaderLengthMismatch { found: b },
+                ) => a == b,
                 (
                     Self::PayloadTooLarge { len: a, max: b },
                     Self::PayloadTooLarge { len: c, max: d },
@@ -437,9 +439,10 @@ impl PartialEq for JournalError {
                         limit: d,
                     },
                 ) => a == c && b == d,
-                (Self::InputTooLarge { len: a, max: b }, Self::InputTooLarge { len: c, max: d }) => {
-                    a == c && b == d
-                }
+                (
+                    Self::InputTooLarge { len: a, max: b },
+                    Self::InputTooLarge { len: c, max: d },
+                ) => a == c && b == d,
                 _ => true,
             }
     }

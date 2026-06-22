@@ -90,11 +90,7 @@ fn arb_literal_only_workflow() -> impl Strategy<Value = WorkflowTypes> {
             inputs: Vec::new(),
             vars: Vec::new(),
             secrets: Vec::new(),
-            steps: saves
-                .into_iter()
-                .chain(chooses)
-                .chain(finishes)
-                .collect(),
+            steps: saves.into_iter().chain(chooses).chain(finishes).collect(),
             resource_contract: ResourceLimits {
                 allows_secret_results: true,
                 ..ResourceLimits::default()

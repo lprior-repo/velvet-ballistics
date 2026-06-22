@@ -141,6 +141,7 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
+use vb_runtime::RuntimeError;
 use vb_runtime::engine::{
     EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
 };
@@ -148,7 +149,6 @@ use vb_runtime::primitives::collect::CollectStates;
 use vb_runtime::shard::{
     InspectResponse, ResumeError, Shard, ShardCommand, ShardConfig, TerminalOutcome,
 };
-use vb_runtime::RuntimeError;
 
 fn one_step_workflow(kind: CompiledNodeKind, slot_count: u16) -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -550,7 +550,8 @@ fn given_runtime_step_budget_exhausted_when_apply_drive_result_then_run_is_kept_
 }
 
 #[test]
-fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Result<(), RuntimeError> {
+fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Result<(), RuntimeError>
+{
     let config = ShardConfig {
         command_queue_capacity: 8,
         trace_capacity: 8,
@@ -570,12 +571,11 @@ fn given_terminal_run_when_resume_attempted_then_invalid_resume_error() -> Resul
         Err(_) => return Err(RuntimeError::QueueFull),
     };
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: CapabilitySet::empty(),
-        })?;
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: CapabilitySet::empty(),
+    })?;
     let keep_running = shard.tick()?;
     let snapshot = shard.snapshot_run(run, 45);
     let resume_result = shard.handle_resume(run);

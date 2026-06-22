@@ -311,8 +311,7 @@ fn action_warning_transition_empty_unchanged_state() {
         eprintln!("unwrap failed: {:?}", e);
         unreachable!()
     });
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     assert_eq!(t.state.len(), 0);
 }
 
@@ -323,8 +322,7 @@ fn action_warning_transition_full_unchanged_state() {
         unreachable!()
     });
     let (state, _) = action_enqueue_transition(state, 1);
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     assert_eq!(t.state.len(), 1);
 }
 
@@ -336,8 +334,7 @@ fn action_warning_transition_no_payload_below_threshold() {
     });
     // Threshold for 10 is 10*8/10 = 8
     // Empty (depth 0) is below threshold
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     assert!(t.payload.is_none());
 }
 
@@ -351,8 +348,7 @@ fn action_warning_transition_payload_at_threshold() {
         eprintln!("unwrap failed: {:?}", e);
         unreachable!()
     });
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     let p = t
         .payload
         .unwrap_or_else(|| unreachable!("expect failed: payload at threshold"));
@@ -666,12 +662,14 @@ fn shard_tick_transition_two_consumes_leave_empty() {
     let (state, _) = command_enqueue_transition(state, 1);
     let (state, _) = command_enqueue_transition(state, 2);
     let state = match shard_tick_transition(state) {
-        ShardTickTransition::Empty { state }
-        | ShardTickTransition::ConsumedOne { state, .. } => state,
+        ShardTickTransition::Empty { state } | ShardTickTransition::ConsumedOne { state, .. } => {
+            state
+        }
     };
     let state = match shard_tick_transition(state) {
-        ShardTickTransition::Empty { state }
-        | ShardTickTransition::ConsumedOne { state, .. } => state,
+        ShardTickTransition::Empty { state } | ShardTickTransition::ConsumedOne { state, .. } => {
+            state
+        }
     };
     let result: ShardTickTransition<u8> = shard_tick_transition(state);
     assert!(matches!(result, ShardTickTransition::Empty { .. }));
@@ -685,8 +683,9 @@ fn shard_tick_transition_one_item_then_empty() {
     });
     let (state, _) = command_enqueue_transition(state, 99);
     let state = match shard_tick_transition(state) {
-        ShardTickTransition::Empty { state }
-        | ShardTickTransition::ConsumedOne { state, .. } => state,
+        ShardTickTransition::Empty { state } | ShardTickTransition::ConsumedOne { state, .. } => {
+            state
+        }
     };
     let result: ShardTickTransition<u8> = shard_tick_transition(state);
     assert!(matches!(result, ShardTickTransition::Empty { .. }));
@@ -705,8 +704,9 @@ fn shard_tick_transition_consume_state_size_preserved() {
     let (state, _) = command_enqueue_transition(state, 33);
     let before_len = state.len();
     let state_after = match shard_tick_transition(state) {
-        ShardTickTransition::Empty { state }
-        | ShardTickTransition::ConsumedOne { state, .. } => state,
+        ShardTickTransition::Empty { state } | ShardTickTransition::ConsumedOne { state, .. } => {
+            state
+        }
     };
     assert_eq!(state_after.len(), before_len - 1);
 }
@@ -972,8 +972,7 @@ fn warning_transition_carries_outcome_delivered_no_payload() {
         eprintln!("unwrap failed: {:?}", e);
         unreachable!()
     });
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     assert_eq!(t.outcome, WarningSendOutcome::Delivered);
     // Empty queue below threshold produces no payload
     assert!(t.payload.is_none());
@@ -1007,8 +1006,7 @@ fn warning_transition_state_unchanged() {
         unreachable!()
     });
     let (state, _) = action_enqueue_transition(state, 1);
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     // State membership is unchanged by the warning transition.
     assert_eq!(t.state.len(), 1);
 }
@@ -1019,8 +1017,7 @@ fn warning_transition_clone_eq() {
         eprintln!("unwrap failed: {:?}", e);
         unreachable!()
     });
-    let t: WarningTransition<u8> =
-        action_warning_transition(state, WarningSendOutcome::Delivered);
+    let t: WarningTransition<u8> = action_warning_transition(state, WarningSendOutcome::Delivered);
     let u = t.clone();
     assert_eq!(t.outcome, u.outcome);
     assert_eq!(t.payload, u.payload);

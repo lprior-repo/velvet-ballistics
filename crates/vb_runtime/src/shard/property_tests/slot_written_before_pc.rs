@@ -758,7 +758,7 @@ proptest! {
         for i in 0..(capacity + 100) {
             collector.push_step_started(StepIdx::new(i as u16));
             collector.push_slot_written(SlotIdx::new(i as u16), SlotValue::I64(i as i64));
-            collector.push_step_succeeded(StepIdx::new(i as u16), None);
+            collector.push_step_succeeded(StepIdx::new(i as u16), None, 1);
         }
 
         // Then: Collected events should not exceed capacity

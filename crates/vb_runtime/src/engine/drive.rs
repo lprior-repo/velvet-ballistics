@@ -127,7 +127,11 @@ fn finish_drive_step(
     mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
     emit_slot_evidence(run, evidence, collect_states, step.node)?;
     if signal_is_success(signal) {
-        evidence.push_step_succeeded(step.pc, step.node.output);
+        // RS-004: the deterministic drive loop emits `attempt: 1` because
+        // engine-level retries do not exist. The shard's flush step
+        // overrides this with `state.action_attempts[step]` so the durable
+        // journal record carries the actual live attempt counter.
+        evidence.push_step_succeeded(step.pc, step.node.output, 1);
     }
     Ok(())
 }

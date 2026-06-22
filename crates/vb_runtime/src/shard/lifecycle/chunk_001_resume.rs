@@ -89,7 +89,7 @@ impl Shard {
         run: RunId,
         source: RuntimeError,
     ) -> ResumeError {
-        let _ = self.apply(run, RuntimeEvent::ResumeRollback);
+        _ = self.apply(run, RuntimeEvent::ResumeRollback);
         ResumeError::journal_append_failed_with_source(source)
     }
 }

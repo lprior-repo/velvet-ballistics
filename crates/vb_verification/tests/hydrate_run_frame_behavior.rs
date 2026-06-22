@@ -15,8 +15,8 @@
 
 use vb_core::{RunId, StepIdx, WorkflowDigest};
 use vb_storage::recovery::RecoveryError;
-use vb_storage::recovery::hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
 use vb_storage::recovery::RunSnapshot;
+use vb_storage::recovery::hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
 use vb_storage::{EventSeq, JournalEvent};
 
 fn sample_digest(byte: u8) -> WorkflowDigest {

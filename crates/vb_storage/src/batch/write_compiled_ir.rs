@@ -11,14 +11,18 @@ impl<'j> JournalWriteBatch<'j> {
         record: &crate::records::CompiledIrRecord,
     ) -> Result<(), JournalError> {
         if let Err(e) = crate::admission::validate_compiled_ir_record(record) {
-            self.state = BatchState::Aborted { reason: "batch_aborted" };
+            self.state = BatchState::Aborted {
+                reason: "batch_aborted",
+            };
             return Err(e);
         }
 
         let artifact = match crate::admission::decode_accepted_artifact_envelope(&record.ir) {
             Ok(a) => a,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };
@@ -27,7 +31,9 @@ impl<'j> JournalWriteBatch<'j> {
         if let Some(&h_staged) = self.staged_ir_hashes.get(&record.digest)
             && h_pending != h_staged
         {
-            self.state = BatchState::Aborted { reason: "batch_aborted" };
+            self.state = BatchState::Aborted {
+                reason: "batch_aborted",
+            };
             return Err(JournalError::MetadataMutation {
                 digest: record.digest,
             });
@@ -36,7 +42,9 @@ impl<'j> JournalWriteBatch<'j> {
         let key = match crate::keys::compiled_ir_key(record.digest.as_bytes()) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };
@@ -61,7 +69,9 @@ impl<'j> JournalWriteBatch<'j> {
         ) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };
@@ -89,7 +99,9 @@ impl<'j> JournalWriteBatch<'j> {
         if h_pending == h_existing {
             Ok(())
         } else {
-            self.state = BatchState::Aborted { reason: "batch_aborted" };
+            self.state = BatchState::Aborted {
+                reason: "batch_aborted",
+            };
             Err(JournalError::MetadataMutation { digest })
         }
     }

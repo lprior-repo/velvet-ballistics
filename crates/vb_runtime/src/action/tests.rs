@@ -1,6 +1,7 @@
 use super::*;
 use vb_core::action::{ActionName, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
+use vb_core::limits::MAX_INPUT_BYTES as MAX_INPUT_BYTES_HARD;
 
 fn contract_fixture(id: u16) -> ActionContract {
     ActionContract {
@@ -143,6 +144,7 @@ fn len_increases_after_register() {
 
 #[test]
 fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
+    // Given a contract with max_input_bytes=0 and input_slot_count=1
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(1),
@@ -157,13 +159,11 @@ fn validate_input_bytes_rejects_when_max_input_bytes_is_zero() {
         retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
-    assert_eq!(registry.register(contract), Ok(()));
-    let input = input_fixture(1);
-    let resolved = registry.resolve_compile_time(ActionId::new(1));
-    assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(1)));
-    let contract = resolved.ok().cloned();
-    let Some(ref contract) = contract else { return };
-    let result = registry.dispatch(&input, contract);
+    // When registering the contract
+    let result = registry.register(contract);
+    // Then registration is rejected at the construction boundary with a
+    // typed `PayloadTooLarge` error so invalid limits are unrepresentable
+    // inside the registry.
     assert_eq!(
         result,
         Err(ActionError::PayloadTooLarge {
@@ -490,16 +490,10 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
         retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
-    assert_eq!(registry.register(contract), Ok(()));
-    let input = input_fixture(1);
-    let resolved = registry.resolve_compile_time(ActionId::new(1));
-    let contract = match resolved {
-        Ok(c) => c.clone(),
-        Err(_) => return,
-    };
-    // When dispatching
-    let result = registry.dispatch(&input, &contract);
-    // Then it returns PayloadTooLarge (zero bytes with slots)
+    // When registering the contract
+    let result = registry.register(contract);
+    // Then registration is rejected at the construction boundary because
+    // a zero byte limit is unrepresentable inside the registry.
     assert_eq!(
         result,
         Err(ActionError::PayloadTooLarge {
@@ -510,7 +504,7 @@ fn action_registry_validate_input_bytes_rejects_zero_with_slots() {
 }
 
 #[test]
-fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
+fn action_registry_register_rejects_zero_max_input_bytes_even_with_zero_slots() {
     // Given a contract with max_input_bytes=0 and input_slot_count=0
     let mut registry = ActionRegistry::new();
     let contract = ActionContract {
@@ -526,48 +520,17 @@ fn action_registry_dispatch_with_contract_zero_bytes_and_zero_slots_succeeds() {
         retry_safety: RetrySafety::Idempotent,
         required_capabilities: Box::new([]),
     };
-    assert_eq!(registry.register(contract), Ok(()));
-    let input = ActionInput {
-        run: RunId::new(1),
-        step: StepIdx::new(0),
-        action: ActionId::new(2),
-        input: SlotIdx::new(0),
-        ticket: ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(2),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-            ..Default::default()
-        },
-    };
-    let contract = match registry.resolve_compile_time(ActionId::new(2)) {
-        Ok(c) => c.clone(),
-        Err(_) => return,
-    };
-    // When dispatching with zero bytes and zero slots
-    let result = registry.dispatch(&input, &contract);
-    // Then it succeeds (no payload to validate)
-    match result {
-        Ok(ActionOutcome::Suspended(_)) => {}
-        other => {
-            assert_eq!(
-                other,
-                Ok(ActionOutcome::Suspended(ActionTicket {
-                    run: RunId::new(1),
-                    step: StepIdx::new(0),
-                    seq: SeqNo::new(0),
-                    action: ActionId::new(2),
-                    attempt: 1,
-                    idempotency_key: 0,
-                    capacity: 1,
-                    ..Default::default()
-                }))
-            );
-        }
-    }
+    // When registering the contract
+    let result = registry.register(contract);
+    // Then registration is rejected: a zero byte limit is invalid
+    // regardless of slot count, so invalid limits are unrepresentable.
+    assert_eq!(
+        result,
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 0,
+            actual_bytes: 0,
+        })
+    );
 }
 
 #[test]
@@ -839,5 +802,177 @@ fn action_dispatch_unknown_retry_safety_recognized() {
     assert!(
         matches!(result, Err(IdempotencyViolation::MissingKey(_))),
         "Unknown + LocalWrite with empty key slots must be MissingKey, got {result:?}"
+    );
+}
+
+// =========================================================================
+// vb-c34qm: action dispatch byte limit construction-time enforcement tests.
+// =========================================================================
+
+/// `register` must reject a `max_input_bytes` of zero with a typed error so the
+/// placeholder bypass cannot produce an unregisterable state inside the
+/// registry.
+#[test]
+fn action_registry_register_rejects_zero_max_input_bytes_with_typed_error() {
+    let mut registry = ActionRegistry::new();
+    let contract = ActionContract {
+        id: ActionId::new(9001),
+        name: ActionName::new("vb-c34qm.zero").unwrap(),
+        input_slot_count: 0,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    assert_eq!(
+        registry.register(contract),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 0,
+            actual_bytes: 0,
+        }),
+        "zero-byte limit must be rejected at the construction boundary"
+    );
+    // And the registry must remain empty: no slot was allocated for the
+    // rejected contract.
+    assert!(registry.is_empty());
+}
+
+/// `register` must reject a `max_input_bytes` of `u32::MAX` with a typed error
+/// so the sentinel/disabled-limit value cannot bypass dispatch-time checks.
+#[test]
+fn action_registry_register_rejects_u32_max_max_input_bytes_with_typed_error() {
+    let mut registry = ActionRegistry::new();
+    let contract = ActionContract {
+        id: ActionId::new(9002),
+        name: ActionName::new("vb-c34qm.u32-max").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: u32::MAX,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    assert_eq!(
+        registry.register(contract),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: MAX_INPUT_BYTES_HARD,
+            actual_bytes: u32::MAX,
+        }),
+        "u32::MAX byte limit must be rejected at the construction boundary"
+    );
+    assert!(registry.is_empty());
+}
+
+/// `register` must accept a contract whose `max_input_bytes` equals the hard
+/// upper bound. The bound is inclusive so the largest valid payload is
+/// exactly `MAX_INPUT_BYTES`.
+#[test]
+fn action_registry_register_accepts_max_input_bytes_at_hard_bound() {
+    let mut registry = ActionRegistry::new();
+    let contract = ActionContract {
+        id: ActionId::new(9003),
+        name: ActionName::new("vb-c34qm.bound").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 0,
+        max_input_bytes: MAX_INPUT_BYTES_HARD,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    assert_eq!(registry.register(contract), Ok(()));
+    assert_eq!(registry.resolve_compile_time(ActionId::new(9003)).map(|c| c.id),
+        Ok(ActionId::new(9003)));
+}
+
+/// `dispatch_generic` must enforce the same positive limit so direct callers
+/// (bypassing the registry) cannot accept placeholder limits either.
+#[test]
+fn dispatch_generic_rejects_zero_max_input_bytes() {
+    let contract = ActionContract {
+        id: ActionId::new(9004),
+        name: ActionName::new("vb-c34qm.dispatch-zero").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let input = input_fixture(9004);
+    assert_eq!(
+        dispatch_generic(&input, &contract),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: 0,
+            actual_bytes: 0,
+        }),
+        "dispatch_generic must reject zero-byte limits as defense in depth"
+    );
+}
+
+/// `dispatch_generic` must reject `u32::MAX` byte limits at the dispatch
+/// boundary so direct callers cannot bypass via a sentinel value.
+#[test]
+fn dispatch_generic_rejects_u32_max_max_input_bytes() {
+    let contract = ActionContract {
+        id: ActionId::new(9005),
+        name: ActionName::new("vb-c34qm.dispatch-u32-max").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 0,
+        max_input_bytes: u32::MAX,
+        max_output_bytes: 0,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    let input = input_fixture(9005);
+    assert_eq!(
+        dispatch_generic(&input, &contract),
+        Err(ActionError::PayloadTooLarge {
+            max_bytes: MAX_INPUT_BYTES_HARD,
+            actual_bytes: u32::MAX,
+        }),
+        "dispatch_generic must reject u32::MAX byte limits as defense in depth"
+    );
+}
+
+/// A valid positive, bounded contract must register successfully so the fix
+/// does not over-reject valid configurations.
+#[test]
+fn action_registry_register_accepts_positive_bounded_max_input_bytes() {
+    let mut registry = ActionRegistry::new();
+    let contract = ActionContract {
+        id: ActionId::new(9006),
+        name: ActionName::new("vb-c34qm.positive").unwrap(),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 4096,
+        max_output_bytes: 4096,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::Pure,
+        retry_safety: RetrySafety::Idempotent,
+        required_capabilities: Box::new([]),
+    };
+    assert_eq!(registry.register(contract), Ok(()));
+    assert_eq!(
+        registry
+            .resolve_compile_time(ActionId::new(9006))
+            .map(|c| c.max_input_bytes),
+        Ok(4096)
     );
 }

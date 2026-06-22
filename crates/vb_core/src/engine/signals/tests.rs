@@ -516,15 +516,17 @@ fn step_budget_debug_format() {
 fn engine_signal_debug_format_all_variants_exhaustive() {
     assert!(format!("{:?}", EngineSignal::Continue).contains("Continue"));
     assert!(format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"));
-    assert!(format!(
-        "{:?}",
-        EngineSignal::AwaitingAction {
-            step: StepIdx::ZERO,
-            seq: SeqNo::ZERO,
-            action: ActionId::new(0),
-        }
-    )
-    .contains("AwaitingAction"));
+    assert!(
+        format!(
+            "{:?}",
+            EngineSignal::AwaitingAction {
+                step: StepIdx::ZERO,
+                seq: SeqNo::ZERO,
+                action: ActionId::new(0),
+            }
+        )
+        .contains("AwaitingAction")
+    );
     assert!(
         format!(
             "{:?}",

@@ -60,7 +60,9 @@ impl<'j> JournalWriteBatch<'j> {
         let key = match run_header_key(record.run) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };
@@ -73,7 +75,9 @@ impl<'j> JournalWriteBatch<'j> {
         ) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };
@@ -86,7 +90,9 @@ impl<'j> JournalWriteBatch<'j> {
         let key = match run_snapshot_key(snapshot.run, snapshot.seq) {
             Ok(k) => k,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };
@@ -99,7 +105,9 @@ impl<'j> JournalWriteBatch<'j> {
         ) {
             Ok(v) => v,
             Err(e) => {
-                self.state = BatchState::Aborted { reason: "batch_aborted" };
+                self.state = BatchState::Aborted {
+                    reason: "batch_aborted",
+                };
                 return Err(e);
             }
         };

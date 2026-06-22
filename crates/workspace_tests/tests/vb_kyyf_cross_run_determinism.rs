@@ -527,7 +527,8 @@ fn runtime_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -564,7 +565,8 @@ fn durable_runtime_public_surface(
             public_surface: "vb_core::CompiledWorkflow public constructor",
         }
     })?;
-    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), shared).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), shared)
+        .expect("runtime config is valid");
     runtime
         .submit_compiled_with_inputs(run, workflow, Box::from([]))
         .map_err(|_| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {

@@ -681,7 +681,8 @@ mod tests {
         let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::I64(7));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch (right must be type-checked even when left is false)".into(),
+                token: "expected TypeMismatch (right must be type-checked even when left is false)"
+                    .into(),
             });
         };
         assert_eq!(expected, "boolean");
@@ -707,7 +708,8 @@ mod tests {
         let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::I64(7));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
-                token: "expected TypeMismatch (right must be type-checked even when left is true)".into(),
+                token: "expected TypeMismatch (right must be type-checked even when left is true)"
+                    .into(),
             });
         };
         assert_eq!(expected, "boolean");

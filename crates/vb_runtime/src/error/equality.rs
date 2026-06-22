@@ -37,7 +37,9 @@ fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
 }
 
 fn runtime_error_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
-    runtime_error_core_field_eq(left, right) || runtime_error_admission_field_eq(left, right)
+    runtime_error_core_field_eq(left, right)
+        || runtime_error_admission_field_eq(left, right)
+        || runtime_error_config_invalid_eq(left, right)
 }
 
 fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
@@ -340,6 +342,16 @@ fn runtime_error_admission_budget_eq(left: &RuntimeError, right: &RuntimeError) 
                 limit: d,
             },
         ) => a == c && b == d,
+        _ => false,
+    }
+}
+
+fn runtime_error_config_invalid_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::ConfigInvalid { errors: a },
+            RuntimeError::ConfigInvalid { errors: b },
+        ) => a == b,
         _ => false,
     }
 }

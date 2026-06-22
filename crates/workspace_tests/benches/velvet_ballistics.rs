@@ -4554,8 +4554,8 @@ fn missing_shard_submit_to_start(c: &mut Criterion) {
 
     let config = ShardConfig::default();
     let journal = NoopRuntimeJournal::shared_for_tests_and_benchmarks();
-    let shard = vb_runtime::shard::Shard::new_with_journal(config, journal)
-        .expect("shard config is valid");
+    let shard =
+        vb_runtime::shard::Shard::new_with_journal(config, journal).expect("shard config is valid");
 
     let workflow = vb_compile::compile_workflow(SMALL_WORKFLOW);
     if let Ok(ref wf) = workflow {
@@ -4873,7 +4873,8 @@ fn missing_action_complete_resume_bench(c: &mut Criterion) {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard_count = match NonZeroUsize::new(1) {
         Some(n) => n,
@@ -4942,7 +4943,8 @@ fn missing_wait_timer_resume_bench(c: &mut Criterion) {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let shard_count = match NonZeroUsize::new(1) {
         Some(n) => n,

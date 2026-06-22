@@ -41,13 +41,14 @@ pub use validation::{
 /// potentially enormous `Box<[YbBoundedQuery]>`.
 pub const MAX_QUERY_PAYLOAD_BYTES: usize =
     // Header: varint(MAX_QUERIES_PER_WORKFLOW) (3 bytes max) + u64 total_yield_cost (9 bytes max).
-    12 + MAX_QUERIES_PER_WORKFLOW
-        * (
-            // Per-query worst case: varint path length (1 byte) +
-            // MAX_QUERY_PATH_SEGMENTS segments (each 1-byte variant + 5-byte u32 varint) +
-            // 1-byte QueryOutputType variant + u64 yield_cost (9 bytes max).
-            1 + MAX_QUERY_PATH_SEGMENTS * 6 + 1 + 9
-        );
+    12
+        + MAX_QUERIES_PER_WORKFLOW
+            * (
+                // Per-query worst case: varint path length (1 byte) +
+                // MAX_QUERY_PATH_SEGMENTS segments (each 1-byte variant + 5-byte u32 varint) +
+                // 1-byte QueryOutputType variant + u64 yield_cost (9 bytes max).
+                1 + MAX_QUERY_PATH_SEGMENTS * 6 + 1 + 9
+            );
 
 /// Decodes compiled queries from bytes and validates them against a yield budget.
 ///

@@ -26,7 +26,7 @@
 
 use proptest::prelude::*;
 
-use crate::events::{collect_events, ScalarStyle, YamlEvent};
+use crate::events::{ScalarStyle, YamlEvent, collect_events};
 use crate::profile::reject_yaml_1_1_ambiguous_scalars;
 use crate::{YamlError, parse_yaml_events};
 

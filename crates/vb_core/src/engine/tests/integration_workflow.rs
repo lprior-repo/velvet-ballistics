@@ -3,7 +3,9 @@
 
 use crate::errors::EngineError;
 use crate::frame::StepState;
-use crate::ids::{ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use crate::ids::{
+    ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+};
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::ValueStore;
 use crate::workflow::{

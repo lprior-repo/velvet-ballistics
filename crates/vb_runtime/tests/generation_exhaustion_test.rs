@@ -18,8 +18,8 @@
 //! - Does not mutate state on query
 
 use vb_core::ids::RunId;
-use vb_runtime::shard::types::{Shard, ShardConfig};
 use vb_runtime::RuntimeError;
+use vb_runtime::shard::types::{Shard, ShardConfig};
 
 fn run(id: u64) -> RunId {
     RunId::new(id)

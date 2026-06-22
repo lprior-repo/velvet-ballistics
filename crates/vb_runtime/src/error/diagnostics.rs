@@ -73,6 +73,7 @@ impl RuntimeError {
         DiagnosticCode::new(0x202A);
     pub const ADMISSION_ARTIFACT_INVALID_PROOF_FLAG_CODE: DiagnosticCode =
         DiagnosticCode::new(0x202B);
+    pub const CONFIG_INVALID_CODE: DiagnosticCode = DiagnosticCode::new(0x202C);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -158,6 +159,7 @@ impl RuntimeError {
             Self::TerminalRunsLruFull { .. } => Self::TERMINAL_RUNS_LRU_FULL_CODE,
             Self::LruRingCapacityZero => Self::LRU_RING_CAPACITY_ZERO_CODE,
             Self::NotResumable { .. } => Self::NOT_RESUMABLE_CODE,
+            Self::ConfigInvalid { .. } => Self::CONFIG_INVALID_CODE,
         }
     }
 
@@ -247,7 +249,8 @@ Self::RunNotFound
             | Self::IpcPayloadSizeExceeded { .. }
             | Self::ShardNotFound { .. }
             | Self::MigrateSelf
-            | Self::AdmissionBudgetExceeded { .. } => None,
+            | Self::AdmissionBudgetExceeded { .. }
+            | Self::ConfigInvalid { .. } => None,
         }
     }
 

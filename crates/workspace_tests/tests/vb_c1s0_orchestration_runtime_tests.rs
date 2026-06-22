@@ -192,7 +192,8 @@ fn relaxed_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -386,7 +387,8 @@ fn run_one_tick(runtime: &mut Runtime) -> Result<(), String> {
 #[test]
 fn runtime_routes_run_to_correct_shard_by_run_id_modulo() -> Result<(), String> {
     // Given: a Runtime with shard_count = 4
-    let mut runtime = Runtime::new(shard_count(4)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(4)?, relaxed_config()).expect("runtime config is valid");
     let run_a = RunId::new(10); // 10 % 4 = 2
     let run_b = RunId::new(11); // 11 % 4 = 3
 
@@ -426,7 +428,8 @@ fn runtime_routes_run_to_correct_shard_by_run_id_modulo() -> Result<(), String> 
 #[test]
 fn same_run_id_routes_to_same_shard_always() -> Result<(), String> {
     // Given: a Runtime with shard_count = 3
-    let mut runtime = Runtime::new(shard_count(3)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(3)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(7); // 7 % 3 = 1
 
     // When: submit and cancel multiple times
@@ -452,7 +455,8 @@ fn same_run_id_routes_to_same_shard_always() -> Result<(), String> {
 #[test]
 fn run_reaches_finished_state_when_workflow_complete() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal)
+        .expect("runtime config is valid");
     let run = RunId::new(2001);
 
     // Submit and drive to completion
@@ -483,7 +487,8 @@ fn run_reaches_finished_state_when_workflow_complete() -> Result<(), String> {
 // Scenario C2: Run reaches Failed state
 #[test]
 fn run_reaches_failed_state_when_action_fails() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(2002);
 
     assert_eq!(
@@ -524,7 +529,8 @@ fn run_reaches_failed_state_when_action_fails() -> Result<(), String> {
 // NOTE: Cancelled runs are counted as runs_failed in CounterSnapshot
 #[test]
 fn run_reaches_cancelled_state_when_cancel_called() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(2003);
 
     assert_eq!(
@@ -553,7 +559,8 @@ fn run_reaches_cancelled_state_when_cancel_called() -> Result<(), String> {
 // Scenario C4: Terminal run ignores subsequent commands
 #[test]
 fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(2004);
 
     // Submit and let it finish
@@ -593,7 +600,8 @@ fn terminal_run_ignores_subsequent_commands() -> Result<(), String> {
 #[ignore = "BLOCKED: action completion preflight rejects valid ticket with InvalidActionCompletion; pre-existing vb_runtime bug"]
 fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal)
+        .expect("runtime config is valid");
     let run = RunId::new(3001);
 
     assert_eq!(
@@ -636,7 +644,8 @@ fn action_completion_resumes_at_correct_step_when_valid_ticket() -> Result<(), S
 // violation. Once the implementation is fixed, restore the strict assertion.
 #[test]
 fn complete_action_returns_invalid_ticket_error_when_ticket_unknown() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(3002);
 
     // Submit a run first
@@ -680,7 +689,8 @@ fn complete_action_returns_invalid_ticket_error_when_ticket_unknown() -> Result<
 #[test]
 fn fail_action_transitions_run_to_failed_state() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, relaxed_config(), journal)
+        .expect("runtime config is valid");
     let run = RunId::new(3003);
 
     assert_eq!(
@@ -733,7 +743,8 @@ fn fail_action_transitions_run_to_failed_state() -> Result<(), String> {
 #[test]
 fn tick_all_processes_at_most_one_command_per_shard() -> Result<(), String> {
     // Given: a Runtime with 3 shards
-    let mut runtime = Runtime::new(shard_count(3)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(3)?, relaxed_config()).expect("runtime config is valid");
 
     // Submit runs to different shards
     let run0 = RunId::new(10); // 10 % 3 = 1
@@ -766,7 +777,8 @@ fn tick_all_processes_at_most_one_command_per_shard() -> Result<(), String> {
 // Scenario G2: tick_all returns false on shutdown
 #[test]
 fn tick_all_returns_false_when_any_shard_shutting_down() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
 
     // Shutdown first
     assert_eq!(runtime.shutdown_graceful(), Ok(()));
@@ -779,7 +791,8 @@ fn tick_all_returns_false_when_any_shard_shutting_down() -> Result<(), String> {
 // Scenario G3: tick_all returns true when all shards alive
 #[test]
 fn tick_all_returns_true_when_all_shards_alive() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
 
     // tick_all on alive runtime returns true
     assert_eq!(runtime.tick_all(), Ok(true));
@@ -846,7 +859,8 @@ fn runtime_respects_step_budget_per_tick() -> Result<(), String> {
     config.step_budget_per_tick = 2; // Only 2 steps per tick
 
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, config, journal).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, config, journal)
+        .expect("runtime config is valid");
 
     // Submit a multi-step workflow (SetConst -> Do -> Do -> Finish)
     let workflow = workflow_from_parts(
@@ -973,7 +987,8 @@ fn step_budget_decrements_correctly_on_each_step() {
 // Catch: terminal_run_ignores_subsequent_commands
 #[test]
 fn terminal_state_guard_mutation_would_be_caught() -> Result<(), String> {
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(7001);
 
     // Submit and finish
@@ -1044,7 +1059,8 @@ fn answer_ask_returns_run_not_found_for_terminal_run() -> Result<(), String> {
     use vb_runtime::shard::AskTicket;
 
     // Given: a runtime where a run has reached terminal state
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(6001);
 
     // Submit and finish
@@ -1094,7 +1110,8 @@ fn tick_shard_continue_directive_processes_command() -> Result<(), String> {
     use vb_runtime::shard::ShardDirective;
 
     // Given: a runtime with 1 shard and a submitted run
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
     let run = RunId::new(7001);
 
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
@@ -1121,7 +1138,8 @@ fn tick_shard_shutdown_directive_returns_false() -> Result<(), String> {
     use vb_runtime::shard::ShardDirective;
 
     // Given: a runtime with 1 shard
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
 
     // When: tick_shard is called with Shutdown directive
     let result = runtime.tick_shard(0, ShardDirective::Shutdown);
@@ -1146,7 +1164,8 @@ fn tick_shard_returns_shard_not_found_for_invalid_index() -> Result<(), String> 
     use vb_runtime::shard::ShardDirective;
 
     // Given: a runtime with 2 shards
-    let mut runtime = Runtime::new(shard_count(2)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(2)?, relaxed_config()).expect("runtime config is valid");
 
     // When: tick_shard is called with out-of-bounds index
     let result = runtime.tick_shard(99, ShardDirective::Continue);
@@ -1169,7 +1188,8 @@ fn tick_shard_migrate_directive_transfers_commands() -> Result<(), String> {
     use vb_runtime::shard::ShardDirective;
 
     // Given: a runtime with 2 shards, run on shard 0 (7 % 2 = 1... wait, 7 % 2 = 1, 6 % 2 = 0)
-    let mut runtime = Runtime::new(shard_count(2)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(2)?, relaxed_config()).expect("runtime config is valid");
     let run_on_shard_0 = RunId::new(6); // 6 % 2 = 0 -> shard 0
 
     assert_eq!(
@@ -1196,7 +1216,8 @@ fn migrate_shard_to_self_returns_migrate_self_error() -> Result<(), String> {
     use vb_runtime::shard::ShardDirective;
 
     // Given: a runtime with 2 shards
-    let mut runtime = Runtime::new(shard_count(2)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(2)?, relaxed_config()).expect("runtime config is valid");
 
     // Submit a run to ensure source shard is valid
     let run = RunId::new(7); // 7 % 2 = 1
@@ -1298,7 +1319,8 @@ fn submit_direct_returns_admission_rejected_for_missing_capability() -> Result<(
 #[test]
 fn tick_all_returns_false_after_graceful_shutdown() -> Result<(), String> {
     // Given: a runtime with 1 shard
-    let mut runtime = Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
+    let mut runtime =
+        Runtime::new(shard_count(1)?, relaxed_config()).expect("runtime config is valid");
 
     // When: graceful shutdown is initiated
     assert_eq!(runtime.shutdown_graceful(), Ok(()));

@@ -135,14 +135,39 @@ where
     }
 
     /// Removes every entry from the ring (does not change capacity or TTL).
+    ///
+    /// Every existing arena slot is reset to `None` AND pushed onto the
+    /// free list, so subsequent inserts reuse slots via the free-list
+    /// path instead of appending new ones. Without repopulating the free
+    /// list, repeated fill+clear cycles would grow the underlying
+    /// `nodes` vector unboundedly (RS-210 / vb-k0jj0): the live
+    /// membership stays within `capacity`, but the arena high-water mark
+    /// would keep climbing because `allocate_slot` falls through to
+    /// `nodes.push(None)` whenever the free list is empty.
     pub fn clear(&mut self) {
         self.head = None;
         self.tail = None;
+        self.position.clear();
+        // Rebuild the free list so subsequent inserts reuse slots instead
+        // of growing the arena vector across repeated fill+clear cycles.
+        // The free list is cleared first so leftover entries from prior
+        // `remove`/`sweep_expired` calls do not double up against the
+        // freshly-collected arena indices. Indices are pushed in ascending
+        // order; the LIFO pop in `allocate_slot` then reissues them in
+        // reverse, preserving monotonic slot reuse across cycles.
         self.free.clear();
+        self.free.extend(0..self.nodes.len());
         for slot in self.nodes.iter_mut() {
             *slot = None;
         }
-        self.position.clear();
+    }
+
+    /// Returns the current high-water mark of the slot arena (the number
+    /// of arena slots ever allocated). Exposed for diagnostics and tests
+    /// that need to observe that `clear()` does not grow the arena.
+    #[must_use]
+    pub fn arena_len(&self) -> usize {
+        self.nodes.len()
     }
 
     /// Inserts `item`, sweeping TTL-expired entries first.

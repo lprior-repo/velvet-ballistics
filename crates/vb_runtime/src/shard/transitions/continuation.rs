@@ -8,8 +8,7 @@
 //! - `compute_deadline_ms_from_slot` — deadline computation helper
 
 use vb_core::action::ActionTicket;
-use vb_core::ids::{RunId, SlotIdx};
-use vb_storage::EventSeq;
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -67,57 +66,27 @@ impl Shard {
     ) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
-        let capacity = match retry_policy_after_action(&state, ticket.step) {
-            Ok(policy) => policy.max_attempts,
-            Err(RuntimeError::UnsupportedOperation {
-                operation: "retry_metadata_missing",
-            }) => ticket.capacity,
-            Err(error) => {
-                // RS-005: restore the run state on intermediate failure so
-                // the run is not silently dropped from shard bookkeeping.
-                self.run_state_insert(run, state);
-                return Err(error);
-            }
-        };
-        let ticket = match normalize_scheduled_ticket(&state, ActionTicket {
-            capacity,
-            ..ticket
-        }) {
-            Ok(t) => t,
-            Err(error) => {
-                self.run_state_insert(run, state);
-                return Err(error);
-            }
-        };
-        record_scheduled_attempt(&mut state, ticket);
-        self.trace_ring
-            .push(TraceEvent::ActionScheduled { run, step });
-        let output = match action_output_slot(&state, ticket.step) {
-            Ok(slot) => slot,
-            Err(error) => {
-                self.run_state_insert(run, state);
-                return Err(error);
-            }
-        };
-        let input = match action_input_slot(&state, ticket.step) {
-            Ok(slot) => slot,
-            Err(error) => {
-                self.run_state_insert(run, state);
-                return Err(error);
-            }
-        };
-        if let Err(error) = self.append_journal_event(RuntimeJournalEvent::ActionScheduledTicket {
-            ticket,
-            input,
-            output,
-        }) {
-            // RS-005: restore the run state on intermediate failure so the
-            // run is not silently dropped from shard bookkeeping.
-            self.run_state_insert(run, state);
-            return Err(error);
-        }
+        let result: RuntimeResult<()> = (|| {
+            let capacity = resolve_action_capacity(&state, &ticket)?;
+            let ticket = normalize_scheduled_ticket(&state, ActionTicket {
+                capacity,
+                ..ticket
+            })?;
+            record_scheduled_attempt(&mut state, ticket);
+            let output = action_output_slot(&state, ticket.step)?;
+            let input = action_input_slot(&state, ticket.step)?;
+            self.trace_ring.push(TraceEvent::ActionScheduled { run, step });
+            self.append_journal_event_durable(RuntimeJournalEvent::ActionScheduledTicket {
+                ticket,
+                input,
+                output,
+            })?;
+            Ok(())
+        })();
+        // RS-005: restore run state on every exit so the run is never
+        // silently dropped from shard bookkeeping.
         self.run_state_insert(run, state);
-        Ok(())
+        result
     }
 
     /// Transitions a run to awaiting a timer (wait or ask timeout).
@@ -137,77 +106,15 @@ impl Shard {
     ) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
-        if timer_registration_required(&state, step) {
-            let generation = match self.next_pending_timer_generation(run) {
-                Some(generation) => generation,
-                None => {
-                    self.run_state_insert(run, state);
-                    return Err(RuntimeError::InvalidTimerFire);
-                }
-            };
-            let deadline_ms = compute_deadline_ms_from_slot(&state, deadline_slot);
-            // RS-107: check deadline representability BEFORE the journal
-            // event append so that an unrepresentable deadline cannot
-            // leave a journal entry persisted with no matching timer
-            // registration. The pre-fix code appended the journal event
-            // unconditionally and then silently fell back to
-            // `Instant::now()` when `checked_add` overflowed, causing the
-            // timer to fire immediately and defeating the wait/ask
-            // contract.
-            let deadline = std::time::Instant::now()
-                .checked_add(std::time::Duration::from_millis(deadline_ms))
-                .ok_or(RuntimeError::UnsupportedOperation {
-                    operation: "timer_deadline_overflow",
-                })?;
-            let append_result = match kind {
-                PendingTimerKind::Wait => {
-                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled {
-                        run,
-                        step,
-                        deadline_ms,
-                    })
-                }
-                PendingTimerKind::Ask => {
-                    self.append_journal_event(RuntimeJournalEvent::AskScheduled {
-                        run,
-                        step,
-                        deadline_ms,
-                    })
-                }
-            };
-            if let Err(error) = append_result {
-                self.run_state_insert(run, state);
-                return Err(error);
+        let result: RuntimeResult<()> = (|| {
+            if !timer_registration_required(&state, step) {
+                return Ok(());
             }
-            // RS-107 follow-up: `append_journal_event` may buffer the event
-            // in `coalesce_buffer` without writing to the durable journal
-            // (when `current_coalesce_window_remaining > 0`). To guarantee
-            // the WaitScheduled/AskScheduled event is durable BEFORE the
-            // timer is registered (preventing an orphan timer pointing at
-            // a journal with no matching event), force a synchronous
-            // rewrite of just-this-event. Pop the just-appended tail
-            // entry, re-append it with the window disabled, and advance
-            // the per-run sequence to match. If the synchronous write
-            // fails, the timer is never registered and the error
-            // propagates.
-            if self.current_coalesce_window_remaining > 0 {
-                let (event, seq) = self
-                    .coalesce_buffer
-                    .pop()
-                    .expect("append_journal_event just buffered this event");
-                let prev_window = self.current_coalesce_window_remaining;
-                self.current_coalesce_window_remaining = 0;
-                let sync_result = self.journal.append_sequenced(event, seq);
-                self.current_coalesce_window_remaining = prev_window;
-                if let Err(error) = sync_result {
-                    self.run_state_insert(run, state);
-                    return Err(error);
-                }
-                let next_seq = EventSeq::new(seq.get().checked_add(1).ok_or_else(|| {
-                    RuntimeError::from(vb_storage::JournalError::SequenceOverflow)
-                })?);
-                self.journal_sequences.insert(run, next_seq);
-            }
+            let generation = self
+                .next_pending_timer_generation(run)
+                .ok_or(RuntimeError::InvalidTimerFire)?;
+            let (deadline, deadline_ms) = compute_timer_deadline(&state, deadline_slot)?;
+            self.append_timer_scheduled_event(run, step, kind, deadline_ms)?;
             self.pending_timer_insert(
                 run,
                 PendingTimer {
@@ -217,10 +124,62 @@ impl Shard {
                     deadline,
                 },
             );
-        }
+            Ok(())
+        })();
         self.run_state_insert(run, state);
-        Ok(())
+        result
     }
+
+    /// Appends a WaitScheduled or AskScheduled journal event durably.
+    fn append_timer_scheduled_event(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+        kind: PendingTimerKind,
+        deadline_ms: u64,
+    ) -> RuntimeResult<()> {
+        let event = match kind {
+            PendingTimerKind::Wait => RuntimeJournalEvent::WaitScheduled {
+                run,
+                step,
+                deadline_ms,
+            },
+            PendingTimerKind::Ask => RuntimeJournalEvent::AskScheduled {
+                run,
+                step,
+                deadline_ms,
+            },
+        };
+        self.append_journal_event_durable(event)
+    }
+}
+
+/// Resolves the retry-policy capacity for an action, falling back to the
+/// ticket's own capacity when retry metadata is intentionally absent (RS-005).
+fn resolve_action_capacity(state: &RunState, ticket: &ActionTicket) -> RuntimeResult<u16> {
+    match retry_policy_after_action(state, ticket.step) {
+        Ok(policy) => Ok(policy.max_attempts),
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "retry_metadata_missing",
+        }) => Ok(ticket.capacity),
+        Err(error) => Err(error),
+    }
+}
+
+/// Computes the timer deadline (`Instant`) plus its millisecond value, or
+/// returns `timer_deadline_overflow` when `Instant` cannot represent the
+/// requested duration (RS-107).
+fn compute_timer_deadline(
+    state: &RunState,
+    deadline_slot: SlotIdx,
+) -> RuntimeResult<(std::time::Instant, u64)> {
+    let deadline_ms = compute_deadline_ms_from_slot(state, deadline_slot);
+    let deadline = std::time::Instant::now()
+        .checked_add(std::time::Duration::from_millis(deadline_ms))
+        .ok_or(RuntimeError::UnsupportedOperation {
+            operation: "timer_deadline_overflow",
+        })?;
+    Ok((deadline, deadline_ms))
 }
 
 /// Computes the wall-clock deadline for a pending timer from the slot

@@ -174,7 +174,8 @@ fn test_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -384,7 +385,8 @@ fn ipc_queue_full_does_not_corrupt_other_runs() {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
@@ -1159,7 +1161,8 @@ fn resource_active_run_capacity_enforced_on_tick() {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;
@@ -1200,7 +1203,8 @@ fn resource_runs_submitted_count_includes_all_submissions() {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     };
     let Some(shard_count) = NonZeroUsize::new(1) else {
         return;

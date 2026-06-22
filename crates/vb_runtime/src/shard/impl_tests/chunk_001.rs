@@ -89,9 +89,11 @@
         let result = ShardConfig::new(0, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
             result,
-            Err(RuntimeError::CommandQueueCapacityExceeded {
-                capacity: 0,
-                max: MAX_COMMAND_QUEUE_CAPACITY,
+            Err(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::CommandQueueCapacityExceeded {
+                    capacity: 0,
+                    max: MAX_COMMAND_QUEUE_CAPACITY,
+                }],
             })
         );
         Ok(())
@@ -103,9 +105,11 @@
         let result = ShardConfig::new(too_large, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
             result,
-            Err(RuntimeError::CommandQueueCapacityExceeded {
-                capacity: too_large,
-                max: MAX_COMMAND_QUEUE_CAPACITY,
+            Err(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::CommandQueueCapacityExceeded {
+                    capacity: too_large,
+                    max: MAX_COMMAND_QUEUE_CAPACITY,
+                }],
             })
         );
         Ok(())
@@ -114,7 +118,12 @@
     #[test]
     fn config_new_rejects_zero_max_active_runs() -> Result<(), RuntimeError> {
         let result = ShardConfig::new(1, 1, 1, 0, vb_core::policy::RuntimePolicy::Relaxed);
-        assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
+        assert_eq!(
+            result,
+            Err(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::ActiveRunCapacityZero],
+            })
+        );
         Ok(())
     }
 
@@ -217,8 +226,10 @@
         );
         assert_eq!(
             result,
-            Err(RuntimeError::UnsupportedOperation {
-                operation: "coalesce_window_ticks_zero",
+            Err(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::UnsupportedOperation {
+                    operation: "coalesce_window_ticks_zero",
+                }],
             })
         );
         Ok(())
@@ -238,7 +249,12 @@
             86_400,
             100_000,
         );
-        assert_eq!(result, Err(RuntimeError::LruRingCapacityZero));
+        assert_eq!(
+            result,
+            Err(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::LruRingCapacityZero],
+            })
+        );
         Ok(())
     }
 
@@ -324,8 +340,10 @@
         let result = Shard::new(config);
         assert_eq!(
             result.err(),
-            Some(RuntimeError::UnsupportedOperation {
-                operation: "coalesce_window_ticks_zero",
+            Some(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::UnsupportedOperation {
+                    operation: "coalesce_window_ticks_zero",
+                }],
             })
         );
     }
@@ -345,7 +363,190 @@
             max_terminal_outcomes: 16,
         };
         let result = Shard::new(config);
-        assert_eq!(result.err(), Some(RuntimeError::LruRingCapacityZero));
+        assert_eq!(
+            result.err(),
+            Some(RuntimeError::ConfigInvalid {
+                errors: vec![RuntimeError::LruRingCapacityZero],
+            })
+        );
+    }
+
+    // RS-217: every invalid field is reported, not just the first.
+    // `validate()` must aggregate all field failures into a single
+    // `RuntimeError::ConfigInvalid` so operators see the full report.
+    #[test]
+    fn shard_config_validate_aggregates_all_invalid_fields() {
+        let config = ShardConfig {
+            // invalid: command_queue_capacity == 0
+            command_queue_capacity: 0,
+            // invalid: trace_capacity == 0
+            trace_capacity: 0,
+            // invalid: step_budget_per_tick == 0
+            step_budget_per_tick: 0,
+            // invalid: max_active_runs == 0
+            max_active_runs: 0,
+            policy: vb_core::policy::RuntimePolicy::Strict,
+            // invalid: coalesce_window_ticks == 0
+            coalesce_window_ticks: 0,
+            snapshot_interval_steps: 0,
+            // invalid: max_terminal_runs == 0
+            max_terminal_runs: 0,
+            terminal_runs_ttl_ticks: 86_400,
+            max_terminal_outcomes: 16,
+        };
+        let result = config.validate();
+        let expected = Err(RuntimeError::ConfigInvalid {
+            errors: vec![
+                RuntimeError::CommandQueueCapacityExceeded {
+                    capacity: 0,
+                    max: MAX_COMMAND_QUEUE_CAPACITY,
+                },
+                RuntimeError::UnsupportedOperation {
+                    operation: "trace_capacity_zero",
+                },
+                RuntimeError::UnsupportedOperation {
+                    operation: "step_budget_per_tick_zero",
+                },
+                RuntimeError::ActiveRunCapacityZero,
+                RuntimeError::UnsupportedOperation {
+                    operation: "coalesce_window_ticks_zero",
+                },
+                RuntimeError::LruRingCapacityZero,
+            ],
+        });
+        assert_eq!(result, expected);
+    }
+
+    // RS-217: `ShardConfig::new_full` with multiple invalid inputs must
+    // surface every field failure, in declaration order, inside a single
+    // `RuntimeError::ConfigInvalid` instead of returning on the first one.
+    #[test]
+    fn config_new_full_aggregates_multiple_invalid_fields() {
+        let result = ShardConfig::new_full(
+            0,    // invalid command_queue_capacity
+            0,    // invalid trace_capacity
+            0,    // invalid step_budget_per_tick
+            0,    // invalid max_active_runs
+            vb_core::policy::RuntimePolicy::Strict,
+            0,    // invalid coalesce_window_ticks
+            100,  // valid snapshot_interval_steps
+            0,    // invalid max_terminal_runs
+            86_400,
+            100_000,
+        );
+        let expected = Err(RuntimeError::ConfigInvalid {
+            errors: vec![
+                RuntimeError::CommandQueueCapacityExceeded {
+                    capacity: 0,
+                    max: MAX_COMMAND_QUEUE_CAPACITY,
+                },
+                RuntimeError::UnsupportedOperation {
+                    operation: "trace_capacity_zero",
+                },
+                RuntimeError::UnsupportedOperation {
+                    operation: "step_budget_per_tick_zero",
+                },
+                RuntimeError::ActiveRunCapacityZero,
+                RuntimeError::UnsupportedOperation {
+                    operation: "coalesce_window_ticks_zero",
+                },
+                RuntimeError::LruRingCapacityZero,
+            ],
+        });
+        assert_eq!(result, expected);
+    }
+
+    // RS-217: Display impl must show every inner error so operators see
+    // the complete report rather than only the first failure.
+    #[test]
+    fn shard_config_validate_display_lists_all_errors() {
+        let config = ShardConfig {
+            command_queue_capacity: 0,
+            trace_capacity: 0,
+            step_budget_per_tick: 1,
+            max_active_runs: 0,
+            policy: vb_core::policy::RuntimePolicy::Strict,
+            coalesce_window_ticks: 0,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: 0,
+            terminal_runs_ttl_ticks: 86_400,
+            max_terminal_outcomes: 16,
+        };
+        let err = config.validate().unwrap_err();
+        let display = format!("{err}");
+        assert!(
+            display.contains("shard config invalid"),
+            "display must lead with shard config invalid marker: {display}"
+        );
+        // Confirm the count of inner errors is reported.
+        assert!(
+            display.contains("5 field error"),
+            "display must report the count of inner errors: {display}"
+        );
+        // Confirm the index markers for every entry are present so
+        // operators can pinpoint which fields are invalid.
+        assert!(
+            display.contains("[0]"),
+            "display must include index [0]: {display}"
+        );
+        assert!(
+            display.contains("[1]"),
+            "display must include index [1]: {display}"
+        );
+        assert!(
+            display.contains("[2]"),
+            "display must include index [2]: {display}"
+        );
+        assert!(
+            display.contains("[3]"),
+            "display must include index [3]: {display}"
+        );
+        assert!(
+            display.contains("[4]"),
+            "display must include index [4]: {display}"
+        );
+        // Verify each invalid field's identifier is reachable in the
+        // display output for the entries that have a static message.
+        assert!(
+            display.contains("command queue capacity"),
+            "display must mention command queue capacity failure: {display}"
+        );
+        assert!(
+            display.contains("trace_capacity_zero"),
+            "display must mention trace_capacity_zero: {display}"
+        );
+        assert!(
+            display.contains("active run capacity cannot be zero"),
+            "display must mention active run capacity zero: {display}"
+        );
+        assert!(
+            display.contains("coalesce_window_ticks_zero"),
+            "display must mention coalesce_window_ticks_zero: {display}"
+        );
+    }
+
+    // RS-217: equality must compare the aggregated error list, not just
+    // the variant tag.
+    #[test]
+    fn shard_config_config_invalid_equality_compares_inner_errors() {
+        let single = RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::LruRingCapacityZero],
+        };
+        let single_same = RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::LruRingCapacityZero],
+        };
+        let single_other = RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::ActiveRunCapacityZero],
+        };
+        let multi = RuntimeError::ConfigInvalid {
+            errors: vec![
+                RuntimeError::LruRingCapacityZero,
+                RuntimeError::ActiveRunCapacityZero,
+            ],
+        };
+        assert_eq!(single, single_same);
+        assert_ne!(single, single_other);
+        assert_ne!(single, multi);
     }
 
     // =======================================================================

@@ -2297,10 +2297,8 @@ fn postcard_roundtrip_preserves_join_taint_result() {
     ];
     for a in all {
         let joined = join_taint(a, Taint::Secret);
-        let bytes = postcard::to_allocvec(&joined)
-            .expect("postcard serialize Taint");
-        let recovered: Taint = postcard::from_bytes(&bytes)
-            .expect("postcard deserialize Taint");
+        let bytes = postcard::to_allocvec(&joined).expect("postcard serialize Taint");
+        let recovered: Taint = postcard::from_bytes(&bytes).expect("postcard deserialize Taint");
         assert_eq!(recovered, Taint::Secret, "taint round-trip for {a:?}");
     }
 }

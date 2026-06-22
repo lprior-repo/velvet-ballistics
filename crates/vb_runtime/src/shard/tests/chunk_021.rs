@@ -100,8 +100,10 @@ fn shard_config_new_rejects_zero_trace_capacity_in_lifecycle_chunk() -> Result<(
     let result = ShardConfig::new(1, 0, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "trace_capacity_zero"
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::UnsupportedOperation {
+                operation: "trace_capacity_zero"
+            }],
         })
     );
     Ok(())
@@ -112,8 +114,10 @@ fn shard_config_new_rejects_zero_step_budget_in_lifecycle_chunk() -> Result<(), 
     let result = ShardConfig::new(1, 1, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "step_budget_per_tick_zero"
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::UnsupportedOperation {
+                operation: "step_budget_per_tick_zero"
+            }],
         })
     );
     Ok(())

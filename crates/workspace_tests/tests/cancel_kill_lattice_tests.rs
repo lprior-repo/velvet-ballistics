@@ -190,7 +190,8 @@ fn test_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -402,7 +403,8 @@ fn tick_count(runtime: &mut Runtime, count: usize) -> Result<(), String> {
 #[test]
 fn hp1_cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(20001);
 
     assert_eq!(
@@ -451,7 +453,8 @@ fn hp1_cancel_running_run_transitions_to_cancelled() -> Result<(), String> {
 #[test]
 fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(20003);
 
     assert_eq!(
@@ -487,7 +490,8 @@ fn hp3_cancel_action_suspended_run_removes_pending_action() -> Result<(), String
 #[test]
 fn hp4_action_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(20004);
 
     assert_eq!(
@@ -522,7 +526,8 @@ fn hp4_action_after_cancel_returns_error() -> Result<(), String> {
 #[test]
 fn ec1_terminal_cancelled_state_does_not_regress() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(20005);
 
     assert_eq!(
@@ -563,7 +568,8 @@ fn ec1_terminal_cancelled_state_does_not_regress() -> Result<(), String> {
 #[test]
 fn inv1_terminal_never_regresses_after_cancel() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(20006);
 
     assert_eq!(
@@ -613,7 +619,8 @@ fn inv1_terminal_never_regresses_after_cancel() -> Result<(), String> {
 #[test]
 fn inv1_completed_run_terminal_never_regresses() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(20007);
 
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
@@ -645,7 +652,8 @@ fn inv1_completed_run_terminal_never_regresses() -> Result<(), String> {
 #[test]
 fn cancel_missing_run_returns_run_not_found_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(40001);
 
     let counters_before = runtime.counters_snapshot();
@@ -685,7 +693,8 @@ fn cancel_missing_run_returns_run_not_found_error() -> Result<(), String> {
 #[test]
 fn cancel_terminal_run_produces_no_side_effects() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(40002);
 
     assert_eq!(
@@ -734,7 +743,8 @@ fn cancel_terminal_run_produces_no_side_effects() -> Result<(), String> {
 #[test]
 fn second_cancel_after_first_cancel_retains_one_event() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(50007);
 
     assert_eq!(
@@ -781,7 +791,8 @@ fn second_cancel_after_first_cancel_retains_one_event() -> Result<(), String> {
 #[test]
 fn action_completion_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(60001);
 
     assert_eq!(
@@ -809,7 +820,8 @@ fn action_completion_after_cancel_returns_error() -> Result<(), String> {
 #[test]
 fn action_failure_after_cancel_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(60002);
 
     assert_eq!(
@@ -841,7 +853,8 @@ fn action_failure_after_cancel_returns_error() -> Result<(), String> {
 #[test]
 fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(60005);
 
     assert_eq!(
@@ -896,7 +909,8 @@ fn stale_action_after_cancel_does_not_mutate_state() -> Result<(), String> {
 #[test]
 fn kill_live_run_produces_runkilled_journal_event() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(70001);
 
     assert_eq!(
@@ -932,7 +946,8 @@ fn kill_live_run_produces_runkilled_journal_event() -> Result<(), String> {
 #[test]
 fn kill_missing_run_returns_run_not_found_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(70002);
 
     let counters_before = runtime.counters_snapshot();
@@ -960,7 +975,8 @@ fn kill_missing_run_returns_run_not_found_error() -> Result<(), String> {
 #[test]
 fn kill_on_cancelled_run_is_idempotent() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(70003);
 
     assert_eq!(
@@ -1003,7 +1019,8 @@ fn kill_on_cancelled_run_is_idempotent() -> Result<(), String> {
 #[test]
 fn second_kill_after_first_kill_produces_no_extra_event() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(70004);
 
     assert_eq!(
@@ -1045,7 +1062,8 @@ fn second_kill_after_first_kill_produces_no_extra_event() -> Result<(), String> 
 #[test]
 fn action_completion_after_kill_returns_error() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(70005);
 
     assert_eq!(
@@ -1073,7 +1091,8 @@ fn action_completion_after_kill_returns_error() -> Result<(), String> {
 #[test]
 fn cancel_after_kill_is_idempotent() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone()).expect("runtime config is valid");
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone())
+        .expect("runtime config is valid");
     let run = RunId::new(70006);
 
     assert_eq!(

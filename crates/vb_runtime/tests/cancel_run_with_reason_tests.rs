@@ -22,8 +22,7 @@ use vb_core::policy::RuntimePolicy;
 use vb_core::value::ConstValue;
 use vb_core::workflow::{ResourceContract, WorkflowParts};
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx,
-    WorkflowDigest,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest,
 };
 use vb_runtime::Runtime;
 use vb_runtime::journal::RuntimeJournalEvent;
@@ -69,7 +68,8 @@ fn minimal_workflow() -> CompiledWorkflow {
     CompiledWorkflow::try_from_parts(parts).expect("workflow must compile")
 }
 
-fn build_runtime_with_capturing_journal() -> (Runtime, Arc<vb_runtime::journal::VolatileRuntimeJournal>) {
+fn build_runtime_with_capturing_journal()
+-> (Runtime, Arc<vb_runtime::journal::VolatileRuntimeJournal>) {
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
     let shared = journal.clone();
     // Relaxed policy wires `AlwaysPresentArtifactStore` automatically so the
@@ -81,12 +81,8 @@ fn build_runtime_with_capturing_journal() -> (Runtime, Arc<vb_runtime::journal::
         coalesce_window_ticks: 1,
         ..ShardConfig::default()
     };
-    let runtime = Runtime::new_with_journal(
-        NonZeroUsize::MIN,
-        config,
-        shared,
-    )
-    .expect("runtime construction must succeed with default config");
+    let runtime = Runtime::new_with_journal(NonZeroUsize::MIN, config, shared)
+        .expect("runtime construction must succeed with default config");
     (runtime, journal)
 }
 
@@ -106,15 +102,14 @@ fn cancel_run_with_reason_records_reason_in_journal_event() {
         .expect("cancel_run_with_reason must succeed for active run");
     runtime.tick_all().expect("tick after cancel");
 
-    let events = journal
-        .snapshot()
-        .expect("journal snapshot must succeed");
+    let events = journal.snapshot().expect("journal snapshot must succeed");
     let cancel_event = events
         .iter()
         .find_map(|event| match event {
-            RuntimeJournalEvent::RunCancelled { run: r, reason: ev_reason } if *r == run => {
-                Some(ev_reason.clone())
-            }
+            RuntimeJournalEvent::RunCancelled {
+                run: r,
+                reason: ev_reason,
+            } if *r == run => Some(ev_reason.clone()),
             _ => None,
         })
         .expect("RunCancelled event must be recorded for the cancelled run");
@@ -151,13 +146,13 @@ fn cancel_run_without_reason_records_none_in_journal_event() {
         .expect("cancel_run must succeed for active run");
     runtime.tick_all().expect("tick after cancel");
 
-    let events = journal
-        .snapshot()
-        .expect("journal snapshot must succeed");
+    let events = journal.snapshot().expect("journal snapshot must succeed");
     let cancel_event = events
         .iter()
         .find_map(|event| match event {
-            RuntimeJournalEvent::RunCancelled { run: r, reason } if *r == run => Some(reason.clone()),
+            RuntimeJournalEvent::RunCancelled { run: r, reason } if *r == run => {
+                Some(reason.clone())
+            }
             _ => None,
         })
         .expect("RunCancelled event must be recorded");

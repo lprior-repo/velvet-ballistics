@@ -29,8 +29,8 @@
 use proptest::prelude::*;
 
 use crate::type_taint::{
-    ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueType, WorkflowTypes, validate_taint,
-    validate_types,
+    ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueType, WorkflowTypes,
+    validate_taint, validate_types,
 };
 
 fn arb_value_type() -> impl Strategy<Value = ValueType> {

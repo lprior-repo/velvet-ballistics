@@ -12,6 +12,19 @@ impl Shard {
     /// advanced until [`flush_coalesce_buffer`] confirms the batch
     /// persisted successfully, so a partial flush failure leaves the
     /// in-memory sequence map consistent with the durable record (RQ-W0-19).
+    ///
+    /// **Durability contract (RS-107 follow-up):** `Ok(())` returned by this
+    /// method is NOT a guarantee that the event has been durably persisted.
+    /// When the coalesce window is active (`current_coalesce_window_remaining
+    /// > 0`), the event is held in `coalesce_buffer` and is only flushed to
+    /// the durable journal when the window expires. A crash between
+    /// `Ok(())` here and the eventual flush loses the event. Callers that
+    /// perform in-memory side effects (timer registration, action dispatch
+    /// bookkeeping, terminal state transition) whose correctness depends on
+    /// the event being durably persisted MUST use
+    /// [`append_journal_event_durable`](Self::append_journal_event_durable)
+    /// instead, which bypasses the coalesce buffer and returns only after
+    /// the synchronous write succeeds.
     #[cfg(not(kani))]
     pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
         let run = event.run_id();
@@ -52,6 +65,69 @@ impl Shard {
     /// Arc<JournalError>, Capability, etc.) make full Arbitrary impl impractical.
     #[cfg(kani)]
     pub(crate) fn append_journal_event(
+        &mut self,
+        _event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        Ok(())
+    }
+
+    /// Appends a journal event synchronously, bypassing the coalesce buffer.
+    ///
+    /// **Durability contract (RS-107):** `Ok(())` returned by this method
+    /// guarantees the event has been durably persisted to the underlying
+    /// journal. This method calls `RuntimeJournal::append_sequenced` directly
+    /// with the current per-run sequence, so the event is committed before
+    /// the function returns. The per-run sequence map is advanced past the
+    /// assigned sequence exactly once, atomically with the write.
+    ///
+    /// Callers that perform in-memory side effects whose correctness depends
+    /// on durability MUST use this variant. In particular:
+    /// - `await_timer` (WaitScheduled / AskScheduled): the timer must not be
+    ///   registered before its journal event is durable, or recovery after a
+    ///   crash rehydrates the run without a timer and the ask re-fires.
+    /// - `await_action` (ActionScheduledTicket): the action ticket must be
+    ///   durable before the action is dispatched, or a crash before the next
+    ///   flush window can lead to double-execution on recovery.
+    /// - `apply_awaiting_event` (event-only wait): the WaitScheduled sentinel
+    ///   must be durable so recovery can rehydrate the suspended wait.
+    ///
+    /// Callers that have no durability-dependent side effects (StepStarted,
+    /// StepSucceeded, SlotWritten) MAY continue to use the buffered
+    /// [`append_journal_event`](Self::append_journal_event) for throughput.
+    #[cfg(not(kani))]
+    pub(crate) fn append_journal_event_durable(
+        &mut self,
+        event: RuntimeJournalEvent,
+    ) -> RuntimeResult<()> {
+        let run = event.run_id();
+        let seq = self.journal_sequence_for(run);
+        // Pre-flight overflow check: reject before any state mutation so the
+        // per-run sequence map stays consistent with the durable record.
+        // The unwrapped `next_raw` below is guaranteed representable because
+        // this `?` returned early on `None`.
+        let next_raw = seq
+            .get()
+            .checked_add(1)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        // Synchronous, buffer-bypassing write. The journal implementation is
+        // responsible for fsyncing before returning Ok.
+        self.journal.append_sequenced(event, seq)?;
+        // Advance the per-run sequence past the assigned sequence. EventSeq::new
+        // is a const constructor; the overflow guard above guarantees the value
+        // is in range.
+        self.journal_sequences
+            .insert(run, EventSeq::new(next_raw));
+        Ok(())
+    }
+
+    /// `#[cfg(kani)]` replacement for `append_journal_event_durable` that
+    /// returns `Ok(())`. Mirrors the production contract's durability
+    /// guarantee (which under Kani is trivially satisfied by an in-memory
+    /// stub) so proof harnesses exercising `await_timer` / `await_action`
+    /// can rely on the post-condition without modeling the journal stub.
+    /// Trust boundary: TB-vb282my-journal-durable-stub-001.
+    #[cfg(kani)]
+    pub(crate) fn append_journal_event_durable(
         &mut self,
         _event: RuntimeJournalEvent,
     ) -> RuntimeResult<()> {

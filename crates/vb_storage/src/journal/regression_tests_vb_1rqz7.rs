@@ -33,16 +33,15 @@
 //!   at `snapshot.seq + 1`
 
 use crate::{
+    DurableActionOutcome, EventSeq, JournalError, JournalEvent, RunSnapshot,
     constants::DIGEST_BYTES,
+    recovery::RecoveryTerminalState,
     recovery::{
-        self, ActionReplayTracker,
-        check_workflow_source_digest, recover_run_admission, recover_runtime_frame_seed,
-        recover_runtime_summary, recover_runtime_summary_with_expected,
+        self, ActionReplayTracker, check_workflow_source_digest, recover_run_admission,
+        recover_runtime_frame_seed, recover_runtime_summary, recover_runtime_summary_with_expected,
         replay::{is_terminal_event, load_snapshot, recover_full_journal},
     },
-    recovery::RecoveryTerminalState,
     test_helpers::make_temp_journal_pair,
-    DurableActionOutcome, EventSeq, JournalError, JournalEvent, RunSnapshot,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 
@@ -190,7 +189,7 @@ fn lifecycle_classifies_run_killed_as_cancelled() {
 #[test]
 fn lifecycle_classifies_action_scheduled_ticket_as_active() {
     use crate::journal::incident::lifecycle::derive_lifecycle_state_from_events;
-    use vb_core::{workflow::LifecycleState, ActionTicket};
+    use vb_core::{ActionTicket, workflow::LifecycleState};
 
     let event = JournalEvent::ActionScheduledTicket {
         run: RunId::new(1),
@@ -207,9 +206,9 @@ fn lifecycle_classifies_action_scheduled_ticket_as_active() {
 
 #[test]
 fn lifecycle_classifies_action_completed_envelope_as_active() {
-    use crate::journal::incident::lifecycle::derive_lifecycle_state_from_events;
     use crate::DurableActionOutcome;
-    use vb_core::{workflow::LifecycleState, ActionTicket, Taint};
+    use crate::journal::incident::lifecycle::derive_lifecycle_state_from_events;
+    use vb_core::{ActionTicket, Taint, workflow::LifecycleState};
 
     let event = JournalEvent::ActionCompletedEnvelope {
         run: RunId::new(1),
@@ -296,12 +295,16 @@ fn inject_raw_event_rejects_duplicate_key() {
         .expect("get_event_bytes should succeed")
         .expect("first inject must remain stored");
     assert!(
-        stored.windows(b"first".len()).any(|window| window == b"first"),
+        stored
+            .windows(b"first".len())
+            .any(|window| window == b"first"),
         "duplicate inject must not have overwritten the original 'first' record; stored bytes were {:?}",
         stored
     );
     assert!(
-        !stored.windows(b"second".len()).any(|window| window == b"second"),
+        !stored
+            .windows(b"second".len())
+            .any(|window| window == b"second"),
         "duplicate inject must not have stored the 'second' payload; stored bytes were {:?}",
         stored
     );
@@ -435,8 +438,8 @@ fn load_snapshot_returns_snapshot_when_present() {
         .put_snapshot(&snapshot)
         .expect("put_snapshot should succeed");
 
-    let loaded = load_snapshot(&journal, run, EventSeq::new(3))
-        .expect("present snapshot must load");
+    let loaded =
+        load_snapshot(&journal, run, EventSeq::new(3)).expect("present snapshot must load");
     assert_eq!(
         loaded.seq, snapshot.seq,
         "loaded snapshot must match persisted seq"
@@ -598,7 +601,9 @@ fn recover_runtime_summary_with_expected_handles_pre_snapshot_terminal() {
     let hydration = recover_runtime_summary_with_expected(
         &journal,
         run,
-        RecoveryTerminalState::Finished { result: SlotIdx::new(0) },
+        RecoveryTerminalState::Finished {
+            result: SlotIdx::new(0),
+        },
     )
     .expect("summary recovery must observe the pre-snapshot RunFinished event");
     let _ = hydration;

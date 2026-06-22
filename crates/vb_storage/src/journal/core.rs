@@ -214,21 +214,21 @@ impl FjallJournal {
         self.persist_strict()
     }
 
-/// Flushes all memtables to SST files synchronously and then syncs the WAL.
-///
-/// This method is critical for cross-process durability: when the `run` command
-/// exits, memtable data would normally be lost. By rotating and waiting for each
-/// memtable to be flushed to SST files (via Fjall's `rotate_memtable_and_wait`),
-/// subsequent processes (e.g., `events`, `inspect`) can read the data from disk.
-///
-/// The sequence is:
-/// 1. For each keyspace, rotate the memtable and wait for flush to complete
-/// 2. Sync the WAL journal via `persist_strict()`
-///
-/// # Errors
-///
-/// Returns `JournalError` if any keyspace flush or WAL sync fails.
-pub fn flush_memtables(&self) -> Result<(), JournalError> {
+    /// Flushes all memtables to SST files synchronously and then syncs the WAL.
+    ///
+    /// This method is critical for cross-process durability: when the `run` command
+    /// exits, memtable data would normally be lost. By rotating and waiting for each
+    /// memtable to be flushed to SST files (via Fjall's `rotate_memtable_and_wait`),
+    /// subsequent processes (e.g., `events`, `inspect`) can read the data from disk.
+    ///
+    /// The sequence is:
+    /// 1. For each keyspace, rotate the memtable and wait for flush to complete
+    /// 2. Sync the WAL journal via `persist_strict()`
+    ///
+    /// # Errors
+    ///
+    /// Returns `JournalError` if any keyspace flush or WAL sync fails.
+    pub fn flush_memtables(&self) -> Result<(), JournalError> {
         // Rotate and wait for each keyspace's memtable to be flushed to SST files.
         // This is the synchronous equivalent of waiting for background flush workers
         // to drain all sealed memtables.

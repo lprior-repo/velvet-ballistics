@@ -132,8 +132,8 @@ use crate::recovery::{
     check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
     recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
     recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
-    recover_runtime_summary_with_expected,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
+    recover_runtime_summary_with_expected, recover_snapshot_plus_tail, replay_events,
+    summarize_recovery_events, verify_digests,
 };
 use crate::{DurableActionOutcome, EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
 use vb_core::action::{ActionTicket, MockMarker, compute_action_idempotency_key};
@@ -780,7 +780,11 @@ fn recover_runtime_summary_with_expected_distinguishes_finished_result_slots() {
             result: SlotIdx::new(99),
         },
     );
-    let Err(RecoveryError::TerminalStateMismatch { ref expected, ref found }) = mismatched else {
+    let Err(RecoveryError::TerminalStateMismatch {
+        ref expected,
+        ref found,
+    }) = mismatched
+    else {
         panic!(
             "Finished slot mismatch must produce TerminalStateMismatch, got {:?}",
             mismatched
@@ -819,11 +823,8 @@ fn recover_runtime_summary_with_expected_detects_variant_class_mismatch() {
         })
         .expect("finished append succeeds");
 
-    let result = recover_runtime_summary_with_expected(
-        &journal,
-        run,
-        RecoveryTerminalState::Cancelled,
-    );
+    let result =
+        recover_runtime_summary_with_expected(&journal, run, RecoveryTerminalState::Cancelled);
     assert!(
         matches!(result, Err(RecoveryError::TerminalStateMismatch { .. })),
         "expected variant mismatch must surface TerminalStateMismatch, got {:?}",
@@ -3887,48 +3888,48 @@ mod hydrate_run_frame_tests {
     }
 
     // =========================================================================
-// vb-1rqz7.34 / SR-009 — explicit lenient tail-underflow policy
-// =========================================================================
+    // vb-1rqz7.34 / SR-009 — explicit lenient tail-underflow policy
+    // =========================================================================
 
-#[test]
-fn apply_tail_events_lenient_on_zero_parallel_in_flight_completion() {
-    // SR-009: a snapshot+tail replay starts from a frame whose
-    // `parallel_in_flight` baseline is not persisted. A completion
-    // arriving at zero is therefore tolerated; the lenient policy is
-    // exercised here so the explicit contract is regression-protected.
-    let run = RunId::new(0xE01);
-    let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 1)
-        .expect("RunFrame::new must succeed for valid parameters");
-    let tail = vec![JournalEvent::ActionCompletedEvent {
-        run,
-        seq: EventSeq::new(1),
-        step: StepIdx::new(0),
-        action: ActionId::new(1),
-        attempt: 1,
-    }];
-    let mut tracker = ActionReplayTracker::new();
+    #[test]
+    fn apply_tail_events_lenient_on_zero_parallel_in_flight_completion() {
+        // SR-009: a snapshot+tail replay starts from a frame whose
+        // `parallel_in_flight` baseline is not persisted. A completion
+        // arriving at zero is therefore tolerated; the lenient policy is
+        // exercised here so the explicit contract is regression-protected.
+        let run = RunId::new(0xE01);
+        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 1)
+            .expect("RunFrame::new must succeed for valid parameters");
+        let tail = vec![JournalEvent::ActionCompletedEvent {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+            attempt: 1,
+        }];
+        let mut tracker = ActionReplayTracker::new();
 
-    // pre-condition: parallel_in_flight is zero.
-    assert_eq!(
-        frame.parallel_in_flight(),
-        0,
-        "fresh RunFrame must start with zero parallel_in_flight"
-    );
+        // pre-condition: parallel_in_flight is zero.
+        assert_eq!(
+            frame.parallel_in_flight(),
+            0,
+            "fresh RunFrame must start with zero parallel_in_flight"
+        );
 
-    let result = apply_tail_events(&mut frame, &tail, &mut tracker);
-    assert!(
-        result.is_ok(),
-        "vb-1rqz7.34: tail completion at zero parallel_in_flight must succeed via lenient policy, got {:?}",
-        result
-    );
-    assert_eq!(
-        frame.parallel_in_flight(),
-        0,
-        "parallel_in_flight must remain at zero after a no-op decrement"
-    );
-}
+        let result = apply_tail_events(&mut frame, &tail, &mut tracker);
+        assert!(
+            result.is_ok(),
+            "vb-1rqz7.34: tail completion at zero parallel_in_flight must succeed via lenient policy, got {:?}",
+            result
+        );
+        assert_eq!(
+            frame.parallel_in_flight(),
+            0,
+            "parallel_in_flight must remain at zero after a no-op decrement"
+        );
+    }
 
-#[test]
+    #[test]
     fn apply_tail_events_fails_closed_when_slot_out_of_bounds() {
         // SR-003: taint is now decoded from the persisted envelope (`extra`)
         // instead of inheriting the frame's prior taint. The frame constructed
@@ -4884,8 +4885,7 @@ fn apply_tail_events_lenient_on_zero_parallel_in_flight_completion() {
                 seq: EventSeq::new(2),
                 slot_idx: SlotIdx::new(7),
                 answer: ConstValue::Bool(false),
-                timestamp: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0)
-                    .expect("epoch"),
+                timestamp: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0).expect("epoch"),
             },
         ];
         let result = hydrate_run_frame(&snapshot, &tail, run);
@@ -4936,7 +4936,9 @@ fn apply_tail_events_lenient_on_zero_parallel_in_flight_completion() {
         ];
         let result = hydrate_run_frame(&snapshot, &tail, run);
         let Ok(frame) = result else {
-            panic!("hydrate must succeed when ActionScheduledTicket output is the slot index, got {result:?}");
+            panic!(
+                "hydrate must succeed when ActionScheduledTicket output is the slot index, got {result:?}"
+            );
         };
         assert!(
             frame.slot_count() > SlotIdx::new(9).get(),

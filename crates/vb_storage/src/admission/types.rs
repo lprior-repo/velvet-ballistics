@@ -107,11 +107,7 @@ impl Durability {
 
 impl From<bool> for Durability {
     fn from(value: bool) -> Self {
-        if value {
-            Self::Durable
-        } else {
-            Self::Volatile
-        }
+        if value { Self::Durable } else { Self::Volatile }
     }
 }
 
@@ -204,11 +200,7 @@ impl VerificationProof {
     /// Journaled/strict admission (`gate_count == 15`) records the accepted
     /// gate claims that were established before the artifact was persisted.
     #[must_use]
-    pub fn new(
-        digest: vb_core::WorkflowDigest,
-        gate_count: u8,
-        durability: Durability,
-    ) -> Self {
+    pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durability: Durability) -> Self {
         let core = verification_proof_core(digest, gate_count, durability.is_durable());
         Self {
             digest: core.digest,

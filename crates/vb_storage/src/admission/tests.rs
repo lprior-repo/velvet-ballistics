@@ -533,8 +533,8 @@ fn policy_buffer_fits_canonical_resource_contract() {
     };
 
     let bound = super::policy::resource_contract_policy_bytes_bound();
-    let serialized =
-        postcard::to_allocvec(&contract).expect("postcard encode must succeed for canonical contract");
+    let serialized = postcard::to_allocvec(&contract)
+        .expect("postcard encode must succeed for canonical contract");
 
     assert!(
         serialized.len() <= bound,
@@ -1217,9 +1217,8 @@ fn validate_compiled_ir_record_rejects_mismatched_metadata_hash() {
     // SA-007 defense in depth: a record whose stored metadata_hash does
     // not match the recomputed artifact metadata hash is rejected with
     // MetadataMutation — the same invariant the write path enforces.
-    let mut record =
-        crate::try_accepted_compiled_ir_record_for_test(b"sa-007-mismatch".to_vec())
-            .expect("test fixture should encode");
+    let mut record = crate::try_accepted_compiled_ir_record_for_test(b"sa-007-mismatch".to_vec())
+        .expect("test fixture should encode");
     let mut bad_hash = [0u8; 32];
     bad_hash[0] = 0xFF;
     bad_hash[31] = 0xFE;

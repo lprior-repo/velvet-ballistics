@@ -41,11 +41,22 @@ impl FjallJournal {
         run: RunId,
         policy: TrimPolicy,
     ) -> TrimResult<TrimmedRunResult> {
+        self.check_retention_policy(run, &policy)?;
+        self.trim_events_for_run_inner(run)
+    }
+
+    /// Trim journal events for `run` WITHOUT consulting retention policy.
+    ///
+    /// vb-uu31g / SC-005: the batch path
+    /// ([`Self::trim_all_eligible_runs`]) already precomputes the retained
+    /// set and skips runs the policy protects, so the per-call retention
+    /// check inside [`Self::trim_events_for_run`] is redundant in that path.
+    /// Direct callers must still go through [`Self::trim_events_for_run`]
+    /// to surface `RetentionPolicyBlocks` to the API contract.
+    fn trim_events_for_run_inner(&self, run: RunId) -> TrimResult<TrimmedRunResult> {
         let Some(cutoff_seq) = self.latest_durable_snapshot_seq(run)? else {
             return Err(TrimError::NoDurableSnapshot { run });
         };
-
-        self.check_retention_policy(run, &policy)?;
 
         let prefix_key = crate::keys::run_prefix_key(run)?;
         let mut batch = self.database.batch();
@@ -114,17 +125,20 @@ impl FjallJournal {
         let retained = self.compute_retained_terminal_runs(&policy)?;
 
         for header in headers {
-            // vb-1rqz7.30 / SC-005: the batch API consults a precomputed
-            // retention set instead of re-deriving it per run (which would
-            // re-scan every header + every terminal run's events for each
-            // input run).
+            // vb-uu31g / SC-005: the batch path consults the precomputed
+            // retained set (one O(N+M) scan + sort per workflow) and skips
+            // the per-call retention re-derivation that
+            // `trim_events_for_run` would otherwise repeat per input run.
+            // This drops the redundant work from O(N² · M) (the original
+            // batch-amplified `check_retention_policy` loop) to O(N) for
+            // the retention check itself; the actual trim cost stays
+            // O(N · M) and is dominated by event deletion.
             if retained.contains(&header.run) {
                 continue;
             }
-            match self.trim_events_for_run(header.run, policy) {
+            match self.trim_events_for_run_inner(header.run) {
                 Ok(result) => results.push(result),
                 Err(TrimError::NoDurableSnapshot { .. }) => continue,
-                Err(TrimError::RetentionPolicyBlocks { .. }) => continue,
                 Err(e) => return Err(e),
             }
         }
@@ -218,13 +232,19 @@ impl FjallJournal {
             // (17 bytes) is by definition corruption; fail closed instead of
             // silently treating it as nothing.
             if key.len() < 17 {
-                return Err(JournalError::from(TrimError::IncompleteTrim { deleted_count: count }));
+                return Err(JournalError::from(TrimError::IncompleteTrim {
+                    deleted_count: count,
+                }));
             }
             let slice = key.get(9..17).ok_or_else(|| {
-                JournalError::from(TrimError::IncompleteTrim { deleted_count: count })
+                JournalError::from(TrimError::IncompleteTrim {
+                    deleted_count: count,
+                })
             })?;
             let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| {
-                JournalError::from(TrimError::IncompleteTrim { deleted_count: count })
+                JournalError::from(TrimError::IncompleteTrim {
+                    deleted_count: count,
+                })
             })?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
@@ -264,24 +284,35 @@ impl FjallJournal {
     /// once per batch trim invocation. Each run's terminal status is read
     /// exactly once, headers are scanned exactly once, and the resulting
     /// set is reused by every per-run decision.
+    ///
+    /// vb-uu31g / SC-005: `has_terminal_event` results are memoized for the
+    /// duration of this invocation so any future caller that joins the same
+    /// batch context shares the cache. In the current header iteration the
+    /// cache is naturally one-per-run because `run_headers` yields distinct
+    /// run ids, but the explicit cache keeps the contract honest if the
+    /// caller ever feeds a stream that revisits the same run id.
     pub(crate) fn compute_retained_terminal_runs(
         &self,
         policy: &TrimPolicy,
     ) -> TrimResult<std::collections::HashSet<RunId>> {
-        use std::collections::HashMap;
+        use std::collections::{HashMap, HashSet};
 
-        let retain_count =
-            usize::try_from(policy.retain_last_n_terminal).unwrap_or(usize::MAX);
+        let retain_count = usize::try_from(policy.retain_last_n_terminal).unwrap_or(usize::MAX);
         if retain_count == 0 {
-            return Ok(std::collections::HashSet::new());
+            return Ok(HashSet::new());
         }
 
         let headers = self.run_headers().map_err(TrimError::from)?;
+        // vb-uu31g / SC-005: per-invocation memo of terminal status so any
+        // subsequent caller inside the same batch can avoid re-decoding
+        // events for runs we have already inspected.
+        let mut terminal_memo: HashMap<RunId, bool> = HashMap::with_capacity(headers.len());
         // Map workflow_id -> terminal runs sorted newest-first.
         let mut grouped: HashMap<vb_core::WorkflowId, Vec<(RunId, u64)>> =
             HashMap::with_capacity(headers.len());
         for header in headers {
-            if !self.has_terminal_event(header.run)? {
+            let is_terminal = self.terminal_status_cached(header.run, &mut terminal_memo)?;
+            if !is_terminal {
                 continue;
             }
             grouped
@@ -290,7 +321,7 @@ impl FjallJournal {
                 .push((header.run, header.accepted_at_ms));
         }
 
-        let mut retained = std::collections::HashSet::new();
+        let mut retained = HashSet::new();
         for runs in grouped.values_mut() {
             runs.sort_by_key(|(_, ts)| std::cmp::Reverse(*ts));
             for (run, _) in runs.iter().take(retain_count) {
@@ -298,6 +329,20 @@ impl FjallJournal {
             }
         }
         Ok(retained)
+    }
+
+    /// Returns the cached terminal status of `run`, populating the cache on miss.
+    fn terminal_status_cached(
+        &self,
+        run: RunId,
+        memo: &mut std::collections::HashMap<RunId, bool>,
+    ) -> TrimResult<bool> {
+        if let Some(&cached) = memo.get(&run) {
+            return Ok(cached);
+        }
+        let is_terminal = self.has_terminal_event(run)?;
+        memo.insert(run, is_terminal);
+        Ok(is_terminal)
     }
 
     /// Verifies retention policy for terminal runs.

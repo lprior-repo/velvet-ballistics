@@ -19,14 +19,7 @@ impl Shard {
         journal: SharedRuntimeJournal,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> RuntimeResult<Self> {
-        validate_shard_config_inputs(
-            config.command_queue_capacity,
-            config.trace_capacity,
-            config.step_budget_per_tick,
-            config.max_active_runs,
-            config.coalesce_window_ticks,
-            config.max_terminal_runs,
-        )?;
+        config.validate()?;
         Ok(Self {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),

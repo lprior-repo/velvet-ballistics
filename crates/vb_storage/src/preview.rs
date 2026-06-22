@@ -124,8 +124,8 @@ pub fn preview_keyspace(
     config: PreviewConfig,
     entries: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<DecodedPreview, JournalError> {
-    let total_entries = u64::try_from(entries.len())
-        .map_err(|_| JournalError::PayloadLenOverflow {
+    let total_entries =
+        u64::try_from(entries.len()).map_err(|_| JournalError::PayloadLenOverflow {
             len: match u64::try_from(entries.len()) {
                 Ok(value) => value,
                 Err(_) => u64::MAX,

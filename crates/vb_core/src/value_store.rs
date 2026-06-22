@@ -145,13 +145,7 @@ impl ValueStore {
         let id = next_object_id(self.objects.len())?;
         let mut index = IndexMap::new();
         let mut taint_index = IndexMap::new();
-        let mut field_pos = 0usize;
-        while field_pos < fields.len() {
-            let field = fields
-                .get(field_pos)
-                .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object field index checked by loop bound",
-                })?;
+        for field in fields.iter() {
             match index.entry(field.key) {
                 indexmap::map::Entry::Vacant(slot) => {
                     slot.insert(field.value);
@@ -163,11 +157,6 @@ impl ValueStore {
                     });
                 }
             }
-            field_pos = field_pos
-                .checked_add(1)
-                .ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object field index overflow",
-                })?;
         }
         self.object_field_index.push(index);
         self.object_taint_index.push(taint_index);
@@ -449,10 +438,7 @@ mod kani_harnesses {
     /// the typed `CoreError::InternalInvariantViolation` reason.
     /// The harness treats this as the proof contract and asserts on
     /// the `Ok`/`Err` outcome instead of relying on a bare `assert!`.
-    fn check_arena_count(
-        store: &super::ValueStore,
-        expected: u64,
-    ) -> Result<(), super::CoreError> {
+    fn check_arena_count(store: &super::ValueStore, expected: u64) -> Result<(), super::CoreError> {
         let actual = store.total_arena_count();
         if actual == expected {
             Ok(())
@@ -494,10 +480,7 @@ mod kani_harnesses {
                 // typed `CoreError` channel so the Kani verifier
                 // records the concrete reason rather than a bare panic.
                 kani::assert(
-                    matches!(
-                        error,
-                        super::CoreError::InternalInvariantViolation { .. }
-                    ),
+                    matches!(error, super::CoreError::InternalInvariantViolation { .. }),
                     "kani harness assertion",
                 );
             }

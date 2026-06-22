@@ -9,11 +9,36 @@ use vb_core::action::{
     ActionTicket, MockMarker,
 };
 use vb_core::ids::ActionId;
+use vb_core::limits::MAX_INPUT_BYTES;
 
 pub use crate::idempotency::IdempotencyTracker;
 
 /// Maximum number of registered actions.
 const MAX_REGISTERED_ACTIONS: usize = 65_535;
+
+/// Validates that a contract's declared `max_input_bytes` is a positive, bounded
+/// input limit. Returns `Err(PayloadTooLarge { .. })` for placeholder (`0`),
+/// sentinel (`u32::MAX`), or otherwise out-of-range limits.
+///
+/// The limit must satisfy `0 < max_input_bytes <= MAX_INPUT_BYTES`. Zero
+/// forbids any payload and `u32::MAX` would defeat any boundary check, so
+/// both are rejected at construction time so invalid contracts are
+/// unrepresentable inside the registry.
+fn validate_input_byte_limit(max_input_bytes: u32) -> ActionResult<()> {
+    if max_input_bytes == 0 {
+        return Err(ActionError::PayloadTooLarge {
+            max_bytes: 0,
+            actual_bytes: 0,
+        });
+    }
+    if max_input_bytes > MAX_INPUT_BYTES {
+        return Err(ActionError::PayloadTooLarge {
+            max_bytes: MAX_INPUT_BYTES,
+            actual_bytes: max_input_bytes,
+        });
+    }
+    Ok(())
+}
 
 /// Registry mapping numeric action identifiers to their contracts.
 #[derive(Debug, Clone)]
@@ -39,8 +64,13 @@ impl ActionRegistry {
     }
 
     /// Registers an action contract. Returns an error if the action id is
-    /// already registered or the registry is full.
+    /// already registered, the registry is full, or the contract's declared
+    /// `max_input_bytes` is not a positive value within the hard input limit.
+    ///
+    /// Construction-time validation rejects placeholder (`0`) and sentinel
+    /// (`u32::MAX`) byte limits so they cannot bypass dispatch-time checks.
     pub fn register(&mut self, contract: ActionContract) -> ActionResult<()> {
+        validate_input_byte_limit(contract.max_input_bytes)?;
         let index = contract.id.get();
         let slot = usize::from(index);
         if slot >= MAX_REGISTERED_ACTIONS {
@@ -203,17 +233,20 @@ pub fn dispatch_generic(
 }
 
 /// Validates that the input payload does not exceed the contract's byte limit.
+///
+/// This is a defense-in-depth check at the dispatch boundary. The same limit
+/// is enforced at registration time via [`validate_input_byte_limit`], so a
+/// contract that reaches this function already has a positive, bounded
+/// `max_input_bytes`. We re-validate the limit here so direct calls to
+/// [`dispatch_generic`] (bypassing the registry) cannot accept placeholder or
+/// sentinel limits.
+///
+/// The actual byte-length of the payload is measured at the IPC boundary; this
+/// function only enforces that the declared limit is well-formed. Once the IPC
+/// boundary supplies an encoded length, dispatch callers must additionally
+/// check `actual_bytes <= contract.max_input_bytes` before invoking this path.
 fn validate_input_bytes(_input: &ActionInput, contract: &ActionContract) -> ActionResult<()> {
-    // Byte-level validation requires encoded_len from the caller.
-    // This is a structural check placeholder; actual byte counting
-    // happens at the IPC boundary.
-    if contract.max_input_bytes == 0 && contract.input_slot_count > 0 {
-        return Err(ActionError::PayloadTooLarge {
-            max_bytes: 0,
-            actual_bytes: 0,
-        });
-    }
-    Ok(())
+    validate_input_byte_limit(contract.max_input_bytes)
 }
 
 #[cfg(test)]

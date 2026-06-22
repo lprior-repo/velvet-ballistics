@@ -55,12 +55,22 @@ impl Shard {
         // Journal the StepSucceeded event first so a journal append
         // failure leaves the in-memory frame consistent with the durable
         // record. Mirrors the ordering used by `handle_action_completion`.
-        {
+        // RS-004: read the live per-step attempt counter here so the
+        // durable journal record carries the actual attempt instead of a
+        // hardcoded `1`. The legacy path does not surface a ticket, so
+        // the only authoritative attempt source is `state.action_attempts`.
+        let attempt = {
             let state = self.run_state_get(run).ok_or(RuntimeError::RunNotFound)?;
             if state.frame.step_state(step) != Ok(StepState::Running) {
                 return Err(RuntimeError::RunNotFound);
             }
-        }
+            state
+                .action_attempts
+                .get(step.as_usize())
+                .copied()
+                .unwrap_or(0)
+                .max(1)
+        };
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information. Append before any
         // frame mutation so a journal failure does not desynchronise
@@ -69,7 +79,7 @@ impl Shard {
             run,
             step,
             output: SlotIdx::ZERO,
-            attempt: 1,
+            attempt,
         })?;
         let state = self.run_state_get_mut(run).ok_or(RuntimeError::RunNotFound)?;
         state
@@ -119,7 +129,7 @@ impl Shard {
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
                 // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-                let _ = self.apply(run, RuntimeEvent::Fail);
+                _ = self.apply(run, RuntimeEvent::Fail);
                 self.fail_run_state(run, state)
             }
             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler { .. } => {
@@ -149,6 +159,7 @@ impl Shard {
         })
     }
 
+    #[allow(dead_code)]
     fn apply_action_failure_to_state(
         &mut self,
         ticket: ActionTicket,

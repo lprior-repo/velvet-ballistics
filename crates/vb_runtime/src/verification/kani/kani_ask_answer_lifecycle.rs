@@ -48,6 +48,13 @@ fn new_shard() -> Shard {
 // PO-vb282my-AA-KANI-001: Append-before-insert ordering
 // await_timer calls append_journal_event BEFORE pending_timers.insert().
 // Test the apply() function for AwaitTimer transition.
+//
+// NOTE(RS-107 durable variant): production now uses
+// `append_journal_event_durable` (which bypasses the coalesce buffer) at
+// every durability-required call site (await_timer, await_action,
+// apply_awaiting_event). The buffered `append_journal_event` is exercised
+// here for sequence-monotonicity proofs only. The durability guarantee
+// lives in the production `_durable` variant, not in this stub.
 // =========================================================================
 
 #[kani::proof]

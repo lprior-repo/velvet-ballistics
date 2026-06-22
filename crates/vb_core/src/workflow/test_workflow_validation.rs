@@ -556,7 +556,9 @@ fn workflow_parts_reject_for_each_limit_over_max_collect_items() -> Result<(), S
             resource: "max_collect_items",
         }) => Ok(()),
         Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("limit over max_collect_items must be rejected")),
+        Ok(_) => Err(String::from(
+            "limit over max_collect_items must be rejected",
+        )),
     }
 }
 
@@ -652,7 +654,9 @@ fn workflow_parts_reject_collect_start_limit_over_max_collect_items() -> Result<
             resource: "max_collect_items",
         }) => Ok(()),
         Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("collect limit over max_collect_items must be rejected")),
+        Ok(_) => Err(String::from(
+            "collect limit over max_collect_items must be rejected",
+        )),
     }
 }
 
@@ -691,7 +695,9 @@ fn workflow_parts_reject_collect_start_page_size_over_max_collect_items() -> Res
             resource: "max_collect_items",
         }) => Ok(()),
         Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("collect page_size over max_collect_items must be rejected")),
+        Ok(_) => Err(String::from(
+            "collect page_size over max_collect_items must be rejected",
+        )),
     }
 }
 
@@ -752,7 +758,9 @@ fn workflow_parts_reject_together_join_branch_count_over_max_fanout() -> Result<
             resource: "max_fanout",
         }) => Ok(()),
         Err(other) => Err(format!("unexpected error: {other:?}")),
-        Ok(_) => Err(String::from("branch_count over max_fanout must be rejected")),
+        Ok(_) => Err(String::from(
+            "branch_count over max_fanout must be rejected",
+        )),
     }
 }
 
@@ -773,6 +781,87 @@ fn workflow_parts_reject_together_join_zero_branch_count() -> Result<(), String>
 fn workflow_parts_accept_together_join_branch_count_at_max_fanout() -> Result<(), String> {
     // CW-009: branch_count == max_fanout is the exact-bounds accepted case.
     let parts = make_together_join_parts(64, 64, 2, 2);
+    CompiledWorkflow::try_from_parts(parts)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+// ---------------------------------------------------------------------------
+// CW-010: max_step_budget_per_tick must be validated.
+//
+// The declared step-budget cap on every workflow was accepted without
+// validation: zero budgets disabled runtime step execution, and oversized
+// budgets bypassed the protocol `MAX_STEP_BUDGET` limit. The validator must
+// reject zero with `ResourceContractExceeded` and oversized values with
+// `ResourceContractTooLarge`, mirroring `max_transitions_per_tick`.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn workflow_parts_reject_zero_max_step_budget_per_tick() -> Result<(), String> {
+    // CW-010: zero step budget per tick prevents deterministic execution.
+    let contract = ResourceContract {
+        max_step_budget_per_tick: 0,
+        ..resource_contract(1, 1, 1, 0, 1)
+    };
+    let parts = finish_const_parts_with(contract, Box::new([]));
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_step_budget_per_tick",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from(
+            "zero max_step_budget_per_tick must be rejected",
+        )),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_oversized_max_step_budget_per_tick() -> Result<(), String> {
+    // CW-010: value above MAX_STEP_BUDGET must be rejected as TooLarge.
+    use crate::limits::MAX_STEP_BUDGET;
+    let oversized = MAX_STEP_BUDGET.saturating_add(1);
+    let contract = ResourceContract {
+        max_step_budget_per_tick: oversized,
+        ..resource_contract(1, 1, 1, 0, 1)
+    };
+    let parts = finish_const_parts_with(contract, Box::new([]));
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_step_budget_per_tick",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(format!(
+            "max_step_budget_per_tick={oversized} (above MAX_STEP_BUDGET) must be rejected"
+        )),
+    }
+}
+
+#[test]
+fn workflow_parts_reject_max_step_budget_per_tick_u64_max() -> Result<(), String> {
+    // CW-010: u64::MAX exceeds any reasonable budget and must be rejected.
+    let contract = ResourceContract {
+        max_step_budget_per_tick: u64::MAX,
+        ..resource_contract(1, 1, 1, 0, 1)
+    };
+    let parts = finish_const_parts_with(contract, Box::new([]));
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_step_budget_per_tick",
+        }) => Ok(()),
+        Err(other) => Err(format!("unexpected error: {other:?}")),
+        Ok(_) => Err(String::from("u64::MAX step budget must be rejected")),
+    }
+}
+
+#[test]
+fn workflow_parts_accept_max_step_budget_per_tick_at_hard_limit() -> Result<(), String> {
+    // CW-010: value at MAX_STEP_BUDGET is the exact-bounds accepted case.
+    use crate::limits::MAX_STEP_BUDGET;
+    let contract = ResourceContract {
+        max_step_budget_per_tick: MAX_STEP_BUDGET,
+        ..resource_contract(1, 1, 1, 0, 1)
+    };
+    let parts = finish_const_parts_with(contract, Box::new([]));
     CompiledWorkflow::try_from_parts(parts)
         .map(|_| ())
         .map_err(|error| error.to_string())

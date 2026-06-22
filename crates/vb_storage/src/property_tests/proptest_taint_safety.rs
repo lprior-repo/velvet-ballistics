@@ -136,7 +136,7 @@
 
 use proptest::prelude::*;
 
-use crate::codec::{encode_record, decode_record, verify_digest_match};
+use crate::codec::{decode_record, encode_record, verify_digest_match};
 use crate::constants::{DIGEST_BYTES, MAGIC_BLOB, MAX_BLOB_BYTES};
 use crate::records::{BlobRecord, RecordKind};
 

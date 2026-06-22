@@ -95,7 +95,9 @@ fn eval_load_const_rejects_out_of_bounds() -> Result<(), String> {
             if reason.contains("expression LoadConst out of bounds") {
                 Ok(())
             } else {
-                Err(format!("expected LoadConst bounds rejection, got: {reason}"))
+                Err(format!(
+                    "expected LoadConst bounds rejection, got: {reason}"
+                ))
             }
         }
         Ok(_) => Err(String::from(

@@ -7,7 +7,6 @@ use crate::Runtime;
 use crate::journal::SharedRuntimeJournal;
 use crate::shard::Shard;
 use crate::shard::ShardConfig;
-use crate::shard::config::validate_shard_config_inputs;
 
 impl Runtime {
     /// Creates a runtime with a noop journal sink.
@@ -25,14 +24,7 @@ impl Runtime {
         config: ShardConfig,
         journal: SharedRuntimeJournal,
     ) -> crate::RuntimeResult<Self> {
-        validate_shard_config_inputs(
-            config.command_queue_capacity,
-            config.trace_capacity,
-            config.step_budget_per_tick,
-            config.max_active_runs,
-            config.coalesce_window_ticks,
-            config.max_terminal_runs,
-        )?;
+        config.validate()?;
         let count = shard_count.get();
         let mut shards = Vec::with_capacity(count);
         let mut index = 0usize;
@@ -69,14 +61,7 @@ impl Runtime {
         config: ShardConfig,
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> crate::RuntimeResult<Self> {
-        validate_shard_config_inputs(
-            config.command_queue_capacity,
-            config.trace_capacity,
-            config.step_budget_per_tick,
-            config.max_active_runs,
-            config.coalesce_window_ticks,
-            config.max_terminal_runs,
-        )?;
+        config.validate()?;
         let journal = crate::journal::NoopRuntimeJournal::shared();
         let count = shard_count.get();
         let mut shards = Vec::with_capacity(count);

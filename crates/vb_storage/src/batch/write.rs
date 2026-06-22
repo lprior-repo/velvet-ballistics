@@ -15,7 +15,8 @@ use crate::{error::JournalError, journal::FjallJournal};
 pub struct JournalWriteBatch<'j> {
     pub(super) inner: fjall::OwnedWriteBatch,
     pub(super) journal: &'j FjallJournal,
-    pub(super) staged_event_keys: std::collections::BTreeSet<[u8; crate::constants::JOURNAL_KEY_BYTES]>,
+    pub(super) staged_event_keys:
+        std::collections::BTreeSet<[u8; crate::constants::JOURNAL_KEY_BYTES]>,
     #[cfg(test)]
     pub(super) staged_ir_hashes: std::collections::HashMap<vb_core::WorkflowDigest, [u8; 32]>,
     pub(super) state: BatchState,

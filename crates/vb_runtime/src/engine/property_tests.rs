@@ -24,7 +24,7 @@ fn evidence_collector_zero_capacity_drops_all() {
     assert_eq!(collector.len(), 0);
     assert_eq!(collector.dropped(), 1);
 
-    collector.push_step_succeeded(StepIdx::ZERO, None);
+    collector.push_step_succeeded(StepIdx::ZERO, None, 1);
     assert_eq!(collector.dropped(), 2);
 
     collector.push_slot_written(SlotIdx::ZERO, SlotValue::I64(42));
@@ -214,12 +214,18 @@ fn evidence_event_step_succeeded_output_preserved() {
     let event = EvidenceEvent::StepSucceeded {
         step: StepIdx::new(3),
         output: Some(SlotIdx::new(7)),
+        attempt: 1,
     };
 
     match &event {
-        EvidenceEvent::StepSucceeded { step: s, output: o } => {
+        EvidenceEvent::StepSucceeded {
+            step: s,
+            output: o,
+            attempt,
+        } => {
             assert_eq!(*s, StepIdx::new(3));
             assert_eq!(*o, Some(SlotIdx::new(7)));
+            assert_eq!(*attempt, 1);
         }
         other => panic!("expected StepSucceeded, got {:?}", other),
     }

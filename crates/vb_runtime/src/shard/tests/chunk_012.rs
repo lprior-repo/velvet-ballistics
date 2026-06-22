@@ -163,9 +163,11 @@ fn shard_config_new_rejects_zero_command_queue_capacity() -> Result<(), RuntimeE
     let result = ShardConfig::new(0, 16, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Err(RuntimeError::CommandQueueCapacityExceeded {
-            capacity: 0,
-            max: MAX_COMMAND_QUEUE_CAPACITY
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::CommandQueueCapacityExceeded {
+                capacity: 0,
+                max: MAX_COMMAND_QUEUE_CAPACITY
+            }],
         })
     );
     Ok(())
@@ -182,9 +184,11 @@ fn shard_config_new_rejects_excessive_command_queue_capacity() -> Result<(), Run
     );
     assert_eq!(
         result,
-        Err(RuntimeError::CommandQueueCapacityExceeded {
-            capacity: MAX_COMMAND_QUEUE_CAPACITY + 1,
-            max: MAX_COMMAND_QUEUE_CAPACITY
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::CommandQueueCapacityExceeded {
+                capacity: MAX_COMMAND_QUEUE_CAPACITY + 1,
+                max: MAX_COMMAND_QUEUE_CAPACITY
+            }],
         })
     );
     Ok(())
@@ -214,7 +218,12 @@ fn command_queue_capacity_predicate_matches_config_boundary() -> Result<(), Runt
 #[test]
 fn shard_config_new_rejects_zero_max_active_runs() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(16, 16, 4, 0, vb_core::policy::RuntimePolicy::Relaxed);
-    assert_eq!(result, Err(RuntimeError::ActiveRunCapacityZero));
+    assert_eq!(
+        result,
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::ActiveRunCapacityZero],
+        })
+    );
     Ok(())
 }
 
@@ -223,8 +232,10 @@ fn shard_config_new_rejects_zero_trace_capacity() -> Result<(), RuntimeError> {
     let result = ShardConfig::new(16, 0, 4, 4, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "trace_capacity_zero"
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::UnsupportedOperation {
+                operation: "trace_capacity_zero"
+            }],
         })
     );
     Ok(())
@@ -235,8 +246,10 @@ fn shard_config_new_rejects_zero_step_budget_per_tick() -> Result<(), RuntimeErr
     let result = ShardConfig::new(16, 16, 0, 4, vb_core::policy::RuntimePolicy::Relaxed);
     assert_eq!(
         result,
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "step_budget_per_tick_zero"
+        Err(RuntimeError::ConfigInvalid {
+            errors: vec![RuntimeError::UnsupportedOperation {
+                operation: "step_budget_per_tick_zero"
+            }],
         })
     );
     Ok(())

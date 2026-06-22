@@ -1,8 +1,11 @@
-use crate::shard::config::validate_shard_config_inputs;
 use crate::shard::bounded_outcomes::DEFAULT_MAX_TERMINAL_OUTCOMES;
 
 impl ShardConfig {
-    /// Creates a new ShardConfig, validating capacity limits.
+    /// Creates a new ShardConfig, validating every field together.
+    ///
+    /// All invalid fields are aggregated into a single
+    /// [`RuntimeError::ConfigInvalid`] error rather than reported one at a
+    /// time (RS-217). See [`ShardConfig::validate`] for the rejected fields.
     pub fn new(
         command_queue_capacity: usize,
         trace_capacity: usize,
@@ -10,15 +13,7 @@ impl ShardConfig {
         max_active_runs: usize,
         policy: vb_core::policy::RuntimePolicy,
     ) -> RuntimeResult<Self> {
-        validate_shard_config_inputs(
-            command_queue_capacity,
-            trace_capacity,
-            step_budget_per_tick,
-            max_active_runs,
-            1,
-            crate::shard::DEFAULT_MAX_TERMINAL_RUNS,
-        )?;
-        Ok(Self {
+        let config = Self {
             command_queue_capacity,
             trace_capacity,
             step_budget_per_tick,
@@ -29,7 +24,9 @@ impl ShardConfig {
             max_terminal_runs: crate::shard::DEFAULT_MAX_TERMINAL_RUNS,
             terminal_runs_ttl_ticks: crate::shard::DEFAULT_TERMINAL_RUNS_TTL_TICKS,
             max_terminal_outcomes: DEFAULT_MAX_TERMINAL_OUTCOMES,
-        })
+        };
+        config.validate()?;
+        Ok(config)
     }
 
     /// Creates a new ShardConfig with full field control.
@@ -37,7 +34,9 @@ impl ShardConfig {
     /// Validates every capacity/interval/TTL field against typed
     /// `RuntimeError` variants so struct-literal bypass via
     /// `Shard::new(ShardConfig { .. })` cannot sneak past invariants.
-    /// Added in RQ-W0-15.
+    /// All invalid fields are aggregated into a single
+    /// [`RuntimeError::ConfigInvalid`] error rather than reported one at
+    /// a time (RS-217).
     #[allow(clippy::too_many_arguments)]
     pub fn new_full(
         command_queue_capacity: usize,
@@ -51,15 +50,7 @@ impl ShardConfig {
         terminal_runs_ttl_ticks: u64,
         max_terminal_outcomes: usize,
     ) -> RuntimeResult<Self> {
-        validate_shard_config_inputs(
-            command_queue_capacity,
-            trace_capacity,
-            step_budget_per_tick,
-            max_active_runs,
-            coalesce_window_ticks,
-            max_terminal_runs,
-        )?;
-        Ok(Self {
+        let config = Self {
             command_queue_capacity,
             trace_capacity,
             step_budget_per_tick,
@@ -70,6 +61,8 @@ impl ShardConfig {
             max_terminal_runs,
             terminal_runs_ttl_ticks,
             max_terminal_outcomes,
-        })
+        };
+        config.validate()?;
+        Ok(config)
     }
 }

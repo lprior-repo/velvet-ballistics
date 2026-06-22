@@ -374,8 +374,8 @@ fn run_event_key_ordering_matches_numeric_comparison() {
     let key0 = run_event_key(run, event_seq(0)).expect("key at seq=0 must encode");
     let key255 = run_event_key(run, event_seq(255)).expect("key at seq=255 must encode");
     // u64::MAX is the reserved sentinel — encode below it for the high boundary.
-    let key_max = run_event_key(run, event_seq(u64::MAX - 1))
-        .expect("key at seq=u64::MAX-1 must encode");
+    let key_max =
+        run_event_key(run, event_seq(u64::MAX - 1)).expect("key at seq=u64::MAX-1 must encode");
 
     // When: comparing lexicographically
     // Then: ordering matches numeric comparison

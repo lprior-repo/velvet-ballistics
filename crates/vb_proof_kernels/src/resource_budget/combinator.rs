@@ -26,6 +26,5 @@ pub fn loop_compose(body: &Budget, iterations: u64) -> Budget {
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-
 #[cfg(test)]
 mod tests;

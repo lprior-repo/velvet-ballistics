@@ -2196,7 +2196,10 @@ fn batch_append_event_rejects_duplicate_key_within_batch() {
     batch.append_event(&event).expect("first batch append");
     let result = batch.append_event(&event);
     assert!(
-        matches!(result, Err(crate::error::JournalError::DuplicateEvent { .. })),
+        matches!(
+            result,
+            Err(crate::error::JournalError::DuplicateEvent { .. })
+        ),
         "second batch append with same key must yield DuplicateEvent, got {:?}",
         result
     );

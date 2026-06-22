@@ -17,10 +17,7 @@ use crate::workflow::{CompiledNode, ExprBranch, SlotBranch, WorkflowError, Workf
 /// A contract value of `0` is treated as opt-out (legacy callers may pass
 /// `0` to mean "no check"), preserving existing test fixtures that pair
 /// zeroed budget fields with otherwise-valid workflows.
-fn check_against_contract_fanout(
-    actual: usize,
-    contract_max: u16,
-) -> Result<(), WorkflowError> {
+fn check_against_contract_fanout(actual: usize, contract_max: u16) -> Result<(), WorkflowError> {
     if contract_max > 0 && actual > usize::from(contract_max) {
         Err(WorkflowError::ResourceContractExceeded {
             resource: "max_fanout",
@@ -35,10 +32,7 @@ fn check_against_contract_fanout(
 /// A contract value of `0` is treated as opt-out (legacy callers may pass
 /// `0` to mean "no check"), preserving existing test fixtures that pair
 /// zeroed budget fields with otherwise-valid workflows.
-fn check_against_contract_retry(
-    actual: u16,
-    contract_max: u16,
-) -> Result<(), WorkflowError> {
+fn check_against_contract_retry(actual: u16, contract_max: u16) -> Result<(), WorkflowError> {
     if contract_max > 0 && actual > contract_max {
         Err(WorkflowError::ResourceContractExceeded {
             resource: "max_retry_attempts",
@@ -54,10 +48,7 @@ fn check_against_contract_retry(
 /// A contract value of `0` is treated as opt-out (legacy callers may pass
 /// `0` to mean "no check"), preserving existing test fixtures that pair
 /// zeroed budget fields with otherwise-valid workflows.
-fn check_against_contract_collect(
-    actual: u32,
-    contract_max: u32,
-) -> Result<(), WorkflowError> {
+fn check_against_contract_collect(actual: u32, contract_max: u32) -> Result<(), WorkflowError> {
     if contract_max > 0 && actual > contract_max {
         Err(WorkflowError::ResourceContractExceeded {
             resource: "max_collect_items",
@@ -211,7 +202,10 @@ pub(crate) fn validate_together_join(
     parts: &WorkflowParts,
 ) -> Result<(), WorkflowError> {
     validate_nonzero_u16(branch_count, "max_fanout")?;
-    check_against_contract_fanout(usize::from(branch_count), parts.resource_contract.max_fanout)?;
+    check_against_contract_fanout(
+        usize::from(branch_count),
+        parts.resource_contract.max_fanout,
+    )?;
     validate_slot(accumulator, parts.slot_count)
 }
 

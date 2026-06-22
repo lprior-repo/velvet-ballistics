@@ -8,9 +8,9 @@
 //! - `state_machine`        — §38 row "State machine"
 //! - `taint_safety`         — §38 row "Taint safety"
 
-mod proptest_digest_stability;
-mod proptest_layout_stability;
-mod proptest_for_each_ordering;
 mod proptest_bound_enforcement;
+mod proptest_digest_stability;
+mod proptest_for_each_ordering;
+mod proptest_layout_stability;
 mod proptest_state_machine;
 mod proptest_taint_safety;

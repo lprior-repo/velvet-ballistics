@@ -12,6 +12,12 @@
 //! GOD RULE 1: All inputs use kani::any().
 //! GOD RULE 2: Every harness calls production functions:
 //!   admission_header_persistence_failed(), apply(), append_journal_event().
+//!
+//! NOTE(RS-107 durable variant): production uses
+//! `append_journal_event_durable` for callers that have durability-dependent
+//! side effects (await_timer / await_action / apply_awaiting_event). This
+//! harness exercises only the buffered `append_journal_event` for
+//! sequence-monotonicity proofs.
 
 #![forbid(unsafe_code)]
 #![cfg(kani)]

@@ -168,12 +168,14 @@ fn arb_i64_binary_expr() -> impl Strategy<Value = ExprAst> {
 
 /// Build an AST for a constant unary expression on an i64.
 fn arb_i64_unary_expr() -> impl Strategy<Value = ExprAst> {
-    (any::<i64>(), prop_oneof![Just(UnaryOp::Neg), Just(UnaryOp::Not)]).prop_map(|(v, op)| {
-        ExprAst::Unary {
+    (
+        any::<i64>(),
+        prop_oneof![Just(UnaryOp::Neg), Just(UnaryOp::Not)],
+    )
+        .prop_map(|(v, op)| ExprAst::Unary {
             op,
             expr: Box::new(ExprAst::Literal(ExprLiteral::I64(v))),
-        }
-    })
+        })
 }
 
 /// Build an AST for a constant comparison expression.

@@ -8,6 +8,7 @@ use crate::{RuntimeError, RuntimeResult};
 use super::chunk_003_completion::ActionFailureOutcome;
 
 /// Applies the appropriate error handler for a failed action.
+#[allow(dead_code)]
 pub(crate) fn apply_error_handler(
     state: &mut RunState,
     ticket: ActionTicket,
@@ -29,6 +30,7 @@ pub(crate) fn apply_error_handler(
     }
 }
 
+#[allow(dead_code)]
 fn write_failure_slot(
     state: &mut RunState,
     step: StepIdx,

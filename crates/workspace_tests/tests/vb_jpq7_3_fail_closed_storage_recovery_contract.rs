@@ -141,7 +141,8 @@ use vb_core::{ListId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest}
 use vb_runtime::primitives::collect::CollectPaginationState;
 use vb_storage::recovery::{RecoveryError, hydrate_run_frame, hydrate_run_frame_from_events};
 use vb_storage::{
-    EventReplayLimit, EventSeq, FjallJournal, JournalError, JournalEvent, RunSnapshot, SlotWriteExtra,
+    EventReplayLimit, EventSeq, FjallJournal, JournalError, JournalEvent, RunSnapshot,
+    SlotWriteExtra,
 };
 
 const JOURNAL_REPLAY_SOURCE: &str = include_str!("../../vb_storage/src/journal/replay.rs");

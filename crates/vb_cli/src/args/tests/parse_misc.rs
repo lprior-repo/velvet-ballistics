@@ -22,12 +22,11 @@ fn parse_trace_defaults_to_no_filters() {
 
     match parsed {
         Ok(Command::Trace {
-        run_id,
-        db,
-        output,
-        filters,
-    }) => {
-
+            run_id,
+            db,
+            output,
+            filters,
+        }) => {
             assert_eq!(run_id, "7");
             assert_eq!(db, PathBuf::from("journal-db"));
             assert_eq!(output, OutputFormat::Text);
@@ -37,7 +36,6 @@ fn parse_trace_defaults_to_no_filters() {
             assert_eq!(filters.since_seq, None);
             assert_eq!(filters.until_seq, None);
             assert_eq!(filters.limit, None);
-
         }
         other => panic!("expected Command::Trace, got {other:?}"),
     }
@@ -69,9 +67,8 @@ fn parse_trace_accepts_all_filters() {
 
     match parsed {
         Ok(Command::Trace {
-        output, filters, ..
-    }) => {
-
+            output, filters, ..
+        }) => {
             assert_eq!(output, OutputFormat::Yaml);
             assert_eq!(filters.step, Some(4));
             assert_eq!(filters.action, Some(9));
@@ -79,7 +76,6 @@ fn parse_trace_accepts_all_filters() {
             assert_eq!(filters.since_seq, Some(10));
             assert_eq!(filters.until_seq, Some(20));
             assert_eq!(filters.limit, Some(3));
-
         }
         other => panic!("expected Command::Trace, got {other:?}"),
     }
@@ -182,12 +178,10 @@ fn parse_status_accepts_no_runtime_defaults() {
     let parsed = parse_args(&args(&["velvet-ballistics", "status", "--emit", "yaml"]));
     match parsed {
         Ok(Command::Status { options, output }) => {
-
             assert_eq!(options.active_runs, None);
             assert_eq!(options.queue_depth, None);
             assert_eq!(options.trace_dropped, None);
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Status, got {other:?}"),
     }
@@ -207,12 +201,10 @@ fn parse_status_accepts_diagnostic_counters() {
     ]));
     match parsed {
         Ok(Command::Status { options, output }) => {
-
             assert_eq!(options.active_runs, Some(5));
             assert_eq!(options.queue_depth, Some(3));
             assert_eq!(options.trace_dropped, Some(0));
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Status, got {other:?}"),
     }
@@ -322,12 +314,10 @@ fn parse_system_status_defaults_to_standard_none_text() {
     let parsed = parse_args(&args(&["velvet-ballistics", "system", "status"]));
     match parsed {
         Ok(Command::SystemStatus { options, output }) => {
-
             assert_eq!(options.profile, VerifyProfile::Standard);
             assert_eq!(options.server, DurabilityMode::None);
             assert!(!options.emit_yaml);
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::SystemStatus, got {other:?}"),
     }
@@ -348,12 +338,10 @@ fn parse_system_status_accepts_profile_server_and_emit_yaml() {
     ]));
     match parsed {
         Ok(Command::SystemStatus { options, output }) => {
-
             assert_eq!(options.profile, VerifyProfile::Full);
             assert_eq!(options.server, DurabilityMode::None);
             assert!(options.emit_yaml);
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::SystemStatus, got {other:?}"),
     }

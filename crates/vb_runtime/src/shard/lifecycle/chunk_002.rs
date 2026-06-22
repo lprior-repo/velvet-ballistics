@@ -93,11 +93,27 @@ impl Shard {
             step: answer.ticket.ask_step,
             slot: answer.answer_slot,
         })?;
+        // RS-004: derive the live per-step attempt counter from
+        // `state.action_attempts` so the durable journal record matches
+        // the same source as `ActionFailed`. Ask steps do not currently
+        // drive `action_attempts` (asks have no ticket-based retry), so
+        // this resolves to 1 via the `.max(1)` clamp and remains
+        // forward-compatible if ask retry tracking is added later.
+        let attempt = self
+            .run_state_get(run)
+            .and_then(|state| {
+                state
+                    .action_attempts
+                    .get(answer.ticket.ask_step.as_usize())
+                    .copied()
+            })
+            .unwrap_or(0)
+            .max(1);
         self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
             step: answer.ticket.ask_step,
             output: answer.answer_slot,
-            attempt: 1,
+            attempt,
         })?;
         self.drive_run(run)
     }
@@ -189,7 +205,7 @@ impl Shard {
         // `runtime_states` is cleared consistently with the other terminal
         // paths (fail/finish/done). Without this, the FSM map retains a
         // stale entry (Initial/Running/Resumable) for a cancelled run.
-        let _ = self.apply(run, RuntimeEvent::TerminalRemove);
+        _ = self.apply(run, RuntimeEvent::TerminalRemove);
         self.discard_journal_sequence(run);
         Ok(())
     }
@@ -220,7 +236,7 @@ impl Shard {
         // `runtime_states` is cleared consistently with the other terminal
         // paths (fail/finish/done). Without this, the FSM map retains a
         // stale entry (Initial/Running/Resumable) for a killed run.
-        let _ = self.apply(run, RuntimeEvent::TerminalRemove);
+        _ = self.apply(run, RuntimeEvent::TerminalRemove);
         self.discard_journal_sequence(run);
         Ok(())
     }
@@ -283,7 +299,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         match result {
             Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
-                let _ = self.apply(run, RuntimeEvent::DriveContinue);
+                _ = self.apply(run, RuntimeEvent::DriveContinue);
                 self.keep_run_with_snapshot(run, state)?;
                 Ok(())
             }
@@ -316,7 +332,7 @@ impl Shard {
         state: RunState,
         ticket: ActionTicket,
     ) -> RuntimeResult<()> {
-        let _ = self.apply(run, RuntimeEvent::AwaitAction);
+        _ = self.apply(run, RuntimeEvent::AwaitAction);
         self.await_action(run, state, ticket)
     }
 
@@ -328,7 +344,7 @@ impl Shard {
         deadline_slot: SlotIdx,
     ) -> RuntimeResult<()> {
         self.await_timer(run, state, kind, deadline_slot)?;
-        let _ = self.apply(run, RuntimeEvent::AwaitTimer);
+        _ = self.apply(run, RuntimeEvent::AwaitTimer);
         Ok(())
     }
 
@@ -348,13 +364,30 @@ impl Shard {
                 // Event-only wait: no deadline. Insert the run without a
                 // pending timer so the run is suspended until an external
                 // event command resumes it.
+                //
+                // RS-107 follow-up (durable variant): use
+                // `append_journal_event_durable` so the WaitScheduled
+                // sentinel is durably persisted before the run is
+                // re-inserted into the suspended state. The pre-fix
+                // `let _ = self.append_journal_event(...)` silently
+                // swallowed the error (Holzman violation) AND would only
+                // buffer the event in `coalesce_buffer` when the window
+                // is active, so a crash before the next flush would lose
+                // the sentinel and recovery would fail to rehydrate the
+                // suspended wait. Restore `state` on failure so the run
+                // is not silently dropped from shard bookkeeping (RS-005).
                 self.counters.add_steps(state.frame.executed());
                 let step = state.frame.pc();
-                let _ = self.append_journal_event(RuntimeJournalEvent::WaitScheduled {
-                    run,
-                    step,
-                    deadline_ms: u64::MAX,
-                });
+                if let Err(error) = self
+                    .append_journal_event_durable(RuntimeJournalEvent::WaitScheduled {
+                        run,
+                        step,
+                        deadline_ms: u64::MAX,
+                    })
+                {
+                    self.run_state_insert(run, state);
+                    return Err(error);
+                }
                 self.run_state_insert(run, state);
                 Ok(())
             }
@@ -362,13 +395,13 @@ impl Shard {
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        let _ = self.apply(run, RuntimeEvent::DriveFinished);
+        _ = self.apply(run, RuntimeEvent::DriveFinished);
         self.finish_run(run, state)
     }
 
     fn apply_terminal_failed(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         // apply() handles runtime_states mutation; fail_run_state handles cleanup only
-        let _ = self.apply(run, RuntimeEvent::Fail);
+        _ = self.apply(run, RuntimeEvent::Fail);
         self.fail_run_state(run, state)
     }
 }

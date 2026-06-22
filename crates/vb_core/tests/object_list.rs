@@ -448,8 +448,14 @@ fn insert_object_accepts_distinct_keys() {
     .into_boxed_slice();
     let obj = store.insert_object(fields).expect("insert_object");
     assert_eq!(store.object_count(), 1);
-    assert_eq!(store.object_field(obj, sym_a).expect("field a"), SlotValue::I64(1));
-    assert_eq!(store.object_field(obj, sym_b).expect("field b"), SlotValue::I64(2));
+    assert_eq!(
+        store.object_field(obj, sym_a).expect("field a"),
+        SlotValue::I64(1)
+    );
+    assert_eq!(
+        store.object_field(obj, sym_b).expect("field b"),
+        SlotValue::I64(2)
+    );
     let slice = store.object(obj).expect("object");
     assert_eq!(slice.len(), 2);
     assert_eq!(slice[0].value, SlotValue::I64(1));

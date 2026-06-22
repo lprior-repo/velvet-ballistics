@@ -135,7 +135,7 @@
 
 use proptest::prelude::*;
 
-use crate::codec::{encode_record, decode_record, decode_envelope_only};
+use crate::codec::{decode_envelope_only, decode_record, encode_record};
 use crate::constants::{MAGIC_BLOB, MAX_BLOB_BYTES};
 use crate::records::{
     BlobRecord, KnownRunHeaderStatus, RecordKind, RunHeaderStatus, RunHeaderStatusClass,

@@ -133,7 +133,7 @@
 use proptest::prelude::*;
 use vb_core::{ActionId, RunId, StepIdx, WorkflowId};
 
-use crate::codec::{encode_record_header, decode_record_header};
+use crate::codec::{decode_record_header, encode_record_header};
 use crate::constants::{
     CURRENT_SCHEMA_VERSION, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
     MAX_JOURNAL_EVENT_PAYLOAD_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,

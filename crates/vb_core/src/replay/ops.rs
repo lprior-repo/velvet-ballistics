@@ -358,19 +358,18 @@ fn eval_contains(stack: &mut ReplayExprStack, store: &ValueStore) -> Result<(), 
     let (haystack, needle) = pop_pair(stack)?;
     let haystack_id = expect_symbol_replay(haystack)?;
     let needle_id = expect_symbol_replay(needle)?;
-    let haystack_str = store.symbol(haystack_id).map_err(|_| ReplayError::Internal {
-        reason: "symbol out of bounds during replay contains",
-    })?;
+    let haystack_str = store
+        .symbol(haystack_id)
+        .map_err(|_| ReplayError::Internal {
+            reason: "symbol out of bounds during replay contains",
+        })?;
     let needle_str = store.symbol(needle_id).map_err(|_| ReplayError::Internal {
         reason: "symbol out of bounds during replay contains",
     })?;
     stack.push(SlotValue::Bool(haystack_str.contains(needle_str)))
 }
 
-fn eval_starts_with(
-    stack: &mut ReplayExprStack,
-    store: &ValueStore,
-) -> Result<(), ReplayError> {
+fn eval_starts_with(stack: &mut ReplayExprStack, store: &ValueStore) -> Result<(), ReplayError> {
     let (text, prefix) = pop_pair(stack)?;
     let text_id = expect_symbol_replay(text)?;
     let prefix_id = expect_symbol_replay(prefix)?;
@@ -422,16 +421,30 @@ fn eval_exists(stack: &mut ReplayExprStack, store: &ValueStore) -> Result<(), Re
 fn eval_length(stack: &mut ReplayExprStack, store: &ValueStore) -> Result<(), ReplayError> {
     let value = stack.pop()?;
     let len = match value {
-        SlotValue::Symbol(id) => store.symbol(id).map_err(|_| ReplayError::Internal {
-            reason: "symbol out of bounds during replay length",
-        })?.len(),
-        SlotValue::List(id) => store.list(id).map_err(|_| ReplayError::Internal {
-            reason: "list out of bounds during replay length",
-        })?.len(),
-        SlotValue::Object(id) => store.object(id).map_err(|_| ReplayError::Internal {
-            reason: "object out of bounds during replay length",
-        })?.len(),
-        other => return Err(replay_type_mismatch("text, list, or object", other.type_name())),
+        SlotValue::Symbol(id) => store
+            .symbol(id)
+            .map_err(|_| ReplayError::Internal {
+                reason: "symbol out of bounds during replay length",
+            })?
+            .len(),
+        SlotValue::List(id) => store
+            .list(id)
+            .map_err(|_| ReplayError::Internal {
+                reason: "list out of bounds during replay length",
+            })?
+            .len(),
+        SlotValue::Object(id) => store
+            .object(id)
+            .map_err(|_| ReplayError::Internal {
+                reason: "object out of bounds during replay length",
+            })?
+            .len(),
+        other => {
+            return Err(replay_type_mismatch(
+                "text, list, or object",
+                other.type_name(),
+            ));
+        }
     };
     let len_i64 = i64::try_from(len).map_err(|_| ReplayError::ExpressionEvalFailed {
         step: StepIdx::ZERO,
@@ -443,16 +456,30 @@ fn eval_empty(stack: &mut ReplayExprStack, store: &ValueStore) -> Result<(), Rep
     let value = stack.pop()?;
     let is_empty = match value {
         SlotValue::Null => true,
-        SlotValue::Symbol(id) => store.symbol(id).map_err(|_| ReplayError::Internal {
-            reason: "symbol out of bounds during replay empty",
-        })?.is_empty(),
-        SlotValue::List(id) => store.list(id).map_err(|_| ReplayError::Internal {
-            reason: "list out of bounds during replay empty",
-        })?.is_empty(),
-        SlotValue::Object(id) => store.object(id).map_err(|_| ReplayError::Internal {
-            reason: "object out of bounds during replay empty",
-        })?.is_empty(),
-        other => return Err(replay_type_mismatch("text, list, object, or null", other.type_name())),
+        SlotValue::Symbol(id) => store
+            .symbol(id)
+            .map_err(|_| ReplayError::Internal {
+                reason: "symbol out of bounds during replay empty",
+            })?
+            .is_empty(),
+        SlotValue::List(id) => store
+            .list(id)
+            .map_err(|_| ReplayError::Internal {
+                reason: "list out of bounds during replay empty",
+            })?
+            .is_empty(),
+        SlotValue::Object(id) => store
+            .object(id)
+            .map_err(|_| ReplayError::Internal {
+                reason: "object out of bounds during replay empty",
+            })?
+            .is_empty(),
+        other => {
+            return Err(replay_type_mismatch(
+                "text, list, object, or null",
+                other.type_name(),
+            ));
+        }
     };
     stack.push(SlotValue::Bool(is_empty))
 }
@@ -473,10 +500,7 @@ fn eval_append(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<()
     stack.push(SlotValue::List(new_list))
 }
 
-fn eval_append_if(
-    stack: &mut ReplayExprStack,
-    store: &mut ValueStore,
-) -> Result<(), ReplayError> {
+fn eval_append_if(stack: &mut ReplayExprStack, store: &mut ValueStore) -> Result<(), ReplayError> {
     let (list, item, condition) = pop_triple_replay(stack)?;
     let list_id = expect_list_replay(list)?;
     let cond = expect_bool_replay(condition)?;
@@ -545,9 +569,11 @@ fn eval_sum(stack: &mut ReplayExprStack, store: &ValueStore) -> Result<(), Repla
     let mut sum: i64 = 0;
     for &item in items {
         let n = expect_i64_replay(item)?;
-        sum = sum.checked_add(n).ok_or(ReplayError::ExpressionEvalFailed {
-            step: StepIdx::ZERO,
-        })?;
+        sum = sum
+            .checked_add(n)
+            .ok_or(ReplayError::ExpressionEvalFailed {
+                step: StepIdx::ZERO,
+            })?;
     }
     stack.push(SlotValue::I64(sum))
 }

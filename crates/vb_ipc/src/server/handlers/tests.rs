@@ -27,7 +27,8 @@ fn runtime_config() -> ShardConfig {
         coalesce_window_ticks: 1,
         snapshot_interval_steps: 0,
         max_terminal_runs: 16,
-        terminal_runs_ttl_ticks: 86_400,        max_terminal_outcomes: 100_000,
+        terminal_runs_ttl_ticks: 86_400,
+        max_terminal_outcomes: 100_000,
     }
 }
 
@@ -282,8 +283,7 @@ fn handle_answer_ask_rejects_absent_pending_ask() {
         // Unreachable: the assertion above guarantees shard_count is non-zero.
         None => return,
     };
-    let mut runtime = Runtime::new(shard_count, runtime_config())
-        .expect("runtime config is valid");
+    let mut runtime = Runtime::new(shard_count, runtime_config()).expect("runtime config is valid");
     let run_id = RunId::new(3103);
     let answer = must_encoded_value(&SlotValue::Bool(true));
     let payload = must_answer_payload(run_id, SlotIdx::new(1), answer, None);

@@ -270,9 +270,7 @@ impl RuntimeLimitsProfile {
                 limit: MAX_COLLECT_TIME_SECONDS,
             });
         }
-        if config.repeat_time_seconds == 0
-            || config.repeat_time_seconds > MAX_REPEAT_TIME_SECONDS
-        {
+        if config.repeat_time_seconds == 0 || config.repeat_time_seconds > MAX_REPEAT_TIME_SECONDS {
             return Err(ProfileValidationError::ExceedsHardLimit {
                 field: "repeat_time_seconds",
                 value: config.repeat_time_seconds,

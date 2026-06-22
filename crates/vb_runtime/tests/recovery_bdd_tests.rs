@@ -2292,10 +2292,7 @@ fn recover_all_incomplete_runs_excludes_finished_runs() {
         .ok()
         .expect("RunAccepted+StepSucceeded must be recoverable")
         .summary();
-    assert_eq!(
-        summary.run, run,
-        "summary must carry the recovered run id"
-    );
+    assert_eq!(summary.run, run, "summary must carry the recovered run id");
     assert_eq!(
         summary.steps_started, 1,
         "summary must count the StepStarted event"
@@ -2644,10 +2641,7 @@ fn run_failed_event_sets_terminal_state() {
         .ok()
         .expect("run failed event must be recoverable")
         .summary();
-    assert_eq!(
-        summary.run, run,
-        "summary must carry the recovered run id"
-    );
+    assert_eq!(summary.run, run, "summary must carry the recovered run id");
     assert!(
         matches!(summary.terminal, Some(RecoveryTerminalState::Failed { .. })),
         "run failed event must surface Failed terminal state, got {:?}",
@@ -2692,7 +2686,10 @@ fn run_finished_event_sets_terminal_state_with_result() {
         .expect("run finished event must be recoverable")
         .summary();
     assert!(
-        matches!(summary.terminal, Some(RecoveryTerminalState::Finished { .. })),
+        matches!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Finished { .. })
+        ),
         "terminal should be Finished, got {:?}",
         summary.terminal
     );
@@ -2768,7 +2765,11 @@ fn watermark_preserves_snapshot_data_beyond_tail() {
 
     let result = hydrate_run_frame(&snapshot, &tail, run);
     let frame = result.expect("tail after watermark must hydrate");
-    assert_eq!(frame.pc(), StepIdx::ZERO, "pc must equal first_step (StepIdx::ZERO)");
+    assert_eq!(
+        frame.pc(),
+        StepIdx::ZERO,
+        "pc must equal first_step (StepIdx::ZERO)"
+    );
     assert_eq!(frame.run_id(), run, "frame.run_id must round-trip");
     assert_eq!(
         frame.step_count(),
@@ -2894,7 +2895,10 @@ fn check_compiled_ir_digest_accepts_matching_digest() {
 
     let digest = test_digest(0xD1);
     let result = check_compiled_ir_digest(digest, digest);
-    assert!(matches!(result, Ok(())), "matching digests must yield Ok(()), got {result:?}");
+    assert!(
+        matches!(result, Ok(())),
+        "matching digests must yield Ok(()), got {result:?}"
+    );
 
     let divergent = test_digest(0xD2);
     let divergent_result = check_compiled_ir_digest(digest, divergent);

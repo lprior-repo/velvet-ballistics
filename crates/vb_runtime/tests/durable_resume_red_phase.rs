@@ -24,9 +24,9 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 
 // Import the types we expect to exist after implementation.
 // These imports will fail until vb-qi37.16.2 is implemented.
+use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{ResumeStatus, RuntimeState, Shard, ShardCommand, ShardConfig};
-use vb_runtime::RuntimeError;
 
 fn contract_required_capability(action: ActionId) -> Capability {
     Capability::new("__contract_required__".into(), action)

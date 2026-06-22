@@ -134,13 +134,13 @@
 
 use proptest::prelude::*;
 
-use crate::codec::{encode_record, decode_record};
+use crate::BlobRecord;
+use crate::JournalError;
+use crate::codec::{decode_record, encode_record};
 use crate::constants::{MAGIC_BLOB, MAX_BLOB_BYTES};
 use crate::journal::EventReplayLimit;
 use crate::records::RecordKind;
 use crate::types::EventSeq;
-use crate::BlobRecord;
-use crate::JournalError;
 
 proptest! {
     /// `EventReplayLimit::new(0)` returns `None`. A zero limit

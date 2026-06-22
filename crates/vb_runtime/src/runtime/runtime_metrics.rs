@@ -131,19 +131,171 @@ fn trace_fill_pct(shard: &Shard) -> f32 {
     if capacity == 0 {
         return 0.0;
     }
-    let Some(capacity_u16) = bounded_u16(capacity) else {
-        return 100.0;
-    };
-    let Some(len_u16) = bounded_u16(shard.trace_ring().len()) else {
-        return 100.0;
-    };
-    (f32::from(len_u16) / f32::from(capacity_u16)) * 100.0
-}
-
-fn bounded_u16(value: usize) -> Option<u16> {
-    u16::try_from(value).ok()
+    let len = shard.trace_ring().len();
+    // `capacity` is bounded by `MAX_TRACE_RING_CAPACITY = 1_048_576` and
+    // `len <= capacity`, so both values fit comfortably in `u32`. Computing
+    // the ratio in `f64` (rather than bounding through `u16` as the previous
+    // implementation did) preserves precision across the full legal capacity
+    // range. The previous `bounded_u16` branch saturated any ring whose
+    // capacity exceeded `u16::MAX` (65 535) at `100.0`, masking actual fill
+    // ratios up to `MAX_TRACE_RING_CAPACITY`.
+    let capacity_u32 = u32::try_from(capacity).unwrap_or(u32::MAX);
+    let len_u32 = u32::try_from(len).unwrap_or(u32::MAX);
+    let ratio_f64 = f64::from(len_u32) / f64::from(capacity_u32);
+    let pct_f64 = ratio_f64 * 100.0;
+    // Narrow `pct_f64` (always in `[0.0, 100.0]` since `len <= capacity`)
+    // to `f32`. The saturating cast is preferred here because `f32` has no
+    // `From<f64>` impl and the `TryFrom<f64>` impl requires it. The cast is
+    // exact for every reachable input: f32 represents every integer in
+    // `[0, 2^24]` exactly, and `pct_f64` is bounded by `100.0`.
+    #[allow(clippy::as_conversions)]
+    let pct_f32 = pct_f64 as f32;
+    pct_f32
 }
 
 fn saturating_u32(value: usize) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    //! Regression coverage for RA-003 (`trace_fill_pct` saturation bug).
+    //!
+    //! Before the fix, `trace_fill_pct` saturated at `100.0` for any trace
+    //! ring whose capacity exceeded `u16::MAX`. With production trace rings
+    //! configured up to `MAX_TRACE_RING_CAPACITY = 1_048_576`, that covered a
+    //! large live configuration range. These tests pin the corrected
+    //! behaviour: empty rings with capacities above `u16::MAX` must report
+    //! `0.0`, and partial fills must report the actual ratio.
+
+    use std::num::NonZeroUsize;
+
+    use vb_core::ids::RunId;
+    use vb_core::limits::MAX_TRACE_RING_CAPACITY;
+    use vb_core::policy::RuntimePolicy;
+
+    use super::Runtime;
+    use crate::shard::ShardConfig;
+    use crate::trace::TraceEvent;
+
+    fn config_with_trace_capacity(trace_capacity: usize) -> ShardConfig {
+        ShardConfig {
+            command_queue_capacity: 16,
+            trace_capacity,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: RuntimePolicy::Relaxed,
+            coalesce_window_ticks: 1,
+            snapshot_interval_steps: 0,
+            max_terminal_runs: 16,
+            terminal_runs_ttl_ticks: 86_400,
+            max_terminal_outcomes: 100_000,
+        }
+    }
+
+    fn runtime_with_trace_capacity(trace_capacity: usize) -> Runtime {
+        let shard_count = NonZeroUsize::new(1).expect("non-zero");
+        Runtime::new(shard_count, config_with_trace_capacity(trace_capacity))
+            .expect("runtime construction should succeed with valid capacity")
+    }
+
+    fn push_events(runtime: &mut Runtime, count: usize) {
+        let event = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        for _ in 0..count {
+            let shard = &mut runtime.shards[0];
+            if !shard.trace_ring_mut().push(event.clone()) {
+                // Ring reached capacity; stop pushing.
+                return;
+            }
+        }
+    }
+
+    #[test]
+    fn trace_fill_pct_zero_when_empty_at_u16_max_boundary() {
+        // Capacity == u16::MAX (65_535) and length == 0 must report 0.0.
+        // This is the boundary case just below where the old implementation
+        // started saturating at 100.0.
+        let runtime = runtime_with_trace_capacity(u16::MAX as usize);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        assert_eq!(pct, 0.0, "empty ring at u16::MAX must report 0%, got {pct}");
+    }
+
+    #[test]
+    fn trace_fill_pct_zero_when_empty_just_above_u16_max() {
+        // REGRESSION (RA-003): capacity == u16::MAX + 1 (65_536) with length
+        // 0 must report 0.0, not 100.0. Previously the `bounded_u16` branch
+        // saturated at 100% for any capacity above `u16::MAX`.
+        let runtime = runtime_with_trace_capacity(usize::from(u16::MAX) + 1);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        assert_eq!(
+            pct, 0.0,
+            "empty ring with capacity > u16::MAX must report 0%, got {pct}"
+        );
+    }
+
+    #[test]
+    fn trace_fill_pct_zero_when_empty_at_max_trace_ring_capacity() {
+        // REGRESSION (RA-003): capacity at the production ceiling
+        // `MAX_TRACE_RING_CAPACITY = 1_048_576` with length 0 must report
+        // 0.0, not 100.0. This is the worst-case configuration where the
+        // original bug was most misleading.
+        let runtime = runtime_with_trace_capacity(MAX_TRACE_RING_CAPACITY);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        assert_eq!(
+            pct, 0.0,
+            "empty ring at MAX_TRACE_RING_CAPACITY must report 0%, got {pct}"
+        );
+    }
+
+    #[test]
+    fn trace_fill_pct_reports_actual_ratio_above_u16_max() {
+        // Capacity 100_000 (well above u16::MAX) with 25_000 events pushed
+        // must report ~25.0%. The previous implementation would have reported
+        // 100.0 here regardless of fill.
+        let mut runtime = runtime_with_trace_capacity(100_000);
+        push_events(&mut runtime, 25_000);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        let expected = 25.0_f32;
+        let delta = (pct - expected).abs();
+        assert!(
+            delta < 0.01,
+            "expected fill ratio near {expected}% but got {pct} (delta {delta})"
+        );
+    }
+
+    #[test]
+    fn trace_fill_pct_reports_100_when_full_at_capacity_above_u16_max() {
+        // Filling a 100_000-capacity ring completely must report 100.0.
+        let mut runtime = runtime_with_trace_capacity(100_000);
+        push_events(&mut runtime, 100_000);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        assert_eq!(
+            pct, 100.0,
+            "full ring with capacity > u16::MAX must report 100%, got {pct}"
+        );
+    }
+
+    #[test]
+    fn trace_fill_pct_reports_correct_fill_at_max_trace_ring_capacity() {
+        // Half-filling `MAX_TRACE_RING_CAPACITY` must report 50.0%, not 100%.
+        let mut runtime = runtime_with_trace_capacity(MAX_TRACE_RING_CAPACITY);
+        let half = MAX_TRACE_RING_CAPACITY / 2;
+        push_events(&mut runtime, half);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        let expected = 50.0_f32;
+        let delta = (pct - expected).abs();
+        assert!(
+            delta < 0.01,
+            "expected fill ratio near {expected}% at MAX_TRACE_RING_CAPACITY, got {pct} (delta {delta})"
+        );
+    }
+
+    #[test]
+    fn trace_fill_pct_zero_when_empty_at_small_capacity() {
+        // Baseline: small-capacity empty ring still reports 0.0 (no
+        // regression at the low end).
+        let runtime = runtime_with_trace_capacity(16);
+        let pct = runtime.collect_metrics().shards[0].trace_ring_fill_pct;
+        assert_eq!(pct, 0.0, "empty ring at capacity 16 must report 0%");
+    }
 }

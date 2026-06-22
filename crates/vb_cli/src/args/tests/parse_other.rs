@@ -169,13 +169,11 @@ fn parse_inspect_includes_output_format() {
     ]));
     match parsed {
         Ok(Command::Inspect {
-        run_id, db, output, ..
-    }) => {
-
+            run_id, db, output, ..
+        }) => {
             assert_eq!(run_id, "42");
             assert_eq!(db, PathBuf::from("test-db"));
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Inspect, got {other:?}"),
     }
@@ -256,15 +254,13 @@ fn parse_diff_requires_both_run_ids_and_db() {
     ]));
     match parsed {
         Ok(Command::Diff {
-        diff_mode: DiffMode::RunAgainst { run_a, run_b, db },
-        output,
-    }) => {
-
+            diff_mode: DiffMode::RunAgainst { run_a, run_b, db },
+            output,
+        }) => {
             assert_eq!(run_a, "1".to_string());
             assert_eq!(run_b, "2".to_string());
             assert_eq!(db, PathBuf::from("test-db"));
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Diff, got {other:?}"),
     }
@@ -284,9 +280,7 @@ fn parse_diff_accepts_json_flag() {
     ]));
     match parsed {
         Ok(Command::Diff { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Diff, got {other:?}"),
     }
@@ -345,10 +339,8 @@ fn parse_doctor_without_db_is_stateless_text_mode() {
     let parsed = parse_args(&args(&["velvet-ballistics", "doctor"]));
     match parsed {
         Ok(Command::Doctor { db, output }) => {
-
             assert_eq!(db, None);
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Doctor, got {other:?}"),
     }
@@ -366,10 +358,8 @@ fn parse_doctor_accepts_optional_db_and_yaml_output() {
     ]));
     match parsed {
         Ok(Command::Doctor { db, output }) => {
-
             assert_eq!(db, Some(PathBuf::from("journal-db")));
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Doctor, got {other:?}"),
     }

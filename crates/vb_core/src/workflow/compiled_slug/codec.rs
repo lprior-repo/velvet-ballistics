@@ -15,13 +15,14 @@ use super::validation::validate_compiled_slugs;
 /// potentially enormous `Box<[YbBoundedSlug]>`.
 pub const MAX_SLUG_PAYLOAD_BYTES: usize =
     // Header: varint(MAX_SLUGS_PER_WORKFLOW) (3 bytes max) + u64 total_yield_cost (9 bytes max).
-    12 + MAX_SLUGS_PER_WORKFLOW
-        * (
-            // Per-slug worst case: varint path length (1 byte) +
-            // MAX_SLUG_PATH_SEGMENTS segments (each 1-byte variant + 5-byte u32 varint) +
-            // u64 yield_cost (9 bytes max).
-            1 + MAX_SLUG_PATH_SEGMENTS * 6 + 9
-        );
+    12
+        + MAX_SLUGS_PER_WORKFLOW
+            * (
+                // Per-slug worst case: varint path length (1 byte) +
+                // MAX_SLUG_PATH_SEGMENTS segments (each 1-byte variant + 5-byte u32 varint) +
+                // u64 yield_cost (9 bytes max).
+                1 + MAX_SLUG_PATH_SEGMENTS * 6 + 9
+            );
 
 /// Decodes compiled slugs from bytes and validates them against a yield budget.
 ///

@@ -211,10 +211,7 @@ fn slot_overwrite_last_write_wins_i64() {
     frame
         .write_slot(SlotIdx::ZERO, SlotValue::I64(20))
         .unwrap_or_else(|e| panic!("write2: {e:?}"));
-    assert_eq!(
-        frame.read_slot(SlotIdx::ZERO),
-        Ok(&SlotValue::I64(20))
-    );
+    assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::I64(20)));
 }
 
 #[test]
@@ -226,10 +223,7 @@ fn slot_overwrite_last_write_wins_type_change() {
     frame
         .write_slot(SlotIdx::ZERO, SlotValue::Bool(true))
         .unwrap_or_else(|e| panic!("write2: {e:?}"));
-    assert_eq!(
-        frame.read_slot(SlotIdx::ZERO),
-        Ok(&SlotValue::Bool(true))
-    );
+    assert_eq!(frame.read_slot(SlotIdx::ZERO), Ok(&SlotValue::Bool(true)));
 }
 
 // =========================================================================
@@ -331,24 +325,15 @@ fn write_taint_uninitialized_slot_returns_slot_uninitialized() {
 #[test]
 fn state_transition_pending_to_running_to_succeeded() {
     let mut frame = make_frame().unwrap_or_else(|e| panic!("frame: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(StepState::Pending)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Pending));
     frame
         .mark_running(StepIdx::new(1))
         .unwrap_or_else(|e| panic!("mark_running: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(StepState::Running)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Running));
     frame
         .mark_succeeded(StepIdx::new(1))
         .unwrap_or_else(|e| panic!("mark_succeeded: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(StepState::Succeeded)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Succeeded));
 }
 
 #[test]
@@ -414,10 +399,7 @@ fn state_transition_idempotent_same_state_is_valid() {
     frame
         .mark_running(StepIdx::new(3))
         .unwrap_or_else(|e| panic!("remark running: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(3)),
-        Ok(StepState::Running)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(3)), Ok(StepState::Running));
 }
 
 #[test]
@@ -427,10 +409,7 @@ fn state_transition_pending_to_running_via_mark_running() {
     frame
         .mark_running(StepIdx::new(0))
         .unwrap_or_else(|e| panic!("mark_running: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(0)),
-        Ok(StepState::Running)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(0)), Ok(StepState::Running));
 }
 
 #[test]
@@ -443,10 +422,7 @@ fn state_transition_pending_to_waiting_is_valid() {
     frame
         .mark_waiting(StepIdx::new(0))
         .unwrap_or_else(|e| panic!("mark_waiting: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(0)),
-        Ok(StepState::Waiting)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(0)), Ok(StepState::Waiting));
 }
 
 #[test]
@@ -459,10 +435,7 @@ fn state_transition_pending_to_asking_is_valid() {
     frame
         .mark_asking(StepIdx::new(1))
         .unwrap_or_else(|e| panic!("mark_asking: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(StepState::Asking)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Asking));
 }
 
 // =========================================================================
@@ -503,7 +476,10 @@ fn slots_snapshot_includes_none_for_uninitialized() {
     let frame = make_frame().unwrap_or_else(|e| panic!("frame: {e:?}"));
     let snap = frame.slots_snapshot();
     assert_eq!(snap.len(), 4);
-    assert!(snap.iter().all(|s| s.is_none()), "all slots must be None initially");
+    assert!(
+        snap.iter().all(|s| s.is_none()),
+        "all slots must be None initially"
+    );
 }
 
 #[test]
@@ -566,14 +542,8 @@ fn reinitialize_resets_all_state_preserves_dimensions() {
     assert_eq!(frame.step_count(), 4);
     assert_eq!(frame.slot_count(), 4);
 
-    assert_eq!(
-        frame.step_state(StepIdx::new(0)),
-        Ok(StepState::Pending)
-    );
-    assert_eq!(
-        frame.step_state(StepIdx::new(2)),
-        Ok(StepState::Pending)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(0)), Ok(StepState::Pending));
+    assert_eq!(frame.step_state(StepIdx::new(2)), Ok(StepState::Pending));
 
     assert_eq!(
         frame.read_slot(SlotIdx::ZERO),
@@ -720,8 +690,7 @@ fn extreme_values_many_steps() {
 #[test]
 fn extreme_values_write_read_last_slot() {
     let slot_count: u16 = u16::MAX;
-    let frame =
-        RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
+    let frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 2, slot_count);
     assert!(matches!(
         frame,
         Ok(ref f) if f.run_id() == RunId::new(1)
@@ -733,27 +702,18 @@ fn extreme_values_write_read_last_slot() {
     frame
         .write_slot(last_slot, SlotValue::I64(42))
         .unwrap_or_else(|e| panic!("write: {e:?}"));
-    assert_eq!(
-        frame.read_slot(last_slot),
-        Ok(&SlotValue::I64(42))
-    );
+    assert_eq!(frame.read_slot(last_slot), Ok(&SlotValue::I64(42)));
 }
 
 #[test]
 fn extreme_values_write_read_first_step() {
     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1)
         .unwrap_or_else(|e| panic!("frame: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::ZERO),
-        Ok(StepState::Pending)
-    );
+    assert_eq!(frame.step_state(StepIdx::ZERO), Ok(StepState::Pending));
     frame
         .mark_running(StepIdx::ZERO)
         .unwrap_or_else(|e| panic!("mark_running: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::ZERO),
-        Ok(StepState::Running)
-    );
+    assert_eq!(frame.step_state(StepIdx::ZERO), Ok(StepState::Running));
 }
 
 // =========================================================================
@@ -907,10 +867,7 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_running(StepIdx::new(0))
         .unwrap_or_else(|e| panic!("r: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(0)),
-        Ok(StepState::Running)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(0)), Ok(StepState::Running));
 
     frame
         .mark_running(StepIdx::new(1))
@@ -918,10 +875,7 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_succeeded(StepIdx::new(1))
         .unwrap_or_else(|e| panic!("s: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(1)),
-        Ok(StepState::Succeeded)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(1)), Ok(StepState::Succeeded));
 
     frame
         .mark_running(StepIdx::new(2))
@@ -929,10 +883,7 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_failed(StepIdx::new(2))
         .unwrap_or_else(|e| panic!("f: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(2)),
-        Ok(StepState::Failed)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(2)), Ok(StepState::Failed));
 
     frame
         .mark_running(StepIdx::new(3))
@@ -940,10 +891,7 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_skipped(StepIdx::new(3))
         .unwrap_or_else(|e| panic!("k: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(3)),
-        Ok(StepState::Skipped)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(3)), Ok(StepState::Skipped));
 
     frame
         .mark_running(StepIdx::new(4))
@@ -951,10 +899,7 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_waiting(StepIdx::new(4))
         .unwrap_or_else(|e| panic!("w: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(4)),
-        Ok(StepState::Waiting)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(4)), Ok(StepState::Waiting));
 
     frame
         .mark_running(StepIdx::new(5))
@@ -962,10 +907,7 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_asking(StepIdx::new(5))
         .unwrap_or_else(|e| panic!("a: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(5)),
-        Ok(StepState::Asking)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(5)), Ok(StepState::Asking));
 
     frame
         .mark_running(StepIdx::new(6))
@@ -973,15 +915,9 @@ fn all_step_state_variants_are_reachable() {
     frame
         .mark_cancelled(StepIdx::new(6))
         .unwrap_or_else(|e| panic!("c: {e:?}"));
-    assert_eq!(
-        frame.step_state(StepIdx::new(6)),
-        Ok(StepState::Cancelled)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(6)), Ok(StepState::Cancelled));
 
-    assert_eq!(
-        frame.step_state(StepIdx::new(7)),
-        Ok(StepState::Pending)
-    );
+    assert_eq!(frame.step_state(StepIdx::new(7)), Ok(StepState::Pending));
 }
 
 // =========================================================================

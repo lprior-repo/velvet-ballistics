@@ -111,12 +111,12 @@ impl JournalWriterQueue {
     }
 
     /// Flushes at most one configured batch to the journal.
-///
-/// vb-1rqz7.31 / SA-005: this function holds the queue mutex only across
-/// the queue bookkeeping (take + pop) and the post-IO requeue. The slow
-/// journal writes and `persist_strict` fsync now run without holding the
-/// mutex, so concurrent `enqueue_*` calls and other producers do not block
-/// behind the IO.
+    ///
+    /// vb-1rqz7.31 / SA-005: this function holds the queue mutex only across
+    /// the queue bookkeeping (take + pop) and the post-IO requeue. The slow
+    /// journal writes and `persist_strict` fsync now run without holding the
+    /// mutex, so concurrent `enqueue_*` calls and other producers do not block
+    /// behind the IO.
     pub fn flush_batch(
         &self,
         journal: &FjallJournal,
@@ -164,7 +164,9 @@ impl JournalWriterQueue {
         }; // lock released here
 
         let batch_len = batch.len();
-        let has_strict = batch.iter().any(|item| item.profile == DurabilityProfile::Strict);
+        let has_strict = batch
+            .iter()
+            .any(|item| item.profile == DurabilityProfile::Strict);
 
         // 2) Outside the mutex: write the batch to the journal.
         let write_result: Result<usize, JournalError> = (|| {
@@ -224,19 +226,19 @@ impl JournalWriterQueue {
         })
     }
 
-/// Flushes queued journal writes until the queue is empty.
-///
-/// Maximum iterations: ceil(capacity / batch_size) + 2.
-/// This is a static bound - the queue is bounded by construction.
-///
-/// SA-004: when the static bound is exhausted and items remain, the
-/// returned `JournalWriterFlushReport.pending_after` carries the actual
-/// remaining count so the caller can detect a drain-incomplete under
-/// concurrent enqueue instead of receiving a silent success. When the
-/// queue has been shut down (no more enqueues accepted), the function
-/// continues draining past the static bound because the remaining
-/// items must be flushed deterministically — a drain-incomplete under
-/// shutdown is a real bug, not a benign race.
+    /// Flushes queued journal writes until the queue is empty.
+    ///
+    /// Maximum iterations: ceil(capacity / batch_size) + 2.
+    /// This is a static bound - the queue is bounded by construction.
+    ///
+    /// SA-004: when the static bound is exhausted and items remain, the
+    /// returned `JournalWriterFlushReport.pending_after` carries the actual
+    /// remaining count so the caller can detect a drain-incomplete under
+    /// concurrent enqueue instead of receiving a silent success. When the
+    /// queue has been shut down (no more enqueues accepted), the function
+    /// continues draining past the static bound because the remaining
+    /// items must be flushed deterministically — a drain-incomplete under
+    /// shutdown is a real bug, not a benign race.
     pub fn drain_all(
         &self,
         journal: &FjallJournal,

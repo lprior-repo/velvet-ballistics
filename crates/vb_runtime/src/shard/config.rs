@@ -109,20 +109,75 @@ pub const fn is_valid_max_terminal_runs(capacity: usize) -> bool {
     capacity > 0
 }
 
-/// Validates all `ShardConfig` capacity inputs and returns the first failure
-/// as a typed `RuntimeError`. Rejects `command_queue_capacity == 0`,
-/// `trace_capacity == 0`, `step_budget_per_tick == 0`,
-/// `max_active_runs == 0`, `coalesce_window_ticks == 0`, and
-/// `max_terminal_runs == 0`. Also rejects `command_queue_capacity` values
-/// above `MAX_COMMAND_QUEUE_CAPACITY`. `snapshot_interval_steps` and
-/// `terminal_runs_ttl_ticks` are accepted at any value: `0` disables
-/// periodic snapshots / TTL expiry respectively.
+/// Validates every field of `config` and returns a single typed error that
+/// aggregates **all** invalid fields, in field-declaration order.
 ///
-/// Exposed at the module level so runtime construction can call it before
-/// `Shard` allocation, closing the gap where struct-literal config bypassed
-/// `ShardConfig::new` and `Shard::new`. RQ-W0-15: previously only the first
-/// four fields were checked, leaving `coalesce_window_ticks` and the
-/// terminal-runs ring open to silent invalid configuration.
+/// This is the unified `ShardConfig` validator. It supersedes
+/// `validate_shard_config_inputs`, which used early returns and silently
+/// skipped every field after the first failure (RS-217: shard config
+/// validation omitted fields). All public construction paths
+/// (`ShardConfig::new`, `ShardConfig::new_full`, and
+/// `Shard::new_with_journal_and_artifact_store`) call this method so
+/// struct-literal config bypass cannot sneak invalid combinations past
+/// the validator.
+///
+/// Rejected fields:
+/// - `command_queue_capacity == 0`
+/// - `command_queue_capacity > MAX_COMMAND_QUEUE_CAPACITY`
+/// - `trace_capacity == 0`
+/// - `step_budget_per_tick == 0`
+/// - `max_active_runs == 0`
+/// - `coalesce_window_ticks == 0`
+/// - `max_terminal_runs == 0`
+///
+/// Accepted at any value:
+/// - `snapshot_interval_steps == 0` (disables periodic snapshots)
+/// - `terminal_runs_ttl_ticks == 0` (disables TTL expiry)
+/// - `max_terminal_outcomes == 0` (treated as 1 by `BoundedOutcomeIndex`)
+pub fn validate_shard_config(config: &ShardConfig) -> Result<(), crate::RuntimeError> {
+    let mut errors: Vec<crate::RuntimeError> = Vec::new();
+
+    if !is_valid_command_queue_capacity(config.command_queue_capacity) {
+        errors.push(crate::RuntimeError::CommandQueueCapacityExceeded {
+            capacity: config.command_queue_capacity,
+            max: MAX_COMMAND_QUEUE_CAPACITY,
+        });
+    }
+    if !is_valid_trace_capacity(config.trace_capacity) {
+        errors.push(crate::RuntimeError::UnsupportedOperation {
+            operation: "trace_capacity_zero",
+        });
+    }
+    if !is_valid_step_budget_per_tick(config.step_budget_per_tick) {
+        errors.push(crate::RuntimeError::UnsupportedOperation {
+            operation: "step_budget_per_tick_zero",
+        });
+    }
+    if config.max_active_runs == 0 {
+        errors.push(crate::RuntimeError::ActiveRunCapacityZero);
+    }
+    if !is_valid_coalesce_window_ticks(config.coalesce_window_ticks) {
+        errors.push(crate::RuntimeError::UnsupportedOperation {
+            operation: "coalesce_window_ticks_zero",
+        });
+    }
+    if !is_valid_max_terminal_runs(config.max_terminal_runs) {
+        errors.push(crate::RuntimeError::LruRingCapacityZero);
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(crate::RuntimeError::ConfigInvalid { errors })
+    }
+}
+
+/// Backwards-compatible helper that validates the legacy six-field inputs.
+///
+/// New code MUST call [`validate_shard_config`] instead so that all
+/// fields are validated together. This helper remains for callers that
+/// only have the six capacity inputs available; it aggregates any
+/// invalid input into a single typed error, in declaration order.
 #[allow(clippy::too_many_arguments)]
 pub fn validate_shard_config_inputs(
     command_queue_capacity: usize,
@@ -132,34 +187,32 @@ pub fn validate_shard_config_inputs(
     coalesce_window_ticks: u32,
     max_terminal_runs: usize,
 ) -> Result<(), crate::RuntimeError> {
-    if !is_valid_command_queue_capacity(command_queue_capacity) {
-        return Err(crate::RuntimeError::CommandQueueCapacityExceeded {
-            capacity: command_queue_capacity,
-            max: MAX_COMMAND_QUEUE_CAPACITY,
-        });
+    validate_shard_config(&ShardConfig {
+        command_queue_capacity,
+        trace_capacity,
+        step_budget_per_tick,
+        max_active_runs,
+        policy: vb_core::policy::RuntimePolicy::Strict,
+        coalesce_window_ticks,
+        snapshot_interval_steps: 0,
+        max_terminal_runs,
+        terminal_runs_ttl_ticks: DEFAULT_TERMINAL_RUNS_TTL_TICKS,
+        max_terminal_outcomes: super::bounded_outcomes::DEFAULT_MAX_TERMINAL_OUTCOMES,
+    })
+}
+
+impl ShardConfig {
+    /// Validates this `ShardConfig` end-to-end and returns a single typed
+    /// error that aggregates **all** invalid fields.
+    ///
+    /// This is the unified entry point called by `ShardConfig::new`,
+    /// `ShardConfig::new_full`, and `Shard::new_with_journal_and_artifact_store`.
+    /// Struct-literal construction followed by `validate()` produces the
+    /// same aggregated error report as the constructors, closing the gap
+    /// described in RS-217.
+    pub fn validate(&self) -> Result<(), crate::RuntimeError> {
+        validate_shard_config(self)
     }
-    if !is_valid_trace_capacity(trace_capacity) {
-        return Err(crate::RuntimeError::UnsupportedOperation {
-            operation: "trace_capacity_zero",
-        });
-    }
-    if !is_valid_step_budget_per_tick(step_budget_per_tick) {
-        return Err(crate::RuntimeError::UnsupportedOperation {
-            operation: "step_budget_per_tick_zero",
-        });
-    }
-    if max_active_runs == 0 {
-        return Err(crate::RuntimeError::ActiveRunCapacityZero);
-    }
-    if !is_valid_coalesce_window_ticks(coalesce_window_ticks) {
-        return Err(crate::RuntimeError::UnsupportedOperation {
-            operation: "coalesce_window_ticks_zero",
-        });
-    }
-    if !is_valid_max_terminal_runs(max_terminal_runs) {
-        return Err(crate::RuntimeError::LruRingCapacityZero);
-    }
-    Ok(())
 }
 
 impl Default for ShardConfig {

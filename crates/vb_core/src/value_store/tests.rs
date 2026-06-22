@@ -557,9 +557,15 @@ fn value_store_object_field_returns_first_duplicate_key() -> Result<(), String> 
         .into_boxed_slice(),
     );
     match result {
-        Err(CoreError::InvalidCompiledWorkflow { reason: "duplicate_object_key" }) => Ok(()),
-        Err(other) => Err(format!("expected duplicate_object_key rejection, got: {other:?}")),
-        Ok(_) => Err(String::from("duplicate key must be rejected at insertion time")),
+        Err(CoreError::InvalidCompiledWorkflow {
+            reason: "duplicate_object_key",
+        }) => Ok(()),
+        Err(other) => Err(format!(
+            "expected duplicate_object_key rejection, got: {other:?}"
+        )),
+        Ok(_) => Err(String::from(
+            "duplicate key must be rejected at insertion time",
+        )),
     }
 }
 
@@ -705,15 +711,16 @@ fn value_store_object_at_exact_max_fields_is_accepted() -> Result<(), String> {
     let mut fields: Vec<ObjectField> = Vec::with_capacity(MAX_OBJECT_FIELDS_PER_VALUE);
     let mut i: usize = 0;
     while i < MAX_OBJECT_FIELDS_PER_VALUE {
-        let key_raw = u32::try_from(i).map_err(|_| {
-            String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32")
-        })?;
+        let key_raw = u32::try_from(i)
+            .map_err(|_| String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32"))?;
         fields.push(ObjectField {
             key: SymbolId::new(key_raw),
             value: SlotValue::Null,
             taint: Taint::Clean,
         });
-        i = i.checked_add(1).ok_or_else(|| String::from("field index overflow"))?;
+        i = i
+            .checked_add(1)
+            .ok_or_else(|| String::from("field index overflow"))?;
     }
     let id = store
         .insert_object(fields.into_boxed_slice())
@@ -1131,9 +1138,10 @@ fn value_store_exact_max_object_preserves_distinct_keys() -> Result<(), String> 
     let mut i = 0;
     while i < max_fields {
         fields.push(ObjectField {
-            key: SymbolId::new(u32::try_from(i).map_err(|_| {
-                String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32")
-            })?),
+            key: SymbolId::new(
+                u32::try_from(i)
+                    .map_err(|_| String::from("MAX_OBJECT_FIELDS_PER_VALUE must fit in u32"))?,
+            ),
             value: SlotValue::I64(1),
             taint: Taint::Clean,
         });
@@ -1149,9 +1157,10 @@ fn value_store_exact_max_object_preserves_distinct_keys() -> Result<(), String> 
         return Err(String::from("max object field count mismatch"));
     }
     let first_expected_key = SymbolId::new(0);
-    let last_expected_key = SymbolId::new(u32::try_from(max_fields.saturating_sub(1)).map_err(
-        |_| String::from("MAX_OBJECT_FIELDS_PER_VALUE - 1 must fit in u32"),
-    )?);
+    let last_expected_key = SymbolId::new(
+        u32::try_from(max_fields.saturating_sub(1))
+            .map_err(|_| String::from("MAX_OBJECT_FIELDS_PER_VALUE - 1 must fit in u32"))?,
+    );
     if store
         .object_field(id, first_expected_key)
         .map_err(|e| e.to_string())?
@@ -1667,8 +1676,12 @@ fn security_object_duplicate_key_first_wins_for_taint() -> Result<(), String> {
     );
 
     match result {
-        Err(CoreError::InvalidCompiledWorkflow { reason: "duplicate_object_key" }) => Ok(()),
-        Err(other) => Err(format!("expected duplicate_object_key rejection, got: {other:?}")),
+        Err(CoreError::InvalidCompiledWorkflow {
+            reason: "duplicate_object_key",
+        }) => Ok(()),
+        Err(other) => Err(format!(
+            "expected duplicate_object_key rejection, got: {other:?}"
+        )),
         Ok(_) => Err(String::from(
             "duplicate key insertion must be rejected to prevent taint downgrade",
         )),

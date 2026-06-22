@@ -10,12 +10,12 @@ use crate::{
 };
 
 impl<'j> JournalWriteBatch<'j> {
-/// Appends a journal event into the batch.
-///
-/// Guard order: aborted-state check, key construction, in-flight
-/// (staged) duplicate check, durable (committed) duplicate check,
-/// count capacity, per-record encoding, accumulated byte admission,
-/// then inner insert.
+    /// Appends a journal event into the batch.
+    ///
+    /// Guard order: aborted-state check, key construction, in-flight
+    /// (staged) duplicate check, durable (committed) duplicate check,
+    /// count capacity, per-record encoding, accumulated byte admission,
+    /// then inner insert.
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         if self.state.is_aborted() {
             return Err(JournalError::DuplicateEvent {

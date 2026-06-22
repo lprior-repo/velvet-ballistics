@@ -19,6 +19,15 @@ const REQUIRED_COLLECT_SLOT_EXTRA: &str = "collect SlotWritten extra";
 /// by the shard to emit to the journal and trace ring. This satisfies
 /// the Phase 40/44 evidence chain requirement that every deterministic step
 /// emits `StepStarted` before `SlotWritten`, followed by `StepSucceeded`.
+///
+/// RS-004: `StepSucceeded` carries `attempt: u16` so the durable journal
+/// records the per-step attempt counter consistently with `ActionFailed`.
+/// The engine emits `attempt: 1` for the deterministic loop because
+/// engine-level retries are tracked by the shard in `state.action_attempts`
+/// rather than re-driven inside the engine. The shard's flush step
+/// overrides this value with the actual live attempt before the journal
+/// append so the durable record matches the same counter used by the
+/// `ActionFailed` journal path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum EvidenceEvent {
@@ -33,6 +42,10 @@ pub enum EvidenceEvent {
         step: StepIdx,
         /// Output slot written, if any (Nop/Jump have no output).
         output: Option<SlotIdx>,
+        /// Live per-step attempt counter at emission time. The engine
+        /// emits `1`; the shard refines this from `state.action_attempts`
+        /// at flush time before journaling.
+        attempt: u16,
     },
     /// A slot was written during step execution.
     SlotWritten {
@@ -100,10 +113,19 @@ impl EvidenceCollector {
 
     /// Records a StepSucceeded event.
     /// Silently drops the event if the collector is at capacity.
-    pub fn push_step_succeeded(&mut self, step: StepIdx, output: Option<SlotIdx>) {
+    ///
+    /// `attempt` is the live per-step attempt counter. The deterministic
+    /// drive loop passes `1` because engine-level retries do not exist;
+    /// the shard's flush path overrides this with `state.action_attempts`
+    /// before persisting to the journal so the durable record reflects
+    /// the actual attempt count (RS-004).
+    pub fn push_step_succeeded(&mut self, step: StepIdx, output: Option<SlotIdx>, attempt: u16) {
         if self.events.len() < self.capacity {
-            self.events
-                .push(EvidenceEvent::StepSucceeded { step, output });
+            self.events.push(EvidenceEvent::StepSucceeded {
+                step,
+                output,
+                attempt,
+            });
         } else {
             self.dropped = self.dropped.saturating_add(1);
         }
@@ -178,8 +200,12 @@ impl EvidenceCollector {
     pub fn push_event(&mut self, event: EvidenceEvent) {
         match event {
             EvidenceEvent::StepStarted { step } => self.push_step_started(step),
-            EvidenceEvent::StepSucceeded { step, output } => {
-                self.push_step_succeeded(step, output);
+            EvidenceEvent::StepSucceeded {
+                step,
+                output,
+                attempt,
+            } => {
+                self.push_step_succeeded(step, output, attempt);
             }
             EvidenceEvent::SlotWritten {
                 slot,

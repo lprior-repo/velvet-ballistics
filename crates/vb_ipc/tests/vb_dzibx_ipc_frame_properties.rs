@@ -215,7 +215,11 @@ fn check_exact_payload_length_boundary(length: usize) -> Result<(), String> {
         IpcFrameHeader::decode(&header_bytes, TEST_MAX_PAYLOAD),
         "IpcFrameHeader::decode boundary",
     )?;
-    assert_equal(header.command, IpcCommand::SubmitRunInline, "boundary command")?;
+    assert_equal(
+        header.command,
+        IpcCommand::SubmitRunInline,
+        "boundary command",
+    )?;
     assert_equal(header.flags, 0x0055, "boundary flags")?;
     assert_equal(header.correlation, 0x1234, "boundary correlation")?;
     assert_equal(

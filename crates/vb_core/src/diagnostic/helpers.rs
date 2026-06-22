@@ -200,36 +200,36 @@ mod tests {
     }
 }
 
-    // CV-105: unregistered codes in the 0x13xx range must not be silently
-    // classified as Accessor. Both Accessor and Internal share the 0x13
-    // high byte, so a high-byte heuristic cannot disambiguate them.
-    // Unregistered codes fall through to the Internal catch-all instead.
-    #[test]
-    fn cv105_unregistered_0x13xx_falls_through_to_internal_not_accessor() {
-        // 0x1300 is in the shared 0x13xx range but not in the registry.
-        assert!(!is_registered_numeric(0x1300));
-        assert_eq!(
-            category_from_numeric(0x1300),
-            super::codes::CodeCategory::Internal,
-            "unregistered 0x13xx codes must fall through to Internal"
-        );
-        // 0x13FF is at the far end of the 0x13xx range.
-        assert!(!is_registered_numeric(0x13FF));
-        assert_eq!(
-            category_from_numeric(0x13FF),
-            super::codes::CodeCategory::Internal,
-            "unregistered 0x13xx codes must fall through to Internal"
-        );
-    }
+// CV-105: unregistered codes in the 0x13xx range must not be silently
+// classified as Accessor. Both Accessor and Internal share the 0x13
+// high byte, so a high-byte heuristic cannot disambiguate them.
+// Unregistered codes fall through to the Internal catch-all instead.
+#[test]
+fn cv105_unregistered_0x13xx_falls_through_to_internal_not_accessor() {
+    // 0x1300 is in the shared 0x13xx range but not in the registry.
+    assert!(!is_registered_numeric(0x1300));
+    assert_eq!(
+        category_from_numeric(0x1300),
+        super::codes::CodeCategory::Internal,
+        "unregistered 0x13xx codes must fall through to Internal"
+    );
+    // 0x13FF is at the far end of the 0x13xx range.
+    assert!(!is_registered_numeric(0x13FF));
+    assert_eq!(
+        category_from_numeric(0x13FF),
+        super::codes::CodeCategory::Internal,
+        "unregistered 0x13xx codes must fall through to Internal"
+    );
+}
 
-    #[test]
-    fn cv105_registered_0x1309_remains_internal_via_registry() {
-        // The 0x1309 entry is explicitly Internal in the registry and
-        // must keep that classification even though its high byte is
-        // shared with Accessor codes.
-        assert!(is_registered_numeric(0x1309));
-        assert_eq!(
-            category_from_numeric(0x1309),
-            super::codes::CodeCategory::Internal
-        );
-    }
+#[test]
+fn cv105_registered_0x1309_remains_internal_via_registry() {
+    // The 0x1309 entry is explicitly Internal in the registry and
+    // must keep that classification even though its high byte is
+    // shared with Accessor codes.
+    assert!(is_registered_numeric(0x1309));
+    assert_eq!(
+        category_from_numeric(0x1309),
+        super::codes::CodeCategory::Internal
+    );
+}

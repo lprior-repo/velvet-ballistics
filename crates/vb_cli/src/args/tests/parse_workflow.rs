@@ -11,9 +11,7 @@ fn parse_validate_accepts_json_flag() {
     ]));
     match parsed {
         Ok(Command::Validate { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Validate, got {other:?}"),
     }
@@ -30,9 +28,7 @@ fn parse_explain_accepts_yaml_flag() {
     ]));
     match parsed {
         Ok(Command::Explain { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Explain, got {other:?}"),
     }
@@ -51,17 +47,15 @@ fn parse_compile_uses_artifact_emit_without_output_format() {
     ]));
     match parsed {
         Ok(Command::Compile {
-        workflow,
-        emit,
-        out,
-        output,
-    }) => {
-
+            workflow,
+            emit,
+            out,
+            output,
+        }) => {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(emit, EmitTarget::Ir);
             assert_eq!(out, PathBuf::from("output.vbir"));
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Compile, got {other:?}"),
     }
@@ -80,10 +74,8 @@ fn parse_compile_artifact_yaml_does_not_select_yaml_output() {
     ]));
     match parsed {
         Ok(Command::Compile { emit, output, .. }) => {
-
             assert_eq!(emit, EmitTarget::Yaml);
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Compile, got {other:?}"),
     }

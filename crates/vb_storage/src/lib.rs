@@ -272,15 +272,15 @@ pub mod trimming;
 pub mod types;
 
 #[cfg(test)]
+mod hydrate_tests;
+#[cfg(test)]
 mod security_tests;
+#[cfg(test)]
+mod test_helpers;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod hydrate_tests;
-#[cfg(test)]
 mod vb_2bok_durability_gate_tests;
-#[cfg(test)]
-mod test_helpers;
 
 // Section 38 property tests (master §38).
 // Each submodule covers one named property:

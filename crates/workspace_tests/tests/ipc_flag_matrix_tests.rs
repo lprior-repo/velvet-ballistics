@@ -778,8 +778,7 @@ fn command_flags_as_u16_returns_the_validated_value() {
         .expect("SubmitRunInline accepts 0x00FF");
     assert_eq!(flags.as_u16(), 0x00FF);
 
-    let zero = vb_ipc::CommandFlags::validate(IpcCommand::Health, 0)
-        .expect("Health accepts zero");
+    let zero = vb_ipc::CommandFlags::validate(IpcCommand::Health, 0).expect("Health accepts zero");
     assert_eq!(zero.as_u16(), 0);
 }
 

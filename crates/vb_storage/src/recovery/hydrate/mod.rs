@@ -28,17 +28,16 @@ use vb_core::RunId;
 
 // Re-export invariant predicates for downstream consumers.
 pub use invariants as invariant;
+pub use invariants::{SnapshotRecoveryInputViolation, TailEventMetadata};
 pub use invariants::{
     hydrate_dimensions_positive, hydrate_events_preconditions, hydrate_snapshot_tail_has_evidence,
     hydrate_snapshot_tail_preconditions, hydrate_snapshot_tail_run_matches,
     hydrate_snapshot_tail_seq_after_snapshot,
 };
-pub use invariants::{SnapshotRecoveryInputViolation, TailEventMetadata};
 pub use validation::{
-    validate_recovery_data_present, validate_snapshot_metadata,
-    validate_snapshot_recovery_inputs, validate_tail_events_after_snapshot,
-    validate_tail_first_seq_contiguous_with_snapshot, validate_tail_run_metadata,
-    validate_tail_seq_after_snapshot,
+    validate_recovery_data_present, validate_snapshot_metadata, validate_snapshot_recovery_inputs,
+    validate_tail_events_after_snapshot, validate_tail_first_seq_contiguous_with_snapshot,
+    validate_tail_run_metadata, validate_tail_seq_after_snapshot,
 };
 
 // ---------------------------------------------------------------------------

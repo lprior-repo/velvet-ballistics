@@ -692,6 +692,58 @@ fn resource_contract_preserves_max_step_budget_per_tick_field() {
     );
 }
 
+#[test]
+fn validation_rejects_zero_max_step_budget_per_tick() {
+    // CW-010: zero disables runtime step execution and must be rejected.
+    let mut c = contract(10, 10, 10, 10, 10, 10);
+    c.max_step_budget_per_tick = 0;
+    let parts = nop_parts(c);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractExceeded {
+            resource: "max_step_budget_per_tick",
+        }) => {}
+        other => panic!(
+            "Expected ResourceContractExceeded {{ resource: \"max_step_budget_per_tick\" }}, got: {other:?}"
+        ),
+    }
+}
+
+#[test]
+fn validation_rejects_oversized_max_step_budget_per_tick() {
+    // CW-010: value above MAX_STEP_BUDGET must be rejected as TooLarge.
+    use vb_core::limits::MAX_STEP_BUDGET;
+    let mut c = contract(10, 10, 10, 10, 10, 10);
+    c.max_step_budget_per_tick = MAX_STEP_BUDGET.saturating_add(1);
+    let parts = nop_parts(c);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Err(WorkflowError::ResourceContractTooLarge {
+            resource: "max_step_budget_per_tick",
+        }) => {}
+        other => panic!(
+            "Expected ResourceContractTooLarge {{ resource: \"max_step_budget_per_tick\" }}, got: {other:?}"
+        ),
+    }
+}
+
+#[test]
+fn validation_accepts_max_step_budget_per_tick_at_hard_limit() {
+    // CW-010: exact MAX_STEP_BUDGET is the valid boundary.
+    use vb_core::limits::MAX_STEP_BUDGET;
+    let mut c = contract(10, 10, 10, 10, 10, 10);
+    c.max_step_budget_per_tick = MAX_STEP_BUDGET;
+    let parts = nop_parts(c);
+    match CompiledWorkflow::try_from_parts(parts) {
+        Ok(workflow) => {
+            assert_eq!(
+                workflow.resource_contract().max_step_budget_per_tick,
+                MAX_STEP_BUDGET,
+                "boundary value must be preserved"
+            );
+        }
+        Err(e) => panic!("Expected Ok at MAX_STEP_BUDGET for max_step_budget_per_tick, got: {e:?}"),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // E11: Error variant specificity — verified through all E1-E10 tests above
 // which assert exact resource identifiers

@@ -13,6 +13,7 @@ use vb_core::action::{
     MockMarker, RetrySafety, SideEffect,
 };
 use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::limits::MAX_INPUT_BYTES;
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
@@ -206,13 +207,23 @@ proptest! {
         let contract = generated_contract(input_slot_count, max_input_bytes)?;
         let input = generated_action_input(contract.id, StepIdx::ZERO, seq, attempt);
         let result = crate::action::dispatch_generic(&input, &contract);
-        let should_reject = max_input_bytes == 0 && input_slot_count > 0;
+        // HVR-PO-RUNTIME-004 (vb-c34qm): construction-time enforcement requires
+        // the declared limit to satisfy 0 < max_input_bytes <= MAX_INPUT_BYTES.
+        // Zero is a placeholder and the sentinel u32::MAX would defeat any
+        // boundary check, so both are rejected before a ticket is issued.
+        let expected_zero = ActionError::PayloadTooLarge {
+            max_bytes: 0,
+            actual_bytes: 0,
+        };
+        let expected_overflow = ActionError::PayloadTooLarge {
+            max_bytes: MAX_INPUT_BYTES,
+            actual_bytes: max_input_bytes,
+        };
 
-        if should_reject {
-            prop_assert!(
-                matches!(result, Err(ActionError::PayloadTooLarge { max_bytes: 0, actual_bytes: 0 })),
-                "HVR-PO-RUNTIME-004 expected exact PayloadTooLarge for {input_slot_count}/{max_input_bytes}, got {result:?}"
-            );
+        if max_input_bytes == 0 {
+            prop_assert_eq!(result, Err(expected_zero));
+        } else if max_input_bytes > MAX_INPUT_BYTES {
+            prop_assert_eq!(result, Err(expected_overflow));
         } else {
             match result {
                 Ok(ActionOutcome::Suspended(ticket)) => {

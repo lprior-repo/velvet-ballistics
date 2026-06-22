@@ -1478,9 +1478,9 @@ fn bh_evidence_events_always_alternate_started_succeeded() {
     // This test uses the EvidenceCollector directly to verify the pattern.
     let mut collector = EvidenceCollector::new();
     collector.push_step_started(StepIdx::new(0));
-    collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)));
+    collector.push_step_succeeded(StepIdx::new(0), Some(SlotIdx::new(1)), 1);
     collector.push_step_started(StepIdx::new(1));
-    collector.push_step_succeeded(StepIdx::new(1), None);
+    collector.push_step_succeeded(StepIdx::new(1), None, 1);
 
     let events = collector.drain();
     assert_eq!(events.len(), 4);

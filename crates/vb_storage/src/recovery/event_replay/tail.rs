@@ -6,8 +6,8 @@ use crate::recovery::{
     ActionReplayTracker, RecoveryError, RecoveryResult, types::ActionReplayEffect,
 };
 use vb_core::SlotIdx;
-use vb_core::{ActionTicket, RunFrame, SlotValue, StepIdx};
 use vb_core::errors::CoreError;
+use vb_core::{ActionTicket, RunFrame, SlotValue, StepIdx};
 
 fn decode_action_envelope_slot(
     ticket: ActionTicket,
@@ -93,15 +93,10 @@ pub(crate) fn apply_tail_events(
                     Ok(_) => {}
                     Err(CoreError::SlotUninitialized { .. }) => {
                         frame
-                            .write_slot_with_taint(
-                                *output,
-                                SlotValue::Null,
-                                vb_core::Taint::Clean,
-                            )
+                            .write_slot_with_taint(*output, SlotValue::Null, vb_core::Taint::Clean)
                             .map_err(|_e| RecoveryError::ReplayDivergence {
                                 step: *step,
-                                detail: "step succeeded slot init out of bounds"
-                                    .to_owned(),
+                                detail: "step succeeded slot init out of bounds".to_owned(),
                             })?;
                     }
                     Err(_) => {
@@ -218,7 +213,9 @@ pub(crate) fn apply_tail_events(
                 sub_tail_parallel_in_flight(frame, *step)?;
                 executed = executed.saturating_add(1);
             }
-            JournalEvent::SlotWrittenEvent { slot, value, extra, .. } => {
+            JournalEvent::SlotWrittenEvent {
+                slot, value, extra, ..
+            } => {
                 if let Some(bytes) = value {
                     let slot_value = postcard::from_bytes::<SlotValue>(bytes).map_err(|_| {
                         RecoveryError::ReplayDivergence {
@@ -231,11 +228,12 @@ pub(crate) fn apply_tail_events(
                     // in the frame. This restores parity with the accumulator path
                     // and ensures Secret-derived slot writes are not silently
                     // downgraded to Clean during events-only hydration.
-                    let recovered = crate::recovery::replay::summary::slots::taint::recovered_slot_taint(
-                        *slot,
-                        slot_value,
-                        extra.as_ref(),
-                    )?;
+                    let recovered =
+                        crate::recovery::replay::summary::slots::taint::recovered_slot_taint(
+                            *slot,
+                            slot_value,
+                            extra.as_ref(),
+                        )?;
                     frame
                         .write_slot_with_taint(*slot, slot_value, recovered.taint)
                         .map_err(|_| RecoveryError::ReplayDivergence {

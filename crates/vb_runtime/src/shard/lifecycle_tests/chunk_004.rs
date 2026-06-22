@@ -327,7 +327,7 @@ fn future_attempt_completion_does_not_mutate_state() -> Result<(), RuntimeError>
     // Run should not be failed unless explicitly failed
     if counters_after.runs_failed > counters_before.runs_failed {
         // If the run failed, it should have a RunFailed event
-        let has_run_failed = journal_snap_after.as_ref().map_or(false, |events| {
+        let has_run_failed = journal_snap_after.as_ref().is_ok_and(|events| {
             events
                 .iter()
                 .any(|e| matches!(e, RuntimeJournalEvent::RunFailed { run: r } if *r == run))

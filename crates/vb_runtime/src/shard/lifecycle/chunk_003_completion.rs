@@ -247,6 +247,7 @@ fn runtime_error_from_action_error(error: ActionError) -> RuntimeError {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn retry_is_available(
     state: &mut RunState,
     ticket: ActionTicket,

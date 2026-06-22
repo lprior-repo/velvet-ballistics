@@ -42,9 +42,11 @@ impl Shard {
     fn flush_evidence_event(&mut self, run: RunId, event: EvidenceEvent) -> RuntimeResult<()> {
         match event {
             EvidenceEvent::StepStarted { step } => self.flush_step_started(run, step),
-            EvidenceEvent::StepSucceeded { step, output } => {
-                self.flush_step_succeeded(run, step, output)
-            }
+            EvidenceEvent::StepSucceeded {
+                step,
+                output,
+                attempt,
+            } => self.flush_step_succeeded(run, step, output, attempt),
             EvidenceEvent::SlotWritten {
                 slot,
                 value,
@@ -59,12 +61,31 @@ impl Shard {
         self.append_journal_event(RuntimeJournalEvent::StepStarted { run, step })
     }
 
+    /// Persists a `StepSucceeded` journal event with the live per-step
+    /// attempt counter from `state.action_attempts`.
+    ///
+    /// RS-004: the engine emits `attempt: 1` (deterministic loop has no
+    /// engine-level retries); the shard overrides this with the actual
+    /// live attempt so the durable record matches `ActionFailed.attempt`
+    /// for the same step. For deterministic steps where
+    /// `state.action_attempts[step]` is 0, the attempt is clamped to 1
+    /// via `.max(1)` so the journal never records `attempt = 0`.
+    /// Out-of-bounds step indices map to 0 and clamp to 1 — the step
+    /// index is owned by the engine that produced the evidence, so a
+    /// mismatch indicates a corrupt collector, which is handled
+    /// defensively without panicking.
     fn flush_step_succeeded(
         &mut self,
         run: RunId,
         step: StepIdx,
         output: Option<SlotIdx>,
+        engine_attempt: u16,
     ) -> RuntimeResult<()> {
+        let live_attempt = self
+            .run_state_get(run)
+            .and_then(|state| state.action_attempts.get(step.as_usize()).copied())
+            .unwrap_or(0);
+        let attempt = live_attempt.max(engine_attempt).max(1);
         self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
             step,
@@ -72,7 +93,7 @@ impl Shard {
                 Some(slot) => slot,
                 None => SlotIdx::ZERO,
             },
-            attempt: 1,
+            attempt,
         })
     }
 }

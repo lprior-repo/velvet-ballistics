@@ -1,6 +1,4 @@
-use super::{
-    KnownRunHeaderStatus, RunHeaderStatus, RunHeaderStatusClass, UnknownRunHeaderStatus,
-};
+use super::{KnownRunHeaderStatus, RunHeaderStatus, RunHeaderStatusClass, UnknownRunHeaderStatus};
 
 #[test]
 fn run_header_status_known_bytes_classify_as_known_statuses() {

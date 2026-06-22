@@ -92,18 +92,21 @@ pub fn validate_tail_first_seq_contiguous_with_snapshot(
     let Some(first) = tail_events.first() else {
         return Ok(());
     };
-    let expected = crate::codec::next_seq(snapshot_seq)
-        .map_err(|_| SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
+    let expected = crate::codec::next_seq(snapshot_seq).map_err(|_| {
+        SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
             snapshot_seq,
             actual_seq: first.seq(),
-        })?;
+        }
+    })?;
     if first.seq() == expected {
         Ok(())
     } else {
-        Err(SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
-            snapshot_seq,
-            actual_seq: first.seq(),
-        })
+        Err(
+            SnapshotRecoveryInputViolation::TailSeqNotContiguousWithSnapshot {
+                snapshot_seq,
+                actual_seq: first.seq(),
+            },
+        )
     }
 }
 

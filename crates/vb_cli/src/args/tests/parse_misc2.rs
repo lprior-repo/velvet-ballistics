@@ -66,17 +66,15 @@ fn parse_verify_defaults_to_standard_profile() {
     let parsed = parse_args(&args(&["velvet-ballistics", "verify", "workflow.yaml"]));
     match parsed {
         Ok(Command::Verify {
-        workflow,
-        profile,
-        output,
-        legacy_json,
-    }) => {
-
+            workflow,
+            profile,
+            output,
+            legacy_json,
+        }) => {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(profile, VerifyProfile::Standard);
             assert_eq!(output, OutputFormat::Text);
             assert_eq!(legacy_json, LegacyJsonOutput::Disabled);
-
         }
         other => panic!("expected Command::Verify, got {other:?}"),
     }
@@ -93,9 +91,7 @@ fn parse_verify_accepts_quick_profile() {
     ]));
     match parsed {
         Ok(Command::Verify { profile, .. }) => {
-
             assert_eq!(profile, VerifyProfile::Quick);
-
         }
         other => panic!("expected Command::Verify, got {other:?}"),
     }
@@ -114,12 +110,10 @@ fn parse_verify_accepts_full_profile_with_yaml() {
     ]));
     match parsed {
         Ok(Command::Verify {
-        profile, output, ..
-    }) => {
-
+            profile, output, ..
+        }) => {
             assert_eq!(profile, VerifyProfile::Full);
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Verify, got {other:?}"),
     }
@@ -135,14 +129,12 @@ fn parse_verify_legacy_json_flag_requests_machine_json() {
     ]));
     match parsed {
         Ok(Command::Verify {
-        output,
-        legacy_json,
-        ..
-    }) => {
-
+            output,
+            legacy_json,
+            ..
+        }) => {
             assert_eq!(output, OutputFormat::Text);
             assert_eq!(legacy_json, LegacyJsonOutput::Json);
-
         }
         other => panic!("expected Command::Verify, got {other:?}"),
     }
@@ -158,14 +150,12 @@ fn parse_verify_legacy_jsonl_flag_requests_machine_jsonl() {
     ]));
     match parsed {
         Ok(Command::Verify {
-        output,
-        legacy_json,
-        ..
-    }) => {
-
+            output,
+            legacy_json,
+            ..
+        }) => {
             assert_eq!(output, OutputFormat::Text);
             assert_eq!(legacy_json, LegacyJsonOutput::Jsonl);
-
         }
         other => panic!("expected Command::Verify, got {other:?}"),
     }
@@ -191,10 +181,8 @@ fn parse_graph_defaults_to_text_output() {
     let parsed = parse_args(&args(&["velvet-ballistics", "graph", "workflow.yaml"]));
     match parsed {
         Ok(Command::Graph { workflow, output }) => {
-
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Graph, got {other:?}"),
     }
@@ -211,9 +199,7 @@ fn parse_graph_accepts_yaml_emit() {
     ]));
     match parsed {
         Ok(Command::Graph { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Graph, got {other:?}"),
     }
@@ -224,10 +210,8 @@ fn parse_simulate_defaults_to_text_output() {
     let parsed = parse_args(&args(&["velvet-ballistics", "simulate", "workflow.yaml"]));
     match parsed {
         Ok(Command::Simulate { workflow, output }) => {
-
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Simulate, got {other:?}"),
     }
@@ -244,9 +228,7 @@ fn parse_simulate_accepts_yaml_emit() {
     ]));
     match parsed {
         Ok(Command::Simulate { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Simulate, got {other:?}"),
     }
@@ -263,9 +245,7 @@ fn parse_simulate_accepts_postcard_emit() {
     ]));
     match parsed {
         Ok(Command::Simulate { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Postcard);
-
         }
         other => panic!("expected Command::Simulate, got {other:?}"),
     }
@@ -282,10 +262,8 @@ fn parse_action_list_accepts_yaml_output() {
     ]));
     match parsed {
         Ok(Command::ActionList { output, registry }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
             assert_eq!(registry, ActionRegistryMode::Registered);
-
         }
         other => panic!("expected Command::ActionList, got {other:?}"),
     }
@@ -304,17 +282,15 @@ fn parse_cancel_accepts_run_id_and_db() {
     ]));
     match parsed {
         Ok(Command::Cancel {
-        run_id,
-        db,
-        reason,
-        output,
-    }) => {
-
+            run_id,
+            db,
+            reason,
+            output,
+        }) => {
             assert_eq!(run_id, "42");
             assert_eq!(db, PathBuf::from("journal-db"));
             assert_eq!(reason, None);
             assert_eq!(output, OutputFormat::Text);
-
         }
         other => panic!("expected Command::Cancel, got {other:?}"),
     }
@@ -333,9 +309,7 @@ fn parse_cancel_accepts_reason() {
     ]));
     match parsed {
         Ok(Command::Cancel { reason, .. }) => {
-
             assert_eq!(reason, Some("user request".to_string()));
-
         }
         other => panic!("expected Command::Cancel, got {other:?}"),
     }
@@ -354,9 +328,7 @@ fn parse_cancel_accepts_yaml_output() {
     ]));
     match parsed {
         Ok(Command::Cancel { output, .. }) => {
-
             assert_eq!(output, OutputFormat::Yaml);
-
         }
         other => panic!("expected Command::Cancel, got {other:?}"),
     }

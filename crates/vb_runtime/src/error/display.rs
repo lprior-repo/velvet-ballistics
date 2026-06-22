@@ -105,6 +105,9 @@ fn write_runtime_error_dynamic(
     if write_flow_error(error, f)? {
         return Ok(());
     }
+    if write_config_invalid_error(error, f)? {
+        return Ok(());
+    }
     Ok(())
 }
 
@@ -290,6 +293,25 @@ fn write_input_mapping_error(
             wrote(write!(f, "{}: {source}", kind.legacy_diagnostic_phrase()))
         }
         _ => Ok(false),
+    }
+}
+
+fn write_config_invalid_error(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> Result<bool, std::fmt::Error> {
+    if let RuntimeError::ConfigInvalid { errors } = error {
+        write!(
+            f,
+            "shard config invalid: {} field error(s)",
+            errors.len()
+        )?;
+        for (index, inner) in errors.iter().enumerate() {
+            write!(f, "\n  [{}] {}", index, inner)?;
+        }
+        Ok(true)
+    } else {
+        Ok(false)
     }
 }
 

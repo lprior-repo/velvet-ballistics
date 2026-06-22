@@ -296,7 +296,8 @@ fn red_queen_ttl_zero_disables_eviction() {
 #[test]
 fn red_queen_reinsert_existing_item_is_idempotent() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     let run = RunId::new(42);
     ring.insert(run, TimerTick::new(100)).expect("first insert");
     let overflow = ring.insert(run, TimerTick::new(200));
@@ -326,7 +327,8 @@ fn red_queen_reinsert_existing_item_is_idempotent() {
 #[test]
 fn red_queen_force_insert_grows_ring_but_counts_overflow() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     for offset in 0..4u64 {
         ring.insert(RunId::new(offset + 1), TimerTick::new(100))
             .expect("fill");
@@ -354,7 +356,8 @@ fn red_queen_force_insert_grows_ring_but_counts_overflow() {
 #[test]
 fn red_queen_remove_then_reinsert_frees_slot() {
     let capacity = 2usize;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     ring.insert(RunId::new(1), TimerTick::new(100)).expect("a");
     ring.insert(RunId::new(2), TimerTick::new(200)).expect("b");
     assert!(ring.contains(&RunId::new(1)));
@@ -376,7 +379,8 @@ fn red_queen_remove_then_reinsert_frees_slot() {
 #[test]
 fn red_queen_remove_all_entries_leaves_empty_ring() {
     let capacity = 4usize;
-    let mut ring: LruRing<RunId> = LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
     for offset in 0..4u64 {
         ring.insert(RunId::new(offset + 1), TimerTick::new(100))
             .expect("fill");
@@ -432,7 +436,8 @@ fn red_queen_capacity_zero_is_rejected_by_try_new() {
 
 #[test]
 fn red_queen_default_factory_constants_match_documented_values() {
-    let ring: LruRing<RunId> = LruRing::try_new(DEFAULT_MAX_TERMINAL_RUNS, 86_400).expect("non-zero test capacity");
+    let ring: LruRing<RunId> =
+        LruRing::try_new(DEFAULT_MAX_TERMINAL_RUNS, 86_400).expect("non-zero test capacity");
     assert_eq!(ring.capacity(), DEFAULT_MAX_TERMINAL_RUNS);
     assert_eq!(ring.ttl_ticks(), 86_400);
     assert!(ring.is_empty());

@@ -41,7 +41,6 @@ pub(crate) mod kind {
 
 /// Kind enum representing all registered payload types.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub(crate) enum Kind {
     VerificationReport,
     DiagnosticReport,
@@ -88,7 +87,7 @@ impl Kind {
     }
 
     /// Parse a Kind from its string representation.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub(crate) fn from_str(s: &str) -> Option<Kind> {
         match s {
             kind::VERIFICATION_REPORT => Some(Kind::VerificationReport),
@@ -125,11 +124,11 @@ impl Kind {
 ///
 /// # Invariants
 /// - INV-002: schema_version is never empty (proven by constant being non-empty string)
-/// - INV-003: kind matches registered constants (Kind enum only constructed via from_str)
+/// - INV-003: kind matches registered constants
 /// - POST-003: Output contains schema_version field
 /// - POST-004: Output contains kind field
+#[cfg(test)]
 #[must_use]
-#[allow(dead_code)]
 pub(crate) fn build_envelope(data: Value, kind: Kind) -> Value {
     let mut envelope = Map::new();
     envelope.insert(
@@ -162,25 +161,6 @@ pub(crate) fn serialize_with_version(data: &Value, kind: Kind) -> Value {
     );
     envelope.insert("kind".to_string(), Value::String(kind.as_str().to_string()));
     Value::Object(envelope)
-}
-
-/// Error types for CLI envelope operations.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
-pub(crate) enum EnvelopeError {
-    SerializationFailed,
-    SchemaVersionMissing,
-    UnknownKind(String),
-}
-
-impl std::fmt::Display for EnvelopeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SerializationFailed => write!(f, "envelope serialization failed"),
-            Self::SchemaVersionMissing => write!(f, "schema_version field is missing or empty"),
-            Self::UnknownKind(k) => write!(f, "unknown kind: {k}"),
-        }
-    }
 }
 
 #[cfg(test)]

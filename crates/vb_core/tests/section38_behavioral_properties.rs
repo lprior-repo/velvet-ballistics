@@ -231,7 +231,9 @@ fn prop_core_err<T>(r: CoreResult<T>) -> Result<T, proptest::test_runner::TestCa
 }
 
 /// Adapter: convert a `Result<T, EngineError>` into a `Result<T, TestCaseError>`.
-fn prop_engine_err<T>(r: Result<T, EngineError>) -> Result<T, proptest::test_runner::TestCaseError> {
+fn prop_engine_err<T>(
+    r: Result<T, EngineError>,
+) -> Result<T, proptest::test_runner::TestCaseError> {
     r.map_err(|e| proptest::test_runner::TestCaseError::fail(format!("{e}")))
 }
 

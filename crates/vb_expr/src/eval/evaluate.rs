@@ -170,16 +170,12 @@ fn eval_load_const(
     push_value(stack, value)
 }
 
-fn eval_eq(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-) -> ExprResult<()> {
+fn eval_eq(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
     let (left, right) = pop_pair(stack)?;
     push_value(stack, SlotValue::Bool(left == right))
 }
 
-fn eval_ne(
-    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
-) -> ExprResult<()> {
+fn eval_ne(stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>) -> ExprResult<()> {
     let (left, right) = pop_pair(stack)?;
     push_value(stack, SlotValue::Bool(left != right))
 }

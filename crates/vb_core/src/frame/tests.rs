@@ -747,8 +747,7 @@ mod tests {
     /// configured ceiling by returning `BudgetExceeded`, never by silently
     /// ratcheting `max_parallel_in_flight` upward to match the new total.
     #[test]
-    fn parallel_in_flight_exceeding_ceiling_returns_budget_exceeded()
-    -> CoreResult<()> {
+    fn parallel_in_flight_exceeding_ceiling_returns_budget_exceeded() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1)?;
         frame.set_max_parallel_in_flight(5);
 

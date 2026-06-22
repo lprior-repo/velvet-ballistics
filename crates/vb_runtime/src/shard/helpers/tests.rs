@@ -144,6 +144,54 @@ fn advance_after_timer_fire_rejects_wait_until_without_next() {
     assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
 }
 
+// ---- advance_after_timer_fire on invalid successor PC leaves state unchanged ----
+//
+// Regression guard for RS-204: the prior implementation mutated the step state
+// (Pending -> Running -> Succeeded) BEFORE validating that the node had a
+// successor step. When the node's `next` was `None` the function returned
+// InvalidTimerFire but the step had already been transitioned to Succeeded
+// while the PC was never advanced, corrupting the run state. The fix
+// validates the successor PC first and only mutates state when every
+// precondition holds. This test exercises the bug by leaving step 0 in its
+// natural Pending state (so mark_running / mark_succeeded would otherwise
+// succeed), then asserts state is byte-identical to the pre-fire snapshot.
+#[test]
+fn advance_after_timer_fire_on_invalid_successor_pc_leaves_state_unchanged() {
+    let Some(wf) = wait_workflow_no_next() else {
+        return;
+    };
+    let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+        return;
+    };
+    // Pre-fire invariants: step 0 is Pending and the PC points at step 0.
+    let pc_before = state.frame.pc();
+    let executed_before = state.frame.executed();
+    let frame_before = state.frame.clone();
+    assert_eq!(
+        state.frame.step_state(StepIdx::ZERO),
+        Ok(StepState::Pending)
+    );
+
+    let timer = PendingTimer {
+        step: StepIdx::ZERO,
+        kind: PendingTimerKind::Wait,
+        generation: 1,
+        deadline: std::time::Instant::now(),
+    };
+    let result = advance_after_timer_fire(&mut state, timer);
+    // Must surface InvalidTimerFire because the workflow has no successor.
+    assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
+    // State must be byte-identical to the pre-fire snapshot. In particular:
+    //   * step 0 is still Pending (not Succeeded),
+    //   * PC still at step 0 (not advanced),
+    //   * executed counter untouched,
+    //   * full frame structurally equal to the snapshot.
+    assert_eq!(state.frame.step_state(StepIdx::ZERO), Ok(StepState::Pending));
+    assert_eq!(state.frame.pc(), pc_before);
+    assert_eq!(state.frame.executed(), executed_before);
+    assert_eq!(state.frame, frame_before);
+}
+
 // ---- timer_registration_required for WaitEvent with timeout ----
 
 fn wait_event_with_timeout_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {

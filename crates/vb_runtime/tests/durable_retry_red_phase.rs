@@ -144,9 +144,9 @@ use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 
+use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, SharedRuntimeJournal, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
-use vb_runtime::RuntimeError;
 
 fn retry_workflow() -> Option<CompiledWorkflow> {
     let set_policy = CompiledNode {
@@ -529,7 +529,8 @@ fn ticket_with_retry_capacity_increases_capacity_to_max_attempts() -> Result<(),
 // RED: This test FAILS because ticket_with_retry_capacity is private
 // This test FAILS (exits nonzero) to prove the RED phase contract gap exists.
 #[test]
-fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() -> Result<(), RuntimeError> {
+fn ticket_with_retry_capacity_returns_unchanged_when_no_retry_metadata() -> Result<(), RuntimeError>
+{
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared)?;
@@ -744,7 +745,8 @@ fn apply_action_failure_to_state_resets_pc_to_failed_step_on_retry() -> Result<(
 // RED: No public interface to read slot values after error handler runs.
 // This test documents the gap: no InspectSlot command exists to verify error_slot content.
 #[test]
-fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() -> Result<(), RuntimeError> {
+fn apply_error_handler_writes_step_index_to_error_slot_integration_gap() -> Result<(), RuntimeError>
+{
     let journal = std::sync::Arc::new(VolatileRuntimeJournal::new());
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(small_config(), shared)?;

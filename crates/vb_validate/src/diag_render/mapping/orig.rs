@@ -27,15 +27,13 @@ use vb_core::diagnostic::DiagnosticCode;
 /// (E03xx), `map_type_taint_resource_*` (E04xx), `map_gate_*` (E05xx),
 /// `map_contract_*` (E06xx). Each helper is under 50 lines and keeps the
 /// diagnostic mapping for a single family in one place.
-pub(super) fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
+pub fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
     match error {
         ValidationError::DuplicateKey => map_schema_duplicate_key(),
         ValidationError::ForbiddenYamlFeature => map_schema_forbidden_yaml(),
         ValidationError::UnknownTopLevelField => map_schema_unknown_top_level(),
         ValidationError::UnknownStepField => map_schema_unknown_step_field(),
-        ValidationError::MissingRequiredField { field } => {
-            map_schema_missing_required_field(field)
-        }
+        ValidationError::MissingRequiredField { field } => map_schema_missing_required_field(field),
         ValidationError::InvalidVersion { version } => map_schema_invalid_version(version),
         ValidationError::InvalidId { id } => map_schema_invalid_id(id),
         ValidationError::ReservedId { id } => map_schema_reserved_id(id),
@@ -50,9 +48,7 @@ pub(super) fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode
             reference,
             required_scope,
         } => map_reference_scope_guard(reference, required_scope),
-        ValidationError::DirectLoopReference { variable } => {
-            map_reference_direct_loop(variable)
-        }
+        ValidationError::DirectLoopReference { variable } => map_reference_direct_loop(variable),
         ValidationError::DirectStepReference { step } => map_reference_direct_step(step),
         ValidationError::StepSkippedReference { step, reference } => {
             map_reference_step_skipped(usize::from(step.get()), reference)
@@ -181,12 +177,7 @@ pub(super) fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode
             first_index,
             duplicate_index,
             name,
-        } => map_contract_capability_duplicate(
-            *action_id,
-            *first_index,
-            *duplicate_index,
-            name,
-        ),
+        } => map_contract_capability_duplicate(*action_id, *first_index, *duplicate_index, name),
         ValidationError::MissingSchemaVersion => map_contract_missing_schema_version(),
         ValidationError::CueVetFailed { file } => map_contract_cue_vet_failed(file),
         ValidationError::VersionMonotonicityBreach {
@@ -612,7 +603,10 @@ fn map_type_taint_slot_type_inconsistency(slot: usize) -> (DiagnosticCode, Strin
     )
 }
 
-fn map_type_taint_non_deterministic_path(from_node: usize, to_node: usize) -> (DiagnosticCode, String) {
+fn map_type_taint_non_deterministic_path(
+    from_node: usize,
+    to_node: usize,
+) -> (DiagnosticCode, String) {
     (
         DiagnosticCode::new(CODE_NON_DETERMINISTIC_PATH),
         format!(

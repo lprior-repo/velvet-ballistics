@@ -257,3 +257,106 @@ fn reinsert_preserves_original_timestamp() {
         "exactly one entry must have been evicted by the sweep"
     );
 }
+
+// ── RS-210 / vb-k0jj0 — clear() must not grow the arena ───────────────────
+
+/// Regression guard for the `clear` free-list leak.
+///
+/// Before the fix, `LruRing::clear` cleared the free list alongside the
+/// slots, so the next `insert` fell through to `allocate_slot`'s
+/// `nodes.push(None)` branch and grew the arena even when live
+/// membership stayed within `capacity`. After 10 cycles of fill+clear
+/// the arena high-water mark must remain at exactly `capacity`.
+#[test]
+fn clear_does_not_grow_arena_across_ten_cycles() {
+    let capacity = 8usize;
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+
+    // Fill once so the arena has had at least one growth step. Without
+    // this the test would also pass on the buggy implementation because
+    // the empty arena stays empty until the first insert.
+    for offset in 0..capacity {
+        ring.insert(RunId::new(offset as u64 + 1), TimerTick::new(0))
+            .expect("first fill must succeed");
+    }
+    let arena_after_first_fill = ring.arena_len();
+    assert_eq!(
+        arena_after_first_fill, capacity,
+        "arena should be exactly `capacity` after a single fill"
+    );
+
+    // 10 cycles of fill + clear. The arena must not grow past the
+    // high-water mark reached on the very first fill.
+    for cycle in 1..=10u64 {
+        for offset in 0..capacity {
+            ring.insert(
+                RunId::new(1_000 + cycle * 100 + offset as u64),
+                TimerTick::new(cycle),
+            )
+            .expect("cycle fill must succeed");
+        }
+        assert_eq!(
+            ring.len(),
+            capacity,
+            "ring must be at capacity after cycle {cycle} fill"
+        );
+
+        ring.clear();
+        assert!(
+            ring.is_empty(),
+            "ring must be empty after cycle {cycle} clear"
+        );
+        assert_eq!(
+            ring.len(),
+            0,
+            "ring len must be zero after cycle {cycle} clear"
+        );
+
+        assert_eq!(
+            ring.arena_len(),
+            arena_after_first_fill,
+            "arena high-water mark must stay at {arena_after_first_fill} after \
+             cycle {cycle} fill+clear (RS-210 / vb-k0jj0)"
+        );
+    }
+}
+
+/// After `force_insert` grows the arena past `capacity`, `clear` must
+/// still reset the free list so the next inserts reuse every slot the
+/// arena already owns — i.e. the high-water mark stays put even after
+/// an overflow cycle.
+#[test]
+fn clear_after_force_insert_overflow_keeps_arena_bounded() {
+    let capacity = 4usize;
+    let mut ring: LruRing<RunId> =
+        LruRing::try_new(capacity, u64::MAX).expect("non-zero test capacity");
+
+    // Force a 50% overflow so the arena grows past capacity.
+    for offset in 0..(capacity + 2) {
+        ring.force_insert(RunId::new(offset as u64 + 1), TimerTick::new(0));
+    }
+    let arena_after_overflow = ring.arena_len();
+    assert!(
+        arena_after_overflow > capacity,
+        "force_insert overflow must grow the arena past capacity \
+         (got {arena_after_overflow}, capacity={capacity})"
+    );
+
+    // Clear and re-fill three times. The arena must NOT grow further.
+    for cycle in 1..=3u64 {
+        ring.clear();
+        for offset in 0..capacity {
+            ring.insert(
+                RunId::new(10_000 + cycle * 100 + offset as u64),
+                TimerTick::new(cycle),
+            )
+            .expect("post-clear insert must succeed");
+        }
+        assert_eq!(
+            ring.arena_len(),
+            arena_after_overflow,
+            "arena must not grow on cycle {cycle} after clear (RS-210)"
+        );
+    }
+}

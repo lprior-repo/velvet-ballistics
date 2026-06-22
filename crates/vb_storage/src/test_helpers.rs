@@ -21,7 +21,7 @@ pub(crate) use crate::constants::{
 pub(crate) use crate::error::JournalError;
 pub(crate) use crate::events::JournalEvent;
 pub(crate) use crate::types::{
-    keyspace_options_for, EventSeq, KeyspaceProfile, StorageKey, StorageLimits,
+    EventSeq, KeyspaceProfile, StorageKey, StorageLimits, keyspace_options_for,
 };
 
 pub(crate) use crate::records::{
@@ -59,7 +59,10 @@ pub(crate) use crate::init_keyspaces;
 // compiling without forcing a rename.
 // ---------------------------------------------------------------------------
 
-#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
+#[allow(
+    dead_code,
+    reason = "legacy wrapper; canonical re-export lives in crate::convenience"
+)]
 pub(crate) fn read_blob(
     journal: &FjallJournal,
     digest: [u8; DIGEST_BYTES],
@@ -67,7 +70,10 @@ pub(crate) fn read_blob(
     journal.blob(digest)
 }
 
-#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
+#[allow(
+    dead_code,
+    reason = "legacy wrapper; canonical re-export lives in crate::convenience"
+)]
 pub(crate) fn read_run_events(
     journal: &FjallJournal,
     run: RunId,
@@ -75,7 +81,10 @@ pub(crate) fn read_run_events(
     journal.events_for_run(run)
 }
 
-#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
+#[allow(
+    dead_code,
+    reason = "legacy wrapper; canonical re-export lives in crate::convenience"
+)]
 pub(crate) fn append_journal_event(
     journal: &FjallJournal,
     event: &JournalEvent,
@@ -83,8 +92,14 @@ pub(crate) fn append_journal_event(
     journal.append_journaled(event)
 }
 
-#[allow(dead_code, reason = "legacy wrapper; canonical re-export lives in crate::convenience")]
-pub(crate) fn write_snapshot(journal: &FjallJournal, snapshot: &RunSnapshot) -> Result<(), JournalError> {
+#[allow(
+    dead_code,
+    reason = "legacy wrapper; canonical re-export lives in crate::convenience"
+)]
+pub(crate) fn write_snapshot(
+    journal: &FjallJournal,
+    snapshot: &RunSnapshot,
+) -> Result<(), JournalError> {
     journal.put_snapshot(snapshot)
 }
 

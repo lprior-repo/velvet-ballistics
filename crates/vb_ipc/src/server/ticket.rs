@@ -217,11 +217,8 @@ mod tests {
         // RQ-W0-14: idempotency key is now derived from (run, seq, action)
         // instead of being hardcoded to 0. Verify it equals the canonical
         // computation for these ingredients.
-        let expected = compute_action_idempotency_key(
-            run_id,
-            SeqNo::ZERO,
-            vb_core::ids::ActionId::new(0),
-        );
+        let expected =
+            compute_action_idempotency_key(run_id, SeqNo::ZERO, vb_core::ids::ActionId::new(0));
         assert_eq!(
             ticket.idempotency_key, expected,
             "idempotency_key must be derived from run/seq/action"
