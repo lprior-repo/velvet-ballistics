@@ -35,7 +35,18 @@ impl Shard {
             .map(EventSeq::new)
             .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
 
-        if self.current_coalesce_window_remaining > 0 {
+        // FIX: When coalesce_window_ticks == 1, bypass buffering entirely and write
+        // directly. Window=1 means no coalescing should occur.
+        if self.coalesce_window_ticks == 1 {
+            // No coalescing: write immediately and advance the sequence.
+            self.journal.append_sequenced(event, seq)?;
+            let next_seq = EventSeq::new(
+                seq.get()
+                    .checked_add(1)
+                    .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?,
+            );
+            self.journal_sequences.insert(run, next_seq);
+        } else if self.current_coalesce_window_remaining > 0 {
             // Coalesce window is active: buffer the event with its starting
             // sequence. Sequence advancement is deferred to flush_coalesce_buffer
             // so a partial flush failure does not desynchronise the in-memory
