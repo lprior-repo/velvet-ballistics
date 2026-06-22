@@ -675,15 +675,7 @@ name = "flux-attrs"
 version = "0.1.0"
 source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
 dependencies = [
- "flux-attrs-impl 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
-]
-
-[[package]]
-name = "flux-attrs"
-version = "0.1.0"
-source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
-dependencies = [
- "flux-attrs-impl 0.1.0 (git+https://github.com/flux-rs/flux.git)",
+ "flux-attrs-impl",
 ]
 
 [[package]]
@@ -697,29 +689,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "flux-attrs-impl"
-version = "0.1.0"
-source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "flux-rs"
 version = "0.1.0"
 source = "git+https://github.com/flux-rs/flux?rev=4d329f2#4d329f2399d4c2bd9ea7dbf7453ab8ed3811730c"
 dependencies = [
- "flux-attrs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
-]
-
-[[package]]
-name = "flux-rs"
-version = "0.1.0"
-source = "git+https://github.com/flux-rs/flux.git#9dece888fa1208ffd6b2e48fcaf8f5f98a68bf36"
-dependencies = [
- "flux-attrs 0.1.0 (git+https://github.com/flux-rs/flux.git)",
+ "flux-attrs",
 ]
 
 [[package]]
@@ -2169,7 +2143,7 @@ dependencies = [
 name = "vb_queue_semantics"
 version = "0.1.0"
 dependencies = [
- "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux.git)",
+ "flux-rs",
  "proptest",
 ]
 
@@ -2181,7 +2155,7 @@ dependencies = [
  "chrono",
  "criterion",
  "crossbeam-queue",
- "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
+ "flux-rs",
  "indexmap",
  "loom",
  "postcard",
@@ -2204,7 +2178,7 @@ dependencies = [
  "chrono",
  "crc32c",
  "fjall",
- "flux-rs 0.1.0 (git+https://github.com/flux-rs/flux?rev=4d329f2)",
+ "flux-rs",
  "loom",
  "postcard",
  "proptest",

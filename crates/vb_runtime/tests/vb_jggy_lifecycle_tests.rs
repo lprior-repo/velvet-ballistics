@@ -1272,10 +1272,19 @@ fn flush_step_succeeded_journal_records_live_attempt_counter() -> Result<(), Run
     );
     assert_eq!(shard.tick(), Ok(true));
 
-    // Companion invariant: NO StepSucceeded event for step 0 carries
-    // attempt=0 (engine default) because the flush path now clamps
-    // via `.max(1)`. A regression that drops the clamp or removes
-    // the action_attempts lookup would surface here.
+    // RS-004 invariant (smoke): every StepSucceeded event emitted on this
+    // run carries the live `state.action_attempts[step]` value clamped to
+    // >= 1. A regression that hardcodes `attempt: 1` regardless of the
+    // live counter (the original RS-004 bug), drops the `.max(1)` clamp,
+    // or fails to read the live counter would surface here. The strong
+    // end-to-end assertion for the same invariant lives in
+    // `legacy_action_completion_journal_records_live_attempt_counter`
+    // above, which uses the legacy-completion path with a known
+    // action_attempts[0]=5 and asserts the journal StepSucceeded carries
+    // attempt=5. This flush-path test is the post-action smoke check that
+    // the engine drive-loop still emits events with non-zero attempt
+    // values; if any future change introduces a StepSucceeded here, the
+    // bound must remain >= 1.
     let events = journal.snapshot().expect("journal snapshot should work");
     for event in &events {
         if let RuntimeJournalEvent::StepSucceeded {

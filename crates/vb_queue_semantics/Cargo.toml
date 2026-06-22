@@ -8,7 +8,7 @@ version.workspace = true
 enabled = true
 
 [dependencies]
-flux-rs = { git = "https://github.com/flux-rs/flux.git" }
+flux-rs = { git = "https://github.com/flux-rs/flux", rev = "4d329f2", package = "flux-rs", optional = true }
 
 [dev-dependencies]
 # RPO-QUEUE-003: concrete QueueState transition properties use proptest.
@@ -17,7 +17,8 @@ proptest.workspace = true
 [features]
 default = []
 flux = []
-verus = []
+flux-refinements = ["dep:flux-rs"]
+verus = [] 
 
 [lints]
 workspace = true
