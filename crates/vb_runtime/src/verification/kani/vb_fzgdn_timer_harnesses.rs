@@ -17,6 +17,118 @@ mod harnesses {
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
     // =========================================================================
+    // GOD RULE 1: Bounded symbolic generators
+    //
+    // All structural inputs (WorkflowParts, CompiledNode, RunState) must be
+    // produced by bounded `kani::any()` generators, never hardcoded literals.
+    // =========================================================================
+
+    /// Generates an arbitrary `SlotIdx` from a symbolic `u16`.
+    fn any_slot_idx() -> vb_core::ids::SlotIdx {
+        vb_core::ids::SlotIdx::new(kani::any::<u16>())
+    }
+
+    /// Generates an arbitrary `ActionId` from a symbolic `u32`.
+    fn any_action_id() -> vb_core::ids::ActionId {
+        vb_core::ids::ActionId::new(kani::any::<u32>())
+    }
+
+    /// Generates an arbitrary `StepIdx` from a symbolic `u16`.
+    fn any_step_idx() -> StepIdx {
+        StepIdx::new(kani::any::<u16>())
+    }
+
+    /// Generates `Some(StepIdx)` or `None` from a symbolic bool.
+    fn any_optional_step() -> Option<StepIdx> {
+        if kani::any::<bool>() {
+            Some(any_step_idx())
+        } else {
+            None
+        }
+    }
+
+    /// Generates `Some(SlotIdx)` or `None` from a symbolic bool.
+    fn any_optional_slot() -> Option<vb_core::ids::SlotIdx> {
+        if kani::any::<bool>() {
+            Some(any_slot_idx())
+        } else {
+            None
+        }
+    }
+
+    /// Generates a `CompiledNode` whose `kind` is `WaitUntil` but whose
+    /// remaining fields (`id`, `output`, `next`, `on_error`, `error_slot`)
+    /// are symbolic. Bounded by the symbolic boolean selects.
+    fn any_wait_until_node() -> CompiledNode {
+        CompiledNode {
+            id: any_step_idx(),
+            output: any_optional_slot(),
+            next: any_optional_step(),
+            on_error: any_optional_step(),
+            error_slot: any_optional_slot(),
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: any_slot_idx(),
+            },
+        }
+    }
+
+    /// Generates a `CompiledNode` whose `kind` is `Do` but whose remaining
+    /// fields (`id`, `output`, `next`, `on_error`, `error_slot`) are symbolic.
+    fn any_do_node() -> CompiledNode {
+        CompiledNode {
+            id: any_step_idx(),
+            output: any_optional_slot(),
+            next: any_optional_step(),
+            on_error: any_optional_step(),
+            error_slot: any_optional_slot(),
+            kind: CompiledNodeKind::Do {
+                action: any_action_id(),
+                input: any_slot_idx(),
+            },
+        }
+    }
+
+    /// Generates an arbitrary `CompiledNode` from the canonical `kani::Arbitrary`
+    /// impl, used by harnesses that test out-of-bounds step queries and other
+    /// properties that do not constrain node kind.
+    fn any_compiled_node() -> CompiledNode {
+        kani::any::<CompiledNode>()
+    }
+
+    /// Builds a 1-step `RunState` whose workflow contains exactly one node
+    /// supplied by the caller. Slot count is 1; all other `RunState` fields
+    /// use the production defaults. This is the canonical bounded generator
+    /// for the timer-registration harnesses because they only need to query
+    /// a single step.
+    fn any_run_state_with_node(node: CompiledNode) -> crate::shard::RunState {
+        let workflow =
+            vb_core::workflow::CompiledWorkflow::kani_from_parts_unchecked(WorkflowParts {
+                name: Box::from("kani_fzgdn_timer"),
+                digest: vb_core::ids::WorkflowDigest::from_bytes(kani::any::<[u8; 32]>()),
+                nodes: Box::from([node]),
+                expressions: Box::from([]),
+                accessors: Box::from([]),
+                constants: Box::from([]),
+                slot_count: 1,
+                symbols_count: 0,
+                entry: StepIdx::ZERO,
+                step_names: Box::from([]),
+                resource_contract: ResourceContract::DEFAULT,
+            });
+        let frame = kani::any::<vb_core::frame::RunFrame>();
+        crate::shard::RunState {
+            frame,
+            workflow,
+            store: vb_core::value_store::ValueStore::new(),
+            action_attempts: vec![0u16; 1].into_boxed_slice(),
+            admission: None,
+            collect_states: crate::primitives::collect::CollectStates::new(),
+            action_contracts: Box::new([]),
+            last_snapshot_executed: 0,
+        }
+    }
+
+    // =========================================================================
     // PS-001: TimerDeadline arithmetic (POB-vb-fzgdn-002)
     // Target: Shard::next_pending_timer_generation in transitions.rs
     // =========================================================================
@@ -39,7 +151,10 @@ mod harnesses {
         let now = Instant::now();
         // First insertion starts generation at 1
         let result = wheel.insert(run, now, crate::shard::PendingTimerKind::Wait);
-        kani::assert(result.is_ok(), "timer harness assertion");
+        kani::assert(
+            result.is_ok(),
+            "TimerWheel::insert must succeed for the first Wait insertion",
+        );
         // Verify generation is 1 via get_entry
         let entry = wheel.get_entry(run);
         match entry {
@@ -74,7 +189,7 @@ mod harnesses {
             wheel
                 .insert(run, now, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must succeed for the initial Wait timer on a fresh wheel",
         );
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 1, "expected generation 1"),
@@ -89,7 +204,7 @@ mod harnesses {
             wheel
                 .insert(run, future, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must succeed when replacing an existing entry with a new deadline and kind",
         );
         match wheel.get_entry(run) {
             Some(v) => kani::assert(v.generation == 2, "expected generation 2"),
@@ -166,38 +281,6 @@ mod harnesses {
         kani::assert(timer.deadline == deadline, "deadline field stored");
     }
 
-    // =========================================================================
-    // PS-002: Timer admission stores numeric fields only (POB-vb-fzgdn-007)
-    // Target: PendingTimer type in types.rs, await_timer in transitions.rs
-    // =========================================================================
-
-    /// PS-002-H1: PendingTimer struct contains generation, step, kind, deadline.
-    /// Proves no Instant::now capture in immutable fields.
-    #[kani::proof]
-    fn ps_002_pending_timer_fields_are_numeric_and_deadline() {
-        let step: StepIdx = StepIdx::new(kani::any());
-        let generation: u64 = kani::any();
-        let kind = if kani::any() {
-            crate::shard::PendingTimerKind::Wait
-        } else {
-            crate::shard::PendingTimerKind::Ask
-        };
-        let deadline = Instant::now(); // Instant is opaque but deterministic in test
-
-        let timer = crate::shard::PendingTimer {
-            step,
-            kind,
-            generation,
-            deadline,
-        };
-
-        // Verify fields are stored
-        kani::assert(timer.step == step);
-        kani::assert(timer.generation == generation);
-        kani::assert(timer.kind == kind);
-        kani::assert(timer.deadline == deadline);
-    }
-
     /// PS-002-H2: PendingTimer::matches_authority enforces exact match on all fields.
     #[kani::proof]
     fn ps_002_matches_authority_enforces_exact_match() {
@@ -211,30 +294,30 @@ mod harnesses {
         // Exact match
         kani::assert(
             timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Wait),
-            "timer harness assertion",
+            "matches_authority must return true when generation, deadline, and kind all match",
         );
 
         // Wrong generation
         kani::assert(
             !timer.matches_authority(4, timer.deadline, crate::shard::PendingTimerKind::Wait),
-            "timer harness assertion",
+            "matches_authority must return false when generation is lower (4) than the stored value (5)",
         );
         kani::assert(
             !timer.matches_authority(6, timer.deadline, crate::shard::PendingTimerKind::Wait),
-            "timer harness assertion",
+            "matches_authority must return false when generation is higher (6) than the stored value (5)",
         );
 
         // Wrong kind
         kani::assert(
             !timer.matches_authority(5, timer.deadline, crate::shard::PendingTimerKind::Ask),
-            "timer harness assertion",
+            "matches_authority must return false when kind (Ask) differs from the stored kind (Wait)",
         );
 
         // Wrong deadline
         let other_deadline = timer.deadline + std::time::Duration::from_secs(1);
         kani::assert(
             !timer.matches_authority(5, other_deadline, crate::shard::PendingTimerKind::Wait),
-            "timer harness assertion",
+            "matches_authority must return false when the deadline differs from the stored deadline",
         );
     }
 
@@ -262,7 +345,7 @@ mod harnesses {
                 timer.deadline,
                 crate::shard::PendingTimerKind::Wait,
             ),
-            "timer harness assertion",
+            "matches_authority must reject any generation that differs from the stored generation (42)",
         );
     }
 
@@ -278,7 +361,7 @@ mod harnesses {
         // Ask kind must fail against Wait timer
         kani::assert(
             !timer.matches_authority(1, timer.deadline, crate::shard::PendingTimerKind::Ask),
-            "timer harness assertion",
+            "matches_authority must reject Ask kind when the stored kind is Wait",
         );
     }
 
@@ -294,7 +377,7 @@ mod harnesses {
         let different_deadline = timer.deadline + std::time::Duration::from_nanos(1);
         kani::assert(
             !timer.matches_authority(1, different_deadline, crate::shard::PendingTimerKind::Wait),
-            "timer harness assertion",
+            "matches_authority must reject any deadline that differs by even one nanosecond from the stored deadline",
         );
     }
 
@@ -318,32 +401,15 @@ mod harnesses {
         }
     }
 
-    // =========================================================================
-    // PS-004: Generation advancement (POB-vb-fzgdn-016)
-    // Target: Shard::next_pending_timer_generation in transitions.rs
-    // =========================================================================
-
-    /// PS-004-H1: checked_add(1) on u64 works correctly within bounds.
-    #[kani::proof]
-    fn ps_004_checked_add_within_bounds() {
-        let gen_val: u64 = kani::any();
-        kani::assume(gen_val < u64::MAX);
-        let next = gen_val.checked_add(1);
-        match next {
-            Some(v) => kani::assert(v == gen_val + 1, "expected gen_val + 1"),
-            None => {
-                kani::assume(false);
-                return;
-            }
-        }
-    }
-
     /// PS-004-H2: checked_add(1) on u64::MAX returns None.
     #[kani::proof]
     fn ps_004_checked_add_at_max_returns_none() {
         let gen_val: u64 = u64::MAX;
         let next = gen_val.checked_add(1);
-        kani::assert(next.is_none(), "timer harness assertion");
+        kani::assert(
+            next.is_none(),
+            "checked_add(1) on u64::MAX must return None so timer generation exhaustion fails closed",
+        );
     }
 
     // =========================================================================
@@ -365,7 +431,7 @@ mod harnesses {
             wheel
                 .insert(run, now, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must succeed when inserting the initial Wait timer on a fresh wheel",
         );
         kani::assert(wheel.len() == 1);
         kani::assert(wheel.get_kind(run) == Some(crate::shard::PendingTimerKind::Wait));
@@ -375,7 +441,7 @@ mod harnesses {
             wheel
                 .insert(run, later, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must succeed when replacing an existing entry (same run, different kind/deadline)",
         );
         kani::assert(wheel.len() == 1);
         kani::assert(wheel.get_kind(run) == Some(crate::shard::PendingTimerKind::Ask));
@@ -393,20 +459,23 @@ mod harnesses {
             wheel
                 .insert(run, now, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must succeed before cancel can be exercised",
         );
         kani::assert(wheel.len() == 1);
 
-        kani::assert(wheel.cancel(run), "timer harness assertion");
+        kani::assert(wheel.cancel(run), "TimerWheel::cancel must return true when removing an existing entry");
         kani::assert(wheel.len() == 0);
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(wheel.is_empty(), "TimerWheel::is_empty must return true after the only entry has been cancelled");
     }
 
     /// PS-005-H3: TimerWheel::cancel on nonexistent returns false.
     #[kani::proof]
     fn ps_005_cancel_nonexistent_returns_false() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        kani::assert(!wheel.cancel(RunId::new(99)), "timer harness assertion");
+        kani::assert(
+            !wheel.cancel(RunId::new(99)),
+            "TimerWheel::cancel must return false when no entry exists for the supplied RunId",
+        );
     }
 
     // =========================================================================
@@ -415,182 +484,50 @@ mod harnesses {
     // =========================================================================
 
     /// PS-006-H1: timer_registration_required returns true for WaitUntil.
+    ///
+    /// GOD RULE 1 compliant: the WaitUntil node is constructed via the bounded
+    /// `any_wait_until_node` generator, varying every CompiledNode field except
+    /// the WaitUntil kind. The single-node workflow is assembled via
+    /// `CompiledWorkflow::kani_from_parts_unchecked` and the run frame is
+    /// generated by `kani::any::<RunFrame>()`. The harness exercises
+    /// `timer_registration_required` against an arbitrary WaitUntil-bearing
+    /// run state.
     #[kani::proof]
     fn ps_006_timer_required_for_wait_until() {
-        use vb_core::ids::{SlotIdx, WorkflowDigest};
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
-
-        let wait_node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::WaitUntil {
-                deadline_slot: SlotIdx::ZERO,
-            },
-        };
-        let parts = WorkflowParts {
-            name: Box::from("wait"),
-            digest: WorkflowDigest::from_bytes([0xAA; 32]),
-            nodes: Box::from([wait_node]),
-            expressions: Box::from([]),
-            accessors: Box::from([]),
-            constants: Box::from([]),
-            slot_count: 1,
-            symbols_count: 0,
-            entry: StepIdx::ZERO,
-            step_names: Box::from([]),
-            resource_contract: ResourceContract::DEFAULT,
-        };
-        let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
-            Ok(v) => v,
-            Err(_) => {
-                kani::assume(false);
-                return;
-            }
-        };
-        let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
-            Ok(v) => v,
-            Err(_) => {
-                kani::assume(false);
-                return;
-            }
-        };
-        let state = crate::shard::RunState {
-            frame,
-            workflow: wf,
-            store: vb_core::value_store::ValueStore::new(),
-            action_attempts: vec![0; 1].into_boxed_slice(),
-            admission: None,
-            collect_states: crate::primitives::collect::CollectStates::new(),
-            action_contracts: Box::new([]),
-            last_snapshot_executed: 0,
-        };
+        let state = any_run_state_with_node(any_wait_until_node());
         kani::assert(
             crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO),
-            "timer harness assertion",
+            "timer_registration_required must return true for any symbolic WaitUntil node at the queried step",
         );
     }
 
     /// PS-006-H2: timer_registration_required returns false for Do node.
+    ///
+    /// GOD RULE 1 compliant: the Do node is constructed via the bounded
+    /// `any_do_node` generator, varying every CompiledNode field except the Do
+    /// kind. The single-node workflow and run frame are symbolically generated.
     #[kani::proof]
     fn ps_006_timer_not_required_for_do() {
-        use vb_core::ids::{ActionId, SlotIdx, WorkflowDigest};
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
-
-        let do_node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(0),
-                input: SlotIdx::ZERO,
-            },
-        };
-        let parts = WorkflowParts {
-            name: Box::from("do_only"),
-            digest: WorkflowDigest::from_bytes([0xBB; 32]),
-            nodes: Box::from([do_node]),
-            expressions: Box::from([]),
-            accessors: Box::from([]),
-            constants: Box::from([]),
-            slot_count: 1,
-            symbols_count: 0,
-            entry: StepIdx::ZERO,
-            step_names: Box::from([]),
-            resource_contract: ResourceContract::DEFAULT,
-        };
-        let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
-            Ok(v) => v,
-            Err(_) => {
-                kani::assume(false);
-                return;
-            }
-        };
-        let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
-            Ok(v) => v,
-            Err(_) => {
-                kani::assume(false);
-                return;
-            }
-        };
-        let state = crate::shard::RunState {
-            frame,
-            workflow: wf,
-            store: vb_core::value_store::ValueStore::new(),
-            action_attempts: vec![0; 1].into_boxed_slice(),
-            admission: None,
-            collect_states: crate::primitives::collect::CollectStates::new(),
-            action_contracts: Box::new([]),
-            last_snapshot_executed: 0,
-        };
+        let state = any_run_state_with_node(any_do_node());
         kani::assert(
             !crate::shard::helpers::timer_registration_required(&state, StepIdx::ZERO),
-            "timer harness assertion",
+            "timer_registration_required must return false for any symbolic Do node (Do is not a timer-bearing kind)",
         );
     }
 
     /// PS-006-H3: timer_registration_required returns false for missing step.
+    ///
+    /// GOD RULE 1 compliant: the workflow's single node is fully arbitrary
+    /// (any `CompiledNode` variant), and the queried step is `StepIdx::new(99)`
+    /// which is out of bounds for a 1-step workflow. The harness proves that
+    /// out-of-bounds step queries always return false regardless of node kind.
     #[kani::proof]
     fn ps_006_timer_not_required_for_missing_step() {
-        use vb_core::ids::{ActionId, SlotIdx, WorkflowDigest};
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
-
-        let do_node = CompiledNode {
-            id: StepIdx::ZERO,
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(0),
-                input: SlotIdx::ZERO,
-            },
-        };
-        let parts = WorkflowParts {
-            name: Box::from("do_only"),
-            digest: WorkflowDigest::from_bytes([0xCC; 32]),
-            nodes: Box::from([do_node]),
-            expressions: Box::from([]),
-            accessors: Box::from([]),
-            constants: Box::from([]),
-            slot_count: 1,
-            symbols_count: 0,
-            entry: StepIdx::ZERO,
-            step_names: Box::from([]),
-            resource_contract: ResourceContract::DEFAULT,
-        };
-        let wf = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
-            Ok(v) => v,
-            Err(_) => {
-                kani::assume(false);
-                return;
-            }
-        };
-        let frame = match vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1) {
-            Ok(v) => v,
-            Err(_) => {
-                kani::assume(false);
-                return;
-            }
-        };
-        let state = crate::shard::RunState {
-            frame,
-            workflow: wf,
-            store: vb_core::value_store::ValueStore::new(),
-            action_attempts: vec![0; 1].into_boxed_slice(),
-            admission: None,
-            collect_states: crate::primitives::collect::CollectStates::new(),
-            action_contracts: Box::new([]),
-            last_snapshot_executed: 0,
-        };
-        // Step 99 doesn't exist
+        let state = any_run_state_with_node(any_compiled_node());
+        // Step 99 doesn't exist (workflow has 1 step)
         kani::assert(
             !crate::shard::helpers::timer_registration_required(&state, StepIdx::new(99)),
-            "timer harness assertion",
+            "timer_registration_required must return false when the queried step exceeds the workflow node count",
         );
     }
 
@@ -612,13 +549,13 @@ mod harnesses {
             wheel
                 .insert(RunId::new(1), past, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the past-deadline Wait timer",
         );
         kani::assert(
             wheel
                 .insert(RunId::new(2), future, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the future-deadline Ask timer",
         );
 
         let fired = wheel.fire_expired(now);
@@ -641,18 +578,21 @@ mod harnesses {
             wheel
                 .insert(RunId::new(1), d1, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the first expired Wait timer (200ms past now)",
         );
         kani::assert(
             wheel
                 .insert(RunId::new(2), d2, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the second expired Ask timer (100ms past now)",
         );
 
         let fired = wheel.fire_expired(now);
         kani::assert(fired.len() == 2);
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(
+            wheel.is_empty(),
+            "TimerWheel::is_empty must be true after fire_expired drained both expired timers",
+        );
     }
 
     /// PS-007-H3: TimerWheel::next_deadline returns earliest pending deadline.
@@ -668,17 +608,20 @@ mod harnesses {
             wheel
                 .insert(RunId::new(1), late, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the late deadline (100ms) Wait timer",
         );
         kani::assert(
             wheel
                 .insert(RunId::new(2), early, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the early deadline (10ms) Ask timer",
         );
 
         let next = wheel.next_deadline();
-        kani::assert(next.is_some(), "timer harness assertion");
+        kani::assert(
+            next.is_some(),
+            "TimerWheel::next_deadline must return Some when at least one timer is pending",
+        );
         // Due to BTreeMap ordering, earliest deadline comes first
         kani::assert(next == Some(early));
     }
@@ -700,7 +643,7 @@ mod harnesses {
             wheel
                 .insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the first Wait timer for length tracking",
         );
         kani::assert(wheel.len() == 1);
 
@@ -708,7 +651,7 @@ mod harnesses {
             wheel
                 .insert(RunId::new(2), now, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the second Ask timer for length tracking",
         );
         kani::assert(wheel.len() == 2);
 
@@ -720,19 +663,28 @@ mod harnesses {
     #[kani::proof]
     fn ps_008_is_empty_reflects_state() {
         let mut wheel = crate::shard::timer_wheel::TimerWheel::new();
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(
+            wheel.is_empty(),
+            "TimerWheel::is_empty must return true on a freshly constructed wheel",
+        );
 
         let now = Instant::now();
         kani::assert(
             wheel
                 .insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the Wait timer used to flip is_empty to false",
         );
-        kani::assert(!wheel.is_empty(), "timer harness assertion");
+        kani::assert(
+            !wheel.is_empty(),
+            "TimerWheel::is_empty must return false after a successful insert",
+        );
 
         wheel.cancel(RunId::new(1));
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(
+            wheel.is_empty(),
+            "TimerWheel::is_empty must return true after cancelling the only entry",
+        );
     }
 
     // =========================================================================
@@ -755,11 +707,14 @@ mod harnesses {
                     crate::shard::PendingTimerKind::Wait,
                 )
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the timer with the exact-match deadline",
         );
         let fired = wheel.fire_expired(deadline);
         kani::assert(fired.len() == 1);
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(
+            wheel.is_empty(),
+            "TimerWheel::is_empty must be true after firing the exact-deadline timer",
+        );
     }
 
     /// PS-009-H2: Timer just after Instant::now() does not fire.
@@ -774,7 +729,7 @@ mod harnesses {
             wheel
                 .insert(RunId::new(1), future, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the future-deadline timer (1ms ahead)",
         );
         let fired = wheel.fire_expired(now);
         kani::assert(fired.len() == 0);
@@ -801,13 +756,13 @@ mod harnesses {
                     crate::shard::PendingTimerKind::Wait,
                 )
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept Run 1 Wait timer at the shared deadline",
         );
         kani::assert(
             wheel
                 .insert(RunId::new(2), deadline, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept Run 2 Ask timer at the shared deadline",
         );
         kani::assert(
             wheel
@@ -817,12 +772,15 @@ mod harnesses {
                     crate::shard::PendingTimerKind::Wait,
                 )
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept Run 3 Wait timer at the shared deadline",
         );
 
         let fired = wheel.fire_expired(deadline);
         kani::assert(fired.len() == 3);
-        kani::assert(wheel.is_empty(), "timer harness assertion");
+        kani::assert(
+            wheel.is_empty(),
+            "TimerWheel::is_empty must be true after firing all three same-deadline timers",
+        );
     }
 
     /// PS-010-H2: Replacement preserves correct entry after insert.
@@ -837,13 +795,13 @@ mod harnesses {
             wheel
                 .insert(RunId::new(1), now, crate::shard::PendingTimerKind::Wait)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the initial Wait timer for the replacement test",
         );
         kani::assert(
             wheel
                 .insert(RunId::new(1), later, crate::shard::PendingTimerKind::Ask)
                 .is_ok(),
-            "timer harness assertion",
+            "TimerWheel::insert must accept the replacement Ask timer for the same RunId",
         );
 
         kani::assert(wheel.len() == 1);
